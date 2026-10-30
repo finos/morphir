@@ -248,3 +248,36 @@ test "a source directory is normalised and an invalid path is skipped with a war
     s.expect(loads(reply), label="loads").to_be_true()
   })
 }
+
+///|
+test "modern JSON and layered legacy folders keep the workspace import response" {
+  for
+    files in [
+      [
+        ("p/morphir.json", "{\"project\":{\"name\":\"Modern\"}}"),
+        ("p/src/main.scm", "42"),
+      ],
+      [
+        ("p/morphir.json", manifest),
+        ("p/morphir.toml", "[project]\nname='Modern'\n"),
+        ("p/src/main.scm", "42"),
+      ],
+    ] {
+    let reply = folder(files)
+    @expect.expect(reply).to_contain_json({
+      "success": true,
+      "workspace": { "files": { "src/main.scm": "42" } },
+      "discovery": { "projects": [{ "name": "Modern" }] },
+    })
+  }
+}
+
+///|
+test "invalid folder JSON keeps its import failure schema" {
+  @expect.expect(folder([("p/morphir.json", "{"), ("p/src/Main.elm", "")])).to_contain_json({
+      "success": false,
+      "code": "workbench.folder_configuration",
+      "stage": "import",
+    },
+  )
+}

@@ -10,3 +10,4 @@ Each record states one decision, its context and its consequences.
 - [0001: Keep historical IR models explicit](0001-versioned-ir-models.md)
 - [0002: Separate Scheme execution from project orchestration](0002-scheme-and-engine.md)
 - [0003: Resolve portable and runtime value implementations together](0003-hybrid-value-execution.md)
+- [0004: Use Moon-Lander for application services](0004-adopt-moon-lander.md)

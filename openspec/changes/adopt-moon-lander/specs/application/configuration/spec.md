@@ -11,7 +11,7 @@ computes the same effective configuration from the same files, environment and c
 
 The CLI and Workbench SHALL merge configuration in this order, where a later layer wins: built-in defaults, system
 file, global user file, workspace JSON file, workspace YAML file, workspace TOML file, explicitly selected file,
-member file, user override file, `MORPHIR_` environment variables, and command-line values.
+member file, active configuration profile files, user override file, `MORPHIR_` environment variables, and command-line values.
 
 #### Scenario: Environment variable overrides the project file
 
@@ -99,9 +99,10 @@ change. A `.scm` path given to `--config` SHALL be refused with a usage error th
 
 ### Requirement: Project file discovery
 
-The CLI and Workbench SHALL find the workspace by walking up from the working directory to the first directory that
-holds a primary file: `morphir.toml`, `.morphir/morphir.toml` or `.config/morphir/config.toml`, or the same names
-with `.yaml`, `.yml`, `.json` or `.json5`.
+The CLI and Workbench SHALL parse primary configuration while walking up from the working directory. The first
+directory whose merged primary documents contain a `workspace` section SHALL be the workspace root. A standalone
+project SHALL NOT stop this search. Discovery SHALL check the nearest primary itself before its parents. With no
+workspace within the boundary, it SHALL use the nearest project primary.
 
 #### Scenario: Primary file in a parent directory
 
@@ -112,6 +113,32 @@ with `.yaml`, `.yml`, `.json` or `.json5`.
 
 - **WHEN** the working directory is `/w/app/src` and only `/w/app/morphir.json` exists
 - **THEN** the workspace root is `/w/app` and the configuration comes from `morphir.json`
+
+#### Scenario: Standalone member file does not hide its workspace
+
+- **WHEN** `/repo/app/morphir.toml` defines a project, `/repo/morphir.toml` declares a workspace, and the working directory is `/repo/app/src`
+- **THEN** the selected workspace root is `/repo` and the project primary remains `/repo/app/morphir.toml`
+
+#### Scenario: Nearest declared workspace stops the search
+
+- **WHEN** `/repo/morphir.toml` and `/repo/nested/morphir.toml` both declare workspaces, and the working directory is `/repo/nested/src`
+- **THEN** the selected workspace root is `/repo/nested` and the outer workspace is not read
+
+#### Scenario: Standalone project fallback
+
+- **WHEN** `/repo/app/morphir.toml` defines a project and no workspace exists within the boundary
+- **THEN** the root is `/repo/app`
+
+### Requirement: Primary configuration names
+
+Primary names SHALL be `morphir.toml`, `.morphir/morphir.toml` and `.config/morphir/config.toml`, and the same names
+with `.yaml`, `.yml`, `.json` or `.json5`. The supplemental `morphir-workspace.json` SHALL also identify a primary
+location and participate in the JSON layer.
+
+#### Scenario: Hidden layout remains discoverable
+
+- **WHEN** only `/repo/.morphir/morphir.toml` exists and the working directory is `/repo/src`
+- **THEN** discovery examines `/repo` as a primary location
 
 ### Requirement: Warning for YAML beside TOML
 
@@ -312,9 +339,24 @@ When a command must change a workspace that has JSON or YAML primary files and n
 - **THEN** a new `morphir.toml` next to `morphir.yml` sets `workspace.members` to `ledger` and `billing`, and
   `morphir.yml` is unchanged
 
+#### Scenario: Root project declared in a lower format
+
+- **WHEN** `morphir project remove .` runs and a JSON, JSON5, YAML or YML workspace primary declares the root project,
+  including a declaration also overridden by TOML
+- **THEN** the command refuses with an error naming the lower primary and explaining that its project declaration
+  must be removed there, without creating, changing or deleting files
+- **AND** JSON mode reports the existing structured command failure and exits with 2
+
+#### Scenario: Root project declared only in TOML
+
+- **WHEN** `morphir project remove .` runs and only TOML declares the root project, while lower formats may supply
+  workspace settings
+- **THEN** the command removes the TOML project table, keeps source files and lower primary files unchanged, and
+  retains the effective workspace settings
+
 ### Requirement: Environment variable mapping
 
-A variable whose name starts with `MORPHIR_`, except `MORPHIR_HOME`, SHALL set the configuration key made from the
+A variable whose name starts with `MORPHIR_`, except the reserved `MORPHIR_HOME` and `MORPHIR_PROFILES`, SHALL set the configuration key made from the
 rest of the name in lower case, with `__` separating the key path segments. A name with an empty segment SHALL be
 refused.
 
@@ -340,9 +382,12 @@ report configuration SHALL show this origin.
 
 ### Requirement: Isolated discovery
 
-A run SHALL accept an explicit discovery boundary. With a boundary, discovery SHALL NOT read a primary file above the
+A Morphir MoonBit run SHALL accept an explicit discovery boundary. With a boundary, discovery SHALL NOT read a primary file above the
 boundary directory, and SHALL NOT read system or global user files when isolation is requested. (bead:
 morphir-o6vm.10)
+
+This adoption SHALL qualify these controls in the MoonBit CLI independently of the separate Rust CLI itest driver.
+The Rust driver work remains tracked by `morphir-o6vm.10` and is not a release prerequisite or completed by this change.
 
 #### Scenario: Project under a temporary root
 
@@ -363,3 +408,158 @@ provenance from the same file contents, environment and command-line values.
 
 - **WHEN** the same workspace files and environment are given to the native CLI and to the wasm-gc CLI
 - **THEN** both report the same effective values and origins
+
+### Requirement: Configuration profiles are enabled without implicit defaults
+
+The CLI and Workbench SHALL enable Moon-Lander configuration profiles. Profile selection SHALL remain separate
+from frontend `--profile`. No implicit default profile SHALL be active. Environment-specific files and local
+override files SHALL remain disabled by this adoption.
+
+#### Scenario: No profile activation
+
+- **WHEN** no profile selection, include, active list or default list is given
+- **THEN** no profile file is requested and ordinary configuration keeps its existing values
+
+#### Scenario: Frontend profile stays separate
+
+- **WHEN** `project add` or `workspace init` uses frontend `--profile`
+- **THEN** that value keeps its existing frontend meaning and does not activate a configuration profile
+
+### Requirement: Profile activation sources
+
+Configuration profile selection SHALL use, in order, explicit `--profiles` or `--no-profiles`, present
+`MORPHIR_PROFILES`, base `profiles.active`, base `profiles.default`, then the Moon-Lander policy fallback.
+An explicit list SHALL replace lower selection lists. An absent variable SHALL be unspecified; a present empty
+or whitespace-only variable SHALL disable profiles.
+
+#### Scenario: CLI replaces environment activation
+
+- **WHEN** `MORPHIR_PROFILES=postgres` and the run selects `--profiles metrics`
+- **THEN** metrics is selected instead of postgres, before includes and group expansion
+
+#### Scenario: Empty environment selector disables
+
+- **WHEN** the base file defaults to development and `MORPHIR_PROFILES` is present but empty
+- **THEN** development and includes are inactive and no profile file loads
+
+### Requirement: Profile arguments use the framework grammar
+
+`--profiles <a,b>` SHALL be repeatable in argument order, split commas and trim ASCII whitespace. Names SHALL
+follow Moon-Lander's validated 1–64-character lowercase name grammar. Empty elements and a conflict with
+`--no-profiles` SHALL be usage errors before discovery or service construction. These controls SHALL support
+`--json`, and help SHALL perform no profile I/O.
+
+#### Scenario: Ordered repeated profile options
+
+- **WHEN** a run has `--profiles postgres,metrics --profiles tracing`
+- **THEN** the selected roots are postgres, metrics and tracing in that order
+
+#### Scenario: Invalid or conflicting selection
+
+- **WHEN** a run has `--profiles postgres,,metrics`, `--profiles=`, or both `--profiles metrics` and `--no-profiles`
+- **THEN** it fails with exit code 2 before reading profile files or constructing services
+
+#### Scenario: JSON help has no discovery
+
+- **WHEN** a command requests `--help --json --profiles metrics`
+- **THEN** it returns its documented JSON help result without reading base or profile files
+
+### Requirement: Profile controls belong to the discovered base
+
+Reserved `profiles.active`, `profiles.default`, `profiles.include` and `profiles.groups` controls SHALL come only
+from the merged discovered workspace primary documents, or project primaries with no workspace. Each control
+SHALL retain its supplying file's origin. Later layers SHALL NOT add controls. A selected file that was already
+one of those primaries SHALL retain its control authority while its ordinary values load once as the selected overlay.
+
+#### Scenario: Controls merge through base formats
+
+- **WHEN** workspace JSON sets profile defaults and TOML replaces those defaults and adds a group
+- **THEN** the effective controls use the declared format order and retain the TOML origins
+
+#### Scenario: Non-base selected file cannot define controls
+
+- **WHEN** profile processing is enabled and not explicitly disabled and a selected file outside the discovered base contains `profiles.active`
+- **THEN** the run fails with a typed control-location error naming that file
+
+#### Scenario: Selecting the discovered base preserves authority
+
+- **WHEN** discovered `morphir.toml` defines profiles and `--config morphir.toml` selects that same file
+- **THEN** its controls remain authoritative, its ordinary values load once, and it has one ordinary source report
+
+### Requirement: Profile controls remain reserved and typed
+
+Enabled profile controls SHALL use Moon-Lander's literal name lists and group map. Invalid types, unknown controls,
+secret references and controls in member, system/global, selected non-base, profile, user or environment-mapped
+layers SHALL fail before filters can hide them. Controls SHALL NOT appear as ordinary effective values or leaf
+provenance. Explicit disabled processing SHALL strip controls without interpreting them.
+
+#### Scenario: Member cannot change activation
+
+- **WHEN** profile processing is enabled and not explicitly disabled and a member primary or user override sets `profiles.active`
+- **THEN** the run fails with its file and control key before executing the command
+
+#### Scenario: Disable invalid controls
+
+- **WHEN** `--no-profiles` is given and a syntactically valid base contains a type-invalid profile control
+- **THEN** controls are not interpreted, no profiles load, and ordinary configuration still loads
+
+### Requirement: Includes and groups use framework resolution
+
+Profile resolution SHALL use Moon-Lander's includes, depth-first group expansion, last-occurrence deduplication,
+whole-group replacement and graph bounds. Includes SHALL precede selected roots and remain when an explicit list
+replaces defaults. Disabled processing SHALL suppress includes too. Invalid inactive cycles and excessive graphs
+SHALL fail with their control origins; resolution SHALL NOT truncate the graph.
+
+#### Scenario: Explicit later root keeps precedence
+
+- **WHEN** includes select metrics, production expands to postgres and metrics, and explicit roots are production then postgres
+- **THEN** the active order is production, metrics, postgres
+
+#### Scenario: Inactive cycle fails
+
+- **WHEN** an inactive group graph contains `a -> b -> a`
+- **THEN** resolution fails with that cycle and the origin of its definition
+
+### Requirement: Profile files follow format layers and active order
+
+Each active profile SHALL load its adjacent `morphir.profile.<name>.<ext>` or layout-equivalent files in JSON,
+YAML, then TOML groups. Within each active name, workspace files SHALL precede member files. Later names SHALL
+win under existing merge rules. Two candidates in one profile/location/group SHALL be ambiguous. Profile files
+SHALL NOT identify a root or change workspace/member selection.
+
+#### Scenario: Format precedence inside one profile
+
+- **WHEN** metrics JSON, YAML and TOML files set a key
+- **THEN** metrics TOML wins that key and keys present only in lower formats remain
+
+#### Scenario: Later workspace profile wins over an earlier member profile
+
+- **WHEN** active profiles are postgres then metrics, a member postgres file sets a key, and the workspace metrics file replaces it
+- **THEN** the workspace metrics value wins unless the member metrics file or a later stage replaces it
+
+#### Scenario: Profile YAML alternatives are ambiguous
+
+- **WHEN** both `morphir.profile.metrics.yaml` and `morphir.profile.metrics.yml` exist at an eligible location
+- **THEN** the run fails with both paths
+
+#### Scenario: Inactive file is not parsed
+
+- **WHEN** only metrics is active and a postgres profile file has invalid syntax
+- **THEN** the postgres file is not requested or parsed
+
+### Requirement: Profiles remain portable and isolated
+
+Active profile files SHALL stay within the discovery boundary or browser mount and SHALL remain eligible in
+isolated mode. Missing files SHALL produce not-found reports while the profile remains active. Inaccessible files
+SHALL fail visibly. Equal files, variables and options SHALL give equal resolution, values and origins on native,
+js, wasm, wasm-gc and the Workbench, without adding fields to existing worker protocols.
+
+#### Scenario: Isolated profile under a temporary root
+
+- **WHEN** isolated discovery selects metrics inside a temporary boundary and an ancestor holds a metrics profile
+- **THEN** only eligible profile files within the boundary load
+
+#### Scenario: Marker profile without a file
+
+- **WHEN** metrics is active and no metrics file exists
+- **THEN** metrics remains active with not-found source reports

@@ -2,11 +2,29 @@ import { isMainThread, parentPort, Worker, workerData } from 'node:worker_thread
 
 const globals = globalThis as typeof globalThis & {
   __morphirInterrupt?: Int32Array;
-  __morphirStdinRead?: (buffer: Uint8Array, length: number) => number;
+  __morphirStdinRead?: (buffer: Uint8Array, length: number, interrupted?: () => boolean) => number;
 };
 
-/** Run synchronous CLI evaluation in one owned worker. The parent receives
- * SIGINT and reads stdin asynchronously, one requested 64 KiB chunk at a time. */
+/** Select only the leading Morphir command. Its parser still validates every
+ * token; the remainder belongs to that command or its opaque child argv. */
+export function needsTerminalWorker(args: readonly string[]): boolean {
+  const flags = new Set(['--json', '--json-lines', '--help', '-h', '--no-banner', '--isolated', '--no-profiles']);
+  const options = new Set(['--config', '--profiles', '--suppress-warning', '--discovery-boundary', '--log-level']);
+  for (let index = 0; index < args.length;) {
+    const token = args[index]!;
+    if (flags.has(token)) { index++; continue; }
+    const equals = token.indexOf('=');
+    if (options.has(equals < 0 ? token : token.slice(0, equals))) {
+      index += equals < 0 ? 2 : 1;
+      continue;
+    }
+    return ['run', 'compile', 'execute', 'verify', 'conform', 'worksheet', 'eval', 'notebook', 'connected', 'model', 'generate', 'mck', 'workspace', 'project', 'toolchain', 'extension'].includes(token);
+  }
+  return false;
+}
+
+/** Run synchronous CLI work in one owned worker. The parent receives signals
+ * and reads stdin asynchronously, one requested 64 KiB chunk at a time. */
 export function terminalWorker(entry: URL, args: string[]): boolean {
   if (!isMainThread) {
     if (workerData?.morphirInterrupt instanceof SharedArrayBuffer &&
@@ -16,15 +34,18 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
       const state = new Int32Array(workerData.morphirInputState);
       const bytes = new Uint8Array(workerData.morphirInputBytes);
       globals.__morphirInterrupt = interrupted;
-      globals.__morphirStdinRead = (buffer, length) => {
-        if (length < 1 || length > bytes.length || Atomics.load(interrupted, 0)) return -1;
+      globals.__morphirStdinRead = (buffer, length, probe) => {
+        // A local callback adds cancel-file polling without changing the parent
+        // message or shared-buffer protocol. It runs on the calling JS stack.
+        const stopped = () => Atomics.load(interrupted, 0) !== 0 || !!probe?.();
+        if (length < 1 || length > bytes.length || stopped()) return -1;
         Atomics.store(state, 0, 0);
         parentPort!.postMessage({ type: 'morphir:stdin', length });
         while (Atomics.load(state, 0) === 0) {
-          if (Atomics.load(interrupted, 0)) return -1;
+          if (stopped()) return -1;
           Atomics.wait(state, 0, 0, 100);
         }
-        if (Atomics.load(interrupted, 0)) return -1;
+        if (stopped()) return -1;
         const status = Atomics.load(state, 0);
         if (status === 2) return 0;
         if (status !== 1) return -1;
@@ -36,8 +57,7 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
     }
     return false;
   }
-  const command = args.find(arg => !['--json', '--json-lines', '--help', '-h', '--no-banner'].includes(arg));
-  if (command !== 'worksheet' && command !== 'eval' && command !== 'connected' && command !== 'model' && command !== 'generate' && command !== 'mck') return false;
+  if (!needsTerminalWorker(args)) return false;
   const interrupted = new Int32Array(new SharedArrayBuffer(4));
   const state = new Int32Array(new SharedArrayBuffer(8));
   const bytes = new Uint8Array(new SharedArrayBuffer(65536));
@@ -87,12 +107,19 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
     requested = request.length as number;
     pump();
   };
-  const interrupt = () => { Atomics.store(interrupted, 0, 1); Atomics.notify(state, 0); };
+  const stop = (kind: number, code: number) => {
+    if (Atomics.compareExchange(interrupted, 0, 0, kind) !== 0) process.exit(code);
+    Atomics.notify(state, 0);
+  };
+  const interrupt = () => stop(1, 130);
+  const terminate = () => stop(2, 143);
   process.on('SIGINT', interrupt);
+  process.on('SIGTERM', terminate);
   worker.on('message', inputRequest);
   worker.once('error', error => { workerFailed = true; console.error(error instanceof Error ? error.message : String(error)); });
   worker.once('exit', code => {
     process.off('SIGINT', interrupt);
+    process.off('SIGTERM', terminate);
     if (inputActive) {
       process.stdin.off('readable', pump);
       process.stdin.off('end', pump);
@@ -109,6 +136,6 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
 }
 
 /** The bounded bridge uses this only from its synchronous worker. */
-export function terminalStdinRead(buffer: Uint8Array, length: number): number | undefined {
-  return globals.__morphirStdinRead?.(buffer, length);
+export function terminalStdinRead(buffer: Uint8Array, length: number, interrupted?: () => boolean): number | undefined {
+  return globals.__morphirStdinRead?.(buffer, length, interrupted);
 }

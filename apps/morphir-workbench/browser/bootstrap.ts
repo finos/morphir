@@ -4,6 +4,7 @@ import { workbenchError } from '../../../types/data.ts';
 import { LocalAdapter, connect } from './transport.ts';
 import { selectLocalAdapter } from './native-session.ts';
 import { downloadArtifacts } from './artifact-download.ts';
+import { pickNotebook } from './notebook-files.ts';
 import {createOriginalsArchive, prepareOriginalsArchive} from './originals-archive.ts';
 import { fetchText, pickFolder, storage, watchDrop } from './project-io.ts';
 import { ModelImporter, captureOriginalRequest } from './model-import.ts';
@@ -140,6 +141,7 @@ globalThis.morphirWorkbench = {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
   downloadArtifacts,
+  pickNotebook,
   createOriginalsArchive,
   prepareOriginalsArchive,
 };

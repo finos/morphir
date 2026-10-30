@@ -1,7 +1,7 @@
 ///|
 fn record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::new(
-    @ion.Struct(fields.map(pair => @ion.Field::new(pair.0, pair.1))),
+  @ion.Ion(
+    @ion.IonValueKind::Struct(fields.map(pair => @ion.field(pair.0, pair.1))),
   )
 }
 
@@ -27,7 +27,7 @@ fn symbol_metadata(unit : Input, symbols : Array[Symbol]) -> Bytes raise {
     (
       "source_annotations",
       @ion.IonValue::list(
-        unit.annotations.map(token => @ion.IonValue::new(@ion.Symbol(token))),
+        unit.annotations.map(token => @ion.Ion(@ion.IonValueKind::Symbol(token))),
       ),
     ),
     ("source_provenance", @ion.IonValue::list(unit.provenance)),
@@ -72,6 +72,6 @@ fn symbol_metadata(unit : Input, symbols : Array[Symbol]) -> Bytes raise {
         }),
       ),
     ),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_scheme_symbols"))
+  ]).with_annotation(@ion.symbol("morphir_scheme_symbols"))
   @ion_binary.write_binary_value(value)
 }

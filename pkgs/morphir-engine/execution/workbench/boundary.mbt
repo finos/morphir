@@ -107,98 +107,91 @@ pub fn Host::new(offer : String) -> Host raise {
 /// Private host commands never become v1 JSON-RPC operations.
 pub fn Host::handle(self : Host, source : String) -> Json {
   try {
-    let fields = command(source)
-    let op = string(fields["op"])
-    let value = match op {
-      "submit-scheme"
-      | "submit-native-policy"
-      | "submit-http-policy"
-      | "plan-scheme"
-      | "claim-scheme"
-      | "replan-scheme" => self.scheme_command(op, fields)
-      "submit" => {
-        ignore(closed(Json::object(fields), ["op", "body"]))
-        let body = closed(decode(string(fields["body"])), [
-          "contractVersion", "model", "entry", "inputs",
-        ])
-        version(body)
-        let inputs = closed(body["inputs"], ["format", "source"])
-        let raw = string(inputs["source"])
-        let arguments = match inputs["format"] {
-          String("json") => decode(raw)
-          String("ion-text") => {
-            admit_ion_structure(raw)
-            @arguments.ion_arguments(Json::null(), raw, true)
-          }
-          _ => raise Invalid("workbench.host_format")
-        }
-        let suite = @protocol.Suite::from_json({
-          "profile": "morphir-invocations-v1",
-          "calls": [
-            {
-              "id": "workbench",
-              "entry": body["entry"],
-              "arguments": arguments,
-            },
-          ],
-        })
-        let unit = @data.IRUnit::new(
-          "workbench",
-          @migration.to_current(@versioned.read(string(body["model"]))),
-        )
-        let receipt = self.owner.submit(unit, suite)
-        (
-          {
-            "identity": receipt.identity().to_json(),
-            "calls": ["workbench"],
-            "receipt": receipt.to_json(),
-          } : Json)
-      }
-      "query" | "cancel" | "release" => {
-        ignore(closed(Json::object(fields), ["op", "body"]))
-        let body = closed(decode(string(fields["body"])), [
-          "contractVersion", "identity",
-        ])
-        version(body)
-        let identity = @receipts.Identity::from_json(body["identity"])
-        match op {
-          "query" => self.owner.query(identity).to_json()
-          "cancel" => self.owner.cancel(identity).to_json()
-          _ => {
-            self.owner.release(identity)
-            ({ "released": true } : Json)
-          }
-        }
-      }
-      "claim" => {
-        ignore(closed(Json::object(fields), ["op", "identity"]))
-        let plan = self.owner.claim(
-          @receipts.Identity::from_json(fields["identity"]),
-        )
-        let call = plan.suite.calls[0]
-        (
-          {
-            "operation": "evaluate",
-            "executionMode": "typed",
-            "source": @codec.to_json(plan.unit.distribution).stringify(),
-            "entry": call.entry,
-            "arguments": call.arguments.map(@protocol.Value::to_json),
-          } : Json)
-      }
-      "complete" => {
-        ignore(closed(Json::object(fields), ["op", "identity", "outcomes"]))
-        self.owner
-        .complete(
-          @receipts.Identity::from_json(fields["identity"]),
-          @protocol.Outcomes::from_json(fields["outcomes"]),
-        )
-        .to_json()
-      }
-      _ => raise Invalid("workbench.host_operation")
-    }
+    let value = boundary_sender.send(self, BoundaryRequest::decode(source))
     { "ok": true, "value": value }
   } catch {
     error => failure(error)
+  }
+}
+
+///|
+fn Host::dispatch(self : Host, request : BoundaryRequest) -> Json raise {
+  match request {
+    Scheme(operation, fields) => self.scheme_command(operation, fields)
+    Submit(fields) => {
+      ignore(closed(Json::object(fields), ["op", "body"]))
+      let body = closed(decode(string(fields["body"])), [
+        "contractVersion", "model", "entry", "inputs",
+      ])
+      version(body)
+      let inputs = closed(body["inputs"], ["format", "source"])
+      let raw = string(inputs["source"])
+      let arguments = match inputs["format"] {
+        String("json") => decode(raw)
+        String("ion-text") => {
+          admit_ion_structure(raw)
+          @arguments.ion_arguments(Json::null(), raw, true)
+        }
+        _ => raise Invalid("workbench.host_format")
+      }
+      let suite = @protocol.Suite::from_json({
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          { "id": "workbench", "entry": body["entry"], "arguments": arguments },
+        ],
+      })
+      let unit = @data.IRUnit::new(
+        "workbench",
+        @migration.to_current(@versioned.read(string(body["model"]))),
+      )
+      let receipt = self.owner.submit(unit, suite)
+      (
+        {
+          "identity": receipt.identity().to_json(),
+          "calls": ["workbench"],
+          "receipt": receipt.to_json(),
+        } : Json)
+    }
+    Query(fields) | Cancel(fields) | Release(fields) => {
+      ignore(closed(Json::object(fields), ["op", "body"]))
+      let body = closed(decode(string(fields["body"])), [
+        "contractVersion", "identity",
+      ])
+      version(body)
+      let identity = @receipts.Identity::from_json(body["identity"])
+      match request {
+        Query(_) => self.owner.query(identity).to_json()
+        Cancel(_) => self.owner.cancel(identity).to_json()
+        _ => {
+          self.owner.release(identity)
+          ({ "released": true } : Json)
+        }
+      }
+    }
+    Claim(fields) => {
+      ignore(closed(Json::object(fields), ["op", "identity"]))
+      let plan = self.owner.claim(
+        @receipts.Identity::from_json(fields["identity"]),
+      )
+      let call = plan.suite.calls[0]
+      (
+        {
+          "operation": "evaluate",
+          "executionMode": "typed",
+          "source": @codec.to_json(plan.unit.distribution).stringify(),
+          "entry": call.entry,
+          "arguments": call.arguments.map(@protocol.Value::to_json),
+        } : Json)
+    }
+    Complete(fields) => {
+      ignore(closed(Json::object(fields), ["op", "identity", "outcomes"]))
+      self.owner
+      .complete(
+        @receipts.Identity::from_json(fields["identity"]),
+        @protocol.Outcomes::from_json(fields["outcomes"]),
+      )
+      .to_json()
+    }
   }
 }
 

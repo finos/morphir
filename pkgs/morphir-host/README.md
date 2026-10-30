@@ -82,6 +82,40 @@ Run WASM artifacts with `node pkgs/morphir-host/runners/wasm.mjs <artifact.wasm>
 
 WASM-GC exchanges JSON responses through opaque UTF-16 string handles. Imports are `begin`, `append`, `length`, `at` and `request`; `request` takes operation and two string arguments and returns `{value: ...}` or `{error: ...}`. The supplied runner implements filesystem operations, arguments, environment, platform identity, stderr and exit. Console output uses `spectest.print_char`. MoonBit core also declares `__moonbit_sys_unstable.exit(code)`, which the CLI does not call; a host must still supply it, and the supplied runner exits the process. These imports are an explicit embedding contract, not WASI.
 
+Diagnostic logging additionally requires `utc_milliseconds`, with both string arguments empty.
+Return a whole numeric count of milliseconds since the Unix epoch, for example
+`{"value":1793318400000}`. The diagnostic timestamp range is 0 through 253402300799999,
+ending at `9999-12-31T23:59:59.999Z`. The supplied Node runner uses `Date.now()`; the
+portable logger advances that initial UTC value with the existing `monotonic_seconds`
+operation. Missing clocks report `diagnostics.utc_clock_unavailable`; invalid values
+report `diagnostics.invalid_utc_clock`. The CLI exits 2 before starting the command,
+using its existing JSON failure when selected. Help and `--log-level off` do not
+request a clock. Text diagnostics go only to stderr; rolling-file diagnostics require
+the native or JS process host and are explicitly refused here. No MEP or worker
+message fields are added by these host capabilities.
+
+For `--cancel-file`, the GC entry calls `register_cancel_file` before starting
+the host. The first argument is its prepared absolute path and the second is
+empty. Return `{"value":true}` after accepting it. Passing an empty first
+argument clears the registration and is idempotent. A host that lacks this
+capability refuses before the command starts with
+`cancellation.cancel_file_registration_unavailable` and exit 2.
+The prepared path uses forward slashes on Windows too; compare file identities
+with the platform's path rules rather than raw separator spelling.
+
+The supplied runner polls the path in the existing bounded stdin wait, retaining
+an observed request in its existing interrupt flag before returning to MoonBit.
+Ordinary file reads and startup signal probes do not poll that path. Commands
+retain their existing cancel-file checkpoints and JSON outcomes, including
+evaluation's per-call cancellation result for a marker present before launch.
+Removing a marker observed during a stdin wait cannot undo that request.
+Registration cleanup runs after normal completion, cancellation and early
+startup failure. A failed clear emits
+`cancellation.cancel_file_cleanup_failed` on stderr; it changes an otherwise
+successful exit to 1 and keeps an existing failure/cancellation code. It does
+not add another stdout document. Existing worker messages and shared buffers
+are unchanged.
+
 Optional WASM-GC operations `bytes_supported`, `read_bytes` and `write_bytes`
 extend this interface. `bytes_supported` returns true when both byte operations
 are implemented; missing operations mean unsupported. `read_bytes(path)` returns
@@ -91,7 +125,7 @@ them. Older embedding hosts continue to support text pipelines without adding
 imports. These JSON arrays are a byte transport for the embedding ABI, independent
 of the engine's selected data codec.
 
-Desktop hosts resolve system/global configuration using the platform config directory and Morphir home rules. WASI only accesses its preopen. Its CLI accepts optional `.morphir-host/system/morphir.{toml,yaml}` and `.morphir-host/user/morphir.{toml,yaml}` within that preopen. Library callers can supply separate read-only configuration documents directly.
+Desktop hosts resolve system/global configuration using Moon-Lander conventions for the platform config directory and Morphir home rules. Each location accepts JSON/JSON5, YAML/YML and TOML layers in that order. WASI only accesses its preopen. Its CLI accepts optional `.morphir-host/system/morphir.{json,json5,yaml,yml,toml}` and `.morphir-host/user/morphir.{json,json5,yaml,yml,toml}` within that preopen. Library callers can supply separate read-only configuration documents directly. The discovery protocol uses the same format loader without changing its request or response fields. CLI `--discovery-boundary` bounds the ancestor walk; `--isolated` skips machine/global sources and user overrides while retaining active profiles and project primaries.
 
 ## Publication and limits
 
@@ -245,3 +279,52 @@ should dispatch by profile, rather than assuming every record is an observation.
 This slice qualifies local audit sinks. An external exporter must explicitly
 support the new record profile. The native OpenTelemetry adapter's existing
 observation/metric qualification does not qualify metadata audit export.
+
+### Cooperative interruption adapters
+
+A process owner can install `platform.InterruptionScope` with a probe of its
+run's cancellation state. `interruption_requested` then consults that probe;
+closing the scope restores the enclosing probe and repeated close does nothing.
+Install scopes for one process owner and close nested scopes in reverse order.
+Legacy standalone callers keep their existing interruption APIs.
+
+Native process waits and bounded directory enumeration call the same probe at
+safe points through a C function pointer. POSIX stdin polls at 10 ms intervals,
+so a cancel file can end an otherwise idle read. A child gets SIGINT once; after
+five seconds without completion the adapter escalates to terminate and kill,
+then reaps it. These adapters install no additional signal handler while a run
+owns the scope. The owning host selects the final signal reason and exit code.
+
+The terminal launcher selects a worker from the leading Morphir command after
+its declared global controls. It never examines an opaque child argument tail.
+The parent owns signal delivery while synchronous worker code runs: the existing
+shared flag distinguishes interrupt and terminate, and a second signal exits
+immediately with that signal's status. Stdin remains a bounded request/reply
+channel. Command results and wire payloads retain their existing shapes.
+
+The Node synchronous process adapter keeps its child on an owned worker, while
+the calling command polls the run's cooperative probe. This lets signals and
+cancel files reach a child while the command waits, without changing child argv
+or the existing `{exitCode, stdout, stderr}` result. Successful completion waits
+for the child's streams to close. Captured stdout and stderr retain their
+16 MiB limits; timeout remains exit 124 and spawn failure remains -1. The worker
+escalates an unacknowledged cancellation and confirms close before returning.
+A bridge that cannot confirm cleanup returns failure.
+
+`platform.ProcessScope` connects owned process launches to a run's logger.
+Native/JS platform calls announce their program, and local JS supervision
+adapters can use `process_started` without adding protocol fields. A diagnostic
+observer cannot alter the child argument array or its successful output.
+
+Configuration directory listings retain inaccessible entries as the framework's
+`Inaccessible` kind. A locked sibling, such as a Windows drive-root system file,
+does not prevent discovery. If that entry is an actual configuration candidate,
+the loader requests its contents and the regular-file read boundary reports the
+failure; the candidate is never silently treated as absent.
+
+`platform.CooperativeProcessScope` lets a protocol helper that already receives
+the cancel file finish its own child cleanup. The process adapter still polls
+the run's single stop state. When the file is visible to the helper, it retains
+the existing five-second grace before escalation instead of killing the helper
+before it can confirm cleanup. Signal delivery without that cooperative scope
+keeps its existing behavior. Closing a scope restores the enclosing policy.

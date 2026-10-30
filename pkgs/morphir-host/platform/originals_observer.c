@@ -302,9 +302,6 @@ void morphir_originals_observer_finish(morphir_originals_observer *o) {
   close(o->fd); free(o);
 }
 
-extern int morphir_host_interruption_requested(void);
-extern int morphir_host_interruption_active(void);
-extern moonbit_bytes_t morphir_host_process(const char *, const char *, int, const char *, const char *, int);
 static void op_word(unsigned char *p, int value) {
   unsigned int n = (unsigned)value;
   for (int i = 0; i < 4; ++i) p[i] = (unsigned char)(n >> (8 * i));
@@ -359,8 +356,9 @@ static int op_process_clock(uint64_t *milliseconds) {
   return 1;
 }
 moonbit_bytes_t morphir_originals_observer_process(morphir_originals_observer *o,
-    const char *program, const char *packed, int count, const char *cwd, const char *home, int timeout) {
-  if (!o) return morphir_host_process(program, packed, count, cwd, home, timeout);
+    const char *program, const char *packed, int count, const char *cwd, const char *home, int timeout,
+    int (*interrupted)(void)) {
+  if (!o) return morphir_host_process(program, packed, count, cwd, home, timeout, interrupted);
   if (o->helper.kind != HELPER_NOT_ATTEMPTED) { o->poisoned = 1; return op_process_error("Observed helper already attempted"); }
   helper_observation *h = &o->helper;
   h->kind = HELPER_PREPARATION_FAILED;
@@ -414,6 +412,7 @@ moonbit_bytes_t morphir_originals_observer_process(morphir_originals_observer *o
   op_helper_started(o, program, argv, count, cwd); /* Faults do not stop actual monitoring. */
   free(argv);
   int elapsed = 0, timed_out = 0, oversized = 0, interrupt_forwarded = 0;
+  int interrupt_deadline = -1;
   struct timespec interval = {0, 10000000};
   for (;;) {
     pid_t waited = waitpid(pid, &h->status, WNOHANG);
@@ -422,8 +421,13 @@ moonbit_bytes_t morphir_originals_observer_process(morphir_originals_observer *o
       if (errno == EINTR) continue;
       h->wait_error = errno; break;
     }
-    if (!interrupt_forwarded && morphir_host_interruption_active() && morphir_host_interruption_requested()) {
-      kill(pid, SIGINT); interrupt_forwarded = 1;
+    if (!interrupt_forwarded) {
+      int delivery = interrupted();
+      if (delivery) {
+        if (delivery == 1) kill(pid, SIGINT);
+        interrupt_forwarded = 1;
+        interrupt_deadline = elapsed + 5000;
+      }
     }
     struct stat a, b;
     if (!fstat(fileno(out), &a) && !fstat(fileno(err), &b) &&
@@ -432,7 +436,7 @@ moonbit_bytes_t morphir_originals_observer_process(morphir_originals_observer *o
     int deadline_elapsed = elapsed >= timeout;
     if (process_clock_available && op_process_clock(&process_now) && process_now >= process_start)
       deadline_elapsed = process_now - process_start >= (uint64_t)timeout;
-    if (deadline_elapsed || oversized) {
+    if (deadline_elapsed || oversized || (interrupt_deadline >= 0 && elapsed >= interrupt_deadline)) {
       if (group_owned) kill(-pid, SIGTERM);
       kill(pid, SIGTERM);
       for (int grace = 0; grace < 50; ++grace) {
@@ -450,7 +454,7 @@ moonbit_bytes_t morphir_originals_observer_process(morphir_originals_observer *o
         do { done = waitpid(pid, &h->status, 0); } while (done < 0 && errno == EINTR);
         if (done == pid) h->waited = 1; else h->wait_error = errno;
       }
-      timed_out = !oversized; break;
+      timed_out = !oversized && interrupt_deadline < 0; break;
     }
     nanosleep(&interval, NULL); elapsed += 10;
   }
@@ -486,9 +490,8 @@ morphir_originals_observer *morphir_originals_observer_start(void) { return NULL
 void morphir_originals_observer_commit(morphir_originals_observer *o, const char *p, int returned) { (void)o; (void)p; (void)returned; }
 void morphir_originals_observer_cleanup(morphir_originals_observer *o, const char *p, int returned) { (void)o; (void)p; (void)returned; }
 void morphir_originals_observer_finish(morphir_originals_observer *o) { (void)o; }
-extern moonbit_bytes_t morphir_host_process(const char *, const char *, int, const char *, const char *, int);
 moonbit_bytes_t morphir_originals_observer_process(morphir_originals_observer *o, const char *p, const char *a, int n,
-    const char *cwd, const char *home, int timeout) {
-  (void)o; return morphir_host_process(p, a, n, cwd, home, timeout);
+    const char *cwd, const char *home, int timeout, int (*interrupted)(void)) {
+  (void)o; return morphir_host_process(p, a, n, cwd, home, timeout, interrupted);
 }
 #endif

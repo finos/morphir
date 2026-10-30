@@ -252,7 +252,10 @@ pub fn TerminalOutcome::validate(self : TerminalOutcome) -> Unit raise {
 ///|
 /// Decode the existing terminal shape without fabricating a nonempty call list.
 pub fn TerminalOutcome::from_json(value : Json) -> TerminalOutcome raise {
-  let outcome = terminal_outcome(@text.read_ion(value.stringify()[:]), true)
+  let outcome = terminal_outcome(
+    @text.read_ion(value.stringify()[:], fuel=Limited(@ion.Budget(128))),
+    true,
+  )
   outcome.validate()
   outcome
 }
@@ -277,7 +280,7 @@ pub fn Outcomes::validate(self : Outcomes) -> Unit raise {
     if bytes.length() > 65536 {
       raise Invalid("execution.extension_limit")
     }
-    ignore(@binary.read_binary_value(bytes[:]))
+    ignore(@binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128))))
   }
 }
 
@@ -390,7 +393,10 @@ fn read_outcomes(value : @ion.IonValue, json : Bool) -> Outcomes raise {
 
 ///|
 pub fn Outcomes::from_json(value : Json) -> Outcomes raise {
-  read_outcomes(@text.read_ion(value.stringify()[:]), true)
+  read_outcomes(
+    @text.read_ion(value.stringify()[:], fuel=Limited(@ion.Budget(128))),
+    true,
+  )
 }
 
 ///|
@@ -407,9 +413,16 @@ pub fn Outcomes::decode(bytes : Bytes, format : String) -> Outcomes raise {
   match format {
     "json" => {
       ignore(@json.parse(source))
-      read_outcomes(@text.read_ion(source[:]), true)
+      read_outcomes(
+        @text.read_ion(source[:], fuel=Limited(@ion.Budget(128))),
+        true,
+      )
     }
-    "ion-text" => read_outcomes(@text.read_ion(source[:]), false)
+    "ion-text" =>
+      read_outcomes(
+        @text.read_ion(source[:], fuel=Limited(@ion.Budget(128))),
+        false,
+      )
     _ => raise Invalid("execution.unsupported_format")
   }
 }

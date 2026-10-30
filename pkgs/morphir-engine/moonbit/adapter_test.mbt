@@ -121,7 +121,7 @@ test "math snapshot resolves finite calls and refuses invalid bindings through e
   })
   // Future facts on the real checkpoint survive both Ion encodings.
   let future = @ion.IonValue::from_fields([
-    @ion.Field::new("future_math", @ion.IonValue::string("retain-me")),
+    @ion.field("future_math", @ion.IonValue::string("retain-me")),
   ])
   let metadata = unit.metadata.copy()
   let owner = metadata[0]
@@ -129,8 +129,8 @@ test "math snapshot resolves finite calls and refuses invalid bindings through e
   metadata[0] = {
     ..owner,
     data: @ion.IonValue::from_fields([
-      @ion.Field::new("source_facts", original),
-      @ion.Field::new("future_math", future),
+      @ion.field("source_facts", original),
+      @ion.field("future_math", future),
     ]),
   }
   let unit = { ..unit, metadata, }
@@ -1102,7 +1102,7 @@ test "pinned String predicates reach the engine evaluator with UTF-16 text" {
   let descriptor = plan(engine, snapshot).source_frontends()[0]
   assert_eq(
     descriptor.dependencies["moonbitlang/core/builtin"],
-    "0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8",
+    "0.10.17+d971670cd+tree:eb321a18f7a33d37114546682a8d1cd6658afab8",
   )
   let report = execute(engine, snapshot)
   assert_true(report.successful())
@@ -1173,7 +1173,7 @@ test "both channels advertise the promoted String predicates" {
     )
     assert_eq(
       profile.dependencies["moonbitlang/core/builtin"],
-      "0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8",
+      "0.10.17+d971670cd+tree:eb321a18f7a33d37114546682a8d1cd6658afab8",
     )
   }
 }

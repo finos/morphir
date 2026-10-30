@@ -12,9 +12,9 @@ test "workspace checkpoint inspection retains rich metadata and opaque source la
     ..@data.IRUnit::new("original logical identity", file),
     metadata: [{ node_id: "value:calls:main#subtract", data: metadata, }],
     annotations: [
-      @ion.SymbolToken::new("before"),
-      @ion.SymbolToken::new("morphir_pipeline"),
-      @ion.SymbolToken::new("after"),
+      @ion.symbol("before"),
+      @ion.symbol("morphir_pipeline"),
+      @ion.symbol("after"),
     ],
     provenance: [@ion.IonValue::string("original provenance")],
   }

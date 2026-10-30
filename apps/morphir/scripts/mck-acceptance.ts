@@ -32,6 +32,15 @@ else{process.stdout.write('out\\0λ');process.stderr.write('err\\0雪');process.
   });
   assert.equal(result.error, undefined); assert.equal(result.signal, null); assert.equal(result.status, 1);
   assert.equal(result.stdout, 'out\0λ'); assert.equal(result.stderr, 'err\0雪');
+  const traced = spawnSync(invocation.command, [...invocation.prefix, '--log-level', 'debug', '--json', 'mck',
+    '--runner-pin', pin, '--mck-helper', helper, '--node', process.execPath, 'check', 'fixture'], {
+    cwd: directory, env: {PATH: '', HOME: directory, MORPHIR_LOG_FILE: 'false'}, encoding: 'utf8', timeout: 10000,
+  });
+  assert.equal(traced.status, 1, traced.stdout + traced.stderr);
+  const tracedReport = JSON.parse(traced.stdout);
+  assert.equal(tracedReport.stdout, result.stdout);
+  assert.equal(tracedReport.stderr, result.stderr);
+  assert.match(traced.stderr, /morphir\.host\.process.*Starting child process/);
   writeFileSync(join(directory, 'receipt.json'), JSON.stringify({ kind: 'mck-text-channel-fixture',
     exitCode: result.status, stdout: result.stdout, stderr: result.stderr }) + '\n');
 }

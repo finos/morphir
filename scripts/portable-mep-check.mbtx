@@ -1,15 +1,17 @@
-///|
-/// Local operation acceptance, separate from independent shared MCK verdicts.
+----
 import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
   "moonbitlang/x@0.5.5/crypto",
 }
+----
+
+// Local operation acceptance, separate from independent shared MCK verdicts.
 
 ///|
 async fn digest(path : String) -> String {
@@ -61,8 +63,8 @@ async fn execute() -> Json {
   @fs.mkdir(evidence, recursive=true)
   let evidence = @fs.realpath(evidence)
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.16+b1a0e846e") else {
-    fail("Pinned MoonBit 0.10.16 is required")
+  guard compiler.contains("0.10.17+d971670cd") else {
+    fail("Pinned MoonBit 0.10.17 is required")
   }
   ignore(
     checked("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"]),
@@ -220,7 +222,7 @@ async fn main {
   let result : Json = try {
     let matches = json_command().parse(argv~)
     if matches.flags.get_or_default("help", false) ||
-      matches.subcommand.is_some() {
+      matches.subcommand is Some(_) {
       {
         "render_help": legacy_command().render_help(),
         "json_help": json_command().render_help(),

@@ -42,11 +42,36 @@ pub fn RangedForm::scalar_end(self : RangedForm) -> Int32 {
 }
 
 ///|
+/// A whole-line double-semicolon comment outside all forms. The reader owns
+/// construction and reports the same scalar coordinates as RangedForm.
+pub struct RangedComment {
+  priv start : Int32
+  priv end : Int32
+} derive(Eq, Debug)
+
+///|
+pub extend RangedComment with Eq::{equal, not_equal}
+
+///|
+pub extend RangedComment with @debug.Debug::{to_repr}
+
+///|
+pub fn RangedComment::scalar_start(self : RangedComment) -> Int32 {
+  self.start
+}
+
+///|
+pub fn RangedComment::scalar_end(self : RangedComment) -> Int32 {
+  self.end
+}
+
+///|
 priv struct Reader {
   chars : Array[Char]
   mut index : Int32
   // Pre-order start offsets of every datum read, when recording.
   record : Array[Int32]?
+  comments : Array[RangedComment]?
 }
 
 ///|
@@ -74,14 +99,35 @@ fn Reader::starts(self : Reader, a : Char, b : Char) -> Bool {
 }
 
 ///|
-fn Reader::skip(self : Reader, depth : Int32) -> Unit raise {
+fn Reader::skip(
+  self : Reader,
+  depth : Int32,
+  top_level~ : Bool = false,
+) -> Unit raise {
   while self.index < self.chars.length() {
     let c = self.chars[self.index]
     if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
       self.index += 1
     } else if c == ';' {
+      let start = self.index
+      let capture = if self.comments is Some(_) &&
+        top_level &&
+        self.starts(';', ';') {
+        let mut line_start = start
+        while line_start > 0 && self.chars[line_start - 1] != '\n' {
+          line_start -= 1
+        }
+        self.chars[line_start:start]
+        .iter()
+        .all(c => c == ' ' || c == '\t' || c == '\r')
+      } else {
+        false
+      }
       while self.index < self.chars.length() && self.chars[self.index] != '\n' {
         self.index += 1
+      }
+      if capture && self.comments is Some(comments) {
+        comments.push({ start, end: self.index, })
       }
     } else if self.starts('#', '|') {
       self.index += 2
@@ -293,12 +339,13 @@ pub fn parse_program(source : String) -> Array[Datum] raise {
     chars: source.iter().collect(),
     index: 0,
     record: None,
+    comments: None,
   }
   let forms = []
-  reader.skip(0)
+  reader.skip(0, top_level=true)
   while reader.index < reader.chars.length() {
     forms.push(reader.read(0))
-    reader.skip(0)
+    reader.skip(0, top_level=true)
   }
   forms
 }
@@ -308,18 +355,39 @@ pub fn parse_program(source : String) -> Array[Datum] raise {
 /// whitespace, include original delimiters and quotes, and never use printed
 /// datum lengths to infer source boundaries.
 pub fn parse_program_ranged(source : String) -> Array[RangedForm] raise {
+  read_program_ranged(source, None)
+}
+
+///|
+/// Parse forms and whole-line double-semicolon comments between forms. Comment
+/// ranges use the same scalar coordinates as forms, including the markers but
+/// excluding LF. Inline comments and comments inside a form, block comment or
+/// discarded datum are excluded. No prefix is returned on a syntax failure.
+pub fn parse_program_with_comments(
+  source : String,
+) -> (Array[RangedForm], Array[RangedComment]) raise {
+  let comments = []
+  (read_program_ranged(source, Some(comments)), comments)
+}
+
+///|
+fn read_program_ranged(
+  source : String,
+  comments : Array[RangedComment]?,
+) -> Array[RangedForm] raise {
   let reader = Reader::{
     chars: source.iter().collect(),
     index: 0,
     record: None,
+    comments,
   }
   let forms : Array[RangedForm] = []
-  reader.skip(0)
+  reader.skip(0, top_level=true)
   while reader.index < reader.chars.length() {
     let start = reader.index
     let form = reader.read(0)
     forms.push({ form, start, end: reader.index, })
-    reader.skip(0)
+    reader.skip(0, top_level=true)
   }
   forms
 }
@@ -349,12 +417,13 @@ pub fn parse_program_located(source : String) -> Array[Located] raise {
     chars: source.iter().collect(),
     index: 0,
     record: Some(offsets),
+    comments: None,
   }
   let forms = []
-  reader.skip(0)
+  reader.skip(0, top_level=true)
   while reader.index < reader.chars.length() {
     forms.push(reader.read(0))
-    reader.skip(0)
+    reader.skip(0, top_level=true)
   }
   let next : Ref[Int32] = { val: 0, }
   forms.map(form => attach(form, offsets, next))

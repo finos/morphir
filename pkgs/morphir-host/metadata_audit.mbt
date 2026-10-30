@@ -101,7 +101,7 @@ pub fn MetadataAuditRecord::to_ion(
   self : MetadataAuditRecord,
 ) -> @ion.IonValue raise {
   receipt_ion_metrics(self.to_json()).with_annotation(
-    @ion.SymbolToken::new("morphir_metadata_invocation_v1"),
+    @ion.symbol("morphir_metadata_invocation_v1"),
   )
 }
 

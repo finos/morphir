@@ -1,18 +1,18 @@
 ///|
 fn record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::new(
-    @ion.Struct(fields.map(pair => @ion.Field::new(pair.0, pair.1))),
+  @ion.Ion(
+    @ion.IonValueKind::Struct(fields.map(pair => @ion.field(pair.0, pair.1))),
   )
 }
 
 ///|
 fn ion_text(text : String) -> @ion.IonValue {
-  @ion.IonValue::new(@ion.String(text))
+  @ion.Ion(@ion.IonValueKind::String(text))
 }
 
 ///|
 fn texts(items : Array[String]) -> @ion.IonValue {
-  @ion.IonValue::new(@ion.List(items.map(ion_text)))
+  @ion.Ion(@ion.IonValueKind::List(items.map(ion_text)))
 }
 
 ///|
@@ -62,13 +62,13 @@ fn symbol_metadata(
               "original",
               a.original
               .map(ion_text)
-              .unwrap_or(@ion.IonValue::new(@ion.Null(@ion.Null))),
+              .unwrap_or(@ion.Ion(@ion.IonValueKind::Null(@ion.Null))),
             ),
             (
               "requested",
               a.requested
               .map(ion_text)
-              .unwrap_or(@ion.IonValue::new(@ion.Null(@ion.Null))),
+              .unwrap_or(@ion.Ion(@ion.IonValueKind::Null(@ion.Null))),
             ),
             ("candidate", ion_text(a.candidate)),
             ("allocated", ion_text(a.allocated)),
@@ -111,16 +111,18 @@ fn symbol_metadata(
     ("source_ir_json", ion_text(source_ir)),
     (
       "source_annotations",
-      @ion.IonValue::new(
-        @ion.List(
-          input.annotations.map(token => @ion.IonValue::new(@ion.Symbol(token))),
+      @ion.Ion(
+        @ion.IonValueKind::List(
+          input.annotations.map(token => {
+            @ion.Ion(@ion.IonValueKind::Symbol(token))
+          }),
         ),
       ),
     ),
     (
       "metadata",
-      @ion.IonValue::new(
-        @ion.List(
+      @ion.Ion(
+        @ion.IonValueKind::List(
           metadata.map(entry => {
             record([("node_id", ion_text(entry.node_id)), ("data", entry.data)])
           }),
@@ -129,13 +131,13 @@ fn symbol_metadata(
     ),
     (
       "symbols",
-      @ion.IonValue::new(
-        @ion.List(
+      @ion.Ion(
+        @ion.IonValueKind::List(
           symbols.map(symbol => {
             record([
               ("fqname", ion_text(symbol.fqname)),
               ("generated_name", ion_text(symbol.generated_name)),
-              ("public", @ion.IonValue::new(@ion.Bool(symbol.public))),
+              ("public", @ion.Ion(@ion.IonValueKind::Bool(symbol.public))),
               ("source_node", ion_text(symbol.source_node)),
               ("generated_node", ion_text(symbol.generated_node)),
               ("origins", texts(symbol.origins)),
@@ -144,6 +146,6 @@ fn symbol_metadata(
         ),
       ),
     ),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_moonbit_symbols"))
+  ]).with_annotation(@ion.symbol("morphir_moonbit_symbols"))
   @ion_binary.write_binary_value(value)
 }

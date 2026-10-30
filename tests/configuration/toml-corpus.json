@@ -1,0 +1,17 @@
+[
+  {
+    "path": "apps/morphir-workbench/scripts/fixtures/folder-import/monorepo/morphir.toml",
+    "text": "[workspace]\nmembers=['packages/*']\n[frontend]\nlanguage='scheme'\n",
+    "sha256": "99a5c161531f761db3c25ad120970d4a79780542003524ebe4f2e6fbb5cdab40"
+  },
+  {
+    "path": "apps/morphir-workbench/scripts/fixtures/folder-import/monorepo/packages/core/morphir.toml",
+    "text": "[project]\nname='Core'\n",
+    "sha256": "09e93b1e1424e7c51b74bb74c66db3413f76ffff931a7e607f4bad00147f0c06"
+  },
+  {
+    "path": "apps/morphir-workbench/scripts/fixtures/folder-import/monorepo/packages/utils/morphir.toml",
+    "text": "[project]\nname='Utils'\n",
+    "sha256": "5ee738011e7f8ba34681a5906249b1f7f06371e4d9e456c5573c4cbb657e5662"
+  }
+]

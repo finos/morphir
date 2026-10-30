@@ -117,7 +117,7 @@ fn handle(source : String) -> Json raise {
           data: @ion.IonValue::from_fields(
             fields +
             [
-              @ion.Field::new(
+              @ion.field(
                 "future_numeric_contract",
                 @ion_text.read_ion(
                   "future_numeric::{amount:12.340d0,blob:{{/wCA}},nil:null.int}"[:],
@@ -218,36 +218,30 @@ fn handle(source : String) -> Json raise {
       }
       encoded(
         @ion.IonValue::from_fields([
-          @ion.Field::new(
-            "profile",
-            @ion.IonValue::string("morphir-conformance-v1"),
-          ),
-          @ion.Field::new(
-            "version",
-            @ion.IonValue::string("installed-numeric-1"),
-          ),
-          @ion.Field::new(
+          @ion.field("profile", @ion.IonValue::string("morphir-conformance-v1")),
+          @ion.field("version", @ion.IonValue::string("installed-numeric-1")),
+          @ion.field(
             "provenance",
             @ion.IonValue::string(
               "Authored scalar, IEEE and Decimal references; no evaluator or generator computes expectations",
             ),
           ),
-          @ion.Field::new(
+          @ion.field(
             "cases",
             @ion.IonValue::list(
               rows.map(row => {
                 @ion.IonValue::from_fields([
-                  @ion.Field::new(
+                  @ion.field(
                     "id",
                     @ion.IonValue::string(@wire.string(@wire.field(row, "id"))),
                   ),
-                  @ion.Field::new(
+                  @ion.field(
                     "entry",
                     @ion.IonValue::string(
                       @wire.string(@wire.field(row, "entry")),
                     ),
                   ),
-                  @ion.Field::new(
+                  @ion.field(
                     "arguments",
                     @ion.IonValue::list(
                       @wire.array(@wire.field(row, "arguments")).map(value => {
@@ -255,7 +249,7 @@ fn handle(source : String) -> Json raise {
                       }),
                     ),
                   ),
-                  @ion.Field::new(
+                  @ion.field(
                     "expected",
                     @protocol.Value::from_json(@wire.field(row, "expected")).to_ion(),
                   ),

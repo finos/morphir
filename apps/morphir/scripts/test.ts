@@ -1,5 +1,11 @@
+import {cliPackage, stageCliArtifact} from './artifact.ts';
+import {exerciseHostLifecycle} from './lifecycle-acceptance.ts';
+import {exerciseTelemetryDiagnosticParity, exerciseAsyncDiagnosticScope, exercisePortableDiagnostics} from './logging-acceptance.ts';
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
+import { exerciseNotebooks } from './notebook-acceptance.ts';
+import {verifyConfigurationCorpus} from './configuration-parity.ts';
+import {exerciseConfiguration} from './configuration-acceptance.ts';
 import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
@@ -13,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const appDirectory = fileURLToPath(new URL("../", import.meta.url));
 const workspaceDirectory = fileURLToPath(new URL("../../../", import.meta.url));
+verifyConfigurationCorpus(workspaceDirectory);
 const runner = join(workspaceDirectory, "pkgs/morphir-host/runners/wasm.mjs");
 const targets = ["native", "js", "wasm", "wasm-gc"];
 const selected = process.argv[2] ? [process.argv[2]] : targets;
@@ -41,14 +48,16 @@ async function headlessAcceptance(target: string, binary: string, launcher?: str
     env.XDG_CONFIG_HOME = join(directory, 'config');
     delete env.APPDATA;
     try {
-      exerciseJsonCommandCoverage((args, expected = 0) => {
+      const runJson = (args: string[], expected = 0) => {
         const result = spawnSync(jsonInvocation.command, [...jsonInvocation.prefix, ...args], {
           cwd: directory, env, encoding: 'utf8', timeout: 15000,
         });
         assert.equal(result.status, expected, `${target} ${JSON.stringify(args)}:\n${result.stdout}\n${result.stderr}`);
         return result;
-      });
+      };
+      exerciseJsonCommandCoverage(runJson);
       assert.deepEqual(readdirSync(directory), [], 'JSON help and parser errors do not write files');
+      exerciseNotebooks(runJson, directory, target);
     } finally { rmSync(directory, { recursive: true, force: true }); }
   }
   let evidence: string | undefined;
@@ -138,6 +147,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     assert.ok(Object.hasOwn(record, "data"));
     return record;
   });
+  exerciseConfiguration(directory, run, target);
   put("morphir.toml", '[workspace]\nmembers=["packages/*"]\nexclude=["packages/skip"]\ndefault_member="packages/core"\n');
   put("morphir.config.scm", '(pipeline (transform (lambda (file) file)))');
   put("packages/core/morphir.toml", '[project]\nname="Core"\nsource_directory="src"\n');
@@ -148,6 +158,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("packages/tools/lib/Main.scm", '"hello λ😀"');
   checkHelp(run([]).stdout);
   exerciseJsonCommandCoverage(run);
+  exerciseNotebooks(run, directory, target);
   assert.match(run(['mck', '--help']).stdout, /explicitly pinned canonical MCK runner/);
   assert.match(JSON.parse(run(['mck', '--help', '--json']).stdout).usage, /report check\/render\/compare/);
   if (target === 'wasm' || target === 'wasm-gc' || (target === 'native' && process.platform === 'win32')) {
@@ -269,7 +280,11 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal(streamed.at(-1).data.successful, true);
   assert.equal(streamed.at(-1).data.processed, 3);
   put("morphir.yaml", "workspace: {}");
-  assert.match(run(["run"], 2).stderr, /Ambiguous/);
+  assert.match(run(["run", "--dry-run"]).stderr, /config.yaml_beside_toml/);
+  assert.ok(!run(["run", "--dry-run", "--suppress-warning", "config.yaml_beside_toml"]).stderr.includes("config.yaml_beside_toml"));
+  put("morphir.yml", "{}");
+  assert.match(run(["run"], 2).stderr, /Ambiguous configuration/);
+  rmSync(join(directory, "morphir.yml"));
   rmSync(join(directory, "morphir.yaml"));
   run(["run", "--all", "--project", "Core"], 2);
   run(["run", "--output", "../outside"], 2);
@@ -326,7 +341,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     assert.equal(JSON.parse(run([...args, "--json"], 2).stdout).successful, false);
   }
   put("select.scm", '(pipeline (backend "rust"))');
-  assert.equal(list("--config", "select.scm", "--target", "rust").projects.length, 3);
+  assert.equal(list("--config-script", "select.scm", "--target", "rust").projects.length, 3);
   put("catalog/b/morphir.config.scm", '(pipeline (frontend 42))');
   const invalidList = JSON.parse(run(["project", "list", "catalog", "--frontend", "elm", "--json"], 2).stdout);
   assert.deepEqual(invalidList.projects.map((p: {name: string;frontend: string;target: string}) => p.name), ["A"]);
@@ -345,13 +360,13 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("moon-model/morphir.toml", '[project]\nname="BooleanModel"\nmodule_prefix="App"\n[frontend]\nlanguage="moonbit"\n[pipeline]\nbackend="checkpoint"\ncomponents=["json-identity"]\n');
   put("moon-model/src/Main.mbt", 'pub fn broken(');
   put("moon-model/src/ignored.json", 'not a model');
-  const modelArgs = ["run", "moon-model"];
+  const modelArgs = ["run", "moon-model", "--discovery-boundary", "moon-model"];
   const sourceDryLog = join(directory, "source-dry.ionb");
   const modelPlan = JSON.parse(run([...modelArgs, "--dry-run", "--log", "--log-file", sourceDryLog, "--json"]).stdout);
   assert.ok(!existsSync(sourceDryLog));
   assert.ok(!existsSync(join(directory,"moon-model/.morphir/logs")));
   assert.deepEqual(modelPlan.sources, ["src/Main.mbt"]);
-  assert.deepEqual(modelPlan.frontends.map((f: FrontendInventory) => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-stable-v1", dependencies: {"moonbitlang/parser": "0.4.5", "moonbitlang/lexer": "0.4.3", "finos/morphir-sdk": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "finos/morphir-sdk/basics": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "moonbitlang/core/builtin": "0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8"}, outputContract: "ir-unit"}]);
+  assert.deepEqual(modelPlan.frontends.map((f: FrontendInventory) => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-stable-v1", dependencies: {"moonbitlang/parser": "0.4.5", "moonbitlang/lexer": "0.4.3", "finos/morphir-sdk": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "finos/morphir-sdk/basics": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "moonbitlang/core/builtin": "0.10.17+d971670cd+tree:eb321a18f7a33d37114546682a8d1cd6658afab8"}, outputContract: "ir-unit"}]);
   assert.equal(modelPlan.frontends[0].language,'moonbit');
   assert.equal(modelPlan.frontends[0].provider,'finos/morphir-moonbit-frontend');
   assert.equal(modelPlan.frontends[0].defaultProfile,true);
@@ -462,7 +477,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   const sourceProvider = "finos/morphir-moonbit-frontend";
   put("moon-library/morphir.toml", '[project]\nname="LibraryModel"\nmodule_prefix="App"\n[frontend]\nlanguage="moonbit"\nprofile="' + libraryProfile + '"\n[pipeline]\nbackend="checkpoint"\ncomponents=["json-identity"]\n');
   put("moon-library/src/Main.mbt", 'pub fn broken(');
-  const librarySourceArgs = ["run", "moon-library"];
+  const librarySourceArgs = ["run", "moon-library", "--discovery-boundary", "moon-library"];
   const librarySourcePlan = JSON.parse(run([...librarySourceArgs,"--dry-run","--log","--json"]).stdout);
   assert.equal(librarySourcePlan.frontends[0].language,"moonbit");
   assert.equal(librarySourcePlan.frontends[0].profile,libraryProfile);
@@ -483,8 +498,8 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     [["--frontend-profile="],"Missing value for --frontend-profile"],
   ] as const) assert.ok(JSON.parse(run([...librarySourceArgs,...flags,"--dry-run","--json"],2).stdout).error.includes(code),code + ": " + run([...librarySourceArgs,...flags,"--dry-run","--json"],2).stdout);
   put("library-choice.scm", '(pipeline (frontend-profile "moonbit-model-stable-v1"))');
-  assert.equal(JSON.parse(run([...librarySourceArgs,"--config","library-choice.scm","--dry-run","--json"]).stdout).frontends[0].defaultProfile,true);
-  assert.equal(JSON.parse(run([...librarySourceArgs,"--config","library-choice.scm","--frontend-profile",libraryProfile,"--frontend-provider",sourceProvider,"--dry-run","--json"]).stdout).frontends[0].profile,libraryProfile);
+  assert.equal(JSON.parse(run([...librarySourceArgs,"--config-script","library-choice.scm","--dry-run","--json"]).stdout).frontends[0].defaultProfile,true);
+  assert.equal(JSON.parse(run([...librarySourceArgs,"--config-script","library-choice.scm","--frontend-profile",libraryProfile,"--frontend-provider",sourceProvider,"--dry-run","--json"]).stdout).frontends[0].profile,libraryProfile);
   const sourceLibrary = 'fn helper(x : Bool) -> Bool { !x }\npub fn eligible(x : Bool) -> Bool { let y = helper(x); y }\npub fn zero() -> Bool { eligible(false) }';
   put("moon-library/src/Main.mbt",sourceLibrary);
   const librarySourceResult = JSON.parse(run([...librarySourceArgs,"--json"]).stdout);
@@ -527,9 +542,9 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("moon-library/src/Main.mbt", 'fn hidden() -> Bool { true }');
   run([...librarySourceArgs,"--backend","moonbit","--validation","source-only","--json"]);
   assert.ok(!readFileSync(join(librarySourceRoot,"Main/library.mbt"),"utf8").includes('pub fn'));
-  const languageList=JSON.parse(run(["project","list","moon-library","--frontend","moonbit","--json"]).stdout);
+  const languageList=JSON.parse(run(["project","list","moon-library", "--discovery-boundary", "moon-library","--frontend","moonbit","--json"]).stdout);
   assert.equal(languageList.projects[0].frontend,"moonbit");
-  assert.deepEqual(JSON.parse(run(["project","list","moon-library","--frontend","moonbit-library","--json"]).stdout).projects,[]);
+  assert.deepEqual(JSON.parse(run(["project","list","moon-library", "--discovery-boundary", "moon-library","--frontend","moonbit-library","--json"]).stdout).projects,[]);
   for (const [name,profile,source,marker] of [
     ['typed-foundation','moonbit-model-stable-v1','pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let value : Int = if flag { a } else { b }; identity(value) }\nfn identity(value : Int32) -> Int { value }','signed-32'],
     ['numeric-int32','moonbit-model-experimental-v1','pub fn wrap() -> Int32 { 2147483647 + 1 }','moonbit-source-number-v1'],
@@ -545,13 +560,15 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   ] as const) {
     put(name+'/morphir.toml','[project]\nname="'+name+'"\n[frontend]\nlanguage="moonbit"\nprofile="'+profile+'"\n[pipeline]\nbackend="checkpoint"\n');
     put(name+'/src/Main.mbt',source);
-    const args=['run',name];
+    const args=['run',name,'--discovery-boundary',name];
     const checkpoint=JSON.parse(run([...args,'--checkpoint-format','ion-text','--json']).stdout);
     assert.equal(checkpoint.successful,true);
     const out=join(directory,name,'.morphir/out/compile.dest');
     const ion=readFileSync(join(out,'Main.ion'),'utf8');
     assert.ok(ion.includes(profile));assert.ok(ion.includes(marker));
-    const loss=JSON.parse(run([...args,'--checkpoint-format','morphir-json','--json'],1).stdout);
+    const refused=run([...args,'--checkpoint-format','morphir-json','--json'],1);
+    assert.notEqual(refused.stdout.trim(), '', `${target}/${name}: conversion refusal must emit JSON\n${refused.stderr}`);
+    const loss=JSON.parse(refused.stdout);
     assert.match(loss.diagnostics[0].message,/data.lossy_conversion/);
     assert.deepEqual(loss.committed,[]);
     assert.equal(JSON.parse(run([...args,'--backend','scheme','--validation','source-only','--json']).stdout).successful,true);
@@ -560,7 +577,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     if(name==='documented-library') { assert.ok(ion.includes('Choose by shortlex name order.')); assert.ok(generated.includes('/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀')); }
     if(name==='indexed-library') { assert.ok(ion.includes('moonbit-source-number-v1')); assert.ok(generated.includes('@source_int32.normalize')); assert.ok(generated.includes('@source_string.slice_owned')); }
     if(name==='supported-library'||name==='ordered-library'||name==='documented-library')assert.ok(ion.includes('well-formed-utf16'));
-    if(name==='string-sdk-library') { for(const token of ['String::contains','string-method','1886b2f93eff7365ccdbaed2c13abd33858841f8'])assert.ok(ion.includes(token),token); for(const call of ['@string.contains(','@string.is_empty(','@string.starts_with(','@string.ends_with('])assert.ok(generated.includes(call),call); }
+    if(name==='string-sdk-library') { for(const token of ['String::contains','string-method','eb321a18f7a33d37114546682a8d1cd6658afab8'])assert.ok(ion.includes(token),token); for(const call of ['@string.contains(','@string.is_empty(','@string.starts_with(','@string.ends_with('])assert.ok(generated.includes(call),call); }
     if(name==='string-basics'||name==='supported-library'||name==='ordered-library'||name==='documented-library'||name==='indexed-library')assert.ok(generated.includes('@source_string.require_valid'));
     if(target!=='wasm') {
       const built=JSON.parse(run([...args,'--backend','moonbit','--validation','required','--build-provider','process','--build-helper',buildHelper,'--build-node',process.execPath,'--home',tooling.home,'--sdk',join(workspaceDirectory,'pkgs/morphir-sdk'),'--target','wasm','--json']).stdout);
@@ -589,28 +606,28 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   mkdirSync(join(directory, "elm-modules"), {recursive: true});
   cpSync(join(elmCorpus, "morphir.json"), join(directory, "elm-modules/morphir.json"));
   cpSync(join(elmCorpus, "src"), join(directory, "elm-modules/src"), {recursive: true});
-  const elmPlan = JSON.parse(run(["run", "elm-modules", "--dry-run", "--json"]).stdout);
+  const elmPlan = JSON.parse(run(["run", "elm-modules", "--discovery-boundary", "elm-modules", "--dry-run", "--json"]).stdout);
   const elmFrontend = elmPlan.frontends[0];
   assert.equal(elmFrontend.language, "elm");
   assert.equal(elmFrontend.provider, "finos/morphir-elm");
   assert.equal(elmFrontend.profile, "library");
   assert.equal(elmFrontend.capabilities.maxDocuments, null);
   assert.ok(!existsSync(join(directory, "elm-modules/.morphir")));
-  assert.equal(JSON.parse(run(["run", "elm-modules", "--json"]).stdout).successful, true);
+  assert.equal(JSON.parse(run(["run", "elm-modules", "--discovery-boundary", "elm-modules", "--json"]).stdout).successful, true);
   const elmIr = JSON.parse(readFileSync(join(directory, "elm-modules/.morphir/out/compile.dest/parity/modules.json"), "utf8"));
   assert.equal(typeof elmIr, "object");
   const generated = (backend: string, suffix: string) => {
-    assert.equal(JSON.parse(run(["run", "elm-modules", "--backend", backend, "--validation", "source-only", "--json"]).stdout).successful, true);
+    assert.equal(JSON.parse(run(["run", "elm-modules", "--discovery-boundary", "elm-modules", "--backend", backend, "--validation", "source-only", "--json"]).stdout).successful, true);
     return readdirSync(join(directory, "elm-modules/.morphir/out"), {recursive: true}).filter(p => String(p).endsWith(suffix));
   };
   assert.ok(generated("elm", ".elm").length > 0);
   assert.ok(generated("moonbit", "library.mbt").length > 0);
-  assert.match(run(["run", "elm-modules", "--backend", "ir-json", "--json"], 2).stdout, /frontend\.typed_backend_required/);
-  assert.deepEqual(JSON.parse(run(["project", "list", "elm-modules", "--json"]).stdout).projects.map((p: {name: string;frontend: string;target: string}) => [p.name, p.frontend]), [["Parity.Modules", "elm"]]);
+  assert.match(run(["run", "elm-modules", "--discovery-boundary", "elm-modules", "--backend", "ir-json", "--json"], 2).stdout, /frontend\.typed_backend_required/);
+  assert.deepEqual(JSON.parse(run(["project", "list", "elm-modules", "--discovery-boundary", "elm-modules", "--json"]).stdout).projects.map((p: {name: string;frontend: string;target: string}) => [p.name, p.frontend]), [["Parity.Modules", "elm"]]);
   const namingManifest='[project]\nname="Naming"\nmodule_prefix="App"\n[frontend]\nlanguage="moonbit"\nprofile="'+libraryProfile+'"\n[pipeline]\nbackend="checkpoint"\n';
   put("naming/morphir.toml",namingManifest);
   put("naming/src/Main.mbt",'pub fn is_ready() -> Bool { true }\npub fn isReady() -> Bool { false }');
-  const namingResult=run(["run","naming","--json"]);
+  const namingResult=run(["run","naming", "--discovery-boundary", "naming","--json"]);
   const namingJson: PipelineReport=JSON.parse(namingResult.stdout);
   assert.equal(namingJson.successful,true);
   assert.equal(namingJson.warnings.length,1);
@@ -623,20 +640,20 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.match(namingResult.stderr,/warning:.*name_normalization_collision/);
   assert.match(namingResult.stderr,/fix:/);
   assert.ok(!existsSync(join(directory,"naming/.morphir/logs")));
-  const warningLines=lines(["run","naming"]);
+  const warningLines=lines(["run","naming", "--discovery-boundary", "naming"]);
   assert.equal(warningLines.filter(r=>r.type==="warning").length,1);
   assert.equal(warningLines.find(r=>r.type==="result").data.successful,true);
   const namingCheckpoint=join(directory,"naming/.morphir/out/compile.dest/Main.ionb");
   const namingSaved=readFileSync(namingCheckpoint);
   put("naming/morphir.toml",namingManifest+'strict_naming=true\n');
-  const namingStrict=JSON.parse(run(["run","naming","--json"],1).stdout);
+  const namingStrict=JSON.parse(run(["run","naming", "--discovery-boundary", "naming","--json"],1).stdout);
   assert.equal(namingStrict.warnings.length,1);
   assert.equal(namingStrict.successful,false);
   assert.match(namingStrict.diagnostics[0].message,/naming.strict/);
   assert.deepEqual(namingStrict.committed,[]);
   assert.deepEqual(readFileSync(namingCheckpoint),namingSaved);
   put("naming/src/Main.mbt",'pub fn readyλ() -> Bool { true }');
-  const lexicalRejected=JSON.parse(run(["run","naming","--json"],1).stdout);
+  const lexicalRejected=JSON.parse(run(["run","naming", "--discovery-boundary", "naming","--json"],1).stdout);
   assert.match(lexicalRejected.diagnostics[0].message,/moonbit_frontend\.syntax: Lexing error/);
   assert.deepEqual(lexicalRejected.committed,[]);
   assert.deepEqual(readFileSync(namingCheckpoint),namingSaved);
@@ -644,7 +661,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   // No toolchain home is configured, and generation does not invoke acquisition.
   put("checkpoints/morphir.toml", '[project]\nname="Pricing"\n[frontend]\nlanguage="ir-json"\n[pipeline]\nbackend="checkpoint"\n');
   put("checkpoints/src/Main.json", '{"formatVersion":3,"distribution":["Library",[["pricing"]],[],{"modules":[]}]}');
-  const checkpointArgs = ["run", "checkpoints"];
+  const checkpointArgs = ["run", "checkpoints", "--discovery-boundary", "checkpoints"];
   const checkpointPlan = JSON.parse(run([...checkpointArgs, "--dry-run", "--json"]).stdout);
   assert.deepEqual(checkpointPlan.sources, ["src/Main.json"]);
   assert.equal(checkpointPlan.boundaries[0].inputFormat, "morphir-json");
@@ -739,7 +756,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   // Complete library generation uses the same byte, component and publication lifecycle.
   put("libraries/morphir.toml", "[project]\nname='Pricing'\n[frontend]\nlanguage='ir-json'\n[pipeline]\nbackend='moonbit'\nvalidation='source-only'\n");
   put("libraries/src/Main.json",simpleJson);
-  const libraryArgs=["run","libraries","--backend","moonbit","--validation","source-only","--component","json-identity"];
+  const libraryArgs=["run","libraries", "--discovery-boundary", "libraries","--backend","moonbit","--validation","source-only","--component","json-identity"];
   const libraryPlan=JSON.parse(run([...libraryArgs,"--dry-run","--json"]).stdout);
   assert.equal(libraryPlan.components[0].transport,"morphir-json");
   assert.equal(libraryPlan.boundaries[0].outputFormat,"moonbit");
@@ -762,7 +779,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.deepEqual(readFileSync(join(libraryRoot,"symbols.10n")),libraryBefore);
   rmSync(join(directory,"libraries/src/Bad.json"));
   // Current JSON and historical JSON both enter Ion checkpoints and buildable source.
-  const checkpointLibrary=["run","libraries","--backend","checkpoint","--checkpoint-format","ion-text"];
+  const checkpointLibrary=["run","libraries", "--discovery-boundary", "libraries","--backend","checkpoint","--checkpoint-format","ion-text"];
   run(checkpointLibrary);
   const libraryIonPath=join(directory,"libraries/.morphir/out/compile.dest/Main.ion");
   const libraryIon=readFileSync(libraryIonPath,"utf8").replace("metadata: []",'metadata: [{node_id:"unit:Main",data:tag::tag::{amount:12.340d0,blob:{{/wCA}},nil:null.int}}]');
@@ -799,20 +816,22 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("legacy/morphir.json", '{"name":"Legacy","sourceDirectory":"src","exposedModules":["Main"]}');
   put("legacy/src/Legacy/Main.elm", 'module Legacy.Main exposing (answer)\n\n\nanswer : Int\nanswer =\n    42\n');
   // Keep the legacy project independent of its enclosing test workspace.
-  run(["run", "--dry-run"], 0, legacy);
-  assert.equal(JSON.parse(run(["project", "list", "--json"], 0, legacy).stdout).projects[0].name, "Legacy");
-  assert.equal(JSON.parse(run(["project", "list", "--json"], 0, legacy).stdout).projects[0].frontend, "elm");
-  // A morphir.json is always a morphir-elm project, and morphir-elm requires exposedModules.
+  run(["run", "--dry-run", "--isolated", "--discovery-boundary", "."], 0, legacy);
+  assert.equal(JSON.parse(run(["project", "list", "--json", "--isolated", "--discovery-boundary", "."], 0, legacy).stdout).projects[0].name, "Legacy");
+  assert.equal(JSON.parse(run(["project", "list", "--json", "--isolated", "--discovery-boundary", "."], 0, legacy).stdout).projects[0].frontend, "elm");
+  // Legacy top-level fields select morphir-elm and still require exposedModules.
   const legacyElm = join(directory, "legacy-elm");
   put("legacy-elm/morphir.json", '{"name":"Legacy","sourceDirectory":"src"}');
-  assert.match(run(["run", "--dry-run", "--json"], 2, legacyElm).stdout, /exposedModules must be a list of module names/);
+  assert.match(run(["run", "--dry-run", "--json", "--isolated", "--discovery-boundary", "."], 2, legacyElm).stdout, /exposedModules must be a list of module names/);
   console.log(`CLI workspace integration passed: ${target}`);
 }
 
 if (selected.some(target => target === 'js' || target === 'native')) {
   execFileSync(process.execPath, ['--experimental-transform-types', '--test',
     join(appDirectory, 'scripts/test-connected-session.ts'), join(appDirectory, 'scripts/test-mck-provider.ts'),
-    join(appDirectory, 'scripts/test-extension-provider.ts')], {
+    join(appDirectory, 'scripts/test-extension-provider.ts'), join(appDirectory, 'scripts/configuration-parity.test.ts'),
+    join(appDirectory, 'scripts/artifact.test.ts'),
+    join(workspaceDirectory, 'pkgs/morphir-host/runners/terminal-worker.test.ts')], {
     cwd: workspaceDirectory, stdio: 'inherit', timeout: 30000,
   });
 }
@@ -830,7 +849,7 @@ if (process.env.MORPHIR_WORKBENCH_LIVE_HOST && selected.some(target => target ==
 }
 for (const target of selected) {
   assert.ok(targets.includes(target), `Unknown target: ${target}`);
-  let admittedNative;
+  let admittedNative: string | undefined;
   if (target === "native" && process.env.MORPHIR_CI_NATIVE) {
     const artifact = JSON.parse(execFileSync("moon", ["run", "scripts/ci-artifact.mbtx", "verify", "native-cli", process.env.MORPHIR_CI_NATIVE], {cwd: workspaceDirectory, encoding: "utf8"}));
     assert.equal(artifact.metadata.buildMode, "release");
@@ -841,22 +860,21 @@ for (const target of selected) {
     const env = target === "native" && process.platform === "win32"
       ? { ...process.env, CL: `/bigobj ${process.env.CL ?? ""}`.trim() }
       : process.env;
-    execFileSync("moon", ["build", ".", "--target", target, "--release"], {cwd: appDirectory, stdio:"inherit", env});
+    execFileSync("moon", ["build", cliPackage(target), "--target", target, "--release"], {cwd: workspaceDirectory, stdio:"inherit", env});
   }
-  const artifactDirectory = join(workspaceDirectory, "_build", target, "release/build/morphir/morphir");
+  const binary: string = admittedNative || stageCliArtifact(join(workspaceDirectory, "_build"), target);
   const directory = mkdtempSync(join(tmpdir(), "morphir-cli-"));
   try {
-    if (!headlessOnly && target === "native") exercise(admittedNative || join(artifactDirectory,"morphir.exe"), [], directory, target);
-    else if (!headlessOnly && target === "js") exercise(process.execPath, [join(artifactDirectory,"morphir.js")], directory, target);
+    if (!headlessOnly && target === "native") exercise(binary, [], directory, target);
+    else if (!headlessOnly && target === "js") exercise(process.execPath, [binary], directory, target);
     else if (!headlessOnly) {
-      const artifact = join(artifactDirectory,"morphir.wasm");
+      const artifact = binary;
       if (target === "wasm") {
         const module = await WebAssembly.compile(readFileSync(artifact));
         assert.ok(WebAssembly.Module.imports(module).every(i => i.module === "wasi_snapshot_preview1"));
       }
       exercise(process.execPath, [runner,artifact], directory, target);
     }
-    const binary = admittedNative || join(artifactDirectory, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
     let headlessLauncher;
     if (target === 'js') {
       // Use the production effect adapter with this run's selected artifact.
@@ -866,6 +884,10 @@ for (const target of selected) {
       writeFileSync(headlessLauncher, `import {terminalWorker} from ${JSON.stringify(workerHost)};\nif (!terminalWorker(new URL(import.meta.url),process.argv.slice(2))) await import(${JSON.stringify(pathToFileURL(binary).href)});\n`);
     }
     await headlessAcceptance(target, binary, headlessLauncher);
+    await exerciseHostLifecycle(target, binary, headlessLauncher);
+    exerciseTelemetryDiagnosticParity(target, binary, headlessLauncher);
+    exerciseAsyncDiagnosticScope(target, binary, headlessLauncher);
+    exercisePortableDiagnostics(target, binary);
   } finally { rmSync(directory, {recursive:true,force:true}); }
 }
 

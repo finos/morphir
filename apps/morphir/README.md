@@ -1,6 +1,6 @@
 # Morphir CLI
 
-The CLI discovers Morphir workspaces, resolves TOML configuration, runs Scheme/IR pipelines and publishes artifacts through a host adapter.
+The CLI discovers Morphir workspaces, resolves layered configuration, runs Scheme/IR pipelines and publishes artifacts through a host adapter.
 
 ## Run from this repository
 
@@ -85,9 +85,9 @@ hosts without process/clock support keep compilation available without default f
 ## WASM and WASM-GC
 
 ```sh
-mise exec -- moon build apps/morphir --target wasm --release
+mise exec -- moon build apps/morphir/embedded --target wasm --release
 node pkgs/morphir-host/runners/wasm.mjs \
-  _build/wasm/release/build/morphir/morphir/morphir.wasm run path/to/workspace --all
+  _build/wasm/release/build/morphir/morphir/embedded/embedded.wasm run path/to/workspace --all
 ```
 
 For WASM-GC, change both target/path occurrences from `wasm` to `wasm-gc`. WASI uses only Preview 1 imports and preopens the current directory; discovery cannot ascend outside that preopen. WASM-GC uses the documented `morphir_host_v1` embedding interface. See [host adapters](../../pkgs/morphir-host/README.md) for configuration mounts and runtime details.
@@ -104,7 +104,7 @@ morphir run [path] --project packages/core
 morphir run [path] --all
 morphir run path/to/file.scm --file
 morphir run path/to/source-directory --directory
-morphir run [path] --config transforms.scm --backend scheme
+morphir run [path] --config-script transforms.scm --backend scheme
 morphir run [path] --dry-run
 ```
 
@@ -112,13 +112,13 @@ Paths are relative to the current directory. Without a selection, the CLI choose
 
 `--backend scheme` works on MoonBit and Elm projects. Next to each `<unit>.scm` it writes `<unit>.symbols.10n`, a binary Ion sidecar that keeps the unit's metadata, and it comments each `define` with its source name and position, so it reports no `backend.metadata_dropped`. Elm projects carry declaration origins with `frontend.profile = "library-origins"`; the default `library` profile carries none.
 
-Options include `--frontend`, `--frontend-provider`, `--frontend-profile`, `--backend`, `--output`, `--config`, `--json` and `--dry-run`. Dry run resolves scripts and prints planned sources/destinations without reading source contents or publishing outputs. Exit statuses are 0 success, 2 invalid invocation/configuration, 1 execution/publication failure and 130 cancellation.
+Options include `--frontend`, `--frontend-provider`, `--frontend-profile`, `--backend`, `--output`, `--config`, `--config-script`, `--json` and `--dry-run`. Dry run resolves scripts and prints planned sources/destinations without reading source contents or publishing outputs. Exit statuses are 0 success, 2 invalid invocation/configuration, 1 execution/publication failure and 130 cancellation.
 
-`project list` lists every discovered project in workspace order, including the enclosing workspace when invoked from a member. A standalone project produces one entry. Each entry has its project name, relative path, effective frontend and target. Target names are the configured backend identifiers from `pipeline.backend`, defaulting to `ir-json`; frontend defaults to `scheme`. Workspace and member Scheme scripts are applied after manifest configuration, and `--config` adds a final script. Listing can report language choices whose compiler plugins are not installed. It reads configuration without reading source contents or publishing artifacts.
+`project list` lists every discovered project in workspace order, including the enclosing workspace when invoked from a member. A standalone project produces one entry. Each entry has its project name, relative path, effective frontend and target. Target names are the configured backend identifiers from `pipeline.backend`, defaulting to `ir-json`; frontend defaults to `scheme`. Workspace and member Scheme scripts are applied after manifest configuration, and `--config-script` adds a final script. Listing can report language choices whose compiler plugins are not installed. It reads configuration without reading source contents or publishing artifacts.
 
 For `project list`, `--frontend` and `--target` filter these effective choices using exact, case-sensitive names. Repeated values match any value within that filter; frontend and target filters must both match when combined. Filters do not override configuration. No matches produce an empty list with exit status 0. Invalid project configuration produces diagnostics and exit status 2, including when filters exclude that project. Text output has `NAME`, `PATH`, `FRONTEND` and `TARGET` columns. JSON output contains `projects`, `diagnostics` and `successful`.
 
-Argument parsing uses `moonbitlang/core/argparse` command definitions built from one
+Argument parsing uses the public Moon-Lander hosting argparse adapter, with definitions built from one
 Morphir command table, with a Morphir check for empty values, duplicate policy and option conflicts. `morphir --help` and command-specific help such as
 `morphir toolchain run --help` are generated from those definitions. JSON help keeps
 its command/option inventory and adds a `usage` string. Parse failures retain the
@@ -139,6 +139,64 @@ For `toolchain run` and `toolchain exec`, everything after `--` is forwarded
 unchanged to the child program. Help/output flags, empty arguments, Unicode and
 additional `--` tokens in that segment belong to the program. Morphir does not
 interpret them. Other commands reject a program-argument segment.
+
+## Diagnostic logging
+
+Diagnostic levels are `trace`, `debug`, `info`, `warn`, `error`, `fatal` and `off`.
+The default is `warn`. `--log-level` overrides `MORPHIR_LOGGING__LEVEL`, which
+overrides `logging.level` in the layered configuration. Unknown levels are usage
+errors with exit 2; the diagnostic lists valid values. These controls support
+`--json`, including help and errors. Logs go to stderr so stdout retains the
+command's existing result schema.
+
+```shell
+morphir project list --json --log-level trace
+morphir project list --help --json --log-level debug
+```
+
+Enable rolling files in the workspace configuration:
+
+```toml
+[logging]
+level = "debug"
+
+[logging.file]
+enabled = true
+format = "json-lines"
+```
+
+The default file format is `text`. Files use the `morphir-diagnostics` stem under
+`.morphir/logs/`, roll daily and at 10 MiB, and retain the newest 31 files. File
+retention applies to that owned diagnostic set. It preserves telemetry and
+unrelated files. `off` disables diagnostic destinations. Accepted records drain
+before exit; queue overflow drops the newest records and reports the drop count.
+
+JSON Lines keeps event metadata separate from named values. Given `path` twice,
+the last value is selected and all occurrences remain in order:
+
+```json
+{
+  "properties": {"path": "/repo/app/morphir.toml", "command": "project.list"},
+  "duplicateProperties": {"path": ["/repo/morphir.toml", "/repo/app/morphir.toml"]}
+}
+```
+
+Each complete record also contains its UTC timestamp, level, category and message.
+A property called `level` stays inside `properties` and cannot replace the record's
+level. Null, arrays and objects keep their JSON types. A single array value stays
+an array in `properties`; it does not create duplicate history. Names appearing
+once are absent from `duplicateProperties`, and the field is omitted entirely
+when no names repeat.
+
+`--log`, `--log-file`, `--log-format` and `--otel-*` retain their telemetry meaning
+and formats. Diagnostic settings do not change their observations or retention.
+Native and JavaScript use the published asynchronous session and rolling-file
+sink. Embedded wasm and wasm-gc use a text Logger bound to host stderr and UTC.
+The GC embedder supplies the documented `utc_milliseconds` host operation; the
+provided Node runner implements it. Missing or invalid clock values fail with a
+clear diagnostic and exit 2 before the command starts. Help and `--log-level off`
+do not need that capability. Portable hosts explicitly refuse rolling-file
+diagnostics; use the native or Node CLI when those files are required.
 
 ## Structured output
 
@@ -187,9 +245,46 @@ name = "Core"
 source_directory = "src"
 ```
 
-The CLI also finds `.morphir/morphir.toml` and `.config/morphir/config.toml`. Multiple primary candidates are errors. YAML candidates are detected and reported as unsupported. `morphir.json` is the morphir-elm project file and is read as an Elm project (see [Elm projects](#elm-projects)); other languages, Scheme included, use `morphir.toml`. `morphir-workspace.json` remains supported; canonical configuration takes precedence with a warning.
+The primary stems are `morphir`, `.morphir/morphir` and `.config/morphir/config`. At a location the loader merges JSON/JSON5, then YAML/YML, then TOML. Two files in the same format group or two layouts in that group are ambiguous. JSON and JSON5 both accept JSON5 syntax. `morphir-workspace.json` is a supplemental canonical configuration below ordinary JSON; use `workspace.members` in it. A JSON document can use canonical sections such as `project` and `frontend`. Legacy top-level `name`, `sourceDirectory` and `exposedModules` retain their Elm meaning and validation. Conflicting legacy and canonical fields are refused.
 
-Configuration layers are defaults, system, global user, workspace primary, member primary, workspace/member user overrides, environment and CLI. Global configuration and shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. Generic TOML encoding preserves unknown values semantically. Workspace scaffolding uses the lossless editor to preserve comments, formatting and untouched values.
+Discovery walks upward to the first document declaring a workspace and otherwise uses the nearest project. A workspace can therefore own a project invoked from a member directory. `--discovery-boundary .` stops that walk at the current directory. `--isolated` skips machine, global and user-override files while retaining project primaries, selected configuration, active profiles and environment values. WASI remains confined to its preopened directory. MoonBit scenario drivers should pass both controls to avoid enclosing workspaces and personal configuration.
+
+Configuration layers are defaults, system, global user, workspace primary, selected configuration, member primary, active profiles, workspace/member user overrides, environment and CLI. Each location uses the format order above. Shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. TOML encoding preserves unknown values semantically. Workspace scaffolding uses the lossless editor to preserve comments, formatting and untouched values.
+
+`--config PATH` selects a TOML, YAML, YML, JSON or JSON5 overlay above workspace primaries. Paths are relative to the invocation directory; the WASI path must stay inside its preopen. Other extensions produce `Unsupported configuration format`. This is a breaking rename for Scheme scripts: replace `--config transforms.scm` with `--config-script transforms.scm`. Giving `.scm` to `--config` reports that migration hint before reading files. When JSON and TOML coexist, lower-format keys now remain unless replaced. To reproduce the former TOML-only configuration, move the lower-format primary outside the discovery layouts or explicitly replace each retained key in TOML.
+
+Mixed YAML/TOML emits `config.yaml_beside_toml`. JSON keys retained below TOML emit `config.json_keys_below_toml`. Repeat `--suppress-warning CODE`, set comma-separated `MORPHIR_DIAGNOSTICS__SUPPRESS`, or use `diagnostics.suppress` in system/global configuration to suppress those warnings. Workspace and member configuration cannot suppress them; unknown suppression codes produce a diagnostic. Warnings use stderr and the existing discovery diagnostics; `--json` results remain a single document on stdout.
+
+### Configuration profiles
+
+Profiles apply optional configuration between member primaries and user overrides. No profile activates implicitly. Selection uses explicit `--profiles` or `--no-profiles`, then a present `MORPHIR_PROFILES`, then base `profiles.active`, then base `profiles.default`. A present empty or whitespace-only variable disables profiles. The plural option is separate from frontend `--profile`.
+
+For a project named `Shop`, the following JSON primary and TOML profile select a different generation target without changing source ownership:
+
+```json
+{"project":{"name":"Shop"},"pipeline":{"backend":"scala"},"profiles":{"default":["metrics"]}}
+```
+
+Save that primary as `morphir.json` and put this in `morphir.profile.metrics.toml`:
+
+```toml
+pipeline.backend = "javascript"
+```
+
+```shell
+morphir project list --json --profiles metrics
+morphir project list --json --no-profiles
+morphir project list --json --isolated --discovery-boundary . --profiles metrics
+morphir project list --help --json --profiles metrics
+```
+
+The first command reports target `javascript`; the second reports `scala`. Profiles stay eligible during isolation. Help performs no discovery. Invalid names, empty comma elements or combining `--profiles` and `--no-profiles` return the existing JSON failure object with `successful: false`, `error` and `committed`, and exit 2. Human failures use stderr. Configuration errors retain the owning command's existing failure schema.
+
+`--profiles postgres,metrics --profiles tracing` appends roots in argument order and trims ASCII whitespace. Names use 1–64 lowercase letters, digits, underscores or hyphens, starting with a lowercase letter. `profiles.include` precedes the chosen roots. `profiles.groups` expands groups depth-first; later occurrences win and later definitions replace whole groups. For example, include `metrics`, define `production = ['postgres', 'metrics']` under `[profiles.groups]`, and select `production,postgres` to activate `production`, `metrics`, `postgres` in that order. Inactive cycles and excessive graphs are errors.
+
+Only discovered workspace primaries, or project primaries when no workspace exists, may supply `profiles.active`, `profiles.default`, `profiles.include` and `profiles.groups`. A selected file that is already a primary keeps that authority. Member, user, machine, non-base selected, profile and environment-mapped controls fail before filtering. These controls never become ordinary configuration values or leaf provenance. `--no-profiles` strips them without interpreting invalid types and also disables includes.
+
+For each active name, adjacent profile files use the same stem/layout and JSON/YAML/TOML groups. Workspace files precede member files within a name; the next name then overrides both. A profile cannot change workspace or member selection. Same-group alternatives are ambiguous, inactive files are unread, and a missing marker profile stays active. The Workbench uses the same loader inside its mounted files. Its existing protocols gain no profile fields.
 
 Create a workspace and add projects with the same scaffolding used by the Workbench:
 
@@ -208,11 +303,18 @@ At the workspace root, `run` builds every project, or `workspace.default_member`
 
 `project remove PATH` removes membership and keeps the files. A glob-selected member is excluded. Add `--delete` to remove its folder too; deleting the workspace root is refused. Changes refuse symlinks, stale configurations and existing source files. An exclusive `.morphir-workspace-edit.lock` holds staging and backups until changes succeed; a rollback failure preserves it for manual recovery. TOML edits to dotted keys and arrays of tables currently return an explicit diagnostic.
 
+`project remove .` can remove a root project declared only in TOML, even when JSON or YAML supplies workspace settings.
+If a lower JSON/JSON5 or YAML/YML primary also declares that project, the command refuses with exit 2, names the
+declaring file and leaves all files unchanged. For example, `{"project":{"name":"demo/root"}}` in `morphir.json`
+cannot be removed by an empty TOML table because configuration tables merge recursively. Remove that declaration
+in its source file. JSON mode keeps the existing failure object on stdout with `successful: false` and `error`;
+diagnostics remain on stderr. No project-disable setting or deletion marker is added.
+
 These commands support human, `--json` and `--json-lines` output. JSON Lines emits a `workspace-edit` result with `writes`, `directories`, `deletes` and `warnings`. `workspace` lists discovery results; build flags such as `--all` and `--dry-run` belong to `run` and are refused by `workspace`.
 
 Discovery responses use protocol version `"0.1.0"`, with warnings in `diagnostics`, including missing literal members and duplicate project names. The request decoder still accepts numeric version `1` for compatibility. The shared corpus is in `pkgs/morphir-engine/workspace/fixtures/upstream.json`.
 
-Workspace and project `morphir.config.scm` files supply pipeline configuration and transforms. An explicit `--config` script runs last; explicit CLI language/provider/profile/backend choices are reapplied afterward. Scripts cannot access filesystem, processes or network implicitly.
+Workspace and project `morphir.config.scm` files supply pipeline configuration and transforms. An explicit `--config-script` script runs last; explicit CLI language/provider/profile/backend choices are reapplied afterward. Scripts cannot access filesystem, processes or network implicitly.
 
 Outputs go to `.morphir/out/<member-path>/compile.dest/<source-stem>.ir.json`. Each source produces an independent distribution. Project-wide linking and dependency resolution are separate compiler work. The legacy text frontends/backends are `scheme` and `ir-json`. The explicitly registered `moonbit` and `elm` source frontends use the typed checkpoint or generation pipeline below; requested unregistered frontends fail explicitly. JSON output supports IR versions 1 through 4 through existing lossless migration codecs. Unsupported layouts and serialization formats fail validation.
 
@@ -590,6 +692,94 @@ with an explicit unavailable-interruption error before reading their input.
 Evaluation and worksheets produce reports. Use `generate` to generate from an
 existing model, or `run` to compile project sources and publish their outputs.
 
+## Command execution
+
+The parser owns command and option syntax. Each command becomes a distinct typed request sent through a
+Moon-Lander sender. Shared middleware checks cancellation before entering a handler, supplies its diagnostic
+log category, records elapsed time and maps thrown failures to the command's existing status and result schema.
+Handlers retain ownership of successful output and finite results, including existing JSON and JSON Lines formats.
+Help returns before dispatch and performs no command work.
+
+Native and JavaScript await asynchronous helper completion inside the same middleware scope, so timing and
+finish records cover the real operation. The host injects the resolved configuration and active profile metadata.
+Embedded Wasm and Wasm GC use the same public mediator composition without requiring an event loop.
+
+The run supplies logging, time, cancellation and failure reporting as services. Tests can supply these services
+directly without starting a process, while argv and installed-package tests qualify the real host adapters.
+Forwarded external-tool arguments retain their original ownership and literal values.
+
+
+The CLI uses one Moon-Lander host lifetime. Native and JavaScript use its console driver and logging bridge;
+Wasm and Wasm GC use `run_embedded`. Command handlers retain their existing result schemas.
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | Success |
+| 1 | Compilation, execution or publication failure |
+| 2 | Invalid invocation or configuration |
+| 130 | SIGINT, cancel file or host cancellation |
+| 143 | SIGTERM |
+
+For `execute` and `verify`, CLI-owned cancellation also uses 130, including cancellation before capability
+discovery. Their existing reports retain cancelled terminals and failure details. An intrinsic child or protocol
+failure without a CLI stop remains exit 1; child status fields retain their original values.
+
+`--cancel-file PATH` requests a stop when that path exists. On native and JavaScript, the same lifetime reaches
+evaluation, bounded filesystem reads, stdin waits and owned child processes. The first signal requests
+cleanup. A second signal ends the process immediately with that signal's exit code. The JavaScript launcher
+keeps signal reception on its parent thread while command work runs in an owned worker.
+Native originals publication polls that same lifetime, including when optional consumer observation
+is active. Its owned helper receives cancellation and retains its cleanup budget before escalation.
+
+The provided GC runner also observes `--cancel-file` while stdin is held open,
+including when no bytes have arrived. Its embedder registers the selected path
+through the documented host operation and clears it after the run. Once observed,
+the stop remains requested even if the marker disappears. Unsupported registration
+refuses before the command starts. A failed registration cleanup is reported on
+stderr and changes an otherwise successful exit to 1, preserving the existing
+stdout result and any earlier failure or cancellation status.
+
+Started services stop in reverse order after success, failure or cancellation. The diagnostic session drains
+before telemetry flushes, and the logging bridge closes it again idempotently before exit. The public completion
+callback reports a pending SIGINT or SIGTERM even when it stops the host before the first service or command
+starts. It runs after finalization; Morphir emits its command's cancellation result once, with exit 130 or 143.
+JSON failures stay on
+stdout; diagnostic records and child logs use their documented channels. MEP and native-worker messages retain
+their existing formats and child status fields. WASI refuses worksheet evaluation with
+`worksheet.interruption_unavailable` and exit 2 because it cannot receive interruption.
+
+## Share worksheets as notebooks
+
+Export Scheme forms and whole-line `;;` comment blocks to Jupyter or .NET Interactive, then import them as a
+worksheet again. Each form becomes a Scheme code cell; comment blocks become Markdown cells.
+
+```bash
+morphir notebook export worksheet.scm -o sheet.ipynb --evaluate --json
+morphir notebook export worksheet.scm --format dib -o sheet.dib --json
+morphir notebook import sheet.ipynb -o restored.scm --json
+```
+
+Jupyter is the default export format. Otherwise `--format ipynb|dib` wins over the output extension; without
+`-o`/`--output`, export replaces the input extension with the selected format and import uses `.scm`.
+Import infers the format from `.ipynb` or `.dib`. The output must differ from the input.
+Other-language and raw cells are skipped with warnings naming the cells; outputs are not imported.
+
+`--evaluate` saves observations as Jupyter `text/plain` previews and
+`application/vnd.morphir.observation+json` results, including error outputs for failed observations.
+DIB saves source only: combining DIB with `--evaluate` exits 2 before reading, evaluating or writing.
+WASI supports source-only conversion and refuses evaluation with exit 2. Native, JS and Wasm GC use the existing
+interruptible evaluation host. Cancellation exits 130 without writing; conversion/input errors exit 2 and output
+write failures exit 1. Existing output contents survive validation failures.
+
+`--json` emits one `morphir/command-result` document with `contractVersion: "0.1.0"`, command
+`notebook.export` or `notebook.import`, `state`, `exitCode` and `diagnostics`. Success contains
+`result: {outputPath, format, cellCount, skippedCells, evaluated}`. Each skipped cell has its index, name and
+reason. Failure contains `error: {code, message}` and no result. Warnings and diagnostics go to stderr.
+Help with `--json` returns the same successful envelope with `result.help`; parser errors use a failed envelope.
+`--json-lines` retains the CLI result-record framing. Run the CLI acceptance suite to exercise these modes and
+validate exported Jupyter documents against the independently vendored nbformat 4.5 schema.
+`mise run test:cli` installs its locked validator dependencies before running these checks.
+
 ## Inspect models and save captured originals
 
 ```sh
@@ -681,7 +871,7 @@ morphir verify model.json --suite calls.ion \
 ```
 
 Supply SDK and execution protocol 0.1.0, Ion 0.5.0, x 0.5.5 and async 0.22.4.
-The default compiler/core pin is `0.10.16+b1a0e846e`; the C lane forces
+The default compiler/core pin is `0.10.17+d971670cd`; the C lane forces
 `MOONBIT_NEW_NATIVE=0`. Preparation copies and hashes
 these explicit dependencies into a frozen workspace; it does not fetch packages.
 The driver imports public generated exports and applies their curried arguments
@@ -1118,12 +1308,19 @@ are reconciled only after fresh authentication and exact offer validation.
 JSON output includes the validated execution view, typed terminal outcomes when
 known, cancellation acknowledgement and release state. JSON-lines wraps that
 report as a `result` record. Exit 0 means returned outcomes and confirmed release,
-130 means confirmed user cancellation or stopping before submission on user request,
-1 means failed,
-unknown or incomplete execution/cleanup, and 2 means refused setup or input.
+130 means CLI-owned cancellation, including when the remote outcome remains unknown.
+The report's terminal, acknowledgement and release fields describe the remote state;
+exit 130 alone does not confirm termination or release. Exit 1 means failed, unknown
+or incomplete execution/cleanup without CLI cancellation, and 2 means refused setup or input.
+A late SIGINT can therefore exit 130 while retaining an already returned terminal value.
 Execution state is held only for the current command; no process-restart recovery
 or implicit resubmission is provided. CLI interruption closes its own transport
 and helper and never terminates the remote host.
+
+Cancel-file cancellation before authentication reports `refused` with
+`connected.interrupted_before_authentication` and preserves the unused launch
+token. The native adapter lets the helper observe the same cancel file during
+startup, before Node installs its signal handler, so it can finish that report.
 
 Connected host effects require Node and POSIX private credential-file support. Portable
 Wasm/Wasm-GC retain pure receipt/core and help support and refuse connected effects
@@ -1137,3 +1334,20 @@ original bytes with semantic conversion disabled, verifies the whole inventory,
 and publishes to the explicit destination only after acknowledged release.
 See [connected model originals](docs/connected-transfers.md#connected-model-originals)
 for source/project selection, commands, bounds and qualification scope.
+
+### CLI entry packages
+
+The `cli` package holds command parsing, dispatch, results and their tests for
+all four targets. The root executable is the native/JS process entry. The
+`embedded` executable is the WASI/WasmGC entry, with the same command behavior
+and the existing host capability refusals. These packages keep process-only
+console and file runtime dependencies out of embedded dependency graphs.
+
+Build the process entry with `moon build apps/morphir --target native --release`
+or `--target js`. Build the embedded entry with
+`moon build apps/morphir/embedded --target wasm --release` or `--target wasm-gc`.
+Its build output is `embedded/embedded.wasm` beneath the target's Morphir
+artifact directory. CLI acceptance stages it as `morphir.wasm` for the existing
+CI artifact names and verifies that the selected binary exists before upload.
+Run the shared unit suite with `moon test apps/morphir/cli --target all`.
+The module's default target is native; its supported targets remain all four.

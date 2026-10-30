@@ -16,7 +16,7 @@ fn replace(
   @ion.IonValue::from_fields(
     entries.map(field => {
       if field.name().text() == Some(key) {
-        @ion.Field::new(key, replacement)
+        @ion.field(key, replacement)
       } else {
         field
       }

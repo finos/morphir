@@ -211,7 +211,7 @@ pub fn Files::discover(self : Files) -> @discovery.Workspace raise {
     !self.contents.contains("morphir.json") &&
     !self.contents.contains("morphir-workspace.json") {
     raise @config.Invalid(
-      "The workspace needs a morphir.toml or morphir.json configuration file",
+      "The workspace needs a Morphir TOML, YAML, JSON or JSON5 primary configuration file",
     )
   }
   @discovery.discover(self.tree())

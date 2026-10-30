@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -177,13 +177,22 @@ const address = reservation.address(); assert.ok(address && typeof address !== '
 await new Promise<void>((resolve, reject) => reservation.close(error => error ? reject(error) : resolve()));
 const environment: NodeJS.ProcessEnv = { ...process.env, PROTON_HEADLESS: '1', PROTON_REMOTE_DEBUGGING_PORT: String(port) };
 delete environment.PROTON_FRONTEND_URL; delete environment.MORPHIR_WORKBENCH_LAUNCH_URL;
+delete environment.MORPHIR_LOGGING__LEVEL; delete environment.MORPHIR_PROFILES;
+const hostWorkspace = join(evidence, 'host-workspace');
+await mkdir(hostWorkspace, { recursive: true });
+await writeFile(join(hostWorkspace, 'morphir.toml'), '[workspace]\nmembers=[]\n[logging]\nlevel="error"\n[logging.file]\nenabled=true\nformat="json-lines"\n[profiles]\ndefault=["desktop"]\n');
+await writeFile(join(hostWorkspace, 'morphir.profile.desktop.toml'), 'logging.level="debug"\n');
 let output = '';
+let diagnosticOutput = '', standardOutput = '';
 try {
-  app = spawn(executable, [], { env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+  app = spawn(executable, [], { cwd: hostWorkspace, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
   assert.ok(app.pid); const parent = app.pid;
   const exited = new Promise<void>(resolve => app!.once('exit', (code, signal) => { appExit = { code, signal }; resolve(); }));
+  const streamsClosed = new Promise<void>(resolve => app!.once('close', () => resolve()));
   app.on('error', error => { failure = error.message; });
   for (const stream of [app.stdout, app.stderr]) stream?.on('data', chunk => { output = (output + String(chunk)).slice(-131072); });
+  app.stderr?.on('data', chunk => { diagnosticOutput = (diagnosticOutput + String(chunk)).slice(-131072); });
+  app.stdout?.on('data', chunk => { standardOutput = (standardOutput + String(chunk)).slice(-131072); });
   await until(async () => {
     assert.equal(appExit, undefined, 'The owned package exited before CDP startup');
     const response = await fetch(`http://127.0.0.1:${port}/json/version`).catch(() => null);
@@ -266,6 +275,7 @@ try {
   await normalQuit(parent);
   await until(async () => appExit === undefined ? null : appExit, 'normal macOS application quit');
   await exited;
+  await streamsClosed;
   assert.deepEqual(appExit, { code: 0, signal: null }, 'Normal quit exits cleanly without any Unix signal');
   assert.ok(!sameProcess((await inventory()).find(row => row.pid === retained.worker.pid), retained.worker),
     'The actual native worker is already removed at normal application exit');
@@ -273,6 +283,21 @@ try {
   phases.push({ lifecycle: 'normal-application-quit', worker: retained.worker, identity: retained.accepted.identity,
     running: retained.running, workerRemoved: true, confirmedAt: 'normal-application-exit' });
   await writeFile(join(evidence, 'baseline-receipt.json'), JSON.stringify(baseline, null, 2) + '\n');
+  const lifecycleMessages = ['Started native executions', 'Started workspace files', 'Stopped workspace files', 'Stopped native executions'];
+  for (const message of lifecycleMessages) {
+    assert.ok(diagnosticOutput.includes(message), `Diagnostic stderr contains ${message}`);
+    assert.ok(!standardOutput.includes(message), 'Diagnostic records cannot enter stdout');
+  }
+  assert.ok(diagnosticOutput.indexOf(lifecycleMessages[2]!) < diagnosticOutput.indexOf(lifecycleMessages[3]!), 'Files revoke before execution shutdown finishes');
+  const logDirectory = join(hostWorkspace, '.morphir/logs');
+  const logFiles = (await readdir(logDirectory)).filter(name => /^morphir-diagnostics-.*\.jsonl$/.test(name));
+  assert.ok(logFiles.length > 0, 'Published sink writes a diagnostic file');
+  const records = (await Promise.all(logFiles.map(name => readFile(join(logDirectory, name), 'utf8')))).flatMap(text => text.trim().split('\n').map(line => JSON.parse(line)));
+  assert.ok(records.some(record => record.category === 'morphir.configuration' && record.properties.path.endsWith('morphir.profile.desktop.toml')));
+  for (const message of lifecycleMessages) assert.ok(records.some(record => record.message === message));
+  assert.ok(records.every(record => /^\d{4}-\d\d-\d\dT.*Z$/.test(record.timestamp) && record.category.startsWith('morphir.')));
+  await writeFile(join(evidence, 'diagnostic-stderr.log'), diagnosticOutput);
+  await writeFile(join(evidence, 'diagnostic-records.json'), JSON.stringify(records, null, 2) + '\n');
   qualified = true;
 } catch (error) {
   failure = error instanceof Error ? error.stack ?? error.message : String(error);
@@ -305,6 +330,7 @@ try {
     platform: process.platform, arch: process.arch, package: appPath, executable, binarySha256: createHash('sha256').update(binary).digest('hex'),
     parentPid: app?.pid, cdpPort: port, nativeOwnedTemporaryProfile: profile, phases, appExit,
     normalQuitMechanism: 'AppKit NSRunningApplication.terminate() targeted by owned PID; no signal used for qualification',
+    diagnosticConfiguration: 'TOML error default overridden by active desktop profile to debug; public rolling sink and stderr checked',
     stoppedWorkers: workers, failure,
   }, null, 2) + '\n');
 }

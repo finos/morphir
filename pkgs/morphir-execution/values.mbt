@@ -91,7 +91,7 @@ pub fn Suite::validate(self : Suite) -> Unit raise {
     if bytes.length() > 65536 {
       raise Invalid("execution.extension_limit")
     }
-    ignore(@binary.read_binary_value(bytes[:]))
+    ignore(@binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128))))
   }
   let seen = Map([])
   for call in self.calls {
@@ -167,7 +167,7 @@ fn list(value : @ion.IonValue) -> Array[@ion.IonValue] raise {
 
 ///|
 pub fn record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::from_fields(fields.map(p => @ion.Field::new(p.0, p.1)))
+  @ion.IonValue::from_fields(fields.map(p => @ion.field(p.0, p.1)))
 }
 
 ///|
@@ -248,7 +248,9 @@ pub fn Suite::to_json(self : Suite) -> Json {
 
 ///|
 pub fn Suite::from_json(value : Json) -> Suite raise {
-  json_ion_suite(@text.read_ion(value.stringify()[:]))
+  json_ion_suite(
+    @text.read_ion(value.stringify()[:], fuel=Limited(@ion.Budget(128))),
+  )
 }
 
 ///|
@@ -257,12 +259,21 @@ pub fn Suite::decode(bytes : Bytes, format : String) -> Suite raise {
     raise Invalid("execution.input_limit")
   }
   match format {
-    "ion-binary" => Suite::from_ion(@binary.read_binary_value(bytes[:]))
-    "ion-text" => Suite::from_ion(@text.read_ion(@utf8.decode(bytes[:])[:]))
+    "ion-binary" =>
+      Suite::from_ion(
+        @binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128))),
+      )
+    "ion-text" =>
+      Suite::from_ion(
+        @text.read_ion(
+          @utf8.decode(bytes[:])[:],
+          fuel=Limited(@ion.Budget(128)),
+        ),
+      )
     "json" => {
       let source = @utf8.decode(bytes[:])
       ignore(@json.parse(source))
-      json_ion_suite(@text.read_ion(source[:]))
+      json_ion_suite(@text.read_ion(source[:], fuel=Limited(@ion.Budget(128))))
     }
     _ => raise Invalid("execution.unsupported_format")
   }
@@ -323,7 +334,7 @@ fn json_extension(value : @ion.IonValue) -> Bytes raise {
       n.to_byte()
     }),
   )
-  ignore(@binary.read_binary_value(bytes[:]))
+  ignore(@binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128))))
   bytes
 }
 
@@ -331,7 +342,8 @@ fn json_extension(value : @ion.IonValue) -> Bytes raise {
 /// Extensions preserve Ion types and annotations outside semantic arguments.
 pub fn Suite::extension_value(self : Suite) -> @ion.IonValue raise {
   match self.extensions {
-    Some(bytes) => @binary.read_binary_value(bytes[:])
+    Some(bytes) =>
+      @binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128)))
     None => @ion.IonValue::untyped_null()
   }
 }

@@ -1,6 +1,7 @@
+import {cliArtifact} from './artifact.ts';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +12,7 @@ const target = process.argv[2] ?? 'js';
 assert.ok(['js', 'native', 'wasm-gc', 'wasm'].includes(target));
 const build = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/build-headless');
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
+const binary = process.env.MORPHIR_HEADLESS_BINARY ?? cliArtifact(build, target, profile);
 const launcher = process.env.MORPHIR_HEADLESS_LAUNCHER ?? join(repo, 'apps/morphir/bin/morphir.js');
 const runner = process.env.MORPHIR_HEADLESS_WASM_RUNNER ?? join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
 const program = target === 'native' ? binary : process.execPath;
@@ -85,7 +86,8 @@ try {
     invoke(['worksheet', file, '--timeout', '0', '--json'], 2);
     // Keep stdin open without EOF. Cancellation must stop the owned worker
     // and parent without waiting for another byte from the caller.
-    for (const args of process.platform === 'win32' ? [] : [['worksheet', '-', '--json'], ['--json', 'worksheet', '-']]) {
+    for (const args of process.platform === 'win32' ? [] : [['worksheet', '-', '--json'], ['--json', 'worksheet', '-'],
+      ['notebook', 'export', '-', '--evaluate', '-o', 'cancelled.ipynb', '--json']]) {
     const child = spawn(program, [...prefix, ...args], { cwd: root, env, stdio: ['pipe', 'pipe', 'pipe'] });
     child.stdin.on('error', error => { if ((error as NodeJS.ErrnoException).code !== 'EPIPE') throw error; });
     let stdout = '', stderr = '';
@@ -104,7 +106,13 @@ try {
     assert.equal(result.signal, null, stderr);
     assert.equal(result.code, 130, stdout + stderr);
     const interrupted = JSON.parse(stdout);
-    assert.ok(interrupted.completion?.status === 'cancelled' || interrupted.error === 'Cancelled');
+    if (args.includes('notebook')) {
+      assert.equal(interrupted.profile, 'morphir/command-result');
+      assert.equal(interrupted.command, 'notebook.export');
+      assert.equal(interrupted.error.code, 'notebook.cancelled');
+      assert.equal(interrupted.exitCode, 130);
+      assert.equal(existsSync(join(root, 'cancelled.ipynb')), false);
+    } else assert.ok(interrupted.completion?.status === 'cancelled' || interrupted.error === 'Cancelled');
     }
     console.log(`Headless worksheet ${target}: ${cases} frozen cases through file/stdin/JSON-lines, exact ranges, limits, timeout and cancellation passed. SIGINT injection: ${process.platform === 'win32' ? 'not exercised on Windows' : 'passed'}.`);
   }

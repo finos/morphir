@@ -1,4 +1,5 @@
 import {
+  "moonrockz/moon-lander-mediator" @mediator,
   "finos/morphir-execution" @protocol,
   "finos/morphir-execution/executions" @receipts,
   "finos/morphir-engine/execution/executions" @owner,
@@ -19,4 +20,6 @@ import {
 import {
   "finos/morphir-engine/execution/workbench",
   "finos/morphir-moonbit/fixtures",
+  "finos/morphir-ir/versions/v4/json" @codec,
+  "finos/morphir-ir/wire",
 } for "test"

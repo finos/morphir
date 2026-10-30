@@ -148,6 +148,7 @@ extern "C" fn process_c(
   cwd : Bytes,
   home : Bytes,
   timeout : Int32,
+  interrupted : FuncRef[() -> Int32],
 ) -> Bytes = "morphir_host_process"
 
 ///|
@@ -158,6 +159,7 @@ pub fn process(
   home : String,
   timeout : Int32,
 ) -> Json raise {
+  process_started(program)
   let data = process_c(
     cstring(program),
     cstring(args.join("\u0000")),
@@ -165,6 +167,7 @@ pub fn process(
     cstring(cwd),
     cstring(home),
     timeout,
+    fn() { process_stop_code() },
   )
   decode_process(data)
 }
@@ -253,6 +256,7 @@ extern "C" fn originals_observer_process_c(
   cwd : Bytes,
   home : Bytes,
   timeout : Int32,
+  interrupted : FuncRef[() -> Int32],
 ) -> Bytes = "morphir_originals_observer_process"
 
 ///|
@@ -264,6 +268,7 @@ pub fn OriginalsObserver::process(
   home : String,
   timeout : Int32,
 ) -> Json raise {
+  process_started(program)
   decode_process(
     originals_observer_process_c(
       self,
@@ -273,6 +278,7 @@ pub fn OriginalsObserver::process(
       cstring(cwd),
       cstring(home),
       timeout,
+      fn() { process_stop_code() },
     ),
   )
 }
@@ -333,33 +339,50 @@ extern "C" fn file_close(fd : Int32) -> Int32 = "morphir_host_file_close"
 
 ///|
 #borrow(buffer)
-extern "C" fn stdin_read(buffer : FixedArray[Byte], length : Int32) -> Int32 = "morphir_host_stdin_read"
+extern "C" fn stdin_read_c(
+  buffer : FixedArray[Byte],
+  length : Int32,
+  interrupted : FuncRef[() -> Bool],
+) -> Int32 = "morphir_host_stdin_read"
 
 ///|
-pub extern "C" fn interruption_start() -> Unit = "morphir_host_interruption_start"
+fn stdin_read(buffer : FixedArray[Byte], length : Int32) -> Int32 {
+  stdin_read_c(buffer, length, fn() { interruption_requested() })
+}
 
 ///|
-pub extern "C" fn interruption_stop() -> Unit = "morphir_host_interruption_stop"
+extern "C" fn raw_interruption_start() -> Unit = "morphir_host_interruption_start"
 
 ///|
-pub extern "C" fn interruption_requested() -> Bool = "morphir_host_interruption_requested"
+extern "C" fn raw_interruption_stop() -> Unit = "morphir_host_interruption_stop"
+
+///|
+extern "C" fn raw_interruption_requested() -> Bool = "morphir_host_interruption_requested"
 
 ///|
 #borrow(path)
-extern "C" fn list_bounded_c(path : Bytes, limit : Int32) -> Bytes = "morphir_host_list_bounded"
+extern "C" fn list_bounded_c(
+  path : Bytes,
+  limit : Int32,
+  interrupted : FuncRef[() -> Bool],
+) -> Bytes = "morphir_host_list_bounded"
 
 ///|
 fn directory_list(path : String, limit : Int32) -> Array[String] raise {
-  let packed = list_bounded_c(cstring(path), limit)
+  let packed = list_bounded_c(cstring(path), limit, fn() {
+    interruption_requested()
+  })
   if packed.is_empty() || packed[0] != 0 {
     let code = if packed.is_empty() { 0 } else { packed[0].to_int() }
+    if code == 6 {
+      raise Interrupted
+    }
     raise IOError(
       match code {
         1 => "directory.entry_limit"
         2 => "directory.name_limit"
         4 => "directory.close_failed"
         5 => "directory.open_failed"
-        6 => "Cancelled"
         _ => "directory.read_failed"
       },
     )

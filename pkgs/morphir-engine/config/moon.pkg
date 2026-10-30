@@ -1,6 +1,10 @@
 import {
   "moonbit-community/toml",
-  "moonbitlang/core/json",
+  "moonrockz/moon-lander-config" @lander,
+  "moonrockz/moon-lander-config/parsers/toml" @lander_toml,
+  "moonrockz/ion/ion",
+  "moonrockz/ion/json" @ion_json,
+  "moonrockz/ion/text" @ion_text,
   "moonbitlang/core/debug",
 }
 

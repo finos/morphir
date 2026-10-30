@@ -401,7 +401,7 @@ async fn finite_run(args : @argparse.Matches) -> Json {
     "sourceConsumer": "passed",
     "installation": installation,
   }
-  let ion = @ion_json.to_ion(receipt)
+  let ion = @ion_json.Ion(receipt)
   @fs.write_file(evidence + "/receipt.ionb", @binary.write_binary([ion]))
   @fs.write_file(evidence + "/receipt.ion", @ion_text.write_ion(ion))
   @fs.write_file(evidence + "/receipt.json", receipt.stringify())

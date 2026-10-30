@@ -87,15 +87,17 @@ fn project_snapshot(
 fn receipt_ion(value : Json) -> @ion.IonValue raise {
   // Evidence is deliberately restricted to strings, booleans, objects and arrays.
   match value {
-    String(s) => @ion.IonValue::new(@ion.String(s))
-    True => @ion.IonValue::new(@ion.Bool(true))
-    False => @ion.IonValue::new(@ion.Bool(false))
-    Array(xs) => @ion.IonValue::new(@ion.List(xs.map(receipt_ion)))
+    String(s) => @ion.Ion(@ion.IonValueKind::String(s))
+    True => @ion.Ion(@ion.IonValueKind::Bool(true))
+    False => @ion.Ion(@ion.IonValueKind::Bool(false))
+    Array(xs) => @ion.Ion(@ion.IonValueKind::List(xs.map(receipt_ion)))
     Object(fields) => {
       let names = fields.keys().collect()
       names.sort()
-      @ion.IonValue::new(
-        @ion.Struct(names.map(n => @ion.Field::new(n, receipt_ion(fields[n])))),
+      @ion.Ion(
+        @ion.IonValueKind::Struct(
+          names.map(n => @ion.field(n, receipt_ion(fields[n]))),
+        ),
       )
     }
     _ =>
@@ -247,7 +249,7 @@ fn Host::validate_libraries(
     fields["profile"] = Json::string("morphir-library-build-v1")
     let bytes = @ion_binary.write_binary_value(
       receipt_ion(Json::object(fields)).with_annotation(
-        @ion.SymbolToken::new("morphir_library_build"),
+        @ion.symbol("morphir_library_build"),
       ),
     )
     receipts.push(@engine.ContentArtifact::{

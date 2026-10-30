@@ -15,10 +15,7 @@ test "Rust conversion proves classic JSON roundtrip without losing typed IR" {
   assert_true(
     try {
       ignore(
-        @host.rust_classic_ir({
-          ..unit,
-          annotations: [@ion.SymbolToken::new("audit")],
-        }),
+        @host.rust_classic_ir({ ..unit, annotations: [@ion.symbol("audit")], }),
       )
       false
     } catch {

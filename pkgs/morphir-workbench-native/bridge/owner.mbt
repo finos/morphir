@@ -3,7 +3,7 @@
 /// constructed or selected by renderer requests.
 pub(all) struct ExecutionsService {
   offer : () -> Json raise
-  request : (String, Json) -> Bytes
+  request : async (String, Json) -> Bytes
   close : () -> Unit
   shutdown : async () -> Unit
 }
@@ -35,13 +35,14 @@ pub fn Owner::new(
   executions~ : Bool,
   workspace~ : Bool,
   contract~ : @request.Contract = Executions,
+  logger~ : &@logging.Logger = @logging.null_logger(),
 ) -> Owner {
   let execution_factory : ((String, @request.Contract) -> ExecutionsService raise)? = if executions {
     Some(fn(id, selected_contract) raise {
-      let service = @native.Service::new(group, executable, id)
+      let service = @native.Service::new(group, executable, id, logger~)
       {
         offer: fn() { service.offer() },
-        request: fn(operation, payload) {
+        request: async fn(operation, payload) {
           match selected_contract {
             Executions => service.native_request(operation, payload)
             CapabilityChecks =>
@@ -227,7 +228,12 @@ pub async fn Owner::request(
       guard self.services.get(id) is Some(service) else {
         return raw(@reply.failure(category, effect))
       }
-      return raw((service.request)(operation, payload))
+      // Async service dispatch may accept work before yielding or failing.
+      effect = @reply.UnknownEffect
+      let reply = (service.request)(operation, payload)
+      category = @reply.Unauthorized
+      ignore(self.session.check(caller(), id, contract=Some(contract)))
+      return raw(reply)
     }
     guard self.workspaces.get(id) is Some(service) else {
       return raw(@reply.failure(category, effect))

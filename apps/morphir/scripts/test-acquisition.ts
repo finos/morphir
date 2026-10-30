@@ -24,7 +24,7 @@ try {
   const installed=run(['toolchain','setup','--home',home,'--yes','--timeout','600000','--json-lines']);
   assert.equal(installed[0].type,'toolchain');
   assert.equal(installed[0].data.validated,true);
-  assert.equal(installed[0].data.compilerVersion,'0.10.16+b1a0e846e');
+  assert.equal(installed[0].data.compilerVersion,'0.10.17+d971670cd');
   const receipt=join(home,'morphir-toolchain.json');
   const stamp=statSync(receipt).mtimeMs;
   assert.equal(JSON.parse(readFileSync(receipt,'utf8')).archives.length,2);

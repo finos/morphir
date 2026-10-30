@@ -1,3 +1,4 @@
+import {cliArtifact} from './artifact.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -14,7 +15,7 @@ const target = process.argv[2] ?? 'js';
 assert.ok(['js', 'native', 'wasm', 'wasm-gc'].includes(target));
 const build = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/build-headless');
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
+const binary = process.env.MORPHIR_HEADLESS_BINARY ?? cliArtifact(build, target, profile);
 const launcher = process.env.MORPHIR_HEADLESS_LAUNCHER ?? binary;
 const runner = process.env.MORPHIR_HEADLESS_WASM_RUNNER ?? join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
 const program = target === 'native' ? binary : process.execPath;
@@ -116,7 +117,12 @@ function evaluateCodecs() {
   writeFileSync(join(root, 'cancel'), 'cancel');
   writeFileSync(model, first.input.model);
   const cancelled = JSON.parse(invoke(['eval', model, '--suite', suite, '--checking-policy', 'permissive', '--cancel-file', join(root, 'cancel'), '--json'], 130).stdout);
+  assert.ok(cancelled.terminalOutcomes, `A pre-existing cancel marker retains the evaluation result: ${JSON.stringify(cancelled)}`);
   assert.equal(cancelled.terminalOutcomes.calls[0].outcome.status, 'cancelled');
+  const cancelledRecords = invoke(['eval', model, '--suite', suite, '--checking-policy', 'permissive', '--cancel-file', join(root, 'cancel'), '--json-lines'], 130)
+    .stdout.trim().split(/\r?\n/).map(line => JSON.parse(line));
+  assert.deepEqual(cancelledRecords.at(-1).data, cancelled);
+  assert.deepEqual(cancelledRecords.filter(record => record.type === 'call').map(record => record.data), cancelled.terminalOutcomes.calls);
   // Hand-authored domain-error control. The established SDK contract assigns
   // integer division by zero sdk.division_by_zero, independently of CLI output.
   const domainError = JSON.parse(first.input.model);

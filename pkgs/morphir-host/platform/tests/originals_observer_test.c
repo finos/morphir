@@ -70,6 +70,10 @@ moonbit_bytes_t moonbit_make_bytes(int32_t size, int value) {
 }
 void moonbit_decref(void *p) { free(p); }
 
+static int never_interrupted(void) { return 0; }
+static const char *stop_ready;
+static int stop_when_ready(void) { return access(stop_ready, F_OK) == 0; }
+
 static void read_exact(int fd, void *p, size_t size) {
   size_t at = 0;
   while (at < size) {
@@ -183,7 +187,7 @@ static void grace_wait_consumed_once(void) {
   morphir_originals_observer *o = morphir_originals_observer_start(); diagnose(o, &e); assert(o && !o->poisoned);
   consumed_pid = -1; after_reap_signal = after_reap_wait = 0;
   const char args[] = "-c\0trap 'printf done; exit 0' TERM; while :; do sleep 0.01; done\0";
-  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", args, 2, "/tmp", "", 500);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", args, 2, "/tmp", "", 500, never_interrupted);
   assert(word(result) == 124); assert(o->helper.waited && WIFEXITED(o->helper.status) && WEXITSTATUS(o->helper.status) == 0);
   assert(after_reap_signal == 0 && after_reap_wait == 0);
   assert(o->helper.out.kind == READ_COMPLETE && o->helper.out.count == 4);
@@ -195,10 +199,28 @@ static void preexec_is_started(void) {
   if (!collector) { close(e.outer[0]); close(e.helper[0]); collect(e.outer[1], 3, 1); }
   close(e.outer[1]); close(e.helper[1]);
   morphir_originals_observer *o = morphir_originals_observer_start(); assert(o);
-  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/echo", "", 0, "/nonexistent-morphir-owner-fixture", "", 200);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/echo", "", 0, "/nonexistent-morphir-owner-fixture", "", 200, never_interrupted);
   assert(word(result) == 126 && o->helper.kind == HELPER_STARTED && o->helper.waited);
   assert(WEXITSTATUS(o->helper.status) == 126); moonbit_decref(result);
   morphir_originals_observer_finish(o); child_ok(collector);
+}
+static void observed_process_polls_host_stop(void) {
+  endpoints e = setup(3000); pid_t collector = fork(); assert(collector >= 0);
+  if (!collector) { close(e.outer[0]); close(e.helper[0]); collect(e.outer[1], 3, 1); }
+  close(e.outer[1]); close(e.helper[1]);
+  morphir_originals_observer *o = morphir_originals_observer_start(); assert(o);
+  char ready[] = "/tmp/morphir-observer-stop-XXXXXX";
+  int fd = mkstemp(ready); assert(fd >= 0); close(fd); assert(!unlink(ready));
+  stop_ready = ready;
+  char script[512];
+  int length = snprintf(script, sizeof(script), "trap 'printf stopped; exit 0' INT; touch '%s'; while :; do sleep 0.01; done", ready);
+  assert(length > 0 && (size_t)length < sizeof(script));
+  char args[520]; memcpy(args, "-c\0", 3); memcpy(args + 3, script, (size_t)length + 1);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", args, 2, "/tmp", "", 2000, stop_when_ready);
+  assert(word(result) == 0 && word(result + 4) == 7 && !memcmp(result + 8, "stopped", 7));
+  assert(o->helper.waited && WIFEXITED(o->helper.status) && WEXITSTATUS(o->helper.status) == 0);
+  moonbit_decref(result); morphir_originals_observer_finish(o); child_ok(collector);
+  assert(!unlink(ready)); stop_ready = NULL;
 }
 static void output_layout_and_limit(int oversized) {
   endpoints e = setup(3000); pid_t collector = fork(); assert(collector >= 0);
@@ -207,7 +229,7 @@ static void output_layout_and_limit(int oversized) {
   morphir_originals_observer *o = morphir_originals_observer_start(); assert(o);
   const char small[] = "-c\0printf out; printf err >&2; exit 9\0";
   const char large[] = "-c\0/usr/bin/head -c 16777217 /dev/zero\0";
-  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", oversized ? large : small, 2, "/tmp", "", 2000);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", oversized ? large : small, 2, "/tmp", "", 2000, never_interrupted);
   assert(o->helper.waited);
   if (oversized) {
     assert(word(result) == -1 && word(result + 4) == 0);
@@ -247,7 +269,7 @@ static void lost_ack_poison_preserves_monitoring(void) {
   }
   close(e.outer[1]); close(e.helper[1]);
   morphir_originals_observer *o = morphir_originals_observer_start(); assert(o);
-  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf ok; exit 7\0", 2, "/tmp", "", 1000);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf ok; exit 7\0", 2, "/tmp", "", 1000, never_interrupted);
   assert(word(result) == 7 && o->helper.waited && WEXITSTATUS(o->helper.status) == 7);
   assert(o->poisoned); unsigned int sequence = o->sequence;
   morphir_originals_observer_commit(o, "/tmp/commit", 1); morphir_originals_observer_cleanup(o, "/tmp/scratch", 1);
@@ -262,7 +284,7 @@ static void peer_close_no_sigpipe(void) {
   assert(before.sa_handler == after.sa_handler);
   /* An invalid-adoption path owns no descriptor numbers. The actual ordinary
    * application still executes, rather than closing reused output owners. */
-  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf legacy; exit 11\0", 2, "/tmp", "", 1000);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf legacy; exit 11\0", 2, "/tmp", "", 1000, never_interrupted);
   assert(word(result) == 11 && word(result + 4) == 6 && !memcmp(result + 8, "legacy", 6));
   moonbit_decref(result); morphir_originals_observer_finish(o);
   close(e.outer[0]); close(e.helper[0]);
@@ -273,13 +295,13 @@ static void invalid_adoption_preserves_application(void) {
    * tmpfile. An alleged poisoned owner must not close that output in child. */
   close(e.outer[0]);
   morphir_originals_observer *o = morphir_originals_observer_start(); assert(!o);
-  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf reused; printf stderr >&2; exit 12\0", 2, "/tmp", "", 1000);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf reused; printf stderr >&2; exit 12\0", 2, "/tmp", "", 1000, never_interrupted);
   assert(word(result) == 12 && word(result + 4) == 6 && !memcmp(result + 8, "reusedstderr", 12));
   moonbit_decref(result); close(e.outer[1]); close(e.helper[0]); close(e.helper[1]);
   e = setup(2000);
   assert(!setenv("MORPHIR_PRIVATE_CONSUMER_OUTER_FD", "03", 1));
   o = morphir_originals_observer_start(); assert(!o);
-  result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf metadata; exit 13\0", 2, "/tmp", "", 1000);
+  result = morphir_originals_observer_process(o, "/bin/sh", "-c\0printf metadata; exit 13\0", 2, "/tmp", "", 1000, never_interrupted);
   assert(word(result) == 13 && word(result + 4) == 8 && !memcmp(result + 8, "metadata", 8));
   moonbit_decref(result); close(e.outer[0]); close(e.outer[1]); close(e.helper[0]); close(e.helper[1]);
 }
@@ -317,7 +339,7 @@ static void actual_endpoint_transfer(const char *program) {
   }
   close(e.outer[1]); close(e.helper[1]);
   morphir_originals_observer *o = morphir_originals_observer_start(); assert(o);
-  moonbit_bytes_t result = morphir_originals_observer_process(o, program, "helper-image\0", 1, "/tmp", "", 2000);
+  moonbit_bytes_t result = morphir_originals_observer_process(o, program, "helper-image\0", 1, "/tmp", "", 2000, never_interrupted);
   assert(word(result) == 0 && word(result + 4) == 14);
   assert(!memcmp(result + 8, "actual-helper\n", 14));
   assert(o->helper_fd == -1 && o->helper.waited && o->helper.status == 0);
@@ -335,6 +357,7 @@ int main(int argc, char **argv) {
   control_name = "expired-fact-allocation"; expired_fact_allocates_nothing();
   control_name = "grace-wait"; grace_wait_consumed_once();
   control_name = "preexec"; preexec_is_started();
+  control_name = "hosted-stop"; observed_process_polls_host_stop();
   control_name = "EOF/kernel-errors"; eof_and_kernel_errors();
   control_name = "lost-ACK"; lost_ack_poison_preserves_monitoring();
   control_name = "peer-close"; peer_close_no_sigpipe();
@@ -343,5 +366,5 @@ int main(int argc, char **argv) {
   control_name = "output-layout"; output_layout_and_limit(0);
   control_name = "output-limit"; output_layout_and_limit(1);
   free(program);
-  puts("originals observer: 13 focused actual C controls PASS"); return 0;
+  puts("originals observer: 14 focused actual C controls PASS"); return 0;
 }

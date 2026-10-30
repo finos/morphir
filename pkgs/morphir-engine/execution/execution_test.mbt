@@ -308,3 +308,23 @@ test "Int32 results are range checked without a comparison evaluator" {
   assert_true(report.to_json().stringify().contains("execution.int32_range"))
   assert_true(disposed.val)
 }
+
+///|
+test "cancellation before provider discovery keeps the ordinary execution report" {
+  let plan = @execution.plan(
+    @data.IRUnit::new("test", @fixtures.invocation_library()),
+    scalar_suite("5", "3"),
+  )
+  let acquired = Ref(0)
+  let provider : @execution.Provider = {
+    targets: ["js"],
+    acquire: fn() raise {
+      acquired.val += 1
+      raise @protocol.Invalid("must not acquire")
+    },
+  }
+  let ordinary = @execution.run_report(plan, provider, cancelled=() => true)
+  let stopped = @execution.cancelled_report(plan)
+  assert_eq(acquired.val, 0)
+  assert_eq(stopped.to_json(), ordinary.to_json())
+}

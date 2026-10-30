@@ -55,4 +55,59 @@ export function exerciseScaffolding(
     const report = JSON.parse(run(['run', '--json'], 0, folder).stdout);
     assert.equal(report.successful, true, language);
   }
+
+  for (const [filename, content] of [
+    ['morphir.json', '{workspace:{members:["existing"]}}'],
+    ['morphir.yaml', 'workspace:\n  members: [existing]\n'],
+  ] as const) {
+    const folder = join(directory, `scaffold-${filename}`);
+    mkdirSync(join(folder, 'existing'), {recursive: true});
+    writeFileSync(join(folder, filename), content);
+    writeFileSync(join(folder, 'existing/morphir.toml'), "project.name='Existing'");
+    const local = (args: string[]) => run(['--isolated', '--discovery-boundary', '.', ...args, '--json'], 0, folder);
+    local(['project', 'add', 'new', '--name', 'New', '--language', 'scheme']);
+    assert.equal(readFileSync(join(folder, filename), 'utf8'), content);
+    assert.deepEqual(JSON.parse(local(['workspace']).stdout).projects.map((project: {name: string}) => project.name).sort(), ['Existing', 'New']);
+    local(['project', 'remove', 'existing']);
+    assert.deepEqual(JSON.parse(local(['workspace']).stdout).projects.map((project: {name: string}) => project.name), ['New']);
+    assert.ok(existsSync(join(folder, 'existing/morphir.toml')));
+  }
+
+  for (const [filename, content] of [
+    ['morphir.json', '{workspace:{members:[]},project:{name:"Lower"}}'],
+    ['morphir.json5', '// keep\n{workspace:{members:[]},project:{name:"Lower"}}'],
+    ['morphir.yaml', 'workspace:\n  members: []\nproject:\n  name: Lower\n'],
+    ['morphir.yml', 'workspace:\n  members: []\nproject:\n  name: Lower\n'],
+  ] as const) {
+    for (const higher of [false, true]) {
+      const folder = join(directory, `root-refusal-${filename}-${higher}`);
+      mkdirSync(join(folder, 'src'), {recursive: true});
+      writeFileSync(join(folder, filename), content);
+      const toml = '# keep TOML\n[workspace]\nmembers=[]\n[project]\nname="Higher"\n';
+      if (higher) writeFileSync(join(folder, 'morphir.toml'), toml);
+      writeFileSync(join(folder, 'src/keep.scm'), '(define keep 1)');
+      const result = run(['project', 'remove', '.', '--isolated', '--discovery-boundary', '.', '--json'], 2, folder);
+      const failure = JSON.parse(result.stdout);
+      assert.equal(failure.successful, false);
+      assert.ok(failure.error.includes(filename), result.stdout);
+      assert.ok(failure.error.includes('project declaration'), result.stdout);
+      assert.equal(readFileSync(join(folder, filename), 'utf8'), content);
+      assert.equal(readFileSync(join(folder, 'src/keep.scm'), 'utf8'), '(define keep 1)');
+      assert.equal(existsSync(join(folder, 'morphir.toml')), higher);
+      if (higher) assert.equal(readFileSync(join(folder, 'morphir.toml'), 'utf8'), toml);
+      assert.equal(existsSync(join(folder, '.morphir-workspace-edit.lock')), false);
+    }
+  }
+
+  const lowerWorkspace = join(directory, 'root-toml-lower-workspace');
+  mkdirSync(join(lowerWorkspace, 'src'), {recursive: true});
+  const lower = '{workspace:{members:[]}}';
+  writeFileSync(join(lowerWorkspace, 'morphir.json'), lower);
+  writeFileSync(join(lowerWorkspace, 'morphir.toml'), '# keep\n[project]\nname="Root"\n');
+  writeFileSync(join(lowerWorkspace, 'src/keep.scm'), '(define keep 1)');
+  const removedRoot = JSON.parse(run(['project', 'remove', '.', '--isolated', '--discovery-boundary', '.', '--json'], 0, lowerWorkspace).stdout);
+  assert.equal(removedRoot.successful, true);
+  assert.equal(readFileSync(join(lowerWorkspace, 'morphir.json'), 'utf8'), lower);
+  assert.equal(readFileSync(join(lowerWorkspace, 'src/keep.scm'), 'utf8'), '(define keep 1)');
+  assert.equal(JSON.parse(run(['workspace', '--isolated', '--discovery-boundary', '.', '--json'], 0, lowerWorkspace).stdout).projects.length, 0);
 }

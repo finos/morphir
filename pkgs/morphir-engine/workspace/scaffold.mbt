@@ -189,8 +189,7 @@ fn new_project_files(
 
 ///|
 fn ensure_new_config(tree : Tree, path : String) -> Unit raise {
-  let candidates = primary_paths(path) +
-    [join(path, "morphir.json"), join(path, "morphir-workspace.json")]
+  let candidates = primary_paths(path)
   if candidates.any(p => tree.files.contains(p)) {
     raise @config.Invalid("Project configuration already exists: " + path)
   }
@@ -233,16 +232,78 @@ pub fn init_workspace(
 }
 
 ///|
-fn workspace_config(workspace : Workspace, tree : Tree) -> String raise {
-  if !workspace.anchor.has_suffix(".toml") ||
-    !tree.files.contains(workspace.anchor) {
-    raise @config.Invalid("Project changes require a morphir.toml workspace")
+/// Keep the primary layout and create its TOML counterpart beside lower formats.
+pub fn toml_path(anchor : String) -> String raise {
+  let anchor = normalize(anchor)
+  if anchor == "" {
+    return "morphir.toml"
   }
-  let text = tree.files[workspace.anchor]
-  if @config.parse(text).get("workspace") is None {
-    raise @config.Invalid("Project changes require a [workspace] table")
+  if anchor.has_suffix(".toml") {
+    return anchor
   }
-  text
+  if anchor.has_suffix("morphir-workspace.json") {
+    return anchor[:anchor.length() - "morphir-workspace.json".length()].to_owned() +
+      "morphir.toml"
+  }
+  let extension = anchor.split(".").last().unwrap().length()
+  anchor[:anchor.length() - extension].to_owned() + "toml"
+}
+
+///|
+fn workspace_edit_config(
+  workspace : Workspace,
+  tree : Tree,
+) -> (String, String) raise {
+  if workspace.primary.get("workspace") is None {
+    raise @config.Invalid("Project changes require a workspace section")
+  }
+  let target = toml_path(workspace.anchor)
+  let text = tree.files.get(target).unwrap_or("[workspace]\n")
+  let text = if @config.parse(text).get("workspace") is None {
+    edit_toml(text, doc => doc.add_table(["workspace"]))
+  } else {
+    text
+  }
+  (target, text)
+}
+
+///|
+fn workspace_primary_paths(workspace : Workspace) -> Array[String] raise {
+  // Hidden layouts contain ordinary primary names, so match the longest
+  // known suffix when finding the discovery root of a nested snapshot.
+  let names = primary_paths("")
+  names.sort_by((left, right) => right.length() - left.length())
+  let mut root = ""
+  for name in names {
+    if workspace.anchor == name {
+      break
+    }
+    if workspace.anchor.has_suffix("/" + name) {
+      root = workspace.anchor[:workspace.anchor.length() - name.length() - 1].to_owned()
+      break
+    }
+  }
+  primary_paths(root)
+}
+
+///|
+fn lower_root_project(workspace : Workspace, tree : Tree) -> String? raise {
+  let formats = configuration_formats()
+  for path in workspace_primary_paths(workspace) {
+    if path.has_suffix(".toml") {
+      continue
+    }
+    if tree.files.get(path) is Some(text) {
+      let parsed = @lander.parse_file(formats, path, text)
+      let document = @lander.build([
+        @lander.ConfigSource::overrides_value(parsed, name=path),
+      ])
+      if document.get(@lander.KeyPath::parse("project")) is Some(_) {
+        return Some(path)
+      }
+    }
+  }
+  None
 }
 
 ///|
@@ -252,7 +313,7 @@ pub fn add_project(
   path : ProjectPath,
   project : NewProject,
 ) -> Edit raise {
-  let config = workspace_config(workspace, tree)
+  let (target, config) = workspace_edit_config(workspace, tree)
   let relative = path.to_string()
   let root = join(workspace.root, relative)
   if workspace.projects.any(p => p.root == root) {
@@ -305,22 +366,26 @@ pub fn add_project(
       doc
     })
     writes.remove(join(root, "morphir.toml"))
-    writes[workspace.anchor] = updated
+    writes[target] = updated
   } else {
     ensure_new_config(tree, root)
     let members = workspace.document.strings("workspace.members")
     if !members.any(pattern => matches(normalize(pattern), relative)) {
-      writes[workspace.anchor] = edit_toml(config, fn(doc) raise {
-        if doc.get(["workspace", "members"]) is None {
-          doc.set(["workspace", "members"], "[" + quoted(relative) + "]")
-        } else {
+      writes[target] = edit_toml(config, fn(doc) raise {
+        if doc.get(["workspace", "members"]) is Some(_) &&
+          @config.parse(config).strings("workspace.members") == members {
           doc.append(["workspace", "members"], quoted(relative))
+        } else {
+          doc.set(
+            ["workspace", "members"],
+            Json::array([..members, relative].map(Json::string)).stringify(),
+          )
         }
       })
     }
   }
   for file, _ in writes {
-    if file != workspace.anchor &&
+    if file != target &&
       (tree.files.contains(file) || tree.directories.contains(file)) {
       raise @config.Invalid("File already exists: " + file)
     }
@@ -349,8 +414,15 @@ pub fn remove_project(
   path : ProjectPath,
   delete_files~ : Bool = false,
 ) -> Edit raise {
-  let config = workspace_config(workspace, tree)
   let relative = path.to_string()
+  if relative == "" && lower_root_project(workspace, tree) is Some(source) {
+    raise @config.Invalid(
+      "Cannot remove root project declared in " +
+      source +
+      "; edit that file to remove its project declaration",
+    )
+  }
+  let (target, config) = workspace_edit_config(workspace, tree)
   let root = join(workspace.root, relative)
   if !workspace.projects.any(p => p.root == root) {
     raise @config.Invalid("Unknown project: " + relative)
@@ -365,36 +437,59 @@ pub fn remove_project(
     )
   }
   let members = workspace.document.strings("workspace.members")
+  let written = @config.parse(config)
+  let excludes = workspace.document.strings("workspace.exclude")
+  let lower_primary = workspace_primary_paths(workspace).any(path => {
+    path != target && tree.files.contains(path)
+  })
   let updated = edit_toml(config, fn(doc) raise {
     let mut doc = doc
     if relative == "" {
       doc = doc.remove_table(["project"])
     } else {
-      for i = members.length() - 1; i >= 0; i = i - 1 {
-        if normalize(members[i]) == relative {
-          doc = doc.remove_item(["workspace", "members"], i)
+      if written.strings("workspace.members") == members &&
+        written.get("workspace.members") is Some(_) {
+        for i = members.length() - 1; i >= 0; i = i - 1 {
+          if normalize(members[i]) == relative {
+            doc = doc.remove_item(["workspace", "members"], i)
+          }
         }
+      } else {
+        doc = doc.set(
+          ["workspace", "members"],
+          Json(members.filter(pattern => normalize(pattern) != relative)).stringify(),
+        )
       }
       if members.any(pattern => {
           normalize(pattern) != relative &&
           matches(normalize(pattern), relative)
         }) {
-        doc = if doc.get(["workspace", "exclude"]) is None {
-          doc.set(["workspace", "exclude"], "[" + quoted(relative) + "]")
-        } else {
+        doc = if written.get("workspace.exclude") is Some(_) &&
+          written.strings("workspace.exclude") == excludes {
           doc.append(["workspace", "exclude"], quoted(relative))
+        } else {
+          doc.set(
+            ["workspace", "exclude"],
+            Json([..excludes, relative]).stringify(),
+          )
         }
       }
     }
     if normalize(workspace.document.text("workspace.default_member", "")) ==
-      relative &&
-      doc.get(["workspace", "default_member"]) is Some(_) {
-      doc = doc.remove(["workspace", "default_member"])
+      relative {
+      doc = if lower_primary {
+        // Empty is the existing representation for no default selection.
+        doc.set(["workspace", "default_member"], "\"\"")
+      } else if doc.get(["workspace", "default_member"]) is Some(_) {
+        doc.remove(["workspace", "default_member"])
+      } else {
+        doc
+      }
     }
     doc
   })
   {
-    writes: Map::from_array([(workspace.anchor, updated)]),
+    writes: Map::from_array([(target, updated)]),
     directories: [],
     deletes: if delete_files {
       [root]

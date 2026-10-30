@@ -82,11 +82,8 @@ fn model_params(
 ///|
 fn rich_bytes() -> Bytes raise {
   let root = @ion.IonValue::from_fields([
-    @ion.Field::new(
-      "ir",
-      @ion_json.to_ion(@ir_json.to_json(@fixtures.library())),
-    ),
-    @ion.Field::new(
+    @ion.field("ir", @ion_json.Ion(@ir_json.to_json(@fixtures.library()))),
+    @ion.field(
       "enrichments",
       @ion.IonValue::list([
         @ion_text.read_ion(
@@ -94,9 +91,9 @@ fn rich_bytes() -> Bytes raise {
         ),
       ]),
     ),
-    @ion.Field::new("provenance", @ion.IonValue::list([])),
-    @ion.Field::new("future", @ion_text.read_ion("extra::(a b)")),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_model"))
+    @ion.field("provenance", @ion.IonValue::list([])),
+    @ion.field("future", @ion_text.read_ion("extra::(a b)")),
+  ]).with_annotation(@ion.symbol("morphir_model"))
   @ion_binary.write_binary_value(root)
 }
 
@@ -249,7 +246,7 @@ test "rich generation retains exact Ion and optional unknown envelope content" {
   )
   let direct = @generator.generate({
     ..@generator.Input::new("mep", @fixtures.library()),
-    annotations: [@ion.SymbolToken::new("morphir_model")],
+    annotations: [@ion.symbol("morphir_model")],
   })
   for i, artifact in direct.artifacts {
     assert_eq(
@@ -398,13 +395,13 @@ test "Ion admission refuses deep input and oversized symbol tables before semant
   // The ordinary reader consumes symbol tables, so construct a binary datagram
   // with the table as an application value for this hostile-input fixture.
   let table = @ion.IonValue::from_fields([
-    @ion.Field::new(
+    @ion.field(
       "symbols",
       @ion.IonValue::list(
         Array::makei(110, i => @ion.IonValue::string("s" + i.to_string())),
       ),
     ),
-  ]).with_annotation(@ion.SymbolToken::new("$ion_symbol_table"))
+  ]).with_annotation(@ion.symbol("$ion_symbol_table"))
   let oversized = @ion_binary.write_binary([
     table,
     @ion.IonValue::untyped_null(),
@@ -436,24 +433,24 @@ test "Ion admission refuses deep input and oversized symbol tables before semant
 test "node carrier uses explicit node identity and authenticated naming capabilities only" {
   let ir = @metadata_fixtures.input()
   let carrier = @ion.IonValue::from_fields([
-    @ion.Field::new(
+    @ion.field(
       "owner",
       @ion.IonValue::string("urn:finos:morphir-moonbit:node-metadata:v1"),
     ),
-    @ion.Field::new(
+    @ion.field(
       "data",
       @ion.IonValue::from_fields([
-        @ion.Field::new("sourceUnitId", @ion.IonValue::string("sample")),
-        @ion.Field::new("sourceAnnotations", @ion.IonValue::list([])),
-        @ion.Field::new(
+        @ion.field("sourceUnitId", @ion.IonValue::string("sample")),
+        @ion.field("sourceAnnotations", @ion.IonValue::list([])),
+        @ion.field(
           "nodes",
           @ion.IonValue::list([
             @ion.IonValue::from_fields([
-              @ion.Field::new(
+              @ion.field(
                 "nodeId",
                 @ion.IonValue::string("value:example:main#ready"),
               ),
-              @ion.Field::new(
+              @ion.field(
                 "data",
                 @metadata_fixtures.adapter(
                   "[" + @metadata_fixtures.row("ready") + "]",
@@ -466,10 +463,10 @@ test "node carrier uses explicit node identity and authenticated naming capabili
     ),
   ])
   let model = @ion.IonValue::from_fields([
-    @ion.Field::new("ir", @ion_json.to_ion(@ir_json.to_json(ir))),
-    @ion.Field::new("enrichments", @ion.IonValue::list([carrier])),
-    @ion.Field::new("provenance", @ion.IonValue::list([])),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_model"))
+    @ion.field("ir", @ion_json.Ion(@ir_json.to_json(ir))),
+    @ion.field("enrichments", @ion.IonValue::list([carrier])),
+    @ion.field("provenance", @ion.IonValue::list([])),
+  ]).with_annotation(@ion.symbol("morphir_model"))
   let params = model_params(@ion_binary.write_binary_value(model))
   let untrusted = @mep.Session::new()
   ignore(initialize_models(untrusted))

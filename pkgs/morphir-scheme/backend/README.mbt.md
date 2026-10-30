@@ -1227,18 +1227,18 @@ A comment changes no name and no behaviour.
 ///|
 test "a declaration record becomes a source comment" {
   let ir = @frontend.compile_file("(define (inc x) (+ x 1)) (inc 41)")
-  let declaration = @ion.IonValue::new(
-    @ion.Struct([
-      @ion.Field::new("name", @ion.IonValue::string("inc")),
-      @ion.Field::new("path", @ion.IonValue::string("src/Main.elm")),
-      @ion.Field::new("start_line", @ion.IonValue::int(3)),
-      @ion.Field::new("start_column", @ion.IonValue::int(1)),
-      @ion.Field::new("end_line", @ion.IonValue::int(3)),
-      @ion.Field::new("end_column", @ion.IonValue::int(20)),
+  let declaration = @ion.Ion(
+    @ion.IonValueKind::Struct([
+      @ion.field("name", @ion.IonValue::string("inc")),
+      @ion.field("path", @ion.IonValue::string("src/Main.elm")),
+      @ion.field("start_line", @ion.IonValue::int(3)),
+      @ion.field("start_column", @ion.IonValue::int(1)),
+      @ion.field("end_line", @ion.IonValue::int(3)),
+      @ion.field("end_column", @ion.IonValue::int(20)),
     ]),
   )
-  let metadata = @ion.IonValue::new(
-    @ion.Struct([@ion.Field::new("declaration", declaration)]),
+  let metadata = @ion.Ion(
+    @ion.IonValueKind::Struct([@ion.field("declaration", declaration)]),
   )
   let input = {
     ..@backend.Input::new("Main", ir),
@@ -1254,16 +1254,16 @@ test "a declaration record becomes a source comment" {
 ///|
 test "a comment falls back to the source path" {
   let ir = @frontend.compile_file("(define (inc x) (+ x 1)) (inc 41)")
-  let declaration = @ion.IonValue::new(
-    @ion.Struct([@ion.Field::new("name", @ion.IonValue::string("inc"))]),
+  let declaration = @ion.Ion(
+    @ion.IonValueKind::Struct([@ion.field("name", @ion.IonValue::string("inc"))]),
   )
   let input = {
     ..@backend.Input::new("Main", ir),
     metadata: [
       {
         node_id: "value:user:main#inc",
-        data: @ion.IonValue::new(
-          @ion.Struct([@ion.Field::new("declaration", declaration)]),
+        data: @ion.Ion(
+          @ion.IonValueKind::Struct([@ion.field("declaration", declaration)]),
         ),
       },
     ],

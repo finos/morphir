@@ -48,7 +48,7 @@ test "rich metadata reaches generated Ion symbols through engine codecs without 
         ),
       },
     ],
-    annotations: original.annotations + [@ion.SymbolToken::new("audit")],
+    annotations: original.annotations + [@ion.symbol("audit")],
   }
   let expected = generate(rich)
   let restored = registry.decode("ion-binary", {

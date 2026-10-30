@@ -19,166 +19,19 @@ pub(all) struct Workspace {
   anchor : String
   document : @config.Document
   projects : Array[Project]
+  primary : @config.Document
   warnings : Array[String]
 }
 
 ///|
 pub fn primary_paths(root : String) -> Array[String] raise {
-  [
-    "morphir.toml", "morphir.yaml", ".morphir/morphir.toml", ".morphir/morphir.yaml",
-    ".config/morphir/config.toml", ".config/morphir/config.yaml",
-  ].map(path => join(root, path))
-}
-
-///|
-fn primary(tree : Tree, root : String) -> String? raise {
-  let found = primary_paths(root).filter(path => tree.files.contains(path))
-  if found.length() > 1 {
-    raise @config.Invalid("Ambiguous configuration: " + found.join(", "))
-  }
-  match found {
-    [] => None
-    [path] => {
-      if path.has_suffix(".yaml") {
-        raise @config.Invalid("Unsupported configuration format: " + path)
-      }
-      Some(path)
-    }
-    _ => None
-  }
-}
-
-///|
-fn user(tree : Tree, anchor : String) -> @config.Document raise {
-  if !anchor.has_suffix(".toml") {
-    return @config.empty()
-  }
-  let base = anchor[:anchor.length() - 5].to_owned() + ".user"
-  let found = [base + ".toml", base + ".yaml"].filter(path => {
-    tree.files.contains(path)
-  })
-  if found.length() > 1 {
-    raise @config.Invalid("Ambiguous user configuration: " + found.join(", "))
-  }
-  match found {
-    [path] if path.has_suffix(".toml") =>
-      @config.parse(tree.files[path], origin=path)
-    [path] => raise @config.Invalid("Unsupported configuration format: " + path)
-    _ => @config.empty()
-  }
-}
-
-///|
-/// A morphir-elm project file. `morphir.json` is morphir-elm's format, so the project is an Elm project. It
-/// compiles to a Morphir IR JSON checkpoint unless the configuration or the run chooses another backend. It
-/// returns the pipeline defaults, which sit below system and global configuration, and the project
-/// document. `dependencies`, `localDependencies` and `decorations` are not supported; a non-empty one
-/// gives a warning.
-fn legacy(
-  tree : Tree,
-  root : String,
-  warnings : Array[String],
-) -> (@config.Document, @config.Document) raise {
-  let path = join(root, "morphir.json")
-  guard @json.parse(tree.files[path]) is Object(fields) else {
-    raise @config.Invalid("Expected project manifest object: " + path)
-  }
-  let fail = fn(message : String) -> @config.Invalid {
-    @config.Invalid("morphir.json " + message + ": " + path)
-  }
-  let name = match fields.get("name") {
-    Some(String(text)) => text
-    None => "user"
-    Some(_) => raise fail("name must be a string")
-  }
-  ignore(
-    @ids.SourcePackageName::parse(name) catch {
-      @config.Invalid(message) => raise fail("name: " + message)
-    },
-  )
-  let source_directory = match fields.get("sourceDirectory") {
-    Some(String(text)) => text
-    None => "src"
-    Some(_) => raise fail("sourceDirectory must be a string")
-  }
-  guard fields.get("exposedModules") is Some(Array(items)) else {
-    raise fail("exposedModules must be a list of module names")
-  }
-  let exposed : Array[Json] = []
-  for item in items {
-    guard item is String(text) else {
-      raise fail("exposedModules must be a list of module names")
-    }
-    ignore(
-      @ids.SourceModuleName::parse(text) catch {
-        @config.Invalid(message) => raise fail("exposedModules: " + message)
-      },
-    )
-    exposed.push(Json::string(text))
-  }
-  for key in ["dependencies", "localDependencies", "decorations"] {
-    let present = match fields.get(key) {
-      None | Some(Null) => false
-      Some(Array(values)) => !values.is_empty()
-      Some(Object(values)) => !values.is_empty()
-      Some(_) => true
-    }
-    if present {
-      warnings.push(
-        "Ignoring morphir.json " + key + " (not supported): " + path,
-      )
+  let paths = [join(root, "morphir-workspace.json")]
+  for stem in ["morphir", ".morphir/morphir", ".config/morphir/config"] {
+    for extension in ["json", "json5", "yaml", "yml", "toml"] {
+      paths.push(join(root, stem + "." + extension))
     }
   }
-  let primary = @config.from_json(
-    {
-      "project": {
-        "name": Json::string(name),
-        "source_directory": Json::string(source_directory),
-        "exposed_modules": Json::array(exposed),
-      },
-      "frontend": { "language": "elm" },
-    },
-    origin=path,
-  )
-  // The pipeline settings are defaults only: system, global and workspace configuration may replace them.
-  let defaults = @config.from_json(
-    {
-      "pipeline": {
-        "backend": "checkpoint",
-        "checkpoint_format": "morphir-json",
-      },
-    },
-    origin=path,
-  )
-  (defaults, primary)
-}
-
-///|
-fn load(
-  tree : Tree,
-  root : String,
-  warnings : Array[String],
-) -> (String, @config.Document, @config.Document) raise {
-  match primary(tree, root) {
-    Some(path) => {
-      if tree.files.contains(join(root, "morphir.json")) ||
-        tree.files.contains(join(root, "morphir-workspace.json")) {
-        warnings.push(
-          "Canonical configuration overrides legacy manifest at " + root,
-        )
-      }
-      (path, @config.parse(tree.files[path], origin=path), @config.empty())
-    }
-    None => {
-      let path = join(root, "morphir.json")
-      if tree.files.contains(path) {
-        let (defaults, document) = legacy(tree, root, warnings)
-        (path, document, defaults)
-      } else {
-        ("", @config.empty(), @config.empty())
-      }
-    }
-  }
+  paths
 }
 
 ///|
@@ -189,29 +42,29 @@ pub fn discover(
   global~ : @config.Document = @config.empty(),
   environment~ : Map[String, String] = Map([]),
   overlay~ : @config.Document = @config.empty(),
+  options~ : ConfigurationOptions = ConfigurationOptions::new(),
 ) -> Workspace raise {
   let root = normalize(root)
-  let warnings = []
-  let (anchor, primary_doc, root_defaults) = load(tree, root, warnings)
-  let defaults = @config.parse(
-    "[workspace]\nout_dir = '.morphir/out'\n[frontend]\nlanguage = 'scheme'\n[project]\nsource_directory = 'src'\n[ir]\nformat_version = 4\nlayout = 'single-file'\nformat = 'json'\n",
-    origin="defaults",
-  )
-  let base_with = fn(extra : @config.Document) {
-    defaults
-    |> @config.merge(extra)
-    |> @config.merge(system.shared())
-    |> @config.merge(global.shared())
-  }
-  let base = base_with(root_defaults)
-  let env = @config.environment(environment)
-  let shared = @config.merge(base, primary_doc)
-  let root_user = user(tree, anchor)
-  let root_effective = @config.merge(
-    @config.merge(@config.merge(shared, root_user), env),
+  let loaded = resolve_configuration(
+    tree,
+    root,
+    None,
+    options,
+    system,
+    global,
+    environment,
     overlay,
-  )
+  ) catch {
+    @lander.Ambiguous(candidates~, ..) =>
+      raise @config.Invalid("Ambiguous configuration: " + candidates.join(", "))
+    @lander.Profile(failure~) => raise @config.Invalid(failure.message())
+    error => raise @config.Invalid(error.message())
+  }
+  let anchor = loaded.anchor
+  let primary_doc = loaded.primary
+  let root_effective = loaded.document
   root_effective.validate()
+  let warnings = loaded.warnings.copy()
   let workspace_root = join(root, root_effective.text("workspace.root", ""))
   let members = root_effective.strings("workspace.members").map(normalize)
   let excludes = root_effective.strings("workspace.exclude").map(normalize)
@@ -227,13 +80,12 @@ pub fn discover(
     if directory == workspace_root || !within(workspace_root, directory) {
       continue
     }
-    // A hidden root config is not a second project in its containing directory.
-    if primary_paths(directory).any(p => p == anchor) {
+    if primary_paths(directory).any(path => path == anchor) {
       continue
     }
-    let rel = suffix(workspace_root, directory)
-    if members.any(pattern => matches(pattern, rel)) &&
-      !excludes.any(pattern => matches(pattern, rel)) {
+    let relative = suffix(workspace_root, directory)
+    if members.any(pattern => matches(pattern, relative)) &&
+      !excludes.any(pattern => matches(pattern, relative)) {
       roots[directory] = true
     }
   }
@@ -241,40 +93,18 @@ pub fn discover(
     if !pattern.contains("*") &&
       !pattern.contains("?") &&
       !pattern.contains("[") &&
-      !pattern.contains("{") {
-      if excludes.any(excluded => matches(excluded, pattern)) {
-        continue
-      }
-      let member_config = join(workspace_root, pattern)
-      if !tree.directories.any(d => normalize(d) == member_config) {
-        warnings.push("Missing workspace member: " + member_config)
+      !pattern.contains("{") &&
+      !excludes.any(excluded => matches(excluded, pattern)) {
+      if !tree.directories.any(directory => {
+          normalize(directory) == join(workspace_root, pattern)
+        }) {
+        warnings.push(
+          "Missing workspace member: " + join(workspace_root, pattern),
+        )
       }
     }
   }
-  let legacy_workspace = join(root, "morphir-workspace.json")
-  if anchor == "" && tree.files.contains(legacy_workspace) {
-    match @json.parse(tree.files[legacy_workspace]) {
-      Object(fields) =>
-        match fields.get("projects") {
-          Some(Array(items)) =>
-            for item in items {
-              match item {
-                String(s) => roots[join(root, s)] = true
-                _ =>
-                  raise @config.Invalid(
-                    "Legacy workspace projects must be strings",
-                  )
-              }
-            }
-          _ => raise @config.Invalid("Legacy workspace requires projects")
-        }
-      _ => raise @config.Invalid("Invalid legacy workspace")
-    }
-  }
-  if roots.is_empty() &&
-    members.is_empty() &&
-    anchor == "" &&
-    !tree.files.contains(legacy_workspace) {
+  if roots.is_empty() && members.is_empty() && anchor == "" {
     roots[workspace_root] = true
   }
   let paths = roots.keys().collect()
@@ -282,44 +112,43 @@ pub fn discover(
   let projects = []
   for path in paths {
     try {
-      let (member_anchor, member_config, member_defaults) = if path ==
-        workspace_root {
-        (anchor, @config.empty(), @config.empty())
+      let data = if path == workspace_root {
+        loaded
       } else {
-        load(tree, path, warnings)
+        resolve_configuration(
+          tree,
+          root,
+          Some(path),
+          options,
+          system,
+          global,
+          environment,
+          overlay,
+        )
       }
-      if path != workspace_root && member_anchor == "" {
+      for warning in data.warnings {
+        if !warnings.contains(warning) {
+          warnings.push(warning)
+        }
+      }
+      if path != workspace_root && data.anchor == "" {
         if members.contains(suffix(workspace_root, path)) {
           raise @config.Invalid("Member has no project configuration: " + path)
         }
         continue
       }
-      if member_config.get("workspace.out_dir") is Some(_) {
-        warnings.push("Ignoring member workspace.out_dir: " + path)
-      }
-      if member_config.get("workspace.output_dir") is Some(_) {
-        warnings.push("Removed workspace.output_dir alias: " + path)
-      }
-      let mut effective = @config.merge(
-        if path == workspace_root {
-          shared
-        } else {
-          @config.merge(base_with(member_defaults), primary_doc.shared())
-        },
-        member_config,
-      )
-      effective = @config.merge(
-        effective,
-        if path == workspace_root {
-          root_user
-        } else {
-          root_user.shared()
-        },
-      )
       if path != workspace_root {
-        effective = @config.merge(effective, user(tree, member_anchor))
+        for
+          (key, message) in [
+            ("workspace.out_dir", "Ignoring member workspace.out_dir: "),
+            ("workspace.output_dir", "Removed workspace.output_dir alias: "),
+          ] {
+          if data.primary.get(key) is Some(_) {
+            warnings.push(message + path)
+          }
+        }
       }
-      effective = @config.merge(@config.merge(effective, env), overlay)
+      let effective = data.document
       effective.validate()
       ignore(normalize(effective.text("project.source_directory", "src")))
       let name = effective.text(
@@ -336,13 +165,20 @@ pub fn discover(
       projects.push({
         root: path,
         name,
-        anchor: member_anchor,
+        anchor: data.anchor,
         document: effective,
         error: None,
       })
     } catch {
+      @lander.Ambiguous(candidates~, ..) =>
+        raise @config.Invalid(
+          "Ambiguous configuration: " + candidates.join(", "),
+        )
+      @lander.Profile(failure~) => raise @config.Invalid(failure.message())
       error => {
-        let found = primary_paths(path).filter(p => tree.files.contains(p))
+        let found = primary_paths(path).filter(candidate => {
+          tree.files.contains(candidate)
+        })
         projects.push({
           root: path,
           name: path,
@@ -355,19 +191,19 @@ pub fn discover(
   }
   let names : Map[String, Array[String]] = Map([])
   for project in projects {
-    let paths = names.get(project.name).unwrap_or([])
-    paths.push(
+    let entries = names.get(project.name).unwrap_or([])
+    entries.push(
       if project.root == workspace_root {
         "."
       } else {
         suffix(workspace_root, project.root)
       },
     )
-    names[project.name] = paths
+    names[project.name] = entries
   }
-  let sorted_names = names.keys().collect()
-  sorted_names.sort()
-  for name in sorted_names {
+  let sorted = names.keys().collect()
+  sorted.sort()
+  for name in sorted {
     if names[name].length() > 1 {
       warnings.push(
         "Duplicate project name '" + name + "': " + names[name].join(", "),
@@ -376,7 +212,9 @@ pub fn discover(
   }
   let default_member = root_effective.text("workspace.default_member", "")
   if default_member != "" &&
-    !projects.any(p => p.root == join(workspace_root, default_member)) {
+    !projects.any(project => {
+      project.root == join(workspace_root, default_member)
+    }) {
     raise @config.Invalid("Invalid default member: " + default_member)
   }
   if root_effective.get("workspace.output_dir") is Some(_) {
@@ -386,6 +224,7 @@ pub fn discover(
     root: workspace_root,
     anchor,
     document: root_effective,
+    primary: primary_doc,
     projects,
     warnings,
   }

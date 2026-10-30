@@ -114,7 +114,8 @@ pub fn list(path : String) -> Array[String] raise {
 
 ///|
 fn directory_list(path : String, limit : Int32) -> Array[String] raise {
-  match call("list_bounded", a=path, b=limit.to_string()) {
+  let response = interruptible_call("list_bounded", path, limit.to_string())
+  match response {
     Array(items) if items.length() <= limit => {
       let mut units = 0
       items.map(fn(item) raise {
@@ -172,6 +173,32 @@ pub fn stderr(s : String) -> Unit {
 }
 
 ///|
+/// Optional host capability used when portable diagnostic logging is enabled.
+pub fn utc_milliseconds() -> Int64 raise {
+  let response = call("utc_milliseconds") catch {
+    _ => raise IOError("diagnostics.utc_clock_unavailable")
+  }
+  guard response is Number(value, ..) &&
+    value >= 0.0 &&
+    value <= 9007199254740991.0 &&
+    value == value.to_int64().to_double() else {
+    raise IOError("diagnostics.invalid_utc_clock")
+  }
+  value.to_int64()
+}
+
+///|
+/// Register the selected host path; an empty path clears the registration.
+pub fn register_cancel_file(path : String) -> Unit raise {
+  let response = call("register_cancel_file", a=path) catch {
+    _ => raise IOError("cancellation.cancel_file_registration_unavailable")
+  }
+  guard response is True else {
+    raise IOError("cancellation.cancel_file_registration_unavailable")
+  }
+}
+
+///|
 pub fn exit(code : Int32) -> Unit {
   ignore(call("exit", a=code.to_string())) catch {
     _ => ()
@@ -222,6 +249,7 @@ pub fn process(
   home : String,
   timeout : Int32,
 ) -> Json raise {
+  process_started(program)
   call(
     "process",
     a=Json::object(
@@ -278,7 +306,7 @@ pub fn bytes_supported() -> Bool {
 }
 
 ///|
-pub fn interruption_requested() -> Bool {
+fn raw_interruption_requested() -> Bool {
   let result = call("interruption_requested") catch {
     _ => Json::boolean(false)
   }
@@ -293,7 +321,7 @@ pub fn read_input(path : String, limit : Int32) -> Bytes raise {
   if limit < 1 || limit > 16777216 {
     raise IOError("input.invalid_limit")
   }
-  let response = call("read_input", a=path, b=limit.to_string())
+  let response = interruptible_call("read_input", path, limit.to_string())
   guard response is Array(items) && items.length() <= limit else {
     raise IOError("input.invalid_response")
   }
@@ -312,5 +340,23 @@ pub fn read_input(path : String, limit : Int32) -> Bytes raise {
 pub fn interruption_supported() -> Bool {
   (call("interruption_supported") is True) catch {
     _ => false
+  }
+}
+
+///|
+/// Preserve the existing host envelope and classify a failed interruptible
+/// operation using the shared stop state, rather than its displayed message.
+fn interruptible_call(op : String, a : String, b : String) -> Json raise {
+  let result : Result[Json, Error] = Ok(call(op, a~, b~)) catch {
+    error => Err(error)
+  }
+  match result {
+    Ok(value) => value
+    Err(error) => {
+      if interruption_requested() {
+        raise Interrupted
+      }
+      raise error
+    }
   }
 }

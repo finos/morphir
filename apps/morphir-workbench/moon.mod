@@ -15,6 +15,13 @@ preferred_target = "js"
 supported_targets = "js+native+wasm+wasm-gc"
 
 import {
+  "moonrockz/moon-lander-core@0.8.0",
+  "moonrockz/moon-lander-logging@0.8.0",
+  "moonrockz/moon-lander-config@0.8.0",
+  "moonrockz/moon-lander-mediator@0.8.0",
+  "moonrockz/moon-lander-logging-hosting-async@0.8.0",
+  "moonrockz/moon-lander-hosting@0.8.0",
+  "moonrockz/moon-lander@0.8.0",
   "moonbitlang/x@0.5.5",
   "moonbitlang/async@0.22.4",
   "moonbit-community/rabbita@0.16.3",
@@ -28,6 +35,6 @@ import {
   "finos/morphir-moonbit-frontend@0.1.0",
   "finos/morphir-elm@0.1.0",
   "finos/morphir-sdk@0.1.0",
-  "moonrockz/ion@0.5.0",
+  "moonrockz/ion@0.6.0",
   "moonrockz/expect@0.6.1",
 }

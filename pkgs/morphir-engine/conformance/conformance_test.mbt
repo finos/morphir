@@ -460,3 +460,28 @@ test "cancellation during the final evaluator cannot turn into a match" {
   assert_true(report.cancelled())
   assert_false(report.successful())
 }
+
+///|
+test "cancellation before provider discovery retains all conformance coverage" {
+  let expected = expectations("2")
+  let plan = @conformance.prepare(
+    @execution.plan(
+      @data.IRUnit::new("model", @fixtures.invocation_library()),
+      expected.suite(),
+    ),
+    expected,
+  )
+  let ordinary = @conformance.run(
+    plan,
+    provider(@protocol.Value::from_json({ "type": "int", "value": "2" })),
+    cancelled=() => true,
+  )
+  let stopped = @conformance.cancelled_report(plan)
+  assert_eq(stopped.to_json(), ordinary.to_json())
+  assert_true(stopped.cancelled())
+  assert_true(
+    stopped.coverage.all(lane => {
+      lane.calls.all(call => call.status == "cancelled")
+    }),
+  )
+}

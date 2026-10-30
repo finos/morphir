@@ -352,7 +352,7 @@ fn copy_value(value : @ion.IonValue) -> @ion.IonValue {
       )
     other => other
   }
-  @ion.IonValue::new(kind).with_annotations(value.annotations().copy())
+  @ion.Ion(kind).with_annotations(value.annotations().copy())
 }
 
 ///|

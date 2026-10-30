@@ -266,6 +266,11 @@ pub fn process_execution(
         )
         let path = directory + "/request.json"
         @platform.write(path, Json::object(fields).stringify())
+        let delivery = @platform.CooperativeProcessScope::install(() => {
+          cancel_file != "" &&
+          (@platform.kind(cancel_file) catch { _ => 1 }) != 0
+        })
+        defer delivery.close()
         let result = @platform.process(
           program,
           [helper, path],
@@ -336,9 +341,9 @@ pub fn process_execution(
               (
                 "finos/morphir-execution", "0.1.0", "morphir-invocations-v1", "morphir-invocations-v1",
               ),
-              ("moonrockz/ion", "0.5.0", "ion-v1", "ion-0.5.0"),
-              ("moonbitlang/x", "0.5.5", "moonbit-x", "x-0.5.5"),
-              ("moonbitlang/async", "0.22.4", "moonbit-async", "async-0.22.4"),
+              ("moonrockz/ion", "0.6.0", "ion-v1", "ion-0.6.0"),
+              ("moonbitlang/x", "0.5.6", "moonbit-x", "x-0.5.6"),
+              ("moonbitlang/async", "0.22.5", "moonbit-async", "async-0.22.5"),
             ] {
             deps.push({ module_name, version, api_profile, semantic_pin, })
           }
@@ -465,9 +470,13 @@ pub fn process_execution(
           if bytes.length() > 1048576 {
             raise @config.Invalid("execution.output_limit")
           }
-          let f = @protocol.fields(@ion_binary.read_binary_value(bytes[:]), [
-            "profile", "suite_identity", "calls", "traceparent", "extensions",
-          ])
+          let f = @protocol.fields(
+            @ion_binary.read_binary_value(
+              bytes[:],
+              fuel=Limited(@ion.Budget(128)),
+            ),
+            ["profile", "suite_identity", "calls", "traceparent", "extensions"],
+          )
           if @protocol.string(@protocol.required(f, "profile")) !=
             "morphir-outcomes-v1" ||
             @protocol.string(@protocol.required(f, "suite_identity")) !=

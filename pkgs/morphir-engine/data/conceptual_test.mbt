@@ -18,7 +18,7 @@ fn conceptual_set(
 ) -> @ion.IonValue {
   guard value.kind() is Struct(fs) else { abort("Fixture struct") }
   let fields = fs.filter(f => f.name().text() != Some(key))
-  fields.push(@ion.Field::new(key, replacement))
+  fields.push(@ion.field(key, replacement))
   @ion.IonValue::from_fields(fields)
 }
 
@@ -57,9 +57,9 @@ test "M1 0001 0003 M2 full fixed graphs survive actual Ion text and binary carri
     let unit = @data.IRUnit::{
       ..original,
       annotations: [
-        @ion.SymbolToken::new("before"),
-        @ion.SymbolToken::new("morphir_pipeline"),
-        @ion.SymbolToken::new("after"),
+        @ion.symbol("before"),
+        @ion.symbol("morphir_pipeline"),
+        @ion.symbol("after"),
       ],
       provenance: [
         conceptual_parse("author::{name: \"fixture\", statement: null.string}"),

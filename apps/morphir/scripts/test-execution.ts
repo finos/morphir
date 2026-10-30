@@ -36,6 +36,19 @@ try {
   const js=join(repo,'_build/js/debug/build/morphir/morphir/morphir.js');
   const native=join(repo,'_build/native/debug/build/morphir/morphir/morphir.exe');
   for(const [program,prefix] of [[process.execPath,[js]],[native,[]]] as const) {
+    const cancelledFile=join(root,prefix.length?'node-cancel':'native-cancel');
+    const probed=join(root,prefix.length?'node-probed':'native-probed');
+    const cancelledHelper=join(root,prefix.length?'node-probe.mjs':'native-probe.mjs');
+    writeFileSync(cancelledFile,'stop');
+    writeFileSync(cancelledHelper,`import {writeFileSync} from 'node:fs';writeFileSync(${JSON.stringify(probed)},'unexpected capability probe');process.exitCode=2;`);
+    for(const command of ['execute','verify']) {
+      const cancelled: VerificationReport=JSON.parse(run(program,[...prefix,command,model,'--suite',suite,'--execution-helper',cancelledHelper,...options,'--cancel-file',cancelledFile,'--json'],130).stdout);
+      assert.equal(cancelled.successful,false);
+      assert.ok(cancelled.terminals.every(row=>row.status==='cancelled'));
+      assert.equal(cancelled.evidence,null);
+      assert.equal(existsSync(probed),false,'A stopped command must not discover provider capabilities');
+    }
+    rmSync(cancelledFile);
     for(const target of targets) {
     const log=join(root,(prefix!.length?'node':'native')+'-'+target+'.ionb');
     const result=JSON.parse(run(program!,[...prefix,'verify',model,'--suite',suite,'--execution-helper',helper,...targetOptions(target),'--target',target,'--log-file',log,'--json']).stdout);

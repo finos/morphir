@@ -26,7 +26,7 @@ uv = "latest"
 # as "%2B"), taken from https://cli.moonbitlang.com/binaries/<version>/.
 
 [tools."http:moonbit"]
-version = "0.10.16+b1a0e846e"
+version = "0.10.17+d971670cd"
 bin_path = "bin"
 # The archive alone has no core or moonx. Complete Unix installs the same way
 # locally and in CI, using the upstream installer and the exact mise version.
@@ -40,10 +40,10 @@ pwsh -NoProfile -File "{{config_root}}/tools/bootstrap-moonbit-windows.ps1"
 """
 
 [tools."http:moonbit".platforms]
-linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-linux-x86_64.tar.gz" }
-linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-linux-aarch64.tar.gz" }
-macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-darwin-aarch64.tar.gz" }
-windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-windows-x86_64.zip", format = "zip" }
+linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-linux-x86_64.tar.gz" }
+linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-linux-aarch64.tar.gz" }
+macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-darwin-aarch64.tar.gz" }
+windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-windows-x86_64.zip", format = "zip" }
 
 [env]
 # Environment variables for the project
@@ -99,6 +99,10 @@ run = "moonx scripts/repository-tasks.mbtx lint"
 description = "Check Moonbit code formatting"
 run = "moonx scripts/repository-tasks.mbtx lint:moonbit"
 
+[tasks."lint:engine-boundaries"]
+description = "Enforce synchronous engine imports"
+run = "moonx scripts/engine-boundaries.mbtx"
+
 [tasks."lint:yaml"]
 description = "Lint YAML files in the repository"
 run = "moonx scripts/repository-tasks.mbtx lint:yaml"
@@ -149,6 +153,9 @@ run = [
   "bun apps/morphir/scripts/test-developer-json-presentation.ts",
   "bun apps/morphir/scripts/test-ci-evidence-json-presentation.ts",
   "actionlint",
+  "moon fmt --check scripts/engine-boundaries.mbtx",
+  "moonx scripts/engine-boundaries.mbtx --self-test --json",
+  "moonx scripts/engine-boundaries.mbtx --json",
   "moon run scripts/moonbit-core.mbtx --self-test",
   "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx scripts/ci-mise-impact.mbtx scripts/ci-reuse.mbtx scripts/ci-platforms.mbtx scripts/ci-breach.mbtx scripts/ci-evidence.mbtx",
   "moonx scripts/ci-changes.mbtx --self-test",

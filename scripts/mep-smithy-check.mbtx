@@ -238,7 +238,7 @@ async fn execute(matches : @argparse.Matches) -> Json {
   let (code, out, err) = @process.collect_output(
     "moon",
     [
-      "test", "apps/morphir", "--target", "native", "--deny-warn", "--filter", "record native MEP host and guest sessions",
+      "test", "apps/morphir/cli", "--target", "native", "--deny-warn", "--filter", "record native MEP host and guest sessions",
     ],
     extra_env={
       "MORPHIR_MEP_RECORDINGS": evidence,

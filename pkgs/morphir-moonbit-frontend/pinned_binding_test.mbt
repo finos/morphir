@@ -59,11 +59,11 @@ test "pinned Basics not owns a canonical typed call and replayable source facts"
     assert_eq(facts["source_signature"], @ir.Data::Text("Bool -> Bool"))
   }
   let receipts = @ion.IonValue::from_fields([
-    @ion.Field::new(
+    @ion.field(
       "source_metadata",
       @ion.IonValue::list(output.metadata.map(m => m.data)),
     ),
-    @ion.Field::new("future_fact", @ion.IonValue::string("retain-me")),
+    @ion.field("future_fact", @ion.IonValue::string("retain-me")),
   ])
   let text = @ion_text.write_ion(receipts)
   assert_true(text.contains("@basics.not_"))

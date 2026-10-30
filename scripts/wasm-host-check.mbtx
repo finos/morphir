@@ -1,15 +1,17 @@
-///|
-/// Opt-in component qualification. No production adapter or CI runtime selection.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
   "moonbitlang/core/json",
 }
+----
+
+// Opt-in component qualification. No production adapter or CI runtime selection.
 
 ///|
 let json_mode : Ref[Bool] = Ref(false)
@@ -108,7 +110,7 @@ enum LifetimeWorld {
 
 ///|
 async fn build_lifetime_world(world : LifetimeWorld) -> Unit {
-  let (name, package, declarations) = match world {
+  let (name, package_dir, declarations) = match world {
     Resources =>
       ("resources", "gen/interface/morphir/lifetime-probe/sessions", 7)
     Callbacks => ("callbacks", "gen/world/callbacks", 1)
@@ -126,7 +128,9 @@ async fn build_lifetime_world(world : LifetimeWorld) -> Unit {
   let lines : Array[String] = []
   let mut removed = 0
   for
-    line in @fs.read_file(guest + "/" + package + "/top.mbt").text().split("\n") {
+    line in @fs.read_file(guest + "/" + package_dir + "/top.mbt")
+    .text()
+    .split("\n") {
     if line.has_prefix("declare pub fn ") {
       removed += 1
     } else {
@@ -137,7 +141,7 @@ async fn build_lifetime_world(world : LifetimeWorld) -> Unit {
     fail("Unexpected generated " + name + " implementation declarations")
   }
   @fs.write_file(
-    guest + "/" + package + "/top.mbt",
+    guest + "/" + package_dir + "/top.mbt",
     lines.join("\n") +
     "\n" +
     @fs.read_file("tests/wasm-host/" + name + ".mbt").text(),
@@ -145,7 +149,7 @@ async fn build_lifetime_world(world : LifetimeWorld) -> Unit {
   match world {
     Callbacks =>
       @fs.write_file(
-        guest + "/" + package + "/moon.pkg",
+        guest + "/" + package_dir + "/moon.pkg",
         "import { \"morphir/lifetime-probe/interface/morphir/lifetime-probe/host\", }\nwarnings = \"-44\"\n",
       )
     Resources => ()
@@ -214,7 +218,7 @@ async fn native_probe(checkout : String) -> Json {
   )
   @fs.write_file(
     probe + "/moon.mod",
-    "name = \"morphir/wasmoon-host-probe\"\nimport { \"Milky2018/wasmoon@0.16.0\", \"moonbitlang/async@0.22.4\", \"moonbitlang/x@0.5.5\", }\n",
+    "name = \"morphir/wasmoon-host-probe\"\nimport { \"Milky2018/wasmoon@0.16.0\", \"moonbitlang/async@0.22.5\", \"moonbitlang/x@0.5.5\", }\n",
   )
   @fs.write_file(
     probe + "/moon.pkg",
@@ -418,8 +422,8 @@ async fn qualify() -> Unit {
     @fs.remove(build + "/run.ion")
   }
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.16+b1a0e846e") else {
-    fail("MoonBit 0.10.16+b1a0e846e required")
+  guard compiler.contains("0.10.17+d971670cd") else {
+    fail("MoonBit 0.10.17+d971670cd required")
   }
   // These fixture sources are copied into generated modules outside moon.work.
   for fixture in ["guest", "resources", "callbacks", "wasmoon"] {

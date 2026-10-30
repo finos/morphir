@@ -19,5 +19,5 @@ import {
   "moonbitlang/parser@0.4.5",
   "moonbitlang/lexer@0.4.4",
   "moonbitlang/x@0.5.5",
-  "moonrockz/ion@0.5.0",
+  "moonrockz/ion@0.6.0",
 }

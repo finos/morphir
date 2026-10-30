@@ -5,12 +5,18 @@ import {
   "finos/morphir-engine/config",
   "finos/morphir-engine/ids",
   "moonbitlang/core/debug",
+  "moonrockz/moon-lander-config",
+  "moonrockz/moon-lander-config/conventions",
 }
 
 // Values
 pub fn add_project(Workspace, Tree, ProjectPath, NewProject) -> Edit raise
 
-pub fn discover(Tree, root? : String, system? : @config.Document, global? : @config.Document, environment? : Map[String, String], overlay? : @config.Document) -> Workspace raise
+pub fn configuration_conventions(boundary? : String) -> @conventions.Conventions raise @moon-lander-config.ConfigError
+
+pub fn configuration_formats() -> Array[@moon-lander-config.Format]
+
+pub fn discover(Tree, root? : String, system? : @config.Document, global? : @config.Document, environment? : Map[String, String], overlay? : @config.Document, options? : ConfigurationOptions) -> Workspace raise
 
 pub fn discover_request(Json) -> Workspace raise
 
@@ -28,11 +34,24 @@ pub fn primary_paths(String) -> Array[String] raise
 
 pub fn remove_project(Workspace, Tree, ProjectPath, delete_files? : Bool) -> Edit raise
 
+pub fn toml_path(String) -> String raise
+
 pub fn within(String, String) -> Bool
 
 // Errors
 
 // Types and methods
+pub(all) struct ConfigurationOptions {
+  directory : @moon-lander-config.FileTreePath
+  selected : String?
+  profiles : @moon-lander-config.ProfileSelection
+  isolated : Bool
+  suppress : Array[String]
+  external_files : Map[String, String]
+  platform : @moon-lander-config.Platform
+}
+pub fn ConfigurationOptions::new(directory? : @moon-lander-config.FileTreePath, selected? : String, profiles? : @moon-lander-config.ProfileSelection, isolated? : Bool, suppress? : Array[String], external_files? : Map[String, String], platform? : @moon-lander-config.Platform) -> Self
+
 pub(all) struct Edit {
   writes : Map[String, String]
   directories : Array[String]
@@ -57,9 +76,9 @@ pub(all) struct Project {
 }
 
 pub struct ProjectPath(String) derive(Compare, Eq, Hash, @debug.Debug)
-pub fn ProjectPath::compare(Self, Self) -> Int
+pub fn ProjectPath::compare(Self, Self) -> Int32
 pub fn ProjectPath::equal(Self, Self) -> Bool
-pub fn ProjectPath::hash(Self) -> Int
+pub fn ProjectPath::hash(Self) -> Int32
 pub fn ProjectPath::hash_combine(Self, Hasher) -> Unit
 pub fn ProjectPath::not_equal(Self, Self) -> Bool
 pub fn ProjectPath::op_ge(Self, Self) -> Bool
@@ -84,6 +103,7 @@ pub(all) struct Workspace {
   anchor : String
   document : @config.Document
   projects : Array[Project]
+  primary : @config.Document
   warnings : Array[String]
 }
 pub fn Workspace::select(Self, selector? : String, all? : Bool, invocation? : String) -> Array[Project] raise

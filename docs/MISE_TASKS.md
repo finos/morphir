@@ -7,12 +7,12 @@ This document provides a reference for all available mise tasks in the Morphir M
 
 ## Pinned compiler and core
 
-The compiler is the stock `0.10.16+b1a0e846e` release, and every command uses the
+The compiler is the stock `0.10.17+d971670cd` release, and every command uses the
 core that ships with it, as consumers of published modules do. That core is the
-upstream source commit `1886b2f93eff7365ccdbaed2c13abd33858841f8` and includes the
+upstream source commit `eb321a18f7a33d37114546682a8d1cd6658afab8` and includes the
 fix for long decimal integers on Wasm GC (`moonbitlang/core#4345`). The release
 archives, their SHA-256 values and the complete source digest are recorded in
-[the core pin](../tools/moonbit-core-pin.json). Consumers need moonc 0.10.16 or later.
+[the core pin](../tools/moonbit-core-pin.json). Consumers need moonc 0.10.17 or later.
 
 `mise install` and entering an activated mise shell complete the toolchain and verify
 the source bytes of `$MOON_HOME/lib/core` against the pin. No core override is used:
@@ -36,6 +36,7 @@ compiler/core pair.
 |------|-------------|----------|
 | `mise run lint` | Run all linting tasks | All |
 | `mise run lint:yaml` | Lint YAML files | All |
+| `mise run lint:engine-boundaries` | Refuse host imports in synchronous engine manifests, including tests | All |
 | `mise run lint:moonbit` | Check Moonbit code formatting | All |
 
 ### Formatting Tasks
@@ -417,3 +418,33 @@ and environment-isolation gates, and emits portable runtime JavaScript. Existing
 Workbench, CLI, compiler, supervision and embedding tasks use the same portable
 `scripts/typescript-tooling.mbtx` entry point. Append `--ci` to setup tasks when
 Chromium system dependencies must also be installed.
+
+### Engine dependency boundary
+
+`mise run lint:engine-boundaries` checks engine module dependencies and package
+imports, including black-box and white-box test imports. It parses both native
+and legacy JSON manifests, skips nested modules and generated dependencies, and
+fails on hosting, async, or Morphir host adapter imports. Pure Moon-Lander
+configuration, logging, mediator and notebook packages remain available.
+
+```sh
+mise run lint:engine-boundaries -- --json
+moonx scripts/engine-boundaries.mbtx --root . --json
+moonx scripts/engine-boundaries.mbtx --self-test --json
+moonx scripts/engine-boundaries.mbtx --help --json
+```
+
+JSON mode writes one compact `morphir/command-result` document, contract version
+`0.1.0`, with command `lint.engine-boundaries` to stdout. Progress and human
+failure details use stderr. Success includes `state: "succeeded"`, `exitCode: 0`,
+`diagnostics: []` and `result: {manifestsChecked, importsChecked}`. Help replaces
+the result with `{help}`; self-tests use `{checks}` and exercise actual command
+invocations as well as manifest fixtures. Failure has `state: "failed"`,
+`exitCode`, `error: {code, message}`, and `diagnostics`, without a result.
+Diagnostics have `code`, `severity`, `path` and `message`. Boundary codes are
+`engine.host_import`, `engine.manifest_syntax` and `engine.missing_root`.
+Exit 1 reports a refused boundary or inspection failure; exit 2 reports invalid
+arguments. Top-level error codes are `engine_boundary_failed`,
+`inspection_failed` and `invalid_arguments` respectively. Default text mode
+retains those statuses. `--root` owns its next value; a literal `--` ends option
+parsing. The lint task includes this check; `test:ci` includes its self-tests.

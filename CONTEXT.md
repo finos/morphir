@@ -84,6 +84,21 @@ A root that defines project membership, shared configuration and output ownershi
 **Host**:
 The embedding environment that supplies external capabilities and controls their lifetime.
 
+**Configuration profile**:
+A named, composable selection of settings and configuration overlays for one application run.
+
+**Host lifetime**:
+The lifetime of one Morphir run, from starting its services through execution to ordered cleanup.
+
+**Stop reason**:
+The cause that ends a Morphir host lifetime, recorded independently of the command's result.
+
+**Diagnostic log**:
+An operational record about a Morphir run, carrying severity and category. Typed observations describe execution separately.
+
+**Worksheet notebook**:
+A worksheet represented as an ordered sequence of form and comment cells, optionally containing observations from its evaluation.
+
 **Artifact**:
 A named output returned by a backend, ready for the host to persist or consume.
 

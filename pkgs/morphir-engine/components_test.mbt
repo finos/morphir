@@ -10,7 +10,7 @@ test "JSON-only components receive standard JSON while the Ion sidecar survives"
     {
       node_id: "value:pricing:scalars#rate/body",
       data: @ion.IonValue::string("opaque").with_annotation(
-        @ion.SymbolToken::new("unknown"),
+        @ion.symbol("unknown"),
       ),
     },
   ])

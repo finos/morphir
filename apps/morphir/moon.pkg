@@ -1,43 +1,11 @@
 pkgtype(kind: "executable")
 
-import {
-  "moonbitlang/x/crypto",
-  "moonbitlang/core/argparse",
-  "moonbitlang/core/string",
-  "finos/morphir-engine/execution",
-  "finos/morphir-engine/execution/workbench" @connected_core,
-  "finos/morphir-engine/worksheet",
-  "finos/morphir-engine/conformance",
-  "finos/morphir-engine/data",
-  "finos/morphir-ir/wire" @model_wire,
-  "finos/morphir-ir/versioned/json" @versioned_json,
-  "finos/morphir-engine/model-document" @model_document,
-  "finos/morphir-host/identity",
-  "finos/morphir-execution" @protocol,
-  "finos/morphir-execution/observability" @observe,
-  "finos/morphir-engine" @engine,
-  "finos/morphir-engine/moonbit" @moonbit_frontend,
-  "finos/morphir-engine/elm" @elm_frontend,
-  "finos/morphir-engine/config",
-  "finos/morphir-engine/ids",
-  "finos/morphir-engine/workspace",
-  "finos/morphir-host" @host,
-  "finos/morphir-host/metadata/grants" @metadata_grants,
-  "finos/morphir-host/platform",
-  "finos/morphir-host/toolchain",
-  "moonbitlang/core/json",
-  "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/encoding/base64",
-  "finos/morphir-moonbit/mep",
-}
+supported_targets = "native+js"
 
 import {
-  "moonrockz/expect",
+  "morphir/morphir/cli",
+  "moonrockz/moon-lander-hosting" @hosting,
+  "moonrockz/moon-lander-hosting/logging" @bridge,
   "moonbitlang/async",
-  "moonbitlang/async/fs" @record_fs,
-  "moonbitlang/async/process" @record_process,
-} for "wbtest"
-
-// The JS adapters use connected_core. Other targets use their own adapters.
-
-warnings = "-29"
+  "finos/morphir-host/platform",
+}

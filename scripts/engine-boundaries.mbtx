@@ -1,0 +1,471 @@
+----
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/moon_config@0.4.4" @manifest,
+  "moonbitlang/lexer@0.4.4/basic",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/x@0.5.5/sys",
+}
+----
+
+// Enforce the synchronous engine boundary from ADR 0002 and ADR 0004.
+
+///|
+enum Problem {
+  HostImport(String)
+  ManifestSyntax(String)
+  MissingEngine
+} derive(Eq, Debug)
+
+///|
+struct Finding {
+  path : String
+  problem : Problem
+} derive(Eq, Debug)
+
+///|
+struct Inspection {
+  mut manifests : Int32
+  mut imports : Int32
+  findings : Array[Finding]
+}
+
+///|
+enum Presentation {
+  Human
+  JSON
+}
+
+///|
+fn host_import(path : String) -> Bool {
+  [
+    "moonrockz/moon-lander", "moonrockz/moon-lander-hosting", "moonrockz/moon-lander-logging-hosting-async",
+    "moonrockz/moon-lander-config/host", "moonrockz/moon-lander-mediator/async",
+    "moonbitlang/async", "finos/morphir-host", "finos/morphir-workbench-native",
+  ].any(root => path == root || path.has_prefix(root + "/"))
+}
+
+///|
+fn imported_paths(value : Json) -> Array[String] {
+  match value {
+    String(path) => [path]
+    Array(items) => {
+      let paths = []
+      for item in items {
+        paths.append(imported_paths(item))
+      }
+      paths
+    }
+    Object(fields) =>
+      match fields.get("path") {
+        Some(String(path)) => [path]
+        // Legacy moon.pkg.json also accepts a path-to-alias object.
+        _ => fields.keys().to_array()
+      }
+    _ => []
+  }
+}
+
+///|
+fn syntax_finding(path : String, report : @basic.Report) -> Finding {
+  { path, problem: ManifestSyntax(report.msg), }
+}
+
+///|
+fn inspect_manifest(path : String, source : String) -> Inspection {
+  let result = Inspection::{ manifests: 1, imports: 0, findings: [], }
+  let module_file = path.has_suffix("moon.mod") ||
+    path.has_suffix("moon.mod.json")
+  let value = if path.has_suffix(".json") {
+    @json.parse(source) catch {
+      error => {
+        result.findings.push({
+          path,
+          problem: ManifestSyntax(error.to_string()),
+        })
+        return result
+      }
+    }
+  } else {
+    let (ast, reports) = if module_file {
+      @manifest.parse_moon_mod(name=path, source)
+    } else {
+      @manifest.parse_moon_pkg(name=path, source)
+    }
+    for report in reports {
+      result.findings.push(syntax_finding(path, report))
+    }
+    Json(ast)
+  }
+  guard value is Object(fields) else {
+    result.findings.push({
+      path,
+      problem: ManifestSyntax("Expected a configuration object"),
+    })
+    return result
+  }
+  let imports = if module_file {
+    match fields.get("deps") {
+      Some(Object(dependencies)) => dependencies.keys().to_array()
+      _ => []
+    }
+  } else {
+    let paths = []
+    for key in ["import", "test-import", "wbtest-import"] {
+      paths.append(fields.get(key).map(imported_paths).unwrap_or([]))
+    }
+    paths
+  }
+  for imported in imports {
+    result.imports += 1
+    if host_import(imported) {
+      result.findings.push({ path, problem: HostImport(imported), })
+    }
+  }
+  result
+}
+
+///|
+fn merge_inspection(total : Inspection, part : Inspection) -> Unit {
+  total.manifests += part.manifests
+  total.imports += part.imports
+  total.findings.append(part.findings)
+}
+
+///|
+async fn inspect_directory(
+  directory : String,
+  result : Inspection,
+  visited : Map[String, Bool],
+  root~ : Bool = false,
+) -> Unit {
+  let canonical = @fs.realpath(directory)
+  if visited.contains(canonical) {
+    return
+  }
+  visited[canonical] = true
+  // A nested module belongs to its own boundary, not to morphir-engine.
+  if !root &&
+    (
+      @fs.exists(directory + "/moon.mod") ||
+      @fs.exists(directory + "/moon.mod.json")
+    ) {
+    return
+  }
+  let names = @fs.readdir(directory)
+  names.sort_by((left, right) => left.lexical_compare(right))
+  for name in names {
+    if ["_build", ".mooncakes", ".git", "node_modules"].contains(name) {
+      continue
+    }
+    let path = directory + "/" + name
+    match @fs.kind(path) {
+      Directory => inspect_directory(path, result, visited)
+      Regular =>
+        if name == "moon.pkg" ||
+          name == "moon.pkg.json" ||
+          (root && (name == "moon.mod" || name == "moon.mod.json")) {
+          merge_inspection(
+            result,
+            inspect_manifest(path, @fs.read_file(path).text()),
+          )
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+async fn inspect(root : String) -> Inspection {
+  let result = Inspection::{ manifests: 0, imports: 0, findings: [], }
+  let engine = root + "/pkgs/morphir-engine"
+  if !@fs.exists(engine) || @fs.kind(engine) != @fs.Directory {
+    result.findings.push({ path: engine, problem: MissingEngine, })
+    return result
+  }
+  inspect_directory(engine, result, Map([]), root=true)
+  result
+}
+
+///|
+fn diagnostic(finding : Finding) -> Json {
+  let (code, message) = match finding.problem {
+    HostImport(path) =>
+      (
+        "engine.host_import",
+        "Host import is not allowed in the synchronous engine: " + path,
+      )
+    ManifestSyntax(message) => ("engine.manifest_syntax", message)
+    MissingEngine => ("engine.missing_root", "Engine directory does not exist")
+  }
+  {
+    "code": code,
+    "severity": "error",
+    "path": finding.path,
+    "message": message,
+  }
+}
+
+///|
+fn cli() -> @argparse.Command {
+  @argparse.Command(
+    "engine-boundaries.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    about="Check engine module and package imports, including tests and legacy JSON manifests. Run from the repository root. --json writes one morphir/command-result 0.1.0 document to stdout; diagnostics use stderr. Success result has manifestsChecked and importsChecked; failure has error{code,message} and diagnostics. Exit 0 succeeds, 1 refuses a boundary or read failure, and 2 reports invalid arguments. JSON help has result.help; JSON self-tests have result.checks.",
+    flags=[
+      @argparse.FlagArg("json"),
+      @argparse.FlagArg("help", short='h'),
+      @argparse.FlagArg("self-test", conflicts_with=["root"]),
+    ],
+    options=[
+      @argparse.OptionArg(
+        "root",
+        conflicts_with=["self-test"],
+        about="Repository root to inspect (default: .)",
+      ),
+    ],
+  )
+}
+
+///|
+fn presentation(argv : Array[String]) -> Presentation {
+  // This library-owned probe selects only the error channel. The full command
+  // below owns syntax validation; the delimiter keeps literal values opaque.
+  let probe = @argparse.Command(
+    "engine-boundaries.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("json")],
+    positionals=[
+      @argparse.PositionArg(
+        "unparsed",
+        num_args=@argparse.ValueRange(lower=0),
+        allow_hyphen_values=true,
+      ),
+    ],
+  )
+  let matches = probe.parse(argv~, env=Map([])) catch { _ => return Human }
+  if matches.flags.get_or_default("json", false) {
+    JSON
+  } else {
+    Human
+  }
+}
+
+///|
+fn envelope(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "lint.engine-boundaries",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+async fn failure(
+  mode : Presentation,
+  status : Int32,
+  code : String,
+  message : String,
+  diagnostics : Array[Json],
+) -> Unit {
+  @stdio.stderr.write(message + "\n")
+  for item in diagnostics {
+    if item is Object(fields) &&
+      fields.get("path") is Some(String(path)) &&
+      fields.get("message") is Some(String(detail)) {
+      @stdio.stderr.write(path + ": " + detail + "\n")
+    }
+  }
+  if mode is JSON {
+    let value : Json = {
+      "profile": "morphir/command-result",
+      "contractVersion": "0.1.0",
+      "command": "lint.engine-boundaries",
+      "state": "failed",
+      "exitCode": status,
+      "error": { "code": code, "message": message },
+      "diagnostics": diagnostics,
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  }
+  @sys.exit(status)
+}
+
+///|
+fn json_string(value : Json, key : String) -> String? {
+  if value is Object(fields) && fields.get(key) is Some(String(text)) {
+    Some(text)
+  } else {
+    None
+  }
+}
+
+///|
+async fn self_test() -> Int32 {
+  let mut checks = 0
+  for
+    path in [
+      "moonrockz/moon-lander", "moonrockz/moon-lander-hosting/console", "moonrockz/moon-lander-logging-hosting-async",
+      "moonrockz/moon-lander-config/host", "moonrockz/moon-lander-mediator/async",
+      "moonbitlang/async/process", "finos/morphir-host/platform", "finos/morphir-workbench-native",
+    ] {
+    for suffix in ["", " for \"test\"", " for \"wbtest\""] {
+      let result = inspect_manifest(
+        "moon.pkg",
+        "import { \"" + path + "\" @host }" + suffix,
+      )
+      assert_eq(result.imports, 1)
+      assert_eq(result.findings, [
+        { path: "moon.pkg", problem: HostImport(path), },
+      ])
+      checks += 1
+    }
+  }
+  let pure = inspect_manifest(
+    "moon.pkg",
+    (
+      #|// import { "moonrockz/moon-lander-hosting" }
+      #|import { "moonrockz/moon-lander-core", "moonrockz/moon-lander-logging", "moonrockz/moon-lander-config/conventions", "moonrockz/moon-lander-mediator", "moonrockz/notebooks/nbformat", "finos/morphir-workbench-native-session/response" }
+    ),
+  )
+  assert_eq(pure.imports, 6)
+  assert_eq(pure.findings, [])
+  assert_false(host_import("moonrockz/moon-lander-config/hosted"))
+  checks += 1
+  let module_result = inspect_manifest(
+    "moon.mod", "name = \"fixture/engine\"\nimport { \"moonrockz/moon-lander-hosting@0.6.0\" }",
+  )
+  assert_eq(module_result.findings, [
+    { path: "moon.mod", problem: HostImport("moonrockz/moon-lander-hosting"), },
+  ])
+  checks += 1
+  let legacy = inspect_manifest(
+    "moon.pkg.json", "{\"wbtest-import\":[{\"path\":\"moonrockz/moon-lander-mediator/async\",\"alias\":\"host\"}]}",
+  )
+  assert_eq(legacy.findings, [
+    {
+      path: "moon.pkg.json",
+      problem: HostImport("moonrockz/moon-lander-mediator/async"),
+    },
+  ])
+  checks += 1
+  assert_true(
+    !inspect_manifest("moon.pkg", "import { \"unterminated").findings.is_empty(),
+  )
+  checks += 1
+  let root = @fs.tmpdir(prefix="morphir engine boundary ")
+  defer @fs.rmdir(root, recursive=true)
+  @fs.mkdir(root + "/pkgs/morphir-engine/example", recursive=true)
+  @fs.write_file(
+    root + "/pkgs/morphir-engine/example/moon.pkg",
+    "import { \"moonrockz/moon-lander-config\" }",
+  )
+  assert_eq(inspect(root).findings, [])
+  let script = @fs.realpath("scripts/engine-boundaries.mbtx")
+  for
+    (argv, expected, state) in [
+      (["--json", "--root", root], 0, "succeeded"),
+      (["--root", root, "--json"], 0, "succeeded"),
+      (["--json", "--help"], 0, "succeeded"),
+      (["--json", "--unknown"], 2, "failed"),
+      (["--unknown", "--json"], 2, "failed"),
+      (["--root", "", "--json"], 2, "failed"),
+      (["--json", "--self-test", "--root", root], 2, "failed"),
+    ] {
+    let (status, out, err) = @process.collect_output("moonx", [script, ..argv])
+    assert_eq(status, expected, msg=err.text())
+    assert_eq(json_string(@json.parse(out.text()), "state"), Some(state))
+    checks += 1
+  }
+  @fs.write_file(
+    root + "/pkgs/morphir-engine/example/moon.pkg",
+    "import { \"moonrockz/moon-lander-hosting\" }",
+  )
+  let (status, out, err) = @process.collect_output("moonx", [
+    script, "--root", root, "--json",
+  ])
+  assert_eq(status, 1)
+  assert_eq(json_string(@json.parse(out.text()), "state"), Some("failed"))
+  assert_true(err.text().contains("moonrockz/moon-lander-hosting"))
+  assert_true(!out.text().contains("Downloading"))
+  checks += 1
+  // A flag spelling after the literal delimiter is data, not a JSON request.
+  assert_true(presentation(["--", "--json"]) is Human)
+  assert_true(presentation(["--root=--json"]) is Human)
+  checks += 1
+  checks
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:].to_owned()
+  let mode = presentation(argv)
+  let matches = cli().parse(argv~, env=Map([])) catch {
+    error => {
+      failure(mode, 2, "invalid_arguments", error.to_string(), [])
+      return
+    }
+  }
+  let result : Json = try {
+    if matches.flags.get_or_default("help", false) {
+      { "help": cli().render_help() }
+    } else if matches.flags.get_or_default("self-test", false) {
+      { "checks": self_test() }
+    } else {
+      let root = matches.values.get("root").unwrap_or(["."])[0]
+      if root.is_empty() {
+        failure(
+          mode,
+          2,
+          "invalid_arguments",
+          "Repository root must not be empty",
+          [],
+        )
+        return
+      }
+      let inspected = inspect(root)
+      if !inspected.findings.is_empty() {
+        failure(
+          mode,
+          1,
+          "engine_boundary_failed",
+          "Engine import boundary check failed",
+          inspected.findings.map(diagnostic),
+        )
+        return
+      }
+      {
+        "manifestsChecked": inspected.manifests,
+        "importsChecked": inspected.imports,
+      }
+    }
+  } catch {
+    error => {
+      failure(mode, 1, "inspection_failed", error.to_string(), [])
+      return
+    }
+  }
+  match mode {
+    JSON => @stdio.stdout.write(envelope(result).stringify() + "\n")
+    Human =>
+      match json_string(result, "help") {
+        Some(help) => @stdio.stdout.write(help + "\n")
+        None =>
+          @stdio.stdout.write(
+            "Engine import boundary check passed: " + result.stringify() + "\n",
+          )
+      }
+  }
+}

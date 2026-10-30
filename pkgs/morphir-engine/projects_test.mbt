@@ -71,7 +71,10 @@ test "listing and planning reject the same unsupported IR settings" {
     ] {
     let files = Map::from_array([
       ("morphir.toml", "[project]\nname='Example'\n[ir]\n" + settings),
-      ("morphir.json", "{\"name\":\"Legacy\"}"),
+      // Keep the lower JSON layer valid and retain a real warning for strict_mode.
+      (
+        "morphir.json", "{\"name\":\"Legacy\",\"exposedModules\":[],\"dependencies\":[]}",
+      ),
     ])
     let workspace = @workspace.discover({ files, directories: [""], })
     let engine = @engine.Engine::new()

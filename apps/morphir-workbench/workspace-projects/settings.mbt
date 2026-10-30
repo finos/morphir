@@ -91,13 +91,12 @@ pub fn Files::configure(
   value : String?,
 ) -> Files raise {
   let project = find_project(self, path)
-  if !project.anchor.has_suffix(".toml") {
-    raise @config.Invalid(
-      "Convert morphir.json to morphir.toml before editing project settings",
-    )
+  let target = @discovery.toml_path(project.anchor)
+  if value is None && self.read(target) is None {
+    return self
   }
-  let text = self.read(project.anchor).unwrap_or("")
-  self.configure_at(project.anchor, text, setting, value)
+  let text = self.read(target).unwrap_or("")
+  self.configure_at(target, text, setting, value)
 }
 
 ///|
@@ -112,15 +111,11 @@ pub fn Files::configure_workspace(
     )
   }
   let workspace = self.discover()
-  if !workspace.anchor.has_suffix(".toml") {
-    raise @config.Invalid("Workspace settings require morphir.toml")
+  let target = @discovery.toml_path(workspace.anchor)
+  if value is None && self.read(target) is None {
+    return self
   }
-  self.configure_at(
-    workspace.anchor,
-    self.read(workspace.anchor).unwrap_or(""),
-    setting,
-    value,
-  )
+  self.configure_at(target, self.read(target).unwrap_or(""), setting, value)
 }
 
 ///|

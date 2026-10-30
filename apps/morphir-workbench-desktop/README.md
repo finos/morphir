@@ -8,6 +8,23 @@ forked for desktop.
 
 ## Develop
 
+Proton starts a Moon-Lander host for the local native services and waits for
+readiness before exposing renderer commands. Native executions start before
+workspace files. An embedder shutdown revokes file access, then awaits native
+worker shutdown. `on_shutdown` confirms that host outcome; the quit guard can
+complete the same idempotent shutdown first and prevents quit if a child exit
+cannot be confirmed. The native worker and Workbench wire formats keep their
+existing schemas.
+
+The desktop loads run-wide configuration from the startup working directory
+through the shared Moon-Lander format and profile adapters. JSON/JSON5, YAML/YML,
+TOML, active profiles and environment settings choose `logging.level` and
+`logging.file.*` as in the CLI. `MORPHIR_LOGGING__LEVEL=debug` enables lifecycle
+and child-start diagnostics. They use stderr and the optional owned
+`morphir-diagnostics` files under `.morphir/logs/`; accepted records drain before
+the final exit event. JSON lifecycle output and binary worker stdout keep their
+own channels. Help still returns before configuration or Proton startup.
+
 Install the repository's pinned MoonBit and Node toolchains, then:
 
 ```sh
@@ -258,6 +275,12 @@ keeps worker observation deterministic. It verifies worker removal at the
 replacement session's reply after reload, at the `session.close` reply, and at
 normal application exit. Replacement sessions reject the old authority and
 execute another typed function successfully.
+
+The suite launches inside its own configuration workspace. A base error level
+is replaced by an active desktop profile's debug level. It checks configuration
+file records and service start/stop records in stderr and the public JSON Lines
+sink, verifies their UTC timestamps/categories, and confirms diagnostics do not
+appear on stdout. Shutdown records are present before the actual clean exit.
 
 Before launching the package, the acceptance uses `clang` to build a temporary
 owned-child fixture. It verifies that an exited but unreaped macOS process still

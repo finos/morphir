@@ -218,7 +218,7 @@ pub fn Observation::to_ion(self : Observation) -> @ion.IonValue {
       "correlation",
       match self.correlation {
         Some(c) => c.to_ion()
-        None => @ion.IonValue::new(@ion.Null(@ion.Null))
+        None => @ion.Ion(@ion.IonValueKind::Null(@ion.Null))
       },
     ),
     ("span_id", @ion.IonValue::string(self.context.span_id)),

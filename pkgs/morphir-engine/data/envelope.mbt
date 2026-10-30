@@ -146,21 +146,18 @@ fn write_envelope(unit : IRUnit, limits : Limits) -> @ion.IonValue raise {
     seen[item.node_id] = true
     entries.push(
       @ion.IonValue::from_fields([
-        @ion.Field::new("node_id", @ion.IonValue::string(item.node_id)),
-        @ion.Field::new("data", item.data),
+        @ion.field("node_id", @ion.IonValue::string(item.node_id)),
+        @ion.field("data", item.data),
       ]),
     )
   }
   let value = @ion.IonValue::from_fields([
-    @ion.Field::new("profile", @ion.IonValue::string(PROFILE)),
-    @ion.Field::new("provenance", @ion.IonValue::list(unit.provenance)),
-    @ion.Field::new("contract", @ion.IonValue::string("ir-unit")),
-    @ion.Field::new("unit_id", @ion.IonValue::string(unit.id)),
-    @ion.Field::new(
-      "ir",
-      write_semantic_ir(@ir_json.to_json(unit.distribution)),
-    ),
-    @ion.Field::new("metadata", @ion.IonValue::list(entries)),
+    @ion.field("profile", @ion.IonValue::string(PROFILE)),
+    @ion.field("provenance", @ion.IonValue::list(unit.provenance)),
+    @ion.field("contract", @ion.IonValue::string("ir-unit")),
+    @ion.field("unit_id", @ion.IonValue::string(unit.id)),
+    @ion.field("ir", write_semantic_ir(@ir_json.to_json(unit.distribution))),
+    @ion.field("metadata", @ion.IonValue::list(entries)),
   ]).with_annotations(unit.annotations)
   check_tree(value, limits)
   value
@@ -183,10 +180,10 @@ fn write_semantic_ir(value : Json) -> @ion.IonValue raise {
         !lexeme.contains("e") &&
         !lexeme.contains("E") &&
         lexeme != "-0" {
-        @ion_text.read_ion(lexeme[:])
+        @ion_text.read_ion(lexeme[:], fuel=Limited(@ion.Budget(128)))
       } else {
         @ion.IonValue::string(lexeme).with_annotation(
-          @ion.SymbolToken::new("morphir_json_number"),
+          @ion.symbol("morphir_json_number"),
         )
       }
     }
@@ -195,7 +192,7 @@ fn write_semantic_ir(value : Json) -> @ion.IonValue raise {
       let names = fields.keys().collect()
       names.sort()
       @ion.IonValue::from_fields(
-        names.map(name => @ion.Field::new(name, write_semantic_ir(fields[name]))),
+        names.map(name => @ion.field(name, write_semantic_ir(fields[name]))),
       )
     }
   }

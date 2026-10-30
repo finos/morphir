@@ -199,7 +199,7 @@ fn LibraryLowerer::expression(
           "signedness",
           @ir.Data::Text(if scalar.is_signed() { "signed" } else { "unsigned" }),
         ),
-        ("compiler", @ir.Data::Text("0.10.16+b1a0e846e")),
+        ("compiler", @ir.Data::Text("0.10.17+d971670cd")),
       ])
       if scalar.bits() == 0 {
         facts["precision"] = @ir.Data::Text("arbitrary")
@@ -825,7 +825,7 @@ fn library_lower(
     ir,
     entries: public_entries,
     metadata,
-    annotations: [@ion.SymbolToken::new("morphir_pipeline")],
+    annotations: [@ion.symbol("morphir_pipeline")],
     warnings,
     provenance: [
       ion_record([
@@ -834,7 +834,7 @@ fn library_lower(
         ("parser_version", @ion.IonValue::string(PARSER_VERSION)),
         ("naming_policy", @ion.IonValue::string(NAMING_POLICY)),
         ("unit_id", @ion.IonValue::string(input.unit_id)),
-      ]).with_annotation(@ion.SymbolToken::new("morphir_moonbit_frontend")),
+      ]).with_annotation(@ion.symbol("morphir_moonbit_frontend")),
     ] +
     warnings.map(w => w.to_ion()),
   }

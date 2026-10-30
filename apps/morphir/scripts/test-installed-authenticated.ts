@@ -196,10 +196,12 @@ const chunks=[];process.stdin.on('data',b=>chunks.push(b));process.stdin.on('end
     assert.equal(s.outputs(),before);
     for(const pid of Object.values(pids))assert.ok(isQuiescent(pid),'Blocked tree quiescent before return');
     const audit: MetadataEvent[]=readFileSync(log,'utf8').trim().split('\n').map(line => JSON.parse(line)).filter(e=>e.profile==='morphir-metadata-invocation-v1');
+    // Retain the actual outcome on assertion failure too. The complete suite's
+    // bridge receipt is still written only after every qualification passes.
+    jsonFile(join(receipts!,client.id+'-'+name+'.json'),{report,audit,elapsedMs:performance.now()-start});
     assert.ok(audit.some(e=>e.phase==='restore'&&e.outcome==='started'));
     assert.ok(!audit.some(e=>e.phase==='restore'&&e.outcome==='succeeded'));
-    assert.ok(audit.some(e=>e.phase==='cleanup'&&e.outcome==='succeeded'));
-    jsonFile(join(receipts!,client.id+'-'+name+'.json'),{report,audit,elapsedMs:performance.now()-start});
+    assert.ok(audit.some(e=>e.phase==='cleanup'&&e.outcome==='succeeded'), JSON.stringify({report,audit}));
     rows.push({client:client.id,case:name,testOnlyBlockingProxySha256:fileIdentity(wrapper),realServiceProbe:true,partialRestoreInput:true,publicationPreserved:true,descendantsQuiescent:true});
   } finally {
     clearTimeout(watchdog);

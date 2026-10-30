@@ -43,6 +43,19 @@ cancellation state. Long-running work SHALL check it and stop at the next safe p
 - **WHEN** a command runs with `--cancel-file stop.flag` and the file `stop.flag` is created
 - **THEN** the command stops and exits with 130
 
+#### Scenario: GC cancel file during idle stdin
+
+- **WHEN** a Wasm-GC command has a selected cancel file and waits for stdin that remains open without bytes
+- **THEN** the host polls the registered path during its bounded input waits, requests the same hosted stop and
+  finishes cleanup with one command-owned cancellation result and exit 130, without waiting for EOF
+- **AND** a stop observed by the host remains requested even if the marker is subsequently removed
+
+#### Scenario: GC registration capability is unavailable
+
+- **WHEN** a GC invocation selects a cancel file but its host does not support registration
+- **THEN** it refuses before command execution with a clear capability error and exit 2, preserving the existing
+  JSON failure schema when selected
+
 #### Scenario: Child process
 
 - **WHEN** SIGINT arrives while a metadata provider child process runs
@@ -58,6 +71,20 @@ request.
 
 - **WHEN** a command fails after its telemetry session and its log session have started
 - **THEN** the log session stops first, then the telemetry session, and the telemetry is flushed before exit
+
+#### Scenario: GC registration is cleared on every owned path
+
+- **WHEN** a GC invocation successfully registers its cancel file
+- **THEN** it attempts to clear that registration after success, failure, cancellation or a startup error, including
+  a stop before any hosted service starts
+- **AND** the `morphir_host_v1` response envelope, parent/worker messages and shared-buffer layout remain unchanged
+
+#### Scenario: GC registration cleanup fails
+
+- **WHEN** clearing a GC cancel-file registration fails after an otherwise successful command
+- **THEN** the existing stdout result remains a single document, stderr reports `cancellation.cancel_file_cleanup_failed`,
+  and the CLI exits with 1
+- **AND** a preceding command failure or cancellation retains its selected exit code if cleanup also fails
 
 #### Scenario: Stop step that hangs
 

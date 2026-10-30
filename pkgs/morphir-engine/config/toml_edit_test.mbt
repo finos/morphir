@@ -3,7 +3,7 @@
 fn edited(actual : @edit.Document, expected : String) -> Unit raise {
   assert_eq(actual.encode(), expected)
   assert_true(
-    @config.parse(actual.encode()).value == @config.parse(expected).value,
+    @config.parse(actual.encode()).value() == @config.parse(expected).value(),
   )
 }
 

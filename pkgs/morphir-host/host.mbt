@@ -93,7 +93,7 @@ pub fn Host::new(
 /// Host-owned tooling for pipelines. Acquisition and embedding remain provider capabilities.
 pub fn Host::toolchain_request(self : Host, request : Json) -> Json raise {
   if (self.cancelled)() {
-    raise @config.Invalid("Cancelled")
+    raise @platform.Interrupted
   }
   let provider = match self.toolchain {
     Some(provider) => provider
@@ -102,7 +102,7 @@ pub fn Host::toolchain_request(self : Host, request : Json) -> Json raise {
   (self.event)(Phase("toolchain"))
   let result = (provider.request)(request)
   if (self.cancelled)() {
-    raise @config.Invalid("Cancelled")
+    raise @platform.Interrupted
   }
   result
 }
@@ -115,11 +115,15 @@ pub(all) struct Snapshot {
 
 ///|
 fn configuration_path(path : String) -> Bool {
-  [
-    "morphir.toml", "morphir.yaml", "morphir.user.toml", "morphir.user.yaml", "config.toml",
-    "config.yaml", "config.user.toml", "config.user.yaml", "morphir.json", "morphir-workspace.json",
-    "morphir.config.scm",
-  ].contains(path.split("/").last().unwrap_or("").to_owned())
+  let name = path.split("/").last().unwrap_or("").to_owned()
+  name == "morphir.config.scm" ||
+  (
+    ["morphir", "config"].any(stem => name.has_prefix(stem + ".")) &&
+    [".toml", ".json", ".json5", ".yaml", ".yml"].any(extension => {
+      name.has_suffix(extension)
+    })
+  ) ||
+  name == "morphir-workspace.json"
 }
 
 ///|
@@ -131,7 +135,7 @@ pub fn Host::snapshot(self : Host) -> Snapshot raise {
   let mut bytes = 0
   fn walk(path : String, depth : Int32) -> Unit raise {
     if (self.cancelled)() {
-      raise @config.Invalid("Cancelled")
+      raise @platform.Interrupted
     }
     if depth > self.limits.max_depth {
       raise @config.Invalid("Directory depth limit exceeded")

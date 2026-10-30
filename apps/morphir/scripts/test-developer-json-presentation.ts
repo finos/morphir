@@ -241,7 +241,7 @@ try {
     'build:wasi': [['build', '--target', 'wasm']], 'build:browser': [['build', '--target', 'wasm-gc']],
     'build:js': [['build', '--target', 'js']], 'build:native': [['build', '--target', 'native', '--release']],
     test: [['test', '--target', 'wasm'], ['test', '--target', 'wasm-gc'], ['test', '--target', 'js'], ['test', '--target', 'native'], ['run', 'test:cli'], ['run', 'test:compiler']],
-    format: [['fmt']], 'lint:moonbit': [['fmt', '--check']], lint: [['run', 'lint:yaml'], ['run', 'lint:moonbit']],
+    format: [['fmt']], 'lint:moonbit': [['fmt', '--check']], lint: [['run', 'lint:yaml'], ['run', 'lint:moonbit'], ['run', 'lint:engine-boundaries']],
     validate: [['run', 'lint:yaml'], ['run', 'validate:packages']], 'list-tasks': [['tasks']], clean: [['clean']], 'lint:yaml': [],
   };
   for (const [task, expected] of Object.entries(tasks)) {

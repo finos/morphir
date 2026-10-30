@@ -160,8 +160,8 @@ and checked JSON export refuses their loss.
 Both channels admit four String methods from the pinned MoonBit core. They
 entered experimental first and were promoted to stable after the installed
 qualification below. The adapter
-supplies package `moonbitlang/core/builtin`, compiler/core `0.10.16+b1a0e846e`
-and core tree `1886b2f93eff7365ccdbaed2c13abd33858841f8`. Another package,
+supplies package `moonbitlang/core/builtin`, compiler/core `0.10.17+d971670cd`
+and core tree `eb321a18f7a33d37114546682a8d1cd6658afab8`. Another package,
 compiler or tree is refused, and source text cannot add a method.
 
 | Source call | Pinned signature | Canonical SDK value | Contract |
@@ -485,7 +485,7 @@ the original API's stage sequence is unchanged.
 ## Pins and acceptance
 
 The parser is `moonbitlang/parser@0.4.5`, lexer `moonbitlang/lexer@0.4.3`, and Ion
-is `moonrockz/ion@0.5.0`. Ion remains the preferred engine representation. Current
+is `moonrockz/ion@0.6.0`. Ion remains the preferred engine representation. Current
 Morphir JSON serialization remains supported and is checked in frontend tests.
 
 Run focused tests with:
@@ -498,7 +498,7 @@ moon test -p finos/morphir-moonbit-frontend --target all
 source and generated libraries in a private workspace using supplied SDK source,
 then compares their Boolean truth tables with independent expectations and Scheme
 results on JS, native, Wasm and Wasm GC, in debug and release modes. It uses compiler
-and core `0.10.16+b1a0e846e` and the SDK's pinned semantic bindings. It performs no
+and core `0.10.17+d971670cd` and the SDK's pinned semantic bindings. It performs no
 registry acquisition in the external workspace. The acceptance executable is a
 test fixture, not an engine integration API.
 

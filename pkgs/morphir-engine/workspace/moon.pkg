@@ -1,12 +1,20 @@
 import {
+  "moonrockz/moon-lander-config" @lander,
+  "moonrockz/moon-lander-config/conventions",
+  "moonrockz/moon-lander-config/profiles",
+  "moonrockz/moon-lander-config/parsers/json5",
+  "moonrockz/moon-lander-config/parsers/yaml",
+  "moonrockz/moon-lander-config/parsers/toml" @toml_format,
+  "moonrockz/ion/json" @ion_json,
   "finos/morphir-engine/config",
   "finos/morphir-engine/ids",
   "finos/morphir-toml-edit" @toml_edit,
-  "moonbitlang/core/json",
   "moonbitlang/core/debug",
 }
 
 import {
+  "moonbit-community/toml",
+  "moonbitlang/core/json",
   "finos/morphir-engine/workspace",
   "finos/morphir-engine/ids",
 } for "test"

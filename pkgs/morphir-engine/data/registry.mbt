@@ -38,7 +38,10 @@ pub fn Registry::new(
   })
   registry.register("ion-text", {
     decode: fn(source, limits) raise {
-      let value = @ion_text.read_ion(require_text(source.content)[:])
+      let value = @ion_text.read_ion(
+        require_text(source.content)[:],
+        fuel=Limited(@ion.Budget(128)),
+      )
       read_envelope(value, source.unit_id, limits)
     },
     encode: fn(unit, limits) raise {
@@ -52,7 +55,7 @@ pub fn Registry::new(
         Text(_) => raise Invalid("data.encoding_mismatch", "Expected bytes")
       }
       read_envelope(
-        @ion_binary.read_binary_value(bytes[:]),
+        @ion_binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128))),
         source.unit_id,
         limits,
       )
@@ -95,7 +98,8 @@ pub fn Registry::decode(
   } catch {
     Invalid(_, _) as error => raise error
     @wire.Invalid(code, detail) => raise Invalid(code, detail)
-    @ion.LimitExceeded(detail) => raise Invalid("data.tree_limit", detail)
+    @ion.FuelExhausted(..) as error =>
+      raise Invalid("data.tree_limit", error.message())
     @ion.Syntax(detail) | @ion.DataModel(detail) | @ion.Unsupported(detail) =>
       raise Invalid("data.decode_failed", detail)
     error =>
@@ -165,8 +169,13 @@ pub fn Registry::inspect_checkpoint(
       inspect_yaml_checkpoint(require_text(content), "workbench", self.limits)
     } else {
       let value = match (codec, content) {
-        ("ion-text", Text(text)) => @ion_text.read_ion(text[:])
-        ("ion-binary", Binary(bytes)) => @ion_binary.read_binary_value(bytes[:])
+        ("ion-text", Text(text)) =>
+          @ion_text.read_ion(text[:], fuel=Limited(@ion.Budget(128)))
+        ("ion-binary", Binary(bytes)) =>
+          @ion_binary.read_binary_value(
+            bytes[:],
+            fuel=Limited(@ion.Budget(128)),
+          )
         _ =>
           raise Invalid(
             "data.encoding_mismatch", "Expected a supported checkpoint codec and matching content",
@@ -180,7 +189,8 @@ pub fn Registry::inspect_checkpoint(
   } catch {
     Invalid(_, _) as error => raise error
     @wire.Invalid(code, detail) => raise Invalid(code, detail)
-    @ion.LimitExceeded(message) => raise Invalid("data.tree_limit", message)
+    @ion.FuelExhausted(..) as error =>
+      raise Invalid("data.tree_limit", error.message())
     @ion.Syntax(message)
     | @ion.DataModel(message)
     | @ion.Unsupported(message) => raise Invalid("data.decode_failed", message)

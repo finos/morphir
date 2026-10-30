@@ -95,7 +95,7 @@ process.stdout.write(stdout);process.stderr.write(result.stderr);process.exitCod
       const log=join(root,host+'-'+fault+'.jsonl');
       let result;
       try {
-        result=run(program!,[...prefix,'verify',model,'--suite',suite,'--execution-helper',wrapper,'--home',home,...dependencies,'--target','js','--cancel-file',cancelFile,'--log-file',log,'--log-format','json-lines','--json'],{expected:1,fault});
+        result=run(program!,[...prefix,'verify',model,'--suite',suite,'--execution-helper',wrapper,'--home',home,...dependencies,'--target','js','--cancel-file',cancelFile,'--log-file',log,'--log-format','json-lines','--json'],{expected:fault === 'cancelled' ? 130 : 1,fault});
       } finally {
         if(fault==='helper-sigkill'&&existsSync(pidFile))orphanPid=Number(readFileSync(pidFile,'utf8'));
       }

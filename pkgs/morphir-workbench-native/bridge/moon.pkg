@@ -2,6 +2,7 @@ supported_targets = "native"
 
 import {
   "finos/morphir-workbench-native" @native,
+  "moonrockz/moon-lander-logging" @logging,
   "finos/morphir-workbench-native/workspace",
   "finos/morphir-workbench-native-session" @session,
   "finos/morphir-workbench-native-session/request",

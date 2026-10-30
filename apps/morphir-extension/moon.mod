@@ -17,7 +17,7 @@ import {
   "finos/morphir-moonbit-frontend@0.1.0",
   "finos/morphir-ir@0.1.0",
   "finos/morphir-metadata@0.1.0",
-  "moonrockz/ion@0.5.0",
+  "moonrockz/ion@0.6.0",
   "moonbitlang/async@0.22.4",
   "moonbitlang/x@0.5.5",
 }

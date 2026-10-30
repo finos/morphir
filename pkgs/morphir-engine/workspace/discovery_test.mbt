@@ -100,3 +100,40 @@ test "discovery protocol accepts legacy numeric requests and emits semver snapsh
   guard workspace.to_json() is Object(fields) else { fail("snapshot") }
   assert_eq(fields.get("protocolVersion"), Some(Json::string("0.1.0")))
 }
+
+///|
+test "protocol machine mounts use format layers without changing the wire request" {
+  let workspace = @workspace.discover_request({
+    "protocolVersion": "0.1.0",
+    "developmentRoot": {
+      "entries": {
+        "morphir.json5": { "kind": "file", "text": "{project:{name:'Shop'}}" },
+      },
+    },
+    "systemConfig": {
+      "entries": {
+        "morphir.json": {
+          "kind": "file",
+          "text": "{custom:{system:true,layer:'json'}}",
+        },
+        "morphir.yaml": { "kind": "file", "text": "custom:\n  layer: yaml\n" },
+      },
+    },
+    "morphirHome": {
+      "entries": {
+        "morphir.yml": {
+          "kind": "file",
+          "text": "custom:\n  global: true\n  layer: global\n",
+        },
+      },
+    },
+  })
+  assert_eq(workspace.projects[0].name, "Shop")
+  assert_true(workspace.document.boolean("custom.system", false))
+  assert_true(workspace.document.boolean("custom.global", false))
+  assert_eq(workspace.document.text("custom.layer", ""), "global")
+  assert_eq(
+    workspace.document.provenance.get("custom.layer"),
+    Some("morphir.yml"),
+  )
+}

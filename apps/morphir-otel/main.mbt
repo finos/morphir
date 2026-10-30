@@ -91,7 +91,7 @@ async fn adapter_run(
     }
     buffer.write_bytes(bytes[:])
   }
-  let records = @binary.read_binary(buffer.to_bytes()[:])
+  let records = @binary.read_binary(buffer.to_bytes()[:], fuel=Limited(@ion.Budget(128)))
   guard records.length() <= 2049 else { raise Invalid("record limit") }
   let scope = @common.InstrumentationScope::builder("finos/morphir-execution")
     .with_version("0.1.0")

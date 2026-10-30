@@ -54,7 +54,7 @@ pub extend DiagnosticError with @debug.Debug::{to_repr}
 
 ///|
 fn record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::new(Struct(fields.map(p => @ion.Field::new(p.0, p.1))))
+  @ion.Ion(@ion.IonValueKind::Struct(fields.map(p => @ion.field(p.0, p.1))))
 }
 
 ///|
@@ -77,7 +77,7 @@ pub fn Warning::to_ion(self : Warning) -> @ion.IonValue {
             (
               "source",
               match loc.source {
-                None => @ion.IonValue::new(@ion.Null(@ion.Null))
+                None => @ion.Ion(@ion.IonValueKind::Null(@ion.Null))
                 Some(s) =>
                   record([
                     ("start_line", @ion.IonValue::int(s.start_line)),
@@ -91,7 +91,7 @@ pub fn Warning::to_ion(self : Warning) -> @ion.IonValue {
         }),
       ),
     ),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_warning"))
+  ]).with_annotation(@ion.symbol("morphir_warning"))
 }
 
 ///|

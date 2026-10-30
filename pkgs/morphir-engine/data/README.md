@@ -48,7 +48,7 @@ independent of the Ion encoding, envelope profile and current semantic version.
 The caller must retain original bytes separately. This result does not identify
 a provider response as an original file or grant a retained-model handle.
 
-The module depends on the exact registry release `moonrockz/ion@0.5.0`, using its
+The module depends on the exact registry release `moonrockz/ion@0.6.0`, using its
 synchronous annotated value, text and binary packages. Async streaming is not
 part of this portable callback contract.
 

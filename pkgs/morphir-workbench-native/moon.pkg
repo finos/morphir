@@ -1,4 +1,8 @@
+supported_targets = "native"
+
 import {
+  "moonrockz/moon-lander-mediator/async" @mediator_async,
+  "moonrockz/moon-lander-logging" @logging,
   "finos/morphir-workbench-native-session/response" @reply,
   "finos/morphir-workbench" @pipeline,
   "finos/morphir-workbench/executions",

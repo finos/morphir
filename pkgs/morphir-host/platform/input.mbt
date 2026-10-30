@@ -26,14 +26,14 @@ pub fn read_input(path : String, limit : Int32) -> Bytes raise {
     let mut total = 0
     while true {
       if interruption_requested() {
-        raise IOError("Cancelled")
+        raise Interrupted
       }
       let capacity = (limit - total + 1).min(65536)
       let buffer = FixedArray::make(capacity, b'\x00')
       let length = stdin_read(buffer, capacity)
       if length < 0 || length > capacity {
         if interruption_requested() {
-          raise IOError("Cancelled")
+          raise Interrupted
         }
         raise IOError("input.read_failed")
       }

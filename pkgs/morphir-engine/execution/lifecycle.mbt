@@ -121,7 +121,11 @@ pub fn Report::to_ion(self : Report) -> @ion.IonValue raise {
     (
       "extensions",
       match self.extensions {
-        Some(bytes) => @ion_binary.read_binary_value(bytes[:])
+        Some(bytes) =>
+          @ion_binary.read_binary_value(
+            bytes[:],
+            fuel=Limited(@ion.Budget(128)),
+          )
         None => @ion.IonValue::untyped_null()
       },
     ),

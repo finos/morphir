@@ -56,8 +56,8 @@ fn validate_project_configuration(
       "Only single-file JSON IR output is currently supported",
     )
   }
-  let version = match effective.get("ir.format_version") {
-    Some(@toml.TomlInteger(n)) if n >= 1 && n <= 4 =>
+  let version = match effective.json("ir.format_version") {
+    Some(Number(n, ..)) if n >= 1.0 && n <= 4.0 && n.to_int().to_double() == n =>
       @version.FormatVersion::baseline(n.to_int().reinterpret_as_uint())
     None => @version.FormatVersion::baseline(4U)
     _ =>

@@ -72,7 +72,7 @@ async test "a file picker returning after navigation cannot open its path" {
     let opening = files_frame("session.open")
     let opened = files_reply(
       opening,
-      owner.request(opening, caller, async fn() { None }),
+      owner.request(opening, caller, fn() { None }),
     )
     guard opened["sessionId"] is String(id) else { abort("session") }
     let entered = Ref(false)

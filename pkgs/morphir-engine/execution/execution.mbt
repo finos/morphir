@@ -208,9 +208,50 @@ pub fn run_report(
   cancelled~ : () -> Bool = fn() { false },
   comparison~ : @protocol.ComparisonPolicy = @protocol.Exact,
 ) -> Report raise {
+  run_report_inner(
+    plan,
+    Ready(provider),
+    evaluator~,
+    observer~,
+    cancelled~,
+    comparison~,
+  )
+}
+
+///|
+/// Produce the existing terminal report when cancellation precedes provider
+/// capability discovery. No executable storage or provider is acquired.
+pub fn cancelled_report(
+  plan : Plan,
+  evaluator~ : Evaluator? = None,
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  comparison~ : @protocol.ComparisonPolicy = @protocol.Exact,
+) -> Report raise {
+  run_report_inner(plan, Cancelled, evaluator~, observer~, comparison~)
+}
+
+///|
+priv enum ExecutionAccess {
+  Ready(Provider)
+  Cancelled
+}
+
+///|
+fn run_report_inner(
+  plan : Plan,
+  access : ExecutionAccess,
+  evaluator~ : Evaluator? = None,
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  cancelled~ : () -> Bool = fn() { false },
+  comparison~ : @protocol.ComparisonPolicy = @protocol.Exact,
+) -> Report raise {
   let observer = observer.isolated(@observe.Health::new())
   comparison.validate()
-  if !provider.targets.contains(plan.target) {
+  let targets = match access {
+    Ready(provider) => provider.targets
+    Cancelled => [plan.target]
+  }
+  if !targets.contains(plan.target) {
     raise @protocol.Invalid("execution.provider_target")
   }
   let frozen = @protocol.Suite::decode(
@@ -227,7 +268,7 @@ pub fn run_report(
     frozen_unit,
     frozen,
     target=plan.target,
-    available_targets=provider.targets,
+    available_targets=targets,
   )
   if frozen_plan.library.artifacts != plan.library.artifacts ||
     frozen_plan.driver != plan.driver {
@@ -245,7 +286,7 @@ pub fn run_report(
   let mut failure : Failure? = None
   let mut phase = "acquire"
   fn check() -> Unit raise {
-    if cancelled() {
+    if access is Cancelled || cancelled() {
       raise @protocol.Invalid("Cancelled")
     }
     if @data.Registry::new().encode("ion-binary", plan.unit) != source ||
@@ -263,7 +304,10 @@ pub fn run_report(
     let mut cause : Error? = None
     try {
       check()
-      let lease = (provider.acquire)()
+      let lease = match access {
+        Ready(provider) => (provider.acquire)()
+        Cancelled => raise @protocol.Invalid("Cancelled")
+      }
       session = Some(lease)
       if lease.id == "" {
         raise @protocol.Invalid("execution.invalid_lease")

@@ -29,7 +29,15 @@ session and raw request/reply codecs. Only trusted host callbacks supply caller
 context, the executable and picker results. It revalidates page/session authority
 after awaited cleanup and selection. Native errors use explicit stage-based
 effects and fixed messages; workspace owner failures are conservatively unknown.
-The internal `request` helpers remain for existing CEF-free service acceptance;
+Execution paths are decoded into closed requests and sent through Moon-Lander's async mediator.
+Session and execution replies retain their current shapes. Submission still acknowledges owner acceptance
+and schedules the bounded worker; it does not wait for the child result. The service request methods and
+trusted execution-factory callback are async so callers compose them in the existing task group.
+The bridge rechecks trusted page authority after awaiting a service reply. If dispatch throws after it may
+have accepted work, the bridge reports unknown effect; an explicit owner refusal still supplies its existing
+no-effect reply. No mediator or lifecycle fields enter the native frames.
+
+The internal async `request` helpers remain for existing CEF-free service acceptance;
 they are not the renderer transport. Terminal budgets include the complete native
 reply wrapper, and a workspace grant is validated before replacing the old one.
 

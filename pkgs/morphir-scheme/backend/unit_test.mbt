@@ -1,7 +1,7 @@
 ///|
 fn ion_record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::new(
-    @ion.Struct(fields.map(pair => @ion.Field::new(pair.0, pair.1))),
+  @ion.Ion(
+    @ion.IonValueKind::Struct(fields.map(pair => @ion.field(pair.0, pair.1))),
   )
 }
 
@@ -151,10 +151,10 @@ fn sample_unit() -> @backend.Input raise {
         data: ion_record([("nodes", @ion.IonValue::list([]))]),
       },
     ],
-    annotations: [@ion.SymbolToken::new("morphir_pipeline")],
+    annotations: [@ion.symbol("morphir_pipeline")],
     provenance: [
       ion_record([("frontend", @ion.IonValue::string("test-v1"))]).with_annotation(
-        @ion.SymbolToken::new("morphir_test_frontend"),
+        @ion.symbol("morphir_test_frontend"),
       ),
     ],
   }

@@ -1,3 +1,4 @@
+import {cliArtifact} from './artifact.ts';
 /** Actual installed SDK producer -> authenticated Rust host -> primary CLI ->
  * current ContentPublisher. Expected bytes predate these CLI observations. */
 import assert from 'node:assert/strict';
@@ -13,7 +14,7 @@ const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const build=resolve(process.env.MORPHIR_HEADLESS_BUILD??join(repo,'_build'));
 const target=process.argv[2]??process.env.MORPHIR_HEADLESS_TARGET??'js';
 const profile=process.env.MORPHIR_HEADLESS_PROFILE??'debug';
-const binary=resolve(process.env.MORPHIR_HEADLESS_BINARY??join(build,target,profile,'build/morphir/morphir',target==='native'?'morphir.exe':target==='js'?'morphir.js':'morphir.wasm'));
+const binary=resolve(process.env.MORPHIR_HEADLESS_BINARY??cliArtifact(build, target, profile));
 const launcher=resolve(process.env.MORPHIR_HEADLESS_LAUNCHER??join(repo,'apps/morphir/bin/morphir.js'));
 const helper=resolve(process.env.MORPHIR_TRANSFER_HELPER??join(repo,'apps/morphir/build-provider/transfers.mjs'));
 const connectedHelper=resolve(process.env.MORPHIR_CONNECTED_HELPER??join(repo,'apps/morphir/build-provider/connected.mjs'));

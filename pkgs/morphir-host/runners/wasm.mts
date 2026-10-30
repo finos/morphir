@@ -3,6 +3,7 @@ import { workbenchError } from '../../../types/data.ts';
 import * as fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { isAbsolute } from 'node:path';
 import { terminalStdinRead, terminalWorker } from './terminal-worker.mts';
 
 // Explicit runner for the CLI's WASI and WASM-GC artifacts.
@@ -35,12 +36,35 @@ if (!imports.some(i => i.module === 'morphir_host_v1')) {
   const instance = await WebAssembly.instantiate(module, wasi.getImportObject() as WebAssembly.Imports);
   process.exitCode = wasi.start(instance);
 } else {
+  let cancelFile = '';
+  const fileStopRequested = () => {
+    if (!cancelFile) return false;
+    let requested = false;
+    try { fs.lstatSync(cancelFile); requested = true; }
+    catch (cause) {
+      const code = workbenchError(cause).code;
+      requested = code !== 'ENOENT' && code !== 'ENOTDIR';
+    }
+    if (requested && interrupted) Atomics.compareExchange(interrupted, 0, 0, 1);
+    return requested;
+  };
+  // Commands own ordinary cancel-file checkpoints and their result schemas.
+  // Only a host-owned stdin wait needs the registered path as an extra probe.
+  // That probe retains an observed request in the same interruption flag.
+  const stopRequested = () => !!interrupted && Atomics.load(interrupted, 0) !== 0;
   const dispatch = (op: string, a: string, b: string) => {
     switch (op) {
       case 'bytes_supported': return true;
       case 'interruption_supported': return !!interrupted;
-      case 'interruption_requested': return !!interrupted && Atomics.load(interrupted, 0) !== 0;
+      case 'interruption_requested': return stopRequested();
+      case 'register_cancel_file': {
+        if (b !== '' || a.includes('\0') || (a !== '' && !isAbsolute(a))) throw new Error('cancellation.invalid_cancel_file');
+        if (a !== '' && !interrupted) throw new Error('cancellation.cancel_file_registration_unavailable');
+        cancelFile = a;
+        return true;
+      }
       case 'monotonic_seconds': return Number(process.hrtime.bigint()) / 1e9;
+      case 'utc_milliseconds': return Date.now();
       case 'read_input': {
         const limit = Number(b);
         if (!Number.isInteger(limit) || limit < 1 || limit > 16777216) throw new Error('input.invalid_limit');
@@ -54,12 +78,12 @@ if (!imports.some(i => i.module === 'morphir_host_v1')) {
           const chunks: Buffer[] = [];
           let total = 0;
           for (;;) {
-            if (interrupted && Atomics.load(interrupted, 0) !== 0) throw new Error('Cancelled');
+            if (stopRequested()) throw new Error('Cancelled');
             const buffer = Buffer.alloc(Math.min(65536, limit - total + 1));
             const count = a === '-'
-              ? terminalStdinRead(buffer, buffer.length) ?? fs.readSync(fd, buffer, 0, buffer.length, null)
+              ? terminalStdinRead(buffer, buffer.length, fileStopRequested) ?? fs.readSync(fd, buffer, 0, buffer.length, null)
               : fs.readSync(fd, buffer, 0, buffer.length, null);
-            if (count < 0) throw new Error(interrupted && Atomics.load(interrupted, 0) ? 'Cancelled' : 'input.read_failed');
+            if (count < 0) throw new Error(stopRequested() ? 'Cancelled' : 'input.read_failed');
             if (!count) break;
             total += count;
             if (total > limit) throw new Error('input.limit');

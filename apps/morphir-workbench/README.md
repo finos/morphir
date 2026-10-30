@@ -55,6 +55,11 @@ returns to the workspace that was open and says why; **Stop waiting** does the s
 when a browser does not report a cancelled picker. Examples open in their own
 workspaces and stay separate from Recent workspaces.
 
+Browser folder import preserves the existing Elm-project response for a lone legacy `morphir.json` with
+`name`, `sourceDirectory` and `exposedModules`. It still selects Elm sources and maps them under `src/`.
+Modern JSON with a `project` or `workspace` table, and folders combining JSON with YAML or TOML primaries,
+use workspace import. That path preserves original file paths and applies the shared configuration layers.
+
 The header's workspace picker switches workspaces. Each open workspace keeps its
 drafts, selection, filters, sections, layout, revisions and tool panel. Switching
 never cancels or releases work: a reply for a workspace that is not active changes
@@ -166,6 +171,18 @@ returned values; they are not inferred source types. Editing keeps earlier
 results visible but disables their source links and marks until another run.
 Runtime failures keep the completed prefix; a value without a portable
 representation keeps its Scheme preview and an explicit projection failure.
+
+Use **Export Jupyter** to download the open worksheet with results from its current revision. After editing,
+export saves source until you run the worksheet again. **Export DIB (source only)** always saves forms and
+Markdown comment blocks without results. Both actions use the same `morphir/worksheet-notebook` 0.1.0 mapping
+as `morphir notebook export`; Jupyter includes Scheme cell metadata, text previews, typed Morphir observations
+and error outputs.
+
+**Open notebook…** accepts `.ipynb` and `.dib` files up to 8 MiB and replaces the worksheet draft only after
+validation. Scheme cells become forms and Markdown becomes whole-line `;;` comments. Other-language and raw
+cells are skipped with named warnings in the Output panel. Invalid files, a cancelled picker or edits made
+while the picker is open preserve the draft. Imported results are discarded. Conversion runs in the browser
+and adds no worker or connected protocol messages.
 
 Worksheets run in a local browser worker in standalone, connected and desktop
 shells. Cancellation stops that owned worker and retains a captured cancellation
@@ -889,7 +906,7 @@ shared MCK client qualification is also a separate gate.
 
 ## Projects
 
-A workspace is a bounded file tree, including its `morphir.toml` configuration.
+A workspace is a bounded file tree, including its Morphir configuration.
 The shared workspace engine discovers its projects. Project identity is the normalized
 path from the workspace root, with `.` naming a root project; two projects can use the
 same language. A virtual workspace can contain only members, while a root project can
@@ -897,9 +914,19 @@ also have members. The innermost project owning the open file is current.
 
 Each project chooses its language, source profile and generation settings in its own
 configuration. Workspace defaults apply when a project has no override. Settings shows
-effective values and their origins; clearing an override restores inheritance. Legacy
-`morphir.json` projects stay readable and offer an explicit conversion to TOML before
-settings edits.
+effective values and their origins; clearing a TOML override restores the lower layers.
+JSON/JSON5, YAML/YML and TOML primaries merge in that order. Settings creates a TOML
+counterpart beside a lower-format primary and preserves the original file. Legacy
+`morphir.json` projects also offer an explicit conversion to TOML.
+
+Configuration profiles use the same loader as the CLI. Base `profiles.active` or
+`profiles.default` controls activate adjacent `morphir.profile.<name>.<ext>` files.
+Profiles follow member primaries and precede user overrides. An edit to a primary can
+therefore remain overridden by an active profile; the displayed origin identifies that
+profile. User overrides can set the final value. Profile includes, groups, invalid
+controls and same-group ambiguities use the shared validation. Browser discovery stays
+inside the mounted tree; no fields are added to the worker protocol. See the CLI's
+[configuration profiles](../morphir/README.md#configuration-profiles) for precedence.
 
 ### Project explorer
 
@@ -974,6 +1001,10 @@ flag. Invalid evidence rejects; history retains at most 50 call previews with
 Input errors, stale results and late replies keep their existing handling.
 
 The browser and packaged Proton share the same component and acceptance workflow.
+Target selection waits for the project's applied settings before compiling. The
+Elm-to-MoonBit case uses a concrete `Int` value and checks for generated `.mbt`
+files; the polymorphic starter requires specialization and is not a successful
+generation fixture.
 Tests exercise actual typed values/SDK errors and explicit failure, cleanup and
 cancellation evidence fixtures. Connected v1 has no new execution or cancellation RPC;
 local cancellation still stops/discards the worker operation. Native provider

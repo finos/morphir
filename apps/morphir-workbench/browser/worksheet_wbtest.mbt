@@ -1,4 +1,58 @@
 ///|
+test "notebook opening preserves invalid and superseded worksheet drafts" {
+  let model = {
+    ..ready_model(language="scheme"),
+    worksheet: true,
+    worksheet_source: "(+ 1 2)",
+  }
+  let source = notebook_source(model)
+  let invalid = send(model, [NotebookPicked(source, "{bad")])
+  assert_eq(invalid.worksheet_source, model.worksheet_source)
+  assert_eq(invalid.worksheet_revision, model.worksheet_revision)
+  let cancelled = send(model, [NotebookPicked(source, "{\"cancelled\":true}")])
+  assert_eq(cancelled.worksheet_source, model.worksheet_source)
+  let notebook : Json = {
+    "nbformat": 4,
+    "nbformat_minor": 4,
+    "metadata": { "language_info": { "name": "scheme" } },
+    "cells": [
+      {
+        "cell_type": "code",
+        "metadata": {},
+        "source": "42",
+        "outputs": [],
+        "execution_count": Json::null(),
+      },
+      {
+        "cell_type": "code",
+        "metadata": { "language": "python" },
+        "source": "print(1)",
+        "outputs": [],
+        "execution_count": Json::null(),
+      },
+      { "cell_type": "markdown", "metadata": {}, "source": "# End" },
+    ],
+  }
+  let reply = (
+    {
+      "filename": "mixed.ipynb",
+      "format": "ipynb",
+      "content": notebook.stringify(),
+    } : Json).stringify()
+  let opened = send(model, [NotebookPicked(source, reply)])
+  assert_eq(opened.worksheet_source, "42\n\n;; # End\n")
+  assert_eq(opened.worksheet_revision, model.worksheet_revision + 1)
+  assert_true(opened.status.contains("skipped 1 cells"))
+  let edited = send(model, [
+    Source("keep newer edit"),
+    NotebookPicked(source, reply),
+  ])
+  assert_eq(edited.worksheet_source, "keep newer edit")
+  let busy = send({ ..model, busy: true, }, [NotebookPicked(source, reply)])
+  assert_eq(busy.worksheet_source, model.worksheet_source)
+}
+
+///|
 test "worksheet capture survives edits while stale source navigation is refused" {
   let started = send(
     {

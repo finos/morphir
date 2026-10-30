@@ -57,7 +57,7 @@ fn decode_ion(request : Json) -> Json raise {
   if ion_shape_refusal(bytes[:]) is Some(refused) {
     return refused
   }
-  let values = @ion_binary.read_binary(bytes[:])
+  let values = @ion_binary.read_binary(bytes[:], fuel=Limited(@ion.Budget(128)))
   let text = match ion_text_within(values, ion_text_limit) {
     Written(text) => text
     OverBudget(_) =>

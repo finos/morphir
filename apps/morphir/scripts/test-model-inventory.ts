@@ -1,3 +1,4 @@
+import {cliArtifact} from './artifact.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -11,7 +12,7 @@ const target = process.argv[2] ?? 'js';
 assert.ok(['js', 'native', 'wasm', 'wasm-gc'].includes(target));
 const build = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? `.dev/build-model-cli`);
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
+const binary = process.env.MORPHIR_HEADLESS_BINARY ?? cliArtifact(build, target, profile);
 const runner = join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
 const root = mkdtempSync(join(tmpdir(), 'morphir-model-inventory-'));
 const env = headlessEnvironment(join(root, 'cli-environment'), target === 'native' ? {PATH: ''} : {});
@@ -26,7 +27,7 @@ function tree(name: string) {
     cpSync(join(fixture, file.path), join(root, name, file.path));
   }
 }
-function invoke(path: string, ok = false, extra: string[] = [], trace: boolean | 'cancel' = false) {
+function invoke(path: string, ok = false, extra: string[] = [], trace: boolean | 'cancel' | 'terminate' = false) {
   const args = ['model', extra.length ? 'export-original' : 'inspect', path, '--json', ...extra];
   const prefix = target === 'native' ? [] : target === 'js' ? [binary] : [runner, binary];
   const result = spawnSync(target === 'native' ? binary : node, [...prefix, ...args], {
@@ -36,7 +37,7 @@ function invoke(path: string, ok = false, extra: string[] = [], trace: boolean |
   });
   assert.equal(result.error, undefined);
   assert.equal(result.signal, null);
-  assert.equal(result.status, trace === 'cancel' ? 130 : ok ? 0 : 2, `${path}: ${result.stdout}\n${result.stderr}`);
+  assert.equal(result.status, trace === 'cancel' ? 130 : trace === 'terminate' ? 143 : ok ? 0 : 2, `${path}: ${result.stdout}\n${result.stderr}`);
   return JSON.parse(result.stdout);
 }
 try {
@@ -83,13 +84,21 @@ try {
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'trace.json'), 'utf8')), {closes: 1});
     writeFileSync(join(root, 'trace.mjs'), `
       import fs from 'node:fs'; const open=fs.opendirSync; let closes=0;
-      globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));Atomics.store(globalThis.__morphirInterrupt,0,1);
+      globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));
       fs.opendirSync=(...args)=>{const d=open(...args),close=d.closeSync.bind(d);
-        d.closeSync=()=>{closes++;return close()};return d};
+        d.closeSync=()=>{closes++;return close()};Atomics.store(globalThis.__morphirInterrupt,0,1);return d};
       process.on('exit',()=>fs.writeFileSync(${JSON.stringify(join(root, 'trace.json'))},JSON.stringify({closes})));
     `);
     assert.equal(invoke('small', false, [], 'cancel').code, 'execution.cancelled');
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'trace.json'), 'utf8')), {closes: 1});
+    // The enclosing owner already retained its signal before loading the CLI.
+    // No hosted service or command has run when the public driver first polls.
+    for (const [signal, expected] of [[1, 'cancel'], [2, 'terminate']] as const) {
+      writeFileSync(join(root, 'trace.mjs'), `
+        globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));Atomics.store(globalThis.__morphirInterrupt,0,${signal});
+      `);
+      assert.equal(invoke('small', false, [], expected).code, 'execution.cancelled');
+    }
   }
 
   mkdirSync(join(root, 'files'));

@@ -4,71 +4,139 @@ pub(all) suberror Invalid {
 }
 
 ///|
+/// Values and merge decisions belong to Moon-Lander. The origin projection keeps
+/// Morphir's existing path strings at command and Workbench boundaries.
 pub(all) struct Document {
-  value : @toml.TomlValue
+  priv configuration : @lander.Config
   provenance : Map[String, String]
 }
 
 ///|
-fn leaves(
-  value : @toml.TomlValue,
-  path : String,
-  origin : String,
-  out : Map[String, String],
-) -> Unit {
-  match value {
-    TomlTable(fields) =>
-      for key, value in fields {
-        leaves(
-          value,
-          if path == "" {
-            key
-          } else {
-            path + "." + key
-          },
-          origin,
-          out,
-        )
-      }
-    _ => out[path] = origin
+pub fn from_framework(configuration : @lander.Config) -> Document {
+  let provenance = Map([])
+  for (key, origins) in configuration.provenance() {
+    if origins.last() is Some(origin) {
+      provenance[key.to_string()] = origin.location.unwrap_or(origin.source)
+    }
   }
+  { configuration, provenance, }
+}
+
+///|
+pub fn Document::framework(self : Document) -> @lander.Config {
+  self.configuration
+}
+
+///|
+/// Project already resolved host documents into framework file sources without
+/// losing a winning leaf's original file. No merge decision is repeated here.
+pub fn Document::sources(
+  self : Document,
+  role : @lander.FileRole,
+  priority : Int32,
+  fallback : String,
+) -> Array[@lander.ConfigSource] raise @lander.ConfigError {
+  let groups : Map[String, Array[(String, @lander.ConfigValue)]] = Map([])
+  for (key, _) in self.configuration.provenance() {
+    if self.configuration.get(key) is Some(value) {
+      let path = self.provenance.get(key.to_string()).unwrap_or(fallback)
+      let pairs = groups.get(path).unwrap_or([])
+      pairs.push((key.to_string(), value))
+      groups[path] = pairs
+    }
+  }
+  fn empty_tables(
+    value : @ion.Ion,
+    names : Array[String],
+  ) -> Unit raise @lander.ConfigError {
+    if value.kind() is Struct(fields) {
+      if fields.is_empty() && !names.is_empty() {
+        let pairs = groups.get(fallback).unwrap_or([])
+        pairs.push(
+          (@lander.KeyPath::from_names(names).to_string(), @lander.fields([])),
+        )
+        groups[fallback] = pairs
+      } else {
+        for field in fields {
+          empty_tables(field.value(), [..names, field.name().text().unwrap()])
+        }
+      }
+    }
+  }
+  empty_tables(self.value().to_ion(), [])
+  let names = groups.keys().collect()
+  names.sort()
+  names.map(path => {
+    let value = @lander.build([@lander.ConfigSource::overrides(groups[path])]).value()
+    @lander.ConfigSource::parsed_file(path, value, role~, priority~)
+  })
+}
+
+///|
+pub fn Document::value(self : Document) -> @lander.ConfigValue {
+  self.configuration.value()
 }
 
 ///|
 pub fn parse(text : String, origin~ : String = "<memory>") -> Document raise {
-  let value = @toml.parse(text) catch {
-    error =>
-      raise Invalid("Invalid TOML at " + origin + ": " + error.to_string())
+  from_framework(
+    @lander.build([
+      @lander.ConfigSource::parsed_file(
+        origin,
+        @lander_toml.parse(text, origin~),
+      ),
+    ]),
+  ) catch {
+    error => raise Invalid(error.message())
   }
-  let provenance = Map([])
-  leaves(value, "", origin, provenance)
-  { value, provenance, }
 }
 
 ///|
 pub fn empty() -> Document {
-  { value: @toml.TomlTable(Map([])), provenance: Map([]), }
-}
-
-///|
-pub fn Document::encode(self : Document) -> String {
-  self.value.to_string()
-}
-
-///|
-pub fn Document::get(self : Document, path : String) -> @toml.TomlValue? {
-  let mut value = self.value
-  for part in path.split(".") {
-    match value {
-      TomlTable(fields) =>
-        match fields.get(part.to_owned()) {
-          Some(next) => value = next
-          None => return None
-        }
-      _ => return None
-    }
+  from_framework(@lander.build([])) catch {
+    _ => abort("empty configuration")
   }
-  Some(value)
+}
+
+///|
+pub fn from_json(
+  value : Json,
+  origin~ : String = "<overlay>",
+) -> Document raise {
+  from_framework(
+    @lander.build([
+      @lander.ConfigSource::parsed_file(
+        origin,
+        @lander.ConfigValue::from_json(value, origin~),
+      ),
+    ]),
+  ) catch {
+    error => raise Invalid(error.message())
+  }
+}
+
+///|
+pub fn Document::get(self : Document, path : String) -> @ion.Ion? {
+  let key = @lander.KeyPath::parse(path) catch { _ => return None }
+  self.configuration.get(key).map(value => value.to_ion())
+}
+
+///|
+pub fn Document::json(self : Document, path : String) -> Json? raise {
+  let value = if path == "" {
+    Some(self.value().to_ion())
+  } else {
+    self.get(path)
+  }
+  value.map(value => @ion_json.to_json(value)) catch {
+    error =>
+      raise Invalid(
+        "Cannot represent configuration as JSON at " +
+        path +
+        ": " +
+        error.message(),
+      )
+  }
 }
 
 ///|
@@ -79,8 +147,11 @@ pub fn Document::text(
 ) -> String raise {
   match self.get(path) {
     None => fallback
-    Some(TomlString(value)) => value
-    _ => raise Invalid("Expected string at " + path)
+    Some(value) =>
+      match value.kind() {
+        String(text) => text
+        _ => raise Invalid("Expected string at " + path)
+      }
   }
 }
 
@@ -88,213 +159,18 @@ pub fn Document::text(
 pub fn Document::strings(self : Document, path : String) -> Array[String] raise {
   match self.get(path) {
     None => []
-    Some(TomlArray(values)) =>
-      values.map(fn(value) raise {
-        match value {
-          TomlString(value) => value
-          _ => raise Invalid("Expected string array at " + path)
-        }
-      })
-    _ => raise Invalid("Expected array at " + path)
-  }
-}
-
-///|
-fn secret(fields : Map[String, @toml.TomlValue]) -> Bool {
-  fields.length() == 1 &&
-  ["env", "file", "command", "keyring"].any(key => fields.contains(key))
-}
-
-///|
-fn merge_value(
-  base : @toml.TomlValue,
-  overlay : @toml.TomlValue,
-) -> @toml.TomlValue {
-  match (base, overlay) {
-    (TomlTable(a), TomlTable(b)) if !secret(a) && !secret(b) => {
-      let fields = a.copy()
-      for key, value in b {
-        fields[key] = match a.get(key) {
-          Some(old) => merge_value(old, value)
-          None => value
-        }
-      }
-      @toml.TomlTable(fields)
-    }
-    _ => overlay
-  }
-}
-
-///|
-pub fn merge(base : Document, overlay : Document) -> Document {
-  let value = merge_value(base.value, overlay.value)
-  let provenance = base.provenance.copy()
-  // Remove stale origins below replaced arrays, scalars and secret references.
-  for path, origin in overlay.provenance {
-    let keys = provenance.keys().collect()
-    for key in keys {
-      if key == path || key.has_prefix(path + ".") || path.has_prefix(key + ".") {
-        provenance.remove(key)
-      }
-    }
-    provenance[path] = origin
-  }
-  // Only retain paths present in the merged tree.
-  let present = Map([])
-  leaves(value, "", "", present)
-  for key in provenance.keys().collect() {
-    if !present.contains(key) {
-      provenance.remove(key)
-    }
-  }
-  { value, provenance, }
-}
-
-///|
-fn json_value(value : Json) -> @toml.TomlValue raise {
-  match value {
-    String(s) => @toml.TomlString(s)
-    True => @toml.TomlBoolean(true)
-    False => @toml.TomlBoolean(false)
-    Number(n, repr~) =>
-      match repr {
-        Some(s) =>
-          try {
-            match @toml.parse("value = " + s) {
-              TomlTable(t) => t["value"]
-              _ => @toml.TomlFloat(n)
+    Some(value) =>
+      match value.kind() {
+        List(items) =>
+          items.map(item => {
+            match item.kind() {
+              String(text) => text
+              _ => raise Invalid("Expected string array at " + path)
             }
-          } catch {
-            _ => @toml.TomlFloat(n)
-          }
-        None => @toml.TomlFloat(n)
+          })
+        _ => raise Invalid("Expected array at " + path)
       }
-    Array(items) => @toml.TomlArray(items.map(json_value))
-    Object(fields) => {
-      let result = Map([])
-      for k, v in fields {
-        if !(v is Null) {
-          result[k] = json_value(v)
-        }
-      }
-      @toml.TomlTable(result)
-    }
-    Null => raise Invalid("TOML cannot represent null array elements")
   }
-}
-
-///|
-pub fn from_json(
-  value : Json,
-  origin~ : String = "<overlay>",
-) -> Document raise {
-  let value = json_value(value)
-  let provenance = Map([])
-  leaves(value, "", origin, provenance)
-  { value, provenance, }
-}
-
-///|
-pub fn environment(values : Map[String, String]) -> Document raise {
-  let keys = values.keys().collect()
-  // Long paths first; shorter paths replace nested values as required upstream.
-  keys.sort_by(fn(a, b) {
-    let depth = b.split("__").count().compare(a.split("__").count())
-    if depth == 0 {
-      a.compare(b)
-    } else {
-      depth
-    }
-  })
-  let mut result = empty()
-  for key in keys {
-    if !key.has_prefix("MORPHIR_") || key == "MORPHIR_HOME" {
-      continue
-    }
-    let mut start = 8
-    while start < key.length() && key.code_unit_at(start).to_int() == 95 {
-      start = start + 1
-    }
-    let path = key[start:]
-      .to_owned()
-      .to_lower()
-      .split("__")
-      .map(StringView::to_owned)
-      .collect()
-    if path.any(p => p == "") {
-      raise Invalid("Empty environment configuration key: " + key)
-    }
-    let text = values[key]
-    let mut value = environment_value(text)
-    for i = path.length() - 1; i >= 0; i = i - 1 {
-      value = @toml.TomlTable(Map::from_array([(path[i], value)]))
-    }
-    let provenance = Map([])
-    leaves(value, "", key, provenance)
-    result = merge(result, { value, provenance, })
-  }
-  result
-}
-
-///|
-fn environment_value(text : String) -> @toml.TomlValue {
-  if text.to_lower() == "true" {
-    return @toml.TomlBoolean(true)
-  }
-  if text.to_lower() == "false" {
-    return @toml.TomlBoolean(false)
-  }
-  if text.has_prefix("[") || text.has_prefix("{") {
-    return json_value(@json.parse(text)) catch { _ => @toml.TomlString(text) }
-  }
-  let chars = text.to_array()
-  let start = if !chars.is_empty() && (chars[0] == '+' || chars[0] == '-') {
-    1
-  } else {
-    0
-  }
-  if chars.length() > start &&
-    chars[start:].iter().all(ch => ch >= '0' && ch <= '9') {
-    let mut first = start
-    while first + 1 < chars.length() && chars[first] == '0' {
-      first = first + 1
-    }
-    let number = (if start == 1 && chars[0] == '-' { "-" } else { "" }) +
-      String::from_array(chars[first:].to_owned())
-    return try {
-      match @toml.parse("value = " + number) {
-        TomlTable(fields) => fields["value"]
-        _ => @toml.TomlString(text)
-      }
-    } catch {
-      _ => @toml.TomlString(text)
-    }
-  }
-  @toml.TomlString(text)
-}
-
-///|
-/// Workspace defaults and global layers do not transfer project identity or roots.
-pub fn Document::shared(self : Document) -> Document {
-  let value = match self.value {
-    TomlTable(fields) => {
-      let copy = fields.copy()
-      copy.remove("project")
-      copy.remove("workspace")
-      @toml.TomlTable(copy)
-    }
-    _ => self.value
-  }
-  let provenance = self.provenance.copy()
-  for path in provenance.keys().collect() {
-    if path == "project" ||
-      path == "workspace" ||
-      path.has_prefix("project.") ||
-      path.has_prefix("workspace.") {
-      provenance.remove(path)
-    }
-  }
-  { value, provenance, }
 }
 
 ///|
@@ -305,37 +181,115 @@ pub fn Document::boolean(
 ) -> Bool raise {
   match self.get(path) {
     None => fallback
-    Some(TomlBoolean(value)) => value
-    _ => raise Invalid("Expected boolean at " + path)
-  }
-}
-
-///|
-fn toml_json(value : @toml.TomlValue, path : String) -> Json raise {
-  match value {
-    TomlString(s) => Json::string(s)
-    TomlInteger(i) => Json::number(i.to_double(), repr=i.to_string())
-    TomlFloat(d) => Json::number(d)
-    TomlBoolean(b) => Json::boolean(b)
-    TomlArray(items) => Json::array(items.map(item => toml_json(item, path)))
-    TomlTable(fields) => {
-      let result = Map([])
-      for key, item in fields {
-        result[key] = toml_json(item, path + "." + key)
+    Some(value) =>
+      match value.kind() {
+        Bool(flag) => flag
+        _ => raise Invalid("Expected boolean at " + path)
       }
-      Json::object(result)
-    }
-    TomlDateTime(_) => raise Invalid("Dates are not supported at " + path)
   }
 }
 
 ///|
-/// The value at a dotted path as JSON, for components that do not read TOML.
-pub fn Document::json(self : Document, path : String) -> Json? raise {
-  match self.get(path) {
-    None => None
-    Some(value) => Some(toml_json(value, path))
+/// Compatibility composition delegates all value and provenance decisions to
+/// the framework, then projects the winning source back to its original label.
+pub fn merge(base : Document, overlay : Document) -> Document raise {
+  let resolved = @lander.build([
+    @lander.ConfigSource::parsed_file("base", base.value(), priority=0),
+    @lander.ConfigSource::parsed_file("overlay", overlay.value(), priority=1),
+  ]) catch {
+    error => raise Invalid(error.message())
   }
+  let document = from_framework(resolved)
+  for (key, origins) in resolved.provenance() {
+    let path = key.to_string()
+    let source = if origins.last().map(origin => origin.location) ==
+      Some(Some("overlay")) {
+      overlay
+    } else {
+      base
+    }
+    if source.provenance.get(path) is Some(origin) {
+      document.provenance[path] = origin
+    }
+  }
+  document
+}
+
+///|
+pub fn environment(values : Map[String, String]) -> Document raise {
+  from_framework(
+    @lander.build([
+      @lander.ConfigSource::env(
+        prefix="MORPHIR",
+        reserved=["MORPHIR_HOME", "MORPHIR_PROFILES"],
+        selection=Explicit(values),
+      ),
+    ]),
+  ) catch {
+    error => raise Invalid(error.message())
+  }
+}
+
+///|
+pub fn Document::shared(self : Document) -> Document raise {
+  let source = @lander.ConfigSource::parsed_file("inherited", self.value()).exclude(
+    [@lander.KeyPath::parse("project"), @lander.KeyPath::parse("workspace")],
+    warn=false,
+  )
+  let result = from_framework(@lander.build([source]))
+  for path, _ in result.provenance {
+    if self.provenance.get(path) is Some(origin) {
+      result.provenance[path] = origin
+    }
+  }
+  result
+}
+
+///|
+/// TOML remains the only written format. This is a representation adapter for
+/// the writer, not a configuration parser or merge engine.
+fn written_value(value : @ion.Ion) -> @toml.TomlValue raise {
+  match value.kind() {
+    String(text) =>
+      if value
+        .annotations()
+        .any(annotation => annotation.text() == Some("toml_local_time")) {
+        match @toml.parse("value = " + text) {
+          TomlTable(fields) => fields["value"]
+          _ => raise Invalid("Invalid TOML local time")
+        }
+      } else {
+        @toml.TomlString(text)
+      }
+    Int(number) => {
+      let narrowed = number.to_int64()
+      guard narrowed.to_string() == number.to_string() else {
+        raise Invalid("Integer is outside the TOML range")
+      }
+      @toml.TomlInteger(narrowed)
+    }
+    Float(number) => @toml.TomlFloat(number)
+    Bool(flag) => @toml.TomlBoolean(flag)
+    List(items) => @toml.TomlArray(items.map(written_value))
+    Struct(fields) => {
+      let result = Map([])
+      for field in fields {
+        result[field.name().text().unwrap()] = written_value(field.value())
+      }
+      @toml.TomlTable(result)
+    }
+    Timestamp(_) =>
+      match @toml.parse("value = " + @ion_text.write_ion(value)) {
+        TomlTable(fields) => fields["value"]
+        _ => raise Invalid("Invalid TOML timestamp")
+      }
+    _ => raise Invalid("Configuration value cannot be written as TOML")
+  }
+}
+
+///|
+pub fn Document::encode(self : Document) -> String raise {
+  written_value(self.value().to_ion()).to_string()
 }
 
 ///|
@@ -345,7 +299,8 @@ pub fn Document::validate(self : Document) -> Unit raise {
       "workspace", "project", "frontend", "ir", "pipeline", "backends",
     ] {
     match self.get(section) {
-      None | Some(TomlTable(_)) => ()
+      None => ()
+      Some(value) if value.kind() is Struct(_) => ()
       _ => raise Invalid("Expected table at " + section)
     }
   }

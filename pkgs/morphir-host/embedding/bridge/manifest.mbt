@@ -8,7 +8,7 @@ fn invalid(message : String) -> Unit raise {
 // an Ion value and never passes through JavaScript's numeric representation.
 fn checked_json(value : @ion.IonValue) -> Json raise {
   let json = @ion_json.to_json(value)
-  if !@ion_json.to_ion(json).equals(value) {
+  if !@ion_json.Ion(json).equals(value) {
     invalid(
       "Value cannot be represented losslessly by the checked JSON boundary",
     )
@@ -39,19 +39,20 @@ pub fn encode_manifest(
   encoding : String,
 ) -> String {
   try {
-    let build = @ion_json.read_json(build[:])
+    let build = @ion_json.read_json(build[:], fuel=Limited(@ion.Budget(128)))
     checked_json(build) |> ignore
-    let metadata = @ion_text.read_ion(metadata[:])
+    let metadata = @ion_text.read_ion(
+      metadata[:],
+      fuel=Limited(@ion.Budget(128)),
+    )
     let record = @ion.IonValue::from_fields([
-      @ion.Field::new("build", build),
-      @ion.Field::new("metadata", metadata),
+      @ion.field("build", build),
+      @ion.field("metadata", metadata),
     ])
     let bytes = match encoding {
       "ion" =>
         @ion_binary.write_binary_value(
-          record.with_annotation(
-            @ion.SymbolToken::new("morphir_assembly_artifact_v1"),
-          ),
+          record.with_annotation(@ion.symbol("morphir_assembly_artifact_v1")),
         )
       "json" => {
         checked_json(metadata) |> ignore
@@ -79,7 +80,10 @@ pub fn decode_manifest(input : Bytes, encoding : String) -> String {
   try {
     let record = match encoding {
       "ion" => {
-        let record = @ion_binary.read_binary_value(input[:])
+        let record = @ion_binary.read_binary_value(
+          input[:],
+          fuel=Limited(@ion.Budget(128)),
+        )
         let annotations = record.annotations()
         if annotations.length() != 1 ||
           annotations[0].text() != Some("morphir_assembly_artifact_v1") {
@@ -87,7 +91,11 @@ pub fn decode_manifest(input : Bytes, encoding : String) -> String {
         }
         record
       }
-      "json" => @ion_json.read_json(@utf8.decode(input)[:])
+      "json" =>
+        @ion_json.read_json(
+          @utf8.decode(input)[:],
+          fuel=Limited(@ion.Budget(128)),
+        )
       _ => {
         invalid("Unsupported manifest encoding")
         @ion.IonValue::untyped_null()

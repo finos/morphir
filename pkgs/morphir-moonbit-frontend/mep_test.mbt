@@ -6,27 +6,27 @@ test "real frontend metadata survives the MEP node carrier with original names r
     ),
   )
   let carrier = @ion.IonValue::from_fields([
-    @ion.Field::new(
+    @ion.field(
       "owner",
       @ion.IonValue::string("urn:finos:morphir-moonbit:node-metadata:v1"),
     ),
-    @ion.Field::new(
+    @ion.field(
       "data",
       @ion.IonValue::from_fields([
-        @ion.Field::new("sourceUnitId", @ion.IonValue::string(compiled.unit_id)),
-        @ion.Field::new(
+        @ion.field("sourceUnitId", @ion.IonValue::string(compiled.unit_id)),
+        @ion.field(
           "sourceAnnotations",
           @ion.IonValue::list(
             compiled.annotations.map(a => @ion.IonValue::symbol_token(a)),
           ),
         ),
-        @ion.Field::new(
+        @ion.field(
           "nodes",
           @ion.IonValue::list(
             compiled.metadata.map(m => {
               @ion.IonValue::from_fields([
-                @ion.Field::new("nodeId", @ion.IonValue::string(m.node_id)),
-                @ion.Field::new("data", m.data),
+                @ion.field("nodeId", @ion.IonValue::string(m.node_id)),
+                @ion.field("data", m.data),
               ])
             }),
           ),
@@ -35,10 +35,10 @@ test "real frontend metadata survives the MEP node carrier with original names r
     ),
   ])
   let root = @ion.IonValue::from_fields([
-    @ion.Field::new("ir", @ion_json.to_ion(@ir_json.to_json(compiled.ir))),
-    @ion.Field::new("enrichments", @ion.IonValue::list([carrier])),
-    @ion.Field::new("provenance", @ion.IonValue::list(compiled.provenance)),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_model"))
+    @ion.field("ir", @ion_json.Ion(@ir_json.to_json(compiled.ir))),
+    @ion.field("enrichments", @ion.IonValue::list([carrier])),
+    @ion.field("provenance", @ion.IonValue::list(compiled.provenance)),
+  ]).with_annotation(@ion.symbol("morphir_model"))
   let bytes = @ion_binary.write_binary_value(root)
   let session = @mep.Session::new()
   let tuple : Json = {

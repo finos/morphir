@@ -137,24 +137,24 @@ fn compile_rich_model(
   source : CompileInput,
 ) -> @ion.IonValue raise {
   let carrier = @ion.IonValue::from_fields([
-    @ion.Field::new("owner", @ion.IonValue::string(NODE_METADATA_OWNER)),
-    @ion.Field::new(
+    @ion.field("owner", @ion.IonValue::string(NODE_METADATA_OWNER)),
+    @ion.field(
       "data",
       @ion.IonValue::from_fields([
-        @ion.Field::new("sourceUnitId", @ion.IonValue::string(input.unit_id)),
-        @ion.Field::new(
+        @ion.field("sourceUnitId", @ion.IonValue::string(input.unit_id)),
+        @ion.field(
           "sourceAnnotations",
           @ion.IonValue::list(
             input.annotations.map(a => @ion.IonValue::symbol_token(a)),
           ),
         ),
-        @ion.Field::new(
+        @ion.field(
           "nodes",
           @ion.IonValue::list(
             input.metadata.map(m => {
               @ion.IonValue::from_fields([
-                @ion.Field::new("nodeId", @ion.IonValue::string(m.node_id)),
-                @ion.Field::new("data", m.data),
+                @ion.field("nodeId", @ion.IonValue::string(m.node_id)),
+                @ion.field("data", m.data),
               ])
             }),
           ),
@@ -174,20 +174,20 @@ fn compile_rich_model(
     "contextDigest": source.context_digest,
   }
   @ion.IonValue::from_fields([
-    @ion.Field::new("ir", @ion_json.to_ion(@ir_json.to_json(input.ir))),
-    @ion.Field::new("enrichments", @ion.IonValue::list([carrier])),
-    @ion.Field::new(
+    @ion.field("ir", @ion_json.Ion(@ir_json.to_json(input.ir))),
+    @ion.field("enrichments", @ion.IonValue::list([carrier])),
+    @ion.field(
       "provenance",
       @ion.IonValue::list(
         input.provenance +
         [
-          @ion_json.to_ion(context).with_annotation(
-            @ion.SymbolToken::new("morphir_moonbit_compilation"),
+          @ion_json.Ion(context).with_annotation(
+            @ion.symbol("morphir_moonbit_compilation"),
           ),
         ],
       ),
     ),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_model"))
+  ]).with_annotation(@ion.symbol("morphir_model"))
 }
 
 ///|

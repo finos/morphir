@@ -50,9 +50,9 @@ test "rich metadata retains all Ion kinds and ordered unknown annotations" {
     distribution: original.distribution,
     metadata: [{ node_id: "value:Pricing.quote/body", data: metadata, }],
     annotations: [
-      @ion.SymbolToken::new("before"),
-      @ion.SymbolToken::new("morphir_pipeline"),
-      @ion.SymbolToken::new("after"),
+      @ion.symbol("before"),
+      @ion.symbol("morphir_pipeline"),
+      @ion.symbol("after"),
     ],
   }
   for codec in ["ion-text", "ion-binary"] {
@@ -249,7 +249,7 @@ test "Ion reader nesting limits retain tree-limit diagnostics" {
   })
   let original = registry.decode("morphir-json", snapshot(Text(empty_json())))
   let mut nested = @ion.IonValue::int(1)
-  for i = 0; i < @ion.MAX_NESTING_DEPTH; i = i + 1 {
+  for i = 0; i < 128; i = i + 1 {
     nested = @ion.IonValue::list([nested])
   }
   let unit = @data.IRUnit::{

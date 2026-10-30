@@ -1,4 +1,118 @@
 ///|
+async test "async execution dispatch rechecks authority and keeps uncertain effects" {
+  @async.with_task_group(async fn(group) {
+    let entered = Ref(false)
+    let released = Ref(false)
+    let failed = Ref(false)
+    let waiting = @async.CondVar::Cond()
+    let release = @async.CondVar::Cond()
+    let factory : (String, @request.Contract) -> ExecutionsService raise = fn(
+      id,
+      _contract,
+    ) {
+      {
+        offer: fn() {
+          {
+            "profile": "morphir/workbench/executions",
+            "contractVersion": "0.2.0-draft.1",
+            "hostId": "host",
+            "sessionId": id,
+            "providerId": "scheme",
+            "operations": ["query", "cancel"],
+          }
+        },
+        request: async fn(_, _) {
+          entered.val = true
+          waiting.broadcast()
+          while !released.val {
+            release.wait()
+          }
+          if failed.val {
+            fail("Controlled service failure")
+          }
+          @reply.failure(@reply.Unavailable, @reply.NoEffect)
+        },
+        close: fn() { () },
+        shutdown: fn() { () },
+      }
+    }
+    let owner = Owner::with_services(group, {
+      executions: Some(factory),
+      workspace: None,
+    })
+    let page = Ref("page-A")
+    let caller = fn() raise {
+      @session.Caller::admit("main", "app", Some(page.val))
+    }
+    let picker : async () -> String? = fn() { None }
+    let id = test_id(
+      test_value(
+        owner.request(test_frame("session.open"), caller, picker),
+        "session.open",
+      ),
+    )
+    let request : Json = {
+      "profile": "morphir/workbench/native",
+      "contractVersion": "0.2.0-draft.1",
+      "operation": "execution.query",
+      "sessionId": id,
+      "payload": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": id,
+          "providerId": "scheme",
+          "executionId": "execution-1",
+          "snapshotId": "snapshot",
+        },
+      },
+    }
+    let querying = group.spawn(async fn() {
+      owner.request(request.stringify(), caller, picker)
+    })
+    while !entered.val {
+      waiting.wait()
+    }
+    page.val = "page-B"
+    released.val = true
+    release.broadcast()
+    let reply = @reply.decode(@utf8.encode(querying.wait()), "execution.query").to_json()
+    assert_eq(
+      @wire.field(@wire.field(reply, "error"), "code"),
+      Json::string("unauthorized"),
+    )
+    assert_eq(
+      @wire.field(@wire.field(reply, "error"), "effect"),
+      Json::string("unknown"),
+    )
+    page.val = "page-A"
+    failed.val = true
+    let failed_reply = @reply.decode(
+      @utf8.encode(owner.request(request.stringify(), caller, picker)),
+      "execution.query",
+    ).to_json()
+    assert_eq(
+      @wire.field(@wire.field(failed_reply, "error"), "code"),
+      Json::string("unavailable"),
+    )
+    assert_eq(
+      @wire.field(@wire.field(failed_reply, "error"), "effect"),
+      Json::string("unknown"),
+    )
+    failed.val = false
+    let refused_reply = @reply.decode(
+      @utf8.encode(owner.request(request.stringify(), caller, picker)),
+      "execution.query",
+    ).to_json()
+    assert_eq(
+      @wire.field(@wire.field(refused_reply, "error"), "effect"),
+      Json::string("none"),
+    )
+    owner.shutdown()
+  })
+}
+
+///|
 fn test_frame(operation : String, id~ : String = "") -> String {
   let fields : Map[String, Json] = {
     "profile": "morphir/workbench/native",

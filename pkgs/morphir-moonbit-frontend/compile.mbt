@@ -1,7 +1,7 @@
 ///|
 fn ion_record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::new(
-    @ion.Struct(fields.map(pair => @ion.Field::new(pair.0, pair.1))),
+  @ion.Ion(
+    @ion.IonValueKind::Struct(fields.map(pair => @ion.field(pair.0, pair.1))),
   )
 }
 
@@ -314,7 +314,7 @@ fn compile_scoped(
             ]),
           },
         ],
-        annotations: [@ion.SymbolToken::new("morphir_pipeline")],
+        annotations: [@ion.symbol("morphir_pipeline")],
         warnings,
         provenance: [
           ion_record([
@@ -322,7 +322,7 @@ fn compile_scoped(
             ("parser_version", @ion.IonValue::string(PARSER_VERSION)),
             ("naming_policy", @ion.IonValue::string(NAMING_POLICY)),
             ("unit_id", @ion.IonValue::string(input.unit_id)),
-          ]).with_annotation(@ion.SymbolToken::new("morphir_moonbit_frontend")),
+          ]).with_annotation(@ion.symbol("morphir_moonbit_frontend")),
         ] +
         warnings.map(w => w.to_ion()),
       }
@@ -360,12 +360,12 @@ fn allocated_origin(
   guard original.kind() is Struct(fields) else {
     abort("Expected origin record")
   }
-  @ion.IonValue::new(
-    Struct(
+  @ion.Ion(
+    @ion.IonValueKind::Struct(
       fields +
       [
-        @ion.Field::new("identity", @ion.IonValue::string(name.to_canonical())),
-        @ion.Field::new("allocation_reason", @ion.IonValue::string(reason)),
+        @ion.field("identity", @ion.IonValue::string(name.to_canonical())),
+        @ion.field("allocation_reason", @ion.IonValue::string(reason)),
       ],
     ),
   ).with_annotations(original.annotations())

@@ -1,15 +1,18 @@
-///|
-/// Portable build, test and repository housekeeping tasks.
+----
 import {
   "moonbitlang/core/json",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+///|
+/// Portable build, test and repository housekeeping tasks.
 
 ///|
 suberror TaskError {
@@ -102,7 +105,11 @@ fn commands(task : String) -> Array[(String, Array[String])] raise {
     "format" => [("moon", ["fmt"])]
     "lint:moonbit" => [("moon", ["fmt", "--check"])]
     "lint" =>
-      [("mise", ["run", "lint:yaml"]), ("mise", ["run", "lint:moonbit"])]
+      [
+        ("mise", ["run", "lint:yaml"]),
+        ("mise", ["run", "lint:moonbit"]),
+        ("mise", ["run", "lint:engine-boundaries"]),
+      ]
     "validate" =>
       [("mise", ["run", "lint:yaml"]), ("mise", ["run", "validate:packages"])]
     "list-tasks" => [("mise", ["tasks"])]
@@ -486,7 +493,11 @@ async fn self_test() -> Unit {
       ("format", [("moon", ["fmt"])]),
       (
         "lint",
-        [("mise", ["run", "lint:yaml"]), ("mise", ["run", "lint:moonbit"])],
+        [
+          ("mise", ["run", "lint:yaml"]),
+          ("mise", ["run", "lint:moonbit"]),
+          ("mise", ["run", "lint:engine-boundaries"]),
+        ],
       ),
       (
         "validate",

@@ -62,21 +62,21 @@ test "preflight bounds truncated and overflowing lengths and validates scalar bo
 ///|
 test "resolved aliases cannot bypass shared import refusal" {
   let aliases = @ion.IonValue::from_fields([
-    @ion.Field::new(
+    @ion.field(
       "symbols",
       @ion.IonValue::list([
         @ion.IonValue::string("$ion_symbol_table"),
         @ion.IonValue::string("imports"),
       ]),
     ),
-  ]).with_annotation(@ion.SymbolToken::new("$ion_symbol_table"))
+  ]).with_annotation(@ion.symbol("$ion_symbol_table"))
   let imported = @ion.IonValue::from_fields([
     @ion.Field::from_token(
       @ion.SymbolToken::from_sid(11),
       @ion.IonValue::list([
         @ion.IonValue::from_fields([
-          @ion.Field::new("name", @ion.IonValue::string("unavailable")),
-          @ion.Field::new("max_id", @ion.IonValue::int(2147483647)),
+          @ion.field("name", @ion.IonValue::string("unavailable")),
+          @ion.field("max_id", @ion.IonValue::int(2147483647)),
         ]),
       ]),
     ),

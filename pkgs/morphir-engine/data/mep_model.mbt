@@ -34,8 +34,9 @@ pub fn inspect_model_source(
     }
     check_content(content, limits)
     let root = match content {
-      Binary(bytes) => @ion_binary.read_binary_value(bytes[:])
-      Text(text) => @ion_text.read_ion(text[:])
+      Binary(bytes) =>
+        @ion_binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128)))
+      Text(text) => @ion_text.read_ion(text[:], fuel=Limited(@ion.Budget(128)))
     }
     check_tree(root, limits)
     let pipeline = root
@@ -56,20 +57,21 @@ pub fn inspect_model_source(
     // This is an import-capture event containing the opaque original model,
     // not an interpretation or endorsement of its enrichment owners.
     let capture = @ion.IonValue::from_fields([
-      @ion.Field::new("source_envelope", root),
-    ]).with_annotation(@ion.SymbolToken::new("morphir_model_import"))
+      @ion.field("source_envelope", root),
+    ]).with_annotation(@ion.symbol("morphir_model_import"))
     let unit : IRUnit = {
       id: decoded.unit_id,
       distribution: decoded.ir,
       metadata: decoded.metadata.map(m => { node_id: m.node_id, data: m.data, }),
-      annotations: [@ion.SymbolToken::new("morphir_pipeline")],
+      annotations: [@ion.symbol("morphir_pipeline")],
       provenance: decoded.provenance + [capture],
     }
     unit.validate(limits~)
     { unit, original_format_version: decoded.ir.format_version, }
   } catch {
     Invalid(_, _) as error => raise error
-    @ion.LimitExceeded(detail) => raise Invalid("data.tree_limit", detail)
+    @ion.FuelExhausted(..) as error =>
+      raise Invalid("data.tree_limit", error.message())
     @ion.Syntax(detail) | @ion.DataModel(detail) | @ion.Unsupported(detail) =>
       raise Invalid("invalid_ion", detail)
     error => raise Invalid("data.decode_failed", error.to_string())

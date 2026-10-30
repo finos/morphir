@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn cancelled_report(Plan, observer? : @observability.Observer) -> Report raise
+
 pub fn prepare(@execution.Plan, Expectations, lanes? : Array[EvaluatorLane]) -> Plan raise
 
 pub fn run(Plan, @execution.Provider, observer? : @observability.Observer, cancelled? : () -> Bool) -> Report raise
@@ -48,9 +50,9 @@ pub(all) struct Expectations {
   cases : Array[ExpectedCase]
 }
 pub fn Expectations::decode(Bytes, format? : String) -> Self raise
-pub fn Expectations::from_ion(@ion.IonValue) -> Self raise
+pub fn Expectations::from_ion(@ion.Ion) -> Self raise
 pub fn Expectations::suite(Self) -> @morphir-execution.Suite
-pub fn Expectations::to_ion(Self) -> @ion.IonValue raise
+pub fn Expectations::to_ion(Self) -> @ion.Ion raise
 pub fn Expectations::to_json(Self) -> Json raise
 pub fn Expectations::validate(Self) -> Unit raise
 
@@ -72,7 +74,7 @@ pub(all) struct Report {
 pub fn Report::cancelled(Self) -> Bool
 pub fn Report::encode(Self, format? : String) -> Bytes raise
 pub fn Report::successful(Self) -> Bool
-pub fn Report::to_ion(Self) -> @ion.IonValue raise
+pub fn Report::to_ion(Self) -> @ion.Ion raise
 pub fn Report::to_json(Self) -> Json
 
 // Type aliases

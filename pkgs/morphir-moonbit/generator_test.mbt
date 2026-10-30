@@ -441,10 +441,7 @@ test "Ion symbols retain node metadata ordered annotations and source lexemes" {
   )
   let input = {
     ..@generator.Input::new("scalars", @fixtures.library()),
-    annotations: [
-      @ion.SymbolToken::new("audit"),
-      @ion.SymbolToken::new("audit"),
-    ],
+    annotations: [@ion.symbol("audit"), @ion.symbol("audit")],
     metadata: [{ node_id: "value:pricing:scalars#rate/body", data, }],
   }
   let result = @generator.generate(input)

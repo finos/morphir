@@ -192,7 +192,7 @@ fn admit_invocations(input : Json, format : Json) -> @execution.Suite raise {
       guard field(input, "suite") is String(source) else {
         raise @execution.Invalid("workbench.invalid_request")
       }
-      let value = @text.read_ion(source[:]) catch {
+      let value = @text.read_ion(source[:], fuel=Limited(@ion.Budget(128))) catch {
         _ => raise @execution.Invalid("workbench.invalid_ion")
       }
       @execution.Suite::from_ion(value)
@@ -252,7 +252,7 @@ fn admit_outcomes(input : Json, format : Json) -> @execution.Outcomes raise {
       guard field(input, "outcomes") is String(source) else {
         raise @execution.Invalid("workbench.invalid_request")
       }
-      let value = @text.read_ion(source[:]) catch {
+      let value = @text.read_ion(source[:], fuel=Limited(@ion.Budget(128))) catch {
         _ => raise @execution.Invalid("workbench.invalid_ion")
       }
       @execution.Outcomes::from_ion(value)

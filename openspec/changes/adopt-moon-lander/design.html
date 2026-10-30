@@ -44,18 +44,43 @@ Moon-Lander module that takes the job over, and says what stays in Morphir.</p>
 <table>
 <thead><tr><th>Job</th><th>Morphir today</th><th>Moon-Lander module (status on 2026-10-28)</th><th>Stays in Morphir</th></tr></thead>
 <tbody>
-<tr><td>Load, merge, provenance</td><td><code>pkgs/morphir-engine/config</code> (<code>Document</code>, <code>merge</code>, <code>environment</code>)</td><td><code>moon-lander-config</code> core, all four targets; not yet published</td><td>Morphir keys, defaults and <code>validate</code></td></tr>
+<tr><td>Load, merge, provenance</td><td><code>pkgs/morphir-engine/config</code> (<code>Document</code>, <code>merge</code>, <code>environment</code>)</td><td><code>moon-lander-config</code> core, all four targets; published at <code>0.6.0</code></td><td>Morphir keys, defaults and <code>validate</code></td></tr>
 <tr><td>File discovery</td><td><code>pkgs/morphir-engine/workspace</code> (<code>primary_paths</code>, <code>user</code>), <code>pkgs/morphir-host/configuration.mbt</code> (system and global paths, legacy markers)</td><td><code>moon-lander-config/conventions</code>: walk-up in the same three layouts, <code>.user</code> overrides, legacy fallback, stop boundary, isolated mode, <code>&lt;PREFIX&gt;_HOME</code></td><td>Workspace members and projects</td></tr>
 <tr><td>File access</td><td><code>pkgs/morphir-host</code> platform I/O, WASI preopen fd 3</td><td><code>moon-lander-config/host</code> on native and js; an injected <code>FileTree</code> on wasm</td><td>The WASI file tree adapter</td></tr>
 <tr><td>Diagnostic logs</td><td>None; direct <code>@platform.stderr</code> writes</td><td><code>moon-lander-logging</code> (pure, all targets), <code>moon-lander-logging-hosting-async</code> (native, js)</td><td>Telemetry: <code>pkgs/morphir-execution/observability</code>, <code>apps/morphir-otel</code></td></tr>
 <tr><td>Lifecycle and exit codes</td><td><code>apps/morphir/main.mbt</code> (<code>"Cancelled"</code> gives 130), <code>@platform.interruption_*</code> per command</td><td><code>moon-lander-hosting</code>: <code>run</code> and <code>@console.run</code> on native and js, <code>run_embedded</code> on wasm and wasm-gc, <code>Lifetime</code>, <code>StopReason</code>, <code>set_exit_code</code></td><td>The SIGINT forwarding to child processes in <code>platform.c</code></td></tr>
 <tr><td>Dispatch</td><td>String compares in <code>apps/morphir/main.mbt</code>; <code>op</code> matches in <code>pkgs/morphir-workbench-native/service.mbt</code> and <code>pkgs/morphir-engine/execution/workbench/boundary.mbt</code></td><td><code>moon-lander-mediator</code> (sync, all targets) and <code>moon-lander-mediator/async</code></td><td>Wire formats and operation names</td></tr>
-<tr><td>Notebooks</td><td>None</td><td><code>moonrockz/notebooks</code>: Jupyter and DIB models and codecs; published at <code>0.5.0</code></td><td>The worksheet to notebook mapping</td></tr>
+<tr><td>Notebooks</td><td>None</td><td><code>moonrockz/notebooks</code>: Jupyter and DIB models and codecs; published at <code>0.6.0</code></td><td>The worksheet to notebook mapping</td></tr>
 </tbody>
 </table>
 <p>The Moon-Lander framework modules were not published in releases <code>0.3.0</code> to <code>0.5.0</code>, by
-oversight. A Moon-Lander release that publishes them is in progress. The notebook work needs only
-<code>moonrockz/notebooks</code>, which is already on the registry.</p>
+oversight. <a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.6.0">Moon-Lander 0.6.0</a> published
+all seven framework modules and <code>moonrockz/notebooks</code> on 2026-10-28. Each framework module resolved with
+<code>moon add moonrockz/&lt;module&gt;@0.6.0</code> in an independent scratch module outside this checkout.
+The initial dependency phase used <code>0.6.0</code>. The completion-reporting phase pinned every Moon-Lander module and notebooks to
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.7.3">published <code>0.7.3</code></a>, from commit
+<code>10402785e4462c2fdbd1a8f500a063f8076e353a</code>. Its Release workflow
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/40826473564">40826473564</a> succeeded. Independent
+public archive hashes match the approved Release artifact, and each required exact module resolves with
+<code>moon add</code> in a scratch module outside this checkout. This release supplies layered discovery, profile
+authority, host controls, diagnostic object properties and lossless DIB support. The patch also exposes the real
+logging session to hosted cleanup and forwards a parent-owned signal probe through the logging bridge.
+It also provides four-target async mediator composition and foreign-callback-safe <code>stop_requested</code>
+methods on the same lifetime. The public completion callback receives the real outcome and selected exit code
+after diagnostic draining and finalization, so Morphir can report cancellation even before the first service hook.
+Main CI <a href="https://github.com/moonrockz/moon-lander/actions/runs/40826473568">40826473568</a>
+completed all 13 jobs. All nine archive hashes match actual Release artifact <code>12877891039</code>, and 42
+independent cold-cache consumers passed, including native/JS pre-first-hook cancellation at 130 and 143.</p>
+<p>On 2026-10-30 the maintainer requested the latest published release. All 40 framework and notebook pins now use
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.8.0"><code>0.8.0</code></a>, source
+<code>d6216c7469c045548cb15b3f9321857ac41d2cd0</code>. Its actual
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/40990258646">Release workflow</a> and
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/40990258634">main CI</a> passed. Downstream independently
+downloaded all ten public archives and matched every SHA-256 against actual release artifact
+<code>12949691881</code>. Each of the eight required exact modules also resolved with <code>moon add</code> in an
+independent scratch module outside this checkout. The release retains the adopted APIs and adds notebook virtual
+file trees and source conversion. Morphir keeps its existing notebook mapping; the new optional actors module is
+not imported by this adoption.</p>
 
 <h2 id="goals">Goals and non-goals</h2>
 <p><strong>Goals:</strong> every capability in the table above comes from one Moon-Lander module in the CLI and in
@@ -136,6 +161,17 @@ sources (CFG-4). Environment files and the local override layer stay off,
 because they would read files that Morphir ignores today. The environment source with prefix <code>MORPHIR</code>
 already uses <code>__</code> as the separator, skips <code>_</code> after the prefix, refuses an empty segment, and
 merges a shorter path last, as <code>@config.environment</code> does.</p>
+<p>The maintainer clarified root selection on 2026-10-28: inspect each primary document while walking upward and
+stop at the first declared workspace, continuing past standalone project files. Check the nearest primary itself
+before its parents. If no workspace exists within the boundary, use the nearest project primary. This follows the
+workspace-declaration search used by Cargo. Published <code>0.7.0</code> implements this policy, the ordered format layers and public root evidence from
+<a href="https://github.com/moonrockz/moon-lander/pull/110">Moon-Lander proposal #110</a>.
+Morphir consumes that public evidence for its member walk.</p>
+<p>On 2026-10-30 the maintainer approved landing the MoonBit discovery controls independently of the separate Rust
+CLI itest driver. The driver still owns its Rust executable and needs its own isolation support; passing MoonBit
+flags to that executable does not provide it. Keep <code>morphir-o6vm.10</code> open for the companion change, without
+making it a prerequisite for this release. The MoonBit CLI still qualifies temporary-root, enclosing-workspace
+and machine/global isolation scenarios on every supported target.</p>
 <p>Alternative: keep Morphir discovery and use only the Moon-Lander merge. Rejected; discovery is where the isolated
 mode for <code>morphir-o6vm.10</code> comes from.</p>
 
@@ -204,8 +240,42 @@ JSON or YAML files and no TOML file creates <code>morphir.toml</code> in the sam
 TOML is the top layer (CFG-4). Because a TOML value replaces a lower value whole, each written key holds its full new
 value: <code>project add</code> writes every member in <code>workspace.members</code>, not only the new one.
 <code>ensure_new_config</code> also refuses a new project where any primary file, of any format, exists.</p>
+<p>Root-project removal has one explicit limit, approved on 2026-10-30. If a lower JSON or YAML primary declares the
+root project, <code>project remove .</code> refuses before writing anything and names the declaring file. For example,
+<code>{"project":{"name":"demo/root"}}</code> in <code>morphir.json</code> cannot be undone by adding an empty
+<code>[project]</code> table in TOML: recursive merging retains the lower declaration. The error explains that the
+declaration must be removed in its source file. JSON mode reports the owning command's existing structured failure.
+Root projects declared only in TOML can still be removed while retaining source files, including when lower formats
+supply workspace settings. No project-disable key or deletion marker is introduced.</p>
 <p>Alternatives: edit YAML and JSON in place (rejected: no format-preserving editors, and JSON5 comments could be
 lost); refuse every non-TOML workspace (rejected by the maintainer, because a TOML file beside them works).</p>
+
+<h3 id="cfg-6">CFG-6. Configuration profiles are enabled as a separate aspect</h3>
+<p>The maintainer approved configuration profiles for this release on 2026-10-28. Use the policy published in
+Moon-Lander 0.6.0, with repeatable <code>--profiles</code>, <code>--no-profiles</code>, <code>MORPHIR_PROFILES</code>
+and the reserved base-file <code>profiles</code> controls. The existing singular <code>--profile</code> selects a
+frontend profile and keeps that meaning. There is no implicit default profile. Environment files and local
+configuration overrides stay off.</p>
+<p>Resolve controls from the merged discovered workspace primaries, or project primaries for a standalone project,
+then load active profile files at priority 380: after member primaries and before user overrides. For each active
+name, load workspace JSON, YAML and TOML, then member JSON, YAML and TOML, before moving to the next active name.
+Keep the framework's includes, group expansion, last-occurrence rule, graph limits and explicit-disable behavior.
+Each control and failure retains its supplying file origin.</p>
+<p>Profile authority stays with the discovered base. Selecting one of those same files moves its ordinary values to
+the selected overlay but retains its control authority; parse it once and emit one ordinary source report. A
+selected file outside that base cannot introduce profile controls. Profile files do not select a different root or
+member. Isolated runs retain eligible profile files inside their boundary. The upstream layering proposal includes
+these interactions and retains the existing default policies for other applications.</p>
+<pre><code class="language-toml">[profiles]
+default = ["development"]
+include = ["common"]
+
+[profiles.groups]
+production = ["postgres", "metrics"]</code></pre>
+<p>For example, <code>--profiles production,postgres</code> keeps configured includes and expands the group before
+keeping the last occurrence of each name. <code>--no-profiles</code> suppresses includes, defaults, groups and file
+reads. Typed resolution is shared by configuration, the host and command middleware; existing MEP and Workbench
+wire formats remain unchanged.</p>
 
 <h3 id="log-1">LOG-1. One Logger value per run; sinks by host</h3>
 <p>The services record holds one <code>&amp;Logger</code> made with <code>min_level</code> and
@@ -213,6 +283,36 @@ lost); refuse every non-TOML workspace (rejected by the maintainer, because a TO
 session: console on standard error, and, when enabled, rolling files with the stem <code>morphir-diagnostics</code>
 in <code>.morphir/logs/</code>, guarded by the module's ownership marker so that retention never removes telemetry
 files. On wasm and wasm-gc a small Logger writes text lines to standard error through <code>@platform</code>.</p>
+<p>JSON Lines files put named event values inside a <code>properties</code> object, so readers use
+<code>record.properties.path</code> and event names cannot overwrite metadata such as <code>level</code>. When the
+event's ordered property list repeats a name, its last value wins. A separate <code>duplicateProperties</code>
+object retains every occurrence of each repeated name in original per-name order, including the winner. Omit that
+object when no names repeat, and preserve every value's JSON type. A property whose value is an array remains an
+array-valued property; it does not imply repeated occurrences.</p>
+<pre><code class="language-json">{
+  "properties": {
+    "path": "/repo/app/morphir.toml",
+    "command": "project.list"
+  },
+  "duplicateProperties": {
+    "path": [
+      "/repo/morphir.toml",
+      "/repo/app/morphir.toml"
+    ]
+  }
+}</code></pre>
+<p>The maintainer approved this contract on 28 October 2026. Select the public upstream opt-in object format once
+it is published; keep Moon-Lander's existing array-format defaults compatible for its other consumers. Track that
+support in <a href="https://github.com/moonrockz/moon-lander/issues/112">Moon-Lander issue 112</a>. Morphir does not
+add a local serializer to replace the framework's format.</p>
+<p>The maintainer approved the GC clock capability on 2026-10-30. Add <code>utc_milliseconds</code> to the existing
+<code>morphir_host_v1</code> operation catalog, with no new imports or response fields. Its reply is
+<code>{"value":1793318400000}</code>, or the existing error envelope. Validate whole milliseconds and the framework's
+supported UTC range before starting the command. Anchor the portable text Logger to that UTC value and the existing
+monotonic clock, as on WASI. Missing or invalid clock capability fails clearly; help and <code>--log-level off</code>
+do not request it. The supplied Node runner uses <code>Date.now()</code>. Qualification checks actual GC diagnostic
+records, categories, child starts and clean stdout, plus missing and invalid host replies. Portable rolling-file
+logging remains an explicit refusal because its asynchronous sink requires the native or JS process host.</p>
 <p>Alternative: send diagnostics into the telemetry session. Rejected; telemetry has typed observations with a
 consumer (<code>apps/morphir-otel</code>) and must keep its format.</p>
 
@@ -228,8 +328,20 @@ host's default code for an unhandled failure is 1, while Morphir uses 2 for ever
 A failure middleware maps each command failure to Morphir's code and calls <code>set_exit_code</code>, so the
 <code>application/lifecycle</code> codes hold. Cancellation is a <code>StopReason</code>, not the message text
 <code>"Cancelled"</code>. The cancel file becomes a host stop request polled by the same check as signals.</p>
-<p>Moon-Lander's own change <code>add-host-lifecycle</code> is still open. Group 6 uses only what the published
-release documents; any gap becomes a Moon-Lander issue, not a local workaround.</p>
+<p>The maintainer approved GC cancel-file registration on 2026-10-30. Before starting the embedded host, pass the
+prepared absolute path to <code>register_cancel_file</code> through <code>morphir_host_v1</code>; an empty first
+argument clears it, the second argument is empty, and the existing envelope acknowledges with
+<code>{"value":true}</code>. The Node adapter polls that path during its existing bounded stdin waits and retains
+the observed stop in the same shared interrupt flag. The ordinary embedded stop probe and hosted lifetime then own
+cancellation and cleanup. No new parent/worker message or shared-buffer field is added.</p>
+<p>Clear the registration after success, failure, cancellation and an error before the first host hook. A missing
+registration capability refuses before command execution. If cleanup fails after a successful operation, retain
+its existing stdout result, report <code>cancellation.cancel_file_cleanup_failed</code> on stderr and exit 1; an
+earlier failure or cancellation keeps its selected status. Qualification holds stdin open with no bytes, observes
+the actual input request, creates the marker, and requires one cancellation result and exit 130. It also covers a
+drained pipe, a marker that disappears immediately after observation, and startup/cleanup capability faults.</p>
+<p>Group 6 uses the documented APIs of the published framework release. Any newly discovered hosting gap becomes a
+Moon-Lander issue linked to the release evidence.</p>
 
 <h3 id="host-2">HOST-2. The desktop Workbench embeds the host under Proton</h3>
 <p>Proton owns the window event loop. The desktop app builds a host whose hosted services are the native Workbench
@@ -246,11 +358,16 @@ handlers wait for I/O.</p>
 <h3 id="nb-1">NB-1. Worksheet forms are cells; observations are outputs</h3>
 <p>The mapping lives in a new pure package, <code>pkgs/morphir-engine/worksheet/notebook</code>, so the CLI and the
 browser Workbench share it. Each top-level form is a code cell with language <code>scheme</code>; each block of
-whole-line <code>;;</code> comments between forms is a Markdown cell. With evaluation, an observation becomes an
+whole-line <code>;;</code> comments between forms is a Markdown cell. With Jupyter evaluation, an observation becomes an
 <code>execute_result</code> with <code>text/plain</code> (the preview) and
 <code>application/vnd.morphir.observation+json</code> (the observation's JSON), and a failed outcome becomes an
 <code>error</code> output. Notebook metadata records the profile <code>morphir/worksheet-notebook</code>, version
 <code>0.1.0</code>, under <code>metadata.morphir</code>. DIB cells use the kernel name <code>scheme</code>.</p>
+<p>The maintainer approved source-only DIB exports on 2026-10-28. The
+<a href="https://github.com/moonrockz/moon-lander/blob/v0.6.0/pkgs/notebooks/dib/README.md">Moon-Lander DIB codec</a>
+stores no execution outputs. <code>--evaluate</code> with DIB is therefore a usage error with exit code 2, before
+evaluation or file writes, and its message directs the user to Jupyter for saved outputs. The Workbench labels its
+DIB action as source-only; its Jupyter action includes the latest results.</p>
 <pre><code class="language-scheme">;; # Totals
 (define prices '(3 4 5))
 
@@ -291,11 +408,16 @@ from configuration (group 4), dispatch (group 5), the CLI host (group 6), the de
 (group 8) and the integration checks (group 9). A group gets its own pull request only when it is blocked and the
 rest is ready, for example when group 6 waits for a Moon-Lander hosting feature. The old configuration loader and
 the old exit-code mapping are removed in the commits that prove parity, so reverting those commits restores them.</p>
+<p>On 2026-10-30 the maintainer approved a Node-backed Moonx entry with an explicit Node prerequisite. A user
+running Morphir through Moonx installs the supported Node host as well as MoonBit; the published package supplies
+the Node CLI assets, without a separate npm installation. The entry preserves opaque arguments, input bytes,
+separate output channels, JSON schemas, cancellation and owned-child cleanup through the existing Node CLI.
+Release qualification must exercise the actual packaged entry on the supported minimum and pinned MoonBit
+runtimes, then repeat its consumer checks against the public registry. The native installer and npm delivery keep
+their existing entry contracts.</p>
 
 <h2 id="open-questions">Open questions</h2>
 <ul>
-<li>Which Moon-Lander version is the first with the framework modules on the registry. The pins take that version;
-nothing else in the plan depends on its number.</li>
 <li>Whether .NET Interactive users want a different DIB kernel name than <code>scheme</code>. The name is one
 constant in the mapping.</li>
 </ul>

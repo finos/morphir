@@ -20,7 +20,6 @@ pub fn recognize_projection_header(
     }
   } catch {
     @data.Invalid(code, _) => { "kind": "refused", "code": code }
-    _ => { "kind": "refused", "code": "data.decode_failed" }
   }
   result.stringify()
 }

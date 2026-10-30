@@ -189,9 +189,18 @@ pub fn Grants::decode(
   }
   let base = parent(origin, flavor)
   let value = match format {
-    IonBinary => @binary.read_binary_value(bytes[:])
-    IonText => @ion_text.read_ion(@utf8.decode(bytes[:])[:])
-    Json => @ion_json.read_json(@utf8.decode(bytes[:])[:])
+    IonBinary =>
+      @binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128)))
+    IonText =>
+      @ion_text.read_ion(
+        @utf8.decode(bytes[:])[:],
+        fuel=Limited(@ion.Budget(128)),
+      )
+    Json =>
+      @ion_json.read_json(
+        @utf8.decode(bytes[:])[:],
+        fuel=Limited(@ion.Budget(128)),
+      )
   }
   let root = fields(value, ["profile", "workspace", "runtime", "projects"])
   if text(root, "profile") != "morphir-metadata-host-grants-v1" {

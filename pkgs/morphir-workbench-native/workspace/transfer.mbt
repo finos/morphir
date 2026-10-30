@@ -256,35 +256,47 @@ pub fn FileService::request(
         grant.baseline is Some(baseline) else {
         raise Rejected("workbench.workspace_sequence")
       }
-      try {
-        let buffer : FixedArray[Byte] = FixedArray::make(size, 0x00)
-        let mut position = 0
-        for chunk in chunks {
-          for byte in chunk {
-            buffer[position] = byte
-            position += 1
+      let failure = Ref(
+        failure_reason(Uncertain("workbench.workspace_save_unconfirmed")),
+      )
+      errdefer {
+        grant.transfer = Failed(sequence, failure.val)
+      }
+      let outcome : Result[Json, Error] = Ok(
+        {
+          let buffer : FixedArray[Byte] = FixedArray::make(size, 0x00)
+          let mut position = 0
+          for chunk in chunks {
+            for byte in chunk {
+              buffer[position] = byte
+              position += 1
+            }
           }
-        }
-        let files = decode_inventory(buffer.unsafe_reinterpret_as_bytes())
-        let current = grant.root.snapshot()
-        guard current.files == baseline.files &&
-          current.directories == baseline.directories else {
-          raise Rejected("workbench.workspace_changed")
-        }
-        grant.root.apply(baseline, difference(baseline, files))
-        let saved = grant.root.snapshot() catch {
-          _ => raise Uncertain("workbench.workspace_save_unconfirmed")
-        }
-        guard saved.files == files else {
-          raise Uncertain("workbench.workspace_changed_after_save")
-        }
-        grant.baseline = Some(saved)
-        grant.revision += 1
-        grant.transfer = Committed(sequence, grant.revision)
-        { "sequence": sequence, "revision": grant.revision }
-      } catch {
-        error => {
-          grant.transfer = Failed(sequence, failure_reason(error))
+          let files = decode_inventory(buffer.unsafe_reinterpret_as_bytes())
+          let current = grant.root.snapshot()
+          guard current.files == baseline.files &&
+            current.directories == baseline.directories else {
+            raise Rejected("workbench.workspace_changed")
+          }
+          grant.root.apply(baseline, difference(baseline, files))
+          let saved = grant.root.snapshot() catch {
+            _ => raise Uncertain("workbench.workspace_save_unconfirmed")
+          }
+          guard saved.files == files else {
+            raise Uncertain("workbench.workspace_changed_after_save")
+          }
+          grant.baseline = Some(saved)
+          grant.revision += 1
+          grant.transfer = Committed(sequence, grant.revision)
+          { "sequence": sequence, "revision": grant.revision }
+        },
+      ) catch {
+        error => Err(error)
+      }
+      match outcome {
+        Ok(value) => value
+        Err(error) => {
+          failure.val = failure_reason(error)
           raise error
         }
       }

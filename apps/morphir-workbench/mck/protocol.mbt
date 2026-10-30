@@ -60,7 +60,9 @@ pub fn handle_line(source : String) -> Json? raise {
   if frame_bytes > frame_limit {
     raise @execution.Invalid("workbench.mck_frame_limit")
   }
-  if duplicate_members(@text.read_ion(source[:])) {
+  if duplicate_members(
+      @text.read_ion(source[:], fuel=Limited(@ion.Budget(128))),
+    ) {
     return Some(invalid(field(request, "id"), "workbench.invalid_request"))
   }
   // The exact new draft preserves compact recipe number tokens as well as
@@ -290,7 +292,7 @@ fn decode_value(format : Json, input : Json) -> @execution.Value raise {
       guard input is String(source) else {
         raise @execution.Invalid("workbench.invalid_request")
       }
-      let ion = @text.read_ion(source[:]) catch {
+      let ion = @text.read_ion(source[:], fuel=Limited(@ion.Budget(128))) catch {
         _ => raise @execution.Invalid("workbench.invalid_ion")
       }
       @execution.Value::from_ion(ion)

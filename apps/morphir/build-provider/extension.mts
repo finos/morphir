@@ -86,7 +86,7 @@ function stageIdentities(pin: ExtensionPin, stage: string, tick: () => void) {
 }
 
 /** Effects only: identity checks, one supervised guest process and its bytes. */
-export async function extensionCommand(value: unknown, interrupted: () => boolean = () => false): Promise<ExtensionReply> {
+export async function extensionCommand(value: unknown, interrupted: () => boolean = () => false, onProcessStarted?: (program: string) => void): Promise<ExtensionReply> {
   let started = false, workDirectory = '', stage = '';
   const empty = () => { try { return workDirectory !== '' && readdirSync(workDirectory).length === 0; } catch { return false; } };
   try {
@@ -108,12 +108,12 @@ export async function extensionCommand(value: unknown, interrupted: () => boolea
     // Confined environment: the guest needs no PATH, toolchain or user state.
     const env: NodeJS.ProcessEnv = process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot } : {};
     const version = await supervised(staged.runtime, ['--version'],
-      { cwd: config.workDirectory, env, timeout: Math.min(remaining(), 10000), cancelFile, cancelled: interrupted });
+      { cwd: config.workDirectory, env, timeout: Math.min(remaining(), 10000), cancelFile, cancelled: interrupted, onProcessStarted });
     check(version.code === 0 && !version.signal && version.stdout.trim() === config.pin.runtime.version, 'extension.runtime_version_mismatch');
     tick();
     started = true;
     const guest = await supervisedBytes(staged.runtime, [staged.entry, staged.artifact],
-      { cwd: config.workDirectory, env, timeout: remaining(), cancelFile, cancelled: interrupted, input });
+      { cwd: config.workDirectory, env, timeout: remaining(), cancelFile, cancelled: interrupted, onProcessStarted, input });
     check(!guest.signal, 'extension.guest_signalled');
     tick();
     writeFileSync(config.responseFile, guest.stdout, { flag: 'wx', mode: 0o600 });
