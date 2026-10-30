@@ -1,6 +1,6 @@
 import {cliPackage, stageCliArtifact} from './artifact.ts';
 import {exerciseHostLifecycle} from './lifecycle-acceptance.ts';
-import {exerciseTelemetryDiagnosticParity, exerciseAsyncDiagnosticScope} from './logging-acceptance.ts';
+import {exerciseTelemetryDiagnosticParity, exerciseAsyncDiagnosticScope, exercisePortableDiagnostics} from './logging-acceptance.ts';
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
 import { exerciseNotebooks } from './notebook-acceptance.ts';
@@ -887,6 +887,7 @@ for (const target of selected) {
     await exerciseHostLifecycle(target, binary, headlessLauncher);
     exerciseTelemetryDiagnosticParity(target, binary, headlessLauncher);
     exerciseAsyncDiagnosticScope(target, binary, headlessLauncher);
+    exercisePortableDiagnostics(target, binary);
   } finally { rmSync(directory, {recursive:true,force:true}); }
 }
 

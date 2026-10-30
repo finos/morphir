@@ -192,6 +192,11 @@ when no names repeat.
 and formats. Diagnostic settings do not change their observations or retention.
 Native and JavaScript use the published asynchronous session and rolling-file
 sink. Embedded wasm and wasm-gc use a text Logger bound to host stderr and UTC.
+The GC embedder supplies the documented `utc_milliseconds` host operation; the
+provided Node runner implements it. Missing or invalid clock values fail with a
+clear diagnostic and exit 2 before the command starts. Help and `--log-level off`
+do not need that capability. Portable hosts explicitly refuse rolling-file
+diagnostics; use the native or Node CLI when those files are required.
 
 ## Structured output
 

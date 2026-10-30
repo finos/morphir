@@ -117,6 +117,9 @@ The maintainer confirmed these on 2026-10-28:
 - On 2026-10-30 the maintainer approved releasing the MoonBit discovery controls independently of the separate
   Rust CLI itest driver. `morphir-o6vm.10` remains open for that companion work; its completion is not a prerequisite
   for this release. All MoonBit isolation and boundary scenarios remain required here.
+- On 2026-10-30 the maintainer approved an additive `utc_milliseconds` operation in the GC host adapter for UTC
+  diagnostic logging. It uses the existing response envelope. Missing or invalid clocks fail clearly when logging
+  is enabled; help and logging-off runs do not require the clock. Existing MEP and worker payloads remain unchanged.
 - The work lands in as few pull requests as needed: one pull request for the migration here, with a separate pull
   request only for a group that is blocked while the rest is ready.
 

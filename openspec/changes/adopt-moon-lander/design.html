@@ -305,6 +305,14 @@ array-valued property; it does not imply repeated occurrences.</p>
 it is published; keep Moon-Lander's existing array-format defaults compatible for its other consumers. Track that
 support in <a href="https://github.com/moonrockz/moon-lander/issues/112">Moon-Lander issue 112</a>. Morphir does not
 add a local serializer to replace the framework's format.</p>
+<p>The maintainer approved the GC clock capability on 2026-10-30. Add <code>utc_milliseconds</code> to the existing
+<code>morphir_host_v1</code> operation catalog, with no new imports or response fields. Its reply is
+<code>{"value":1793318400000}</code>, or the existing error envelope. Validate whole milliseconds and the framework's
+supported UTC range before starting the command. Anchor the portable text Logger to that UTC value and the existing
+monotonic clock, as on WASI. Missing or invalid clock capability fails clearly; help and <code>--log-level off</code>
+do not request it. The supplied Node runner uses <code>Date.now()</code>. Qualification checks actual GC diagnostic
+records, categories, child starts and clean stdout, plus missing and invalid host replies. Portable rolling-file
+logging remains an explicit refusal because its asynchronous sink requires the native or JS process host.</p>
 <p>Alternative: send diagnostics into the telemetry session. Rejected; telemetry has typed observations with a
 consumer (<code>apps/morphir-otel</code>) and must keep its format.</p>
 

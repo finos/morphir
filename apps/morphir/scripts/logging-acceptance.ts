@@ -3,8 +3,80 @@ import {spawnSync} from 'node:child_process';
 import {mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {headlessEnvironment} from './headless-environment.ts';
+
+/** Qualify the portable text sink through the actual runner and GC import boundary. */
+export function exercisePortableDiagnostics(target: string, binary: string): void {
+  if (target !== 'wasm' && target !== 'wasm-gc') return;
+  const root = mkdtempSync(join(tmpdir(), 'morphir-portable-diagnostics-'));
+  const runner = fileURLToPath(new URL('../../../pkgs/morphir-host/runners/wasm.mjs', import.meta.url));
+  try {
+    const env = headlessEnvironment(root);
+    writeFileSync(join(root, 'morphir.toml'), '[workspace]\nmembers=[]\n');
+    const args = ['project', 'list', '--json', '--isolated', '--discovery-boundary', '.'];
+    const run = (argv: string[], expected = 0, response?: object) => {
+      const prefix: string[] = [];
+      if (response !== undefined) {
+        const preload = join(root, 'clock-host.mjs');
+        // The fixture replaces only clock replies at the real Wasm import
+        // boundary. Production exposes no test hook or clock override.
+        writeFileSync(preload, `
+const instantiate=WebAssembly.instantiate;
+WebAssembly.instantiate=async function(module,imports,...rest) {
+  const host=imports?.morphir_host_v1;
+  if(host) {
+    const request=host.request;
+    host.request=(op,a,b)=>op.text==='utc_milliseconds'
+      ? {text:JSON.stringify(${JSON.stringify(response)})}
+      : op.text==='monotonic_seconds' ? {text:'{"value":0}'} : request(op,a,b);
+  }
+  return instantiate.call(WebAssembly,module,imports,...rest);
+};
+`);
+        prefix.push('--import', pathToFileURL(preload).href);
+      }
+      const result = spawnSync(process.execPath, [...prefix, runner, binary, ...argv], {cwd: root, env, encoding: 'utf8', timeout: 15000});
+      assert.equal(result.status, expected, `${target} ${JSON.stringify(argv)}\n${result.stdout}\n${result.stderr}`);
+      return result;
+    };
+    const plain = run([...args, '--log-level', 'off']);
+    const before = Date.now();
+    const traced = run([...args, '--log-level', 'trace']);
+    const after = Date.now();
+    assert.deepEqual(JSON.parse(traced.stdout), JSON.parse(plain.stdout), 'Diagnostics preserve the command result');
+    assert.match(traced.stderr, /morphir\.configuration/);
+    assert.match(traced.stderr, /morphir\.cli\.project\.list/);
+    const lines = traced.stderr.split(/\r?\n/).filter(line => /^\d{4}-\d{2}-\d{2}T/.test(line));
+    assert.ok(lines.length >= 3, traced.stderr);
+    for (const line of lines) {
+      const timestamp = Date.parse(line.slice(0, 24));
+      assert.ok(timestamp >= before && timestamp <= after, line);
+    }
+    if (target === 'wasm-gc') {
+      assert.ok(process.env.MOON_HOME, 'Select the pinned stock compiler for the real child probe');
+      const child = run(['toolchain', 'info', '--home', process.env.MOON_HOME, '--json', '--isolated', '--discovery-boundary', '.', '--log-level', 'debug']);
+      assert.equal(JSON.parse(child.stdout).validated, true);
+      assert.match(child.stderr, /morphir\.host\.process: Starting child process/);
+      const fixed = run([...args, '--log-level', 'trace'], 0, {value: 0});
+      assert.match(fixed.stderr, /^1970-01-01T00:00:00\.000Z/m);
+      for (const response of [{value: null}, {value: '0'}, {value: -1}, {value: 0.5}, {value: 253402300800000}]) {
+        const failed = JSON.parse(run([...args, '--log-level', 'trace'], 2, response).stdout);
+        assert.equal(failed.successful, false);
+        assert.match(failed.error, /diagnostics\.invalid_utc_clock/);
+      }
+      const missing = {error: 'Unsupported host operation: utc_milliseconds'};
+      const failed = JSON.parse(run([...args, '--log-level', 'trace'], 2, missing).stdout);
+      assert.match(failed.error, /diagnostics\.utc_clock_unavailable/);
+      assert.deepEqual(JSON.parse(run([...args, '--log-level', 'off'], 0, missing).stdout), JSON.parse(plain.stdout));
+      assert.equal(typeof JSON.parse(run(['--help', '--json'], 0, missing).stdout).usage, 'string');
+    }
+    writeFileSync(join(root, 'morphir.toml'), '[workspace]\nmembers=[]\n[logging.file]\nenabled=true\n');
+    const unavailable = JSON.parse(run([...args, '--log-level', 'trace'], 2).stdout);
+    assert.match(unavailable.error, /diagnostics\.file_logging_unavailable/);
+    console.log(`CLI portable diagnostics ${target}: UTC, categories, result channels, host capabilities and explicit file refusal passed.`);
+  } finally { rmSync(root, {recursive: true, force: true}); }
+}
 
 /** Compare actual nonempty CLI Ion output under controlled clocks and IDs.
  * The preload belongs only to this child fixture; production has no test hook. */

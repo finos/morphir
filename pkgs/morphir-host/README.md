@@ -82,6 +82,18 @@ Run WASM artifacts with `node pkgs/morphir-host/runners/wasm.mjs <artifact.wasm>
 
 WASM-GC exchanges JSON responses through opaque UTF-16 string handles. Imports are `begin`, `append`, `length`, `at` and `request`; `request` takes operation and two string arguments and returns `{value: ...}` or `{error: ...}`. The supplied runner implements filesystem operations, arguments, environment, platform identity, stderr and exit. Console output uses `spectest.print_char`. MoonBit core also declares `__moonbit_sys_unstable.exit(code)`, which the CLI does not call; a host must still supply it, and the supplied runner exits the process. These imports are an explicit embedding contract, not WASI.
 
+Diagnostic logging additionally requires `utc_milliseconds`, with both string arguments empty.
+Return a whole numeric count of milliseconds since the Unix epoch, for example
+`{"value":1793318400000}`. The diagnostic timestamp range is 0 through 253402300799999,
+ending at `9999-12-31T23:59:59.999Z`. The supplied Node runner uses `Date.now()`; the
+portable logger advances that initial UTC value with the existing `monotonic_seconds`
+operation. Missing clocks report `diagnostics.utc_clock_unavailable`; invalid values
+report `diagnostics.invalid_utc_clock`. The CLI exits 2 before starting the command,
+using its existing JSON failure when selected. Help and `--log-level off` do not
+request a clock. Text diagnostics go only to stderr; rolling-file diagnostics require
+the native or JS process host and are explicitly refused here. No MEP or worker
+message fields are added by these host capabilities.
+
 Optional WASM-GC operations `bytes_supported`, `read_bytes` and `write_bytes`
 extend this interface. `bytes_supported` returns true when both byte operations
 are implemented; missing operations mean unsupported. `read_bytes(path)` returns

@@ -41,6 +41,7 @@ if (!imports.some(i => i.module === 'morphir_host_v1')) {
       case 'interruption_supported': return !!interrupted;
       case 'interruption_requested': return !!interrupted && Atomics.load(interrupted, 0) !== 0;
       case 'monotonic_seconds': return Number(process.hrtime.bigint()) / 1e9;
+      case 'utc_milliseconds': return Date.now();
       case 'read_input': {
         const limit = Number(b);
         if (!Number.isInteger(limit) || limit < 1 || limit > 16777216) throw new Error('input.invalid_limit');

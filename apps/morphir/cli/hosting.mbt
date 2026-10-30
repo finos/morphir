@@ -87,7 +87,11 @@ pub fn Invocation::prepare(args : Array[String]) -> Invocation raise {
 
 ///|
 pub fn Invocation::diagnostics(self : Invocation) -> @diagnostics.Settings {
-  self.settings
+  if self.cli.help {
+    { level: Off, files: Disabled, }
+  } else {
+    self.settings
+  }
 }
 
 ///|

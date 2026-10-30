@@ -68,6 +68,24 @@ message, and named properties. JSON Lines records SHALL keep event properties as
 preserving each value's JSON type, including null, arrays and objects. Event properties SHALL NOT replace record
 metadata.
 
+#### Scenario: GC diagnostic clock
+
+- **WHEN** a Wasm-GC command enables diagnostic logging
+- **THEN** it requests `utc_milliseconds` through the existing `morphir_host_v1` interface, validates a whole numeric
+  epoch-millisecond value in the framework's supported timestamp range, and writes UTC text diagnostics to stderr
+- **AND** the command's stdout result and existing host response envelope remain unchanged
+
+#### Scenario: Missing or invalid GC diagnostic clock
+
+- **WHEN** a Wasm-GC host cannot provide the clock or returns an invalid timestamp while diagnostics are enabled
+- **THEN** the CLI fails before starting the command, with a clear clock-capability error and exit 2
+- **AND** JSON mode emits the owning command's existing structured failure
+
+#### Scenario: GC help and disabled diagnostics
+
+- **WHEN** a Wasm-GC invocation requests help or sets `--log-level off`
+- **THEN** it does not request the UTC clock operation and does not fail merely because that capability is absent
+
 #### Scenario: Property in a JSON Lines record
 
 - **WHEN** the configuration loader logs the file it read, as the property `path`, in JSON Lines format

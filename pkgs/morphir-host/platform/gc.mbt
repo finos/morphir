@@ -173,6 +173,21 @@ pub fn stderr(s : String) -> Unit {
 }
 
 ///|
+/// Optional host capability used when portable diagnostic logging is enabled.
+pub fn utc_milliseconds() -> Int64 raise {
+  let response = call("utc_milliseconds") catch {
+    _ => raise IOError("diagnostics.utc_clock_unavailable")
+  }
+  guard response is Number(value, ..) &&
+    value >= 0.0 &&
+    value <= 9007199254740991.0 &&
+    value == value.to_int64().to_double() else {
+    raise IOError("diagnostics.invalid_utc_clock")
+  }
+  value.to_int64()
+}
+
+///|
 pub fn exit(code : Int32) -> Unit {
   ignore(call("exit", a=code.to_string())) catch {
     _ => ()
@@ -223,6 +238,7 @@ pub fn process(
   home : String,
   timeout : Int32,
 ) -> Json raise {
+  process_started(program)
   call(
     "process",
     a=Json::object(
