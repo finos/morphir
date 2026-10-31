@@ -44,32 +44,32 @@
   through `@js_async.ReadableStream`, stdin writes (PROC-2); verify with the group 2 fixture worker on Node
 - [x] 3.2 Implement tree stop with `process.kill(-pid)` on Unix and `taskkill /T /F` on Windows, and wait for exit;
   verify deadline and cancellation tests on Node, and the Windows scenario in the group 2 deliberate run
-- [ ] 3.3 Run one launcher conformance suite against the native and Node process launchers; verify both pass the same
+- [x] 3.3 Run one launcher conformance suite against the native and Node process launchers; verify both pass the same
   transcripts and fault cases
 - [x] 3.4 Document the Node process worker differences (tree termination on Windows) in the package README; verify
   against the conformance suite results
 
 ## 4. MoonBit Extism host in moonrockz/extism (morphir-ukvn.5.64.36.4)
 
-- [ ] 4.1 After the maintainer approves, create `moonrockz/extism` with the canonical moonrockz setup (site app,
+- [x] 4.1 After the maintainer approves, create `moonrockz/extism` with the canonical moonrockz setup (site app,
   OpenSpec with `html-design`, `moonx` and `.mbx` scripts, CI); verify its CI passes on the empty packages
-- [ ] 4.2 Write its first OpenSpec change for the engine, kernel and plugin packages (EXT-1); verify
+- [x] 4.2 Write its first OpenSpec change for the engine, kernel and plugin packages (EXT-1); verify
   `openspec validate --all --strict` passes there
-- [ ] 4.3 Write the Extism kernel in Zig and compile it to one `wasm32-freestanding` module with the upstream export
+- [x] 4.3 Write the Extism kernel in Zig and compile it to one `wasm32-freestanding` module with the upstream export
   names and signatures and no externref global (EXT-3); verify with Zig tests and with a check that the embedded
   bytes match a fresh build
-- [ ] 4.4 Build the engine package: WAMR fast interpreter built with Zig for every CLI platform (including the Windows
+- [x] 4.4 Build the engine package: WAMR fast interpreter built with Zig for every CLI platform (including the Windows
   MSVC link), a js engine over `WebAssembly`, kernel binding per engine, memory ceiling, instruction budget,
   interruption and named feature errors (EXT-2, EXT-3); then run the EXT-2 gate: the Python `0.4.2` fixture compiles
   within the 30-second call deadline with metering on the slowest qualified platform; record timings for the
   forwarding binding and multi-module linking as a comment on this bead, and switch to the Wasmtime C API only if
   the gate fails
-- [ ] 4.5 Build the `wasi` package (WASI preview 1 sandbox) and the plugin package with the Extism host functions, an
+- [x] 4.5 Build the `wasi` package (WASI preview 1 sandbox) and the plugin package with the Extism host functions, an
   embedder policy for configuration, variables, logging and HTTP, and host functions the embedder registers in any
   namespace; verify Python `0.4.1` and `0.4.2` answer `morphir_extension_info` and a `describe` request through
   `handle` with identical results on native, Node and a browser, and verify a WASI-importing fixture plugin built
   with an upstream Extism PDK runs under the sandbox
-- [ ] 4.6 Publish an exact version to Mooncakes; verify a fresh module can pin and build it on native and js
+- [x] 4.6 Publish an exact version to Mooncakes; verify a fresh module can pin and build it on native and js
 
 ## 5. WASM workers (morphir-ukvn.5.64.36.5)
 
