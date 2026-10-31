@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The IR kit holds every binding's v3 `morphir-ir.json` reader to one contract: 35 new
+  `@version:3` cases, three of them pending, cover names, literals, types, patterns, values, typed attributes,
+  definitions, specifications and whole `Library` documents, and name the diagnostics for
+  malformed JSON, unknown tags and wrong shapes. Three unedited
+  morphir-elm documents under `spec/ir/mck/documents/v3/` must read as a `Library`.
+
 ### Changed
 - The `morphir-python` extension now comes from finos/morphir-python, which maintains the
   Python compiler. CI tests the CLI against its `extension/python/v0.4.1` bundle; bundles up to
