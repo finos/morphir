@@ -8,6 +8,7 @@ async fn assert_middleware_timing() -> Unit {
     logger: logs,
     clock: fn() { ticks.val },
     check_cancelled: fn() { () },
+    stop_requested: fn() { false },
     failed: fn(_, _) { -1 },
     workers: WorkerHosting::none(),
   }
@@ -56,6 +57,7 @@ async fn assert_middleware_cancellation() -> Unit {
     logger: logs,
     clock: fn() { 1.0 },
     check_cancelled: fn() raise { raise CommandCancelled },
+    stop_requested: fn() { true },
     failed: fn(presentation, error) {
       mapped.val = presentation is Compilation && error is CommandCancelled
       failures.val += 1

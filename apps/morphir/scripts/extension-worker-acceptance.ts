@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -29,6 +29,27 @@ function hostPlatform(): string {
   if (process.platform === 'darwin') return `${arch}-apple-darwin`;
   const report = process.report?.getReport?.() as { header?: { glibcVersionRuntime?: string } } | undefined;
   return `${arch}-unknown-linux-${report?.header?.glibcVersionRuntime ? 'gnu' : 'musl'}`;
+}
+
+/** The pinned Python extension release, an extism-kernel-v1 WASM guest. */
+const python = { version: '0.4.2', sha256: '10acafa0f0282c5240e9620a5f2bb21629cc7580b9add528e7b77c7e54db22b5' };
+
+/**
+ * The Python extension module. It is read from MORPHIR_PYTHON_EXTENSIONS, or
+ * from the download directory of `mise run test:wasm-workers`, and downloaded
+ * there when it is missing. The SHA-256 is always checked.
+ */
+function pythonGuest(workspace: string): string {
+  const root = process.env.MORPHIR_PYTHON_EXTENSIONS || join(workspace, '.dev/wasm-workers/python');
+  const file = join(root, python.version, `morphir-python-binding-${python.version}.wasm`);
+  if (!existsSync(file) || sha256(file) !== python.sha256) {
+    mkdirSync(join(root, python.version), { recursive: true });
+    execFileSync('curl', ['--fail', '--silent', '--show-error', '--location', '--output', file,
+      `https://github.com/finos/morphir-python/releases/download/extension%2Fpython%2Fv${python.version}/morphir-python-binding-${python.version}.wasm`],
+    { stdio: ['ignore', 2, 2] });
+  }
+  assert.equal(sha256(file), python.sha256, file);
+  return file;
 }
 
 function pin(artifact: string, extra: Record<string, unknown> = {}) {
@@ -138,5 +159,63 @@ export function exerciseExtensionWorker(cli: CliInvocation, workspace: string, l
     assert.equal(existsSync(join(directory, 'cancelled')), false);
     assert.equal(existsSync(join(directory, 'cancelled.morphir-partial')), false);
     console.log(`Extension worker host acceptance passed: ${label}`);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+  exerciseExtismWorker(cli, workspace, label);
+}
+
+/** How long one Python command may take before the process counts as hung. */
+const extismCommandBound = 30000;
+
+/**
+ * Runs describe and compile with the Python extension, an extism-kernel-v1
+ * WASM guest, as a real process of each CLI. The npm CLI runs the guest in a
+ * Node worker thread. Each command must exit with its status within
+ * `extismCommandBound`: before the fix the npm CLI reported
+ * extension.cancelled and then never exited (morphir-ukvn.5.64.36.11).
+ */
+export function exerciseExtismWorker(cli: CliInvocation, workspace: string, label: string) {
+  const artifact = pythonGuest(workspace);
+  const directory = mkdtempSync(join(tmpdir(), `morphir-extism-worker-${label}-`));
+  try {
+    writeFileSync(join(directory, 'pin.json'), JSON.stringify({
+      contractVersion: '0.2.0',
+      artifact: { path: artifact, sha256: python.sha256 },
+      runtime: { kind: 'wasm', abi: 'extism-kernel-v1' },
+      origin: `finos/morphir-python extension/python/v${python.version}`,
+    }));
+    const fixture = join(workspace, 'apps/morphir/fixtures/extism-python/v1/acme');
+    mkdirSync(join(directory, 'src/acme'), { recursive: true });
+    for (const name of readdirSync(fixture)) copyFileSync(join(fixture, name), join(directory, 'src/acme', name));
+    const env: NodeJS.ProcessEnv = { PATH: '/usr/bin:/bin', HOME: directory };
+    if (label !== 'native') env.PATH = `${join(process.execPath, '..')}:/usr/bin:/bin`;
+    const report = (args: string[], expected: number): Report => {
+      const started = Date.now();
+      const result = spawnSync(cli.command, [...cli.prefix, ...args, '--json'], {
+        cwd: directory, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: extismCommandBound, killSignal: 'SIGKILL',
+      });
+      const elapsed = Date.now() - started;
+      assert.ok(result.signal === null && elapsed < extismCommandBound,
+        `${label} ${JSON.stringify(args)} did not exit within ${extismCommandBound} ms (signal ${result.signal}):\n${result.stdout}\n${result.stderr}`);
+      assert.equal(result.status, expected, `${label} ${JSON.stringify(args)}:\n${result.stdout}\n${result.stderr}`);
+      return JSON.parse(result.stdout);
+    };
+
+    const described = report(['extension', 'describe', '--extension-pin', 'pin.json', '--timeout', '15000'], 0);
+    assert.equal(described.state, 'succeeded');
+    assert.equal(described.result!.worker.kind, 'wasm');
+    assert.equal(described.result!.worker.runtime.abi, 'extism-kernel-v1');
+    assert.deepEqual(described.result!.extension, { id: 'morphir-python', version: python.version });
+
+    const compiled = report(['extension', 'compile', 'src', '--package', 'acme/rules', '--ir-version', '3',
+      '--output', 'model', '--extension-pin', 'pin.json'], 0);
+    assert.equal(compiled.state, 'succeeded');
+    assert.equal(compiled.result!.lifecycle.shutdown, 'acknowledged');
+    assert.equal(compiled.result!.lifecycle.workerStopped, true);
+    assert.deepEqual(compiled.result!.output.files.map((file: { path: string }) => file.path), ['morphir-ir.json']);
+    for (const file of compiled.result!.output.files) {
+      assert.equal(file.sha256, sha256(join(directory, 'model', file.path)));
+    }
+    console.log(`Extism worker acceptance passed: ${label}`);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 }

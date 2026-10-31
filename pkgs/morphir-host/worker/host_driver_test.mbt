@@ -124,6 +124,31 @@ async test "probe a staged artifact: the probe returns claims and the worker is 
 }
 
 ///|
+async test "a stop probe that reads its task's cancellation: a launch that finished is not lost" {
+  // The launch finishes at once, so the stop poll that loses the race runs
+  // in a cancelled task. A probe that reports that cancellation as a stop,
+  // as a Moon-Lander `check_cancelled` does, must not discard the worker or
+  // end the session.
+  let (channel, worker) = @worker.MemoryChannel::pair()
+  let host = @worker.Host::new(
+    @worker.MemoryLauncher::new(channel),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  let received = []
+  @async.with_task_group(group => {
+    group.spawn_bg(() => serve(worker, received, legacy_guest()))
+    let description = host.probe(
+      process_spec(),
+      stop=@worker.StopSignal::new(@async.is_being_cancelled),
+    )
+    assert_eq(description.claims, legacy_claims())
+  })
+  assert_eq(received_methods(received), [
+    "morphir.extension.describe", "morphir.exit",
+  ])
+}
+
+///|
 async test "probe of a guest that does not describe: describe_failed and no claims" {
   for case in ["error", "exit"] {
     let (channel, worker) = @worker.MemoryChannel::pair()

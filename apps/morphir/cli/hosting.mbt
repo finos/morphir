@@ -324,6 +324,7 @@ pub async fn Invocation::execute(
     ..command_context(self.mode, configuration=self.configuration.framework()),
     logger,
     check_cancelled: fn() raise { ctx.check_cancelled() },
+    stop_requested: fn() { ctx.stop_requested() },
     workers: self.workers,
   }
   let status = if self.cli.help {

@@ -12,6 +12,18 @@ async fn StopSignal::wait(self : StopSignal) -> Unit {
 }
 
 ///|
+/// Runs `work` until it finishes or the stop signal is set, whichever comes
+/// first. Returns `None` when the stop came first. A result of `work` is never
+/// lost: `@async.any` runs a losing task to its end, and a probe can report a
+/// stop in that cancelled task without a pause, so the poll's answer cannot
+/// replace a result that `work` has already given.
+async fn[X] StopSignal::race(self : StopSignal, work : async () -> X) -> X? {
+  let mut finished = None
+  @async.any([() => finished = Some(work()), () => self.wait()])
+  finished
+}
+
+///|
 /// Runs `f`. When the task that runs it is cancelled, it runs `cleanup`
 /// where cancellation cannot interrupt it, then lets the cancellation
 /// continue.
@@ -84,17 +96,14 @@ async fn[X] Running::race(
   if self.interrupted() is Some(event) {
     return Err(event)
   }
-  let stop = self.stop
   let raced = @async.with_timeout_opt(self.remaining_ms(), () => {
-    @async.any([
-      () => Ok(work()) catch { error => Err(channel_event(error)) },
-      () => {
-        stop.wait()
-        Err(StopRequested)
-      },
-    ])
+    self.stop.race(() => Ok(work()) catch { error => Err(channel_event(error)) })
   })
-  raced.unwrap_or(Err(DeadlinePassed))
+  match raced {
+    None => Err(DeadlinePassed)
+    Some(None) => Err(StopRequested)
+    Some(Some(result)) => result
+  }
 }
 
 ///|
@@ -309,15 +318,10 @@ async fn Host::start(
   let started = @async.now()
   let launcher = self.launcher
   // The deadline or a stop cancels a launch that has not finished; the
-  // launcher stops what it started.
+  // launcher stops what it started. A launch that has finished gives its
+  // channel to the session, which aborts it at a stop or the deadline.
   let launched = @async.with_timeout_opt(deadline.ms(), () => {
-    @async.any([
-      () => Some(launcher.launch(spec, limits)),
-      () => {
-        stop.wait()
-        None
-      },
-    ])
+    stop.race(() => launcher.launch(spec, limits))
   }) catch {
     error => raise before_start(launch_ending(error), limits, extism)
   }

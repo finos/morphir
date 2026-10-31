@@ -17,6 +17,10 @@ priv struct CommandContext {
   logger : &@logging.Logger
   clock : () -> Double
   check_cancelled : () -> Unit raise
+  /// Whether the run's lifetime has a stop request. Unlike `check_cancelled`
+  /// it does not read the cancellation of the calling task, so a worker stop
+  /// probe that the host polls in a cancelled task gives no false stop.
+  stop_requested : () -> Bool
   failed : (FailurePresentation, Error) -> Int32
   workers : WorkerHosting
 }
@@ -47,6 +51,7 @@ fn command_context(
     clock: @platform.monotonic_seconds,
     // Standalone tests and the embedded legacy entry provide no run lifetime.
     check_cancelled: fn() { () },
+    stop_requested: fn() { false },
     failed: fn(presentation, error) {
       report_command_failure(presentation, mode, error)
     },

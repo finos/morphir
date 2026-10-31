@@ -1650,14 +1650,12 @@ async fn extension_command(cli : Cli, context : CommandContext) -> Int32 {
       @platform.system_type(),
     )
   }
+  // The worker host polls this probe, also in tasks that it has cancelled,
+  // so it reads stop requests only: a cancellation of the command's task
+  // reaches `extension_run` as a cancellation.
   let stopped = () => {
     @platform.interruption_requested() ||
-    (try {
-      (context.check_cancelled)()
-      false
-    } catch {
-      _ => true
-    }) ||
+    (context.stop_requested)() ||
     (cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0)
   }
   let report = extension_run(cli, { hosting: context.workers, stopped, })
