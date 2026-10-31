@@ -1001,7 +1001,8 @@ async fn actual_cli_acceptance_old_capture_survives_a_genuine_changed_compile() 
         serde_json::from_str::<Value>(&capture.reply).unwrap()["result"]["status"],
         "ready"
     );
-    let newer = fixture.recompile_source("pub type Changed { Changed }\n");
+    let newer = fixture
+        .recompile_source("module Api exposing (Changed)\n\n\ntype Changed\n    = Changed\n");
     assert_ne!(
         newer,
         *fixture.originals[0].1.as_ref().unwrap(),

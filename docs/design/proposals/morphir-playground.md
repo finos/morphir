@@ -386,6 +386,13 @@ the Morphir home. One of those tests drives the built-in Gleam frontend and
 backend, which write a parse-stage tree unless told not to, so the guard is
 watching an invocation that would fail it.
 
+> **Note:** The Rust CLI no longer has a built-in Gleam provider. Gleam
+> support moved to [finos/morphir-gleam](https://github.com/finos/morphir-gleam).
+> The Rust CLI has no default built-in provider now. The only built-in is the
+> opt-in native Elm provider, `morphir-elm-native`. The test doubles use the
+> same `NativeExtension` path as that provider. The text above records the
+> design when Gleam was built in.
+
 The view is tested against a fake `PipelineService` layer, and `CodeEditor`
 is tested against its own contract rather than through CodeMirror, so a
 future replacement has a specification to satisfy.

@@ -390,7 +390,7 @@ mod tests {
         let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
-        record.language = Some("gleam".to_owned());
+        record.language = Some("elm".to_owned());
         record.inputs = vec!["parse".to_owned()];
         record.value = vec!["morphir-ir.json".to_owned()];
         record.ir = Some(morphir_devkit::IrDescriptor {

@@ -47,7 +47,7 @@ from source is unnecessary.
 | Select dependencies | `morphir package resolve` selects and verifies a complete graph from an exact published root, then writes `morphir.lock`. |
 | Install a locked graph | `morphir package restore` verifies and writes the Libraries into a new directory. |
 | Refresh or update | `refresh` authenticates registry metadata; `update` writes a new lock for selected dependency updates. |
-| Use restored IR | Pass a restored Library to a supported generator. The example generates Gleam and compiles it in a consumer project. |
+| Use restored IR | Pass a restored Library to `morphir generate` with an installed backend extension. The examples stop after restore. |
 
 The current workflow uses one local directory registry that you control. It does
 not provide remote registry discovery or automatically add dependencies to an

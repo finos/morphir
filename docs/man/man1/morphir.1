@@ -429,18 +429,6 @@ Write a verified, pinned copy of the kit into a new directory
 \fBmck kit update\fR
 Replace a vendored snapshot, refusing if its files were edited
 .TP
-\fBgleam\fR
-Gleam language binding commands
-.TP
-\fBgleam compile\fR
-Compile Gleam source to Morphir IR
-.TP
-\fBgleam generate\fR
-Generate Gleam code from Morphir IR
-.TP
-\fBgleam roundtrip\fR
-Roundtrip: compile then generate (for testing)
-.TP
 \fBschema\fR
 Generate JSON Schema for Morphir IR
 .TP
@@ -973,7 +961,7 @@ Compile source code to Morphir IR
 .PP
 .TP
 \fB\-l, \-\-language\fR \fI<LANGUAGE>\fR
-Source language (e.g., gleam, elm)
+Source language (e.g., elm)
 .TP
 \fB\-\-extension\fR \fI<EXTENSION>\fR
 Extension id that provides the language (for example `morphir\-elm\-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider
@@ -2885,82 +2873,6 @@ Fail, changing nothing, unless the new snapshot digest is exactly this
 .TP
 \fB\-\-json\fR
 Print the outcome as JSON on stdout
-.SH "MORPHIR GLEAM"
-Gleam language binding commands
-.PP
-\fBUsage:\fR morphir gleam [OPTIONS] <COMMAND>
-.PP
-\fBOptions:\fR
-.PP
-.TP
-\fB\-\-json\fR
-Output as JSON
-.TP
-\fB\-\-json\-lines\fR
-Output as JSON Lines (streaming)
-.SH "MORPHIR GLEAM COMPILE"
-Compile Gleam source to Morphir IR
-.PP
-\fBUsage:\fR morphir gleam compile [OPTIONS]
-.PP
-\fBOptions:\fR
-.PP
-.TP
-\fB\-i, \-\-input\fR \fI<INPUT>\fR
-Source files or a directory; see `morphir compile \-\-input`
-.TP
-\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Install task outputs into this directory after the run. Canonical output stays under .morphir/out
-.TP
-\fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
-Package name override
-.TP
-\fB\-\-config\fR \fI<CONFIG>\fR
-Explicit config file path
-.TP
-\fB\-\-project\fR \fI<PROJECT>\fR
-Declared workspace\-relative member path or exact project name
-.SH "MORPHIR GLEAM GENERATE"
-Generate Gleam code from Morphir IR
-.PP
-\fBUsage:\fR morphir gleam generate [OPTIONS]
-.PP
-\fBOptions:\fR
-.PP
-.TP
-\fB\-i, \-\-input\fR \fI<INPUT>\fR
-Path to the Morphir IR file or directory
-.TP
-\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Install task outputs into this directory after the run. Canonical output stays under .morphir/out
-.TP
-\fB\-\-config\fR \fI<CONFIG>\fR
-Explicit config file path
-.TP
-\fB\-\-project\fR \fI<PROJECT>\fR
-Declared workspace\-relative member path or exact project name
-.SH "MORPHIR GLEAM ROUNDTRIP"
-Roundtrip: compile then generate (for testing)
-.PP
-\fBUsage:\fR morphir gleam roundtrip [OPTIONS]
-.PP
-\fBOptions:\fR
-.PP
-.TP
-\fB\-i, \-\-input\fR \fI<INPUT>\fR
-Source files or a directory; see `morphir compile \-\-input`
-.TP
-\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Install task outputs into this directory after the run. Canonical output stays under .morphir/out
-.TP
-\fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
-Package name override
-.TP
-\fB\-\-config\fR \fI<CONFIG>\fR
-Explicit config file path
-.TP
-\fB\-\-project\fR \fI<PROJECT>\fR
-Declared workspace\-relative member path or exact project name
 .SH "MORPHIR SCHEMA"
 Generate JSON Schema for Morphir IR
 .PP

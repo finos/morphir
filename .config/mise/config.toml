@@ -410,14 +410,14 @@ run = [
 ]
 
 [tasks."spec:mep"]
-description = "Compile spec/mep/contract and refresh spec/mep/generated/mep.ir.json"
-# The script compiles in an isolated environment, like the mep_contract test,
-# so a developer's config cannot change the committed bytes. It is Bun, not
-# shell, so the task also runs on Windows.
-run = "bun run tools/spec-mep.ts"
+description = "Unavailable: the Rust CLI no longer compiles Gleam, so it cannot refresh spec/mep/generated/mep.ir.json"
+# The contract compiled with the CLI's built-in Gleam frontend, which moved to
+# finos/morphir-gleam. Regeneration returns with that extension on the MoonBit
+# CLI. Bun, not shell, so the message also prints on Windows.
+run = "bun -e \"console.error('spec:mep is unavailable: the Rust CLI no longer compiles Gleam. Compile spec/mep/contract with the Gleam extension from https://github.com/finos/morphir-gleam on the MoonBit Morphir CLI (https://github.com/finos/morphir-moonbit), then copy the IR it writes to spec/mep/generated/mep.ir.json. See spec/mep/README.md.'); process.exit(1)\""
 
 [tasks."spec:mep-check"]
-description = "Check the MEP contract: coverage, documented wire rules, and no drift in spec/mep/generated/mep.ir.json"
+description = "Check the MEP contract: coverage and documented wire rules in spec/mep/generated/mep.ir.json"
 run = "cargo test --locked -p morphir --test mep_contract"
 
 [tasks."spec:mep-smithy-check"]

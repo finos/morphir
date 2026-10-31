@@ -8,15 +8,14 @@ morphir itest examples --filter package/local-library-restore
 
 The scenario initializes explicit trust, refreshes authenticated registry metadata,
 resolves an exact published root into a new complete lock, refreshes again without
-changing the lock, restores both Libraries, generates Gleam from the restored eligibility provider and compiles that
-source in the consumer project. It then freshly authorizes a second exact replay.
+changing the lock and restores both Libraries into the consumer project. It then
+freshly authorizes a second exact replay.
 The integration driver copies this directory into an isolated workspace.
 
 `fixture/` is a checked-in copy of the independently signed MCK MVP fixture at
 `spec/package/mck/fixtures/mvp-fresh-restore/signed/`, excluding test-only mutation
 inputs. Its public deterministic signing keys are for tests only. The policy
-requires fresh metadata; the bootstrap root is pinned by exact digest. The
-expected generated source is reviewed static text, not generated during a test.
+requires fresh metadata; the bootstrap root is pinned by exact digest.
 All positive TUF roles expire at `2100-01-01T00:00:00Z`, and independent fixture
 tests verify them at `2099-01-01T00:00:00Z`. This fixed test-only horizon keeps the
 example usable with the CLI's real clock. It is not a production expiry policy;
@@ -45,5 +44,5 @@ initialized explicitly and cannot be reset by repeating initialization.
 A missing, corrupt or unresolved store is refused. Do not delete established
 trust state to bypass a refusal. Automatic recovery, historical grants and full
 provider/power-loss qualification are tracked in finos/morphir#912. This example
-proves explicit metadata refresh, initial resolution, fresh restore and provider code generation/compilation; it does not claim
-cross-package code linking or evaluation of the generated program.
+proves explicit metadata refresh, initial resolution and fresh restore. It does not
+generate or compile source from the restored Libraries.

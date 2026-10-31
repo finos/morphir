@@ -590,6 +590,13 @@ async fn authenticated_process_host() {
     let state = root.path().join("state");
     std::fs::create_dir(&state).unwrap();
     let home = install(root.path(), &state, DefaultRecipe::Download);
+    // The playground compiles with the opt-in native Elm provider, which the
+    // workspace selects for Elm. The CLI has no default built-in frontend.
+    std::fs::write(
+        root.path().join("morphir.toml"),
+        "[project]\nname = \"example/hello\"\nversion = \"1.0.0\"\nsource_directory = \"src\"\n\n[frontend]\nlanguage = \"elm\"\n\n[frontend.elm]\nextension = \"morphir-elm-native\"\n",
+    )
+    .unwrap();
     let host = BoundUiHost::bind(
         "installed-process-session".into(),
         SessionCapabilities {
@@ -634,13 +641,6 @@ async fn authenticated_process_host() {
     .await;
     assert_eq!(initialized["result"]["protocolVersion"], 1);
     let catalog = exchange(&mut socket, 2, "morphir.playground.catalog", json!({})).await;
-    assert!(
-        catalog["result"]["frontends"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|frontend| frontend["languageId"] == "gleam" && frontend["compile"] == true)
-    );
     let target = catalog["result"]["targets"]
         .as_array()
         .unwrap()
@@ -649,10 +649,10 @@ async fn authenticated_process_host() {
         .unwrap();
     assert_eq!(target["provider"]["extensionId"], ID);
     assert_eq!(target["provider"]["origin"], "installed");
-    let compiled=exchange(&mut socket,3,"morphir.playground.compile",json!({"languageId":"gleam","documents":[{"uri":"file:///src/hello.gleam","languageId":"gleam","version":1,"text":"pub fn hello() {\n  \"world\"\n}\n"}],"package":{"name":"example/hello","exposedModules":[]},"irVersion":"4.0.0","options":{}})).await;
+    let compiled=exchange(&mut socket,3,"morphir.playground.compile",json!({"languageId":"elm","documents":[{"uri":"file:///src/Main.elm","languageId":"elm","version":1,"text":"module Main exposing (Greeting)\n\n\ntype alias Greeting =\n    String\n"}],"package":{"name":"example/hello","exposedModules":["Main"]},"irVersion":"4","options":{}})).await;
     assert_eq!(
         compiled["result"]["success"], true,
-        "actual advertised Gleam frontend compiles"
+        "the configured native Elm frontend compiles"
     );
     let compiled_ir = compiled["result"]["ir"].clone();
     let compiled_ir_version = compiled["result"]["irVersion"].as_str().unwrap().to_owned();

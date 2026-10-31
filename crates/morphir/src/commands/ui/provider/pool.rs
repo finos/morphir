@@ -226,12 +226,12 @@ const _: () = {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use morphir_elm_binding::ElmExtension;
     use morphir_extension_sdk::protocol::{InitializeParams, RpcError};
     use morphir_extension_sdk::{
         CompileOptions, CompilePackage, ExtensionCapabilities, ExtensionInfo, NativeExtension,
         SourceDocument, SourceSet,
     };
-    use morphir_gleam_binding::GleamExtension;
     use morphir_host::{
         CapabilityMetadataScope, ChannelCause, ChannelState, GuestConnection, GuestSource,
         HostError, InvocationPolicy, Negotiated, ProviderOrigin, Registry,
@@ -286,9 +286,9 @@ mod tests {
         }
     }
 
-    /// The built-in Gleam provider as a source whose guests follow a
+    /// The built-in Elm provider as a source whose guests follow a
     /// [`Script`]. Under `ProtocolOnly` it resolves to `NativeMep`, so calls
-    /// reach a real Gleam guest over MEP through the pool.
+    /// reach a real Elm guest over MEP through the pool.
     struct ScriptedSource {
         inner: NativeSource,
         incarnation: Option<String>,
@@ -393,7 +393,7 @@ mod tests {
     }
 
     fn registry(script: &Arc<Script>, incarnation: Option<&str>) -> Registry {
-        let gleam = NativeExtension::builder(GleamExtension)
+        let elm = NativeExtension::builder(ElmExtension)
             .with_frontend()
             .with_backend()
             .with_workspace()
@@ -402,7 +402,7 @@ mod tests {
         let mut registry = Registry::new();
         registry
             .register(Arc::new(ScriptedSource {
-                inner: NativeSource::new(gleam),
+                inner: NativeSource::new(elm),
                 incarnation: incarnation.map(str::to_owned),
                 script: Arc::clone(script),
             }))
@@ -411,11 +411,11 @@ mod tests {
     }
 
     fn frontend(registry: &Registry, policy: InvocationPolicy) -> Resolved {
-        registry.resolve_frontend("gleam", "4.0.0", policy).unwrap()
+        registry.resolve_frontend("elm", "4.0.0", policy).unwrap()
     }
 
     fn backend(registry: &Registry, policy: InvocationPolicy) -> Resolved {
-        registry.resolve_backend("gleam", "4.0.0", policy).unwrap()
+        registry.resolve_backend("elm", "4.0.0", policy).unwrap()
     }
 
     fn invoker() -> PooledInvoker {
@@ -424,30 +424,27 @@ mod tests {
 
     fn compile_request(output_dir: &Path) -> CompileRequest {
         CompileRequest {
-            language_id: "gleam".into(),
+            language_id: "elm".into(),
             sources: SourceSet {
                 root: Some("file:///workspace/src".into()),
                 documents: vec![SourceDocument {
-                    uri: "file:///workspace/src/main.gleam".into(),
-                    language_id: "gleam".into(),
+                    uri: "file:///workspace/src/Example/Hello.elm".into(),
+                    language_id: "elm".into(),
                     version: 1,
-                    text: "pub fn hello() {\n  \"world\"\n}\n".into(),
+                    text: "module Example.Hello exposing (..)\n\n\ntype alias Greeting =\n    String\n"
+                        .into(),
                 }],
             },
             package: CompilePackage {
-                name: "example/hello".into(),
-                exposed_modules: Some(vec![]),
+                name: "example".into(),
+                exposed_modules: Some(vec!["Example.Hello".into()]),
             },
             dependencies: vec![],
             baseline: None,
             options: CompileOptions {
                 types_only: false,
                 ir_version: "4.0.0".into(),
-                extra: HashMap::from([
-                    ("outputDir".into(), json!(output_dir)),
-                    ("emitParseStage".into(), json!(false)),
-                    ("emitParseStageFatal".into(), json!(false)),
-                ]),
+                extra: HashMap::from([("outputDir".into(), json!(output_dir))]),
             },
         }
     }
@@ -470,7 +467,7 @@ mod tests {
                 &backend(&registry, InvocationPolicy::ProtocolOnly),
                 GenerateRequest {
                     ir: json!({}),
-                    target: "gleam".into(),
+                    target: "elm".into(),
                     options: HashMap::new(),
                 },
             )
@@ -503,7 +500,7 @@ mod tests {
                 &backend(&registry, InvocationPolicy::PreferDirect),
                 GenerateRequest {
                     ir: compiled.ir.unwrap(),
-                    target: "gleam".into(),
+                    target: "elm".into(),
                     options: HashMap::new(),
                 },
             )
@@ -540,7 +537,7 @@ mod tests {
                 &backend(&registry, InvocationPolicy::ProtocolOnly),
                 GenerateRequest {
                     ir: first.ir.clone().unwrap(),
-                    target: "gleam".into(),
+                    target: "elm".into(),
                     options: HashMap::new(),
                 },
             )
@@ -607,7 +604,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             message(error),
-            "Provider 'morphir-gleam' failed during 'morphir.frontend.compile': Extension error: guest went away"
+            "Provider 'morphir-elm-native' failed during 'morphir.frontend.compile': Extension error: guest went away"
         );
 
         invoker
@@ -641,7 +638,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             message(error),
-            "Provider 'morphir-gleam' rejected 'morphir.frontend.compile': Extension error: RPC error -32001: does not compile"
+            "Provider 'morphir-elm-native' rejected 'morphir.frontend.compile': Extension error: RPC error -32001: does not compile"
         );
 
         invoker
@@ -676,7 +673,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             message(error),
-            "Provider 'morphir-gleam' failed during 'morphir.frontend.compile': JSON error: invalid type: string \"not a compile result\", expected struct CompileResult"
+            "Provider 'morphir-elm-native' failed during 'morphir.frontend.compile': JSON error: invalid type: string \"not a compile result\", expected struct CompileResult"
         );
         assert_eq!(script.opens(), 1);
         assert_eq!(script.closes(), 1);
@@ -710,7 +707,7 @@ mod tests {
                 .await
                 .unwrap();
             if abandon {
-                invoker.abandon("morphir-gleam").await;
+                invoker.abandon("morphir-elm-native").await;
             }
         }
 
@@ -913,8 +910,9 @@ mod tests {
     async fn a_guest_that_does_not_start_reports_its_own_text() {
         let temp = tempfile::tempdir().unwrap();
         let script = Arc::new(Script::default());
-        *script.refuse_start.lock().unwrap() =
-            Some("Failed to verify installed provider 'morphir-gleam': digest mismatch".into());
+        *script.refuse_start.lock().unwrap() = Some(
+            "Failed to verify installed provider 'morphir-elm-native': digest mismatch".into(),
+        );
         let registry = registry(&script, None);
 
         let error = invoker()
@@ -928,7 +926,7 @@ mod tests {
 
         assert_eq!(
             message(error),
-            "Failed to verify installed provider 'morphir-gleam': digest mismatch"
+            "Failed to verify installed provider 'morphir-elm-native': digest mismatch"
         );
     }
 
@@ -938,7 +936,7 @@ mod tests {
     async fn a_replacement_that_does_not_start_reports_its_own_text() {
         let temp = tempfile::tempdir().unwrap();
         let script = Script::with_faults([Fault::LoseForGood(
-            "Failed to verify installed provider 'morphir-gleam': digest mismatch",
+            "Failed to verify installed provider 'morphir-elm-native': digest mismatch",
         )]);
         let registry = registry(&script, None);
 
@@ -953,7 +951,7 @@ mod tests {
 
         assert_eq!(
             message(error),
-            "Failed to verify installed provider 'morphir-gleam': digest mismatch"
+            "Failed to verify installed provider 'morphir-elm-native': digest mismatch"
         );
         assert_eq!(script.opens(), 2);
     }
@@ -976,7 +974,7 @@ mod tests {
 
         assert_eq!(
             message(error),
-            "Provider 'morphir-gleam' failed during initialize: Extension error: refused the handshake"
+            "Provider 'morphir-elm-native' failed during initialize: Extension error: refused the handshake"
         );
     }
 

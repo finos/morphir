@@ -118,7 +118,6 @@ pub fn print_full_help<C: clap::CommandFactory>() {
             || subcommand.get_name() == "generate"
             || subcommand.get_name() == "transform"
             || subcommand.get_name() == "compile"
-            || subcommand.get_name() == "gleam"
         {
             *subcommand = subcommand.clone().hide(false);
         }

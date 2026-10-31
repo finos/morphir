@@ -99,10 +99,10 @@ impl Fixture {
             Layout::File => "single-file",
             Layout::Tree => "document-tree",
         };
-        fs::write(root.join("morphir.toml"), format!("[project]\nname='acme/originals'\nversion='1.0.0'\nsource_directory='models'\nexposed_modules=['api']\n[frontend]\nlanguage='gleam'\n[ir]\nlayout='{layout_name}'\nformat='{}'\n", format.name())).unwrap();
+        fs::write(root.join("morphir.toml"), format!("[project]\nname='acme/originals'\nversion='1.0.0'\nsource_directory='models'\nexposed_modules=['Api']\n[frontend]\nlanguage='elm'\n[frontend.elm]\nextension='morphir-elm-native'\n[ir]\nlayout='{layout_name}'\nformat='{}'\n", format.name())).unwrap();
         fs::write(
-            root.join("models/api.gleam"),
-            "pub type Answer { Answer }\n",
+            root.join("models/Api.elm"),
+            "module Api exposing (Answer)\n\n\ntype Answer\n    = Answer\n",
         )
         .unwrap();
         compile_at(root);
@@ -121,7 +121,7 @@ impl Fixture {
         assert_eq!(record["ir"]["path"], primary);
         let dest = root.join(".morphir/out/compile.dest");
         if matches!(layout, Layout::Tree) {
-            // A controlled cooperating writer, not a claim these bytes came from Gleam.
+            // A controlled cooperating writer, not a claim these bytes came from Elm.
             // All added entries are inside the real writer's declared primary tree.
             let lock = fs::OpenOptions::new()
                 .read(true)
@@ -190,7 +190,7 @@ impl Fixture {
     /// Keep the original immutable expected snapshot while a real later CLI
     /// compile owns its ordinary writer lock and replaces live compiler output.
     pub fn recompile_source(&self, source: &str) -> Vec<u8> {
-        fs::write(self.root().join("models/api.gleam"), source).unwrap();
+        fs::write(self.root().join("models/Api.elm"), source).unwrap();
         compile_at(self.root());
         fs::read(
             self.root()

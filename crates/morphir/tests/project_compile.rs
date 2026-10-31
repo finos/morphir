@@ -4,19 +4,19 @@ use std::{fs, process::Command};
 fn workspace_compile_selects_member_sources_package_and_exposure() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path();
-    fs::write(root.join("morphir.toml"), "[workspace]\nmembers = ['packages/*']\ndefault_member = 'packages/first'\n[frontend]\nlanguage = 'gleam'\n").unwrap();
+    fs::write(root.join("morphir.toml"), "[workspace]\nmembers = ['packages/*']\ndefault_member = 'packages/first'\n[frontend]\nlanguage = 'elm'\n[frontend.elm]\nextension = 'morphir-elm-native'\n").unwrap();
     for name in ["first", "second"] {
         let member = root.join("packages").join(name);
         fs::create_dir_all(member.join("models")).unwrap();
-        fs::write(member.join("morphir.toml"), format!("[project]\nname = 'acme/{name}'\nversion = '1.0.0'\nsource_directory = 'models'\nexposed_modules = ['api']\n")).unwrap();
+        fs::write(member.join("morphir.toml"), format!("[project]\nname = 'acme/{name}'\nversion = '1.0.0'\nsource_directory = 'models'\nexposed_modules = ['Api']\n")).unwrap();
         fs::write(
-            member.join("models/api.gleam"),
-            "pub type Answer { Answer }\n",
+            member.join("models/Api.elm"),
+            "module Api exposing (Answer)\n\n\ntype Answer\n    = Answer\n",
         )
         .unwrap();
         fs::write(
-            member.join("models/internal.gleam"),
-            "pub type Detail { Detail }\n",
+            member.join("models/Internal.elm"),
+            "module Internal exposing (Detail)\n\n\ntype Detail\n    = Detail\n",
         )
         .unwrap();
     }
@@ -54,25 +54,4 @@ fn workspace_compile_selects_member_sources_package_and_exposure() {
         assert!(text.contains("Private"), "{text}");
         assert!(text.contains("Public"), "{text}");
     }
-    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
-        .args([
-            "generate",
-            "--project",
-            "packages/second",
-            "--target",
-            "gleam",
-        ])
-        .current_dir(root)
-        .env("MORPHIR_HOME", root.join("home"))
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        root.join(".morphir/out/packages/second/generate/gleam.json")
-            .is_file()
-    );
 }

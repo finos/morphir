@@ -25,7 +25,7 @@ complete publication workflow.
 The beta.9 CLI has an early authoring path for a **dependency-free classic
 JSON V4** Library. This command first shipped in v0.4.0-beta.6. The checked-in
 [`hello` publication example](https://github.com/finos/morphir/tree/main/examples/package/local-library-publish)
-starts with Gleam source and this `authoring.json`:
+starts with the Elm source file `src/Main.elm` and this `authoring.json`:
 
 ```json
 {
@@ -35,6 +35,11 @@ starts with Gleam source and this `authoring.json`:
   "exports": { "main": "main" }
 }
 ```
+
+The example's `morphir.toml` selects the opt-in native Elm provider,
+`morphir-elm-native`, under `[frontend.elm]`. That provider is built in to the
+CLI, so you do not install an extension. It compiles Elm types only. The
+`Main` module exposes one type alias, `Greeting`.
 
 From the source checkout, compile and create a new bundle directory:
 

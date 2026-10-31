@@ -672,7 +672,11 @@ fn write_test_release_bundle(directory: &std::path::Path) -> PathBuf {
 }
 
 #[cfg(unix)]
-fn write_backend_test_index(directory: &std::path::Path, bytes: &[u8]) -> TestIndex {
+fn write_backend_test_index(
+    directory: &std::path::Path,
+    bytes: &[u8],
+    ir_version: &str,
+) -> TestIndex {
     let root = directory.join("backend-index");
     let filename = "morphir-avro".to_owned();
     let relative_source = format!("artifacts/{filename}");
@@ -693,7 +697,7 @@ fn write_backend_test_index(directory: &std::path::Path, bytes: &[u8]) -> TestIn
         "capabilities": ["backend"],
         "backend": {
             "targets": ["avro"],
-            "irVersions": ["3"]
+            "irVersions": [ir_version]
         },
         "artifacts": [{
             "runtime": "process",
@@ -721,56 +725,6 @@ fn write_backend_test_index(directory: &std::path::Path, bytes: &[u8]) -> TestIn
     }
 }
 
-#[cfg(unix)]
-fn write_gleam_frontend_test_index(directory: &std::path::Path, bytes: &[u8]) -> TestIndex {
-    let root = directory.join("gleam-frontend-index");
-    let filename = "morphir-installed-gleam".to_owned();
-    let relative_source = format!("artifacts/{filename}");
-    let source = root.join(&relative_source);
-    std::fs::create_dir_all(source.parent().unwrap()).unwrap();
-    std::fs::create_dir_all(root.join("extensions")).unwrap();
-    std::fs::write(&source, bytes).unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(&source, std::fs::Permissions::from_mode(0o700)).unwrap();
-    let digest = morphir_distribution::Sha256Digest::of_bytes(bytes).to_string();
-    let record = serde_json::json!({
-        "schemaVersion": "1.0",
-        "id": "morphir-installed-gleam",
-        "name": "Installed Gleam override",
-        "version": "1.2.3",
-        "channels": ["stable"],
-        "mepVersions": ["0.1"],
-        "capabilities": ["frontend"],
-        "frontend": {
-            "languages": [{"id": "gleam", "fileExtensions": [".gleam"]}],
-            "irVersions": ["4.0.0"]
-        },
-        "artifacts": [{
-            "runtime": "process",
-            "platform": {
-                "os": std::env::consts::OS,
-                "arch": std::env::consts::ARCH,
-            },
-            "source": {"kind": "local-file", "path": relative_source},
-            "sha256": digest,
-            "filename": filename,
-            "args": [],
-            "executable": true,
-        }],
-    });
-    std::fs::write(
-        root.join("extensions/morphir-installed-gleam.jsonl"),
-        format!("{record}\n"),
-    )
-    .unwrap();
-    TestIndex {
-        root,
-        source,
-        digest,
-        filename,
-    }
-}
-
 fn run_morphir(
     arguments: &[&str],
     morphir_home: &std::path::Path,
@@ -782,35 +736,6 @@ fn run_morphir(
         .current_dir(working_directory)
         .output()
         .expect("failed to run morphir binary")
-}
-
-fn write_gleam_project(project_root: &std::path::Path) -> PathBuf {
-    // Pin project outputs locally; discovery otherwise inherits an ancestor's
-    // .morphir directory, including one in the developer's home directory.
-    std::fs::create_dir_all(project_root.join(".morphir")).unwrap();
-    let src_dir = project_root.join("src");
-    std::fs::create_dir_all(&src_dir).unwrap();
-    std::fs::write(
-        src_dir.join("main.gleam"),
-        "pub fn hello() {\n  \"world\"\n}\n",
-    )
-    .unwrap();
-    std::fs::write(
-        project_root.join("morphir.toml"),
-        r#"[project]
-name = "example/hello"
-version = "1.0.0"
-source_directory = "src"
-
-[frontend]
-language = "gleam"
-
-[codegen]
-targets = ["gleam"]
-"#,
-    )
-    .unwrap();
-    src_dir
 }
 
 /// Write a two-module Elm project: `My.Types` names a type from `My.Other`.
@@ -854,6 +779,46 @@ language = "elm"
     )
     .unwrap();
     src_dir
+}
+
+/// Write the two-module Elm project with `[frontend.elm] extension` naming
+/// the native Elm provider, so a plain `morphir compile` reaches a provider
+/// with no flag and nothing installed.
+fn write_native_elm_project(project_root: &std::path::Path) -> PathBuf {
+    let src_dir = write_elm_project(project_root);
+    set_frontend_elm_table(project_root, "extension = \"morphir-elm-native\"\n");
+    src_dir
+}
+
+/// Make `My.Other` in a project `write_elm_project` wrote name a type that
+/// does not exist, so the next compile fails in the provider. Returns the
+/// source it replaced, so a test can put it back.
+fn break_elm_project(src_dir: &std::path::Path) -> Vec<u8> {
+    let other = src_dir.join("Other.elm");
+    let good = std::fs::read(&other).unwrap();
+    std::fs::write(
+        &other,
+        "module My.Other exposing (Currency)\n\n\ntype alias Currency =\n    Nonexistent\n",
+    )
+    .unwrap();
+    good
+}
+
+/// Point a project `write_elm_project` wrote at another language. No built-in
+/// provider compiles it, so the native Elm provider is a real provider id
+/// that does not provide the language.
+fn set_project_language(project_root: &std::path::Path, language: &str) {
+    let path = project_root.join("morphir.toml");
+    let existing = std::fs::read_to_string(&path).unwrap();
+    assert!(existing.contains("language = \"elm\"\n"), "{existing}");
+    std::fs::write(
+        &path,
+        existing.replace(
+            "language = \"elm\"\n",
+            &format!("language = \"{language}\"\n"),
+        ),
+    )
+    .unwrap();
 }
 
 #[test]
@@ -1717,13 +1682,20 @@ fn a_configured_extension_that_does_not_provide_the_language_is_refused() {
     let home = temp.path().join("home");
     let project = temp.path().join("project");
     write_elm_project(&project);
-    set_frontend_elm_table(&project, "extension = \"morphir-gleam-binding\"\n");
+    set_project_language(&project, "python");
+    let path = project.join("morphir.toml");
+    let existing = std::fs::read_to_string(&path).unwrap();
+    std::fs::write(
+        &path,
+        format!("{existing}\n[frontend.python]\nextension = \"morphir-elm-native\"\n"),
+    )
+    .unwrap();
 
     let compile = run_morphir(&["compile"], &home, &project);
 
     assert!(
         !compile.status.success(),
-        "a Gleam provider cannot compile Elm: stdout={}",
+        "an Elm provider cannot compile Python: stdout={}",
         String::from_utf8_lossy(&compile.stdout)
     );
     let stderr = String::from_utf8_lossy(&compile.stderr);
@@ -1731,10 +1703,10 @@ fn a_configured_extension_that_does_not_provide_the_language_is_refused() {
     // than the sentence.
     let compact = compacted_stderr(&compile);
     assert!(
-        compact.contains("extension'morphir-gleam-binding'doesnotprovide"),
+        compact.contains("extension'morphir-elm-native'doesnotprovide"),
         "{stderr}"
     );
-    assert!(compact.contains("language'elm'"), "{stderr}");
+    assert!(compact.contains("language'python'"), "{stderr}");
 }
 
 /// Requirement: a blank value is a mistake, not a way of asking for the
@@ -1791,24 +1763,31 @@ fn single_file_honours_a_configured_extension_only_with_a_config() {
     assert!(!stderr.contains("morphir-elm-native"), "{stderr}");
 }
 
-/// Requirement: the key is per language. A Gleam project carrying an Elm
-/// provider entry compiles with the Gleam provider, untouched by it.
+/// Requirement: the key is per language. An Elm project carrying a provider
+/// entry for Python, naming an id nothing provides, compiles with its Elm
+/// provider, untouched by it.
 #[test]
 fn another_languages_configured_extension_leaves_a_compile_alone() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
-    set_frontend_elm_table(&project, "extension = \"morphir-elm-native\"\n");
+    write_native_elm_project(&project);
+    let path = project.join("morphir.toml");
+    let existing = std::fs::read_to_string(&path).unwrap();
+    std::fs::write(
+        &path,
+        format!("{existing}\n[frontend.python]\nextension = \"morphir-python\"\n"),
+    )
+    .unwrap();
 
     let compile = run_morphir(&["compile"], &home, &project);
 
-    assert_compile_succeeded(&compile, "Gleam compile beside an Elm provider entry");
+    assert_compile_succeeded(&compile, "Elm compile beside a Python provider entry");
     let modules = compiled_v4_modules(&project);
     assert_eq!(
         modules.len(),
-        1,
-        "the Gleam module reaches the IR: {modules:?}"
+        2,
+        "both Elm modules reach the IR: {modules:?}"
     );
 }
 
@@ -2171,12 +2150,14 @@ fn compile_reports_the_selected_extension_when_it_is_not_installed() {
 #[test]
 fn compile_rejects_an_extension_that_does_not_provide_the_language() {
     let temp = TempDir::new().unwrap();
-    write_gleam_project(temp.path());
+    let project = temp.path().join("project");
+    write_elm_project(&project);
+    set_project_language(&project, "python");
 
     let output = run_morphir(
-        &["compile", "--extension", "morphir-other-gleam"],
+        &["compile", "--extension", "morphir-elm-native"],
         &temp.path().join("home"),
-        temp.path(),
+        &project,
     );
 
     assert!(!output.status.success());
@@ -2188,7 +2169,7 @@ fn compile_rejects_an_extension_that_does_not_provide_the_language() {
         .split_whitespace()
         .collect::<String>();
     assert!(
-        compact.contains("extension'morphir-other-gleam'doesnotprovidelanguage'gleam'"),
+        compact.contains("extension'morphir-elm-native'doesnotprovidelanguage'python'"),
         "{stderr}"
     );
 }
@@ -2660,27 +2641,6 @@ fn extension_install_requires_one_unambiguous_source() {
 }
 
 #[test]
-fn extension_list_reports_the_native_gleam_frontend_and_backend() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-
-    let list = run_morphir(&["extension", "list"], &home, temp.path());
-
-    assert!(list.status.success());
-    let stdout = String::from_utf8_lossy(&list.stdout);
-    assert!(stdout.contains("Builtin Extensions"), "{stdout}");
-    assert!(stdout.contains("morphir-gleam"), "{stdout}");
-    assert!(stdout.contains("Morphir Gleam"), "{stdout}");
-    assert!(stdout.contains("frontend: gleam"), "{stdout}");
-    assert!(stdout.contains("backend: gleam"), "{stdout}");
-    assert!(stdout.contains("native-direct"), "{stdout}");
-    assert!(
-        stdout.contains("No verified extensions installed"),
-        "{stdout}"
-    );
-}
-
-#[test]
 fn extension_install_rejects_source_tampering_without_activating_a_catalog_entry() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
@@ -3039,165 +2999,47 @@ fn verify_real_installed_elm_provider(
 }
 
 #[test]
-fn gleam_compile_uses_the_native_frontend_and_writes_valid_v4_ir() {
+fn compile_rejects_a_missing_input_path() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    // Reproduce the developer-home layout without relying on the host machine.
-    let ancestor_morphir = temp.path().join(".morphir");
-    std::fs::create_dir(&ancestor_morphir).unwrap();
-    write_gleam_project(&project);
-
-    let compile = run_morphir(&["gleam", "compile"], &home, &project);
-
-    assert!(
-        compile.status.success(),
-        "compile failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&compile.stdout),
-        String::from_utf8_lossy(&compile.stderr)
-    );
-    let output = project.join(".morphir/out/compile.dest/morphir-ir.json");
-    let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
-    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(json["formatVersion"], 4);
-    serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&bytes).unwrap();
-    assert!(ancestor_morphir.read_dir().unwrap().next().is_none());
-}
-
-#[test]
-fn gleam_compile_rejects_a_missing_input_path() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-    let missing = temp.path().join("missing");
+    write_elm_project(&project);
 
     let compile = run_morphir(
-        &["gleam", "compile", "--input", missing.to_str().unwrap()],
-        &home,
-        temp.path(),
-    );
-
-    assert!(!compile.status.success());
-    let stderr = String::from_utf8_lossy(&compile.stderr);
-    assert!(
-        stderr.contains("Source input") && stderr.contains("does not exist"),
-        "{stderr}"
-    );
-    assert!(stderr.contains("missing"), "{stderr}");
-}
-
-#[test]
-fn gleam_native_and_legacy_selectors_compile_the_same_ir() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-    let output = temp
-        .path()
-        .join(".morphir/out/compile.dest/morphir-ir.json");
-    let mut results = Vec::new();
-    for selector in ["morphir-gleam", "morphir-gleam-binding"] {
-        let compile = run_morphir(&["compile", "--extension", selector], &home, temp.path());
-        assert!(
-            compile.status.success(),
-            "{selector}: {}",
-            String::from_utf8_lossy(&compile.stderr)
-        );
-        let ir: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
-        assert_eq!(ir["formatVersion"], 4);
-        results.push(ir);
-    }
-    assert_eq!(results[0], results[1]);
-}
-
-#[test]
-#[cfg(unix)]
-fn gleam_legacy_selector_preserves_an_installed_provider_with_that_id() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-    let id = "morphir-gleam-binding";
-    let script = installed_gleam_frontend_process_script().replace("morphir-installed-gleam", id);
-    let index = write_test_index_with_frontend(
-        temp.path(),
-        id,
-        "Legacy Gleam",
-        "1.2.3",
-        script.as_bytes(),
-        ("gleam", ".gleam", "4.0.0"),
-    );
-    assert!(
-        add_test_repository("legacy", &index.root, &home, temp.path())
-            .status
-            .success()
-    );
-    let install = run_morphir(
         &[
-            "extension",
-            "install",
-            id,
-            "--repository",
-            "legacy",
-            "--no-probe",
+            "compile",
+            "--input",
+            "missing.elm",
+            "--extension",
+            "morphir-elm-native",
         ],
         &home,
-        temp.path(),
+        &project,
     );
-    assert!(
-        install.status.success(),
-        "{}",
-        String::from_utf8_lossy(&install.stderr)
-    );
-    let compile = run_morphir(&["compile", "--extension", id], &home, temp.path());
-    assert!(
-        compile.status.success(),
-        "{}",
-        String::from_utf8_lossy(&compile.stderr)
-    );
-    let ir: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(
-            temp.path()
-                .join(".morphir/out/compile.dest/morphir-ir.json"),
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert!(
-        ir["distribution"]["Library"]["def"]["modules"]
-            .get("installed-sentinel")
-            .is_some(),
-        "{ir}"
-    );
-}
-
-#[test]
-fn gleam_compile_rejects_an_empty_source_directory() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    let src = write_gleam_project(temp.path());
-    std::fs::remove_file(src.join("main.gleam")).unwrap();
-
-    let compile = run_morphir(&["gleam", "compile"], &home, temp.path());
 
     assert!(!compile.status.success());
     let stderr = String::from_utf8_lossy(&compile.stderr);
-    let normalized = stderr.to_ascii_lowercase();
-    assert!(normalized.contains("gleam source"), "{stderr}");
-    assert!(normalized.contains("empty"), "{stderr}");
+    // The renderer wraps long messages, so compare the text without its
+    // layout.
+    let compact = compacted_stderr(&compile);
+    assert!(
+        compact.contains("Sourceinput") && compact.contains("doesnotexist"),
+        "{stderr}"
+    );
+    assert!(compact.contains("missing.elm"), "{stderr}");
 }
 
-#[test]
+/// Install the process backend fixture for target `avro`, declaring Morphir
+/// IR 4 so that it accepts what a native Elm compile writes by default.
 #[cfg(unix)]
-fn installed_gleam_frontend_overrides_the_native_provider() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-    let index = write_gleam_frontend_test_index(
-        temp.path(),
-        installed_gleam_frontend_process_script().as_bytes(),
+fn install_v4_avro_backend(directory: &std::path::Path, home: &std::path::Path) {
+    let index = write_backend_test_index(
+        directory,
+        backend_process_script_for("4.0.0", 4).as_bytes(),
+        "4.0.0",
     );
     assert!(
-        add_test_repository("local-dev", &index.root, &home, temp.path())
+        add_test_repository("local-dev", &index.root, home, directory)
             .status
             .success()
     );
@@ -3206,12 +3048,12 @@ fn installed_gleam_frontend_overrides_the_native_provider() {
             "extension",
             "install",
             "--no-probe",
-            "morphir-installed-gleam",
+            "morphir-avro",
             "--repository",
             "local-dev",
         ],
-        &home,
-        temp.path(),
+        home,
+        directory,
     );
     assert!(
         install.status.success(),
@@ -3219,117 +3061,27 @@ fn installed_gleam_frontend_overrides_the_native_provider() {
         String::from_utf8_lossy(&install.stdout),
         String::from_utf8_lossy(&install.stderr)
     );
-
-    let compile = run_morphir(&["gleam", "compile"], &home, temp.path());
-
-    assert!(
-        compile.status.success(),
-        "compile failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&compile.stdout),
-        String::from_utf8_lossy(&compile.stderr)
-    );
-    let ir: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(
-            temp.path()
-                .join(".morphir/out/compile.dest/morphir-ir.json"),
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert!(
-        ir["distribution"]["Library"]["def"]["modules"]
-            .get("installed-sentinel")
-            .is_some(),
-        "installed provider sentinel missing from {ir}"
-    );
 }
 
 #[test]
-fn gleam_generate_accepts_the_compile_output_directory() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-    let compile = run_morphir(&["gleam", "compile"], &home, temp.path());
-    assert!(
-        compile.status.success(),
-        "compile failed: {}",
-        String::from_utf8_lossy(&compile.stderr)
-    );
-    let compile_dir = temp.path().join(".morphir/out/compile.dest");
-
-    let generate = run_morphir(
-        &[
-            "gleam",
-            "generate",
-            "--input",
-            compile_dir.to_str().unwrap(),
-        ],
-        &home,
-        temp.path(),
-    );
-
-    assert!(
-        generate.status.success(),
-        "generate failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&generate.stdout),
-        String::from_utf8_lossy(&generate.stderr)
-    );
-    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
-    assert!(
-        walkdir::WalkDir::new(&generated)
-            .into_iter()
-            .filter_map(Result::ok)
-            .any(|entry| entry.path().extension().is_some_and(|ext| ext == "gleam")),
-        "no Gleam artifact found below {}",
-        generated.display()
-    );
-    assert!(
-        !temp.path().join("main.gleam").exists(),
-        "the backend published main.gleam outside the host output directory"
-    );
-
-    // An explicit `-i` has no task provenance: nothing recorded it as this
-    // run's input.
-    let record: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(temp.path().join(".morphir/out/generate/gleam.json")).unwrap(),
-    )
-    .unwrap();
-    assert_eq!(record["inputs"], serde_json::json!([]));
-}
-
-#[test]
-fn gleam_generate_accepts_a_v4_document_tree_directory() {
+#[cfg(unix)]
+fn generate_accepts_the_compile_output_directory() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
-
-    // Produce a real v4 document tree the way a project actually gets one:
-    // compile with `[ir].layout = "document-tree"`. `generate --input` now
-    // probes a tree through the same `manifest.json`/`manifest.yaml`-rooted
-    // scheme that storage describes, not the older ad hoc `morphir.json` +
-    // loose per-module files layout.
-    let toml = project.join("morphir.toml");
-    let mut content = std::fs::read_to_string(&toml).unwrap();
-    content.push_str("\n[ir]\nlayout = \"document-tree\"\n");
-    std::fs::write(&toml, content).unwrap();
-
-    let compile = run_morphir(&["gleam", "compile"], &home, &project);
-    assert!(
-        compile.status.success(),
-        "compile failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&compile.stdout),
-        String::from_utf8_lossy(&compile.stderr)
-    );
-    let document_tree = project.join(".morphir/out/compile.dest/morphir-ir");
-    assert!(document_tree.join("manifest.json").is_file());
+    write_native_elm_project(&project);
+    install_v4_avro_backend(temp.path(), &home);
+    let compile = run_morphir(&["compile"], &home, &project);
+    assert_compile_succeeded(&compile, "compile");
+    let compile_dir = project.join(".morphir/out/compile.dest");
 
     let generate = run_morphir(
         &[
-            "gleam",
             "generate",
+            "--target",
+            "avro",
             "--input",
-            document_tree.to_str().unwrap(),
+            compile_dir.to_str().unwrap(),
         ],
         &home,
         &project,
@@ -3341,148 +3093,74 @@ fn gleam_generate_accepts_a_v4_document_tree_directory() {
         String::from_utf8_lossy(&generate.stdout),
         String::from_utf8_lossy(&generate.stderr)
     );
-    let generated = project.join(".morphir/out/generate/gleam.dest");
-    let generated_paths = walkdir::WalkDir::new(&generated)
-        .into_iter()
-        .filter_map(Result::ok)
-        .map(|entry| entry.path().to_path_buf())
-        .collect::<Vec<_>>();
-    let generated_gleam = generated_paths
-        .iter()
-        .find(|path| path.extension().is_some_and(|ext| ext == "gleam"));
+    let generated = project.join(".morphir/out/generate/avro.dest");
     assert!(
-        generated_gleam.is_some(),
-        "no Gleam artifact found below {}; paths={generated_paths:?}; stdout={}; stderr={}",
-        generated.display(),
+        generated.join("v4-string.avsc").is_file(),
+        "no artifact found below {}",
+        generated.display()
+    );
+    assert!(
+        !project.join("v4-string.avsc").exists(),
+        "the backend published an artifact outside the host output directory"
+    );
+
+    // An explicit `-i` has no task provenance: nothing recorded it as this
+    // run's input.
+    let record: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(project.join(".morphir/out/generate/avro.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(record["inputs"], serde_json::json!([]));
+}
+
+#[test]
+#[cfg(unix)]
+fn generate_accepts_a_v4_document_tree_directory() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_native_elm_project(&project);
+    install_v4_avro_backend(temp.path(), &home);
+
+    // Produce a real v4 document tree the way a project actually gets one:
+    // compile with `[ir].layout = "document-tree"`. `generate --input` probes
+    // a tree through the same `manifest.json`/`manifest.yaml`-rooted scheme
+    // that storage describes.
+    let toml = project.join("morphir.toml");
+    let mut content = std::fs::read_to_string(&toml).unwrap();
+    content.push_str("\n[ir]\nlayout = \"document-tree\"\n");
+    std::fs::write(&toml, content).unwrap();
+
+    let compile = run_morphir(&["compile"], &home, &project);
+    assert_compile_succeeded(&compile, "document-tree compile");
+    let document_tree = project.join(".morphir/out/compile.dest/morphir-ir");
+    assert!(document_tree.join("manifest.json").is_file());
+
+    let generate = run_morphir(
+        &[
+            "generate",
+            "--target",
+            "avro",
+            "--input",
+            document_tree.to_str().unwrap(),
+        ],
+        &home,
+        &project,
+    );
+
+    // The fixture backend only succeeds when the IR it receives carries
+    // `formatVersion` 4, so success shows the tree was read back as one v4
+    // document.
+    assert!(
+        generate.status.success(),
+        "generate failed: stdout={} stderr={}",
         String::from_utf8_lossy(&generate.stdout),
         String::from_utf8_lossy(&generate.stderr)
     );
-    let generated_source = std::fs::read_to_string(generated_gleam.unwrap()).unwrap();
+    let generated = project.join(".morphir/out/generate/avro.dest");
     assert!(
-        generated_source.contains("pub fn hello()"),
-        "{generated_source}"
-    );
-    assert!(
-        generated_source.contains(r#""world""#),
-        "{generated_source}"
-    );
-
-    // Validate with a plain (single-file) config of its own: reusing
-    // `project`'s config would inherit its `[ir].layout = "document-tree"`
-    // override and the validation output would not be the single JSON file
-    // this assertion checks for below.
-    let validation_config = temp.path().join("validation-morphir.toml");
-    std::fs::write(
-        &validation_config,
-        "[project]\nname = \"example/hello\"\nversion = \"1.0.0\"\n\n[frontend]\nlanguage = \"gleam\"\n",
-    )
-    .unwrap();
-    let validation_output = temp.path().join("document-tree-validation");
-    let validation = run_morphir(
-        &[
-            "gleam",
-            "compile",
-            "--input",
-            generated.to_str().unwrap(),
-            "--output",
-            validation_output.to_str().unwrap(),
-            "--config",
-            validation_config.to_str().unwrap(),
-        ],
-        &home,
-        temp.path(),
-    );
-    assert!(
-        validation.status.success(),
-        "generated Gleam did not compile: stdout={} stderr={}",
-        String::from_utf8_lossy(&validation.stdout),
-        String::from_utf8_lossy(&validation.stderr)
-    );
-    assert!(validation_output.join("morphir-ir.json").is_file());
-}
-
-#[test]
-fn gleam_roundtrip_uses_project_outputs_and_emits_recompilable_gleam() {
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-
-    let roundtrip = run_morphir(&["gleam", "roundtrip"], &home, temp.path());
-
-    assert!(
-        roundtrip.status.success(),
-        "roundtrip failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&roundtrip.stdout),
-        String::from_utf8_lossy(&roundtrip.stderr)
-    );
-    let compile_dir = temp.path().join(".morphir/out/compile.dest");
-    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
-    assert!(compile_dir.join("morphir-ir.json").is_file());
-    assert!(generated.is_dir());
-    assert!(
-        walkdir::WalkDir::new(&generated)
-            .into_iter()
-            .filter_map(Result::ok)
-            .any(|entry| entry.path().extension().is_some_and(|ext| ext == "gleam"))
-    );
-
-    let validation_output = temp.path().join("validation-compile");
-    let validation = run_morphir(
-        &[
-            "gleam",
-            "compile",
-            "--input",
-            generated.to_str().unwrap(),
-            "--output",
-            validation_output.to_str().unwrap(),
-        ],
-        &home,
-        temp.path(),
-    );
-    assert!(
-        validation.status.success(),
-        "generated Gleam did not compile: stdout={} stderr={}",
-        String::from_utf8_lossy(&validation.stdout),
-        String::from_utf8_lossy(&validation.stderr)
-    );
-    assert!(validation_output.join("morphir-ir.json").is_file());
-}
-
-#[test]
-fn gleam_roundtrip_accepts_a_package_name_override_and_still_succeeds() {
-    // The package name no longer affects any out-directory path (compile
-    // always writes to `compile.dest` regardless of package), so this test
-    // no longer proves anything about paths. What it still proves: `roundtrip`
-    // accepts `--package-name` and the compile/generate pipeline still
-    // completes end to end with it set.
-    let temp = TempDir::new().unwrap();
-    let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-
-    let roundtrip = run_morphir(
-        &["gleam", "roundtrip", "--package-name", "alternate/package"],
-        &home,
-        temp.path(),
-    );
-
-    assert!(
-        roundtrip.status.success(),
-        "roundtrip failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&roundtrip.stdout),
-        String::from_utf8_lossy(&roundtrip.stderr)
-    );
-    assert!(
-        temp.path()
-            .join(".morphir/out/compile.dest/morphir-ir.json")
-            .is_file()
-    );
-    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
-    assert!(
-        walkdir::WalkDir::new(&generated)
-            .into_iter()
-            .filter_map(Result::ok)
-            .any(|entry| entry.path().extension().is_some_and(|ext| ext == "gleam")),
-        "no Gleam artifact found below {}",
+        generated.join("v4-string.avsc").is_file(),
+        "no artifact found below {}",
         generated.display()
     );
 }
@@ -3492,7 +3170,7 @@ fn gleam_roundtrip_accepts_a_package_name_override_and_still_succeeds() {
 fn generate_routes_exact_v3_string_ir_to_an_installed_provider() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
-    let index = write_backend_test_index(temp.path(), backend_process_script().as_bytes());
+    let index = write_backend_test_index(temp.path(), backend_process_script().as_bytes(), "3");
     assert!(
         add_test_repository("local-dev", &index.root, &home, temp.path())
             .status
@@ -3558,6 +3236,14 @@ fn generate_routes_exact_v3_string_ir_to_an_installed_provider() {
 
 #[cfg(unix)]
 fn backend_process_script() -> String {
+    backend_process_script_for("3", 3)
+}
+
+/// A process backend for target `avro` that declares `ir_version` and
+/// succeeds only for IR whose `formatVersion` is `format_version`. It returns
+/// one artifact, `v<format_version>-string.avsc`.
+#[cfg(unix)]
+fn backend_process_script_for(ir_version: &str, format_version: u8) -> String {
     let python = std::process::Command::new("sh")
         .args(["-c", "command -v python3"])
         .output()
@@ -3607,122 +3293,19 @@ while True:
             "capabilities": {{
                 "backend": {{
                     "targets": ["avro"],
-                    "irVersions": ["3"],
+                    "irVersions": ["{ir_version}"],
                     "generate": True,
                 }}
             }},
         }}
     elif method == "morphir.backend.generate":
-        normalized = request["params"]["ir"]["formatVersion"] == 3
+        normalized = request["params"]["ir"]["formatVersion"] == {format_version}
         result = {{
             "success": normalized,
             "artifacts": [
-                {{"path": "v3-string.avsc", "content": "{{}}", "binary": False}}
+                {{"path": "v{format_version}-string.avsc", "content": "{{}}", "binary": False}}
             ] if normalized else [],
             "diagnostics": [],
-        }}
-    elif method == "morphir.shutdown":
-        result = {{}}
-    elif method == "morphir.exit":
-        break
-    else:
-        raise RuntimeError("unexpected method " + method)
-    if "id" in request:
-        send(request["id"], result)
-"#,
-        python = python.trim()
-    )
-}
-
-#[cfg(unix)]
-fn installed_gleam_frontend_process_script() -> String {
-    let python = std::process::Command::new("sh")
-        .args(["-c", "command -v python3"])
-        .output()
-        .unwrap();
-    assert!(python.status.success(), "python3 is required for this test");
-    let python = String::from_utf8(python.stdout).unwrap();
-    format!(
-        r#"#!{python}
-import json
-import sys
-
-def receive():
-    length = None
-    while True:
-        line = sys.stdin.buffer.readline()
-        if line in (b"\n", b"\r\n"):
-            break
-        if not line:
-            raise SystemExit(0)
-        name, value = line.decode("ascii").split(":", 1)
-        if name.lower() == "content-length":
-            length = int(value.strip())
-    return json.loads(sys.stdin.buffer.read(length))
-
-def send(identifier, result):
-    body = json.dumps(
-        {{"jsonrpc": "2.0", "id": identifier, "result": result}},
-        separators=(",", ":"),
-    ).encode()
-    sys.stdout.buffer.write(
-        b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
-    )
-    sys.stdout.buffer.flush()
-
-while True:
-    request = receive()
-    method = request["method"]
-    if method == "morphir.initialize":
-        result = {{
-            "protocolVersion": "0.1",
-            "extension": {{
-                "id": "morphir-installed-gleam",
-                "name": "Installed Gleam override",
-                "version": "1.2.3",
-                "types": ["frontend"],
-            }},
-            "capabilities": {{
-                "frontend": {{
-                    "languages": [{{
-                        "id": "gleam",
-                        "fileExtensions": [".gleam"],
-                    }}],
-                    "irVersions": ["4.0.0"],
-                    "compile": True,
-                    "incremental": False,
-                    "fragments": False,
-                }}
-            }},
-        }}
-    elif method == "morphir.frontend.compile":
-        package_name = request["params"]["package"]["name"]
-        result = {{
-            "success": True,
-            "irVersion": "4.0.0",
-            "ir": {{
-                "formatVersion": 4,
-                "distribution": {{
-                    "Library": {{
-                        "packageName": package_name,
-                        "dependencies": {{}},
-                        "def": {{
-                            "modules": {{
-                                "installed-sentinel": {{
-                                    "access": "Public",
-                                    "value": {{"types": {{}}, "values": {{}}}},
-                                }}
-                            }}
-                        }},
-                    }}
-                }},
-            }},
-            "diagnostics": [{{
-                "severity": "warning",
-                "code": "INSTALLED_SENTINEL",
-                "message": "installed provider invoked",
-            }}],
-            "modules": ["installed-sentinel"],
         }}
     elif method == "morphir.shutdown":
         result = {{}}
@@ -4708,10 +4291,10 @@ fn out_dir_flag_beats_env_which_beats_the_default() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
+    write_native_elm_project(&project);
 
     let by_env = morphir_command()
-        .args(["gleam", "compile"])
+        .args(["compile"])
         .env("MORPHIR_HOME", &home)
         .env("MORPHIR_OUT_DIR", "env-out")
         .current_dir(&project)
@@ -4730,7 +4313,7 @@ fn out_dir_flag_beats_env_which_beats_the_default() {
     assert!(!project.join(".morphir/out").exists());
 
     let by_flag = morphir_command()
-        .args(["--out-dir", "flag-out", "gleam", "compile"])
+        .args(["--out-dir", "flag-out", "compile"])
         .env("MORPHIR_HOME", &home)
         .env("MORPHIR_OUT_DIR", "env-out-2")
         .current_dir(&project)
@@ -4754,9 +4337,9 @@ fn compile_writes_a_result_record_and_installs_only_the_value() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
+    write_native_elm_project(&project);
 
-    let compile = run_morphir(&["gleam", "compile", "-o", "dist/ir"], &home, &project);
+    let compile = run_morphir(&["compile", "-o", "dist/ir"], &home, &project);
     assert!(
         compile.status.success(),
         "{}",
@@ -4773,7 +4356,7 @@ fn compile_writes_a_result_record_and_installs_only_the_value() {
             .unwrap();
     assert_eq!(record["schema"], 1);
     assert_eq!(record["task"], "compile");
-    assert_eq!(record["language"], "gleam");
+    assert_eq!(record["language"], "elm");
     assert_eq!(record["value"], serde_json::json!(["morphir-ir.json"]));
     assert_eq!(record["ir"]["layout"], "single-file");
     assert_eq!(record["ir"]["format"], "json");
@@ -4793,13 +4376,9 @@ fn compile_json_output_carries_installed_path_when_o_is_given() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
+    write_native_elm_project(&project);
 
-    let compile = run_morphir(
-        &["gleam", "--json", "compile", "-o", "dist/ir"],
-        &home,
-        &project,
-    );
+    let compile = run_morphir(&["compile", "--json", "-o", "dist/ir"], &home, &project);
     assert!(
         compile.status.success(),
         "{}",
@@ -4831,14 +4410,14 @@ fn compile_honours_yaml_and_document_tree_storage() {
         let temp = TempDir::new().unwrap();
         let home = temp.path().join("home");
         let project = temp.path().join("project");
-        write_gleam_project(&project);
+        write_native_elm_project(&project);
         let toml = project.join("morphir.toml");
         let mut content = std::fs::read_to_string(&toml).unwrap();
         content.push('\n');
         content.push_str(config);
         std::fs::write(&toml, content).unwrap();
 
-        let compile = run_morphir(&["gleam", "compile"], &home, &project);
+        let compile = run_morphir(&["compile"], &home, &project);
         assert!(
             compile.status.success(),
             "{}",
@@ -4859,9 +4438,9 @@ fn compile_leaves_a_tombstone_record_after_a_failing_rerun() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    let src = write_gleam_project(&project);
+    let src = write_native_elm_project(&project);
 
-    let compile = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    let compile = run_morphir(&["compile", "-o", "dist"], &home, &project);
     assert!(
         compile.status.success(),
         "{}",
@@ -4881,12 +4460,11 @@ fn compile_leaves_a_tombstone_record_after_a_failing_rerun() {
         "the first compile ran with -o and should have recorded an install target"
     );
 
-    // Reproduce the trigger `gleam_compile_rejects_an_empty_source_directory`
-    // uses: an empty source directory fails the next compile after
-    // `prepare_dest` has already cleared `.dest`.
-    std::fs::remove_file(src.join("main.gleam")).unwrap();
+    // A source error fails the next compile after `prepare_dest` has already
+    // cleared `.dest`.
+    break_elm_project(&src);
 
-    let failing = run_morphir(&["gleam", "compile"], &home, &project);
+    let failing = run_morphir(&["compile"], &home, &project);
     assert!(!failing.status.success());
     assert!(
         record_path.is_file(),
@@ -4922,10 +4500,10 @@ fn a_failing_compile_does_not_wedge_the_next_successful_install() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    let src = write_gleam_project(&project);
+    let src = write_native_elm_project(&project);
     let dist = project.join("dist");
 
-    let first = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    let first = run_morphir(&["compile", "-o", "dist"], &home, &project);
     assert!(
         first.status.success(),
         "{}",
@@ -4933,12 +4511,12 @@ fn a_failing_compile_does_not_wedge_the_next_successful_install() {
     );
     assert!(dist.join("morphir-ir.json").is_file());
 
-    std::fs::remove_file(src.join("main.gleam")).unwrap();
-    let failing = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    let good = break_elm_project(&src);
+    let failing = run_morphir(&["compile", "-o", "dist"], &home, &project);
     assert!(!failing.status.success());
 
-    std::fs::write(src.join("main.gleam"), "pub fn main() {\n  Nil\n}\n").unwrap();
-    let second = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    std::fs::write(src.join("Other.elm"), good).unwrap();
+    let second = run_morphir(&["compile", "-o", "dist"], &home, &project);
     assert!(
         second.status.success(),
         "the second -o dist must not be wedged by the failing compile in between: {}",
@@ -4952,20 +4530,22 @@ fn generate_after_a_failing_compile_reports_the_missing_record_message() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    let src = write_gleam_project(&project);
+    let src = write_native_elm_project(&project);
 
-    let compile = run_morphir(&["gleam", "compile"], &home, &project);
+    let compile = run_morphir(&["compile"], &home, &project);
     assert!(
         compile.status.success(),
         "{}",
         String::from_utf8_lossy(&compile.stderr)
     );
 
-    std::fs::remove_file(src.join("main.gleam")).unwrap();
-    let failing = run_morphir(&["gleam", "compile"], &home, &project);
+    break_elm_project(&src);
+    let failing = run_morphir(&["compile"], &home, &project);
     assert!(!failing.status.success());
 
-    let generate = run_morphir(&["gleam", "generate"], &home, &project);
+    // The record check comes before backend resolution, so no `avro` backend
+    // needs to be installed for the message to appear.
+    let generate = run_morphir(&["generate", "--target", "avro"], &home, &project);
     assert!(!generate.status.success());
     let stderr = String::from_utf8_lossy(&generate.stderr);
     // See `generate_without_a_compile_record_explains_what_to_run` for why
@@ -4986,24 +4566,26 @@ fn generate_after_a_failing_compile_reports_the_missing_record_message() {
 }
 
 #[test]
+#[cfg(unix)]
 fn generate_reads_the_compile_record_without_an_input_flag() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
+    write_native_elm_project(&project);
+    install_v4_avro_backend(temp.path(), &home);
     let toml = project.join("morphir.toml");
     let mut content = std::fs::read_to_string(&toml).unwrap();
     content.push_str("\n[ir]\nlayout = \"document-tree\"\nformat = \"yaml\"\n");
     std::fs::write(&toml, content).unwrap();
 
-    let compile = run_morphir(&["gleam", "compile"], &home, &project);
+    let compile = run_morphir(&["compile"], &home, &project);
     assert!(
         compile.status.success(),
         "{}",
         String::from_utf8_lossy(&compile.stderr)
     );
     let generate = run_morphir(
-        &["gleam", "generate", "-o", "src/generated"],
+        &["generate", "--target", "avro", "-o", "src/generated"],
         &home,
         &project,
     );
@@ -5014,7 +4596,7 @@ fn generate_reads_the_compile_record_without_an_input_flag() {
     );
 
     let record: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(project.join(".morphir/out/generate/gleam.json")).unwrap(),
+        &std::fs::read(project.join(".morphir/out/generate/avro.json")).unwrap(),
     )
     .unwrap();
     assert_eq!(record["inputs"], serde_json::json!(["compile"]));
@@ -5026,12 +4608,7 @@ fn generate_reads_the_compile_record_without_an_input_flag() {
             .all(|entry| entry.as_str() != Some(".morphir-generated-artifacts.json"))
     );
     let generated = project.join("src/generated");
-    assert!(
-        walkdir::WalkDir::new(&generated)
-            .into_iter()
-            .filter_map(Result::ok)
-            .any(|entry| entry.path().extension().is_some_and(|ext| ext == "gleam"))
-    );
+    assert!(generated.join("v4-string.avsc").is_file());
     assert!(!generated.join(".morphir-generated-artifacts.json").exists());
 }
 
@@ -5040,8 +4617,8 @@ fn generate_without_a_compile_record_explains_what_to_run() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
-    let generate = run_morphir(&["gleam", "generate"], &home, &project);
+    write_native_elm_project(&project);
+    let generate = run_morphir(&["generate", "--target", "avro"], &home, &project);
     assert!(!generate.status.success());
     let stderr = String::from_utf8_lossy(&generate.stderr);
     // The diagnostic renderer may word-wrap a long message across lines,
@@ -5076,10 +4653,10 @@ fn workspace_members_write_under_the_workspace_out_root() {
     )
     .unwrap();
     let member = workspace.join("packages/orders");
-    write_gleam_project(&member);
+    write_native_elm_project(&member);
     std::fs::remove_dir_all(member.join(".morphir")).unwrap();
 
-    let compile = run_morphir(&["gleam", "compile"], &home, &member);
+    let compile = run_morphir(&["compile"], &home, &member);
     assert!(
         compile.status.success(),
         "{}",
@@ -5104,8 +4681,8 @@ fn re_installing_after_a_storage_change_removes_the_stale_file() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
-    write_gleam_project(&project);
-    let first = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    write_native_elm_project(&project);
+    let first = run_morphir(&["compile", "-o", "dist"], &home, &project);
     assert!(
         first.status.success(),
         "{}",
@@ -5118,7 +4695,7 @@ fn re_installing_after_a_storage_change_removes_the_stale_file() {
     let mut content = std::fs::read_to_string(&toml).unwrap();
     content.push_str("\n[ir]\nformat = \"yaml\"\n");
     std::fs::write(&toml, content).unwrap();
-    let second = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    let second = run_morphir(&["compile", "-o", "dist"], &home, &project);
     assert!(
         second.status.success(),
         "{}",

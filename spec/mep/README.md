@@ -35,7 +35,7 @@ spec/mep/
     morphir.toml
     gleam.toml
     src/mep.gleam
-  generated/                committed; CI checks it for drift
+  generated/                committed; CI checks its coverage
     mep.ir.json
     json-schema/            later: finos/morphir-rust#242
     wit/morphir-mep/        later: finos/morphir-rust#243
@@ -119,16 +119,21 @@ change `contract/src/mep.gleam`, change the Smithy model too, and run
 
 ## Regenerate
 
+The Rust CLI compiled the contract with its built-in Gleam frontend. That
+frontend moved to [finos/morphir-gleam](https://github.com/finos/morphir-gleam),
+so `mise run spec:mep` now stops with a message and does not refresh
+`generated/mep.ir.json`. Bead `morphir-sugs` tracks the return of generation
+and of the drift check with the Gleam extension on the MoonBit CLI.
+
 After you change `contract/src/mep.gleam`:
 
-```sh
-mise run spec:mep        # compile the contract and refresh generated/mep.ir.json
-mise run spec:mep-check  # run the contract tests, including the drift check
-```
+1. Compile `contract/` with the Gleam extension from finos/morphir-gleam
+   (`--ir-version 4 --types-only`), and copy the IR to `generated/mep.ir.json`.
+2. Run `mise run spec:mep-check`. The contract tests read the committed
+   `generated/mep.ir.json`. They check coverage and the documented wire rules.
+   They do not compare the file with a fresh compile.
 
-`spec:mep` runs [`tools/spec-mep.ts`](../../tools/spec-mep.ts) with Bun, so it works on Linux, macOS and Windows. The script builds the CLI with cargo, then compiles the contract with every `MORPHIR_*` variable removed and temporary home and config directories, as the drift test does, so your own Morphir config cannot change the output.
-
-Commit `generated/mep.ir.json` with the change. The CLI compiles the contract with its built-in Gleam frontend (`--ir-version 4 --types-only`), so you do not need a Gleam toolchain. The `morphir CLI (test + integration)` CI job runs the same tests when `spec/mep/**` changes.
+Commit `generated/mep.ir.json` with the change. The `morphir CLI (test + integration)` CI job runs the same tests when `spec/mep/**` changes.
 
 CI does not run `gleam format`, because CI has no Gleam toolchain. If you have Gleam installed, run `gleam format` in `spec/mep/contract` before you commit.
 
