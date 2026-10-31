@@ -86,27 +86,99 @@ convert the model to an agreed tuple, it SHALL send no request and SHALL report
 - **WHEN** an extension refuses a `generateModel` request at admission
 - **THEN** the host does not convert the model and resend the request in a different tuple
 
-### Requirement: Host conversion follows the host loss rules
-A host conversion for generation SHALL follow the host's own loss rules. The
-host SHALL refuse a conversion that would drop source or naming provenance,
-SHALL report its lossy-conversion error, and SHALL send no request.
+### Requirement: Host prefers a lossless conversion
+When the host can convert a model for generation to more than one agreed tuple,
+it SHALL prefer the first agreed tuple in host order to which it can convert the
+model without loss. Only when the host can convert the model to no agreed tuple
+without loss SHALL it select the first agreed tuple in host order to which it
+can convert, and then the loss rules apply.
 
-#### Scenario: Conversion would drop provenance
-- **WHEN** a conversion to the agreed tuple would drop source or naming provenance
-- **THEN** the host reports its lossy-conversion error, for example `data.lossy_conversion` in the MoonBit CLI
-- **AND** the host sends no `generateModel` request
+#### Scenario: Several agreed tuples are convertible without loss
+- **WHEN** the host can convert the model without loss to two agreed `generateModel` tuples
+- **THEN** the host converts the model to the agreed tuple that comes first in its offer
 
-### Requirement: Converted model is a new payload
+#### Scenario: First convertible tuple is lossy and a later tuple is lossless
+- **WHEN** the session agrees `generateModel` tuples `T1` and then `T2` in host order, and the host can convert the model to `T1` only with loss and to `T2` without loss
+- **THEN** the host converts the model to `T2` and sends the `generateModel` request with `T2` as `input`
+- **AND** the host needs no permission from the user and reports no dropped data
+
+#### Scenario: Every convertible tuple is lossy
+- **WHEN** the session agrees `generateModel` tuples `T1` and then `T2` in host order, and the host can convert the model to both only with loss
+- **THEN** the host selects `T1`
+- **AND** the host refuses the conversion with its lossy-conversion error unless the user explicitly allows loss for that operation
+
+### Requirement: Host refuses a lossy conversion
+A conversion SHALL be lossy when the converted model cannot carry all content of
+the original model, for example an enrichment, an annotation, precision,
+decimal scale or provenance. When the host can convert the model to no agreed
+tuple without loss, and unless the user explicitly allows loss, the host
+SHALL refuse the lossy conversion with its lossy-conversion error, SHALL send no
+request, and SHALL publish no artifact. This refusal SHALL NOT be
+`extension.tuple_unavailable`.
+
+#### Scenario: Lossy conversion without permission
+- **WHEN** the only agreed tuple to which the host can convert would drop provenance and the user did not allow loss
+- **THEN** the host reports its lossy-conversion error, for example `data.lossy_conversion` with exit code 2 in the MoonBit CLI, and not `extension.tuple_unavailable`
+- **AND** the host sends no `generateModel` request and publishes no artifact
+- **AND** the error message tells the user how to allow the loss, for example `--allow-model-loss` in the MoonBit CLI
+
+#### Scenario: JSON to Ion conversion is lossless
+- **WHEN** the host has a `morphir-ir/morphir-json` model and the session agrees only `generateModel/morphir-model/ion-binary`
+- **THEN** the conversion drops no data and needs no permission from the user
+
+### Requirement: User explicitly allows loss for one operation
+The host SHALL do a lossy conversion only when the user explicitly allows loss
+for that one operation. When the host drops data, it SHALL report each kind of
+data that it dropped.
+
+#### Scenario: Lossy conversion with permission
+- **WHEN** a conversion to the agreed tuple would drop provenance and annotations and the user explicitly allowed loss for this operation
+- **THEN** the host converts the model and sends the `generateModel` request
+- **AND** the host warns the user that it dropped provenance and annotations, and lists them as dropped data in the conversion report
+
+#### Scenario: Permission does not carry over
+- **WHEN** the user allowed loss for one generation and then starts a second generation without permission
+- **THEN** the host refuses a lossy conversion in the second generation
+
+### Requirement: Converted model is a new payload with the same model identity
 A converted model SHALL be a new model payload with its own
-`decodedByteLength`, `sha256` and `revision`. The host SHALL keep the original
-model bytes. Required guarantees and evidence that apply to the original
-payload SHALL NOT carry over to the converted model automatically.
+`decodedByteLength`, `sha256` and `revision`, and SHALL keep the `modelId` of
+the original model. The host SHALL derive the new `revision` deterministically
+from the SHA-256 digest of the converted payload bytes. The host SHALL keep the
+original model bytes. Required guarantees and evidence that apply to the
+original payload SHALL NOT carry over to the converted model automatically.
 
 #### Scenario: Converted model has its own identity values
 - **WHEN** the host converts a model for generation
-- **THEN** the converted model has a `revision` different from the original and a `sha256` and `decodedByteLength` that match the converted bytes
+- **THEN** the converted model has the same `modelId` as the original, a `revision` different from the original, and a `sha256` and `decodedByteLength` that match the converted bytes
+
+#### Scenario: Revision is deterministic
+- **WHEN** the host converts the same original model to the same tuple two times
+- **THEN** both converted models have the same `revision`, for example `sha256:<64 lowercase hexadecimal digits>` in the MoonBit CLI
 
 #### Scenario: Evidence for the original does not carry over
 - **WHEN** the original model has evidence that binds its revision
 - **THEN** the host does not send that evidence as evidence for the converted model
 - **AND** the host sends evidence for the converted model only when it binds the new revision and its checker or trust policy accepts it
+
+### Requirement: Host reports every conversion
+For each conversion, lossless or lossy, the host SHALL report the conversion to
+the user as a diagnostic or notification. The report SHALL contain the original
+and converted tuples, the original and converted revisions and payload SHA-256
+digests, and the list of dropped data, which is empty unless the user explicitly
+allowed loss. The host SHALL NOT add a file to the output of the extension for
+this report. The form of the report SHALL be host-defined.
+
+#### Scenario: Lossless conversion is reported
+- **WHEN** the host converts a model without loss
+- **THEN** the host reports the conversion with both tuples, both revisions, both payload digests and an empty dropped list
+- **AND** in the MoonBit CLI, for example, the report is the diagnostic `extension.model_converted` with severity `info` and the data `from` and `to`, each with `profile`, `codec`, `revision` and `payloadSha256`, and `dropped`
+
+#### Scenario: Report is in the diagnostics and on stderr
+- **WHEN** the MoonBit CLI converts a model for `morphir generate`
+- **THEN** the `extension.model_converted` diagnostic is in the command diagnostics, and in the JSON report when the user gives `--json`
+- **AND** the CLI writes one human-readable line for it on stderr
+
+#### Scenario: No output file is added
+- **WHEN** the host converts a model for generation
+- **THEN** the host adds no file for the conversion to the output of the extension, and the published artifacts are only the artifacts of the extension

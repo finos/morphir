@@ -22,10 +22,21 @@ a durable capability.
   The host reports `extension.tuple_unavailable` and sends no request. A
   missing host default with another agreed tuple is not an error.
 - For `morphir.backend.generateModel`, a host that can convert a model to an
-  agreed tuple converts it and sends the converted model. A lossy conversion is
-  refused with the host's lossy-conversion error. The converted model has its
-  own digest and revision, and guarantees and evidence for the original do not
-  carry over automatically.
+  agreed tuple converts it and sends the converted model. The host prefers a
+  lossless conversion: it converts to the first agreed tuple in host order
+  that it can reach without loss. Only when no agreed tuple is lossless does it
+  select the first agreed tuple to which it can convert. Guarantees and
+  evidence for the original do not carry over automatically.
+- A lossy conversion is refused with the host's lossy-conversion error, not
+  `extension.tuple_unavailable`, unless the user explicitly allows loss for
+  that one operation. When loss is allowed, the host reports the dropped data.
+- The converted model keeps its `modelId` and has its own digest and a
+  deterministic revision derived from the converted payload digest.
+- The host reports every conversion to the user as a diagnostic or
+  notification with the original and converted tuple, revision and payload
+  digest, and the dropped data. It adds no file to the output of the extension
+  for this report. The form is host-defined, for example the MoonBit diagnostic
+  `extension.model_converted`.
 - No new wire member. No change to the `0.2.0-draft.1` version.
 
 ## Capabilities
@@ -45,7 +56,8 @@ None. `openspec/specs/` has no capability for MEP model transport.
 - Bead `morphir-1q2c` owns this change and the spec text.
 - Bead `morphir-hv6m` owns the MCK cases and runner support (related to
   `morphir-1q2c`).
-- Pull request finos/morphir#1115.
+- Pull requests finos/morphir#1115 and finos/morphir#1117 (the
+  host-conversion decisions of 2026-10-31).
 - Evidence: finos/morphir-gleam#31. The same rule is written for the MoonBit CLI
   in finos/morphir-moonbit#281.
 
