@@ -69,19 +69,18 @@ complete graph. It neither resolves dependencies nor rewrites the lock.
 morphir package restore --policy fixture/trust-policy.json --lock consumer/morphir.lock --registry fixture/registry --state trust-state --output consumer/libraries --assurance portable --json
 ```
 
-The example uses the restored eligibility Library as input to Gleam generation,
-then compiles the generated source in its consumer project:
+Each restored Library has a verified `ir.json`. To generate code, give that
+file to `morphir generate --input` and select the target of an installed backend
+extension. For the eligibility Library, the input is
+`consumer/libraries/example.com/finance/eligibility/1.2.0/ir.json`. The Rust
+CLI has no built-in code generator. For Gleam, see
+[finos/morphir-gleam](https://github.com/finos/morphir-gleam).
 
-```sh
-morphir gleam --json generate --config consumer/morphir.toml --input consumer/libraries/example.com/finance/eligibility/1.2.0/ir.json --output consumer/generated
-morphir gleam --json compile --config consumer/morphir.toml --input consumer/generated --output consumer/compiled
-```
-
-This proves provider generation and compilation. It does not prove cross-package
-linking or execution of the generated program. To replay the same lock, choose a
-different new restore destination; replay authenticates the graph again. The
+The example does not prove cross-package linking or execution of a generated
+program. To replay the same lock, choose a different new restore destination.
+Replay authenticates the graph again. The
 [offline scenario](https://github.com/finos/morphir/blob/main/examples/package/local-library-restore/scenarios.md)
-checks each command and compares the lock and generated source with fixed results.
+checks each command and compares the lock with fixed results.
 Run it from the repository root with:
 
 ```sh
@@ -106,8 +105,7 @@ morphir package update --lock fixture/morphir.lock --target example.com/finance/
 
 That command belongs to the separate [scoped update example](https://github.com/finos/morphir/tree/main/examples/package/local-library-update),
 which has its own `fixture/` and `consumer/` directories. Its scenario verifies
-the unchanged old lock, the selected dependency closure, fresh restore, and
-consumer compilation:
+the unchanged old lock, the selected dependency closure, and fresh restore:
 
 ```sh
 mise run test:examples -- --filter package/local-library-update

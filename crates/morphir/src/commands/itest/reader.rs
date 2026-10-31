@@ -397,8 +397,8 @@ fn write_golden(out: &mut String, golden: &model::Golden) {
 }
 
 /// `all`, `lines <start> to <end>`, or `between '<start>' and '<end>'`. A `between` marker can
-/// hold any character, including a newline (see `examples/gleam/compile-generate/scenarios.md`),
-/// so each marker is escaped to keep the whole step on one line; `morphir-bdd`'s own step
+/// hold any character, including a newline (for example `start: "pub fn hello() {\n"`), so
+/// each marker is escaped to keep the whole step on one line; `morphir-bdd`'s own step
 /// definition (Task C3) reverses the escaping.
 fn format_select(select: &Selection) -> String {
     match select {
@@ -650,7 +650,7 @@ mod tests {
             }
             checked += 1;
         }
-        assert_eq!(checked, 19, "expected 19 examples/**/scenarios.md files");
+        assert_eq!(checked, 15, "expected 15 examples/**/scenarios.md files");
     }
 
     fn write_scenarios_md(text: &str) -> (tempfile::TempDir, std::path::PathBuf) {

@@ -2,10 +2,10 @@
 name = "examples/hello"
 version = "1.0.0"
 source_directory = "src"
-exposed_modules = ["main"]
+exposed_modules = ["Main"]
 
 [frontend]
-language = "gleam"
+language = "elm"
 
-[codegen]
-targets = ["gleam"]
+[frontend.elm]
+extension = "morphir-elm-native"

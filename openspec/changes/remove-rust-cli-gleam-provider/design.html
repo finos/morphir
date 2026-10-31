@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>remove-rust-cli-gleam-provider: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>remove-rust-cli-gleam-provider: design</h1>
+<p class="meta">OpenSpec change | 2026-10-31 | implemented on branch DamianReeves/remove-gleam-provider; bead morphir-ukvn.1.17</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See <a href="proposal.md">proposal.md</a> for the reason. Before this change,
+<code>extension_registry_for</code> in <code>crates/morphir/src/extensions.rs</code>
+registered two native providers: Gleam (always) and Elm (only when selected by
+id). Gleam was therefore the provider that every unselected compile, generate,
+playground and package scenario reached. The requirements are in
+<a href="specs/cli/builtin-providers/spec.md">specs/cli/builtin-providers/spec.md</a>.</p>
+
+<svg viewBox="0 0 640 150" role="img" aria-labelledby="reg-title">
+<title id="reg-title">Provider registry before and after this change</title>
+<g font-family="system-ui, sans-serif" font-size="14" fill="currentColor">
+<text x="10" y="20">Before</text>
+<rect x="10" y="30" width="180" height="40" fill="none" stroke="currentColor"/>
+<text x="20" y="55">morphir-gleam (always)</text>
+<rect x="210" y="30" width="200" height="40" fill="none" stroke="currentColor"/>
+<text x="220" y="55">morphir-elm-native (opt-in)</text>
+<rect x="430" y="30" width="190" height="40" fill="none" stroke="currentColor"/>
+<text x="440" y="55">installed extensions</text>
+<text x="10" y="100">After</text>
+<rect x="210" y="110" width="200" height="40" fill="none" stroke="currentColor"/>
+<text x="220" y="135">morphir-elm-native (opt-in)</text>
+<rect x="430" y="110" width="190" height="40" fill="none" stroke="currentColor"/>
+<text x="440" y="135">installed extensions</text>
+</g>
+</svg>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> the CLI builds without <code>morphir-gleam-binding</code>;
+every test that covered behavior other than Gleam keeps its coverage; docs point
+Gleam users to finos/morphir-gleam.</p>
+<p><strong>Non-goals:</strong> a new default provider; Gleam support through an
+installed extension in the Rust CLI; moving <code>ecosystem/morphir-rust</code>;
+removing Gleam from the spec models in <code>spec/mep</code> and <code>spec/ir</code>.</p>
+
+<h2 id="decisions">Decisions</h2>
+<h3 id="prov-1">PROV-1. No default built-in provider</h3>
+<p>The native Elm provider stays opt-in. Making it the default would change what
+every unselected Elm compile reaches, which is out of scope for a removal and
+would hide the installed <code>morphir-elm</code> extension. Alternative
+considered: Elm becomes the default. Rejected for that reason.</p>
+<h3 id="prov-2">PROV-2. Drop the legacy selector alias</h3>
+<p>The <code>morphir-gleam-binding</code> to <code>morphir-gleam</code> alias
+existed only to reach the built-in. With no built-in, an exact installed id is the
+only meaning left, which the registry already gives.</p>
+<h3 id="cmd-1">CMD-1. Remove the roundtrip project check with the subcommand</h3>
+<p><code>prepare_compile</code> took a <code>roundtrip</code> flag only for
+<code>morphir gleam roundtrip</code>. The flag and its "needs a project" refusal
+go with the subcommand. <code>generate --from-partial-compile</code> stays,
+because the generic <code>generate</code> command has it.</p>
+<h3 id="test-1">TEST-1. Port tests that do not test Gleam</h3>
+<p>A test moves to the native Elm provider when it covers compile, selection,
+output records, the playground or the provider pool. Generate tests move to an
+installed test backend. A test of the subcommand, the native Gleam provider or the
+alias is removed. The Elm frontend compiles types only, so ported sources use
+types.</p>
+<h3 id="pkg-1">PKG-1. Package examples stop after restore</h3>
+<p><code>morphir generate</code> reaches installed backends only, and no backend is
+installed offline. The package scenarios therefore prove resolve, restore and
+update, and the frozen Gleam goldens go. The publish example compiles a native
+Elm type alias in place of the Gleam function.</p>
+<h3 id="mep-1">MEP-1. The MEP contract tests read the committed IR</h3>
+<p>Decided by Damian Reeves on 2026-10-31 (option A). <code>mep_contract</code>
+keeps its coverage and wire-rule checks on <code>spec/mep/generated/mep.ir.json</code>
+and loses only the fresh-compile drift test. <code>mise run spec:mep</code> stops
+with a pointer. Alternatives: keep the provider until the tooling moves (blocks
+this change); delete the task (hides the gap). Bead <code>morphir-sugs</code>
+restores generation with the morphir-gleam extension on the MoonBit CLI.</p>
+<h3 id="sub-1">SUB-1. Move the morphir-gleam pin only</h3>
+<p><code>ecosystem/morphir-gleam</code> moves from <code>aa2b7e2</code> to
+finos/morphir-gleam <code>main</code>, which holds the moved extension. The
+crate path in <code>ecosystem/morphir-rust</code> is no longer referenced, so that
+pin does not need to move here.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Users of <code>morphir gleam</code> lose the command in the next release.</td><td>CHANGELOG and docs point to finos/morphir-gleam and the MoonBit CLI.</td></tr>
+<tr><td>A playground on an empty home offers no provider.</td><td>Installed extensions and a configured <code>[frontend.elm] extension</code> still work; the Rust CLI is being sunset.</td></tr>
+<tr><td><code>spec/mep/generated/mep.ir.json</code> can drift from <code>mep.gleam</code>.</td><td>The coverage tests still read the IR; <code>morphir-sugs</code> restores the drift check.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>Merge after review. Rollback is a revert of the pull request, which restores
+the path dependency and the old submodule pin together.</p>
+
+</main>
+</body>
+</html>

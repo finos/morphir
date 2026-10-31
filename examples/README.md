@@ -38,23 +38,20 @@ provider evaluates assertions.
 | [TOML project](simple-project/scenarios.md) | Config discovery and two public native Elm type modules in v4 IR | Offline |
 | [YAML project](elm/yaml-project/scenarios.md) | Config discovery and a public native Elm record in v4 IR | Offline |
 | [Multi-project workspace](monorepo-workspace/scenarios.md) | Default selection, selecting each member by path/name, distinct package identities, isolated task outputs and installed IR copies | Offline |
-| [Gleam compile and generate](gleam/compile-generate/scenarios.md) | Function compilation, whole-file/line/marker golden comparisons, semantic Rego assertions and compile-to-generate task provenance | Offline |
-| [Gleam type compatibility](gleam/type-compatibility/scenarios.md) | IR v3/v4 type compilation, imported generic references, labelled records, discriminated unions, opaque types and whole-file generation goldens for both modules | Offline |
-| [Gleam structural values](gleam/structural-values/scenarios.md) | V4 local bindings, tuple destructuring, list tails and patterns, escaped strings and float spelling, with a whole-file generation golden | Offline |
-| [Morphir V3 defined in Gleam](gleam/ir-v3/scenarios.md) | Complete V3 data model, 30 types in 12 modules, generation goldens and a structural type roundtrip; real compiler check available separately | Offline |
 | [Installed Avro backend](backends/avro/scenarios.md) | Local bundle publication/installation, native Elm to default v4, Avro record and primitive field mappings, task provenance and installed output | Pinned Avro 0.3.0 WASM bundle |
 | [Installed OpenAPI backend](backends/openapi/scenarios.md) | Local bundle publication/installation, native Elm to default v4, JSON Schema and OpenAPI schema components, task provenance and installed outputs | Pinned OpenAPI 0.4.0 WASM bundle |
 | [Avro v3 compatibility](backends/v3-compatibility/avro/scenarios.md) and [OpenAPI v3 compatibility](backends/v3-compatibility/openapi/scenarios.md) | Explicit v3 compilation and successful Avro, JSON Schema and OpenAPI generation with the same providers | Both pinned WASM bundles |
-| [Signed local Library resolve and restore](package/local-library-restore/scenarios.md) | Explicit trust, metadata-only refresh preserving locks, authenticated full-lock resolution, fresh two-Library restore/replay, generated and compiled provider code in a consumer project | Offline, fresh signed fixture |
-| [Signed local Library scoped update](package/local-library-update/scenarios.md) | Explicit target update, movement within the old dependency closure, frozen outside pins, full-lock preservation and updated provider consumption | Offline, fresh signed fixture |
-| [Create and publish a local Library](package/local-library-publish/scenarios.md) | Compile source, create and sign a classic V4 Library, publish with distinct registry-role keys, then resolve, restore, generate and compile in an independent consumer | macOS, source-built CLI; public test-only signing seeds |
+| [Signed local Library resolve and restore](package/local-library-restore/scenarios.md) | Explicit trust, metadata-only refresh preserving locks, authenticated full-lock resolution, fresh two-Library restore/replay into a consumer project | Offline, fresh signed fixture |
+| [Signed local Library scoped update](package/local-library-update/scenarios.md) | Explicit target update, movement within the old dependency closure, frozen outside pins, full-lock preservation and restore of the updated provider | Offline, fresh signed fixture |
+| [Create and publish a local Library](package/local-library-publish/scenarios.md) | Compile native Elm source, create and sign a classic V4 Library, publish with distinct registry-role keys, then resolve and restore in an independent consumer | macOS, source-built CLI; public test-only signing seeds |
 | [CLI basics](cli/basics/scenarios.md) | Version reporting and public command help in independent Markdown scenarios | Offline |
 | [CLI migration](cli/migrate/scenarios.md) | Classic JSON to V4 YAML with a fixed whole-file golden and a command result assertion | Offline |
 | [Classic multi-file Elm](morphir-elm-compat/scenarios.md) | Config discovery and the released provider's **known rejection** of multiple source documents | Reference Elm 0.4.1 |
 
 Native Elm is types-only. Reference function lowering does not prove function
 evaluation. The workspace scenarios do not yet prove cross-package dependency
-resolution, and generated Gleam is inspected but not executed.
+resolution. Gleam examples live in
+[finos/morphir-gleam](https://github.com/finos/morphir-gleam).
 
 ## Prepare the reference Elm scenarios
 

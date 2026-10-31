@@ -319,7 +319,7 @@ fn itest_runs_the_checked_in_offline_examples_and_failure_fixture() {
             String::from_utf8_lossy(&output.stderr)
         );
         let expected = if suite == root.join("examples") {
-            18
+            13
         } else {
             1
         };
@@ -1313,7 +1313,7 @@ fn itest_filter_runs_one_example_section() {
     assert_eq!(
         stdout,
         "PASS cli/migrate#classic-to-v4: Convert Classic JSON to V4 YAML (1 steps)\n\
-         1 passed; 0 failed; 25 not selected\n",
+         1 passed; 0 failed; 20 not selected\n",
         "{stderr}"
     );
 }

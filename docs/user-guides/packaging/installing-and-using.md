@@ -8,14 +8,14 @@ sidebar_position: 6
 
 This walkthrough installs the published `loan-rules@1.0.0` graph from a prepared
 local registry. Morphir selects its `eligibility@1.2.0` dependency, restores both
-Libraries, and uses the eligibility model to generate and compile Gleam source
-in a consumer project.
+Libraries, and shows how a consumer project uses the restored eligibility
+model.
 
 :::caution Early access
 These commands target **Morphir CLI v0.4.0-beta.11**. Packaging commands and formats
 may change. The supported workflow uses one caller-controlled local registry and
-fresh signed metadata. The example demonstrates generation and compilation from
-a restored Library, not cross-package linking or execution of an application.
+fresh signed metadata. The example demonstrates restore of verified Libraries,
+not code generation, cross-package linking, or execution of an application.
 :::
 
 ## 1. Get the CLI and example
@@ -39,8 +39,8 @@ cd local-library-demo
 
 Skip these preparation commands if you already created `local-library-demo` in
 the [publication guide](publishing-locally.md). Run the remaining commands from
-that directory. No submodule checkout, source build, separate Gleam compiler, or
-downloaded extension is needed for this example. Git and a POSIX shell are used
+that directory. No submodule checkout, source build, or downloaded extension is
+needed for this example. Git and a POSIX shell are used
 for the preparation commands.
 
 The fixture's trust policy authorizes public test keys. Use it only for this
@@ -128,36 +128,22 @@ early-access features.
 
 ## 5. Use the restored model
 
-The supplied `consumer/morphir.toml` names the consuming project and selects the
-built-in Gleam frontend. Generate source from the restored eligibility Library:
+Each restored Library has a verified `ir.json`. A consumer generates code from
+that file with an installed backend extension. Give the file to
+`morphir generate --input` and select the target of that extension:
 
 ```sh
-morphir gleam --json generate --config consumer/morphir.toml --input consumer/libraries/example.com/finance/eligibility/1.2.0/ir.json --output consumer/generated
+morphir generate --input consumer/libraries/example.com/finance/eligibility/1.2.0/ir.json --target <TARGET>
 ```
 
-Open `consumer/generated/decision.gleam`. It contains:
+Replace `<TARGET>` with a target that an installed extension provides. Run
+`morphir extension list` to see the installed extensions. The Rust CLI has no
+built-in code generator. For Gleam, use the extension from
+[finos/morphir-gleam](https://github.com/finos/morphir-gleam) with the MoonBit
+Morphir CLI, [finos/morphir-moonbit](https://github.com/finos/morphir-moonbit).
 
-```gleam
-pub type Decision {
-  Approved
-  Declined
-}
-
-pub fn default_decision() {
-  Approved
-}
-```
-
-Now compile that generated source to Morphir IR under the consumer project's
-identity:
-
-```sh
-morphir gleam --json compile --config consumer/morphir.toml --input consumer/generated --output consumer/compiled
-```
-
-The JSON result reports success and a Library named `examples/library-consumer`.
-You have used the restored provider as input to another project. The CLI has not
-automatically linked the `loan-rules` and `eligibility` code or executed the model.
+The CLI does not automatically link the `loan-rules` and `eligibility` code. It
+does not execute the model.
 
 ## Refresh and update later
 

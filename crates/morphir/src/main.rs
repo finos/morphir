@@ -23,16 +23,15 @@ use commands::{
     run_extension_repository_init, run_extension_repository_inspect, run_extension_repository_list,
     run_extension_repository_publish, run_extension_repository_remove,
     run_extension_repository_verify, run_extension_search, run_extension_uninstall,
-    run_extension_update, run_generate, run_gleam_generate, run_gleam_roundtrip,
-    run_kb_add_concept, run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index,
-    run_kb_intent_cancel, run_kb_intent_check, run_kb_intent_init, run_kb_intent_list,
-    run_kb_intent_move, run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release,
-    run_kb_intent_show, run_kb_intent_start, run_kb_intent_supersede, run_kb_list,
-    run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
-    run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
-    run_kb_sync_status, run_mck_check, run_mck_kit_status, run_mck_kit_update, run_mck_kit_vendor,
-    run_mck_run, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update,
-    run_transform, run_validate, run_version,
+    run_extension_update, run_generate, run_kb_add_concept, run_kb_check, run_kb_decision_list,
+    run_kb_decision_show, run_kb_index, run_kb_intent_cancel, run_kb_intent_check,
+    run_kb_intent_init, run_kb_intent_list, run_kb_intent_move, run_kb_intent_new,
+    run_kb_intent_refine, run_kb_intent_release, run_kb_intent_show, run_kb_intent_start,
+    run_kb_intent_supersede, run_kb_list, run_kb_new_bundle, run_kb_query, run_kb_refresh,
+    run_kb_refresh_db, run_kb_refresh_markdown, run_kb_search, run_kb_show, run_kb_sync_diff,
+    run_kb_sync_pull, run_kb_sync_push, run_kb_sync_status, run_mck_check, run_mck_kit_status,
+    run_mck_kit_update, run_mck_kit_vendor, run_mck_run, run_migrate, run_tool_install,
+    run_tool_list, run_tool_uninstall, run_tool_update, run_transform, run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -86,7 +85,7 @@ enum Commands {
     // ===== Core Commands =====
     /// Compile source code to Morphir IR
     Compile {
-        /// Source language (e.g., gleam, elm)
+        /// Source language (e.g., elm)
         #[arg(short, long)]
         language: Option<String>,
         /// Extension id that provides the language (for example `morphir-elm-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider
@@ -261,17 +260,6 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
     Mck {
         #[command(subcommand)]
         action: MckAction,
-    },
-    /// Gleam language binding commands
-    Gleam {
-        #[command(subcommand)]
-        action: GleamAction,
-        /// Output as JSON
-        #[arg(long)]
-        json: bool,
-        /// Output as JSON Lines (streaming)
-        #[arg(long)]
-        json_lines: bool,
     },
     /// Generate JSON Schema for Morphir IR
     Schema {
@@ -575,61 +563,6 @@ enum ExtensionRepositoryAction {
     Verify {
         /// Repository name
         name: String,
-    },
-}
-
-#[derive(Clone, Subcommand)]
-enum GleamAction {
-    /// Compile Gleam source to Morphir IR
-    Compile {
-        /// Source files or a directory; see `morphir compile --input`
-        #[arg(short, long, action = clap::ArgAction::Append)]
-        input: Vec<String>,
-        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
-        #[arg(short, long)]
-        output: Option<String>,
-        /// Package name override
-        #[arg(long)]
-        package_name: Option<String>,
-        /// Explicit config file path
-        #[arg(long)]
-        config: Option<String>,
-        /// Declared workspace-relative member path or exact project name
-        #[arg(long)]
-        project: Option<String>,
-    },
-    /// Generate Gleam code from Morphir IR
-    Generate {
-        /// Path to the Morphir IR file or directory
-        #[arg(short, long)]
-        input: Option<String>,
-        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
-        #[arg(short, long)]
-        output: Option<String>,
-        /// Explicit config file path
-        #[arg(long)]
-        config: Option<String>,
-        /// Declared workspace-relative member path or exact project name
-        #[arg(long)]
-        project: Option<String>,
-    },
-    /// Roundtrip: compile then generate (for testing)
-    Roundtrip {
-        /// Source files or a directory; see `morphir compile --input`
-        #[arg(short, long, action = clap::ArgAction::Append)]
-        input: Vec<String>,
-        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
-        #[arg(short, long)]
-        output: Option<String>,
-        /// Package name override
-        #[arg(long)]
-        package_name: Option<String>,
-        /// Explicit config file path
-        #[arg(long)]
-        config: Option<String>,
-        /// Declared workspace-relative member path or exact project name
-        #[arg(long)]
-        project: Option<String>,
     },
 }
 
@@ -985,12 +918,8 @@ impl MorphirSession {
     }
 }
 
-/// The compile a command asks for, and whether it is the compile half of a
-/// roundtrip. `None` for a command that does not compile.
-fn compile_intent(
-    command: &Commands,
-    out: &commands::OutOverrides,
-) -> Option<(CompileOptions, bool)> {
+/// The compile a command asks for. `None` for a command that does not compile.
+fn compile_intent(command: &Commands, out: &commands::OutOverrides) -> Option<CompileOptions> {
     match command {
         Commands::Compile {
             language,
@@ -1007,74 +936,25 @@ fn compile_intent(
             types_only,
             elm_doc_comments,
             elm_ordering,
-        } => Some((
-            CompileOptions {
-                language: language.clone(),
-                extension: extension.clone(),
-                input: input.clone(),
-                output: output.clone(),
-                package_name: package_name.clone(),
-                config_path: config.clone(),
-                project: project.clone(),
-                ir_version: *ir_version,
-                json: *json,
-                json_lines: *json_lines,
-                no_cache: *no_cache,
-                types_only: *types_only,
-                elm_modes: commands::compile::ElmModeFlags {
-                    doc_comments: elm_doc_comments.clone(),
-                    ordering: elm_ordering.clone(),
-                },
-                out: out.clone(),
+        } => Some(CompileOptions {
+            language: language.clone(),
+            extension: extension.clone(),
+            input: input.clone(),
+            output: output.clone(),
+            package_name: package_name.clone(),
+            config_path: config.clone(),
+            project: project.clone(),
+            ir_version: *ir_version,
+            json: *json,
+            json_lines: *json_lines,
+            no_cache: *no_cache,
+            types_only: *types_only,
+            elm_modes: commands::compile::ElmModeFlags {
+                doc_comments: elm_doc_comments.clone(),
+                ordering: elm_ordering.clone(),
             },
-            false,
-        )),
-        Commands::Gleam {
-            action,
-            json,
-            json_lines,
-        } => {
-            let (input, output, package_name, config, project, roundtrip) = match action {
-                GleamAction::Compile {
-                    input,
-                    output,
-                    package_name,
-                    config,
-                    project,
-                } => (input, output.clone(), package_name, config, project, false),
-                // The roundtrip installs its generated code, not its IR.
-                GleamAction::Roundtrip {
-                    input,
-                    package_name,
-                    config,
-                    project,
-                    ..
-                } => (input, None, package_name, config, project, true),
-                GleamAction::Generate { .. } => return None,
-            };
-            Some((
-                CompileOptions {
-                    language: Some("gleam".to_owned()),
-                    extension: None,
-                    input: input.clone(),
-                    output,
-                    package_name: package_name.clone(),
-                    config_path: config.clone(),
-                    project: project.clone(),
-                    ir_version: None,
-                    json: *json,
-                    json_lines: *json_lines,
-                    // Reuse the workspace compile cache, as the generic
-                    // compile command does.
-                    no_cache: false,
-                    types_only: false,
-                    // The Elm compatibility modes never reach a Gleam provider.
-                    elm_modes: Default::default(),
-                    out: out.clone(),
-                },
-                roundtrip,
-            ))
-        }
+            out: out.clone(),
+        }),
         _ => None,
     }
 }
@@ -1091,8 +971,8 @@ impl AppSession for MorphirSession {
         // touching the filesystem at all.
         let ready = match compile_intent(&self.command, &self.out) {
             None => Ready::default(),
-            Some((options, roundtrip)) => {
-                Ready::with_compile(commands::compile::prepare_compile(options, roundtrip).await?)
+            Some(options) => {
+                Ready::with_compile(commands::compile::prepare_compile(options).await?)
             }
         };
 
@@ -1391,48 +1271,6 @@ impl AppSession for MorphirSession {
                     KbDecisionAction::List(a) => run_kb_decision_list(a.clone()),
                     KbDecisionAction::Show(a) => run_kb_decision_show(a.clone()),
                 },
-            },
-            Commands::Gleam {
-                action,
-                json,
-                json_lines,
-            } => match action {
-                GleamAction::Compile { .. } => run_compile(self.ready()?).await,
-                GleamAction::Generate {
-                    input,
-                    output,
-                    config,
-                    project,
-                } => {
-                    run_gleam_generate(
-                        self.out.clone(),
-                        input.clone(),
-                        output.clone(),
-                        config.clone(),
-                        project.clone(),
-                        *json,
-                        *json_lines,
-                    )
-                    .await
-                }
-                GleamAction::Roundtrip {
-                    output,
-                    config,
-                    project,
-                    ..
-                } => {
-                    let ready = self.ready()?;
-                    run_gleam_roundtrip(
-                        self.out.clone(),
-                        output.clone(),
-                        config.clone(),
-                        project.clone(),
-                        *json,
-                        *json_lines,
-                        ready,
-                    )
-                    .await
-                }
             },
             Commands::Schema { output } => commands::schema::run_schema(output.clone()),
             Commands::Version { json } => run_version(*json),

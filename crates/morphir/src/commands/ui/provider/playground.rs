@@ -641,8 +641,8 @@ fn generate_options(options: &Value) -> HashMap<String, Value> {
 /// The no-write promise is the host's, but the host is what hands providers
 /// their options, and two of the ones the CLI passes are requests to write:
 /// `outputDir` names a directory to publish into, and `emitParseStage` asks
-/// the Gleam frontend to serialize its parse tree there — defaulting to the
-/// process working directory when no `outputDir` is given. A browser has no
+/// a frontend to serialize its parse tree there — defaulting to the process
+/// working directory when no `outputDir` is given. A browser has no
 /// business setting either, and the playground has nowhere for the results
 /// to go, so both are removed and `emitParseStage` is pinned off rather than
 /// merely absent, since absent means on.
@@ -728,10 +728,27 @@ mod tests {
     use morphir_host_native::NativeSource;
     use std::sync::{Condvar, Mutex, Mutex as StdMutex};
 
-    /// The one IR release every double in this module speaks. Gleam, the only
-    /// built-in, advertises the same one, so a test that registers a double
-    /// alongside the built-ins is asking a real question about precedence.
+    /// The one IR release every double in this module speaks. The native Elm
+    /// built-in advertises IR 4 too, so a test that registers a double
+    /// alongside it is asking a real question about precedence.
     const IR_VERSION: &str = "4.0.0";
+
+    /// The id of the opt-in native Elm provider.
+    const NATIVE_ELM: &str = morphir_elm_binding::EXTENSION_ID;
+
+    /// Register the opt-in native Elm provider, which no unrestricted
+    /// registry holds, beside whatever `registry` already has.
+    fn register_native_elm(registry: &mut Registry) {
+        let elm = NativeExtension::builder(morphir_elm_binding::ElmExtension)
+            .with_frontend()
+            .with_backend()
+            .with_workspace()
+            .finish()
+            .expect("the native Elm provider builds");
+        registry
+            .register(Arc::new(NativeSource::new(elm)))
+            .expect("the native Elm provider registers");
+    }
 
     // ---------------------------------------------------------------- doubles
 
@@ -1641,13 +1658,12 @@ mod tests {
         );
     }
 
-    /// Built-ins are offered, not filtered out. They are registered in the
-    /// same registry as installed providers and invoked the same way, so the
-    /// playground has no reason to hide them — and a Playground that could
-    /// not compile the one language the CLI ships support for would be
-    /// useless on a machine with nothing installed.
+    /// No provider is built in by default: the native Elm provider is
+    /// opt-in, and Gleam left the CLI for finos/morphir-gleam. An empty home
+    /// therefore offers nothing, rather than a provider a compile could not
+    /// reach.
     #[tokio::test]
-    async fn the_catalog_offers_the_built_in_providers() {
+    async fn an_empty_home_offers_no_provider() {
         let (_root, home) = scratch_home();
         let provider = NativePlaygroundProvider::new(home);
 
@@ -1656,17 +1672,8 @@ mod tests {
             .await
             .expect("an empty home has a catalog");
 
-        let gleam = catalog
-            .frontend("gleam")
-            .unwrap_or_else(|| panic!("no built-in Gleam frontend: {catalog:?}"));
-        assert_eq!(gleam.provider.origin, PlaygroundProviderOrigin::Builtin);
-        assert!(gleam.compile);
-        assert_eq!(gleam.file_extensions, [".gleam"]);
-        assert_eq!(gleam.provider.invocation_mode, "native-direct");
-        assert!(
-            catalog.target("gleam").is_some(),
-            "no built-in Gleam backend: {catalog:?}"
-        );
+        assert!(catalog.frontends.is_empty(), "{catalog:?}");
+        assert!(catalog.targets.is_empty(), "{catalog:?}");
     }
 
     /// Ordering is load-bearing, not cosmetic.
@@ -1674,29 +1681,30 @@ mod tests {
     /// [`Registry::resolve_frontend`] prefers an installed provider
     /// over a built-in offering the same language, and the catalog's lookups
     /// take the first match. If the projection listed built-ins first, the
-    /// picker would name Gleam's built-in while a compile ran the installed
+    /// picker would name Elm's built-in while a compile ran the installed
     /// extension, and the user would be told the wrong thing about their own
-    /// output. The installed provider here shadows the one built-in the CLI
-    /// ships, at the same IR release, so the two orderings really disagree.
+    /// output. The installed provider here shadows the native Elm built-in,
+    /// at the same IR release, so the two orderings really disagree.
     #[tokio::test]
     async fn an_installed_provider_shadows_the_built_in_it_replaces() {
-        let (_root, home, snapshot) = installed_snapshot("installed-gleam", "gleam", "gleam");
-        let registry =
+        let (_root, home, snapshot) = installed_snapshot("installed-elm", "elm", "elm");
+        let mut registry =
             extension_registry_for(&home, vec![snapshot], None).expect("the registry assembles");
+        register_native_elm(&mut registry);
         let resolved = registry
-            .resolve_frontend("gleam", IR_VERSION, InvocationPolicy::PreferDirect)
-            .expect("the registry resolves Gleam");
+            .resolve_frontend("elm", IR_VERSION, InvocationPolicy::PreferDirect)
+            .expect("the registry resolves Elm");
         assert_eq!(
             resolved.info().id,
-            "installed-gleam",
+            "installed-elm",
             "this test is only meaningful while the registry prefers the installed provider"
         );
 
         let catalog = project_catalog(&registry);
 
         let frontend = catalog
-            .frontend("gleam")
-            .unwrap_or_else(|| panic!("no Gleam frontend: {catalog:?}"));
+            .frontend("elm")
+            .unwrap_or_else(|| panic!("no Elm frontend: {catalog:?}"));
         assert_eq!(
             frontend.provider.extension_id,
             resolved.info().id,
@@ -1707,8 +1715,8 @@ mod tests {
             PlaygroundProviderOrigin::Installed
         );
         let target = catalog
-            .target("gleam")
-            .unwrap_or_else(|| panic!("no Gleam target: {catalog:?}"));
+            .target("elm")
+            .unwrap_or_else(|| panic!("no Elm target: {catalog:?}"));
         assert_eq!(
             target.provider.origin,
             PlaygroundProviderOrigin::Installed,
@@ -1723,13 +1731,6 @@ mod tests {
         );
     }
 
-    /// The end of the built-in question: Gleam is not just listed, it runs,
-    /// and running it leaves nothing behind.
-    ///
-    /// The Gleam frontend writes a parse-stage tree into `outputDir` unless
-    /// told not to, and `outputDir` defaults to the process working
-    /// directory — so this is the test that would catch the playground
-    /// forwarding options it should have stripped.
     /// A workspace whose `morphir.toml` names a provider, so the playground
     /// has something to read.
     fn workspace_naming(extension: &str) -> tempfile::TempDir {
@@ -1756,7 +1757,7 @@ mod tests {
     const ELM_MODULE: &str = "module Main exposing (Currency)\n\n\ntype Currency\n    = Currency\n";
 
     /// The params an Elm playground compile sends. The native Elm binding
-    /// advertises the bare IR releases, not the triplet the Gleam fixtures use.
+    /// advertises the bare IR releases, not the triplet the doubles use.
     fn elm_compile_params() -> PlaygroundCompileParams {
         PlaygroundCompileParams {
             ir_version: "4".into(),
@@ -1818,17 +1819,17 @@ mod tests {
     /// does on the command line, naming the id and the language.
     #[tokio::test]
     async fn a_configured_provider_that_does_not_provide_the_language_is_refused() {
-        let (_root, home) = scratch_home();
-        let workspace = workspace_naming("morphir-gleam-binding");
+        let (_root, home, _snapshot) = installed_snapshot("installed-python", "python", "python");
+        let workspace = workspace_naming("installed-python");
         let provider = NativePlaygroundProvider::in_workspace(home, workspace.path());
 
         let failure = provider
             .compile(elm_compile_params())
             .await
-            .expect_err("a Gleam provider compiles no Elm");
+            .expect_err("a Python provider compiles no Elm");
 
         let message = failure.to_string();
-        assert!(message.contains("morphir-gleam-binding"), "{message}");
+        assert!(message.contains("installed-python"), "{message}");
         assert!(
             message.contains("does not provide language 'elm'"),
             "{message}"
@@ -1858,25 +1859,28 @@ mod tests {
     /// catalog, which is the list of everything this session can reach.
     #[tokio::test]
     async fn a_configured_provider_does_not_shrink_the_catalog() {
-        let (_root, home) = scratch_home();
+        let (_root, home, _snapshot) = installed_snapshot("installed-python", "python", "python");
         let workspace = workspace_naming("morphir-elm-native");
         let provider = NativePlaygroundProvider::in_workspace(home, workspace.path());
 
         let catalog = provider.catalog().await.expect("a catalog is projected");
 
         assert!(
-            catalog.frontend("gleam").is_some(),
+            catalog.frontend("python").is_some(),
             "another language's provider is still offered: {catalog:?}"
         );
     }
 
+    /// A built-in is not just listed, it runs, and running it leaves nothing
+    /// behind. This is the test that would catch the playground forwarding
+    /// the output options it should have stripped.
     #[tokio::test]
-    async fn builtin_gleam_compiles_and_generates_without_writing_files() {
+    async fn a_builtin_compiles_and_generates_without_writing_files() {
         let (root, home) = scratch_home();
         let working = tempfile::tempdir().expect("a scratch working directory");
         let cwd = std::env::current_dir().unwrap();
         let provider = NativePlaygroundProvider::with_parts(
-            Arc::new(move |only| installed_registry(&home, only)),
+            Arc::new(move |_only| installed_registry(&home, Some(NATIVE_ELM))),
             None,
             Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             working.path().to_path_buf(),
@@ -1889,18 +1893,13 @@ mod tests {
         ];
         let before: Vec<usize> = watched.iter().map(|path| count_files(path)).collect();
 
-        let mut params = compile_params("gleam", "pub fn hello() {\n  \"world\"\n}\n");
-        // Gleam module names are snake_case, unlike the Elm-shaped default.
-        params.documents[0].uri = "file:///src/hello.gleam".into();
-        params.package.name = "example/hello".into();
-        params.package.exposed_modules = Some(vec![]);
         let compiled = provider
-            .compile(params)
+            .compile(elm_compile_params())
             .await
-            .expect("the built-in Gleam frontend is reachable");
+            .expect("the built-in Elm frontend is reachable");
         assert!(
             compiled.success,
-            "built-in Gleam compile failed: {:?}",
+            "built-in Elm compile failed: {:?}",
             compiled.diagnostics
         );
         let ir = compiled.ir.expect("a successful compile carries IR");
@@ -1908,15 +1907,15 @@ mod tests {
         let generated = provider
             .generate(PlaygroundGenerateParams {
                 ir,
-                ir_version: IR_VERSION.into(),
-                target: "gleam".into(),
+                ir_version: "4".into(),
+                target: "elm".into(),
                 options: serde_json::json!({}),
             })
             .await
-            .expect("the built-in Gleam backend is reachable");
+            .expect("the built-in Elm backend is reachable");
         assert!(
             generated.success,
-            "built-in Gleam generate failed: {:?}",
+            "built-in Elm generate failed: {:?}",
             generated.diagnostics
         );
         assert!(
@@ -1939,16 +1938,17 @@ mod tests {
     #[tokio::test]
     async fn capabilities_the_catalog_cannot_know_are_reported_as_unknown() {
         let (_root, home, snapshot) =
-            installed_snapshot("installed-elm", "elm", "installed-target");
-        let registry =
+            installed_snapshot("installed-python", "python", "installed-target");
+        let mut registry =
             extension_registry_for(&home, vec![snapshot], None).expect("the registry assembles");
+        register_native_elm(&mut registry);
 
         let catalog = project_catalog(&registry);
 
         let installed = serde_json::to_value(
             catalog
-                .frontend("elm")
-                .unwrap_or_else(|| panic!("no installed Elm frontend: {catalog:?}")),
+                .frontend("python")
+                .unwrap_or_else(|| panic!("no installed Python frontend: {catalog:?}")),
         )
         .expect("the catalog entry serializes");
         assert!(
@@ -1966,8 +1966,8 @@ mod tests {
 
         let builtin = serde_json::to_value(
             catalog
-                .frontend("gleam")
-                .unwrap_or_else(|| panic!("no built-in Gleam frontend: {catalog:?}")),
+                .frontend("elm")
+                .unwrap_or_else(|| panic!("no built-in Elm frontend: {catalog:?}")),
         )
         .expect("the catalog entry serializes");
         assert_eq!(

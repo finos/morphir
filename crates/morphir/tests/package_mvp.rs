@@ -168,36 +168,6 @@ fn fresh_restore_is_consumed_by_another_project_and_replay_preserves_the_lock() 
     let library = prepared
         .output
         .join("example.com/finance/eligibility/1.2.0/ir.json");
-    let generated = success(morphir(
-        &consumer,
-        &[
-            "gleam",
-            "--json",
-            "generate",
-            "--input",
-            library.to_str().unwrap(),
-            "--output",
-            "generated",
-        ],
-    ));
-    assert_eq!(generated["success"], true);
-    assert_eq!(
-        std::fs::read(consumer.join("generated/decision.gleam")).unwrap(),
-        std::fs::read(source.join(fixture::PATH).join("expected/decision.gleam")).unwrap()
-    );
-    let compiled = success(morphir(
-        &consumer,
-        &[
-            "gleam",
-            "--json",
-            "compile",
-            "--input",
-            "generated",
-            "--output",
-            "compiled",
-        ],
-    ));
-    assert_eq!(compiled["success"], true);
 
     // A second fresh authorization must work through timestamp equality without
     // overwriting the first destination or rewriting the lock.

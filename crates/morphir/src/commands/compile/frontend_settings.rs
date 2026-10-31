@@ -89,13 +89,13 @@ mod tests {
     #[test]
     fn a_missing_section_table_or_key_is_absent() {
         assert_eq!(language_setting(None, "elm", "extension").unwrap(), None);
-        let section = frontend(json!({"language": "elm", "gleam": {"extension": "x"}}));
+        let section = frontend(json!({"language": "elm", "python": {"extension": "x"}}));
         assert_eq!(
             language_setting(Some(&section), "elm", "extension").unwrap(),
             None
         );
         assert_eq!(
-            language_setting(Some(&section), "gleam", "prelude").unwrap(),
+            language_setting(Some(&section), "python", "prelude").unwrap(),
             None
         );
     }

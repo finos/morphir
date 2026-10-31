@@ -239,11 +239,11 @@ mod tests {
     fn another_languages_key_is_ignored() {
         let section = frontend(json!({
             "elm": {"extension": "morphir-elm-native"},
-            "gleam": {"extension": "morphir-gleam-binding"},
+            "python": {"extension": "morphir-python"},
         }));
         assert_eq!(
-            from_config(Some(&section), "gleam").unwrap().as_deref(),
-            Some("morphir-gleam-binding")
+            from_config(Some(&section), "python").unwrap().as_deref(),
+            Some("morphir-python")
         );
         assert_eq!(from_config(Some(&section), "scala").unwrap(), None);
     }
@@ -379,23 +379,23 @@ mod tests {
     fn ambiguous_tables_stay_an_error_with_the_flag() {
         for section in [
             frontend(json!({
-                "Gleam": {"extension": "morphir-gleam-binding"},
-                "GLEAM": {},
+                "Elm": {"extension": "morphir-elm-native"},
+                "ELM": {},
             })),
             frontend(json!({
-                "Gleam": {},
-                "GLEAM": {},
+                "Elm": {},
+                "ELM": {},
             })),
         ] {
-            let failure = resolve(Some("morphir-gleam-binding"), Some(&section), "gleam")
+            let failure = resolve(Some("morphir-elm-native"), Some(&section), "elm")
                 .expect_err("an ambiguous table is not excused by the flag");
 
             let CliError::Config { error } = failure else {
                 panic!("an ambiguous frontend table is a configuration error: {failure:?}");
             };
             let message = error.to_string();
-            assert!(message.contains("frontend.GLEAM"), "{message}");
-            assert!(message.contains("frontend.Gleam"), "{message}");
+            assert!(message.contains("frontend.ELM"), "{message}");
+            assert!(message.contains("frontend.Elm"), "{message}");
         }
     }
 }

@@ -4,7 +4,7 @@
 //! Run `mise run build:release` before running these tests.
 
 use cucumber::{World, given, then, when};
-use integration_tests::{CliTestContext, cli_tests_available};
+use integration_tests::CliTestContext;
 use std::collections::BTreeSet;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
@@ -528,78 +528,6 @@ fn then_stderr_contains(world: &mut CliWorld, expected: String) {
         stderr.contains(&expected),
         "stderr did not contain {expected:?}: {stderr}"
     );
-}
-
-// Background step
-#[given("I have a temporary test project")]
-fn given_temp_project(world: &mut CliWorld) {
-    if !cli_tests_available() {
-        // Skip test if CLI binary not available
-        return;
-    }
-
-    let context = CliTestContext::new().expect("Failed to create test context");
-    context
-        .create_test_project()
-        .expect("Failed to create test project");
-    world.context = Some(context);
-}
-
-// Source file step
-#[given(regex = r#"I have a Gleam source file "([^"]+)" with:"#)]
-fn given_gleam_source_file(world: &mut CliWorld, path: String, step: &cucumber::gherkin::Step) {
-    if let Some(context) = &world.context {
-        let content = step
-            .docstring()
-            .expect("Expected docstring with file content");
-        context
-            .write_source_file(&path, content)
-            .expect("Failed to write source file");
-    }
-}
-
-// CLI command step
-#[when(regex = r#"I run CLI command "([^"]+)""#)]
-fn when_run_cli_command(world: &mut CliWorld, command: String) {
-    if let Some(context) = &world.context {
-        // Parse the command string into args
-        let args: Vec<&str> = command.split_whitespace().collect();
-        // Skip the "morphir" part if present
-        let args = if args.first() == Some(&"morphir") {
-            &args[1..]
-        } else {
-            &args[..]
-        };
-
-        match context.execute_cli_command(args) {
-            Ok(result) => world.last_result = Some(result),
-            Err(e) => panic!("Failed to execute CLI command: {}", e),
-        }
-    }
-}
-
-// Success assertion
-#[then("the CLI command should succeed")]
-fn then_cli_should_succeed(world: &mut CliWorld) {
-    if let Some(result) = &world.last_result {
-        result.assert_success();
-    }
-}
-
-// Failure assertion
-#[then("the CLI command should fail")]
-fn then_cli_should_fail(world: &mut CliWorld) {
-    if let Some(result) = &world.last_result {
-        result.assert_failure();
-    }
-}
-
-// Output contains assertion
-#[then(regex = r#"the output should contain "([^"]+)""#)]
-fn then_output_contains(world: &mut CliWorld, text: String) {
-    if let Some(result) = &world.last_result {
-        result.assert_output_contains(&text);
-    }
 }
 
 #[tokio::main]

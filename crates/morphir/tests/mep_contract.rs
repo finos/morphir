@@ -1,88 +1,27 @@
-//! The MEP contract model in spec/mep compiles and covers the protocol.
+//! The committed MEP contract IR in spec/mep covers the protocol.
 use serde_json::Value;
 use std::{
     collections::BTreeSet,
     fs,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 fn contract_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../spec/mep/contract")
 }
 
-/// Copy a directory tree, leaving out the Morphir and Gleam output folders.
-fn copy_dir(from: &Path, to: &Path) {
-    fs::create_dir_all(to).unwrap();
-    for entry in fs::read_dir(from).unwrap_or_else(|error| panic!("{}: {error}", from.display())) {
-        let entry = entry.unwrap();
-        let name = entry.file_name();
-        if name == ".morphir" || name == "build" {
-            continue;
-        }
-        let target = to.join(&name);
-        if entry.file_type().unwrap().is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            fs::copy(entry.path(), target).unwrap();
-        }
-    }
-}
-
 fn committed_ir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../spec/mep/generated/mep.ir.json")
 }
 
-/// Compile a copy of the contract in a temporary directory, so the test never
-/// writes into the repository and ignores the user's Morphir config, and
-/// return the IR file exactly as the CLI wrote it.
-fn compile_contract_bytes() -> Vec<u8> {
-    let work = tempfile::tempdir().unwrap();
-    let project = work.path().join("contract");
-    copy_dir(&contract_dir(), &project);
-    let home = work.path().join("home");
-    fs::create_dir_all(&home).unwrap();
-    let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
-    command.current_dir(&project);
-    for (key, _) in std::env::vars_os() {
-        if key
-            .to_string_lossy()
-            .get(..8)
-            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("MORPHIR_"))
-        {
-            command.env_remove(key);
-        }
-    }
-    command
-        .args([
-            "compile",
-            "--config",
-            "morphir.toml",
-            "--ir-version",
-            "4",
-            "--types-only",
-        ])
-        .env("MORPHIR_HOME", work.path().join("morphir-home"))
-        .env("MORPHIR_LOG_FILE", "false")
-        .env("HOME", &home)
-        .env("USERPROFILE", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("APPDATA", home.join("AppData/Roaming"))
-        .env("LOCALAPPDATA", home.join("AppData/Local"));
-    let output = command.output().unwrap();
-    assert!(
-        output.status.success(),
-        "morphir compile failed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let ir = project.join(".morphir/out/compile.dest/morphir-ir.json");
-    fs::read(&ir).unwrap_or_else(|error| panic!("{}: {error}", ir.display()))
-}
-
-/// The compiled contract IR, parsed.
-fn compile_contract() -> Value {
-    serde_json::from_slice(&compile_contract_bytes()).unwrap()
+/// The committed contract IR, parsed.
+///
+/// The CLI no longer compiles Gleam, so these tests read the IR that
+/// `spec/mep/generated/mep.ir.json` holds. Nothing here checks that the file
+/// matches a fresh compile of `contract/src/mep.gleam`; that check returns
+/// when the contract compiles with the finos/morphir-gleam extension.
+fn contract_ir() -> Value {
+    serde_json::from_slice(&fs::read(committed_ir()).unwrap()).unwrap()
 }
 
 /// The value inside an access wrapper such as `{"Public": ...}`.
@@ -152,7 +91,7 @@ const HANDSHAKE_TYPES: &[&str] = &[
 
 #[test]
 fn the_contract_covers_the_handshake() {
-    let ir = compile_contract();
+    let ir = contract_ir();
     let names = type_names(&ir);
     for expected in HANDSHAKE_TYPES {
         assert!(
@@ -209,7 +148,7 @@ fn constructor_names(ir: &Value, type_name: &str) -> Vec<String> {
 /// SDK does not handle yet, and every error code likewise.
 #[test]
 fn the_contract_covers_every_method_and_error_code() {
-    let ir = compile_contract();
+    let ir = contract_ir();
     assert_eq!(
         constructor_names(&ir, "method"),
         [
@@ -286,7 +225,7 @@ fn assert_records(ir: &Value, records: &[(&str, &[&str])]) {
 
 #[test]
 fn model_operations_have_explicit_carriers_and_scoped_evidence() {
-    let ir = compile_contract();
+    let ir = contract_ir();
     assert_records(
         &ir,
         &[
@@ -617,7 +556,7 @@ const CAPABILITY_TYPES: &[&str] = &[
 
 #[test]
 fn the_contract_covers_capabilities_and_claims() {
-    let ir = compile_contract();
+    let ir = contract_ir();
     let names = type_names(&ir);
     for expected in CAPABILITY_TYPES {
         assert!(
@@ -699,7 +638,7 @@ const COMPILE_TYPES: &[&str] = &[
 
 #[test]
 fn the_contract_covers_compile_diagnostics_and_generate() {
-    let ir = compile_contract();
+    let ir = contract_ir();
     let names = type_names(&ir);
     for expected in COMPILE_TYPES {
         assert!(
@@ -795,7 +734,7 @@ const RESERVED_CONSTRUCTORS: &[&str] = &["true", "false", "nil", "ok", "error", 
 /// that shadows the prelude, so this test checks that.
 #[test]
 fn no_constructor_shadows_the_prelude() {
-    let ir = compile_contract();
+    let ir = contract_ir();
     for (type_name, definition) in mep_types(&ir) {
         let constructors = unwrap_access(definition)["CustomTypeDefinition"]["constructors"]
             .as_object()
@@ -807,27 +746,6 @@ fn no_constructor_shadows_the_prelude() {
                 "{type_name} declares {constructor}, which shadows a prelude constructor"
             );
         }
-    }
-}
-
-/// The committed IR is byte for byte what the CLI writes for the contract
-/// today. The bytes are compared as written, not re-serialized.
-#[test]
-fn the_committed_ir_matches_a_fresh_compile() {
-    let fresh = compile_contract_bytes();
-    let committed = fs::read(committed_ir()).unwrap();
-    if fresh != committed {
-        let first_difference = fresh
-            .iter()
-            .zip(&committed)
-            .position(|(a, b)| a != b)
-            .unwrap_or(fresh.len().min(committed.len()));
-        panic!(
-            "spec/mep/generated/mep.ir.json is out of date (first difference at byte {first_difference}; \
-             fresh {} bytes, committed {} bytes); run `mise run spec:mep` and commit it",
-            fresh.len(),
-            committed.len()
-        );
     }
 }
 

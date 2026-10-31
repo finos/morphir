@@ -128,10 +128,11 @@ for the complete contract and isolation limits. Agents use the
 
 The catalog now includes reference Elm single-file function lowering, a minimal
 classic JSON project, native Elm TOML/YAML projects, two independently selected
-workspace members, and Gleam compilation/generation. Workspace cases assert default selection, independent path/name selection, installed
-IR copies and absence of the other member's output. Gleam checks generated
-source and task provenance. These checks do not establish cross-package linking,
-execution of generated code or native Morphir evaluation.
+workspace members, and CLI migration. Workspace cases assert default selection, independent path/name selection, installed
+IR copies and absence of the other member's output. The Rust CLI has no Gleam
+provider; Gleam coverage lives in [finos/morphir-gleam](https://github.com/finos/morphir-gleam).
+These checks do not establish cross-package linking, execution of generated code
+or native Morphir evaluation.
 
 Reference Elm 0.1.0 is an explicit prerequisite for `suite:elm-reference`.
 `mise run examples:prepare-elm -- /path/to/morphir-elm-extension` stages the supplied
@@ -173,6 +174,6 @@ Exact text is the default, including whitespace and final newlines. Optional
 `line_endings: lf` normalizes CRLF after selection. Invalid selections, missing
 files and ambiguous markers fail. A bounded diagnostic diff identifies changes;
 `--keep-temp` retains the evaluator request containing both compared texts.
-No automatic blessing occurs. The Gleam generation example checks complete
-source, its function lines and marker-delimited body alongside existing Rego
-checks for task provenance. These are CLI workflow assertions, not an MCK runner.
+No automatic blessing occurs. The CLI migration example checks the complete
+YAML output alongside a Rego check of the command result. These are CLI workflow
+assertions, not an MCK runner.
