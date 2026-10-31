@@ -83,7 +83,7 @@ describe("published extension bundle pins", () => {
 
 	test("every bundle pin names the repository that released it", () => {
 		for (const pin of Object.values(parsePins(pinsText))) {
-			expect(pin.repository).toMatch(/^finos\/morphir-(rust|python)$/);
+			expect(pin.repository).toMatch(/^finos\/morphir-(rust|python|extensions)$/);
 		}
 	});
 

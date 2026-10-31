@@ -7,7 +7,7 @@ sidebar_position: 2
 # Generate JSON Schema
 
 > The OpenAPI and JSON Schema backend ships as one WASM release bundle from
-> [finos/morphir-rust](https://github.com/finos/morphir-rust/releases), tagged
+> [finos/morphir-extensions](https://github.com/finos/morphir-extensions/releases), tagged
 > `extension/openapi/v<version>`. There is no public extension index yet, so
 > you publish the bundle into a local repository with
 > `morphir extension repository publish` and install from it. This guide also
@@ -28,18 +28,24 @@ definitions. It does not evaluate Morphir values or translate computation.
 ## Install the published extension
 
 Release bundles are published from
-[finos/morphir-rust](https://github.com/finos/morphir-rust/releases) under
-the tag `extension/openapi/v<version>`. Each release carries three assets: the
-`.wasm` artifact, its `.sha256` checksum, and a `<artifact>.release.json`
-descriptor. There is no public extension index yet, so you publish the bundle
-into a local repository and install from it.
+[finos/morphir-extensions](https://github.com/finos/morphir-extensions/releases)
+under the tag `extension/openapi/v<version>`. Each release carries the `.wasm`
+artifact, its `.sha256` checksum, a `<artifact>.release.json` descriptor and the
+descriptor's own `.sha256`. The artifact and the descriptor have build provenance
+attestations. Releases up to `0.2.0` are in
+[finos/morphir-rust](https://github.com/finos/morphir-rust/releases). There is no
+public extension index yet, so you publish the bundle into a local repository
+and install from it.
 
-Download the assets into one directory, rename the descriptor to
-`release.json`, and keep only those three files in the directory:
+Download the artifact, its checksum and the descriptor into one directory,
+verify the artifact's attestation, and rename the descriptor to `release.json`:
 
 ```console
 mkdir -p bundles/openapi
-gh release download extension/openapi/v0.1.0 -R finos/morphir-rust --dir bundles/openapi
+gh release download extension/openapi/v0.3.0 -R finos/morphir-extensions --dir bundles/openapi \
+  --pattern '*.wasm' --pattern '*.wasm.sha256' --pattern '*.release.json'
+gh attestation verify bundles/openapi/morphir-openapi-0.3.0.wasm -R finos/morphir-extensions \
+  --signer-workflow finos/morphir-extensions/.github/workflows/extension-release.yml
 mv bundles/openapi/*.release.json bundles/openapi/release.json
 ```
 
@@ -65,15 +71,17 @@ regular home, and keep the same value when running generation.
 
 ## Build and install a local extension
 
-Contributors can build the bundle from `ecosystem/morphir-rust` with its
-packaging task and publish it the same way. The task writes `release.json`,
-the artifact, and the checksum into one directory:
+Contributors can build the bundle in
+[finos/morphir-extensions](https://github.com/finos/morphir-extensions) and
+publish it the same way. The task writes the artifact, its checksum and
+`<artifact>.release.json` into `rust/target/bundle/openapi`:
 
 ```console
-mise run extension:artifact:openapi
+MISE_ENV=rust mise run rust:bundle openapi
 ```
 
-Publish `.morphir/build/extensions/openapi` with
+Copy the artifact, its checksum and the descriptor (renamed to `release.json`)
+into one directory, and publish it with
 `morphir extension repository publish` as shown above. These commands
 do not publish the extension anywhere public.
 

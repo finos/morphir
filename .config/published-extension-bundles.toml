@@ -8,15 +8,19 @@
 # bundle from the repository that owns it first, then move the pin here in the same pull request
 # as the CLI change.
 
+# finos/morphir-extensions owns the Avro and the OpenAPI extensions. Bundles up to
+# extension/avro/v0.2.0 and extension/openapi/v0.2.0 remain in the finos/morphir-rust releases.
 [bundles.avro]
-tag = "extension/avro/v0.2.0"
-artifact = "morphir-avro-extension-0.2.0"
-sha256 = "a13fb7ee85e7d6e0fbde51920043eeb2357ed8b9440452ae426ea70158226ff9"
+repository = "finos/morphir-extensions"
+tag = "extension/avro/v0.3.0"
+artifact = "morphir-avro-0.3.0"
+sha256 = "e1bb2d233455453ac86273538ee7bef2d97bd216114ef41238dfaa4de77e77ff"
 
 [bundles.openapi]
-tag = "extension/openapi/v0.2.0"
-artifact = "morphir-openapi-extension-0.2.0"
-sha256 = "ccef0ebcc8f4fff5579c5c28ee4cb44cdec46a6f4ec993a8e6ceb029996f5ec0"
+repository = "finos/morphir-extensions"
+tag = "extension/openapi/v0.3.0"
+artifact = "morphir-openapi-0.3.0"
+sha256 = "03355b9d103c63d361ea67572c3c9d7383adc840af612b4a6101caeb2807a6f8"
 
 # finos/morphir-python owns the Python extension. Bundles up to extension/python/v0.4.0 remain in
 # the finos/morphir-rust releases.
