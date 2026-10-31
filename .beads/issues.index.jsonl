@@ -29,6 +29,7 @@
 {"id":"morphir-10w","title":"Improve release process based on v0.4.0-alpha.2 retrospective","status":"closed","priority":2}
 {"id":"morphir-12dv","title":"Update Morphir UI and Rust submodule pins","status":"closed","priority":2}
 {"id":"morphir-13sz","title":"Protect authoritative Dolt custom ref against deletion","status":"open","priority":2}
+{"id":"morphir-149d","title":"Move openspec-ext script to moonbitlang/async 0.22.7 after Mission Control bundles it","status":"open","priority":3}
 {"id":"morphir-19s6","title":"Insight: v4 IR visualization (gated on draft stabilization)","status":"open","priority":2}
 {"id":"morphir-1br1","title":"Accept forward members in v4 Hole reason readers","status":"open","priority":2}
 {"id":"morphir-1dc1","title":"Support Morphir IR v3 in the Python frontend and backend","status":"closed","priority":2}
@@ -146,6 +147,7 @@
 {"id":"morphir-6ps","title":"Remove GoReleaser configuration","status":"closed","priority":1}
 {"id":"morphir-6uvn","title":"Model the v4 naming codec in Morphir","status":"open","priority":2}
 {"id":"morphir-6y9z","title":"mise tasks using a bash shebang fail on Windows without POSIX bash","status":"open","priority":3}
+{"id":"morphir-70af","title":"build: upgrade MoonBit to 0.10.18+6c83a7f62","status":"in_progress","priority":2}
 {"id":"morphir-72fv","title":"Control the CLI banner through flag, environment and configuration","status":"closed","priority":2}
 {"id":"morphir-72u","title":"Sync GitHub Actions workflows with just recipes","status":"closed","priority":2}
 {"id":"morphir-764","title":"Create reusable TUI framework for interactive morphir commands","status":"closed","priority":1}
@@ -1379,16 +1381,18 @@
 {"id":"morphir-ukvn.5.64.35.1","title":"Sigstore verification of releases, indexes and admission","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.36","title":"Host extensions as MEP workers in the MoonBit CLI","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.36.1","title":"Worker session core and host API","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.64.36.10","title":"Upgrade moonbitlang/async from 0.22.4 to 0.22.7","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.10","title":"Upgrade moonbitlang/async from 0.22.4 to 0.22.7","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.11","title":"npm CLI hangs on extism-kernel-v1 pins after extension.cancelled (macOS arm64)","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.64.36.12","title":"Run native CLI acceptance with the Extism npm check on the nightly macos-15 lane","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.13","title":"Adopt browser Web Worker extension hosts in the Workbench","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.14","title":"Request a browser worker-module asset of the Elm extension from finos/morphir-elm","status":"open","priority":3}
 {"id":"morphir-ukvn.5.64.36.2","title":"Native process workers","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.3","title":"Node process workers","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.4","title":"MoonBit Extism host in moonrockz/extism","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.5","title":"WASM workers","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.64.36.6","title":"Extension commands on the worker host","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.64.36.6","title":"Extension commands on the worker host","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.7","title":"Qualify the published extensions on the worker host","status":"open","priority":2}
-{"id":"morphir-ukvn.5.64.36.8","title":"Browser Web Worker feasibility","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.8","title":"Browser Web Worker feasibility","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.5.64.36.9","title":"Retire the helper routes","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.37","title":"Run core-Wasm guests from any language: document trees and descriptor-pinned modules","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.37.1","title":"Claims and probe session on the core-Wasm route","status":"open","priority":2}
@@ -1791,7 +1795,7 @@
 {"id":"morphir-yzxj","title":"Dogfood the complete Morphir V3 model through the Gleam extension","status":"closed","priority":2}
 {"id":"morphir-z0r","title":"Add new module validation to release:validate task","status":"closed","priority":2}
 {"id":"morphir-z2j3","title":"Use whole-union exposure and read-only public type access","status":"closed","priority":1}
-{"id":"morphir-z40j","title":"Pin morphir-openapi 0.4.0 (Decimal projection)","status":"open","priority":2}
+{"id":"morphir-z40j","title":"Pin morphir-openapi 0.4.0 (Decimal projection)","status":"closed","priority":2}
 {"id":"morphir-z7f","title":"Update documentation references","status":"closed","priority":3}
 {"id":"morphir-zdb","title":"Implement decoration value file loader/saver","status":"closed","priority":2}
 {"id":"morphir-zp32","title":"Bring the published v4 books fixture onto canonical names","status":"open","priority":2}
