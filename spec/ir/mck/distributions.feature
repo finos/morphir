@@ -223,3 +223,61 @@ Feature: Distributions
     The classic counterpart of distributions-0006: a v3 `Specs` distribution publishes a package's public face, tagged-array style, with no `def` anywhere. document-tree-0013 lays the same shape out as a tree.
 
     Then its canonical JSON spelling is { "formatVersion": "3.1.0", "distribution": ["Specs", [["my"], ["pkg"]], [], { "modules": [[[["basics"]], { "types": [[["int"], { "doc": "", "value": ["OpaqueTypeSpecification", []] }]], "values": [], "doc": "Basics." }]] }] }
+
+  @node:Distribution @version:3 @spelling @compare:attributes
+  Scenario: distributions-0012 A v3 Library with its dependencies and definitions
+    The classic counterpart of distributions-0002 with content, in morphir-elm's member order. `Library` is followed by the package name, the dependencies and the package definition. Each dependency is a `[package name, package specification]` pair. A specification module holds `types`, `values` and `doc`; each type and value specification is documented as `{ "doc", "value" }`, and a value specification is `{ "inputs", "output" }`. Each definition module is access controlled, `{ "access", "value" }`, and so is each type and value definition inside it. A custom type definition puts its constructors under an access of their own, so that a public type can hide them. A module's `doc` is `null` when the module has none. A `Library`'s values are typed (distributions-0013), so the case compares attributes.
+
+    Then its canonical JSON spelling is { "formatVersion": 3, "distribution": ["Library", [["my"], ["pkg"]], [[[["my"], ["dep"]], { "modules": [[[["util"]], { "types": [[["id"], { "doc": "An identifier.", "value": ["OpaqueTypeSpecification", []] }]], "values": [[["parse"], { "doc": "", "value": { "inputs": [[["text"], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]]], "output": ["Reference", {}, [[["my"], ["dep"]], [["util"]], ["id"]], []] } }]], "doc": "Utilities." }]] }]], { "modules": [[[["domain"]], { "access": "Public", "value": { "types": [[["status"], { "access": "Public", "value": { "doc": "", "value": ["CustomTypeDefinition", [], { "access": "Private", "value": [[["active"], []], [["closed"], [[["reason"], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]], []]]]]] }] } }], [["user"], { "access": "Private", "value": { "doc": "A user.", "value": ["TypeAliasDefinition", [], ["Record", {}, [{ "name": ["id"], "tpe": ["Reference", {}, [[["my"], ["dep"]], [["util"]], ["id"]], []] }]]] } }]], "values": [[["is", "active"], { "access": "Public", "value": { "doc": "Whether the status is active.", "value": { "inputTypes": [[["s"], ["Reference", {}, [[["my"], ["pkg"]], [["domain"]], ["status"]], []], ["Reference", {}, [[["my"], ["pkg"]], [["domain"]], ["status"]], []]]], "outputType": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["bool"]], []], "body": ["PatternMatch", ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["bool"]], []], ["Variable", ["Reference", {}, [[["my"], ["pkg"]], [["domain"]], ["status"]], []], ["s"]], [[["ConstructorPattern", ["Reference", {}, [[["my"], ["pkg"]], [["domain"]], ["status"]], []], [[["my"], ["pkg"]], [["domain"]], ["active"]], []], ["Literal", ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["bool"]], []], ["BoolLiteral", true]]], [["WildcardPattern", ["Reference", {}, [[["my"], ["pkg"]], [["domain"]], ["status"]], []]], ["Literal", ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["bool"]], []], ["BoolLiteral", false]]]]] } } }]], "doc": null } }]] }] }
+
+  @node:Distribution @version:3 @semantic
+  Scenario: distributions-0013 A v3 Library's values are typed
+    morphir-elm's `Library` holds a `Package.Definition () (Type ())`: every value, pattern and input in it has a type as its attribute, where a standalone value may have `{}` (versions-0031). A `Library` whose value carries `{}` is refused with `invalid_type`, as versions-0012 refuses a malformed name.
+
+    Then a reader of JSON rejects { "formatVersion": 3, "distribution": ["Library", [["my"], ["pkg"]], [], { "modules": [[[["m"]], { "access": "Public", "value": { "types": [], "values": [[["one"], { "access": "Public", "value": { "doc": "", "value": { "inputTypes": [], "outputType": ["Unit", {}], "body": ["Unit", {}] } } }]], "doc": null } }]] }] } with invalid_type
+
+  @node:Distribution @version:3 @semantic
+  Scenario Outline: distributions-0014 morphir-elm output reads as a Library
+    These documents are morphir-elm 2.99.0's `morphir-ir.json` output, unedited, for projects in finos/morphir-scala's `examples/morphir-elm-projects` (commit c9d08e6). `evaluator-tests` exercises the widest range of value expressions; `example-project-tests-passing` has two dependencies, so it carries module and value specifications. A v3 reader reads each whole document. distributions-0015 checks what a reader makes of one of them.
+
+    Then a reader of text reads <document> as a Library
+
+    Examples:
+      | document                                                    |
+      | spec/ir/mck/documents/v3/evaluator-tests.json               |
+      | spec/ir/mck/documents/v3/example-project-tests-passing.json |
+      | spec/ir/mck/documents/v3/example-project.json               |
+
+  @node:Distribution @version:3 @compare:attributes
+  Scenario: distributions-0015 morphir-elm output survives reading
+    `documents/v3/example-project.json` is one of the documents distributions-0014 reads. Compared with attributes, everything in it reads back as written, from module order and documentation strings to the type on every value and pattern. `documents/v3/example-project.canonical.json` holds the same JSON value in the canonical spelling. The Ion reference codec admits v4 values only, so this accepted check keeps the original form rather than `@semantic`.
+
+    Then its canonical text spelling is spec/ir/mck/documents/v3/example-project.canonical.json
+    And a reader of text accepts spec/ir/mck/documents/v3/example-project.json
+
+  @node:Distribution @version:3 @semantic
+  Scenario Outline: distributions-0016 A version 1 or 2 document is not a v3 document
+    Offered as a version 3 `Distribution`, a document that declares another major version is refused with `version_mismatch`, as document-tree-0016 refuses a v4 one. Version 1 spells its tags in lowercase. Version 2 already spells them as version 3 does, so only `formatVersion` tells the two apart.
+
+    Then a reader of JSON rejects <input> with version_mismatch
+
+    Examples:
+      | input                                                                                         |
+      | { "formatVersion": 1, "distribution": ["library", [["my"], ["pkg"]], [], { "modules": [] }] } |
+      | { "formatVersion": 2, "distribution": ["Library", [["my"], ["pkg"]], [], { "modules": [] }] } |
+
+  @node:Distribution @version:3 @semantic
+  Scenario: distributions-0017 A malformed v3 document is refused
+    Text that is not JSON is refused with `invalid_json` before anything is read from it. Here the document's closing brace is missing.
+
+    Then a reader of JSON rejects { "formatVersion": 3, "distribution": ["Library", [["my"], ["pkg"]], [], { "modules": [] }] with invalid_json
+
+  @node:Distribution @version:3 @semantic
+  Scenario: distributions-0018 A v3 document without a format version is refused
+    morphir-elm always writes `formatVersion`. Without it a reader cannot tell a version 3 document from any other, so it refuses the document with `missing_format_version` (`docs/spec/ir/format-version.md`) rather than guessing.
+
+    Then a reader of JSON rejects { "distribution": ["Library", [["my"], ["pkg"]], [], { "modules": [] }] } with missing_format_version
+
+  @node:Distribution @version:3 @pending
+  Scenario: distributions-0019 A v3 Bundle distribution
+    morphir-scala's classic codec reads and writes a third distribution, `["Bundle", [[package name, { "dependencies": [[package name, package definition]], "packageDef": package definition }]]]`, which holds several libraries in one document. morphir-elm has no `Bundle`, and the Rust classic model has none either: it refuses the tag with `invalid_type`. Whether `Bundle` belongs to the v3 format at all is open, so this case is prose only until that is decided.
