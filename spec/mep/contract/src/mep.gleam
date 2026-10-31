@@ -680,6 +680,11 @@ pub type CompileModelResult {
 /// Evidence must bind this model revision and `contextDigest`, and be admitted
 /// for each exact required scope before pure generation. The result reuses
 /// GenerateResult and Artifact, including their existing binary encoding.
+/// If the host has the model in a tuple that the session does not agree, but
+/// can convert it to an agreed tuple, the host sends the converted model. The
+/// converted model has its own digest and revision, and evidence for the
+/// original does not carry over. The host refuses a lossy conversion. Only
+/// when it cannot convert does it report `extension.tuple_unavailable`.
 /// Wire rules: absent `requiredGuarantees` or `options` is read as empty.
 pub type GenerateModelRequest {
   GenerateModelRequest(

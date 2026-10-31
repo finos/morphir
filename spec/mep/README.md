@@ -84,7 +84,7 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `MorphirModel` | Absent `evidence` and `critical` default to empty; omit empty `critical`. Exact unknown critical paths refuse admission. |
 | `CompileModelRequest` | Absent `dependencies` defaults to empty. Output and dependency formats must match the selected tuple. |
 | `CompileModelResult` | `success:true` requires `model`; `success:false` forbids it, including null. Absent diagnostics and success modules default to empty. |
-| `GenerateModelRequest` | Absent `requiredGuarantees` and `options` default to empty. Result reuses `GenerateResult`. |
+| `GenerateModelRequest` | Absent `requiredGuarantees` and `options` default to empty. Result reuses `GenerateResult`. A host that can convert a model to an agreed tuple sends the converted model, with its own digest and revision; only when it cannot convert does it report `extension.tuple_unavailable`. |
 | `GenerateRequest` | `options` is read as empty when absent. |
 | `GenerateResult` | `artifacts` and `diagnostics` are read as empty when absent. |
 | `Artifact` | When `binary` is true, `content` is base64. `binary` is read as false when absent. |
