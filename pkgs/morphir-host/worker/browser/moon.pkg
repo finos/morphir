@@ -1,0 +1,22 @@
+// The browser launcher of WASM workers (BRW-1). Each guest runs in its own
+// Web Worker, from the entry module that worker/browser/entry builds. Whole
+// MEP messages travel through the worker's message port; a deadline or a
+// cancellation terminates the Web Worker. A browser host has no process
+// workers and no file system.
+supported_targets = "js"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/wasm",
+  "finos/morphir-host/worker/wasm/guest",
+  "finos/morphir-host/worker/process" @shared,
+  "moonbitlang/async",
+  "moonbitlang/async/aqueue",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string" @strconv,
+}
+
+import {
+  "finos/morphir-host/worker/wasm/fixtures",
+} for "wbtest"

@@ -131,13 +131,13 @@
 
 ## 8. Browser Web Worker feasibility (morphir-ukvn.5.64.36.8)
 
-- [ ] 8.1 Implement the browser launcher and the message-port channel (BRW-1); verify with unit tests in a js test
+- [x] 8.1 Implement the browser launcher and the message-port channel (BRW-1); verify with unit tests in a js test
   run
-- [ ] 8.2 Add a Playwright proof page with the MoonBit portable guest and the Python extension; verify the "Browser Web
+- [x] 8.2 Add a Playwright proof page with the MoonBit portable guest and the Python extension; verify the "Browser Web
   Workers" scenarios, including a runaway guest and a refused process artifact
-- [ ] 8.3 Write the feasibility report as an HTML document stored in this bead's design; verify it records measured
+- [x] 8.3 Write the feasibility report as an HTML document stored in this bead's design; verify it records measured
   results separately from proposals
-- [ ] 8.4 Create follow-up beads for Workbench adoption and for an Elm worker-module asset request to
+- [x] 8.4 Create follow-up beads for Workbench adoption and for an Elm worker-module asset request to
   finos/morphir-elm; verify both link to this bead
 
 ## 9. Retire the helper routes (morphir-ukvn.5.64.36.9)

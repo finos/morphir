@@ -95,6 +95,33 @@ The runner does not patch the external runtime or use its private implementation
 API to bypass a public-facade gap. Successful completion of the study is distinct
 from support for every fixture on every host.
 
+## Browser Web Worker proof
+
+`worker-proof.mts` is a separate check that shares this directory's frozen
+Playwright. It proves BRW-1 of the OpenSpec change `host-extensions-as-workers`:
+the product session code of `pkgs/morphir-host/worker` runs WASM guests in
+browser Web Workers. It is not a component check.
+
+```console
+mise run test:wasm-workers -- --target js --scope browser
+```
+
+The task builds the inputs, installs Chromium and runs the proof. The proof
+runs the program of `pkgs/morphir-host/worker/browser/proof` twice: on Node,
+where each guest runs in a worker thread, and in headless Chromium, where each
+guest runs in a Web Worker. It checks the three "Browser Web Workers"
+scenarios:
+
+| Scenario | Check |
+| --- | --- |
+| MoonBit and Python guests in a browser | Describe, compile and generate of the portable MoonBit guest and Python `0.4.2` give the same results on Node and in Chromium. |
+| Runaway guest in a browser | A guest that loops is ended at its 300 ms call deadline, its Web Worker is terminated, and a timer on the page keeps running. |
+| Browser host and a process artifact | A native pin and a Node pin are refused with `extension.runtime_unavailable` and no Web Worker starts. |
+
+The proof writes `.dev/browser-workers/receipt.json` with the browser and Node
+versions, compile and session times, and renderer memory, and `results.json`
+with the results of both runs. It is not part of CI.
+
 ## Evidence and next use
 
 `run.ion` records versions and completed host results. Its spelling is JSON,

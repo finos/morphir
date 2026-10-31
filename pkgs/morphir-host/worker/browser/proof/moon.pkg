@@ -1,0 +1,20 @@
+// The browser Web Worker feasibility proof program (BRW-1). It runs the
+// product session code against the MoonBit portable guest and the Python
+// extension, on Node through the worker-thread launcher and in a browser
+// through the Web Worker launcher, so that the two results can be compared.
+// tests/wasm-host/worker-proof.mts loads it; nothing ships it.
+pkgtype(kind: "executable")
+
+supported_targets = "js"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/browser",
+  "finos/morphir-host/worker/thread",
+  "finos/morphir-host/worker/process/node" @node_process,
+  "finos/morphir-host/worker/wasm/fixtures",
+  "moonbitlang/async",
+  "moonbitlang/async/js_async",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+}

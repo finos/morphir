@@ -1,0 +1,9 @@
+// The entry module of a browser Web Worker that serves one WASM guest
+// (BRW-1). Every event goes to the host through the worker's message port.
+pkgtype(kind: "executable")
+
+supported_targets = "js"
+
+import {
+  "finos/morphir-host/worker/browser",
+}

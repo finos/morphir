@@ -14,6 +14,9 @@ the native CLI and on the npm CLI. The rules come from
 | `worker/wasm/native` | native | The `morphir extension worker` mode and the native WASM launcher. |
 | `worker/thread` | js | The Node worker-thread launcher. |
 | `worker/thread/entry` | js | The entry module of a worker thread, shipped as `dist/wasm-worker.js`. |
+| `worker/browser` | js | The browser Web Worker launcher and the message-port channel (BRW-1, a feasibility proof). |
+| `worker/browser/entry` | js | The entry module of a browser Web Worker. Nothing ships it yet. |
+| `worker/browser/proof` | js | The proof program that `tests/wasm-host/worker-proof.mts` runs on Node and in Chromium. |
 | `worker/wasm/fixtures` | all | Crafted modules for the tests. |
 
 The design puts all of the WASM code in one package. It is split because the
@@ -86,12 +89,12 @@ notification, and `exit` ends the instance. The host functions follow WASM-4:
 
 ## Bounds
 
-| Bound | Native worker mode | Node worker thread |
-| --- | --- | --- |
-| Memory ceiling, 256 MiB | Enforced by the engine | Enforced: the rewritten maximum |
-| Instruction budget, 1,000,000,000 per call | Enforced by WAMR metering | Not enforced: the js engine has no metering |
-| Call deadline, 30 s Extism and 10 s bytes | Enforced: the engine interrupts the call | Enforced: the channel terminates the thread |
-| Session deadline and cancellation | The process group is stopped | The thread is terminated, and the host waits until it has terminated |
+| Bound | Native worker mode | Node worker thread | Browser Web Worker |
+| --- | --- | --- | --- |
+| Memory ceiling, 256 MiB | Enforced by the engine | Enforced: the rewritten maximum | Enforced: the rewritten maximum |
+| Instruction budget, 1,000,000,000 per call | Enforced by WAMR metering | Not enforced: the js engine has no metering | Not enforced: the js engine has no metering |
+| Call deadline, 30 s Extism and 10 s bytes | Enforced: the engine interrupts the call | Enforced: the channel terminates the thread | Enforced: the channel terminates the Web Worker |
+| Session deadline and cancellation | The process group is stopped | The thread is terminated, and the host waits until it has terminated | The Web Worker is terminated, which is final at once |
 
 `Channel::bounds` states these bounds, and the session report keeps them. An
 exhausted budget fails the session with `extension.budget_exhausted`, a passed
@@ -185,6 +188,31 @@ arrives (checked with Node 24: 50 runs of 2,000 messages each lost none).
 As on native, the guest's workspace is a private, empty directory: the
 launcher makes it in the system's temporary directory, readable only by the
 user, gives it to the thread and removes it when the thread has stopped.
+
+## The browser Web Worker
+
+`worker/browser` proves that the same session code runs a guest in a browser
+(BRW-1). `BrowserLauncher::new` takes the absolute `EntryUrl` of the entry
+module that `worker/browser/entry` builds. Before it starts a Web Worker, the
+launcher makes the same checks as the thread launcher: digest, profile,
+features and memory ceiling. It refuses a process runtime with
+`RuntimeUnavailable` and names WASM as the runtime it supports, and it refuses
+a file artifact, because a browser host has no file system. The host refuses
+a process runtime first, so a process pin starts no worker.
+
+`PortChannel` is the message-port channel. Its first message gives the guest
+its module and limits. These are options of the launcher, not MEP messages;
+the MEP messages that follow travel whole and unchanged. The guest posts
+responses, the same report events as the Node thread, and an `exit` message
+before it closes its scope. A Web Worker has no exit event, so a termination
+is final when `terminate()` returns. The guest has no file system and its
+workspace has no root. The stop method is `thread-termination`, as for a Node
+worker thread.
+
+`tests/wasm-host/worker-proof.mts` runs the proof in Chromium:
+`mise run test:wasm-workers -- --target js --scope browser`. The package's
+unit tests run each guest at the other end of a `MessageChannel` in the same
+thread, so they need no browser.
 
 ## Dependency on moonrockz/extism
 

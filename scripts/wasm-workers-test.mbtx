@@ -18,6 +18,8 @@ import {
 // the variables that pkgs/morphir-host/worker/wasm/native and
 // pkgs/morphir-host/worker/thread read, and runs `moon test --target <t>`
 // for the workspace with CI=true, so that a missing prerequisite fails.
+// `--scope browser` (js only) runs the browser Web Worker proof instead
+// (BRW-1): tests/wasm-host/worker-proof.mts in Chromium.
 
 ///|
 /// Where the downloaded and packaged guests go.
@@ -56,24 +58,47 @@ fn Target::name(self : Target) -> String {
 
 ///|
 /// What to test: the whole workspace, which is the package-test path of CI,
-/// or only the two worker packages.
+/// only the two worker packages, or the browser Web Worker proof.
 enum Scope {
   Workspace
   Workers
+  Browser
+}
+
+///|
+fn Scope::parse(text : String?) -> Scope? {
+  match text {
+    None | Some("workspace") => Some(Workspace)
+    Some("workers") => Some(Workers)
+    Some("browser") => Some(Browser)
+    Some(_) => None
+  }
+}
+
+///|
+fn Scope::name(self : Scope) -> String {
+  match self {
+    Workspace => "workspace"
+    Workers => "workers"
+    Browser => "browser"
+  }
 }
 
 ///|
 fn command() -> @argparse.Command {
   @argparse.Command(
     "wasm-workers-test",
-    about="Run the package tests of one target (native or js) with the end-to-end WASM worker tests run for real. It builds the native CLI (apps/morphir), the native MoonBit guest (apps/morphir-extension), the Node thread entry (js), installs the embedding package's JavaScript dependencies (bun install --frozen-lockfile) and packages the portable guest (scripts/package-mep-extension.mbtx), downloads the pinned Python extension releases 0.4.1 and 0.4.2 and checks their SHA-256, then runs moon test --target <t> with MORPHIR_CLI, MORPHIR_NATIVE_GUEST, MORPHIR_PORTABLE_GUEST, MORPHIR_PYTHON_EXTENSIONS, MORPHIR_WASM_THREAD_ENTRY and CI=true, so a missing prerequisite fails a test. --scope workspace (default) tests the workspace, as CI does; --scope workers tests only worker/wasm/native or worker/thread. Build and test output goes to stderr. With --json, stdout is one morphir/command-result 0.1.0 value: result {target, scope, steps: [{program, args, exitCode}]}; a failure has error {code, message} and the exit status of the failed step (1 when it has none, 2 for invalid arguments).",
+    about="Run the package tests of one target (native or js) with the end-to-end WASM worker tests run for real. It builds the native CLI (apps/morphir), the native MoonBit guest (apps/morphir-extension), the Node thread entry (js), installs the embedding package's JavaScript dependencies (bun install --frozen-lockfile) and packages the portable guest (scripts/package-mep-extension.mbtx), downloads the pinned Python extension releases 0.4.1 and 0.4.2 and checks their SHA-256, then runs moon test --target <t> with MORPHIR_CLI, MORPHIR_NATIVE_GUEST, MORPHIR_PORTABLE_GUEST, MORPHIR_PYTHON_EXTENSIONS, MORPHIR_WASM_THREAD_ENTRY and CI=true, so a missing prerequisite fails a test. --scope workspace (default) tests the workspace, as CI does; --scope workers tests only worker/wasm/native or worker/thread. --scope browser (with --target js) builds the browser Web Worker entry and proof program (pkgs/morphir-host/worker/browser), installs tests/wasm-host (bun install --frozen-lockfile) and Chromium (playwright install chromium), and runs tests/wasm-host/worker-proof.mts, which compares the Node and browser results, checks the runaway guest and the process-pin refusal, and writes .dev/browser-workers/receipt.json and results.json. Build and test output goes to stderr. With --json, stdout is one morphir/command-result 0.1.0 value: result {target, scope, steps: [{program, args, exitCode}]}; a failure has error {code, message} and the exit status of the failed step (1 when it has none, 2 for invalid arguments).",
     disable_help_subcommand=true,
     flags=[
       @argparse.FlagArg("json", about="Write one command-result on stdout"),
     ],
     options=[
       @argparse.OptionArg("target", about="native or js"),
-      @argparse.OptionArg("scope", about="workspace (default) or workers"),
+      @argparse.OptionArg(
+        "scope",
+        about="workspace (default), workers or browser (js only)",
+      ),
     ],
   )
 }
@@ -175,6 +200,12 @@ async fn execute(target : Target, scope : Scope) -> Json {
       "build", "--target", "js", "--release", "pkgs/morphir-host/worker/thread/entry",
     ])
   }
+  if scope is Browser {
+    step("moon", [
+      "build", "--target", "js", "--release", "pkgs/morphir-host/worker/browser/entry",
+      "pkgs/morphir-host/worker/browser/proof",
+    ])
+  }
   // The packaging builds with the embedding package's JavaScript tools, which
   // a fresh checkout does not have yet.
   step("bun", [
@@ -198,6 +229,8 @@ async fn execute(target : Target, scope : Scope) -> Json {
     "MORPHIR_PORTABLE_GUEST": "\{portable}/extension/model.wasm",
     "MORPHIR_PYTHON_EXTENSIONS": python,
     "MORPHIR_WASM_THREAD_ENTRY": "\{built}/js/release/build/finos/morphir-host/worker/thread/entry/entry.js",
+    "MORPHIR_BROWSER_WORKER_ENTRY": "\{built}/js/release/build/finos/morphir-host/worker/browser/entry/entry.js",
+    "MORPHIR_BROWSER_WORKER_PROOF": "\{built}/js/release/build/finos/morphir-host/worker/browser/proof/proof.js",
   }
   match scope {
     Workspace => step("moon", ["test", "--target", target.name()], env~)
@@ -216,15 +249,22 @@ async fn execute(target : Target, scope : Scope) -> Json {
         cwd="pkgs/morphir-host",
         env~,
       )
+    Browser => {
+      step("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"])
+      step("bun", [
+        "run", "--cwd", "tests/wasm-host", "playwright", "install", "chromium",
+      ])
+      step(
+        "node",
+        [
+          "tests/wasm-host/worker-proof.mts",
+          "\{root}/.dev/browser-workers/receipt.json",
+        ],
+        env~,
+      )
+    }
   }
-  {
-    "target": target.name(),
-    "scope": match scope {
-      Workspace => "workspace"
-      Workers => "workers"
-    },
-    "steps": steps,
-  }
+  { "target": target.name(), "scope": scope.name(), "steps": steps }
 }
 
 ///|
@@ -275,13 +315,20 @@ async fn main {
     refuse(json, 2, "invalid_arguments", "--target must be native or js")
     return
   }
-  let scope = match matches.values.get("scope") {
-    None | Some(["workspace", ..]) => Some(Workspace)
-    Some(["workers", ..]) => Some(Workers)
-    _ => None
-  }
+  let scope = Scope::parse(
+    match matches.values.get("scope") {
+      Some([text, ..]) => Some(text)
+      _ => None
+    },
+  )
   guard scope is Some(scope) else {
-    refuse(json, 2, "invalid_arguments", "--scope must be workspace or workers")
+    refuse(
+      json, 2, "invalid_arguments", "--scope must be workspace, workers or browser",
+    )
+    return
+  }
+  if scope is Browser && target != Js {
+    refuse(json, 2, "invalid_arguments", "--scope browser needs --target js")
     return
   }
   let result = execute(target, scope) catch {
@@ -305,6 +352,15 @@ test "targets and their names" {
   assert_true(Target::parse("js") is Some(Js))
   assert_true(Target::parse("wasm") is None)
   assert_eq(Target::name(Js), "js")
+}
+
+///|
+test "scopes and their names" {
+  assert_true(Scope::parse(None) is Some(Workspace))
+  assert_true(Scope::parse(Some("workers")) is Some(Workers))
+  assert_true(Scope::parse(Some("browser")) is Some(Browser))
+  assert_true(Scope::parse(Some("all")) is None)
+  assert_eq(Scope::name(Browser), "browser")
 }
 
 ///|
