@@ -29,9 +29,19 @@ binary and build identity, and the exact corpus SHA-256. Report rechecking
 requires the same checker binary and unchanged files. The kit is an explicit
 local input, independent of the IR kit embedded in the CLI.
 
-The initial profile is `moonbit-model-bool-library-v1`. Its fixed source contains
+The kit profile is `moonbit-model-stable-v1`. The compile request selects the
+same frontend profile in `source.options.profile`, and the guest must record it
+in its `morphir_moonbit_frontend` provenance. The kit refuses any other value.
+The MoonBit guest retired the earlier `moonbit-model-bool-library-v1` profile
+in finos/morphir-moonbit#181; this kit does not accept it.
+
+Its fixed source contains
 an identity function with mixed-case and underscore names, and a Boolean
-constant. The shared corpus fixes their complete canonical IR semantics and
+constant. The stable frontend always declares the `morphir/moonbit-source`
+package specification as a Library dependency, so the expected IR contains it.
+The expected IR was recorded from the native and portable MoonBit guests of
+finos/morphir-moonbit `main` and checked against the IR v4 type spelling. The
+expected generated artifacts did not change. The shared corpus fixes their complete canonical IR semantics and
 generated function bodies, signatures, names, manifests, and artifact inventory.
 Function declaration order is unrestricted. Rich model payloads must have valid
 canonical base64, exact length and SHA-256, the model annotation, complete IR,

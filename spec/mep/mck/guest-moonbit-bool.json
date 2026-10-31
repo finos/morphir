@@ -1,6 +1,6 @@
 {
   "contractVersion": "0.1.0-draft.1",
-  "profile": "moonbit-model-bool-library-v1",
+  "profile": "moonbit-model-stable-v1",
   "mepVersion": "0.2.0-draft.1",
   "opaqueFixture": "{enrichment:{owner:\"urn:morphir:mck:unknown\",data:source_name::target_name::{exact:9007199254740993,amount:123.4500,future:future_vocabulary::{enabled:true}}},provenance:future_origin::{producer:\"independent-mck\"},futureBody:future_body::{values:[null.int,123.4500]}}",
   "consumer": {
@@ -23,24 +23,613 @@
       }]
     },
     "package": { "name": "mck/bool", "exposedModules": ["main"] },
-    "options": { "typesOnly": false, "irVersion": "4.0.0", "profile": "moonbit-model-bool-library-v1" },
+    "options": { "typesOnly": false, "irVersion": "4.0.0", "profile": "moonbit-model-stable-v1" },
     "contextDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
   },
   "expectedIr": {
     "formatVersion": 4,
-    "distribution": { "Library": {
-      "packageName": "mck/bool", "dependencies": {}, "def": { "modules": {
-        "main": { "Public": { "types": {}, "values": {
-          "is-ready": { "Public": { "ExpressionBody": {
-            "inputTypes": { "flag-value": "morphir/SDK:basics#bool" },
-            "outputType": "morphir/SDK:basics#bool", "body": { "Variable": "flag-value" }
-          }}},
-          "always": { "Public": { "ExpressionBody": {
-            "inputTypes": {}, "outputType": "morphir/SDK:basics#bool", "body": { "Literal": { "BoolLiteral": true } }
-          }}}
-        }}}
-      }}
-    }}
+    "distribution": {
+      "Library": {
+        "packageName": "mck/bool",
+        "dependencies": {
+          "morphir/moonbit-source": {
+            "modules": {
+              "string": {
+                "types": {},
+                "values": {
+                  "require-valid": {
+                    "inputs": [
+                      [
+                        "value",
+                        "morphir/SDK:string#string"
+                      ],
+                      [
+                        "limit",
+                        "morphir/SDK:basics#int"
+                      ]
+                    ],
+                    "output": "morphir/SDK:string#string"
+                  },
+                  "append-bounded": {
+                    "inputs": [
+                      [
+                        "left",
+                        "morphir/SDK:string#string"
+                      ],
+                      [
+                        "right",
+                        "morphir/SDK:string#string"
+                      ],
+                      [
+                        "limit",
+                        "morphir/SDK:basics#int"
+                      ]
+                    ],
+                    "output": "morphir/SDK:string#string"
+                  },
+                  "length-int32": {
+                    "inputs": [
+                      [
+                        "value",
+                        "morphir/SDK:string#string"
+                      ],
+                      [
+                        "limit",
+                        "morphir/SDK:basics#int"
+                      ]
+                    ],
+                    "output": "morphir/SDK:int#int-32"
+                  },
+                  "slice-owned": {
+                    "inputs": [
+                      [
+                        "value",
+                        "morphir/SDK:string#string"
+                      ],
+                      [
+                        "start",
+                        "morphir/SDK:int#int-32"
+                      ],
+                      [
+                        "end",
+                        "morphir/SDK:int#int-32"
+                      ],
+                      [
+                        "limit",
+                        "morphir/SDK:basics#int"
+                      ]
+                    ],
+                    "output": "morphir/SDK:string#string"
+                  }
+                }
+              },
+              "int32": {
+                "types": {},
+                "values": {
+                  "normalize": {
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:int#int-32"
+                  }
+                }
+              },
+              "numeric": {
+                "types": {
+                  "sdk-extension": {
+                    "doc": "Versioned MoonBit numeric SDK provenance marker",
+                    "OpaqueTypeSpecification": {}
+                  }
+                },
+                "values": {}
+              },
+              "integer": {
+                "types": {},
+                "values": {
+                  "add": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#int"
+                  },
+                  "subtract": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#int"
+                  },
+                  "multiply": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#int"
+                  },
+                  "negate": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#int"
+                  },
+                  "require-budget": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#int"
+                  },
+                  "equal": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "not-equal": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "less-than": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "less-than-or-equal": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "greater-than": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "greater-than-or-equal": {
+                    "doc": "Bounded exact MoonBit source integer operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/SDK:basics#int",
+                      "right": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  }
+                }
+              },
+              "int16": {
+                "types": {},
+                "values": {
+                  "normalize": {
+                    "doc": "MoonBit source-width normalization",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:int#int-16"
+                  }
+                }
+              },
+              "int64": {
+                "types": {},
+                "values": {
+                  "normalize": {
+                    "doc": "MoonBit source-width normalization",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:int#int-64"
+                  }
+                }
+              },
+              "byte": {
+                "types": {},
+                "values": {
+                  "normalize": {
+                    "doc": "MoonBit source-width normalization",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:int#byte"
+                  }
+                }
+              },
+              "uint16": {
+                "types": {},
+                "values": {
+                  "normalize": {
+                    "doc": "MoonBit source-width normalization",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:int#uint-16"
+                  }
+                }
+              },
+              "uint32": {
+                "types": {},
+                "values": {
+                  "normalize": {
+                    "doc": "MoonBit source-width normalization",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:int#uint-32"
+                  }
+                }
+              },
+              "uint64": {
+                "types": {},
+                "values": {
+                  "normalize": {
+                    "doc": "MoonBit source-width normalization",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-integer-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#int"
+                    },
+                    "output": "morphir/SDK:int#uint-64"
+                  }
+                }
+              },
+              "float32": {
+                "annotations": [
+                  "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                ],
+                "types": {
+                  "float32": {
+                    "doc": "MoonBit source IEEE binary32",
+                    "OpaqueTypeSpecification": {
+                      "annotations": [
+                        "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                      ]
+                    }
+                  }
+                },
+                "values": {
+                  "from-float64": {
+                    "doc": "Round Float64 to source binary32",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/SDK:basics#float"
+                    },
+                    "output": "morphir/moonbit-source:float32#float32"
+                  },
+                  "add": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/moonbit-source:float32#float32"
+                  },
+                  "subtract": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/moonbit-source:float32#float32"
+                  },
+                  "multiply": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/moonbit-source:float32#float32"
+                  },
+                  "divide": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/moonbit-source:float32#float32"
+                  },
+                  "negate": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/moonbit-source:float32#float32"
+                  },
+                  "round-boundary": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "value": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/moonbit-source:float32#float32"
+                  },
+                  "equal": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "not-equal": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "less-than": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "less-than-or-equal": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "greater-than": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  },
+                  "greater-than-or-equal": {
+                    "doc": "MoonBit source binary32 operation",
+                    "annotations": [
+                      "morphir/moonbit-source:numeric#sdk-extension:morphir-moonbit-source-float-v1"
+                    ],
+                    "inputs": {
+                      "left": "morphir/moonbit-source:float32#float32",
+                      "right": "morphir/moonbit-source:float32#float32"
+                    },
+                    "output": "morphir/SDK:basics#bool"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "def": {
+          "modules": {
+            "main": {
+              "Public": {
+                "types": {},
+                "values": {
+                  "is-ready": {
+                    "Public": {
+                      "ExpressionBody": {
+                        "inputTypes": {
+                          "flag-value": {
+                            "Reference": {
+                              "attributes": {
+                                "extensions": {
+                                  "moonbit-source-scalar-v1": {
+                                    "authored": "Bool",
+                                    "coordinate_profile": "moonbit-parser-position-v1",
+                                    "start_line": 1,
+                                    "start_column": 28,
+                                    "end_line": 1,
+                                    "end_column": 32,
+                                    "representation": "bool"
+                                  }
+                                }
+                              },
+                              "fqname": "morphir/SDK:basics#bool",
+                              "args": []
+                            }
+                          }
+                        },
+                        "outputType": {
+                          "Reference": {
+                            "attributes": {
+                              "extensions": {
+                                "moonbit-source-scalar-v1": {
+                                  "authored": "Bool",
+                                  "coordinate_profile": "moonbit-parser-position-v1",
+                                  "start_line": 1,
+                                  "start_column": 37,
+                                  "end_line": 1,
+                                  "end_column": 41,
+                                  "representation": "bool"
+                                }
+                              }
+                            },
+                            "fqname": "morphir/SDK:basics#bool",
+                            "args": []
+                          }
+                        },
+                        "body": {
+                          "Variable": {
+                            "attributes": {
+                              "source": {
+                                "startLine": 1,
+                                "startColumn": 44,
+                                "endLine": 1,
+                                "endColumn": 54
+                              },
+                              "inferredType": {
+                                "Reference": {
+                                  "attributes": {
+                                    "extensions": {
+                                      "moonbit-source-scalar-v1": {
+                                        "authored": "Bool",
+                                        "coordinate_profile": "moonbit-parser-position-v1",
+                                        "start_line": 1,
+                                        "start_column": 28,
+                                        "end_line": 1,
+                                        "end_column": 32,
+                                        "representation": "bool"
+                                      }
+                                    }
+                                  },
+                                  "fqname": "morphir/SDK:basics#bool",
+                                  "args": []
+                                }
+                              }
+                            },
+                            "name": "flag-value"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "always": {
+                    "Public": {
+                      "ExpressionBody": {
+                        "inputTypes": {},
+                        "outputType": {
+                          "Reference": {
+                            "attributes": {
+                              "extensions": {
+                                "moonbit-source-scalar-v1": {
+                                  "authored": "Bool",
+                                  "coordinate_profile": "moonbit-parser-position-v1",
+                                  "start_line": 2,
+                                  "start_column": 19,
+                                  "end_line": 2,
+                                  "end_column": 23,
+                                  "representation": "bool"
+                                }
+                              }
+                            },
+                            "fqname": "morphir/SDK:basics#bool",
+                            "args": []
+                          }
+                        },
+                        "body": {
+                          "Literal": {
+                            "attributes": {
+                              "source": {
+                                "startLine": 2,
+                                "startColumn": 26,
+                                "endLine": 2,
+                                "endColumn": 30
+                              },
+                              "inferredType": "morphir/SDK:basics#bool"
+                            },
+                            "literal": {
+                              "BoolLiteral": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "plainIr": {
     "formatVersion": 4,

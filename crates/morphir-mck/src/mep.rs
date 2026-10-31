@@ -27,7 +27,7 @@ use std::{
 };
 
 pub const CONTRACT: &str = "0.1.0-draft.1";
-pub const PROFILE: &str = "moonbit-model-bool-library-v1";
+pub const PROFILE: &str = "moonbit-model-stable-v1";
 const COMPILE: &str = "morphir.frontend.compileModel";
 const GENERATE: &str = "morphir.backend.generateModel";
 const CASES: &[&str] = &[
@@ -148,6 +148,7 @@ pub fn load_kit(path: &Path) -> Result<Kit, String> {
         .unwrap()
         .matches(&document.contract_version)
         || document.profile != PROFILE
+        || document.source.pointer("/options/profile") != Some(&json!(PROFILE))
         || document.mep_version != "0.2.0-draft.1"
         || !document.source.is_object()
         || !document.expected_ir.is_object()
