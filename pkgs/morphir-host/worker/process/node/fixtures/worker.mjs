@@ -12,10 +12,15 @@ const floodsOnExit = args.includes('--flood-on-exit');
 if (ignoresExit) setInterval(() => {}, 1000);
 let grandchild = null;
 if (args.includes('--grandchild')) {
-  // The grandchild stays in the worker's process group and tree.
+  // The grandchild stays in the worker's process group and tree. On Windows,
+  // libuv puts every child that is not detached in a job object of its own
+  // with kill-on-close, so that child would die with the worker. A detached
+  // child (DETACHED_PROCESS and CREATE_NEW_PROCESS_GROUP, no breakaway flag)
+  // outlives the worker and stays in the job object that the host made.
   grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
     stdio: 'ignore',
     windowsHide: true,
+    detached: process.platform === 'win32',
   });
 }
 

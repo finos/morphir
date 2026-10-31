@@ -239,7 +239,10 @@ final tail.
 
 `probe` and `activate` raise `HostError::Ended` with the early end and a
 `SessionReport`. A second call on a session, or a call after it ended, raises
-`SessionUnavailable`.
+`SessionUnavailable`. A session runs one exchange at a time: a compile or
+generate call made while another call or a close is in flight also raises
+`SessionUnavailable` and sends nothing. A close made during a call waits for
+the call to finish, then closes; it never sends `shutdown` during the call.
 
 Refusal codes: `extension.request_limit`, `extension.protocol_unavailable`,
 `extension.tuple_unavailable`, `extension.claims_mismatch`,
@@ -273,12 +276,25 @@ is sent. The host derives a payload's decoded length from its base64 content
 and refuses a payload whose `decodedByteLength` differs: a request with
 `extension.request_limit`, a result with `extension.response_limit`.
 
-The host also negotiates depth 128 and 100,000 nodes, but it does not decode
-models, so it does not enforce them. The party that decodes the model does:
-the guest for a request, the CLI's model decoder for a result. A MEP `0.1` WASM guest also has the restricted Extism
-profile: a 256 MiB memory ceiling, 1,000,000,000 instructions and 30,000 ms for
-each guest call. The WASM launcher enforces those three. The session report
-states the limits that applied.
+The depth limit (128) and the node limit (100,000) are negotiated. The party
+that decodes the model enforces them: the guest for a request, the CLI's model
+decoder for a result. The host does not decode models, so it does not check
+them. A MEP `0.1` WASM guest also has the restricted Extism profile: a 256 MiB
+memory ceiling, 1,000,000,000 instructions and 30,000 ms for each guest call.
+The WASM launcher enforces those three.
+
+The session report states the limits that applied. Its `limits` object gives
+the byte limits that the host enforces, and `limits.negotiated` gives the
+negotiated depth and node limits:
+
+```json
+{
+  "requestBytes": 4194304,
+  "responseBytes": 16777216,
+  "model": { "maxEncodedBytes": 2796204, "maxDecodedBytes": 2097152 },
+  "negotiated": { "maxDepth": 128, "maxNodes": 100000 }
+}
+```
 
 ## Deadlines and cancellation
 

@@ -91,21 +91,35 @@ async test "the worker runs the verified copy, not a replaced original" {
 }
 
 ///|
+/// Copies a file, keeping its bytes.
+extern "js" fn copy_file(source : String, target : String) -> Unit =
+  #| (source, target) => process.getBuiltinModule('node:fs').copyFileSync(source, target)
+
+///|
 async test "an artifact named work stages into bin, apart from the working directory" {
-  guard !host_is_windows() else { return }
   let directory = make_test_directory()
   let path = join_path(directory, "work/work")
-  write_file(
-    path,
-    "#!/bin/sh\nexec '\{node_executable()}' '\{fixture_script()}' \"$@\"\n",
-  )
+  // The artifact has no extension. On Windows it is a copy of the Node
+  // executable, staged as `work.exe`, and the fixture script is its first
+  // argument; elsewhere it is a script that runs the fixture.
+  let (copy_name, args) = if host_is_windows() {
+    copy_file(node_executable(), path)
+    ("work.exe", [fixture_script()])
+  } else {
+    write_file(
+      path,
+      "#!/bin/sh\nexec '\{node_executable()}' '\{fixture_script()}' \"$@\"\n",
+    )
+    ("work", [])
+  }
   let staged = stage(file_artifact(path))
   assert_eq(
     staged.executable(),
-    join_path(join_path(staged.directory(), "bin"), "work"),
+    join_path(join_path(staged.directory(), "bin"), copy_name),
   )
   assert_eq(staged.working_directory(), join_path(staged.directory(), "work"))
-  let channel = NodeProcessChannel::start(staged, [])
+  assert_true(path_exists(staged.executable()))
+  let channel = NodeProcessChannel::start(staged, args)
   assert_eq(echo(channel), { "jsonrpc": "2.0", "id": 1, "result": "hi" })
   channel.send(exit_message())
   debug_inspect(channel.close().status, content="Exited(code=0)")
@@ -115,11 +129,19 @@ async test "an artifact named work stages into bin, apart from the working direc
 
 ///|
 async test "a replaced original no longer matches its digest" {
-  guard !host_is_windows() else { return }
   let directory = make_test_directory()
-  let (path, _) = fixture_artifact(directory)
+  // On Windows the fixture artifact is the Node executable, which the test
+  // must not change; a command script takes its place. Staging compares the
+  // digest before it writes or starts anything, so the script does not run.
+  let (path, replacement) = if host_is_windows() {
+    let path = join_path(directory, "fixture-worker.cmd")
+    write_file(path, "@\"\{node_executable()}\" \"\{fixture_script()}\" %*\r\n")
+    (path, "@exit /b 7\r\n")
+  } else {
+    (fixture_artifact(directory).0, "#!/bin/sh\nexit 7\n")
+  }
   let artifact = file_artifact(path)
-  write_file(path, "#!/bin/sh\nexit 7\n")
+  write_file(path, replacement)
   let refused = launch_error(() => ignore(stage(artifact)))
   guard refused is Some(DigestMismatch(expected~, actual~)) &&
     expected == artifact.sha256 &&

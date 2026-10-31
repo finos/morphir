@@ -24,25 +24,25 @@
 
 ## 2. Native process workers (morphir-ukvn.5.64.36.2)
 
-- [ ] 2.1 Implement verified staging: no-follow read, hash of the bytes read, private copy, cleanup; verify the "Run
+- [x] 2.1 Implement verified staging: no-follow read, hash of the bytes read, private copy, cleanup; verify the "Run
   verified copies" scenarios, including an artifact replaced during start
-- [ ] 2.2 Add the Unix spawn stub (`posix_spawn` with a new process group, three pipes, no other descriptors, empty
+- [x] 2.2 Add the Unix spawn stub (`posix_spawn` with a new process group, three pipes, no other descriptors, empty
   environment, private working directory) and the `killpg` stop with confirmation (PROC-1); verify on macOS and
   Linux with a fixture worker that starts a grandchild, for exit, deadline, cancellation and a worker that ignores
   `exit`
-- [ ] 2.3 Add the Windows stub with one job object per worker, assigned before the worker runs, and job termination;
+- [x] 2.3 Add the Windows stub with one job object per worker, assigned before the worker runs, and job termination;
   verify with the same fixture worker in one deliberate Windows run that the build-master reviewed, with no new
   per-push job
-- [ ] 2.4 Implement the framed stdio channel over `@mep.Decoder` and `encode_frame`, and the 64 KiB stderr tail;
+- [x] 2.4 Implement the framed stdio channel over `@mep.Decoder` and `encode_frame`, and the 64 KiB stderr tail;
   verify the "Framed stdio", "Bounded stderr" and "Host exit" scenarios as tests
-- [ ] 2.5 Document the native process worker rules and their limits in the package README; verify the README matches
+- [x] 2.5 Document the native process worker rules and their limits in the package README; verify the README matches
   the tested bounds
 
 ## 3. Node process workers (morphir-ukvn.5.64.36.3)
 
 - [x] 3.1 Implement the Node `child_process` adapter through `extern "js"`: detached spawn, piped stdio, stdout read
   through `@js_async.ReadableStream`, stdin writes (PROC-2); verify with the group 2 fixture worker on Node
-- [ ] 3.2 Implement tree stop with `process.kill(-pid)` on Unix and `taskkill /T /F` on Windows, and wait for exit;
+- [x] 3.2 Implement tree stop with `process.kill(-pid)` on Unix and `taskkill /T /F` on Windows, and wait for exit;
   verify deadline and cancellation tests on Node, and the Windows scenario in the group 2 deliberate run
 - [ ] 3.3 Run one launcher conformance suite against the native and Node process launchers; verify both pass the same
   transcripts and fault cases

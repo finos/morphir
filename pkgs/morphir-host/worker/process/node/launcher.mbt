@@ -36,8 +36,9 @@ pub async fn stage(
     raise ArtifactUnreadable(problem)
   }
   let verified = @process.VerifiedArtifact::check(read.bytes(), artifact)
+  let style = host_path_style()
   let directory = write_private_copy(
-    verified.file_name(),
+    verified.copy_name(style),
     verified.bytes(),
     @process.STAGED_BIN_DIRECTORY,
     @process.STAGED_WORK_DIRECTORY,
@@ -47,7 +48,7 @@ pub async fn stage(
   guard directory != "" else {
     raise LaunchFailed("cannot write the private copy of the artifact")
   }
-  verified.stage_in(directory~, style=host_path_style())
+  verified.stage_in(directory~, style~)
 }
 
 ///|

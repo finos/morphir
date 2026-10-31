@@ -56,6 +56,7 @@ pub struct VerifiedArtifact {
 }
 pub fn VerifiedArtifact::bytes(Self) -> Bytes
 pub fn VerifiedArtifact::check(Bytes, @worker.ArtifactRef) -> Self raise @worker.LaunchError
+pub fn VerifiedArtifact::copy_name(Self, @worker.PathStyle) -> String
 pub fn VerifiedArtifact::digest(Self) -> @worker.Sha256
 pub fn VerifiedArtifact::file_name(Self) -> String
 pub fn VerifiedArtifact::stage_in(Self, directory~ : String, style~ : @worker.PathStyle) -> StagedArtifact

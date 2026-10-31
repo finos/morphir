@@ -154,3 +154,17 @@ test "every outcome class keeps diagnostics and the stderr tail" {
   }
   assert_eq(data, { "field": "id" })
 }
+
+///|
+test "session report: the host enforces the byte limits; depth and nodes are negotiated" {
+  let report = @worker.SessionReport::new(@worker.Limits::host())
+  json_inspect(report.to_json(), content={
+    "limits": {
+      "requestBytes": 4194304,
+      "responseBytes": 16777216,
+      "model": { "maxEncodedBytes": 2796204, "maxDecodedBytes": 2097152 },
+      "negotiated": { "maxDepth": 128, "maxNodes": 100000 },
+    },
+    "wireCancellation": false,
+  })
+}

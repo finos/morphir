@@ -92,7 +92,10 @@ pub fn StopSignal::requested(self : StopSignal) -> Bool {
 /// What a finished session reports: what it negotiated, the limits that
 /// applied, the restricted Extism profile when it applied, how the worker
 /// stopped and why the session ended early, if it did. The host never sends
-/// `$/cancelRequest`; `to_json` states `wireCancellation: false`.
+/// `$/cancelRequest`; `to_json` states `wireCancellation: false`. Under
+/// `limits`, `to_json` gives the byte limits that the host enforces, and
+/// under `limits.negotiated` the depth and node limits that were negotiated.
+/// The party that decodes the model enforces those two, not the host.
 pub struct SessionReport {
   negotiated : Negotiated?
   limits : Limits
@@ -167,12 +170,28 @@ fn Ending::report(self : Ending) -> Json {
 }
 
 ///|
+/// The host enforces the frame limits and the model byte limits, and checks
+/// the declared decoded length. It does not decode models, so the depth and
+/// node limits are only negotiated.
+fn Limits::report(self : Limits) -> Json {
+  {
+    "requestBytes": self.request_bytes,
+    "responseBytes": self.response_bytes,
+    "model": {
+      "maxEncodedBytes": self.model.encoded_bytes,
+      "maxDecodedBytes": self.model.decoded_bytes,
+    },
+    "negotiated": { "maxDepth": self.model.depth, "maxNodes": self.model.nodes },
+  }
+}
+
+///|
 pub extend SessionReport with ToJson::{to_json}
 
 ///|
 pub impl ToJson for SessionReport with fn to_json(self) {
   let fields : Map[String, Json] = {
-    "limits": self.limits.to_json(),
+    "limits": self.limits.report(),
     "wireCancellation": false,
   }
   if self.negotiated is Some(negotiated) {

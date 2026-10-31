@@ -8,6 +8,7 @@ priv type Child
 /// Starts `program` in a new process group (`detached: true`) with three
 /// pipes, a hidden window on Windows, the given working directory and an
 /// environment that holds only `SystemRoot` on Windows and nothing elsewhere.
+/// On Windows libuv adds the variables that the README lists.
 /// The promise resolves on the `spawn` event and rejects on a start failure.
 /// Every stderr chunk goes to `on_stderr` as it arrives.
 ///
@@ -124,6 +125,21 @@ extern "js" fn Child::write(
   #|     resolve(2);
   #|   }
   #| })
+
+///|
+/// Discards the worker's stdout from now on, in Node itself: the stream
+/// flows into a listener that drops each chunk. `Readable.toWeb` pauses the
+/// stream while its queue is full and resumes it only when the host reads,
+/// so without this a worker that writes after the end of its input could
+/// block on a full pipe. A `receive` that waits now ends at the end of
+/// stdout, and the channel refuses it because it is stopping.
+extern "js" fn Child::discard_output(self : Child) -> Unit =
+  #| (handle) => {
+  #|   const stdout = handle.child.stdout;
+  #|   stdout.removeAllListeners('data');
+  #|   stdout.on('data', () => {});
+  #|   stdout.resume();
+  #| }
 
 ///|
 /// Ends the worker's stdin, so the worker reads the end of its input.

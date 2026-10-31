@@ -14,8 +14,6 @@ pub struct NodeProcessChannel {
   /// Abort reasons that reach a `close` waiting for the grace period.
   priv aborts : @aqueue.Queue[@worker.StopReason]
   priv stopped : @async.CondVar
-  /// Whether a `receive` reads stdout now.
-  priv mut reading : Bool
   priv mut stopping : Bool
   priv mut stop : @worker.WorkerStop?
 }
@@ -75,7 +73,6 @@ async fn NodeProcessChannel::start_with(
     stderr,
     aborts: @aqueue.Queue(kind=Unbounded),
     stopped: @async.CondVar::Cond(),
-    reading: false,
     stopping: false,
     stop: None,
   }
@@ -246,25 +243,8 @@ fn NodeProcessChannel::check_open(
 }
 
 ///|
-/// Reads and discards stdout until it ends, so that a worker which writes
-/// after the end of its input does not block on a full pipe. It waits for a
-/// `receive` that reads now, which discards what it reads.
-async fn NodeProcessChannel::discard_output(self : NodeProcessChannel) -> Unit {
-  while self.reading {
-    @async.sleep(5)
-  }
-  while (self.stdout.read_some() catch { _ => None }) is Some(_) {
-
-  }
-}
-
-///|
-/// Reads one chunk of stdout and records that a read is in progress.
+/// Reads one chunk of stdout.
 async fn NodeProcessChannel::read_chunk(self : NodeProcessChannel) -> Bytes? {
-  self.reading = true
-  defer {
-    self.reading = false
-  }
   self.stdout.read_some()
 }
 
@@ -332,6 +312,9 @@ pub impl @worker.Channel for NodeProcessChannel with fn close(self) {
   }
   self.stopping = true
   @async.protect_from_cancel(() => {
+    // From here Node discards stdout as it arrives, so a worker that writes
+    // after the end of its input cannot block on a full pipe.
+    self.child.discard_output()
     self.child.end_input()
     let woken = @async.with_timeout_opt(@process.EXIT_GRACE_MS, () => {
       @async.any([
@@ -340,11 +323,6 @@ pub impl @worker.Channel for NodeProcessChannel with fn close(self) {
           None
         },
         () => Some(self.aborts.get()),
-        () => {
-          self.discard_output()
-          self.wait_exit()
-          None
-        },
       ])
     }) catch {
       _ => None

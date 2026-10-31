@@ -1,0 +1,42 @@
+supported_targets = "native"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/process" @shared,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/io",
+  "moonbitlang/async/os_error",
+  "moonbitlang/async/process",
+  "moonbitlang/async/raw_fd",
+  "moonbitlang/async/types",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/process" @shared,
+  "finos/morphir-host/worker/process/conformance",
+  "finos/morphir-host/worker/process/native",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+} for "test"
+
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+} for "wbtest"
+
+// The Unix and Windows adapters each use some of the imports.
+
+warnings = "-29"
+
+options(
+  "native-stub": [ "process_unix.c", "process_windows.c" ],
+)

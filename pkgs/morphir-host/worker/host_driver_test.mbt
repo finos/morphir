@@ -39,11 +39,13 @@ fn wasm_spec() -> @worker.WorkerSpec {
 
 ///|
 /// A fake worker. It records every message, answers each request with
-/// `reply`, stays silent when `reply` gives `None`, and exits on `exit`.
+/// `reply`, stays silent when `reply` gives `None`, and exits on `exit`. It
+/// answers the `slow` method after 20 milliseconds.
 async fn serve(
   worker : @worker.MemoryWorker,
   received : Array[Json],
   reply : (String) -> Json?,
+  slow~ : String = "",
 ) -> Unit {
   while true {
     let message = worker.receive() catch { _ => return }
@@ -54,6 +56,9 @@ async fn serve(
     if name == "morphir.exit" {
       worker.exit(code=0)
       return
+    }
+    if name == slow {
+      @async.sleep(20)
     }
     if fields.get("id") is Some(Number(id, ..)) && reply(name) is Some(result) {
       worker.send(
@@ -672,4 +677,42 @@ async test "with_session: the session is closed after the work, and aborted when
     assert_true(finished is None)
   })
   assert_eq(channel.abort(Fault).status, Terminated(Cancelled))
+}
+
+///|
+async test "concurrent calls: a second call is refused and a close waits for the call" {
+  let (channel, worker) = @worker.MemoryChannel::pair()
+  let host = @worker.Host::new(
+    @worker.MemoryLauncher::new(channel),
+    Native(Aarch64AppleDarwin),
+  )
+  let received = []
+  @async.with_task_group(group => {
+    group.spawn_bg(() => {
+      serve(worker, received, legacy_guest(), slow="morphir.frontend.compile")
+    })
+    let session = host.activate(
+      process_spec(),
+      expected=legacy_claims(),
+      offer=Legacy,
+    )
+    let first = group.spawn(() => session.compile(compile_request()))
+    // The first compile waits for its answer.
+    @async.sleep(5)
+    let second = try session.compile(compile_request()) catch {
+      @worker.SessionUnavailable(_) => None
+      _ => Some("another error")
+    } noraise {
+      _ => Some("an outcome")
+    }
+    assert_eq(second, None)
+    // A close waits for the call; it does not send shutdown during it.
+    let report = session.close()
+    assert_true(first.wait().class is Completed(_))
+    assert_true(report.ending is None)
+  })
+  assert_eq(received_methods(received), [
+    "morphir.initialize", "morphir.initialized", "morphir.frontend.compile", "morphir.shutdown",
+    "morphir.exit",
+  ])
 }

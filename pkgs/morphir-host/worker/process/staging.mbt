@@ -76,6 +76,26 @@ pub fn VerifiedArtifact::file_name(self : VerifiedArtifact) -> String {
 }
 
 ///|
+/// The file name of the private copy on a host with path style `style`. On
+/// Windows a name without an extension gets `.exe`: Windows starts a file by
+/// its name only when the name has an extension, and both launchers start
+/// the copy by name. A dot that starts or ends the name is not an extension.
+pub fn VerifiedArtifact::copy_name(
+  self : VerifiedArtifact,
+  style : @worker.PathStyle,
+) -> String {
+  let name = self.file_name
+  let has_extension = match name.rev_find(".") {
+    Some(i) => i > 0 && i < name.length() - 1
+    None => false
+  }
+  match style {
+    Windows if !has_extension => name + ".exe"
+    _ => name
+  }
+}
+
+///|
 /// The subdirectory of a private directory that holds the executable copy.
 /// The copy has its own directory, so that no artifact name can collide with
 /// `STAGED_WORK_DIRECTORY`.
@@ -128,7 +148,7 @@ fn join_path(
 
 ///|
 /// Records the private copy in the staging layout of `directory`: the copy is
-/// `bin/<file name>` and the working directory is `work`. The host creates
+/// `bin/<copy name>` (see `copy_name`) and the working directory is `work`. The host creates
 /// both subdirectories and writes the verified bytes to the copy before it
 /// calls this, into a directory that only its user can use.
 pub fn VerifiedArtifact::stage_in(
@@ -139,7 +159,7 @@ pub fn VerifiedArtifact::stage_in(
   let bin = join_path(directory, STAGED_BIN_DIRECTORY, style)
   self.staged(
     directory=directory.trim_end(chars=['/', '\\']).to_owned(),
-    executable=join_path(bin, self.file_name, style),
+    executable=join_path(bin, self.copy_name(style), style),
     working_directory=join_path(directory, STAGED_WORK_DIRECTORY, style),
   )
 }

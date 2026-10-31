@@ -40,7 +40,7 @@ Start flags:
 
 | Flag | Behaviour |
 | --- | --- |
-| `--grandchild` | At start, the worker starts a grandchild that runs until it is killed. The grandchild stays in the worker's process group and tree. |
+| `--grandchild` | At start, the worker starts a grandchild that runs until it is killed. The grandchild stays in the worker's process group and tree. On Windows the Node fixture starts it detached, because libuv puts a child that is not detached in its own kill-on-close job, which would stop the grandchild with the worker; a detached child stays in the host's job object. |
 | `--ignore-exit` | The worker stays alive after `exit` and after the end of its stdin. |
 | `--ignore-stdin` | The worker never reads its stdin and stays alive. |
 | `--flood-on-exit` | At `exit` or the end of its stdin, the worker writes 1 MiB to stdout and exits after the write. |

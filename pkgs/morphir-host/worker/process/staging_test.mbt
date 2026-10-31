@@ -111,3 +111,47 @@ test "the staging layout keeps the copy in bin, apart from work" {
   assert_eq(staged.working_directory(), "C:\\Temp\\morphir-worker-1\\work")
   assert_eq(staged.directory(), "C:\\Temp\\morphir-worker-1")
 }
+
+///|
+test "a Windows copy of an artifact without an extension is named .exe" {
+  let artifact = file_artifact("/opt/ext/bin/worker", b"MZ")
+  let verified = @process.VerifiedArtifact::check(b"MZ", artifact)
+  assert_eq(verified.copy_name(Windows), "worker.exe")
+  assert_eq(verified.copy_name(Posix), "worker")
+  assert_eq(
+    verified
+    .stage_in(directory="C:\\Temp\\morphir-worker-1", style=Windows)
+    .executable(),
+    "C:\\Temp\\morphir-worker-1\\bin\\worker.exe",
+  )
+  assert_eq(
+    verified
+    .stage_in(directory="/tmp/morphir-worker-1", style=Posix)
+    .executable(),
+    "/tmp/morphir-worker-1/bin/worker",
+  )
+  // A name with an extension keeps it, whatever the extension is.
+  for name in ["worker.exe", "worker.EXE", "worker.cmd", "my.worker.com"] {
+    let named = file_artifact("/opt/ext/bin/\{name}", b"MZ")
+    assert_eq(
+      @process.VerifiedArtifact::check(b"MZ", named).copy_name(Windows),
+      name,
+    )
+  }
+  // A dot that only starts the name or ends it is not an extension.
+  for name in [".worker", "worker."] {
+    let named = file_artifact("/opt/ext/bin/\{name}", b"MZ")
+    assert_eq(
+      @process.VerifiedArtifact::check(b"MZ", named).copy_name(Windows),
+      "\{name}.exe",
+    )
+  }
+  let memory = @worker.ArtifactRef::new(
+    Memory(b"MZ"),
+    @worker.Sha256::of(b"MZ"),
+  )
+  assert_eq(
+    @process.VerifiedArtifact::check(b"MZ", memory).copy_name(Windows),
+    "artifact.exe",
+  )
+}

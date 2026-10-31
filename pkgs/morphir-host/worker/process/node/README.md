@@ -37,8 +37,11 @@ The channel checks frames against the session's `limits`.
    shared staging layout (`VerifiedArtifact::stage_in`): the copy is
    `bin/<file name>`, a file that only its owner can read and execute (mode
    0500), and `work` is an empty directory. Both subdirectories have mode 0700.
-   The copy has its own directory, so an artifact named `work` cannot collide
-   with the working directory. The worker runs that copy, so a later change to
+   On Windows a file name without an extension gets `.exe`
+   (`VerifiedArtifact::copy_name`), because libuv starts a file without an
+   extension only as `<name>.com` or `<name>.exe`. The copy has its own
+   directory, so an artifact named `work` cannot collide with the working
+   directory. The worker runs that copy, so a later change to
    the original path does not change what runs.
 4. `spawn` starts the copy with `detached: true` (a new process group on Unix),
    three pipes, `windowsHide: true`, `work` as its working directory and the
@@ -52,10 +55,23 @@ spawn aborts the new channel at a checkpoint after it: the host stops the
 tree, confirms the stop and removes the directory before the cancellation
 leaves `launch`.
 
-The worker's environment is empty on Linux and macOS. On Windows it holds only
-`SystemRoot`, which Windows programs need to load system libraries. macOS adds
+The worker's environment is empty on Linux and macOS. macOS adds
 `__CF_USER_TEXT_ENCODING` to every process that has none; the host does not
 pass it.
+
+On Windows the launcher passes only `SystemRoot`, which Windows programs need
+to load system libraries. libuv, which starts Node's child processes, then
+adds these variables from the host's environment when the host has them, even
+to an empty environment. So the npm CLI's worker environment on Windows is at
+most this list, and nothing else:
+
+| Variable | Added by |
+| --- | --- |
+| `SystemRoot` | the launcher |
+| `HOMEDRIVE`, `HOMEPATH`, `LOGONSERVER`, `PATH`, `SYSTEMDRIVE`, `TEMP`, `USERDOMAIN`, `USERNAME`, `USERPROFILE`, `WINDIR` | libuv |
+
+The native CLI on Windows passes only `SystemRoot`. The conformance case
+"environment holds only documented variables" checks this list on Windows.
 
 ## Channel
 
@@ -130,6 +146,9 @@ reason is `GraceExpired`.
 - **Host exit.** On Windows the native CLI's job object kills the worker when the
   CLI dies. The npm CLI has no job: when it dies, the worker's stdin closes, and
   a conformant worker exits at the end of its input.
+- **Environment on Windows.** libuv adds up to ten variables to the worker's
+  environment; see [How a worker starts](#how-a-worker-starts). The native CLI
+  passes only `SystemRoot`.
 - **Links on Windows.** Windows has no `O_NOFOLLOW`. There the host refuses a
   link that `lstat` reports before it opens the artifact, so a link that is
   created between the two calls is not detected.

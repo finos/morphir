@@ -29,6 +29,12 @@ delimiters. It SHALL inherit no other open file descriptors or handles.
 - **WHEN** the user has `MORPHIR_HOME` and a token variable set
 - **THEN** the worker's environment contains neither
 
+#### Scenario: Environment of the npm CLI on Windows
+- **WHEN** the npm CLI starts a process worker on Windows
+- **THEN** the worker's environment holds only variables from the list that the Node process worker README
+  documents: `SystemRoot`, which the launcher passes, and `HOMEDRIVE`, `HOMEPATH`, `LOGONSERVER`, `PATH`,
+  `SYSTEMDRIVE`, `TEMP`, `USERDOMAIN`, `USERNAME`, `USERPROFILE` and `WINDIR`, which libuv adds when the host has them
+
 ### Requirement: Framed stdio
 The host SHALL write MEP messages to the worker's stdin and read them from its stdout with Content-Length framing,
 headers of at most 8 KiB, and a frame no larger than the message limit. The host SHALL treat stderr as diagnostics
