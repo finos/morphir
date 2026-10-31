@@ -1,0 +1,80 @@
+name: Extension qualification
+
+# Manual qualification of the published extensions and the SDK conformance
+# fixture guest on the CLI's worker host: scripts/extension-qualification.mbtx,
+# the suites of group 7 of the OpenSpec change host-extensions-as-workers. It
+# downloads published releases (each checked against its SHA-256 pin) and builds
+# the CLIs and several guests, so only workflow_dispatch starts it: no pull
+# request, merge queue, push or schedule. Run it once per platform for a
+# release candidate, for example the Windows x64 run of task 7.5, and record the
+# receipts on the qualification bead.
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner label of the platform to qualify
+        type: choice
+        options: [windows-latest, ubuntu-24.04, ubuntu-24.04-arm, macos-15]
+        default: windows-latest
+      suite:
+        description: Qualification suite
+        type: choice
+        options: [all, elm, python, moonbit-native, moonbit-portable, conformance]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extension-qualification-${{ github.ref }}-${{ inputs.runner }}
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    name: Extension qualification (${{ inputs.runner }}, ${{ inputs.suite }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-moonbit
+        with:
+          tools: http:moonbit bun uv
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.1'
+      - name: Resolve pinned MoonBit packages
+        run: moon update
+      # The commands' own tests and JSON help, before any build or download.
+      - name: Test the qualification command
+        run: moon test scripts/extension-qualification.mbtx
+      - name: Check the qualification command's JSON help
+        run: mise exec -- moonx scripts/extension-qualification.mbtx --help --json
+      - name: Self-test the qualification step
+        run: mise exec -- moonx scripts/extension-qualification-run.mbtx --self-test --json
+      # scripts/extension-qualification-run.mbtx builds the CLIs and guests
+      # through scripts/extension-qualification.mbtx, which downloads the pinned
+      # artifacts into new directories and writes one receipt for each suite. It
+      # saves the JSON result for the artifact, writes it to the log and keeps
+      # the qualification's exit status. mise exec puts bun and uv on PATH.
+      - name: Qualify the extensions on the worker host
+        # One command; bash reads $SUITE from the environment on every runner.
+        shell: bash
+        env:
+          SUITE: ${{ inputs.suite }}
+        run: >-
+          mise exec -- moonx scripts/extension-qualification-run.mbtx "$SUITE"
+          --evidence .dev/extension-qualification/evidence
+          --result .dev/extension-qualification/result.json
+      - name: Retain the receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          # yamllint disable-line rule:line-length
+          name: extension-qualification-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .dev/extension-qualification/result.json
+            .dev/extension-qualification/evidence/*.json
+          include-hidden-files: true
+          if-no-files-found: error
+          # The qualification bead keeps a copy of every receipt.
+          retention-days: 30

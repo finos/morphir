@@ -1,0 +1,322 @@
+----
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
+  "moonbitlang/x@0.5.5/sys",
+}
+----
+
+// The step of .github/workflows/extension-qualification.yml: it runs
+// scripts/extension-qualification.mbtx for one suite in JSON mode, saves the
+// JSON result in a file for the artifact, writes it to stdout for the job log
+// and keeps the qualification's exit status. Workflow shell blocks hold no
+// orchestration (.github/AGENTS.md), so this logic lives here.
+
+///|
+let about : String =
+  #|Run scripts/extension-qualification.mbtx SUITE --json --evidence DIR (through moonx), save its JSON result in the file named by --result and write that result to stdout. The qualification's build and driver output goes to stderr as it runs. The parent directories of DIR and of the result file are made first.
+  #|
+  #|Without --json, stdout is the qualification's own morphir/command-result, and the exit status is the qualification's status. With --json, stdout is one morphir/command-result 0.1.0 of this command, extension-qualification-run: success has result {suite, resultPath, qualification}, where qualification is the saved result; a failed qualification has error {code: qualification_failed, message} and the qualification's exit status; a result that is not one JSON value has error code result_invalid and exit 1; any other failure, such as a result path that cannot be written, has error code command_failed and exit 1. Invalid arguments exit 2 with error code invalid_arguments. --self-test checks the argument rules and the capture of a child's stdout and status, with moon as the child, and runs no qualification. --help prints this help.
+
+///|
+fn command() -> @argparse.Command {
+  @argparse.Command(
+    "extension-qualification-run",
+    about~,
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    positionals=[
+      @argparse.PositionArg(
+        "SUITE",
+        about="The suite for scripts/extension-qualification.mbtx",
+      ),
+    ],
+    flags=[
+      @argparse.FlagArg("json", about="Write one command-result on stdout"),
+      @argparse.FlagArg(
+        "self-test",
+        about="Check the argument rules and the capture; run no qualification",
+      ),
+      @argparse.FlagArg("help", short='h', about="Print the help; run nothing"),
+    ],
+    options=[
+      @argparse.OptionArg("evidence", about="Evidence directory"),
+      @argparse.OptionArg("result", about="File for the saved JSON result"),
+    ],
+  )
+}
+
+///|
+/// What one run needs, after the arguments are checked.
+priv struct Request {
+  suite : String
+  evidence : String
+  result : String
+}
+
+///|
+suberror Invalid {
+  Invalid(String)
+}
+
+///|
+fn one(matches : @argparse.Matches, name : String) -> String? {
+  match matches.values.get(name) {
+    Some([value, ..]) if value != "" => Some(value)
+    _ => None
+  }
+}
+
+///|
+fn request(matches : @argparse.Matches) -> Request raise Invalid {
+  guard one(matches, "SUITE") is Some(suite) else {
+    raise Invalid("SUITE is required")
+  }
+  guard one(matches, "evidence") is Some(evidence) else {
+    raise Invalid("--evidence is required")
+  }
+  guard one(matches, "result") is Some(result) else {
+    raise Invalid("--result is required")
+  }
+  { suite, evidence, result, }
+}
+
+///|
+/// The directory part of a path, or "" when it has none.
+fn parent(path : String) -> String {
+  let parts = path.replace_all(old="\\", new="/").split("/").to_array()
+  if parts.length() <= 1 {
+    ""
+  } else {
+    parts[:parts.length() - 1].join("/")
+  }
+}
+
+///|
+async fn make_parent(path : String) -> Unit {
+  let directory = parent(path)
+  if directory != "" && !@fs.exists(directory) {
+    @fs.mkdir(directory, recursive=true)
+  }
+}
+
+///|
+/// Runs a child with its stdout saved in `path` and its stderr on stderr, and
+/// returns its exit status.
+async fn capture(
+  program : String,
+  args : Array[String],
+  path : String,
+) -> Int32 {
+  make_parent(path)
+  @process.run(
+    program,
+    args,
+    stdout=@process.redirect_to_file(path),
+    stderr=@stdio.stderr,
+  )
+}
+
+///|
+fn document(state : String, code : Int32, body : (String, Json)) -> String {
+  let fields : Map[String, Json] = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "extension-qualification-run",
+    "state": state,
+    "exitCode": code,
+    "diagnostics": [],
+  }
+  fields[body.0] = body.1
+  Json::object(fields).stringify() + "\n"
+}
+
+///|
+async fn refuse(
+  json : Bool,
+  code : Int32,
+  kind : String,
+  message : String,
+) -> Unit {
+  if json {
+    @stdio.stdout.write(
+      document("failed", code, ("error", { "code": kind, "message": message })),
+    )
+  } else {
+    @stdio.stderr.write("extension-qualification-run: \{message}\n")
+  }
+  @sys.exit(code)
+}
+
+///|
+async fn run(json : Bool, request : Request) -> Unit {
+  make_parent(request.evidence + "/receipt")
+  let status = capture(
+    "moonx",
+    [
+      "scripts/extension-qualification.mbtx",
+      request.suite,
+      "--json",
+      "--evidence",
+      request.evidence,
+    ],
+    request.result,
+  )
+  let text = @fs.read_file(request.result).text()
+  if !json {
+    @stdio.stdout.write(text)
+    if status != 0 {
+      @sys.exit(status)
+    }
+    return
+  }
+  let saved = @json.parse(text) catch {
+    _ => {
+      refuse(
+        json,
+        1,
+        "result_invalid",
+        "the qualification wrote no single JSON result (status \{status})",
+      )
+      return
+    }
+  }
+  if status != 0 {
+    refuse(
+      json,
+      status,
+      "qualification_failed",
+      "the qualification failed with status \{status}; result \{request.result}",
+    )
+    return
+  }
+  @stdio.stdout.write(
+    document(
+      "succeeded",
+      0,
+      (
+        "result",
+        {
+          "suite": request.suite,
+          "resultPath": request.result,
+          "qualification": saved,
+        },
+      ),
+    ),
+  )
+}
+
+///|
+/// Checks the argument rules and the capture with `moon` as the child.
+async fn self_test() -> Unit {
+  let parse = fn(argv : Array[String]) -> Request? {
+    let matches = command().parse(argv~) catch { _ => return None }
+    Some(request(matches)) catch {
+      _ => None
+    }
+  }
+  guard parse(["all", "--evidence", "e", "--result", "r.json"])
+    is Some({ suite: "all", evidence: "e", result: "r.json", }) else {
+    fail("a complete request was refused")
+  }
+  for
+    argv in [
+      ["--evidence", "e", "--result", "r.json"],
+      ["all", "--result", "r.json"],
+      ["all", "--evidence", "e"],
+      ["all", "--evidence", "e", "--result", "r.json", "--unknown"],
+    ] {
+    guard parse(argv) is None else {
+      fail("an incomplete request was accepted: " + argv.join(" "))
+    }
+  }
+  guard parent("a/b/c.json") == "a/b" &&
+    parent("c.json") == "" &&
+    parent("a\\b.json") == "a" else {
+    fail("parent directory rule changed")
+  }
+  let directory = ".dev/extension-qualification-run-self-test"
+  if @fs.exists(directory) {
+    @fs.rmdir(directory, recursive=true)
+  }
+  let saved = directory + "/nested/stdout.txt"
+  let status = capture("moon", ["version"], saved)
+  guard status == 0 && @fs.read_file(saved).text().has_prefix("moon ") else {
+    fail("the child's stdout was not saved")
+  }
+  let failed = capture(
+    "moon",
+    ["--no-such-option-for-the-self-test"],
+    directory + "/failed.txt",
+  )
+  guard failed != 0 else { fail("a failed child's status was lost") }
+  // A result path that cannot be written raises, so that main can report
+  // it as a structured failure in JSON mode.
+  let unusable = capture("moon", ["version"], directory) catch { _ => -1 }
+  guard unusable == -1 else {
+    fail("a result path that is a directory was accepted")
+  }
+  @fs.rmdir(directory, recursive=true)
+}
+
+///|
+async fn main {
+  let json = @env.args().contains("--json")
+  let matches = command().parse(argv=@env.args()[1:]) catch {
+    error => {
+      refuse(json, 2, "invalid_arguments", error.to_string())
+      return
+    }
+  }
+  let json = matches.flags.get("json").unwrap_or(false)
+  if matches.flags.get("help").unwrap_or(false) {
+    if json {
+      @stdio.stdout.write(
+        document(
+          "succeeded",
+          0,
+          ("result", { "help": command().render_help() }),
+        ),
+      )
+    } else {
+      @stdio.stdout.write(command().render_help() + "\n")
+    }
+    return
+  }
+  if matches.flags.get("self-test").unwrap_or(false) {
+    self_test() catch {
+      error => {
+        refuse(json, 1, "self_test_failed", error.to_string())
+        return
+      }
+    }
+    if json {
+      @stdio.stdout.write(
+        document("succeeded", 0, ("result", { "selfTest": "passed" })),
+      )
+    } else {
+      @stdio.stdout.write("extension-qualification-run: self-test passed\n")
+    }
+    return
+  }
+  let request = request(matches) catch {
+    Invalid(message) => {
+      refuse(json, 2, "invalid_arguments", message)
+      return
+    }
+  }
+  if !json {
+    run(json, request)
+    return
+  }
+  // JSON mode reports every failure as a command-result; the default mode
+  // keeps the error presentation of the runtime.
+  run(json, request) catch {
+    error => refuse(json, 1, "command_failed", error.to_string())
+  }
+}
