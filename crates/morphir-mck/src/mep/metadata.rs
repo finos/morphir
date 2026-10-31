@@ -202,7 +202,7 @@ pub(crate) fn validate_model(source: &Value, root: &Element) -> Result<(), Strin
         "frontend source language changed",
     )?;
     require(
-        text(member(frontend, "profile")?)? == "moonbit-model-bool-library-v1",
+        text(member(frontend, "profile")?)? == super::PROFILE,
         "frontend source profile changed",
     )?;
     let compilation = annotated(provenance, "morphir_moonbit_compilation")?;
@@ -396,8 +396,8 @@ mod tests {
             {nodeId:"value:mck/bool:main#always/body",data:{body:{name:"always",coordinate_profile:"moonbit-parser-position-v1",start_line:2,start_column:26,end_line:2,end_column:30},nodes:[]}}
           ]}
         }],provenance:[
-          morphir_moonbit_frontend::{unit_id:"file:///mck/source/main.mbt",language:"moonbit",profile:"moonbit-model-bool-library-v1",parser_version:"0.4.5",naming_policy:"moonbit-readable-names-v1"},
-          morphir_moonbit_compilation::{sourceUri:"file:///mck/source/main.mbt",sourceVersion:"19",sourceRoot:"file:///mck/source",packageName:"mck/bool",exposedModules:["main"],options:{typesOnly:false,irVersion:"4.0.0",profile:"moonbit-model-bool-library-v1"},contextDigest:"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}
+          morphir_moonbit_frontend::{unit_id:"file:///mck/source/main.mbt",language:"moonbit",profile:"moonbit-model-stable-v1",parser_version:"0.4.5",naming_policy:"moonbit-readable-names-v1"},
+          morphir_moonbit_compilation::{sourceUri:"file:///mck/source/main.mbt",sourceVersion:"19",sourceRoot:"file:///mck/source",packageName:"mck/bool",exposedModules:["main"],options:{typesOnly:false,irVersion:"4.0.0",profile:"moonbit-model-stable-v1"},contextDigest:"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}
         ]}"#.to_owned()
     }
     #[test]

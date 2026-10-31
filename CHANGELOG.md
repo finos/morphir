@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The MoonBit MEP guest kit, `spec/mep/mck/guest-moonbit-bool.json`, now selects the `moonbit-model-stable-v1` frontend profile. The MoonBit guests retired `moonbit-model-bool-library-v1` in finos/morphir-moonbit#181, so the earlier kit failed case `compile-ion` with `moonbit_frontend.unsupported_profile`. The kit keeps its Boolean library source and generated artifacts. Its expected IR now includes the `morphir/moonbit-source` dependency specification that the stable frontend declares. `morphir mck mep guest-run` refuses a kit that selects any other MoonBit profile. Breaking: reports and kits made for `moonbit-model-bool-library-v1` no longer check.
+
 ### Changed
 
 - The OpenAPI bundle pin moves to `extension/openapi/v0.4.0` (`morphir-openapi-0.4.0`). The JSON Schema and OpenAPI targets now project the Morphir SDK `Decimal`, which 0.3.0 refused with `JSC003`. By default a `Decimal` is an exact string with a decimal pattern; the `decimal_encoding`, `decimal_precision` and `decimal_scale` options control it. The generate guides have a `Decimal` section.

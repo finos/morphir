@@ -7,7 +7,7 @@ fn shared_guest_profile_has_independent_semantics_and_no_observations() {
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/mep/mck/guest-moonbit-bool.json"),
     )
     .unwrap();
-    assert_eq!(kit.profile(), "moonbit-model-bool-library-v1");
+    assert_eq!(kit.profile(), "moonbit-model-stable-v1");
     assert!(kit.case_ids().len() >= 18);
     assert!(kit.case_ids().contains(&"legacy-initialize"));
     assert!(kit.case_ids().contains(&"narrow-initialize"));
@@ -20,10 +20,46 @@ fn guest_profile_requires_exact_draft_contract_and_fixed_expected_ir() {
     let path = dir.path().join("kit.json");
     std::fs::write(
         &path,
-        r#"{"contractVersion":"0.1.0-draft.2","profile":"moonbit-model-bool-library-v1"}"#,
+        r#"{"contractVersion":"0.1.0-draft.2","profile":"moonbit-model-stable-v1"}"#,
     )
     .unwrap();
     assert!(load_kit(&path).is_err());
+}
+
+#[test]
+fn moonbit_kit_selects_only_the_stable_frontend_profile() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("kit.json");
+    let original: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/mep/mck/guest-moonbit-bool.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        original["source"]["options"]["profile"],
+        "moonbit-model-stable-v1"
+    );
+    // The retired Boolean profile, the experimental channel, and a kit whose
+    // header and source request disagree are all refused.
+    for (pointer, profile) in [
+        ("/profile", "moonbit-model-bool-library-v1"),
+        ("/source/options/profile", "moonbit-model-bool-library-v1"),
+        ("/source/options/profile", "moonbit-model-experimental-v1"),
+    ] {
+        let mut value = original.clone();
+        *value.pointer_mut(pointer).unwrap() = serde_json::json!(profile);
+        std::fs::write(&path, value.to_string()).unwrap();
+        assert!(load_kit(&path).is_err(), "accepted {pointer}={profile}");
+    }
+    let mut value = original.clone();
+    value["source"]["options"]
+        .as_object_mut()
+        .unwrap()
+        .remove("profile");
+    std::fs::write(&path, value.to_string()).unwrap();
+    assert!(
+        load_kit(&path).is_err(),
+        "accepted a kit without a source profile"
+    );
 }
 
 #[test]
