@@ -295,9 +295,30 @@ converted model. The request `input` is that agreed tuple. This is not an
 error. The request is the same as any other `generateModel` request in that
 tuple.
 
-When the host can convert the model to more than one agreed tuple, it converts
-to the first agreed tuple in host order to which it can convert (see
-[Offer order and the default tuple](#offer-order-and-the-default-tuple)).
+When the host can convert the model to more than one agreed tuple, it selects
+the target tuple in this sequence:
+
+1. The host must prefer a lossless conversion. It converts to the first agreed
+   tuple in host order to which it can convert the model without loss (see
+   [Offer order and the default tuple](#offer-order-and-the-default-tuple)).
+   A lossless conversion to a later agreed tuple comes before a lossy
+   conversion to an earlier agreed tuple.
+2. Only when the host cannot convert the model to any agreed tuple without
+   loss does it select the first agreed tuple in host order to which it can
+   convert. Then the loss rules below apply: the host refuses the conversion
+   unless the user explicitly allows loss for that operation.
+
+In this example the session agrees two `generateModel` tuples, `T1` before `T2`
+in host order:
+
+```text
+host can convert to   T1 with loss, T2 without loss
+                      -> convert to T2, no permission needed
+host can convert to   T1 with loss, T2 with loss
+                      -> select T1, then the loss rules apply
+host can convert to   T1 without loss, T2 without loss
+                      -> convert to T1
+```
 
 The operation fails with `extension.tuple_unavailable` only when the host cannot
 convert the model to an agreed tuple. Then the host sends no request.
@@ -311,7 +332,8 @@ These rules apply to a host conversion:
    apply. A conversion from `morphir-ir` JSON to `morphir-model` Ion loses
    nothing. A conversion from `morphir-model` Ion to `morphir-ir` JSON is
    lossless only when the original has no content that JSON cannot carry.
-2. **Lossy conversion refused.** The host refuses a lossy conversion with its
+2. **Lossy conversion refused.** When the host can convert the model to no
+   agreed tuple without loss, it refuses the lossy conversion with its
    lossy-conversion error, for example `data.lossy_conversion` with exit code 2
    in the MoonBit CLI. This refusal is not `extension.tuple_unavailable`. The
    host refuses before it sends a request, sends no request and publishes no
@@ -347,10 +369,12 @@ These rules apply to a host conversion:
    payload SHA-256, and the list of dropped data. The list is empty when the
    conversion is lossless. The record does not need to contain the original
    bytes. The record location is reserved for the host. The host must not let
-   an artifact from the extension overwrite the record. If the extension
-   returns an artifact at that location, the host refuses the result. For
-   example, the MoonBit CLI writes `mep/conversion.json` next to the generated
-   artifacts and refuses the command when an artifact uses that path.
+   an artifact from the extension overwrite the record. If an artifact in the
+   result uses the conversion record path, the host publishes nothing from
+   that result. The error code and exit status of
+   this refusal are host-defined. For example, the MoonBit CLI writes
+   `mep/conversion.json` next to the generated artifacts and refuses the
+   command when an artifact uses that path.
 7. **Before dispatch.** The host converts before it sends the request. This is
    not a retry after the extension refuses admission. The extension does not
    ask for a conversion, and the host does not resend a refused request in a
@@ -371,6 +395,8 @@ The spec leaves these details to the host:
 
 - which conversions it implements;
 - the name of its lossy-conversion error and how the user allows loss;
+- the error code and exit status when an extension artifact uses the
+  conversion record path;
 - the format and location of the conversion record and of the dropped-data
   report;
 - whether it tells the user about a lossless conversion.

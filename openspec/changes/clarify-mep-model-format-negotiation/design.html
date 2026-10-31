@@ -130,8 +130,9 @@ session support  []                             -&gt; extension.tuple_unavailabl
 <h2 id="decisions">Decisions</h2>
 <p>Damian Reeves decided NEG-1 to NEG-4 on 2026-10-30 and CONV-1 to CONV-3 on
 2026-10-31. The host-conversion details CONV-4 to CONV-8 (decisions A to E)
-followed later on 2026-10-31, with the confirmation that the host
-converts to the first agreed tuple in host order. CONV-4 to CONV-8 replace the
+followed later on 2026-10-31. Damian Reeves then decided CONV-9 (prefer a
+lossless conversion) and the outcome for the reserved record path in CONV-8 on
+2026-10-31, in review of finos/morphir#1117. CONV-4 to CONV-9 replace the
 parts of CONV-2 and CONV-3 that they cover. The spec states them for every host
 and uses the MoonBit names only as examples.</p>
 
@@ -188,11 +189,12 @@ is not an exact transcoding, and a shared revision would let evidence for the
 original appear to match the converted model.</p>
 
 <h3 id="conv-3">CONV-3. Details left to the host</h3>
-<p>When the host can convert to more than one agreed tuple, it converts to the
-first agreed tuple in host order to which it can convert. This was a
-recommendation in finos/morphir#1115 and is now a rule. The spec leaves to the
-host only: which conversions it implements; the name of its lossy-conversion
-error and how the user allows loss; the format and location of the conversion
+<p>When the host can convert to more than one agreed tuple, it selects the
+target tuple by host order and loss, as <a href="#conv-9">CONV-9</a> states.
+The spec leaves to the host only: which conversions it implements; the name of its lossy-conversion
+error and how the user allows loss; the error code and exit status when an
+extension artifact uses the conversion record path; the format and location of
+the conversion
 record and of the dropped-data report; and whether it tells the user about a
 lossless conversion. <strong>Alternative rejected:</strong> define a conversion
 algorithm in this draft. No second host implements conversion yet.</p>
@@ -246,12 +248,34 @@ actions.</p>
 the original revision and payload SHA-256, the converted revision and payload
 SHA-256, and the dropped list (empty without permission for loss). In the
 MoonBit CLI the record is <code>mep/conversion.json</code> next to the guest's
-artifacts. The path is reserved for the host: if a guest returns an artifact at
-that path, the command refuses. The guest's own retention sidecars stay as the
+artifacts. The path is reserved for the host: the host publishes nothing from a
+result in which a guest artifact uses that path. The error code and exit status
+are host-defined; the MoonBit CLI refuses the command. The guest's own retention sidecars stay as the
 guest returns them. The record does not copy the original bytes, which the host
 already retains. <strong>Alternatives rejected:</strong> (a) copy the original
 bytes next to the artifacts: this duplicates the retained model; (b) put the
-link in a guest sidecar: the guest could change or omit it.</p>
+link in a guest sidecar: the guest could change or omit it; (c) publish the
+other artifacts and drop only the artifact at the record path: the result is
+then incomplete without a clear failure, and the guest could not tell what the
+host kept; (d) define one error code and exit status for this refusal: hosts
+already have their own error codes and exit statuses, and a new MEP code would
+need a draft change.</p>
+
+<h3 id="conv-9">CONV-9. The host prefers a lossless conversion</h3>
+<p>Among the agreed tuples to which the host can convert, the host converts to
+the first one in host order whose conversion is lossless. Only when the host
+can reach no agreed tuple without loss does it select the first agreed tuple to
+which it can convert, and then the loss rules in <a href="#conv-5">CONV-5</a>
+and <a href="#conv-7">CONV-7</a> apply. For example, with agreed tuples
+<code>T1</code> and then <code>T2</code>, a lossy conversion to <code>T1</code>
+and a lossless conversion to <code>T2</code>, the host converts to
+<code>T2</code>. This replaces the rule of CONV-3 in the first version of
+finos/morphir#1117 (the first convertible agreed tuple, lossy or not).
+<strong>Alternatives rejected:</strong> (a) the first convertible agreed tuple:
+the host would refuse, or ask the user to allow loss, when a lossless path to
+another agreed tuple exists; (b) the extension orders its selection to put a
+lossless tuple first: the extension does not know the content of the model,
+and <a href="#neg-2">NEG-2</a> keeps host order.</p>
 
 <h2 id="risks">Risks and trade-offs</h2>
 <table>
@@ -262,19 +286,20 @@ as the extension's preference.</td><td>The host finds the first agreed tuple by
 host offer order, not by session order. The MCK checks the order (bead
 <code>morphir-hv6m</code>).</td></tr>
 <tr><td>A host converts with loss and the backend generates from incomplete
-content.</td><td>The host refuses a lossy conversion unless the user explicitly
+content.</td><td>The host prefers an agreed tuple that it can reach without loss
+(<a href="#conv-9">CONV-9</a>). It refuses a lossy conversion unless the user explicitly
 allows loss for that one operation. Then the host reports the dropped data and
 lists it in the conversion record. The new revision stops old evidence from
 matching.</td></tr>
 <tr><td>An extension returns an artifact that replaces the conversion
 record.</td><td>The record location is reserved for the host, and the host
-refuses a result that uses it.</td></tr>
+publishes nothing from a result that uses it.</td></tr>
 <tr><td>Hosts differ in which conversions they implement, so the same extension
 works with one host and not another.</td><td>The outcome is still defined:
 convert, lossy-conversion error, or <code>extension.tuple_unavailable</code>.
 Hosts state their conversions in their own documentation.</td></tr>
 <tr><td>The rule is not checked by the MCK, so implementations can drift.</td><td>Bead
-<code>morphir-hv6m</code> adds cases (a) to (e) and runner support.</td></tr>
+<code>morphir-hv6m</code> adds cases (a) to (j) and runner support.</td></tr>
 </tbody>
 </table>
 
@@ -292,9 +317,10 @@ changes.</p>
 <li>Should the MCK host checks run as synthetic host transcripts in this
 repository or wait for host qualification in finos/morphir#965? Bead
 <code>morphir-hv6m</code> decides this; the spec does not change.</li>
-<li>Which MCK cases cover explicit loss, the deterministic revision and the
-conversion record? Bead <code>morphir-hv6m</code> decides this with the cases
-for (a) to (e).</li>
+<li>Which MCK case form covers the lossless preference, the lossy refusal,
+explicit loss with a report, the identity of the converted model and the
+reserved record path (task 2.1 (f) to (j))? Bead <code>morphir-hv6m</code>
+decides this with the cases for (a) to (e).</li>
 </ul>
 
 </main>

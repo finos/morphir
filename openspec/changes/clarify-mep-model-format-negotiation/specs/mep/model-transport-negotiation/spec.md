@@ -86,25 +86,38 @@ convert the model to an agreed tuple, it SHALL send no request and SHALL report
 - **WHEN** an extension refuses a `generateModel` request at admission
 - **THEN** the host does not convert the model and resend the request in a different tuple
 
-### Requirement: Host converts to the first convertible agreed tuple
+### Requirement: Host prefers a lossless conversion
 When the host can convert a model for generation to more than one agreed tuple,
-it SHALL convert to the first agreed tuple in host order to which it can
-convert.
+it SHALL prefer the first agreed tuple in host order to which it can convert the
+model without loss. Only when the host can convert the model to no agreed tuple
+without loss SHALL it select the first agreed tuple in host order to which it
+can convert, and then the loss rules apply.
 
-#### Scenario: Several agreed tuples are convertible
-- **WHEN** the host can convert the model to two agreed `generateModel` tuples
+#### Scenario: Several agreed tuples are convertible without loss
+- **WHEN** the host can convert the model without loss to two agreed `generateModel` tuples
 - **THEN** the host converts the model to the agreed tuple that comes first in its offer
+
+#### Scenario: First convertible tuple is lossy and a later tuple is lossless
+- **WHEN** the session agrees `generateModel` tuples `T1` and then `T2` in host order, and the host can convert the model to `T1` only with loss and to `T2` without loss
+- **THEN** the host converts the model to `T2` and sends the `generateModel` request with `T2` as `input`
+- **AND** the host needs no permission from the user and reports no dropped data
+
+#### Scenario: Every convertible tuple is lossy
+- **WHEN** the session agrees `generateModel` tuples `T1` and then `T2` in host order, and the host can convert the model to both only with loss
+- **THEN** the host selects `T1`
+- **AND** the host refuses the conversion with its lossy-conversion error unless the user explicitly allows loss for that operation
 
 ### Requirement: Host refuses a lossy conversion
 A conversion SHALL be lossy when the converted model cannot carry all content of
 the original model, for example an enrichment, an annotation, precision,
-decimal scale or provenance. Unless the user explicitly allows loss, the host
-SHALL refuse a lossy conversion with its lossy-conversion error, SHALL send no
+decimal scale or provenance. When the host can convert the model to no agreed
+tuple without loss, and unless the user explicitly allows loss, the host
+SHALL refuse the lossy conversion with its lossy-conversion error, SHALL send no
 request, and SHALL publish no artifact. This refusal SHALL NOT be
 `extension.tuple_unavailable`.
 
 #### Scenario: Lossy conversion without permission
-- **WHEN** a conversion to the agreed tuple would drop provenance and the user did not allow loss
+- **WHEN** the only agreed tuple to which the host can convert would drop provenance and the user did not allow loss
 - **THEN** the host reports its lossy-conversion error, for example `data.lossy_conversion` with exit code 2 in the MoonBit CLI, and not `extension.tuple_unavailable`
 - **AND** the host sends no `generateModel` request and publishes no artifact
 - **AND** the error message tells the user how to allow the loss, for example `--allow-model-loss` in the MoonBit CLI
@@ -152,14 +165,19 @@ original payload SHALL NOT carry over to the converted model automatically.
 For each conversion, the host SHALL keep a record that links the converted model
 to the original. The record SHALL contain the original and converted tuples,
 the original and converted revisions and payload SHA-256 digests, and the list
-of dropped data, which is empty for a lossless conversion. The record location
-SHALL be reserved for the host. The host SHALL NOT let an extension artifact
-overwrite the record.
+of dropped data, which is empty for a lossless conversion.
 
 #### Scenario: Lossless conversion record
 - **WHEN** the host converts a model without loss
 - **THEN** the host writes a conversion record with both tuples, both revisions, both payload digests and an empty dropped list, for example `mep/conversion.json` in the MoonBit CLI
 
-#### Scenario: Extension artifact at the record location
-- **WHEN** the extension returns an artifact at the location of the conversion record
-- **THEN** the host refuses the result and does not write the artifact over the record
+### Requirement: Conversion record path is reserved for the host
+The conversion record path SHALL be reserved for the host. The host SHALL NOT
+let an extension artifact overwrite the record. The host SHALL publish nothing
+from a result in which an extension artifact uses the conversion record path.
+The error code and exit status of this refusal SHALL be host-defined.
+
+#### Scenario: Extension artifact at the record path
+- **WHEN** the extension returns a result in which an artifact uses the conversion record path
+- **THEN** the host publishes nothing from that result and does not write the artifact over the record
+- **AND** the host reports a refusal with its own error code and exit status, for example a refused `morphir generate` command in the MoonBit CLI

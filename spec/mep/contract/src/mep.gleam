@@ -682,12 +682,15 @@ pub type CompileModelResult {
 /// GenerateResult and Artifact, including their existing binary encoding.
 /// If the host has the model in a tuple that the session does not agree, but
 /// can convert it to an agreed tuple, the host sends the model converted to
-/// the first such tuple in host order. The converted model keeps its
-/// `modelId`, has its own digest and a revision derived from that digest, and
-/// evidence for the original does not carry over. The host keeps a record
-/// that links it to the original. The host refuses a lossy conversion, and
-/// the refusal is not `extension.tuple_unavailable`, unless the user allows
-/// loss for that operation. Only when it cannot convert does it report
+/// the first agreed tuple in host order that it can reach without loss. Only
+/// when no agreed tuple is lossless does it select the first such tuple. The
+/// converted model keeps its `modelId`, has its own digest and a revision
+/// derived from that digest, and evidence for the original does not carry
+/// over. The host keeps a record that links it to the original, and publishes
+/// nothing from a result with an artifact at the record path. The host
+/// refuses a lossy conversion, and the refusal is not
+/// `extension.tuple_unavailable`, unless the user allows loss for that
+/// operation. Only when it cannot convert does it report
 /// `extension.tuple_unavailable`.
 /// Wire rules: absent `requiredGuarantees` or `options` is read as empty.
 pub type GenerateModelRequest {

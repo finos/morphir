@@ -22,16 +22,20 @@ a durable capability.
   The host reports `extension.tuple_unavailable` and sends no request. A
   missing host default with another agreed tuple is not an error.
 - For `morphir.backend.generateModel`, a host that can convert a model to an
-  agreed tuple converts it to the first such tuple in host order and sends the
-  converted model. Guarantees and evidence for the original do not carry over
-  automatically.
+  agreed tuple converts it and sends the converted model. The host prefers a
+  lossless conversion: it converts to the first agreed tuple in host order
+  that it can reach without loss. Only when no agreed tuple is lossless does it
+  select the first agreed tuple to which it can convert. Guarantees and
+  evidence for the original do not carry over automatically.
 - A lossy conversion is refused with the host's lossy-conversion error, not
   `extension.tuple_unavailable`, unless the user explicitly allows loss for
   that one operation. When loss is allowed, the host reports the dropped data.
 - The converted model keeps its `modelId` and has its own digest and a
   deterministic revision derived from the converted payload digest. The host
   keeps a conversion record that links the converted model to the original, and
-  an extension artifact must not overwrite it.
+  an extension artifact must not overwrite it. The host publishes nothing from
+  a result in which an extension artifact uses the conversion record path; the
+  error code and exit status are host-defined.
 - No new wire member. No change to the `0.2.0-draft.1` version.
 
 ## Capabilities
