@@ -15,6 +15,7 @@ pub(all) suberror ChannelError {
   FrameInvalid(String)
   FrameLimit(direction~ : FrameDirection, declared~ : Int64, limit~ : Int32)
   Stopped
+  TransportFailed(String)
 } derive(Eq, @debug.Debug)
 pub fn ChannelError::equal(Self, Self) -> Bool
 pub fn ChannelError::not_equal(Self, Self) -> Bool

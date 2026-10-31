@@ -402,6 +402,22 @@ test "transport fault: a malformed frame or a closed worker fails the session" {
 }
 
 ///|
+test "transport fault: a failed pipe fails the session as incomplete with its message" {
+  let (conversation, _) = ready_legacy().compile(compile_request())
+  let message = "the worker's stdout pipe failed: read EIO"
+  let (_, step) = conversation.on(ChannelFailed(TransportFailed(message)))
+  guard step
+    is Finished(
+      EndedEarly(Failed(Host(code=IncompleteSession, message=reported))),
+      stop=Abort(Fault),
+      ..
+    ) &&
+    reported == message else {
+    fail("a failed pipe did not fail the session: \{@debug.to_string(step)}")
+  }
+}
+
+///|
 test "legacy guest: MEP 0.1 calls the legacy methods and never a model method" {
   let (_, step) = @worker.Conversation::activate(
     Legacy,

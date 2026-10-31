@@ -1,0 +1,66 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host/worker/process"
+
+import {
+  "finos/morphir-host/worker",
+}
+
+// Values
+pub const ARTIFACT_LIMIT_BYTES : Int32 = 536870912
+
+pub const EXIT_GRACE_MS : Int32 = 2000
+
+pub const REMOVE_RETRY_MS : Int32 = 2000
+
+pub const STAGED_BIN_DIRECTORY : String = "bin"
+
+pub const STAGED_WORK_DIRECTORY : String = "work"
+
+pub const STOP_CONFIRM_MS : Int32 = 5000
+
+pub fn check_artifact_size(Int64) -> @worker.ArtifactProblem?
+
+// Errors
+
+// Types and methods
+pub struct FrameReader {
+  // private fields
+}
+pub fn FrameReader::feed(Self, Bytes) -> Array[@worker.Message] raise @worker.ChannelError
+pub fn FrameReader::finish(Self) -> Unit raise @worker.ChannelError
+pub fn FrameReader::new(limit~ : Int32) -> Self
+
+pub struct FrameWriter {
+  // private fields
+}
+pub fn FrameWriter::encode(Self, @worker.Message) -> Bytes raise @worker.ChannelError
+pub fn FrameWriter::new(limit~ : Int32) -> Self
+
+pub struct StagedArtifact {
+  // private fields
+}
+pub fn StagedArtifact::digest(Self) -> @worker.Sha256
+pub fn StagedArtifact::directory(Self) -> String
+pub fn StagedArtifact::executable(Self) -> String
+pub fn StagedArtifact::working_directory(Self) -> String
+
+pub struct StderrBuffer {
+  // private fields
+}
+pub fn StderrBuffer::new() -> Self
+pub fn StderrBuffer::tail(Self) -> @worker.StderrTail
+pub fn StderrBuffer::write(Self, Bytes) -> Unit
+
+pub struct VerifiedArtifact {
+  // private fields
+}
+pub fn VerifiedArtifact::bytes(Self) -> Bytes
+pub fn VerifiedArtifact::check(Bytes, @worker.ArtifactRef) -> Self raise @worker.LaunchError
+pub fn VerifiedArtifact::digest(Self) -> @worker.Sha256
+pub fn VerifiedArtifact::file_name(Self) -> String
+pub fn VerifiedArtifact::stage_in(Self, directory~ : String, style~ : @worker.PathStyle) -> StagedArtifact
+pub fn VerifiedArtifact::staged(Self, directory~ : String, executable~ : String, working_directory~ : String) -> StagedArtifact
+
+// Type aliases
+
+// Traits

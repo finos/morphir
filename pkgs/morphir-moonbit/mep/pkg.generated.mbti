@@ -9,16 +9,18 @@ import {
 }
 
 // Values
-pub const MAX_FRAME_BYTES : Int = 16777216
+pub const MAX_FRAME_BYTES : Int32 = 16777216
 
-pub fn decode_morphir_model(@ion.IonValue) -> @morphir-moonbit.Input raise
+pub fn decode_morphir_model(@ion.Ion) -> @morphir-moonbit.Input raise
 
 pub fn encode_frame(String) -> Bytes raise FrameError
 
 // Errors
 pub(all) suberror FrameError {
   InvalidFrame(String)
+  FrameTooLarge(declared~ : Int64, limit~ : Int32)
 } derive(@debug.Debug)
+pub fn FrameError::message(Self) -> String
 pub fn FrameError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
@@ -43,7 +45,7 @@ pub struct Decoder {
 }
 pub fn Decoder::feed(Self, Bytes) -> Array[Bytes] raise
 pub fn Decoder::finish(Self) -> Unit raise FrameError
-pub fn Decoder::new() -> Self
+pub fn Decoder::new(max_body? : Int32) -> Self
 
 pub(all) struct Frontend {
   language_id : String

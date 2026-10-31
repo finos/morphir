@@ -10,9 +10,15 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // the pinned, unmodified Archify vendor package is not handwritten project code.
 // docs/templates/assets/ holds browser assets that static HTML documents load with
 // no build step: vendored highlight.js and its five-line setup script.
+// pkgs/morphir-host/worker/process/node/fixtures/ holds the worker that the Node
+// launcher tests start as a child process. It is an artifact under test, not a
+// module the project imports: the tests copy its bytes behind a `#!` line and run
+// them with plain Node, so it stays JavaScript and the spawned child does not
+// depend on Node's TypeScript type stripping.
 const inventory = Bun.spawnSync(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '--',
   '*.ts', '*.mts', '*.cts', '*.js', '*.mjs', '*.cjs', ':(exclude).agents/skills/archify/**',
-  ':(exclude)docs/templates/assets/**'], { cwd: root });
+  ':(exclude)docs/templates/assets/**', ':(exclude)pkgs/morphir-host/worker/process/node/fixtures/**'],
+  { cwd: root });
 assert.equal(inventory.exitCode, 0, inventory.stderr.toString());
 const sources = inventory.stdout.toString().trim().split(/\r?\n/).filter(Boolean);
 assert.deepEqual(sources.filter(path => /\.(?:js|mjs|cjs)$/.test(path)), [], 'Handwritten JavaScript must be TypeScript');

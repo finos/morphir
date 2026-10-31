@@ -64,6 +64,7 @@ fn channel_event(error : Error) -> Event {
     WorkerClosed => ChannelFailed(WorkerClosed)
     Stopped => ChannelFailed(Stopped)
     FrameInvalid(text) => ChannelFailed(FrameInvalid(text))
+    TransportFailed(text) => ChannelFailed(TransportFailed(text))
     FrameLimit(direction~, declared~, limit~) =>
       ChannelFailed(FrameLimit(direction~, declared~, limit~))
     _ => ChannelFailed(FrameInvalid("the channel raised an unknown error"))
@@ -369,8 +370,7 @@ pub async fn Host::activate(
   let (conversation, step) = Conversation::activate(offer, expected~, limits~)
   let (conversation, settled) = link.drive(conversation, step)
   match settled {
-    Paused(_) =>
-      { link, conversation, extism, report: None, busy: @async.Mutex(), }
+    Paused(_) => { link, conversation, extism, report: None, }
     WorkerStopped(conclusion, worker) => {
       let ending = match conclusion {
         EndedEarly(ending) => ending
@@ -392,18 +392,11 @@ pub async fn Host::activate(
 /// close. A session must be closed: until then its worker runs. Prefer
 /// `Host::with_session`, which always closes the session, or aborts its
 /// worker when the task is cancelled.
-///
-/// A session runs one exchange at a time. A compile or generate call made
-/// while another call or a close is in flight raises `SessionUnavailable` and
-/// sends nothing. A close made during a call waits for the call to finish,
-/// then closes; it never sends `shutdown` during the call.
 pub struct Session {
   priv link : Running
   priv mut conversation : Conversation
   priv extism : ExtismProfile?
   priv mut report : SessionReport?
-  // Held from the readiness check to the end of each exchange.
-  priv busy : @async.Mutex
 }
 
 ///|
@@ -475,14 +468,9 @@ async fn Session::run(
 }
 
 ///|
-/// Claims the session for one call. The caller releases `busy` when the
-/// call ends.
 fn Session::ready(self : Session) -> Unit raise SessionUnavailable {
   guard self.report is None else {
     raise SessionUnavailable("the session has ended")
-  }
-  guard self.busy.try_acquire() else {
-    raise SessionUnavailable("another exchange of the session is in flight")
   }
 }
 
@@ -495,7 +483,6 @@ pub async fn Session::compile(
   request : CompileRequest,
 ) -> Outcome[Compiled] {
   self.ready()
-  defer self.busy.release()
   self.run(self.conversation.compile(request)).map(Compiled::new)
 }
 
@@ -507,17 +494,13 @@ pub async fn Session::generate(
   request : GenerateRequest,
 ) -> Outcome[Generated] {
   self.ready()
-  defer self.busy.release()
   self.run(self.conversation.generate(request)).map(Generated::new)
 }
 
 ///|
 /// Sends `shutdown` and `exit`, stops the worker and reports how it stopped.
-/// A close during a call waits for the call to finish. A closed session
-/// returns the same report again.
+/// A closed session returns the same report again.
 pub async fn Session::close(self : Session) -> SessionReport {
-  self.busy.acquire()
-  defer self.busy.release()
   if self.report is Some(report) {
     return report
   }

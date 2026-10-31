@@ -1,0 +1,14 @@
+supported_targets = "js"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/process",
+  "moonbitlang/async",
+  "moonbitlang/async/aqueue",
+  "moonbitlang/async/js_async",
+  "moonbitlang/core/deque",
+}
+
+import {
+  "finos/morphir-host/worker/process/conformance",
+} for "wbtest"

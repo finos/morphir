@@ -40,13 +40,13 @@
 
 ## 3. Node process workers (morphir-ukvn.5.64.36.3)
 
-- [ ] 3.1 Implement the Node `child_process` adapter through `extern "js"`: detached spawn, piped stdio, stdout read
+- [x] 3.1 Implement the Node `child_process` adapter through `extern "js"`: detached spawn, piped stdio, stdout read
   through `@js_async.ReadableStream`, stdin writes (PROC-2); verify with the group 2 fixture worker on Node
 - [ ] 3.2 Implement tree stop with `process.kill(-pid)` on Unix and `taskkill /T /F` on Windows, and wait for exit;
   verify deadline and cancellation tests on Node, and the Windows scenario in the group 2 deliberate run
 - [ ] 3.3 Run one launcher conformance suite against the native and Node process launchers; verify both pass the same
   transcripts and fault cases
-- [ ] 3.4 Document the Node process worker differences (tree termination on Windows) in the package README; verify
+- [x] 3.4 Document the Node process worker differences (tree termination on Windows) in the package README; verify
   against the conformance suite results
 
 ## 4. MoonBit Extism host in moonrockz/extism (morphir-ukvn.5.64.36.4)

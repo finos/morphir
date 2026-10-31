@@ -1,0 +1,8 @@
+supported_targets = "native+js"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/process",
+  "moonbitlang/async",
+  "moonbitlang/core/debug",
+}

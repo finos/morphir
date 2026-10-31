@@ -1,0 +1,11 @@
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-moonbit/mep",
+  "moonbitlang/core/cmp",
+}
+
+import {
+  "finos/morphir-host/worker/process",
+  "finos/morphir-host/worker",
+  "moonbitlang/core/encoding/utf8",
+} for "test"

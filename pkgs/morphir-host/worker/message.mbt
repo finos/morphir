@@ -68,11 +68,14 @@ pub extend FrameDirection with @debug.Debug::{to_repr}
 /// `Stopped` is a call on a channel that the host has already closed or
 /// aborted. `FrameLimit` is a frame that declared more bytes than the limit
 /// of its direction, found before its body was read or written.
+/// `TransportFailed` is an error of the transport itself, such as a failed
+/// pipe; its text says which stream failed and why.
 pub(all) suberror ChannelError {
   WorkerClosed
   FrameInvalid(String)
   FrameLimit(direction~ : FrameDirection, declared~ : Int64, limit~ : Int32)
   Stopped
+  TransportFailed(String)
 } derive(Eq, Debug)
 
 ///|

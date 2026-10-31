@@ -1,8 +1,5 @@
 ///|
-/// Bounds on one model transfer. The host enforces the encoded and decoded
-/// byte limits, and checks the decoded length that a payload declares. The
-/// depth and node limits are negotiated; the party that decodes the model
-/// enforces them.
+/// Bounds on one model transfer.
 pub struct ModelLimits {
   encoded_bytes : Int32
   decoded_bytes : Int32

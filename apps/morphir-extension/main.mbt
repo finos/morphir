@@ -69,6 +69,8 @@ async fn main {
               "message": Json(
                 match error {
                   @mep.InvalidFrame(message) => message
+                  @mep.FrameTooLarge(declared~, limit~) =>
+                    @mep.FrameTooLarge(declared~, limit~).message()
                   _ => "MEP stdio transport failed: " + error.to_string()
                 },
               ),
@@ -81,6 +83,10 @@ async fn main {
         match error {
           @mep.InvalidFrame(message) =>
             @stdio.stderr.write("morphir-moonbit: " + message + "\n")
+          @mep.FrameTooLarge(declared~, limit~) => {
+            let message = @mep.FrameTooLarge(declared~, limit~).message()
+            @stdio.stderr.write("morphir-moonbit: " + message + "\n")
+          }
           _ =>
             @stdio.stderr.write("morphir-moonbit: MEP stdio transport failed\n")
         }

@@ -32,5 +32,6 @@ options(
     "memory_channel_test.mbt": [ "native", "js", "wasm" ],
     "host_driver.mbt": [ "native", "js", "wasm" ],
     "host_driver_test.mbt": [ "native", "js", "wasm" ],
+    "host_driver_wbtest.mbt": [ "native", "js", "wasm" ],
   },
 )

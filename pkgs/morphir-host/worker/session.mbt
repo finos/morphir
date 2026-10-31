@@ -290,6 +290,9 @@ fn Conversation::transport_fault(
   Failed(
     match error {
       FrameInvalid(text) => Host(code=FrameInvalid, message=text)
+      // A failed pipe ends the session before it is complete; the text keeps
+      // which stream failed and why.
+      TransportFailed(text) => Host(code=IncompleteSession, message=text)
       FrameLimit(declared~, limit~, ..) =>
         Host(
           code=ResponseLimit,
@@ -554,10 +557,9 @@ fn base64_decoded_length(content : String) -> Int32? {
 ///|
 /// Checks a model payload against the effective model limits: its encoded
 /// size, then the decoded length that its base64 content gives, which must be
-/// the `decodedByteLength` it declares. The depth and node limits are
-/// negotiated, and the party that decodes the model enforces them: the guest
-/// for a request, the CLI's model decoder for a result. The host does not
-/// check them.
+/// the `decodedByteLength` it declares. Depth and node limits are negotiated,
+/// but the party that decodes the model enforces them: the guest for a
+/// request, the CLI's model decoder for a result.
 fn model_payload_problem(payload : Json?, limits : ModelLimits) -> String? {
   guard payload is Some(payload) else { return None }
   guard field_at(payload, ["content"]) is Some(String(content)) else {
