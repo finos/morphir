@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { bootstrapMoonBit, type BootstrapDependencies } from "./bootstrap-moonbit-windows";
 
-const version = "0.10.16+b1a0e846e";
+const version = "0.10.18+6c83a7f62";
 const archive = new TextEncoder().encode("verified core archive");
 const checksum = createHash("sha256").update(archive).digest("hex");
 const temporaryDirectories: string[] = [];
@@ -76,7 +76,7 @@ test("installs matching core and moonx within the mise toolchain and can run aga
 	const f = fixture();
 	await bootstrapMoonBit(f.options, f.dependencies);
 	expect(f.downloads).toEqual([
-		"https://cli.moonbitlang.com/cores/core-0.10.16%2Bb1a0e846e.zip",
+		"https://cli.moonbitlang.com/cores/core-0.10.18%2B6c83a7f62.zip",
 	]);
 	expect(readFileSync(path.join(f.home, "bin", "moonx.exe"), "utf8")).toBe("moon executable");
 	const bundle = f.calls.at(-1)!;

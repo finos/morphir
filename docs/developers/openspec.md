@@ -21,7 +21,7 @@ mise install node bun http:moonbit npm:@fission-ai/openspec
 mise run openspec:verify
 ```
 
-OpenSpec is pinned to 1.14.3. The existing MoonBit 0.10.16+b1a0e846e toolchain
+OpenSpec is pinned to 1.14.3. The existing MoonBit 0.10.18+6c83a7f62 toolchain
 runs the shared checker. Mise's existing postinstall completes that SDK on
 Linux, macOS Apple Silicon and Windows x64. Verification initializes its
 package registry with `moon update`, then checks the ownership lock, validates

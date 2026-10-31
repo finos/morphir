@@ -11,7 +11,7 @@
     "openspec/schemas/html-design/templates/tasks.md": "5849d2f13f59526d201f227208db76ea9cf0e2abdb353f2e3c58a5ac6dfafb1c",
     "openspec/schemas/html-design/NOTICE": "d119910b35bfb38ab3a4482478150f7bac3442fd8f84348b014f92fa5c18e980",
     "openspec/schemas/html-design/LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-    "scripts/openspec-ext.mbtx": "814f938732b7443a369a29b948d53a3c1e26b863127bc35df5bdc83964fe64e5",
+    "scripts/openspec-ext.mbtx": "637d4e8b30e2ae4a712d53c1f04d5d51fdb9e02b57282dac767fb5a5490a2a92",
     "scripts/features/openspec_ext.feature": "b274713c50858787e97a9c5c04cf10b8c5dda0a660f51b457a7649f19791d991"
   }
 }
