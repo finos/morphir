@@ -381,12 +381,16 @@ wire member.
 
 For `morphir.backend.generateModel`, a host can have a model in a tuple that the
 session does not agree. If the host can convert the model to an agreed tuple,
-it must convert it and send the converted model. This is not an error. The
-conversion follows the host's loss rules, so a conversion that would drop
-source or naming provenance is refused with the host's lossy-conversion error.
-The converted model has its own digest and revision, and guarantees and
-evidence for the original do not carry over automatically. Only when the host
-cannot convert the model does it report `extension.tuple_unavailable`.
+it must convert it to the first such tuple in host order and send the
+converted model. This is not an error. The host refuses a lossy conversion with
+its lossy-conversion error, which is not `extension.tuple_unavailable`, unless
+the user explicitly allows loss for that operation. When loss is allowed, the
+host reports the data that it dropped. The converted model keeps its `modelId`
+and has its own digest and a revision derived from that digest. Guarantees and
+evidence for the original do not carry over automatically. The host keeps a
+conversion record that links the converted model to the original, and an
+extension artifact must not overwrite it. Only when the host cannot convert the
+model does it report `extension.tuple_unavailable`.
 
 Comparing two claim sets, as publication and installation do, is a comparison
 of equal documents.

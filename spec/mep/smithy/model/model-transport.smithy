@@ -267,7 +267,8 @@ structure CompileModelResult {
 /// Parameters of `morphir.backend.generateModel`. `input` selects an
 /// admitted generateModel tuple. `target` is the exact advertised target.
 /// When the host converts a model to an agreed tuple, `model` is the
-/// converted model, with its own digest and revision.
+/// converted model. It keeps its `modelId` and has its own digest and a
+/// revision derived from that digest.
 // GAP smithy-2qe.34.24: nothing checks that `input` is an admitted
 // session tuple, or that `model` agrees with it.
 structure GenerateModelRequest {

@@ -167,7 +167,10 @@ keeps Morphir JSON a supported format. It cannot silently replace rich Ion
 content. A requested projection that would discard an enrichment, annotation,
 precision, decimal scale, or provenance must refuse with the existing
 `data.lossy_conversion` diagnostic. There is no automatic JSON retry after Ion
-admission fails. A future explicit lossy export policy needs its own contract.
+admission fails. The only exception in this draft is a host conversion for
+generation that the user explicitly allows to lose data (see
+[Host conversion for generation](#host-conversion-for-generation)). Any other
+explicit lossy export policy needs its own contract.
 
 Both codecs use `ModelPayload`: `codec`, `layout`, `decodedByteLength`, `sha256`,
 and `content`. Layout is exactly `single-document`. Content is canonical padded
@@ -212,10 +215,11 @@ immutable logical revision, not the encoded payload digest. Changes to semantic
 content or facts mint a new revision. A component must invalidate affected
 evidence unless its explicit contract proves that guarantee and scope survive.
 Exact transcoding may keep the logical revision while recomputing length and
-digest. Host conversion for generation is different: the converted model always
-has its own revision (see
-[Host conversion for generation](#host-conversion-for-generation)). Opaque retention keeps the complete original bytes, including unknown
-Ion facts, ordered annotations, symbols, decimal scale and provenance.
+digest. Host conversion for generation is different: the converted model keeps
+its `modelId` but always has its own revision (see
+[Host conversion for generation](#host-conversion-for-generation)). Opaque
+retention keeps the complete original bytes, including unknown Ion facts,
+ordered annotations, symbols, decimal scale and provenance.
 
 Evidence is a claim with `guarantee`, `modelId`, `modelRevision`,
 `contextDigest`, `scope`, `producer`, and an independently encoded evidence
@@ -291,54 +295,89 @@ converted model. The request `input` is that agreed tuple. This is not an
 error. The request is the same as any other `generateModel` request in that
 tuple.
 
-The operation fails only when the host cannot convert the model to an agreed
-tuple. Then the host sends no request and reports `extension.tuple_unavailable`.
+When the host can convert the model to more than one agreed tuple, it converts
+to the first agreed tuple in host order to which it can convert (see
+[Offer order and the default tuple](#offer-order-and-the-default-tuple)).
+
+The operation fails with `extension.tuple_unavailable` only when the host cannot
+convert the model to an agreed tuple. Then the host sends no request.
 
 These rules apply to a host conversion:
 
-1. **Loss rules.** The conversion follows the host's own loss rules. The host
-   refuses a conversion that would drop source or naming provenance. It reports
-   its lossy-conversion error, for example `data.lossy_conversion` in the
-   MoonBit CLI, and sends no request. The JSON profile rules in
-   [Profiles and encoded payloads](#profiles-and-encoded-payloads) also apply.
-2. **New payload.** The converted model is a new model payload. It has its own
-   `decodedByteLength`, `sha256` and `revision`. The host keeps the original
+1. **Lossless by default.** A conversion is lossy when the converted model
+   cannot carry all content of the original model, for example an enrichment,
+   an annotation, precision, decimal scale or provenance. The JSON profile
+   rules in [Profiles and encoded payloads](#profiles-and-encoded-payloads)
+   apply. A conversion from `morphir-ir` JSON to `morphir-model` Ion loses
+   nothing. A conversion from `morphir-model` Ion to `morphir-ir` JSON is
+   lossless only when the original has no content that JSON cannot carry.
+2. **Lossy conversion refused.** The host refuses a lossy conversion with its
+   lossy-conversion error, for example `data.lossy_conversion` with exit code 2
+   in the MoonBit CLI. This refusal is not `extension.tuple_unavailable`. The
+   host refuses before it sends a request, sends no request and publishes no
+   artifact. The error message tells the user how to allow the loss.
+3. **Loss allowed explicitly.** The host does a lossy conversion only when the
+   user explicitly allows loss for that operation, for example with the flag
+   `--allow-model-loss` on one `morphir generate` command in the MoonBit CLI.
+   The permission applies to that one operation only. When the host drops data,
+   it tells the user about each kind of data that it dropped, for example
+   metadata, provenance or annotations, and writes the same list in the
+   conversion record (rule 6). A host with a machine-readable report also adds
+   the conversion to it, for example
+   `conversion: {from, to, dropped}` in the MoonBit CLI JSON report.
+4. **Identity.** The converted model is a new model payload. It has its own
+   `decodedByteLength`, `sha256` and `revision`. It keeps the `modelId` of the
+   original. The host derives the new `revision` deterministically from the
+   SHA-256 digest of the converted payload bytes, so the same converted bytes
+   always get the same revision. For example, the MoonBit CLI uses
+   `sha256:<64 lowercase hexadecimal digits>`. Only a converted model gets its
+   revision in this way; other models keep the rule in
+   [Identity, enrichment and guarantees](#identity-enrichment-and-guarantees).
+   The host keeps the original
    model bytes. The conversion does not replace the retained model.
-3. **Guarantees and evidence.** Required guarantees and evidence that apply to
+5. **Guarantees and evidence.** Required guarantees and evidence that apply to
    the original payload do not carry over automatically. Evidence binds the
    original revision, so it does not match the converted model. The host can
    send evidence for the converted model only when that evidence binds the new
    revision and its checker or trust policy accepts it. The extension admits
    the converted model and its evidence as it admits any other model.
-4. **Before dispatch.** The host converts before it sends the request. This is
+6. **Conversion record.** The host keeps a record that links the converted model
+   to the original. The record contains the original tuple and the converted
+   tuple, the original revision and payload SHA-256, the converted revision and
+   payload SHA-256, and the list of dropped data. The list is empty when the
+   conversion is lossless. The record does not need to contain the original
+   bytes. The record location is reserved for the host. The host must not let
+   an artifact from the extension overwrite the record. If the extension
+   returns an artifact at that location, the host refuses the result. For
+   example, the MoonBit CLI writes `mep/conversion.json` next to the generated
+   artifacts and refuses the command when an artifact uses that path.
+7. **Before dispatch.** The host converts before it sends the request. This is
    not a retry after the extension refuses admission. The extension does not
    ask for a conversion, and the host does not resend a refused request in a
    different tuple.
-5. **Scope.** This rule applies only to `generateModel`. This draft does not
+8. **Scope.** This rule applies only to `generateModel`. This draft does not
    define host conversion for `compileModel` dependencies.
 
 ```text
 host model        morphir-model/ion-binary
 session support   [generateModel/morphir-ir/morphir-json]
-host can convert  -> send the converted JSON model (new digest and revision)
-conversion lossy  -> lossy-conversion error, no request
+lossless          -> send the converted JSON model (same modelId, new revision)
+lossy             -> lossy-conversion error, no request
+lossy, allowed    -> send the converted JSON model, report the dropped data
 no conversion     -> extension.tuple_unavailable, no request
 ```
 
 The spec leaves these details to the host:
 
 - which conversions it implements;
-- which agreed tuple it converts to when it can convert to more than one. The
-  recommended target is the first agreed tuple in host order to which it can
-  convert;
-- its loss rules beyond the provenance rule above, and the name of its
-  lossy-conversion error;
-- how it mints the new revision, and whether the converted model keeps the
-  original `modelId`;
-- whether it tells the user about the conversion.
+- the name of its lossy-conversion error and how the user allows loss;
+- the format and location of the conversion record and of the dropped-data
+  report;
+- whether it tells the user about a lossless conversion.
 
-The same rule is written for the MoonBit CLI in
-[finos/morphir-moonbit#281](https://github.com/finos/morphir-moonbit/pull/281).
+The MoonBit CLI implements this rule in its host library, which every MoonBit
+host front end shares
+([finos/morphir-moonbit#281](https://github.com/finos/morphir-moonbit/pull/281)).
 This rule adds no wire member and does not change the `0.2.0-draft.1` draft
 version.
 
