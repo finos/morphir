@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>run-core-wasm-guests-from-any-language: design</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> as it is, and write the content inside <main>.
+  Styles and scripts are files in docs/templates/assets/, referenced and not embedded. In a copy, change the
+  "assets/" prefix of each href and src to the relative path from the copy to that directory, for example
+  "../../docs/templates/assets/" from .dev/beads-specs/. See AGENTS.md, "Specs and plans are HTML documents".
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc.
+-->
+<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+</head>
+<body>
+<main>
+<h1>run-core-wasm-guests-from-any-language: design</h1>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.64.37</code> · 2026-10-30, updated 2026-10-31 · scope cut to the work that main does not do yet; FIT-1 to FIT-5, PIN-2, IGN-1 to IGN-5 and PIN-3 answered; Gleam relative nesting and the release resolved; named-directory rule confirmed</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#walkthrough">One Gleam compile, from command to result</a></li>
+<li><a href="#request">The request a guest receives</a></li>
+<li><a href="#checks">What replaces the MoonBit manifest checks</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#worker-host">Relation to the worker host</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#scope">Scope after the worker host</a></li>
+<li><a href="#follow-ups">Follow-up changes</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See <code>proposal.md</code>, "Why", for the motivation. This section records only the current state that the
+design builds on. The research read this repository at <code>fe9ca3dc</code> and finos/morphir-gleam main at
+<code>737d1da7</code> (the guest, its host test <code>tests/core_wasm.rs</code>, its claims file and its bundle
+script), and ADR-0009 and the MEP draft in finos/morphir.</p>
+<p>The table below describes main at <code>fe9ca3dc</code>, before the worker host landed. Main at
+<code>af16f0be</code> runs every extension command on the worker host and retires the Node helper and the
+<code>core-wasm-process</code> pins. The section <a href="#scope">Scope after the worker host</a> says which
+requirements main meets now, with the evidence, and which tasks are still to do.</p>
+
+<table>
+<thead><tr><th>Today</th><th>Where</th><th>What it means for this change</th></tr></thead>
+<tbody>
+<tr><td>The CLI builds the whole session before a process starts and reads the answers after the guest exits</td>
+<td><code>apps/morphir/cli/extension.mbt</code> (<code>extension_plan</code>, <code>extension_messages</code>)</td>
+<td>The describe answer cannot change a request in the same session. Claims must come from an earlier
+session.</td></tr>
+<tr><td>Compile sends one document; <code>languageId</code> is <code>"moonbit"</code>; a non-<code>.mbt</code> file is
+refused</td>
+<td><code>extension_compile_params</code>, <code>extension_document_uri</code></td>
+<td>Both are MoonBit-specific code in a route that should be language-neutral.</td></tr>
+<tr><td>Rich operations offer exactly one model tuple. Ion is the default, <code>--model-format</code> selects
+the other tuple, and there is "no silent codec fallback"</td>
+<td><code>extension_messages</code>, <code>apps/morphir/docs/extension.md</code> ("There is no fallback between
+them")</td>
+<td>A guest that claims only JSON fails with no flag. This change replaces that rule (SEL-2).</td></tr>
+<tr><td>The Extism route already walks a directory into relative-URI documents, with limits</td>
+<td><code>apps/morphir/cli/extism.mbt</code> (<code>extism_sources</code>: 1,024 documents, 2 MiB, depth 32,
+16,384 entries, links refused)</td>
+<td>A tested precedent. Its language (<code>python</code>, <code>.py</code>) is fixed in the code.</td></tr>
+<tr><td>Typed claims and a describe decoder exist</td>
+<td><code>pkgs/morphir-host/worker</code> (<code>Claims::from_describe</code>, <code>LanguageClaim</code>)</td>
+<td>Reusable, pure and already tested. It does not decode <code>frontend.multiDocument</code>.</td></tr>
+<tr><td>The helper hashes and copies the runtime, twelve host modules, <code>model.wasm</code> and
+<code>manifest.ion</code>, then runs the copies</td>
+<td><code>apps/morphir/build-provider/extension.mts</code></td>
+<td>The artifact shape is fixed. A Rust guest has no <code>manifest.ion</code>.</td></tr>
+<tr><td>The Node host decodes the manifest and compares it with the module before it instantiates the guest</td>
+<td><code>pkgs/morphir-host/embedding/artifacts.mts</code> (<code>loadArtifact</code>, <code>verifyModule</code>),
+<code>mep-adapter.mts</code>, <code>wasm-memory.mts</code></td>
+<td>The manifest compares import names and kinds, not signatures. The memory check already parses the module
+binary.</td></tr>
+<tr><td>The Gleam guest names modules from URIs</td>
+<td>finos/morphir-gleam <code>src/lib.rs</code> (<code>module_name_from_document_uri</code>)</td>
+<td>With <code>sources.root</code>, the path below the root names the module. Without it, the path after the last
+<code>src</code> segment names it; with no <code>src</code> segment, only the file name does.</td></tr>
+<tr><td>The Gleam bundle has a module, a descriptor and checksums, and no manifest</td>
+<td>finos/morphir-gleam <code>.github/scripts/gleam-extension/bundle.ts</code></td>
+<td>The descriptor has <code>schemaVersion</code> <code>2.0.0-draft.2</code>, one artifact with
+<code>runtime</code>, <code>executionProfile</code>, <code>filename</code>, <code>sha256</code>,
+<code>claimCheck: "probed"</code>, the full live <code>claims</code> and
+<code>critical: ["runtime", "executionProfile"]</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong></p>
+<ul>
+<li>The worker host runs any WASM module guest that conforms to <code>morphir/mep-bytes-v1/v1-draft</code> and MEP
+<code>0.2.0-draft.1</code>, with no code for a particular language. (The first draft said the
+<code>core-wasm-process</code> route; main retired that route, and FIT-5 moved the goal to the worker host.)</li>
+<li>Contract <code>0.2.0</code> pins and MoonBit guest behavior stay the same.</li>
+<li>The new logic is pure MoonBit (source collection, claim selection, descriptor checks), so that the worker host
+can reuse it.</li>
+</ul>
+<p><strong>Non-goals:</strong></p>
+<ul>
+<li>Installing core-Wasm bundles from a repository, and joining installed extensions to invocation. These belong
+to <code>acquire-extensions-from-repositories</code> (<code>morphir-ukvn.5.64.34</code>) and
+<code>morphir-ukvn.5.64.30</code>.</li>
+<li>Verifying signatures or GitHub artifact attestations. That is <code>add-extension-trust</code>.</li>
+<li>Ion <code>morphir-model</code> for the Gleam guest. The guest does not offer it.</li>
+<li>Incremental compilation, dependencies and exposed-module lists in the request.</li>
+<li>The browser route and the native WASM worker. Those are in <code>host-extensions-as-workers</code>.</li>
+<li>Changes to finos/morphir-gleam, finos/morphir-rust or finos/morphir.</li>
+</ul>
+
+<h2 id="walkthrough">One Gleam compile, from command to result</h2>
+<p>A user has a Gleam project in <code>/work/shop</code>. Its modules are <code>src/shared/numbers.gleam</code>,
+<code>src/app/money.gleam</code> and <code>src/app/orders.gleam</code>, and <code>money</code> and
+<code>orders</code> import <code>shared/numbers</code>. The user downloads the <code>morphir-gleam</code> 0.4.0
+bundle, writes a contract <code>0.2.0</code> pin over it, and runs this from the project directory:</p>
+<pre><code class="language-bash">export MORPHIR_EXTENSION_PIN=/work/gleam-pin.json
+morphir extension compile src --package acme/shop --output model
+morphir extension generate model/model-envelope.json --output generated</code></pre>
+
+<p>The diagram below shows what happens for the compile. There are two guest sessions. The first one only asks
+the guest what it is. The CLI uses that answer to build the second one, which does the work. The MoonBit worker
+host hashes the module bytes once and runs only those bytes in both sessions, so a file that changes between the two
+sessions cannot change what runs. The second session is interactive: the host reads the <code>initialize</code>
+answer and checks it before it sends the operation.</p>
+
+<svg role="img" aria-labelledby="seq-title seq-desc" viewBox="0 0 760 470" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="12">
+<title id="seq-title">Probe session and operation session of one compile on the worker host</title>
+<desc id="seq-desc">Three lifelines: the MoonBit CLI, the MoonBit worker host, and the guest. Step 1, the CLI decodes the pin and checks the descriptor. Step 2, the CLI asks the worker host for a describe-only probe. Step 3, the worker host hashes the module bytes, checks the module structure and runs the guest, which answers describe. Step 4, the worker host returns the claims. Step 5, the CLI compares claims with the descriptor, selects language, tuple and target and collects the source tree. Step 6, the CLI starts the operation session. Step 7, the worker host runs the same bytes and sends initialize; the guest answers. Step 8, the worker host checks the claims and the agreement, sends the operation and returns the result. Step 9, the CLI checks the model and publishes the output.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<g fill="none" stroke="currentColor">
+<rect x="30" y="10" width="180" height="34" rx="6"/>
+<rect x="290" y="10" width="180" height="34" rx="6"/>
+<rect x="550" y="10" width="180" height="34" rx="6"/>
+<path d="M120 44 V460 M380 44 V460 M640 44 V460" stroke-dasharray="4 4"/>
+<path d="M120 125 H372" marker-end="url(#arrow)"/>
+<path d="M380 160 H632" marker-end="url(#arrow)"/>
+<path d="M640 190 H388" marker-end="url(#arrow)"/>
+<path d="M380 220 H128" marker-end="url(#arrow)"/>
+<path d="M120 310 H372" marker-end="url(#arrow)"/>
+<path d="M380 345 H632" marker-end="url(#arrow)"/>
+<path d="M640 375 H388" marker-end="url(#arrow)"/>
+<path d="M380 405 H128" marker-end="url(#arrow)"/>
+<rect x="20" y="58" width="300" height="40" rx="4" fill="Canvas"/>
+<rect x="20" y="240" width="330" height="50" rx="4" fill="Canvas"/>
+<rect x="20" y="418" width="330" height="36" rx="4" fill="Canvas"/>
+</g>
+<g fill="currentColor">
+<text x="50" y="32">MoonBit CLI</text>
+<text x="305" y="32">MoonBit worker host</text>
+<text x="600" y="32">Guest (Wasm)</text>
+<text x="28" y="74">1  Decode pin. Read the descriptor, check its</text>
+<text x="28" y="90">    SHA-256 and content, if the pin names it.</text>
+<text x="130" y="118">2  Probe: describe, exit</text>
+<text x="390" y="153">3  Hash bytes; check module; run</text>
+<text x="420" y="184">describe answer</text>
+<text x="160" y="213">4  Claims</text>
+<text x="28" y="256">5  Compare claims with the descriptor.</text>
+<text x="28" y="271">    Select language, tuple and target.</text>
+<text x="28" y="286">    Collect and check the source tree.</text>
+<text x="130" y="303">6  Operation session: compileModel</text>
+<text x="390" y="338">7  Same bytes; run; initialize</text>
+<text x="420" y="369">initialize answer, result</text>
+<text x="150" y="398">8  Checks passed; result</text>
+<text x="28" y="434">9  Check the model payload digest;</text>
+<text x="28" y="449">    publish the output.</text>
+</g>
+</svg>
+
+<details>
+<summary>Mermaid source of the diagram</summary>
+<pre><code>sequenceDiagram
+  participant CLI as MoonBit CLI
+  participant H as MoonBit worker host
+  participant G as Guest (Wasm)
+  Note over CLI: 1 Decode pin; read and check the descriptor (when the pin names one)
+  CLI-&gt;&gt;H: 2 Probe: describe, exit
+  H-&gt;&gt;G: 3 Hash bytes; check module structure; run
+  G--&gt;&gt;H: describe answer
+  H--&gt;&gt;CLI: 4 Claims
+  Note over CLI: 5 Claims vs descriptor; select language, tuple, target; collect tree
+  CLI-&gt;&gt;H: 6 Operation session: compileModel
+  H-&gt;&gt;G: 7 Same bytes; run; initialize
+  G--&gt;&gt;H: initialize answer
+  Note over H: 8 Claims equal the probe; agreement starts with the selected tuple
+  H-&gt;&gt;G: initialized, compileModel, shutdown, exit
+  G--&gt;&gt;H: result
+  H--&gt;&gt;CLI: result
+  Note over CLI: 9 Check model digest; publish</code></pre>
+</details>
+
+<p>In step 5 the claims say: language <code>gleam</code> with <code>.gleam</code>, <code>multiDocument: true</code>,
+the JSON tuple only, and target <code>gleam</code>. The walk of <code>src</code> finds the three files. The user
+gave no <code>--model-format</code>, so the CLI offers the Ion tuple first and the JSON tuple second. The first
+offered tuple that the guest claims is JSON, so the operation session agrees on JSON and the compile runs (SEL-2).
+With <code>--model-format ion</code> the command stops here with <code>extension.tuple_unavailable</code>, before
+the second session, and the message names the JSON tuple that the guest claims. For <code>generate</code>, step 5 selects the target
+<code>gleam</code>, because it is the only claimed target, and the guest returns one <code>.gleam</code> artifact
+for each module.</p>
+
+<h2 id="request">The request a guest receives</h2>
+<p>The <code>compileModel</code> parameters for the example are below. The URIs are relative to the source base
+(here the current directory), so the Gleam guest finds the <code>src</code> segment and names the modules
+<code>app/money</code>, <code>app/orders</code> and <code>shared/numbers</code>. The request has no
+<code>sources.root</code>: the protocol defines the root as an absolute URI, and the SDK needs it only for several
+absolute documents (ADR-0009). Relative documents keep their nesting without it, and no host path enters the
+model's source provenance.</p>
+<pre><code class="language-json">{
+  "languageId": "gleam",
+  "sources": {
+    "documents": [
+      { "uri": "src/app/money.gleam", "languageId": "gleam", "version": 0, "text": "import shared/numbers\n..." },
+      { "uri": "src/app/orders.gleam", "languageId": "gleam", "version": 0, "text": "import app/money\n..." },
+      { "uri": "src/shared/numbers.gleam", "languageId": "gleam", "version": 0, "text": "pub type Number = Int\n" }
+    ]
+  },
+  "package": { "name": "acme/shop" },
+  "options": { "typesOnly": false, "irVersion": "4.0.0" },
+  "contextDigest": "&lt;SHA-256 of package and options, as today&gt;",
+  "output": {
+    "operation": "morphir.frontend.compileModel", "profile": "morphir-ir", "codec": "morphir-json",
+    "envelopeVersion": "0.1.0-draft.1", "irVersion": "4.0.0"
+  }
+}</code></pre>
+
+<p>The pin for the example is a contract <code>0.2.0</code> pin, as on main (FIT-5, answered by Damian Reeves on
+2026-10-31). It names the module and its runtime, and it needs no <code>manifest.ion</code>. It names the release
+descriptor too. A local pin like this one may omit the descriptor, with a warning; an installed pin may not
+(<a href="#pin-2">PIN-2</a>).</p>
+<pre><code class="language-json">{
+  "contractVersion": "0.2.0",
+  "artifact": {
+    "path": "/work/bundles/morphir-gleam-0.4.0/morphir-gleam-0.4.0.wasm",
+    "sha256": "&lt;SHA-256 of morphir-gleam-0.4.0.wasm&gt;"
+  },
+  "runtime": { "kind": "wasm", "abi": "morphir-bytes-v1" },
+  "descriptor": {
+    "path": "/work/bundles/morphir-gleam-0.4.0/morphir-gleam-0.4.0.release.json",
+    "sha256": "&lt;SHA-256 of the descriptor&gt;"
+  },
+  "origin": "finos/morphir-gleam release extension/gleam/v0.4.0"
+}</code></pre>
+
+<h2 id="checks">What replaces the MoonBit manifest checks</h2>
+<p>The MoonBit manifest does four jobs. A non-MoonBit guest needs three of them. The table maps each job to its
+replacement. The fourth job, MoonBit build provenance, has no truthful equivalent for another toolchain. The
+descriptor's <code>gitCommit</code> is reported as a claim instead.</p>
+<table>
+<thead><tr><th>Manifest job today</th><th>Replacement for a WASM module</th><th>Who checks it</th></tr></thead>
+<tbody>
+<tr><td>Bind the module bytes: <code>artifact.size</code> and <code>artifact.sha256</code></td>
+<td>The pin's <code>artifact.sha256</code>, the trust root, which must also equal the descriptor artifact's
+<code>sha256</code>. The descriptor is bound by the pin's <code>descriptor.sha256</code>.</td>
+<td>CLI (descriptor); worker host (the module bytes that it hashes and runs)</td></tr>
+<tr><td>Bind the execution profile: target <code>wasm</code>, encoding, profile ID and SHA-256</td>
+<td>Descriptor artifact <code>runtime: "core-wasm"</code> and <code>executionProfile</code>, which must agree with
+the pin's runtime and equal the host's constant. Every <code>critical</code> member must be one the host
+checks.</td>
+<td>CLI</td></tr>
+<tr><td>Bind the module's interface: import names and kinds, exports</td>
+<td>A structural check of the module against the profile text: only the three byte imports with exact
+signatures, an exported <code>handle: () -&gt; i32</code>, and no shared, 64-bit or second memory; a larger memory
+maximum is lowered to 4,096 pages. This is stricter than the manifest comparison, which does not check
+signatures.</td>
+<td>MoonBit worker host, before instantiation (on main)</td></tr>
+<tr><td>MoonBit provenance: package graph and order, <code>compilerVersion</code>, <code>coreSha256</code>,
+<code>sdkSha256</code></td>
+<td>None. <code>extensionId</code>, <code>version</code> and <code>gitCommit</code> from the descriptor are shown
+as claims. The descriptor claims must equal the live claims.</td>
+<td>CLI (comparison only)</td></tr>
+</tbody>
+</table>
+
+<h2 id="decisions">Decisions</h2>
+
+<h3 id="sel-1">SEL-1. A describe-only probe session gives the claims</h3>
+<p>For <code>compile</code> and <code>generate</code>, the CLI first runs a describe-only session through the
+same pin checks, and decodes the answer with <code>Claims::from_describe</code>. It then builds the operation
+session from those claims. The operation session sends no describe: the host compares the identity and claims of
+the <code>initialize</code> answer with the probe, and fails with <code>extension.claims_mismatch</code>, exit 2,
+before the operation (FIT-3, answered by Damian Reeves on 2026-10-31; the first draft said
+<code>extension.claims_changed</code>). This is the same pattern as the native route
+("describes an immutable executable copy and closes that probe") and as probe and activation in the worker host.</p>
+<p><em>Alternatives.</em> (a) Take claims from the descriptor only, in one session. It does not work for assembly
+form pins, which have no descriptor, so the route would need two ways to choose a language. (b) An interactive
+session in the helper. It changes the helper protocol, which the worker host replaces anyway. (c) A required
+<code>--language</code> flag. It moves knowledge the guest already has to every user. <em>Cost:</em> one more
+worker start and one more module compile for each command. The task records the measured time for the 11 MB Gleam
+module.</p>
+
+<h3 id="sel-2">SEL-2. The host offers every model tuple in preference order; <code>--model-format</code> requires one</h3>
+<p><em>Decided by Damian Reeves, 2026-10-30.</em> The CLI advertises every model tuple that it supports for the
+operation, in its order of preference. The first tuple is the default. Today that is the Ion tuple
+(<code>morphir-model</code>, <code>ion-binary</code>), then the JSON tuple (<code>morphir-ir</code>,
+<code>morphir-json</code>). The order is the only signal for the default: there is no new wire field. The guest
+returns the intersection of its own support with the offer, in the host's order. The Rust SDK does this in
+<code>NegotiatedModelTransport::select</code>, and the MoonBit guest SDK does it in <code>select_models</code>
+(<code>pkgs/morphir-moonbit/mep/model_transport.mbt</code>). The session uses the first agreed tuple.</p>
+<p>A guest that does not support the default but supports another offered tuple is a valid partner, not an error.
+Only an empty intersection is <code>extension.tuple_unavailable</code>. When the user gives
+<code>--model-format</code>, the CLI requires that format: it offers only that tuple, and a guest that does not
+claim it gives <code>extension.tuple_unavailable</code> with the claimed tuples in the message. <code>generate</code>
+offers the tuple of its input envelope first, and the CLI converts the model when the guest does not claim that
+tuple (<a href="#sel-4">SEL-4</a>).</p>
+<p>The probe claims select a tuple before the operation session: the first offered tuple that the guest claims for
+the operation. An empty selection fails before the operation session. The worker host on main reads the
+<code>initialize</code> answer before it sends the operation, so the agreement arrives before the request. The host
+requires the first agreed tuple to be the selected tuple, or the command fails with
+<code>extension.agreement_mismatch</code>, exit 2, sends no operation and publishes nothing. <em>Answered by Damian
+Reeves on 2026-10-31 (FIT-3):</em> keep main's codes and exit status 2, and keep this one check, which main does not
+do yet (task 1.13). <code>generate</code> needs it, because the CLI converts the model to the selected tuple before
+the session (<a href="#sel-4">SEL-4</a>). The first draft assumed a pipelined session and exit 1.</p>
+<p><em>Decided by Damian Reeves, 2026-10-31.</em> An agreement that differs from the probe claims has its own code.
+The first draft used <code>extension.claims_changed</code>, but that code means that the guest describes itself
+differently in the two sessions. In an agreement mismatch the claims can be the same in both sessions: the guest's
+negotiation does not follow its own claims or the host's order. A separate code tells the user to examine the
+guest's tuple negotiation, for example its SDK, and not its identity or capabilities. The name follows the
+<code>&lt;subject&gt;_mismatch</code> form of the existing worker host codes in
+<code>pkgs/morphir-host/worker/outcome.mbt</code>: <code>extension.claims_mismatch</code>,
+<code>extension.digest_mismatch</code>, <code>extension.platform_mismatch</code> and
+<code>extension.abi_mismatch</code>. The exit status is 2, because the host reads the agreement before it sends the
+operation (FIT-3). When the claims also differ, <code>extension.claims_mismatch</code> wins, because the host
+compares the claims before the agreement. The worker host uses the same code for an answer outside its offer or its
+order (finos/morphir-moonbit#283).</p>
+<p>This changes a rule on main. <code>extension_messages</code> in <code>apps/morphir/cli/extension.mbt</code> says
+"Rich operations offer exactly the selected tuple: there is no silent codec fallback", and
+<code>apps/morphir/docs/extension.md</code> says "There is no fallback between them" and that initialization must
+"return the offered tuple". After this change, a compile without <code>--model-format</code> offers both tuples.
+This is not a silent fallback: the offer is explicit, the report records the agreed tuple, and the envelope names
+its own tuple. With <code>--model-format</code> there is still no fallback. Every command line that runs today runs
+the same way: the MoonBit guest claims Ion and gets Ion. Only a command that failed with
+<code>extension.tuple_unavailable</code> because the guest lacks the default now runs.</p>
+<p><em>Evidence.</em> finos/morphir-gleam#31 adds a host test that offers <code>morphir-model</code> with
+<code>ion-binary</code> first and the JSON tuple second; the <code>morphir-gleam</code> 0.4.0 guest agrees on JSON
+and compiles. <em>Related.</em> A matching text change to the MEP model transport section
+(<code>spec/mep/model-transport.md</code>) is open in finos/morphir#1115. This change does not edit
+finos/morphir.</p>
+<p><em>Alternatives.</em> (a) Keep Ion as the only offered default and fail early when the guest lacks it. This was
+the first draft of this design. It is too strict: it refuses a guest that supports a format the host also
+supports. (b) Add a wire field that marks the default. The offer order already says it, and a new field needs a
+protocol change. (c) Default to the only claimed tuple with a one-tuple offer. It gives the same result for the
+Gleam guest but hides the host's preference from the guest.</p>
+
+<h3 id="sel-3">SEL-3. Language, extensions and target come only from claims</h3>
+<p>The selected <code>LanguageClaim</code> gives the language ID and the file extensions; <code>--language</code>
+selects one when the guest claims several. The only claimed backend target is the default target. The MoonBit
+checks <code>extension.moonbit_source_required</code> and the fixed default target <code>moonbit</code> go away.
+For the MoonBit guest, the claims give the same values, so its runs do not change. A guest that claims several
+languages needs <code>--language</code>; without it, the command fails with <code>extension.input_invalid</code>,
+exit 2, and the message names the claimed languages. Every source refusal keeps main's code
+<code>extension.input_invalid</code>, exit 2 (FIT-1, answered by Damian Reeves on 2026-10-31); the first draft
+planned the new codes <code>extension.source_required</code> and <code>extension.language_required</code>.</p>
+
+<h3 id="sel-4">SEL-4. The host library converts the model for <code>generate</code> when the guest does not claim the envelope's tuple</h3>
+<p><em>Rule decided by Damian Reeves, 2026-10-31; details (A to E below) decided by Damian Reeves, 2026-10-31.
+Decision E was changed on 2026-10-31: the host reports the conversion as a diagnostic, not as a file.</em>
+The envelope fixes the tuple of the model that the user gives, but the guest can claim a different generate tuple.
+If the host can convert the model to a tuple that the guest claims, it does the conversion for the guest and sends
+the converted model. The generate runs; this is not an error. Only when the guest claims no tuple that the host
+offers does the command exit 2 with <code>extension.tuple_unavailable</code>.</p>
+<p>The offer follows SEL-2. The envelope's tuple comes first, because it needs no conversion. The other tuples that
+the host can convert to follow. A guest that claims the envelope's tuple always gets the envelope unchanged.</p>
+<p><em>Lossless preference decided by Damian Reeves, 2026-10-31.</em> Among the claimed tuples that the host can
+convert to, the host prefers the first one in host order whose conversion is lossless for this model. Only when no
+claimed tuple can be reached without loss does the host take the first convertible one, and then the loss rules of
+decision D below apply. The host knows the loss of each conversion before the operation session, because it has
+the model. So it puts this preference into the offer order: the envelope's tuple, then the tuples that it can reach
+without loss, in host order, then the tuples that it can reach only with loss, in host order. The session still
+uses the first agreed tuple (SEL-2), and the agreement check does not change. With the two tuples of today, at most
+one tuple needs a conversion, so the preference changes nothing yet; it matters when the host supports more
+tuples. The spec "Prefer a lossless conversion" makes it normative.</p>
+<p>As for
+<code>compile</code>, the probe claims select the tuple before the operation session, because the request names its
+input tuple and carries the model. So the conversion runs before the operation session, and a refused conversion
+starts no operation session. The operation session must then agree on the selected tuple, or the command fails with
+<code>extension.agreement_mismatch</code>.</p>
+<p>For example, a user generates from an Ion envelope with a guest that claims only <code>morphir-ir</code> with
+<code>morphir-json</code> for <code>morphir.backend.generateModel</code>. The host offers the Ion tuple, then the
+JSON tuple. The guest claims JSON, so the host converts the model to Morphir JSON. If the model has no metadata,
+provenance or non-profile annotations, the conversion loses nothing and the generate runs. If it has source
+provenance, the command stops with <code>data.lossy_conversion</code> and tells the user about
+<code>--allow-model-loss</code>. With that flag, the generate runs, the CLI writes a warning that provenance was
+dropped, and the command reports the conversion with the <code>extension.model_converted</code> diagnostic. The
+output folder holds only the guest's artifacts.</p>
+<p>The decisions:</p>
+<ol>
+<li><strong>A. Who converts.</strong> The host library, <code>pkgs/morphir-host</code>, converts with the codec
+registry of the engine (<code>pkgs/morphir-engine/data/registry.mbt</code>). That registry already has the
+<code>morphir-json</code> and Ion codecs and the loss check that bare <code>morphir-json</code> export uses. Every
+host front end, which is the CLI, the browser host and the worker host, calls the same conversion. No front end has
+its own converter.</li>
+<li><strong>B. Directions.</strong> Both. <code>morphir-ir</code> with <code>morphir-json</code> to
+<code>morphir-model</code> with <code>ion-binary</code> is always lossless: a JSON model has no rich metadata to
+lose. <code>morphir-model</code> to <code>morphir-ir</code> with <code>morphir-json</code> is allowed only when it
+is lossless, unless the user gives <code>--allow-model-loss</code>. The flag applies to one <code>generate</code>
+command only; no configuration file or environment value sets it.</li>
+<li><strong>C. Identity.</strong> The converted envelope keeps the <code>modelId</code> of the envelope that the
+user gave. Its <code>revision</code> is <code>sha256:</code> followed by the lowercase hexadecimal SHA-256 of the
+converted payload bytes, so the same input gives the same revision. The converted envelope holds no link to the
+original; the conversion diagnostic (E) holds it.</li>
+<li><strong>D. Lossy conversion.</strong> Without the flag, a conversion that would drop data is refused with
+<code>data.lossy_conversion</code>, exit 2, before the operation session, with nothing published
+(<code>committed: []</code>). This is what the built-in <code>morphir generate</code> does today
+(<code>apps/morphir/scripts/test-generation.ts</code>). The message names the flag. It is not
+<code>extension.tuple_unavailable</code>: the guest claims a tuple that the host can send, and the refusal is
+about the user's model. With the flag, the command exits 0 when the generate succeeds, writes one warning to stderr
+for each kind of dropped data (<code>metadata</code>, <code>provenance</code>, <code>annotations</code>), and the
+JSON report has <code>conversion: {from, to, dropped}</code>. The report has the <code>conversion</code> object for
+every conversion; <code>dropped</code> is empty when nothing was lost.</li>
+<li><strong>E. Reporting the conversion.</strong> The host reports the conversion as one diagnostic of the
+command, with the code <code>extension.model_converted</code> and severity <code>info</code>. Its
+<code>data</code> holds the original and the converted tuple, the original revision and payload SHA-256, the
+converted revision and payload SHA-256, and the dropped list (empty without the flag). The diagnostic is in the
+<code>diagnostics</code> of the JSON report, and the CLI writes it as one human-readable line on stderr, in default
+and in JSON mode. The host writes no file for the conversion in the output folder and does not copy the original
+model bytes; the payload SHA-256 identifies them. The guest's own retention sidecars
+(<code>mep/source-model.ionb</code> and <code>mep/source-envelope.json</code> for the MoonBit guest) stay as the
+guest returns them, so after a conversion they describe the converted envelope. With
+<code>--allow-model-loss</code>, the warnings of decision D for each kind of dropped data stay.</li>
+</ol>
+<p><em>Diagnostic decided by Damian Reeves, 2026-10-31.</em> This decision replaces the earlier decision E, which
+had the host write a conversion record, <code>mep/conversion.json</code>, reserve that path in the output and refuse
+a guest artifact at that path with <code>extension.result_invalid</code>. None of that remains: there is no record
+file, no reserved path and no refusal for it. Decisions A to D and the lossless preference do not change. The
+diagnostic <code>data</code> keeps the members that Damian Reeves accepted for the record: exactly
+<code>from</code>, <code>to</code> and <code>dropped</code>. <code>from</code> describes the envelope that the user
+gave and <code>to</code> the converted envelope that the host sent. Each has exactly <code>profile</code>,
+<code>codec</code>, <code>revision</code> and <code>payloadSha256</code>, the lowercase hexadecimal SHA-256 of the
+decoded payload bytes. The spec "Conversion diagnostic data" makes these members normative. The diagnostic in the report
+after a lossy conversion with the flag looks like this:</p>
+<pre><code class="language-json">{
+  "severity": "info",
+  "code": "extension.model_converted",
+  "message": "converted the model from morphir-model/ion-binary to morphir-ir/morphir-json",
+  "data": {
+    "from": {
+      "profile": "morphir-model", "codec": "ion-binary",
+      "revision": "rev-2026-10-31", "payloadSha256": "&lt;64 hex digits&gt;"
+    },
+    "to": {
+      "profile": "morphir-ir", "codec": "morphir-json",
+      "revision": "sha256:&lt;64 hex digits&gt;", "payloadSha256": "&lt;64 hex digits&gt;"
+    },
+    "dropped": ["metadata", "provenance"]
+  }
+}</code></pre>
+<p>The CLI already writes each diagnostic of an extension command to stderr as one line
+(<code>extension_diagnostic_line</code>, <code>apps/morphir/cli/extension.mbt</code>), and the worker
+<code>Diagnostic</code> already has the <code>info</code> severity and a <code>data</code> member
+(<code>pkgs/morphir-host/worker/diagnostic.mbt</code>). So in default mode the stderr line is
+<code>info extension.model_converted: converted the model from morphir-model/ion-binary to
+morphir-ir/morphir-json</code>, and stdout holds only the summary. In JSON mode stdout holds only the one report
+object. The diagnostic does not change the exit status. When the guest fails after a conversion, the failed report
+still has the diagnostic, because the conversion ran; it has no <code>result</code>.</p>
+<p><em>The report object and the diagnostic agree.</em> The change keeps both, and does not merge them. The
+<code>conversion</code> object of a successful report's <code>result</code> is equal to the <code>data</code> of
+the <code>extension.model_converted</code> diagnostic. A consumer that reads only <code>result</code> finds the
+conversion there, and a consumer that reads the diagnostics finds it with the other messages of the run. Because the
+two values are equal, they cannot disagree. The spec "Report records the conversion" makes this normative.</p>
+<p>The conversion itself is not part of
+<code>extension_generate_offer</code> on main today: that function offers only the envelope's tuple, and says that
+the host does not convert a model (finos/morphir-moonbit#284). This change replaces that rule.</p>
+<p><em>Alternatives.</em> (a) Keep the rule that <code>generate</code> requires the envelope's tuple. It refuses a
+guest that the host can serve. (b) Tell the user to convert the model with another command first. It gives every
+user work that the host can do. (c) A converter in each front end. The three front ends would drift, and the loss
+check would exist in more than one place. (d) Copy the original model bytes into the output. It doubles the output
+size; the digest in the conversion diagnostic identifies the original. (e) A conversion record file,
+<code>mep/conversion.json</code>, next to the guest's artifacts. This was the first decision E. It adds a file that
+the guest did not write to the guest's output, needs a path reserved for the host in that output and a refusal rule
+for a guest that uses the path. The diagnostic carries the same data without these rules. (f) Only the diagnostic,
+with no <code>conversion</code> object in <code>result</code>. A consumer that reads only <code>result</code> would
+then have to search the diagnostics for the conversion.</p>
+
+<h3 id="src-1">SRC-1. Relative URIs from a source base, no <code>sources.root</code></h3>
+<p>Each URI is the path relative to the source base: <code>--source-base</code>, or the current directory. A single
+file without <code>--source-base</code> keeps today's rule, so MoonBit requests are byte for byte the same.</p>
+<p><em>Why not URIs relative to the named directory?</em> For <code>compile src</code>, those URIs would be
+<code>app/money.gleam</code>. The Gleam 0.4.0 guest has no <code>src</code> segment to find, so it names the
+module <code>money</code> from the file name. The protocol says relative paths keep their nesting, so this is a
+guest deviation, not a host rule; but the host should not produce module names that depend on it.
+finos/morphir-gleam#29 (merged as <code>191a35e</code>, in the release <code>extension/gleam/v0.4.0</code>) fixed
+the deviation: a relative URI with no <code>src</code> segment now keeps its full path as the module name. This
+rule does not change, because it does not depend on the guest, and because URIs relative to the named directory
+still depend on that directory: <code>compile src/app</code> would send <code>money.gleam</code> and give the module
+<code>money</code>.
+<em>Why not synthetic absolute URIs with a root</em>, as the guest's own host test does
+(<code>file:///src/...</code> with root <code>file:///src/</code>)? They would put invented absolute paths into
+diagnostics and source provenance, and the protocol root is meant to be a real location.
+<em>Why not the real absolute paths with a real root?</em> Host paths in the model break reproducibility across
+machines and break the existing rule that absolute host paths never enter provenance.</p>
+
+<h3 id="src-2">SRC-2. One portable source collector, with the Extism limits</h3>
+<p>A new pure function collects a tree into documents. It takes the claimed extensions, the language ID, the
+source base and the limits, and returns sorted documents or a typed refusal. Its file-system walk is an effect at
+the edge, with the same no-follow and bounded listing calls as <code>extism_sources</code>. The limits are the
+ones the Extism route already qualifies: 1,024 documents, 2 MiB of source in total, depth 32 and 16,384 entries.
+The core-Wasm limit of 1 MiB for one file stays. The 4 MiB framed request limit stays the final check, because
+JSON escaping can make the request larger than the sources. <code>extism.mbt</code> moves to the same collector
+with language <code>python</code> and <code>.py</code>, so the two routes cannot drift; its behavior and error codes
+stay the same. (Main has no <code>extism.mbt</code> now: the Extism guest uses <code>extension_sources</code> on
+the worker host.) Every refusal of the collector is <code>extension.input_invalid</code>, exit 2, with a message
+that names the limit, the relative path or the URI (FIT-1). The first draft planned four new codes:
+<code>extension.source_required</code>, <code>extension.resource_limit</code>,
+<code>extension.invalid_source_path</code> and <code>extension.invalid_source_encoding</code>. Damian Reeves dropped
+them on 2026-10-31.</p>
+<p><em>Alternative:</em> raise the request limit to the Node host's 16 MiB. The helper and the CLI both bound the
+request at 4 MiB today, and the Gleam real-world fixtures (13 files) fit well within it. A larger limit can come
+with the worker host, which owns the channel limits.</p>
+
+<h3 id="src-3">SRC-3. URI segments are percent-encoded, plain names are unchanged</h3>
+<p>The protocol says a frontend decodes path segments once and refuses encoded separators. The collector encodes
+each segment as an RFC 3986 path segment. Unreserved characters (letters, digits, <code>-</code>, <code>.</code>,
+<code>_</code>, <code>~</code>) stay as they are, so ordinary paths and all existing MoonBit and Python requests
+are unchanged. <em>Unsure:</em> the Gleam guest's <code>parsed_path</code> must decode such segments correctly.
+The acceptance task includes one file name with a space to show it.</p>
+
+<h3 id="src-4">SRC-4. The walk skips main's directories and honors ignore files</h3>
+<p><em>Decided by Damian Reeves, 2026-10-31 (FIT-4).</em> The walk keeps main's skip list: hidden directories
+(names that start with <code>.</code>) and <code>.git</code>, <code>.mooncakes</code>, <code>_build</code>,
+<code>node_modules</code> and <code>.venv</code>. It also honors ignore files: the <code>.gitignore</code> files and
+the other layers that Git reads, and a Morphir-specific <code>.morphirignore</code> in each directory. Both files use
+Git's <code>gitignore</code> syntax and nesting rules, and <code>.morphirignore</code> can include a path again with
+<code>!</code>.</p>
+<p>Consider a Gleam project. <code>gleam new</code> writes a <code>.gitignore</code> with <code>/build</code>, and
+<code>build/</code> holds the downloaded packages and can hold links. When a user compiles the project directory,
+the walk does not enter <code>build/</code>, so it neither reads those sources nor refuses their links. The project
+can also keep a <code>.morphirignore</code> with <code>test/</code>, so that Morphir does not read the tests that Git
+tracks. And when a generated file such as <code>src/model_gen.gleam</code> matches a <code>.gitignore</code> pattern
+but belongs in the model, <code>!src/model_gen.gleam</code> in <code>.morphirignore</code> includes it again.</p>
+<p><em>Details decided by Damian Reeves, 2026-10-31 (IGN-1 to IGN-5).</em> By default the walk follows Git, so
+that the documents agree with what <code>git status</code> shows. In a Git work tree it reads the same layers as
+Git: the global excludes file (<code>core.excludesFile</code>, else <code>$XDG_CONFIG_HOME/git/ignore</code>), the
+repository's <code>.git/info/exclude</code>, and the <code>.gitignore</code> files from the work-tree root down
+through the walked tree (IGN-2, IGN-3). Each directory can also hold a <code>.morphirignore</code>, read in the same
+places. Outside a Git work tree, Git does not honor <code>.gitignore</code>, so the walk reads only the
+<code>.morphirignore</code> files of the walked tree.</p>
+<p>The last matching pattern decides. The global file comes first, then <code>.git/info/exclude</code>, then the
+ignore files of each directory from the highest down; in one directory, <code>.morphirignore</code> comes after
+<code>.gitignore</code>, so it wins there, and a deeper directory decides over a higher one (IGN-1). This is Git's
+own rule with one more file per directory. As in Git, a path under an excluded parent cannot be included again,
+and an ignored entry is never refused as a link. An ignore file in any layer has the 1 MiB bound of a source
+file.</p>
+<p>Consider a user in <code>/work/shop</code>, a Git work tree, who runs <code>compile src</code>. The root
+<code>.gitignore</code> has <code>*_gen.gleam</code>, so <code>src/app/model_gen.gleam</code> is not read, as
+<code>git status</code> would not list it. When the same user names the file, <code>compile
+src/app/model_gen.gleam</code>, the CLI reads it: ignore files filter only directory walks, and a file that the
+user names is an explicit choice (IGN-5). For the same reason a pattern above the input does not exclude a directory
+that the user names. <em>Confirmed by Damian Reeves, 2026-10-31:</em> the CLI walks a directory that the user names
+even when a pattern above it matches, and the ignore files still filter the entries below it.</p>
+<p><em>Contained mode, for reproducible runs.</em> The Git layers make the documents depend on the user's Git
+configuration and on files outside the tree. <code>--ignore-mode contained</code> turns all of them off: the walk
+then reads only the <code>.gitignore</code> and <code>.morphirignore</code> files in the walked tree, in or outside
+a work tree, so two machines give the same documents for the same tree and options. CI and qualification runs
+should use it. Between the two modes, <code>--skip-ignore-layer</code> turns off one layer: <code>global</code>,
+<code>info-exclude</code> or <code>above</code> (the ignore files above the walked directory). The flag names are
+this update's choice; review can change them without changing the behavior.</p>
+<p><em>Scope.</em> <code>.morphirignore</code> applies only to <code>morphir extension compile</code> in this change
+(IGN-4). <a href="#follow-ups">Follow-up changes</a> makes it a project-wide rule.</p>
+<p><em>Library.</em> Damian Reeves asked for a reusable ignore-file library and moonx tool in moonrockz/moonx-tools
+(<a href="https://github.com/moonrockz/moonx-tools/issues/16">moonrockz/moonx-tools#16</a>): Git-compatible by
+default, custom ignore files such as <code>.morphirignore</code>, layer and containment switches, and an explain
+mode like <code>git check-ignore -v</code>. Task 2.6 uses that library and waits for it. The candidate
+<code>moonbit-community/ignore</code> is prior art that the library issue evaluates. The scenarios of this change
+are the acceptance for Morphir.</p>
+
+<h3 id="pin-1">PIN-1. One contract <code>0.2.0</code> pin for a WASM module</h3>
+<p><em>Restated on 2026-10-31 (FIT-5, answered by Damian Reeves).</em> Main retired the
+<code>0.1.0-draft.1</code> pins and the <code>core-wasm-process</code> route. A WASM module now has main's contract
+<code>0.2.0</code> pin: <code>artifact</code> (<code>{path, sha256}</code>), <code>runtime</code>
+(<code>{kind: "wasm"}</code> with an optional <code>abi</code>), <code>origin</code> and a <code>descriptor</code>
+(<code>{path, sha256}</code>). The pin has no <code>extensionId</code> or <code>version</code>, so the descriptor
+identity is compared with the live claims, not with the pin. The descriptor entry is the one whose
+<code>sha256</code> equals the pin's <code>artifact.sha256</code>. The worker host reads the module, refuses one
+above 512 MiB, hashes it and runs only those bytes. The first draft, kept below for the record, added a module form
+to the old contract.</p>
+<p><em>First draft.</em>
+The artifact member gets a second form, chosen by <code>form: "module"</code>. A member without
+<code>form</code> is the assembly form, so old pins stay valid. Exact field sets keep the forms apart. The module
+form follows the Extism pin (<code>directory</code>, <code>descriptorSha256</code>, <code>extensionId</code>,
+<code>version</code>), but names the descriptor file, because the Gleam bundle calls it
+<code>morphir-gleam-0.4.0.release.json</code>, not <code>release.json</code>. The module file name comes from the
+descriptor artifact whose digest equals <code>moduleSha256</code>.</p>
+<p><em>Alternative:</em> a new contract version such as <code>0.1.0-draft.2</code>. It would mark the change more
+clearly, but it forces the MoonBit pins to be rewritten for no gain, and the worker host retires this contract for
+<code>0.2.0</code> anyway.</p>
+
+<h3 id="pin-2">PIN-2. An installed <code>morphir-bytes-v1</code> pin needs the descriptor; a local pin may omit it</h3>
+<p><em>Decided by Damian Reeves, 2026-10-31 (option C).</em> A pin for a <code>morphir-bytes-v1</code> module SHALL
+name the release descriptor (<code>release.json</code>) when the extension is installed from an extension
+repository. A hand-written local pin, given with <code>--extension-pin</code> or
+<code>MORPHIR_EXTENSION_PIN</code>, may omit it, for example for a module that a developer just built. The host
+then runs the module and warns that the descriptor checks were skipped: the digest against the published release,
+the critical <code>runtime</code> and <code>executionProfile</code> members, and live claims equal to the published
+claims. A local pin without a descriptor has only its own digest.</p>
+<p><em>Codes confirmed by Damian Reeves, 2026-10-31 (PIN-3).</em> An installed pin without a descriptor is refused with main's
+<code>extension.pin_invalid</code>, exit 2, because the pin lacks a member that it needs, and the message names
+<code>descriptor</code>. The warning is a diagnostic with severity <code>warning</code> and the new code
+<code>extension.descriptor_checks_skipped</code>, in the report <code>diagnostics</code> and as one stderr line. Main
+does not yet run installed extensions (<code>morphir-ukvn.5.64.30</code>), so task 3.6 proves the installed refusal
+with unit tests and uses it when installed selection joins invocation. finos/morphir-moonbit#292 explores how
+<code>morphir trust</code> (<code>add-extension-trust</code>) could cover local and descriptor-less pins; until it
+decides, this rule stands.</p>
+<p><em>First draft.</em> The descriptor was required for the module form, not a new manifest.
+ The release descriptor is already the language-neutral record. A publisher writes it from a live describe, it
+names the runtime and the execution profile as critical members, and repository acquisition and the worker host
+both plan to read it. A new language-neutral manifest would be a third file with the same facts.
+The descriptor is required, because without it the route would have no record of the profile the module claims to
+implement, and no claims to compare. A module built from a source checkout gets a descriptor from the
+publisher's own bundle task (for Gleam, <code>mise run rust:bundle</code>).</p>
+
+<h3 id="int-1">INT-1. The CLI decodes the descriptor; the worker host checks the module</h3>
+<p><em>Restated on 2026-10-31 (FIT-5).</em> The CLI reads the descriptor with a 1 MiB bound, checks its digest,
+then decodes and checks it in pure MoonBit. Main does the first two (<code>extension_descriptor</code>); task 3.1
+adds the content checks. The MoonBit worker host checks the module structure before instantiation
+(<code>WasmModule::classify</code>, finos/morphir-moonbit#279), for every WASM module. There is no Node helper or
+Node host in this route.</p>
+<p><em>First draft.</em> The CLI reads the descriptor with a 1 MiB bound, checks the digest, then decodes and checks it in pure MoonBit.
+The helper copies the descriptor and the module through no-follow descriptors and checks both digests again, so
+the bytes the CLI checked are the bytes that run. A new descriptor decoder goes into
+<code>pkgs/morphir-host/worker</code>, next to the claims decoder, so the worker host's pin <code>0.2.0</code>
+(which has an optional descriptor) can reuse it.</p>
+<p><em>First draft, continued.</em> The structural check runs in the Node host, which is the place that loads the module. It extends the binary
+reader in <code>wasm-memory.mts</code> to read the type, import, function and export sections. It runs for both
+forms; for the assembly form it adds to the manifest checks and removes none. The host module closure keeps its
+twelve file names, so the pin's <code>host.modules</code> list does not change shape. <code>node-mep-cli.mjs</code>
+gets an explicit <code>--module FILE</code> form next to <code>ARTIFACT_DIRECTORY</code>. The host never guesses
+the form from a missing <code>manifest.ion</code>, because a deleted manifest must not silently turn off checks.</p>
+
+<h3 id="int-2">INT-2. Claims are compared, never trusted for authority</h3>
+<p>Three comparisons use <code>Claims</code> equality, which compares sorted sets: descriptor claims with the probe
+claims (<code>extension.claims_mismatch</code>, exit 2, before the operation), the probe with the
+<code>initialize</code> answer (<code>extension.claims_mismatch</code>, exit 2, before the operation; FIT-3), and
+descriptor identity with live identity (<code>extension.descriptor_invalid</code>; FIT-5).
+An agreement that does not start with the selected tuple is not a claims comparison: it is
+<code>extension.agreement_mismatch</code> (<a href="#sel-2">SEL-2</a>).
+The decoder gets <code>frontend.multiDocument</code>, which <code>Claims</code> does not hold today; this changes
+<code>Claims</code> equality for the worker host too, which is correct, because a change in that claim changes
+which requests are valid.</p>
+
+<h3 id="acc-1">ACC-1. Acceptance runs the real Gleam module, outside routine CI</h3>
+<p><code>scripts/portable-mep-gleam.mbtx</code> (mise task <code>test:portable-mep-gleam</code>) takes the bundle
+from one of two explicit inputs. The usual input is a downloaded directory of the release
+<a href="https://github.com/finos/morphir-gleam/releases/tag/extension/gleam/v0.4.0"><code>extension/gleam/v0.4.0</code></a>
+(<code>MORPHIR_GLEAM_BUNDLE</code>, checked against its <code>.sha256</code> files and against
+<code>MORPHIR_GLEAM_BUNDLE_SHA256</code> for the module). The release has <code>morphir-gleam-0.4.0.wasm</code>
+(SHA-256 <code>12349dacb169…</code>) and <code>morphir-gleam-0.4.0.release.json</code>, each with a
+<code>.sha256</code> file and a build provenance attestation. The fallback input is a build from the pinned
+finos/morphir-gleam commit <code>191a35e</code>, the commit of the release tag, with <code>MISE_ENV=rust mise run
+rust:wasm</code> and <code>mise run rust:bundle</code>. It never chooses one silently. Like <code>test:portable-mep-cli</code>, it builds
+both CLIs, writes a contract <code>0.2.0</code> pin, runs the real commands with an empty <code>TMPDIR</code> each,
+and writes evidence under <code>.dev/portable-mep-gleam</code>.</p>
+<p>It compiles a fixture tree in <code>apps/morphir/fixtures/gleam-tree/</code> (the three modules above and one
+file name with a space) and requires: success, the module names, and the payload equal to an expected file
+recorded for the released module digest. It generates from the envelope and requires one <code>.gleam</code>
+artifact for each module. It also requires that a compile with no <code>--model-format</code> agrees on the JSON
+tuple. Refusal cases: an explicit <code>--model-format ion</code>, a changed descriptor byte, a descriptor written again
+with other claims, a module digest mismatch, an unknown critical member, a link in the tree and 1,025 files.
+Routine CI keeps the in-memory workers of <code>extension_session_wbtest.mbt</code> and the crafted modules of
+<code>pkgs/morphir-host/worker/wasm/classify_test.mbt</code>.</p>
+
+<h2 id="worker-host">Relation to the worker host</h2>
+<p><code>host-extensions-as-workers</code> (<code>morphir-ukvn.5.64.36</code>) already plans most of this in its
+own terms: "Sources and operations from claims" (with a Gleam scenario), ABI classification by imports, and pin
+<code>0.2.0</code> with an optional descriptor. Its groups 1 to 5 are on main now (finos/morphir-moonbit#276 to
+#280), so this change builds on the worker host instead of the retired route; see
+<a href="#scope">Scope after the worker host</a>. This change does not edit that design. The table shows where each
+piece of this change sits:</p>
+<table>
+<thead><tr><th>Piece in this change</th><th>Where the worker host uses it</th></tr></thead>
+<tbody>
+<tr><td>Source collector and its limits (SRC-2)</td><td>Group 6, task 6.2 ("select sources ... from the claims,
+removing the Python-specific source handling")</td></tr>
+<tr><td>Claim selection rules (SEL-1, SEL-3)</td><td>Group 6, task 6.2; "Sources and operations from claims"</td></tr>
+<tr><td>Model tuple offer and agreement (SEL-2)</td><td><code>extensions/worker-sessions</code>, "Model tuple
+negotiation". finos/morphir-moonbit#283 changes that requirement to the SEL-2 rule and uses
+<code>extension.agreement_mismatch</code> for an answer outside the offer or its order; this change does not edit
+it</td></tr>
+<tr><td>Model conversion for <code>generate</code> (SEL-4)</td><td>The conversion is in the host library
+<code>pkgs/morphir-host</code>, so the worker host and the browser host call the same code (SEL-4, decision A).
+Worker host <code>generate</code> on main still requires the envelope's tuple. finos/morphir-moonbit#288
+replaces the open question in the worker host design with a note that points to SEL-4</td></tr>
+<tr><td>Descriptor decoder and the multi-document claim (INT-1, INT-2)</td><td>Group 6, task 6.1 (pin
+<code>0.2.0</code> descriptor); activation against recorded claims</td></tr>
+<tr><td>Structural check of the byte profile (INT-1)</td><td>Done on main in MoonBit by group 5
+(finos/morphir-moonbit#279), so this change no longer adds it to the Node host</td></tr>
+<tr><td>Module form pin (PIN-1)</td><td>Not needed: main retired the <code>0.1.0-draft.1</code> pins
+(finos/morphir-moonbit#280), and a contract <code>0.2.0</code> pin names a WASM module with no
+<code>manifest.ion</code></td></tr>
+</tbody>
+</table>
+<p>When both changes archive, two capabilities will describe source selection from claims:
+<code>extensions/source-documents</code> here and <code>extensions/extension-invocation</code> there. The worker
+host's apply step should replace its source requirement with a reference to this one, or this change's archive
+should merge them. That is a review point for the maintainer.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Before finos/morphir-gleam#29, the Gleam guest ignored relative nesting without a <code>src</code> segment,
+so <code>compile .</code> from inside <code>src</code> gave wrong module names (or <code>DUPLICATE_MODULE</code>).</td>
+<td>Resolved. finos/morphir-gleam#29 (merged as <code>191a35e</code>) keeps the full path of a relative URI as the
+module name, and the release <code>extension/gleam/v0.4.0</code> has the fix. The host test
+<code>guest_compiles_a_relative_document_tree_without_a_root</code> covers it in finos/morphir-gleam. The acceptance
+test pins this case.</td></tr>
+<tr><td>Naming the project directory instead of <code>src</code> includes <code>test/</code> and
+<code>build/packages/*/src</code>, and <code>build/</code> can hold links.</td>
+<td>The walk skips main's hidden, build and dependency directories, and honors Git's ignore layers and
+<code>.morphirignore</code> (SRC-4). The <code>.gitignore</code> of <code>gleam new</code> ignores
+<code>/build</code>; in a Git work tree, or with <code>--ignore-mode contained</code>, the walk honors it. Without
+an ignore file, the link refusal and the limits make the mistake visible. The
+documentation shows <code>compile src</code>.</td></tr>
+<tr><td>An ignore pattern can hide a source file that the user wants.</td>
+<td>A <code>!</code> pattern in <code>.morphirignore</code> includes the file again, and a file that the user names
+is always read (IGN-5). The explain mode of moonrockz/moonx-tools#16 shows which layer, file, line and pattern
+ignored a path.</td></tr>
+<tr><td>By default the documents depend on the user's global excludes file, on <code>.git/info/exclude</code> and on
+ignore files above the walked directory, so two machines can give different requests for the same tree
+(SRC-4).</td>
+<td>This is what Git does, so the documents agree with <code>git status</code>. <code>--ignore-mode
+contained</code> reads only the ignore files in the tree, and gives the same request on every machine; CI and
+qualification use it. <code>--skip-ignore-layer</code> turns off one layer.</td></tr>
+<tr><td>A large tree can take longer than the session deadline of the worker host (60,000 ms by default).</td>
+<td>The Gleam guest test compiles all 13 real-world fixtures well within that time, and <code>--timeout</code> can
+raise it to 594,000 ms. The task records the measured time. The error is <code>extension.deadline</code>, exit
+124.</td></tr>
+<tr><td>Without <code>--model-format</code>, the same command line gives an Ion envelope for one guest and a JSON
+envelope for another (SEL-2).</td>
+<td>The report records the agreed tuple, and <code>generate</code> reads the tuple from the envelope. A user or a
+script that needs one format gives <code>--model-format</code>, which has no fallback.</td></tr>
+<tr><td>A guest that does not keep the host's order in its agreement makes the session use a tuple other than the
+host's preference.</td>
+<td>The CLI requires the first agreed tuple to be the tuple selected from the probe claims, so such a guest fails
+with <code>extension.agreement_mismatch</code> and publishes nothing.</td></tr>
+<tr><td>The worker host change (<code>host-extensions-as-workers</code>) and the MEP text still describe a one-tuple
+offer until they are updated.</td>
+<td>The MEP text change is open in finos/morphir#1115. finos/morphir-moonbit#283 aligns the worker host's "Model
+tuple negotiation" requirement (see <a href="#worker-host">Relation to the worker host</a>).</td></tr>
+<tr><td>A converted model is not the model that the user gave, so <code>generate</code> output from the same envelope
+can depend on the guest (SEL-4).</td>
+<td>The conversion refuses to lose data unless the user gives <code>--allow-model-loss</code> for that command.
+The converted envelope has its own deterministic revision, and the <code>extension.model_converted</code>
+diagnostic and the equal <code>conversion</code> report object link the run to the original revision and payload
+digest.</td></tr>
+<tr><td>The output folder holds no record of the conversion, so a reader of the output alone cannot see that the
+guest got a converted model (SEL-4, E).</td>
+<td>Decided trade-off. The guest's sidecars name the converted revision, <code>sha256:</code> of the converted
+payload, not the revision that the user gave. Keep the JSON report with the output when the link to the original
+model matters.</td></tr>
+<tr><td>The probe session adds a worker start and a compile of an 11 MB module to each command.</td>
+<td>Measured in the acceptance task. The worker host hashes the module once and runs the same bytes in both
+sessions.</td></tr>
+<tr><td>The descriptor schema <code>2.0.0-draft.2</code> belongs to the shared distribution library, and the
+<code>core-wasm</code> runtime name and <code>executionProfile</code> member are new there.</td>
+<td>Unknown critical members fail closed. The decoder checks only the members this route needs and names the
+schema version exactly.</td></tr>
+<tr><td>No authenticated publisher: a pin over a tampered release is still "valid".</td>
+<td>The pin digests are the explicit trust root, as for every pin today. Attestation verification is
+<code>add-extension-trust</code>.</td></tr>
+<tr><td>The worker host lowers a memory maximum above 4,096 pages instead of refusing it (FIT-5), so a module can
+run with less memory than it declares.</td>
+<td>The host refuses an initial memory above the ceiling with <code>extension.memory_limit</code>, and a guest cannot
+grow its memory past 4,096 pages, so it cannot use more host memory.</td></tr>
+<tr><td>A local pin without a descriptor skips the descriptor checks (PIN-2).</td>
+<td>The host writes the <code>extension.descriptor_checks_skipped</code> warning, and an installed pin must name
+its descriptor. finos/morphir-moonbit#292 explores explicit trust for local modules.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p><em>Toolchain.</em> The MoonBit toolchain moves from 0.10.17 to 0.10.18, with <code>moonbitlang/async</code>
+0.22.7, on branch <code>DamianReeves/async-0-22-7</code>. The implementation of this change follows that toolchain
+and adds no 0.10.17 pins.</p>
+<p>No pin migration is needed: contract <code>0.2.0</code> pins keep their shape, and MoonBit guest requests do not
+change. A compile without <code>--model-format</code> offers both tuples, as on main; with the MoonBit guest it
+still agrees on Ion. A <code>generate</code> whose envelope tuple the guest does not claim now converts the model
+(SEL-4) instead of failing with <code>extension.tuple_unavailable</code>. A conversion that would lose data fails
+with <code>data.lossy_conversion</code>, exit 2, unless the user gives <code>--allow-model-loss</code>. A directory
+compile no longer reads files that Git ignores (the global excludes file, <code>.git/info/exclude</code> and
+the <code>.gitignore</code> files from the work-tree root down) or that a <code>.morphirignore</code> ignores;
+<code>--ignore-mode contained</code> reads only the ignore files in the tree (SRC-4). A local pin for a
+<code>morphir-bytes-v1</code> module without a descriptor runs with a warning (PIN-2). A
+guest whose first agreed tuple is not the selected tuple now fails with <code>extension.agreement_mismatch</code>.
+To roll back, revert the change.</p>
+
+<h2 id="scope">Scope after the worker host</h2>
+<p>This design was written against main at <code>fe9ca3dc</code>. Since then, main runs every extension command on
+the worker host (finos/morphir-moonbit#276 to #280 and #284). On 2026-10-31 Damian Reeves decided to cut this
+change down to the work that main does not do yet, on one condition: every requirement in the three spec deltas
+must still be met. This section shows how each requirement is met at <code>af16f0be</code>, the head of main when
+this section was written.</p>
+<p>Consider a Gleam compile on main today. The CLI probes the guest, reads the claimed language
+<code>gleam</code> and the claim <code>multiDocument</code>, offers the Ion tuple and then the JSON tuple, and the
+Gleam guest compiles with JSON. Thus much of gap 1 is done. But the CLI names the documents relative to the
+directory that the user gave, so <code>compile src</code> sends <code>app/money.gleam</code>, and the Gleam 0.4.0
+guest then names the module <code>money</code> (SRC-1). The CLI also has no <code>--language</code>, no
+<code>--source-base</code>, no conversion for <code>generate</code> and no <code>selection</code> report object. Gap
+2 is mostly done in a different way: a contract <code>0.2.0</code> pin names a WASM module with no
+<code>manifest.ion</code>, and the MoonBit worker host checks the module structure itself. The remaining work is
+in the open tasks of <code>tasks.md</code>.</p>
+<p>Each row of the table below gives a requirement one of four states:</p>
+<ul>
+<li><strong>Met by main:</strong> code on main does what the requirement says, and the named test proves it.</li>
+<li><strong>Partly met; task:</strong> main does part of it, with the evidence shown, and an open task does the
+rest.</li>
+<li><strong>Task:</strong> main does not do it, and an open task will.</li>
+<li><strong>Open question:</strong> the requirement describes behavior that main replaced on purpose, and the
+behavior of main is not equivalent. The requirement is not deleted or rewritten. A question in
+<a href="#open-questions">Open questions</a> asks Damian to choose, and task 5.1 applies the answer.</li>
+</ul>
+<p>The first version of this table had 40 requirements: 2 met by main, 27 covered by tasks and 11 open questions
+(FIT-1 to FIT-5). On 2026-10-31 Damian Reeves answered all five, and PIN-2, and the specs now follow those
+answers:</p>
+<ul>
+<li><strong>FIT-1:</strong> main's error codes everywhere. "Probe session before an operation", "Descriptor
+integrity" and the descriptor and pin refusals use <code>extension.describe_failed</code>,
+<code>extension.digest_mismatch</code>, <code>extension.descriptor_invalid</code> and
+<code>extension.pin_invalid</code>. Every source refusal uses <code>extension.input_invalid</code>; the five new
+source codes and the task parts that added them are gone.</li>
+<li><strong>FIT-2:</strong> "Operations from claims" follows main: a compile operation is
+<code>morphir.frontend.compile</code> or <code>compileModel</code>, and a generate operation is
+<code>morphir.backend.generate</code> or <code>generateModel</code>. finos/morphir-moonbit#293 decides the
+long-term rule.</li>
+<li><strong>FIT-3:</strong> "Session uses the first agreed tuple" and "Claims stay the same across sessions" describe
+main's interactive session, with <code>extension.agreement_mismatch</code> and <code>extension.claims_mismatch</code>,
+both exit 2. The check that the first agreed tuple is the tuple selected from the probe claims stays; task 1.13
+adds it.</li>
+<li><strong>FIT-4:</strong> "Directory input" keeps main's skip list. Three new requirements added ignore files:
+"Ignore files in the source walk", "Precedence of ignore files" and "Only ignore files in the tree" (task 2.6).
+The answers to IGN-1 to IGN-5 then rewrote them (see below).</li>
+<li><strong>FIT-5, first question:</strong> the WASM module requirements describe main's worker host. "Two artifact
+forms" became "Contract 0.2.0 pin for a WASM module", and "Same session behavior for both forms" became "Same
+session behavior for every worker kind". The memory rule of "Execution profile structure" moved to a new
+requirement, "Memory ceiling of a WASM module".</li>
+<li><strong>PIN-2 (FIT-5, second question):</strong> option C. A new requirement, "Descriptor for a
+morphir-bytes-v1 pin", needs the descriptor in an installed pin and warns for a local pin without one (task
+3.6).</li>
+</ul>
+<p>On the same day Damian Reeves answered IGN-1 to IGN-5 and PIN-3:</p>
+<ul>
+<li><strong>IGN-1 and IGN-5:</strong> the spec stays. "Precedence of ignore files" now also orders the global
+excludes file and <code>.git/info/exclude</code> before the ignore files of the directories. A new requirement,
+"Ignore files filter only the walk", holds the IGN-5 rule and its scenarios.</li>
+<li><strong>IGN-2 and IGN-3:</strong> match Git. "Only ignore files in the tree" is replaced by three requirements:
+"Git ignore layers" (the default), "Ignore layer switches" (<code>--skip-ignore-layer</code>) and "Contained ignore
+mode" (<code>--ignore-mode contained</code>). "Ignore files in the source walk", "Directory input" and
+"Deterministic order" are rewritten to match.</li>
+<li><strong>IGN-4:</strong> the spec stays; <a href="#follow-ups">Follow-up changes</a> records the project-wide
+rule.</li>
+<li><strong>PIN-3:</strong> the codes of "Descriptor for a morphir-bytes-v1 pin" stay.</li>
+</ul>
+<p>Of the 48 requirements now, 12 are met by main and 36 are covered by tasks (13 of them partly met by main). No
+requirement is an open question. Paths are relative to the repository root; tests are named by their title and their
+file in the same package.</p>
+
+<h3 id="scope-claim-selection">extensions/claim-selection</h3>
+<table>
+<thead><tr><th>Requirement</th><th>State</th><th>Evidence on main</th><th>Task</th></tr></thead>
+<tbody>
+<tr><td>Probe session before an operation</td><td>Met by main</td>
+<td><code>host.probe</code> runs before the offer (<code>apps/morphir/cli/extension.mbt:1409-1416</code>). Describe is
+the probe, so a failed probe ends like a failed describe. Tests: "compile on the model line publishes the model and
+reports the session" (<code>extension_session_wbtest.mbt:362</code>, method order) and "probe of a guest that does
+not describe: describe_failed and no claims" (<code>pkgs/morphir-host/worker/host_driver_test.mbt:127</code>). The
+scenario uses main's code <code>extension.describe_failed</code> (FIT-1).</td>
+<td>1.2 (done)</td></tr>
+<tr><td>Language from claims</td><td>Partly met; task</td>
+<td>The claimed language is sent (<code>extension_language</code>, <code>extension.mbt:428</code>; test "compile
+selects sources by the claimed file extensions and sends the claimed language",
+<code>extension_wbtest.mbt:240</code>). Main takes the first language whose extensions cover every document, and
+has no <code>--language</code>. The refusal without it is <code>extension.input_invalid</code> (FIT-1).</td>
+<td>1.3</td></tr>
+<tr><td>Operations from claims</td><td>Met by main</td>
+<td>An unclaimed operation exits 2 with <code>extension.capability_unavailable</code> before any call
+(<code>extension_compile_offer</code> <code>extension.mbt:607</code>, <code>extension_generate_offer</code>
+<code>:631</code>, <code>Offer::select</code> <code>pkgs/morphir-host/worker/negotiation.mbt:74-88</code>; tests
+<code>extension_wbtest.mbt:386</code> and "an unclaimed operation exits 2 and starts no operation",
+<code>extension_session_wbtest.mbt:980</code>). The requirement names the claim <code>frontend.compile</code>; main
+also compiles a frontend that claims only <code>compileModel</code> (same test, <code>:386</code>), as the rewritten
+requirement says (FIT-2).</td>
+<td>none</td></tr>
+<tr><td>Offer every supported model tuple</td><td>Met by main</td>
+<td><code>ModelOperation::host_tuples</code> and <code>Offer::select</code>
+(<code>negotiation.mbt:59-110</code>); no wire field marks the default. Tests "an operation that the extension does
+not claim is refused before any call" (<code>extension_wbtest.mbt:386</code>, Ion before JSON) and "model tuple
+negotiation: the CLI offers Ion, then JSON, and a JSON-only guest compiles with JSON"
+(<code>extension_session_wbtest.mbt:499</code>, the recorded offer).</td><td>1.5 (done)</td></tr>
+<tr><td>Negotiated model tuple</td><td>Partly met; task</td>
+<td>A JSON-only guest compiles with JSON and a guest with both tuples gets Ion
+(<code>extension_session_wbtest.mbt:499</code>). An empty selection is refused before the session
+(<code>negotiation.mbt:97-103</code>; test "offer selection picks the protocol line and tuple from the claims",
+<code>session_test.mbt:916</code>). The message does not name the claimed tuples.</td><td>1.5 (done), 1.6</td></tr>
+<tr><td>Required model tuple</td><td>Partly met; task</td>
+<td>Only the required tuple is offered, and an unclaimed one is refused before the session (test "required model
+tuple: --model-format json offers only JSON, which an Ion-only guest refuses",
+<code>extension_session_wbtest.mbt:540</code>). The message does not name the claimed tuples.</td>
+<td>1.6</td></tr>
+<tr><td>Generate offer from the envelope</td><td>Task</td>
+<td>Main offers only the envelope's tuple (<code>extension_generate_offer</code>,
+<code>extension.mbt:631-660</code>; test "a model generate sends the envelope's tuple and refuses another
+--ir-version", <code>extension_session_wbtest.mbt:914</code>).</td><td>1.7</td></tr>
+<tr><td>Prefer a lossless conversion</td><td>Task</td><td>Not on main.</td><td>1.7, 1.8</td></tr>
+<tr><td>Host conversion for generate</td><td>Task</td><td>Not on main.</td><td>1.8, 1.9</td></tr>
+<tr><td>One conversion in the host library</td><td>Task</td><td>Not on main. The codec registry that it uses is
+<code>pkgs/morphir-engine/data/registry.mbt</code>.</td><td>1.8</td></tr>
+<tr><td>Identity of a converted model</td><td>Task</td><td>Not on main.</td><td>1.8</td></tr>
+<tr><td>Conversion follows the loss rules</td><td>Task</td><td>Not on main.</td><td>1.8, 1.9</td></tr>
+<tr><td>Explicit permission to lose model data</td><td>Task</td><td>Not on main.</td><td>1.9</td></tr>
+<tr><td>Report records the conversion</td><td>Task</td><td>Not on main.</td><td>1.9, 1.10</td></tr>
+<tr><td>Conversion diagnostic</td><td>Task</td><td>Not on main. The worker <code>Diagnostic</code> has the
+<code>info</code> severity and <code>data</code> already.</td><td>1.10</td></tr>
+<tr><td>Conversion diagnostic data</td><td>Task</td><td>Not on main.</td><td>1.8, 1.10</td></tr>
+<tr><td>Conversion reported on stderr, not in the output</td><td>Task</td><td>Not on main. Main writes each
+extension diagnostic as one stderr line (<code>extension_diagnostic_line</code>).</td><td>1.10</td></tr>
+<tr><td>Session uses the first agreed tuple</td><td>Partly met; task</td>
+<td>An agreement must hold only offered tuples in offer order, and the session uses the first (<code>agreement</code>,
+<code>pkgs/morphir-host/worker/session.mbt:538-560</code>; tests "agreement follows the offer: an agreement out of the
+host's order is agreement_mismatch" and "... a tuple that the host did not offer is agreement_mismatch",
+<code>session_test.mbt:607</code> and <code>:621</code>), and both refusals exit 2
+(<code>apps/morphir/docs/extension.md:129-133</code>), as the rewritten requirement says (FIT-3). The host compares
+the claims first (<code>session.mbt:490</code>). Main does not compare the first agreed tuple with the tuple selected
+from the probe claims: a guest that claims both tuples and agrees only on JSON compiles with JSON.</td>
+<td>1.13</td></tr>
+<tr><td>Generate target from claims</td><td>Partly met; task</td>
+<td><code>extension_target</code> (<code>extension.mbt:789-810</code>): the only claimed target is the default (test
+"an unsuccessful answer and a failed shutdown publish nothing", <code>extension_session_wbtest.mbt:1144</code>),
+several targets need <code>--target</code>, and an unclaimed target is
+<code>extension.capability_unavailable</code>. No test proves the two refusals.</td><td>1.4</td></tr>
+<tr><td>Claims stay the same across sessions</td><td>Met by main</td>
+<td>The operation session sends no describe. The host compares the <code>initialize</code> answer with the probe
+claims (<code>compare_claims</code>, <code>pkgs/morphir-host/worker/wire.mbt:395</code>;
+<code>session.mbt:490</code>) and fails with <code>extension.claims_mismatch</code>, exit 2 (tests "claims drift:
+another version or a dropped capability fails activation", <code>session_test.mbt:766</code>, and "claims drift
+through the host: claims_mismatch, shutdown and exit, no operation", <code>host_driver_test.mbt:335</code>). No
+operation is sent, so nothing is published. The requirement uses main's code and exit status (FIT-3).</td>
+<td>none</td></tr>
+<tr><td>Report records the selection</td><td>Task</td><td>Not on main.</td><td>1.11</td></tr>
+</tbody>
+</table>
+
+<h3 id="scope-source-documents">extensions/source-documents</h3>
+<table>
+<thead><tr><th>Requirement</th><th>State</th><th>Evidence on main</th><th>Task</th></tr></thead>
+<tbody>
+<tr><td>Directory input</td><td>Partly met; task</td>
+<td>Main walks a directory and reads only files with a claimed extension (<code>extension_sources</code>,
+<code>extension.mbt:509-605</code>; test <code>extension_wbtest.mbt:240</code>, where <code>README.md</code> is not
+read). It skips hidden directories and <code>.git</code>, <code>.mooncakes</code>, <code>_build</code>,
+<code>node_modules</code> and <code>.venv</code> (<code>extension.mbt:31-33</code>; test "the source walk skips
+hidden, build and dependency directories", <code>extension_wbtest.mbt:281</code>), as the rewritten requirement
+says (FIT-4). It refuses an empty tree with <code>extension.input_invalid</code> (<code>extension.mbt:432</code>),
+the code of the requirement (FIT-1). It uses the extensions of every claimed language, not of the selected
+one.</td>
+<td>1.3, 2.1</td></tr>
+<tr><td>Ignore files in the source walk</td><td>Task</td><td>Not on main: the walk reads no ignore file. Task 2.6
+uses the library of moonrockz/moonx-tools#16.</td><td>2.6</td></tr>
+<tr><td>Precedence of ignore files</td><td>Task</td><td>Not on main (IGN-1).</td><td>2.6</td></tr>
+<tr><td>Git ignore layers</td><td>Task</td><td>Not on main (IGN-2, IGN-3).</td><td>2.6</td></tr>
+<tr><td>Ignore layer switches</td><td>Task</td><td>Not on main (IGN-2).</td><td>2.6</td></tr>
+<tr><td>Contained ignore mode</td><td>Task</td><td>Not on main (IGN-2).</td><td>2.6</td></tr>
+<tr><td>Ignore files filter only the walk</td><td>Task</td><td>Not on main: main reads a named file, but it has no
+ignore files to test against (IGN-5).</td><td>2.6</td></tr>
+<tr><td>Relative document URIs</td><td>Task</td>
+<td>URIs are relative to the directory that the user gave: test <code>extension_wbtest.mbt:240</code> expects
+<code>app.gleam</code> for <code>src/app.gleam</code>. There is no <code>--source-base</code>. The request has no
+<code>sources.root</code> (<code>extension_compile_params</code>, <code>extension.mbt:830-886</code>). An input
+outside the source base is <code>extension.input_invalid</code> (FIT-1).</td>
+<td>2.2</td></tr>
+<tr><td>Safe URI segments</td><td>Task</td>
+<td>Main refuses names with <code>\</code>, <code>/</code>, <code>:</code> or NUL, and <code>.</code> and
+<code>..</code> (<code>extension_source_name</code>, <code>extension.mbt:490</code>; test "directory names that
+would make a URI unsafe are refused", <code>extension_wbtest.mbt:297</code>), and sends other names without
+encoding, so <code>my module.gleam</code> keeps a raw space. A duplicate URI is
+<code>extension.input_invalid</code> (FIT-1).</td><td>2.2</td></tr>
+<tr><td>Single file input</td><td>Partly met; task</td>
+<td>The rule without a source base is <code>extension_document_uri</code> (<code>extension.mbt:393</code>; tests
+"document identities keep relative nesting and never expose absolute host paths",
+<code>extension_wbtest.mbt:490</code>, and <code>extension_session_wbtest.mbt:362</code>). There is no
+<code>--source-base</code>.</td><td>2.2</td></tr>
+<tr><td>Deterministic order</td><td>Task</td>
+<td>Main sorts the names in each directory by UTF-16 code unit (<code>extension_name_order</code>,
+<code>extension.mbt:471</code> and <code>:559</code>). That is not URI byte order: main puts <code>a/b</code>
+before <code>a-c</code>. No test compares the request bytes of two runs.</td><td>2.1, 2.4</td></tr>
+<tr><td>Tree limits</td><td>Partly met; task</td>
+<td>1,024 files, 2 MiB in total, 16,384 entries and depth 32 (<code>extension.mbt:21-26</code>; test "the source
+snapshot enforces its file, byte, entry and depth limits", <code>extension_wbtest.mbt:314</code>). The 4 MiB framed
+request (<code>Call::make</code>, <code>negotiation.mbt:320-337</code>; test "request too large: a compile request
+over 4 MiB is refused when it is made", <code>session_test.mbt:723</code>). The code is
+<code>extension.input_invalid</code>, as the requirement says (FIT-1), and the messages name the limit. There is no
+1 MiB bound for one file.</td><td>2.1</td></tr>
+<tr><td>Links and special files</td><td>Partly met; task</td>
+<td>Refused (<code>extension.mbt:581</code>; test "a symbolic link in the sources is refused",
+<code>extension_wbtest.mbt:374</code>), with <code>extension.input_invalid</code> (FIT-1). The message names the path
+from the input, not the relative path.</td>
+<td>2.1</td></tr>
+<tr><td>UTF-8 source text</td><td>Partly met; task</td>
+<td>Refused (<code>extension.mbt:537</code>) with <code>extension.input_invalid</code> (FIT-1). The message names the
+file path, not the URI. No test found.</td><td>2.1</td></tr>
+<tr><td>Multi-document permission</td><td>Met by main</td>
+<td><code>extension_document_count</code> (<code>extension.mbt:456-467</code>); test "Python 0.4.1 with two
+modules: a frontend without multiDocument is refused" (<code>extension_session_wbtest.mbt:588</code>). The test
+uses two Python files, not two MoonBit files; the rule is the same.</td><td>2.3 (done)</td></tr>
+<tr><td>Context digest unchanged</td><td>Partly met; task</td>
+<td><code>contextDigest</code> hashes only the package and the options (<code>extension.mbt:853-863</code>). No test
+proves it.</td><td>2.4</td></tr>
+</tbody>
+</table>
+
+<h3 id="scope-core-wasm-modules">extensions/core-wasm-modules</h3>
+<table>
+<thead><tr><th>Requirement</th><th>State</th><th>Evidence on main</th><th>Task</th></tr></thead>
+<tbody>
+<tr><td>Contract 0.2.0 pin for a WASM module</td><td>Met by main</td>
+<td>A contract <code>0.2.0</code> pin names a WASM module and its runtime, with no manifest
+(<code>ExtensionPin::decode</code>, <code>extension.mbt:205-258</code>; test "a contract 0.2.0 pin decodes into a
+worker specification", <code>extension_wbtest.mbt:35</code>). An unknown member is <code>extension.pin_invalid</code>
+and named (test "a pin with an unknown field, a relative path or no digest is refused",
+<code>extension_wbtest.mbt:62</code>). The <code>0.1.0-draft.1</code> pins are <code>extension.pin_retired</code>
+(test "old pin contracts are retired with a pointer to the migration", <code>extension_wbtest.mbt:104</code>, and
+"refusals before any worker starts exit 2", <code>extension_session_wbtest.mbt:1291</code>). Rewritten from "Two
+artifact forms" (FIT-5).</td><td>none</td></tr>
+<tr><td>Descriptor for a morphir-bytes-v1 pin</td><td>Partly met; task</td>
+<td>A local pin without a descriptor runs (the descriptor is optional, <code>extension.mbt:242-254</code>), but with
+no warning. Main does not run installed extensions yet, so it has no installed-pin refusal. New for PIN-2.</td>
+<td>3.6</td></tr>
+<tr><td>Descriptor integrity</td><td>Met by main</td>
+<td>A read of at most 1 MiB, and the digest is checked before decoding and before any worker
+(<code>extension_descriptor</code>, <code>extension.mbt:1098-1120</code>; test "a bad descriptor is refused before
+any worker starts", <code>extension_session_wbtest.mbt:1040</code>). The requirement uses main's code
+<code>extension.digest_mismatch</code> (FIT-1).</td><td>3.2 (done)</td></tr>
+<tr><td>Descriptor content</td><td>Task</td>
+<td>Main checks only that one entry has the artifact digest and valid claims (<code>extension.mbt:1135-1153</code>),
+with <code>extension.descriptor_invalid</code>. A <code>0.2.0</code> pin has no <code>extensionId</code> or
+<code>version</code>, so the requirement compares the descriptor identity with the live claims (FIT-5).</td>
+<td>3.1</td></tr>
+<tr><td>Critical members</td><td>Task</td><td>Not on main.</td><td>3.1</td></tr>
+<tr><td>Verified staging</td><td>Met by main</td>
+<td>The worker host hashes the bytes that it read and runs only those bytes (<code>VerifiedArtifact::check</code>,
+<code>pkgs/morphir-host/worker/process/staging.mbt:49-60</code>; <code>module_bytes</code>,
+<code>wasm/native/launcher.mbt:85-98</code>; <code>apps/morphir/docs/extension.md:93-96</code>), with a bound of
+512 MiB (<code>staging.mbt:3</code>). Tests "verified bytes keep the digest of the bytes that were read", "a digest
+mismatch refuses the bytes that were read" and "bytes above the artifact limit are refused before hashing"
+(<code>process/staging_test.mbt:10</code>, <code>:19</code> and <code>:39</code>). Rewritten to the worker host
+(FIT-5): no Node helper, no 128 MiB bound and no no-follow read.</td><td>none</td></tr>
+<tr><td>Execution profile structure</td><td>Met by main</td>
+<td>The MoonBit worker host checks the module before instantiation (<code>WasmModule::classify</code>,
+<code>pkgs/morphir-host/worker/wasm/profile.mbt:154-178</code>; <code>PreparedModule::prepare</code>,
+<code>wasm/prepare.mbt</code>): only the three byte imports with their exact types, and <code>handle: () -&gt;
+i32</code>; another import or signature is <code>extension.abi_unsupported</code>, and a declared ABI that differs is
+<code>extension.abi_mismatch</code>. Tests in <code>wasm/classify_test.mbt:112-202</code> and "missing export: a
+module without handle is refused and the message names the export" (<code>host_driver_test.mbt:733</code>).
+Rewritten to the worker host (FIT-5).</td><td>none</td></tr>
+<tr><td>Memory ceiling of a WASM module</td><td>Met by main</td>
+<td>No shared, 64-bit or second memory; a larger maximum, or none, becomes 4,096 pages; an initial memory above it
+is <code>extension.memory_limit</code> (<code>PreparedModule::prepare</code>, <code>wasm/prepare.mbt</code>;
+<code>host_driver.mbt:261-267</code>). Tests "unsupported WASM features: a shared memory is refused at load, before
+any request" (<code>wasm/native/launcher_test.mbt:190</code>), "memory ceiling: a larger
+maximum is lowered and a smaller one kept" and "memory ceiling: an initial memory above the ceiling is refused"
+(<code>wasm/memory_test.mbt:25</code> and <code>:48</code>), and the other tests of
+<code>wasm/memory_test.mbt:12-108</code>. Moved out of "Execution profile structure" (FIT-5).</td>
+<td>none</td></tr>
+<tr><td>Descriptor claims equal live claims</td><td>Met by main</td>
+<td><code>extension_descriptor_matches</code> (<code>extension.mbt:1155-1165</code>) fails with
+<code>extension.claims_mismatch</code>, exit 2, before any operation (test "descriptor claims that differ from the
+live describe exit 2", <code>extension_session_wbtest.mbt:1001</code>). The claims include the extension ID and the
+version; the pin identity part is gone (FIT-5).</td><td>3.3 (done)</td></tr>
+<tr><td>Claims are not authority</td><td>Partly met; task</td>
+<td>A declared ABI never widens the imports (test "a declaration does not widen the imports: a declared Extism
+module still may not import env", <code>wasm/classify_test.mbt:202</code>). The report has no
+<code>gitCommit</code> and no <code>origin: "claimed"</code> (<code>extension_worker_json</code>,
+<code>extension.mbt:1207-1224</code>).</td><td>3.4</td></tr>
+<tr><td>Same session behavior for every worker kind</td><td>Met by main</td>
+<td>Every worker kind uses one session path (test "same guest, two worker kinds: the host sends the same messages
+and returns the same result", <code>host_driver_test.mbt:417</code>), and the deadline exits 124 with no output
+(test "the session deadline exits 124", <code>extension_session_wbtest.mbt:1267</code>, with a process worker on
+the shared path). Rewritten from "Same session behavior for both forms" (FIT-5).</td><td>none</td></tr>
+</tbody>
+</table>
+
+<h3 id="scope-tasks">How the tasks changed</h3>
+<p>Of the 29 tasks of the first breakdown, 6 are marked done because main does the work and a named test proves it
+(1.1, 1.2, 1.5, 2.3, 3.2 and 3.3 in the new numbering). 6 are removed, 17 are kept and rewritten for the worker
+host, and 5 are added (1.6, 1.7, 2.4, 3.4 and 5.1), so <code>tasks.md</code> has 28 tasks. The removed tasks
+are:</p>
+<table>
+<thead><tr><th>Removed task</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Old 1.6: accept only an agreement whose first tuple is the probe selection, exit 1</td><td>Main's session is
+interactive: it reads the <code>initialize</code> answer before it sends the operation, checks the offer and the
+order, and exits 2. Damian Reeves kept the check against the probe selection, with exit 2 (FIT-3); new task 1.13
+adds it.</td></tr>
+<tr><td>Old 2.4: tree limits and the 4 MiB check last</td><td>Main enforces the limits and the framed request
+check. The 1 MiB file bound and the limit codes that remain are part of task 2.1.</td></tr>
+<tr><td>Old 2.5: move <code>extism_sources</code> to the collector</td><td>Main has no
+<code>apps/morphir/cli/extism.mbt</code>. The Extism Python guest compiles through <code>extension_sources</code> on
+the worker host (<code>extension_session_wbtest.mbt:588</code>), so the two routes cannot drift.</td></tr>
+<tr><td>Old 3.1: the module form of the <code>0.1.0-draft.1</code> pin</td><td>Main retired the
+<code>0.1.0-draft.1</code> pins. A contract <code>0.2.0</code> pin names a WASM module without a manifest. PIN-1
+is restated for that pin (FIT-5).</td></tr>
+<tr><td>Old 3.4: staging in <code>apps/morphir/build-provider/extension.mts</code></td><td>The CLI has no Node helper.
+The worker host runs only the bytes that it hashed (<code>VerifiedArtifact::check</code>).</td></tr>
+<tr><td>Old 3.5: <code>--module FILE</code> in <code>node-mep-cli</code>, <code>node-mep-stdio</code> and
+<code>node-mep-worker</code>, and the check in <code>wasm-memory.mts</code></td><td>The MoonBit worker host checks
+the module structure (finos/morphir-moonbit#279), so the Node host is not in this route.</td></tr>
+</tbody>
+</table>
+<p>The kept tasks now name the in-memory workers of <code>extension_session_wbtest.mbt</code> in place of the
+stand-in runtime of <code>apps/morphir/scripts/test-extension-provider.ts</code>, which main no longer has. Task 4.2
+writes a contract <code>0.2.0</code> pin with a <code>wasm</code> runtime. Decisions PIN-1, PIN-2 and INT-1, the
+walkthrough diagram, the example pin and the risks were restated for the worker host on 2026-10-31 (FIT-5 and
+PIN-2).</p>
+<p>The answers of 2026-10-31 changed the tasks again. Three tasks are added: 1.13 (the agreement must start with
+the selected tuple, FIT-3), 2.6 (ignore files, FIT-4) and 3.6 (the descriptor rule for
+<code>morphir-bytes-v1</code> pins, PIN-2), so <code>tasks.md</code> has 31 tasks, 6 of them done. Five tasks are
+rewritten for FIT-1: 1.3 and 1.12 refuse several claimed languages without <code>--language</code> with
+<code>extension.input_invalid</code>, 2.1 keeps <code>extension.input_invalid</code> for every source refusal and
+adds only the 1 MiB bound, the messages and the order, 2.5 documents messages instead of codes, and 3.1 uses
+<code>extension.descriptor_invalid</code>. No task adds <code>extension.source_required</code>,
+<code>extension.resource_limit</code>, <code>extension.invalid_source_path</code>,
+<code>extension.invalid_source_encoding</code> or <code>extension.language_required</code>.</p>
+<p>The answers to IGN-1 to IGN-5 and PIN-3 changed task 2.6: it follows Git's layers by default, adds
+<code>--ignore-mode</code> and <code>--skip-ignore-layer</code>, and uses the library of moonrockz/moonx-tools#16
+in place of <code>moonbit-community/ignore</code>, so it waits for that library. Task 3.6 keeps its codes. Task 4.3
+runs with <code>--ignore-mode contained</code>. Task 5.1 is done: this update applied the answers, so 7 of the 31
+tasks are done.</p>
+<p>The last update of 2026-10-31 closed the open points "Gleam relative nesting" and "Release availability" and
+recorded the confirmation of the named-directory rule (see <a href="#answered">Answered questions</a>). Tasks 4.1
+to 4.3 now use the released module and keep the build from <code>191a35e</code> as the fallback. Task 5.2 records
+this update, so 8 of the 32 tasks are done.</p>
+
+<h2 id="follow-ups">Follow-up changes</h2>
+<p>Decided by Damian Reeves on 2026-10-31 (IGN-4): this change applies <code>.morphirignore</code> only to
+<code>morphir extension compile</code>. A separate change makes <code>.morphirignore</code> a project-wide rule for
+every command that walks a project: the built-in compile, workspace discovery, watch, and the task graph of
+finos/morphir-moonbit#293 and finos/morphir#1121, which can use the same rules for task inputs. All of them use the
+shared library of <a href="https://github.com/moonrockz/moonx-tools/issues/16">moonrockz/moonx-tools#16</a>, with
+the same layers, the same contained mode and the same precedence, so that every command reads the same files. That
+change starts after task 2.6 proves the library in this command.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<h3 id="fit">Requirements that do not fit main</h3>
+<p>Damian Reeves answered FIT-1 to FIT-5 on 2026-10-31 (see <a href="#answered">Answered questions</a>). No FIT
+question is open.</p>
+<h3 id="ign">Ignore files</h3>
+<p>Damian Reeves answered IGN-1 to IGN-5 on 2026-10-31 (see <a href="#answered">Answered questions</a>). No
+ignore-file question is open.</p>
+<h3 id="pin-codes">Codes of the descriptor rule</h3>
+<p>Damian Reeves answered PIN-3 on 2026-10-31 (see <a href="#answered">Answered questions</a>). No question about
+the codes is open.</p>
+<h3 id="other-open">Other open questions</h3>
+<ol>
+<li><strong>Percent-encoding (SRC-3).</strong> It is not yet shown that the Gleam guest decodes encoded segments.
+If it does not, the collector can refuse such names instead, as main does now for <code>:</code> and
+<code>\</code>.</li>
+<li><strong>Overlap with the worker host.</strong> Which change owns the archived source-selection requirement (see
+<a href="#worker-host">Relation to the worker host</a>)?</li>
+</ol>
+<h3 id="answered">Answered questions</h3>
+<ol>
+<li><strong>Default tuple (SEL-2).</strong> Damian Reeves decided on 2026-10-30: the host offers every supported
+tuple in preference order, the first is the default, and the session uses the first agreed tuple. An explicit
+<code>--model-format</code> offers only that tuple. Only an empty intersection is an error. Main does this
+(finos/morphir-moonbit#284).</li>
+<li><strong>Agreement code (SEL-2).</strong> Damian Reeves decided on 2026-10-31 that an agreement that differs from
+the probe claims has a new code, <code>extension.agreement_mismatch</code>, not
+<code>extension.claims_changed</code>. Main has the code, with exit 2 (FIT-3).</li>
+<li><strong>Conversion for <code>generate</code> (SEL-4).</strong> Damian Reeves decided on 2026-10-31 that the host
+converts the model when the guest does not claim the envelope's tuple, and then decided the details: the host
+library converts with the engine codec registry for every front end; both directions, JSON to Ion always
+lossless, Ion to JSON only when lossless unless <code>--allow-model-loss</code>; the converted model keeps its
+<code>modelId</code> and gets a <code>sha256:</code> revision of its payload; a lossy conversion without the flag is
+<code>data.lossy_conversion</code>, exit 2; and the host reports the conversion. See <a href="#sel-4">SEL-4</a>.</li>
+<li><strong>Lossless preference (SEL-4).</strong> Damian Reeves decided on 2026-10-31 that, among the claimed tuples
+that the host can convert to, the host prefers the first one in host order whose conversion is lossless, and takes
+the first convertible one only when none is lossless.</li>
+<li><strong>Conversion diagnostic in place of a record file (SEL-4, E).</strong> Damian Reeves decided on
+2026-10-31 that the host writes no conversion record file. It reports the conversion as an <code>info</code>
+diagnostic with the code <code>extension.model_converted</code>, in the report diagnostics and as one stderr line,
+with <code>from</code> and <code>to</code> (each with <code>profile</code>, <code>codec</code>,
+<code>revision</code> and <code>payloadSha256</code>) and <code>dropped</code> in its <code>data</code>. This
+replaces two earlier answers of the same day: the members of <code>mep/conversion.json</code> (now the members of
+the diagnostic <code>data</code>) and <code>extension.result_invalid</code> for a guest artifact at that path (no
+longer needed, because the path is not reserved).</li>
+<li><strong>Scope after the worker host.</strong> Damian Reeves decided on 2026-10-31 to cut the change to the work
+that main does not do yet, as long as every requirement is still met. See <a href="#scope">Scope after the worker
+host</a>.</li>
+<li><strong>Pin contract version (PIN-1).</strong> No longer applies: main retired the <code>0.1.0-draft.1</code>
+pins. PIN-1 is restated for the contract <code>0.2.0</code> pin (FIT-5).</li>
+<li id="fit-1"><strong>FIT-1. Error codes of the worker host.</strong> Damian Reeves decided on 2026-10-31: use
+main's codes everywhere, <code>extension.describe_failed</code> (not <code>extension.incomplete_session</code>),
+<code>extension.digest_mismatch</code> (not <code>extension.identity_mismatch</code>),
+<code>extension.descriptor_invalid</code> and <code>extension.pin_invalid</code> (not
+<code>extension.invalid_descriptor</code> and <code>extension.invalid_pin</code>). Source refusals use main's
+<code>extension.input_invalid</code>; the five planned source codes (<code>extension.source_required</code>,
+<code>extension.resource_limit</code>, <code>extension.invalid_source_path</code>,
+<code>extension.invalid_source_encoding</code>, <code>extension.language_required</code>) and the task parts that
+added them are dropped.</li>
+<li id="fit-2"><strong>FIT-2. Operations from claims.</strong> Damian Reeves decided on 2026-10-31: follow main for
+now. A compile operation is allowed when the guest claims <code>morphir.frontend.compile</code> or
+<code>compileModel</code>, and a generate operation when it claims <code>morphir.backend.generate</code> or
+<code>generateModel</code>. finos/morphir-moonbit#293 (a task graph for high-level commands across extensions,
+based on <code>docs/design/draft/extensions/tasks.md</code> in finos/morphir) is where the long-term rule is
+decided.</li>
+<li id="fit-3"><strong>FIT-3. The interactive session.</strong> Damian Reeves decided on 2026-10-31: "Session uses
+the first agreed tuple" and "Claims stay the same across sessions" describe main's interactive session, with
+<code>extension.claims_mismatch</code> and <code>extension.agreement_mismatch</code>, both exit 2. One check stays:
+the first agreed tuple must be the tuple that the CLI selected from the probe claims, because <code>generate</code>
+converts the model to that tuple before the session. Main does not do it yet; task 1.13 adds it.</li>
+<li id="fit-4"><strong>FIT-4. Skipped directories and ignore files.</strong> Damian Reeves decided on 2026-10-31:
+keep main's skip list (hidden directories, <code>.git</code>, <code>.mooncakes</code>, <code>_build</code>,
+<code>node_modules</code>, <code>.venv</code>), and also honor the repository's <code>.gitignore</code> files and a
+Morphir-specific <code>.morphirignore</code> with the same syntax and nesting rules, which can include a path again
+with <code>!</code>. See <a href="#src-4">SRC-4</a>; the details are IGN-1 to IGN-5.</li>
+<li id="fit-5"><strong>FIT-5. The retired <code>core-wasm-process</code> route.</strong> Damian Reeves decided on
+2026-10-31: restate "Two artifact forms", "Verified staging", "Execution profile structure", the pin identity part of
+"Descriptor claims equal live claims" and "Same session behavior for both forms" as WASM modules on the worker host,
+with main's behavior: one contract <code>0.2.0</code> pin, an optional descriptor, a 512 MiB artifact bound, and the
+structure check in the MoonBit worker host, which lowers a larger memory maximum.</li>
+<li id="pin-2-answer"><strong>PIN-2 (FIT-5, second question).</strong> Damian Reeves decided on 2026-10-31 (option
+C): an installed <code>morphir-bytes-v1</code> pin must name its release descriptor; a hand-written local pin may
+omit it, and the host then warns that the descriptor checks were skipped. See <a href="#pin-2">PIN-2</a>.
+finos/morphir-moonbit#292 explores <code>morphir trust</code> for these cases.</li>
+<li id="ign-1"><strong>IGN-1. Precedence in one directory.</strong> Damian Reeves decided on 2026-10-31 (option A,
+the spec as it was): in one directory, <code>.morphirignore</code> is read after <code>.gitignore</code>, so the
+last matching pattern decides and <code>.morphirignore</code> wins there; a deeper directory decides over a higher
+one. This is Git's rule with one more file per directory. The rejected options were a <code>.morphirignore</code>
+that replaces the <code>.gitignore</code> of its directory, and <code>.morphirignore</code> patterns after every
+<code>.gitignore</code> of the tree.</li>
+<li id="ign-2"><strong>IGN-2. Git configuration.</strong> Damian Reeves decided on 2026-10-31 (option B, a change):
+match Git. The walk also reads the global excludes file (<code>core.excludesFile</code>, default
+<code>$XDG_CONFIG_HOME/git/ignore</code>) and <code>.git/info/exclude</code>, and honors <code>.gitignore</code>
+only inside a Git work tree, as Git does. <code>--ignore-mode contained</code> turns these layers off for
+reproducible runs, and <code>--skip-ignore-layer</code> turns off one layer. See <a href="#src-4">SRC-4</a>.</li>
+<li id="ign-3"><strong>IGN-3. Ignore files above the walked directory.</strong> Damian Reeves decided on 2026-10-31
+(option A, a change): read the ignore files from the work-tree root down to the walked directory, as Git does, so a
+root <code>.gitignore</code> applies when the user compiles <code>src</code>. Contained mode, and
+<code>--skip-ignore-layer above</code>, turn this off. The rejected option was to start at the source base.</li>
+<li id="ign-4"><strong>IGN-4. Other commands.</strong> Damian Reeves decided on 2026-10-31 (option A):
+<code>.morphirignore</code> applies only to <code>morphir extension compile</code> in this change. See
+<a href="#follow-ups">Follow-up changes</a> for the project-wide rule.</li>
+<li id="ign-5"><strong>IGN-5. A named file that an ignore file matches.</strong> Damian Reeves decided on 2026-10-31
+(option A, the spec as it was): a file that the user names on the command line is read even when an ignore file
+matches it; ignore files filter only directory walks. The rejected option was to refuse it, as <code>git add</code>
+does without <code>-f</code>. The same rule keeps a pattern above the input from excluding a directory that the
+user names.</li>
+<li id="pin-3"><strong>PIN-3. Codes for PIN-2.</strong> Damian Reeves decided on 2026-10-31 (option A, the spec as
+it was): an installed <code>morphir-bytes-v1</code> pin without a descriptor is refused with main's
+<code>extension.pin_invalid</code>, exit 2; a local pin without a descriptor runs, exit 0, with the new warning
+diagnostic <code>extension.descriptor_checks_skipped</code>. See <a href="#pin-2">PIN-2</a>.</li>
+<li id="gleam-nesting"><strong>Gleam relative nesting.</strong> Resolved on 2026-10-31. finos/morphir-gleam#29
+(merged as <code>191a35e</code>) changed the guest: without <code>sources.root</code> and without a
+<code>src</code> segment, a relative document URI keeps its full path as the module name, so
+<code>app/orders.gleam</code> is the module <code>app/orders</code>. An absolute URI is as before. The host test
+<code>guest_compiles_a_relative_document_tree_without_a_root</code>
+(<code>rust/crates/morphir-gleam-binding/tests/core_wasm.rs</code>) sends the request shape of this change and
+covers it.</li>
+<li id="release"><strong>Release availability.</strong> Resolved on 2026-10-31. finos/morphir-gleam published the
+release <a href="https://github.com/finos/morphir-gleam/releases/tag/extension/gleam/v0.4.0"><code>extension/gleam/v0.4.0</code></a>
+from <code>191a35e</code>, so it has the fix above. It has <code>morphir-gleam-0.4.0.wasm</code> (SHA-256
+<code>12349dacb1696fee320ce7104001a0d036e3830b9e1e9e26703b36d9e27d205e</code>) and <code>morphir-gleam-0.4.0.release.json</code> (SHA-256
+<code>be337f8fcb5dbfd32cbd90a5734cea15e9dc749145fe9a8b89593ac1de0793dc</code>), each with a <code>.sha256</code> file;
+<code>gh attestation verify</code> accepts both files for finos/morphir-gleam. Acceptance (tasks 4.1 to 4.3) uses
+the released module; the build from the pinned commit <code>191a35e</code> stays as the fallback input of ACC-1.</li>
+<li id="named-directory"><strong>Named directory (IGN-5).</strong> Damian Reeves confirmed on 2026-10-31: the CLI
+walks a directory that the user names even when a pattern above it matches, and the ignore files still filter the
+entries below it. The spec "Ignore files filter only the walk" says this, and its scenario "Named directory that a
+pattern above matches" now also shows an entry below that is filtered.</li>
+<li id="library"><strong>Ignore-file library.</strong> Damian Reeves asked on 2026-10-31 for a reusable library and
+moonx tool in moonrockz/moonx-tools (moonrockz/moonx-tools#16). Task 2.6 uses it in place of
+<code>moonbit-community/ignore</code> and depends on it.</li>
+</ol>
+
+</main>
+</body>
+</html>
