@@ -963,14 +963,15 @@
 {"id":"morphir-ukvn.1.12","title":"A11: JVM extension (Java, Kotlin) in finos/morphir-jvm","status":"open","priority":3}
 {"id":"morphir-ukvn.1.13","title":"Move morphir-config to crates.io trusted publishing","status":"open","priority":2}
 {"id":"morphir-ukvn.1.14","title":"Decide the minimum Rust version of the published crates","status":"open","priority":3}
-{"id":"morphir-ukvn.1.15","title":"Move the MoonBit Elm extension to finos/morphir-elm","status":"open","priority":2}
+{"id":"morphir-ukvn.1.15","title":"Move the MoonBit Elm extension to finos/morphir-elm","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.15.1","title":"Import the MoonBit Elm module with its history","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.15.2","title":"MoonBit toolchain, dependency pin and module tasks","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.15.3","title":"Pull-request CI and docs for the MoonBit Elm module","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.15.4","title":"Spike: build and run the Elm guest under the host limits","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.15.5","title":"Elm MEP guest over the morphir-bytes-v1 ABI","status":"closed","priority":2}
-{"id":"morphir-ukvn.1.15.6","title":"Release workflow, attestations and docs for the Elm extension","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.1.15.7","title":"Rename the JavaScript Elm extension to Elm classic","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.1.15.6","title":"Release workflow, attestations and docs for the Elm extension","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.15.7","title":"Rename the JavaScript Elm extension to Elm classic","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.15.8","title":"JavaScriptCore's OMG Wasm tier gives varying answers for the Elm extension module","status":"open","priority":2}
 {"id":"morphir-ukvn.1.2","title":"A1b: publish the core crates to crates.io at 0.x.y","status":"closed","priority":1}
 {"id":"morphir-ukvn.1.3","title":"A2: the common ecosystem repo layout, packaging command and change-scoped CI","status":"open","priority":1}
 {"id":"morphir-ukvn.1.3.1","title":"A2/F4: specify MoonBit extension packaging and qualify transport boundaries","status":"closed","priority":2}
