@@ -13,8 +13,8 @@ Running them requires no Rust compiler, Cargo, or Morphir source build. An
 adapter still needs its declared runtime, such as Node.js, or its own native
 executable.
 
-These instructions target `v0.4.0-beta.10`. Download its assets after the
-[release](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.10) is published.
+These instructions target `v0.4.0-beta.11`. Download its assets after the
+[release](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.11) is published.
 Use the release receipt to pin the source commit and per-platform archive
 SHA-256 in your own dependency configuration. A version, source commit, and
 archive digest identify different inputs; retain all three.
@@ -26,19 +26,19 @@ explicit private path and set `MORPHIR_MCK_BIN` to that path.
 
 | System | Processor | Archive |
 | --- | --- | --- |
-| Linux | x86-64 | `morphir-0.4.0-beta.10-x86_64-unknown-linux-gnu.tgz` |
-| Linux | ARM64 | `morphir-0.4.0-beta.10-aarch64-unknown-linux-gnu.tgz` |
-| macOS | Intel | `morphir-0.4.0-beta.10-x86_64-apple-darwin.tgz` |
-| macOS | Apple silicon | `morphir-0.4.0-beta.10-aarch64-apple-darwin.tgz` |
-| Windows | x86-64 | `morphir-0.4.0-beta.10-x86_64-pc-windows-msvc.zip` |
-| Windows | ARM64 | `morphir-0.4.0-beta.10-aarch64-pc-windows-msvc.zip` |
+| Linux | x86-64 | `morphir-0.4.0-beta.11-x86_64-unknown-linux-gnu.tgz` |
+| Linux | ARM64 | `morphir-0.4.0-beta.11-aarch64-unknown-linux-gnu.tgz` |
+| macOS | Intel | `morphir-0.4.0-beta.11-x86_64-apple-darwin.tgz` |
+| macOS | Apple silicon | `morphir-0.4.0-beta.11-aarch64-apple-darwin.tgz` |
+| Windows | x86-64 | `morphir-0.4.0-beta.11-x86_64-pc-windows-msvc.zip` |
+| Windows | ARM64 | `morphir-0.4.0-beta.11-aarch64-pc-windows-msvc.zip` |
 
 Each archive has a companion `<archive>.sha256` asset. For example, on Apple
 silicon, download and check before extracting:
 
 ```sh
 set -eu
-version=0.4.0-beta.10
+version=0.4.0-beta.11
 target=aarch64-apple-darwin
 backend="$HOME/.local/share/morphir/backends/$version/$target"
 archive="morphir-$version-$target.tgz"
@@ -64,7 +64,7 @@ On Windows PowerShell:
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-$version = '0.4.0-beta.10'
+$version = '0.4.0-beta.11'
 $target = 'x86_64-pc-windows-msvc' # or aarch64-pc-windows-msvc
 $backend = "$env:LOCALAPPDATA\Morphir\backends\$version\$target"
 $archive = "morphir-$version-$target.zip"

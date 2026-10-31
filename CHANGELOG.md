@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.11] - 2026-10-31
+
 ### Added
+- The MEP guest MCK has a `python-json-library-v1` profile, `spec/mep/mck/guest-python-json.json`. It
+  qualifies a Python extension's JSON `Library` output at IR versions 3 and 4, with the same
+  `guest-run` and `report-check` commands as the MoonBit profile, which keeps all of its
+  rich-model requirements.
 - The IR kit holds every binding's v3 `morphir-ir.json` reader to one contract: 35 new
   `@version:3` cases, three of them pending, cover names, literals, types, patterns, values, typed attributes,
   definitions, specifications and whole `Library` documents, and name the diagnostics for
@@ -19,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Python compiler. CI tests the CLI against its `extension/python/v0.4.1` bundle; bundles up to
   `extension/python/v0.4.0` remain in the finos/morphir-rust releases. Extension bundle pins
   can name the repository that owns them.
+- CI tests the CLI against `morphir-scala-elm` from finos/morphir-scala `v0.5.0-M11`.
 
 ## [0.4.0-beta.10] - 2026-10-21
 
