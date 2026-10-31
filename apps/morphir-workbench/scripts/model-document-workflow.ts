@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import type { Browser, Download, FileChooser, Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
-import { gettingStarted, openLocal, showModel, showSource } from './workbench-steps.ts';
+import { gettingStarted, openLocal, replaceEntryArguments, showModel, showSource } from './workbench-steps.ts';
 
 async function contents(download: Download): Promise<Buffer> {
   const stream = await download.createReadStream();
@@ -83,7 +83,7 @@ export async function modelDocumentWorkflow(browser: Browser, url: string): Prom
     await page.locator('.tree-item[title="pricing:boundaries#text"]').click();
     await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
     await page.getByRole('button', { name: 'Ion inputs', exact: true }).click();
-    await page.getByRole('textbox', { name: 'Function arguments', exact: true }).fill('[morphir_value::{type:"text",units:[55296,0]}]');
+    await replaceEntryArguments(page, 'pricing:boundaries#text', '[morphir_value::{type:"text",units:[55296,0]}]', { format: 'ion', typed: true });
     await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
     await page.getByRole('status').filter({ hasText: 'Function evaluated' }).waitFor();
     await page.getByRole('button', { name: 'Result JSON', exact: true }).click();

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
-import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, setTarget, currentTarget, useSourceWorkspace, currentSourceProfile, setSourceProfile, runCommand, forgetSourceWorkspace, replaceSourceDocument, replaceEvaluationArguments } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, setTarget, currentTarget, useSourceWorkspace, currentSourceProfile, setSourceProfile, runCommand, forgetSourceWorkspace, replaceSourceDocument, replaceEvaluationArguments, replaceEntryArguments } from './workbench-steps.ts';
 
 /** The Generated tab of the source document's output panel; the right sidebar's Generated section has its own name. */
 const generatedTab = (page: Page) => page.locator('.output-panel .tabs').getByRole('button', { name: 'Generated', exact: true });
@@ -494,10 +494,10 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   }
   await evaluate(true);
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
-  await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill('[{"type":"bool","value":true},{"type":"bool","value":true}]');
+  await replaceEntryArguments(page,tree.filter({hasText:'eligible'}),'[{"type":"bool","value":true},{"type":"bool","value":true}]');
   await evaluate(false);
   await page.getByRole('button',{name:'Ion inputs',exact:true}).click();
-  await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill('[true, false]');
+  await replaceEntryArguments(page,tree.filter({hasText:'eligible'}),'[true, false]',{format:'ion'});
   await evaluate(true);
   await tree.filter({hasText:'welcome'}).click();
   await page.getByRole('heading',{name:'welcome',exact:true}).waitFor();
@@ -684,7 +684,7 @@ export async function supportedWorkflow(page: Page) {
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
   const bounded=(value: string)=>({type:'custom',owner:'morphir/SDK:int#int-32',tag:'morphir/SDK:int#int32',items:[{type:'int',value}]});
   for(const [enabled,expected] of [[true,'-2147483648'],[false,'2147483647']] as const) {
-    await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill(JSON.stringify([{type:'text',units:[77,111,114,112,104,105,114]},{type:'bool',value:enabled},bounded('-2147483648'),bounded('2147483647')]));
+    await replaceEntryArguments(page,page.locator('.model-tree .tree-item').filter({hasText:'choose_for'}),JSON.stringify([{type:'text',units:[77,111,114,112,104,105,114]},{type:'bool',value:enabled},bounded('-2147483648'),bounded('2147483647')]));
     await page.getByRole('button',{name:'Evaluate',exact:true}).click();
     await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
     await page.getByRole('button',{name:'Result JSON',exact:true}).click();
@@ -694,7 +694,7 @@ export async function supportedWorkflow(page: Page) {
     },expected);
   }
   await page.locator('.model-tree .tree-item').filter({hasText:'precedes'}).click();
-  await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill(JSON.stringify([{type:'text',units:[98]},{type:'text',units:[97,97]}]));
+  await replaceEntryArguments(page,page.locator('.model-tree .tree-item').filter({hasText:'precedes'}),JSON.stringify([{type:'text',units:[98]},{type:'text',units:[97,97]}]));
   await page.getByRole('button',{name:'Evaluate',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
   await page.waitForFunction(()=>{
@@ -706,7 +706,7 @@ export async function supportedWorkflow(page: Page) {
     await page.locator('.model-tree .tree-item').filter({hasText:name}).click();
     if(args.length) {
       await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
-      await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill(JSON.stringify(args));
+      await replaceEntryArguments(page,page.locator('.model-tree .tree-item').filter({hasText:name}),JSON.stringify(args));
     }
     await page.getByRole('button',{name:'Evaluate',exact:true}).click();
     await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();

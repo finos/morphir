@@ -121,6 +121,26 @@ export async function replaceEvaluationArguments(page: Page, text: string,
 }
 
 /**
+ * Replaces the arguments of `entry`, a model tree item or its title. A click that selects an entry, a runtime or an
+ * input mode changes the model at once, but the argument editor shows the new document only on the next frame. An
+ * edit before that frame can reach the previous document, or the new document's default arguments can join the
+ * typed text, so wait for the entry's document first. Without `typed`, either runtime matches.
+ */
+export async function replaceEntryArguments(page: Page, entry: string | Locator, text: string,
+  {format = 'json', typed}: {format?: 'json' | 'ion'; typed?: boolean} = {}): Promise<void> {
+  const id = typeof entry === 'string' ? entry : await entry.getAttribute('title');
+  assert.ok(id, 'The model tree item names its entry');
+  const ready = await page.waitForFunction(({id, format, typed}) => {
+    const key = document.querySelector<CodeEditor>('#evaluation-input')?.dataset.document;
+    const runtimes = typed === undefined ? ['true', 'false'] : [String(typed)];
+    return key?.startsWith('evaluation-') && runtimes.some(runtime => key.endsWith(`-value|${id}-${runtime}-${format}`)) ? key : false;
+  }, {id, format, typed});
+  const key = await ready.jsonValue() as string;
+  await ready.dispose();
+  await replaceEvaluationArguments(page, text, {format, document: key});
+}
+
+/**
  * Opens an example or sample from the command palette, as a person without the shortcut would: the top-bar button,
  * then "Open sample: <label>". Like the sidebar buttons it replaces, it waits until the sample can open (no execution is
  * running) before it chooses it.

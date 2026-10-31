@@ -21,7 +21,7 @@ import { elmWorkflow, moonbitWorkflow, libraryWorkflow, stringWorkflow, supporte
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
 import { explorerWorkflow } from './explorer-workflow.ts';
 import { detailsWorkflow } from './details-workflow.ts';
-import { openSample, createWorkspace, showSource, showModel, showCompile, build, buildAction, buildMenuEntries, setExplorer, setRightSidebar, showGeneratedFiles, gettingStarted, exploreModel, setTarget, targetChoices } from './workbench-steps.ts';
+import { openSample, createWorkspace, showSource, showModel, showCompile, build, buildAction, buildMenuEntries, setExplorer, setRightSidebar, showGeneratedFiles, gettingStarted, exploreModel, setTarget, targetChoices, replaceEntryArguments } from './workbench-steps.ts';
 import { capabilityWorkflow } from './capability-workflow.ts';
 import { connectedCapabilityWorkflow } from './connected-capability-workflow.ts';
 import { fallbackWorkerWorkflow } from './desktop-fallback-workflow.ts';
@@ -642,6 +642,17 @@ try {
   // The tagged mode uses the merged execution codec, including values that
   // cannot pass through ordinary JavaScript numbers or Unicode scalar strings.
   await page.setViewportSize({ width: 1440, height: 1000 });
+  // Delay each animation frame, as a busy CI runner can. Rabbita paints on the next frame, so a step that acts on
+  // the previous frame's editor or result fails every time here, not only now and then in CI.
+  await page.addInitScript(() => {
+    const request = window.requestAnimationFrame.bind(window), cancel = window.cancelAnimationFrame.bind(window);
+    const timers = new Map<number, ReturnType<typeof setTimeout>>();
+    window.requestAnimationFrame = callback => {
+      const id = request(time => timers.set(id, setTimeout(() => { timers.delete(id); callback(time); }, 50)));
+      return id;
+    };
+    window.cancelAnimationFrame = id => { cancel(id); clearTimeout(timers.get(id)); timers.delete(id); };
+  });
   await page.goto(url);
   await exploreModel(page, fileURLToPath(new URL('../fixtures/typed-pricing.json', import.meta.url)));
   await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
@@ -654,21 +665,21 @@ try {
   await page.getByText('Result · scheme-portable-v1/shared-sdk/bounded', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'JSON inputs', exact: true }).click();
   const typedArguments = page.getByRole('textbox', { name: 'Function arguments', exact: true });
-  await typedArguments.fill(JSON.stringify([{ type: 'record', fields: [
+  await replaceEntryArguments(page, 'pricing:quotes#total', JSON.stringify([{ type: 'record', fields: [
     { name: 'price', value: { type: 'decimal', coefficient: '125', exponent: -1 } },
     { name: 'quantity', value: { type: 'int', value: '3' } },
-  ] }]));
+  ] }]), { format: 'json', typed: true });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Function evaluated' }).waitFor();
   await page.getByText('Result · scheme-portable-v1/shared-sdk/bounded', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Result JSON', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), { type: 'decimal', coefficient: '375', exponent: -1 });
-  await typedArguments.fill('[{"type":"int","value":"3"}]');
+  await replaceEntryArguments(page, 'pricing:quotes#total', '[{"type":"int","value":"3"}]', { format: 'json', typed: true });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.locator('.evaluation-result pre').filter({ hasText: 'execution.wrong_type' }).waitFor();
   await page.locator('.tree-item[title="pricing:boundaries#text"]').click();
-  await typedArguments.fill('[{"type":"text","units":[55296,0,55357,56832]}]');
+  await replaceEntryArguments(page, 'pricing:boundaries#text', '[{"type":"text","units":[55296,0,55357,56832]}]', { format: 'json', typed: true });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), { type: 'text', units: [55296,0,55357,56832] });
@@ -732,7 +743,7 @@ try {
   await page.getByRole('button', { name: 'JSON inputs', exact: true }).click();
   assert.equal(JSON.parse(await page.locator('#evaluation-input').evaluate(e => (e as CodeEditor).value))[0].bits, '9221120237041090561');
   await page.locator('.tree-item[title="pricing:boundaries#text"]').click();
-  await typedArguments.fill('[{"type":"text","units":[55296,0]}]');
+  await replaceEntryArguments(page, 'pricing:boundaries#text', '[{"type":"text","units":[55296,0]}]', { format: 'json', typed: true });
   await page.getByRole('button', { name: 'Input fields', exact: true }).click();
   assert.equal(await page.getByRole('textbox', { name: 'input.text', exact: true }).count(), 0);
   await page.getByRole('textbox', { name: 'input.units[1]', exact: true }).fill('65');
@@ -780,7 +791,7 @@ try {
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), {type:'list',items:[{type:'int',value:'9007199254740993'}]});
   await page.getByRole('button', { name: 'JSON inputs', exact: true }).click();
-  await typedArguments.fill('[{"type":"bool","value":true}]');
+  await replaceEntryArguments(page, 'pricing:boundaries#list', '[{"type":"bool","value":true}]', { format: 'json', typed: true });
   await page.getByRole('button', { name: 'Input fields', exact: true }).click();
   await page.locator('.argument-shape-error').waitFor();
   await page.getByRole('button', { name: 'JSON inputs', exact: true }).click();
@@ -791,7 +802,7 @@ try {
   // Ion uses the shared codec and converts back into the same fields/JSON values.
   await page.locator('.tree-item[title="pricing:boundaries#decimal"]').click();
   await page.getByRole('button', { name: 'Ion inputs', exact: true }).click();
-  await typedArguments.fill('[12.50] // exact decimal');
+  await replaceEntryArguments(page, 'pricing:boundaries#decimal', '[12.50] // exact decimal', { format: 'ion', typed: true });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), {type:'decimal',coefficient:'125',exponent:-1});
@@ -801,12 +812,12 @@ try {
   assert.equal(await page.getByRole('textbox', { name: 'input.exponent', exact: true }).inputValue(), '-2');
   await page.getByRole('button', { name: 'Ion inputs', exact: true }).click();
   await page.locator('.tree-item[title="pricing:quotes#difference"]').click();
-  await typedArguments.fill('[9007199254740993, 1]');
+  await replaceEntryArguments(page, 'pricing:quotes#difference', '[9007199254740993, 1]', { format: 'ion', typed: true });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), {type:'int',value:'9007199254740992'});
   await page.locator('.tree-item[title="pricing:boundaries#text"]').click();
-  await typedArguments.fill('[morphir_value::{type:"text",units:[55296,0]}]');
+  await replaceEntryArguments(page, 'pricing:boundaries#text', '[morphir_value::{type:"text",units:[55296,0]}]', { format: 'ion', typed: true });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), {type:'text',units:[55296,0]});
@@ -817,7 +828,7 @@ try {
   assert.equal(await page.getByRole('textbox', { name: 'input.text', exact: true }).count(), 0);
   assert.equal(await page.getByRole('textbox', { name: 'input.units[1]', exact: true }).inputValue(), '55296');
   await page.getByRole('button', { name: 'Ion inputs', exact: true }).click();
-  await typedArguments.fill('invalid Ion !!!');
+  await replaceEntryArguments(page, 'pricing:boundaries#text', 'invalid Ion !!!', { format: 'ion', typed: true });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Evaluation failed' }).waitFor();
   await page.getByText('Ion: unexpected trailing input', { exact: false }).waitFor();
@@ -825,13 +836,13 @@ try {
   await page.getByRole('status').filter({ hasText: 'Cannot switch inputs:' }).waitFor();
   assert.equal(await page.locator('#evaluation-input').evaluate(e => (e as CodeEditor).value), 'invalid Ion !!!');
   assert.equal(await page.locator('#evaluation-input').getAttribute('data-language'), 'ion');
-  await typedArguments.fill('[morphir_value::{type:"text",units:[55296,0]}]');
+  await replaceEntryArguments(page, 'pricing:boundaries#text', '[morphir_value::{type:"text",units:[55296,0]}]', { format: 'ion', typed: true });
   await page.getByRole('button', { name: 'JSON inputs', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<HTMLElement>('#evaluation-input')!.dataset.language === 'json');
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-input').evaluate(e => (e as CodeEditor).value)), [{type:'text',units:[55296,0]}]);
   await page.getByRole('button', { name: 'Ion inputs', exact: true }).click();
   await page.getByRole('button', { name: 'Local Scheme', exact: true }).click();
-  await typedArguments.fill('["local text"]');
+  await replaceEntryArguments(page, 'pricing:boundaries#text', '["local text"]', { format: 'ion', typed: false });
   await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
   assert.equal(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)).text, '"local text"');
