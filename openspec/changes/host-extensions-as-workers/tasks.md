@@ -113,20 +113,31 @@
 
 ## 7. Qualify the published extensions on the worker host (morphir-ukvn.5.64.36.7)
 
-- [ ] 7.1 Qualify the Elm extension `v0.4.1` executables from the native and npm CLI on macOS arm64 and Linux x64;
-  verify compile of the Elm fixture and the absence of Node from the native run's environment
-- [ ] 7.2 Rewrite `test:cli-extism-python` for `0.2.0` pins and qualify Python `0.4.1` (single document and the
+- [x] 7.1 Qualify the Elm extension `v0.4.1` executables from the native and npm CLI on macOS arm64 and Linux x64;
+  verify compile of the Elm fixture and the absence of Node from the native run's environment. Describe and the
+  no-Node check pass; `v0.4.1` compile is a recorded failure of the guest, which requires `package.exposedModules`
+  that MEP makes optional (bead `morphir-ukvn.5.64.36.16`). Its fix, elm-classic `v0.5.1`, compiles the fixture from
+  both CLIs, and the Elm `v0.5.0-preview.2` WASM module is qualified as a second Elm guest; no host change
+- [x] 7.2 Rewrite `test:cli-extism-python` for `0.2.0` pins and qualify Python `0.4.1` (single document and the
   multi-document refusal) and `0.4.2` (IR 3 and 4 compile and generate, consumer check) from both CLIs; verify the
   receipts
-- [ ] 7.3 Rewrite `test:portable-mep-cli` and `test:cli-native-prerequisites` for the worker host and qualify the
-  MoonBit native and portable guests with the shared MCK kit; verify the kit's expected output
-- [ ] 7.4 Add a conformance fixture guest built with `morphir-extension-sdk` at a pinned revision, importing WASI and
+- [x] 7.3 Rewrite `test:portable-mep-cli` and `test:cli-native-prerequisites` for the worker host and qualify the
+  MoonBit native and portable guests with the shared MCK kit; verify the kit's expected output. The kit's source,
+  consumer and JSON artifacts pass from both CLIs; the shared kit run fails at case `compile-ion` because the kit
+  asks for the retired profile `moonbit-model-bool-library-v1` (follow-up bead `morphir-ukvn.5.64.36.17`,
+  finos/morphir)
+- [x] 7.4 Add a conformance fixture guest built with `morphir-extension-sdk` at a pinned revision, importing WASI and
   the Morphir host functions, stored with its source and build receipt under `apps/morphir/fixtures`; run the shared
   MEP conformance kit against it and against the MoonBit guest from both CLIs; verify the "Conformance, not a list of
-  extensions" scenarios with no host change made for that guest
+  extensions" scenarios with no host change made for that guest. No shared kit profile fits the fixture guest, so
+  it passes a local conformance check (`test:extension-conformance`); the shared-kit rerun is pending bead
+  `morphir-ukvn.5.64.36.15`
 - [ ] 7.5 Run one Windows x64 qualification of tasks 7.1 to 7.4 after a build-master review; verify the receipts and
-  add a `Tested-on:` trailer
-- [ ] 7.6 Record every receipt with its exact artifact digests as a comment on this bead; verify each receipt names
+  add a `Tested-on:` trailer. Run 41241517957 failed: every guest session runs, but no output is published, because the
+  native `_WIN32` directory rename is a stub and the Node publication creates the destination before it renames onto
+  it (bead `morphir-ukvn.5.64.36.19`); the portable guest is not packaged on Windows (bead `morphir-ukvn.5.64.36.18`).
+  No `Tested-on:` trailer until a rerun passes
+- [x] 7.6 Record every receipt with its exact artifact digests as a comment on this bead; verify each receipt names
   its platform, CLI build and guest digest
 
 ## 8. Browser Web Worker feasibility (morphir-ukvn.5.64.36.8)

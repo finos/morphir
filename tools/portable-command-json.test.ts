@@ -6,7 +6,7 @@ import { dirname, join, resolve, sep } from 'node:path';
 // This is a command-output regression, not a runtime, MEP, codec or MCK
 // qualification. Its children are deliberately synthetic native MoonBit programs.
 const names = ['codec-adapter-mck', 'package-codec-adapter', 'package-mep-extension',
-  'portable-mep-check', 'portable-mep-cli', 'portable-mep-mck'] as const;
+  'portable-mep-check', 'portable-mep-mck'] as const;
 type Name = typeof names[number];
 const hostModules = ['node-mep-cli.mjs', 'node-mep-stdio.mjs', 'node-mep-adapter.mjs', 'node-mep-worker.mjs',
   'mep-adapter.mjs', 'mep-frames.mjs', 'wasm-memory.mjs', 'node-artifacts.mjs', 'artifacts.mjs',
@@ -244,7 +244,7 @@ async function regression() {
         PATH: bin, MOON_HOME: 'fixture preserved moon home 雪', PORTABLE_JOURNAL: journal, PORTABLE_CORE: 'fixture core --json 雪',
         MORPHIR_CODEC_ARTIFACTS: artifactsPath, MORPHIR_CODEC_EVIDENCE: join(cwd, 'codec-evidence'),
         MORPHIR_MEP_ARTIFACTS: artifactsPath, MORPHIR_MEP_EVIDENCE: join(cwd, 'local-evidence'),
-        MORPHIR_MEP_MCK_EVIDENCE: join(cwd, 'mck-evidence'), MORPHIR_MEP_CLI_EVIDENCE: join(cwd, 'cli-evidence'),
+        MORPHIR_MEP_MCK_EVIDENCE: join(cwd, 'mck-evidence'),
         MORPHIR_MCK_BIN: runner, MORPHIR_MCK_SHA256: fixtureHash,
         MORPHIR_MEP_KIT: kitPath, MORPHIR_MEP_KIT_SHA256: sha(readFileSync(kitPath)), MORPHIR_WORKBENCH_KIT: workbench,
       };
@@ -309,8 +309,8 @@ async function regression() {
         assert.equal(readFileSync(join(result.result.destination, 'recipe.txt'), 'utf8'), 'fixture recipe\n');
         assert.deepEqual(launches.map(entry => entry.program), ['moon', 'moon', 'moon', 'bun', 'node']);
       } else {
-        const ion = name === 'portable-mep-cli' ? 'receipt.ion' : name === 'portable-mep-check' ? 'portable-receipt.ion' : 'qualification.ion';
-        const directory = name === 'portable-mep-cli' ? 'cli-evidence' : name === 'portable-mep-check' ? 'local-evidence' : name === 'portable-mep-mck' ? 'mck-evidence' : 'codec-evidence';
+        const ion = name === 'portable-mep-check' ? 'portable-receipt.ion' : 'qualification.ion';
+        const directory = name === 'portable-mep-check' ? 'local-evidence' : name === 'portable-mep-mck' ? 'mck-evidence' : 'codec-evidence';
         const text = readFileSync(join(success.cwd, directory, ion), 'utf8');
         assert.deepEqual(JSON.parse(text.slice(text.indexOf('::') + 2)), result.result);
       }
@@ -321,20 +321,6 @@ async function regression() {
       if (name === 'portable-mep-check') {
         const acceptance = launches.find(entry => entry.program === 'acceptance')!;
         assert.ok(acceptance); assert.ok(acceptance.args[1] === success.cwd);
-      }
-      if (name === 'portable-mep-cli') {
-        const calls = launches.filter(entry => entry.args.includes('extension'));
-        assert.equal(calls.length, 28); assert.ok(calls.every(entry => entry.args[0] === '--json' || entry.args[1] === '--json'));
-        for (const entry of calls) {
-          assert.ok(entry.program === 'node' || entry.program === 'morphir');
-          const backend = entry.program === 'node' ? 'js' : 'native';
-          const evidence = success.env['MORPHIR_MEP_CLI_EVIDENCE']!;
-          assert.equal(entry.cwd, join(evidence, backend));
-          // The wrapper forwards this literal string; the OS normalizes cwd
-          // separately. Keep exact environment bytes, including mixed slashes.
-          assert.equal(entry.tmpdir, `${evidence}/${backend}/tmp`);
-        }
-        assert.ok(result.result.hosts.every((host: { cases: unknown[] }) => host.cases.length === 14));
       }
       for (const code of [23, 130]) {
         const failure = fixture(); failure.env['PORTABLE_FAIL_PROGRAM'] = 'moon'; failure.env['PORTABLE_FAIL_CODE'] = String(code);
@@ -363,8 +349,8 @@ async function regression() {
         rmSync(join(destination, 'core-graph.json'), { force: true });
         mkdirSync(join(destination, 'core-graph.json'));
       } else {
-        const directory = name === 'codec-adapter-mck' ? 'codec-evidence' : name === 'portable-mep-check' ? 'local-evidence' : name === 'portable-mep-cli' ? 'cli-evidence' : 'mck-evidence';
-        const file = name === 'portable-mep-check' ? 'portable-receipt.ion' : name === 'portable-mep-cli' ? 'receipt.ion' : 'qualification.ion';
+        const directory = name === 'codec-adapter-mck' ? 'codec-evidence' : name === 'portable-mep-check' ? 'local-evidence' : 'mck-evidence';
+        const file = name === 'portable-mep-check' ? 'portable-receipt.ion' : 'qualification.ion';
         writeFailure.env['PORTABLE_BLOCK_FILE'] = join(writeFailure.cwd, directory, file);
       }
       decoded(run(name, ['--json'], writeFailure), 'failed', 1);
@@ -372,7 +358,6 @@ async function regression() {
       const refusal = fixture();
       if (name.startsWith('package-')) refusal.env['PORTABLE_FAIL_PROGRAM'] = 'missing';
       else if (name === 'codec-adapter-mck') delete refusal.env['MORPHIR_MCK_BIN'];
-      else if (name === 'portable-mep-cli') refusal.env['MORPHIR_MEP_KIT_SHA256'] = 'wrong';
       else if (name === 'portable-mep-mck') refusal.env['MORPHIR_MCK_SHA256'] = 'wrong';
       else mkdirSync(refusal.env['MORPHIR_MEP_EVIDENCE']!);
       if (!name.startsWith('package-')) { decoded(run(name, ['--json'], refusal), 'failed', 1); assert.equal(journal(refusal).length, 0); }
@@ -380,14 +365,12 @@ async function regression() {
       decoded(run(name, ['--json'], missing), 'failed', 1);
       // Legacy wrappers ignored operands. Neither variadic parsing nor new JSON
       // dispatch may reinterpret an escaped flag or rebuild a foreign tail.
-      if (name !== 'portable-mep-cli') {
-        const defaults = fixture();
-        const legacy = run(name, ['--', '--json', '', '雪', '--', '--help', '--json=literal'], defaults);
-        assert.equal(legacy.code, 0, legacy.stdout + legacy.stderr);
-        assert.throws(() => JSON.parse(legacy.stdout));
-        const escaped = fixture();
-        decoded(run(name, ['--json', '--', '--json', '', '雪', '--', '--help'], escaped), 'succeeded', 0);
-      }
+      const defaults = fixture();
+      const legacy = run(name, ['--', '--json', '', '雪', '--', '--help', '--json=literal'], defaults);
+      assert.equal(legacy.code, 0, legacy.stdout + legacy.stderr);
+      assert.throws(() => JSON.parse(legacy.stdout));
+      const escaped = fixture();
+      decoded(run(name, ['--json', '--', '--json', '', '雪', '--', '--help'], escaped), 'succeeded', 0);
       const legacyFailure = run(name, [], writeFailure);
       assert.notEqual(legacyFailure.code, 0, 'Default failure retains its backend presentation');
       const baseline = target === 'native' ? process.env['PORTABLE_JSON_BASELINE'] : undefined;
@@ -405,9 +388,9 @@ async function regression() {
             if (entry.isDirectory()) snapshot(file); else snapshots.set(file, readFileSync(file));
           }
         }
-        for (const key of ['MORPHIR_CODEC_EVIDENCE', 'MORPHIR_MEP_EVIDENCE', 'MORPHIR_MEP_MCK_EVIDENCE', 'MORPHIR_MEP_CLI_EVIDENCE']) snapshot(f.env[key]!);
+        for (const key of ['MORPHIR_CODEC_EVIDENCE', 'MORPHIR_MEP_EVIDENCE', 'MORPHIR_MEP_MCK_EVIDENCE']) snapshot(f.env[key]!);
         if (name.startsWith('package-')) for (const file of ['core-graph.json', 'recipe.txt']) snapshots.set(join(f.env['MORPHIR_CODEC_ARTIFACTS']!, file), readFileSync(join(f.env['MORPHIR_CODEC_ARTIFACTS']!, file)));
-        for (const key of ['MORPHIR_CODEC_EVIDENCE', 'MORPHIR_MEP_EVIDENCE', 'MORPHIR_MEP_MCK_EVIDENCE', 'MORPHIR_MEP_CLI_EVIDENCE']) rmSync(f.env[key]!, { recursive: true, force: true });
+        for (const key of ['MORPHIR_CODEC_EVIDENCE', 'MORPHIR_MEP_EVIDENCE', 'MORPHIR_MEP_MCK_EVIDENCE']) rmSync(f.env[key]!, { recursive: true, force: true });
         const original = artifacts.get(name)!;
         artifacts.set(name, join(baseline, name + '.exe'));
         const old = run(name, [], f);
@@ -420,10 +403,6 @@ async function regression() {
         assert.equal(baselineFailure.code, legacyFailure.code);
         assert.equal(baselineFailure.signal, legacyFailure.signal);
         artifacts.set(name, original);
-        if (name === 'portable-mep-cli') {
-          const now = run(name, ['--help'], f); artifacts.set(name, join(baseline, name + '.exe'));
-          assert.deepEqual(run(name, ['--help'], f), now); artifacts.set(name, original);
-        }
       }
       console.log(`${name}: completed result, help, refusals, child 23/130, channels and legacy operands passed`);
     }

@@ -11,3 +11,10 @@ tools/packaged-targets-pin.json text eol=lf
 # Keep the complete pinned Archify package byte-exact and collapsed in code review.
 .agents/skills/archify/** -text linguist-vendored
 .agents/skills/archify/UPSTREAM.md text eol=lf linguist-vendored=false
+# Qualification fixtures: their digests and the IR they compile to must not
+# depend on the checkout's line endings.
+apps/morphir/fixtures/sdk-guest/** text eol=lf
+apps/morphir/fixtures/sdk-guest/*.wasm binary
+apps/morphir/fixtures/elm-extension/** text eol=lf
+apps/morphir/fixtures/extism-python/** text eol=lf
+apps/morphir/fixtures/qualification/** text eol=lf

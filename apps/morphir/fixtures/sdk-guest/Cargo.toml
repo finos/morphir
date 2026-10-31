@@ -1,0 +1,27 @@
+[package]
+name = "morphir-sdk-fixture-guest"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+license = "Apache-2.0"
+publish = false
+description = "Conformance fixture guest for the Morphir CLI worker host, built with morphir-extension-sdk"
+
+# A standalone crate: no parent workspace.
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# Pinned revision of finos/morphir-rust; see build-receipt.json.
+morphir-extension-sdk = { git = "https://github.com/finos/morphir-rust", rev = "de35f596a07deb8a3ba25b0f2988b217d111fecf" }
+serde_json = "1.0"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

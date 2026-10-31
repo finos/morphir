@@ -18,6 +18,8 @@ target
 **/*.mbt.js
 **/*.wat
 **/*.wasm
+# The SDK conformance fixture guest is stored with its source and build receipt.
+!apps/morphir/fixtures/sdk-guest/morphir-sdk-fixture-guest.wasm
 _build/
 pkgs/morphir-host/embedding/dist/
 

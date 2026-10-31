@@ -1,0 +1,533 @@
+----
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
+  "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/sys",
+}
+----
+
+// Qualification of the published extensions and the conformance fixture guest
+// on the CLI's worker host (group 7 of the OpenSpec change
+// host-extensions-as-workers). It builds the native CLI and the npm package,
+// and the MoonBit guests when a suite needs them, then runs
+// apps/morphir/scripts/extension-qualification.ts once for each suite. That
+// driver downloads the pinned artifacts into new directories, checks their
+// SHA-256, runs every operation from the native and the npm CLI and writes one
+// receipt for each suite. This script is manual: no PR or merge-queue job runs
+// it.
+
+///|
+/// One qualification suite of the driver.
+enum Suite {
+  Elm
+  Python
+  MoonbitNative
+  MoonbitPortable
+  Conformance
+} derive(Eq)
+
+///|
+let all_suites : Array[Suite] = [
+  Elm,
+  Python,
+  MoonbitNative,
+  MoonbitPortable,
+  Conformance,
+]
+
+///|
+/// The suites that a SUITE argument selects: one suite, or every suite for
+/// `all`.
+fn Suite::select(text : String) -> Array[Suite]? {
+  match text {
+    "all" => Some(all_suites)
+    "elm" => Some([Elm])
+    "python" => Some([Python])
+    "moonbit-native" => Some([MoonbitNative])
+    "moonbit-portable" => Some([MoonbitPortable])
+    "conformance" => Some([Conformance])
+    _ => None
+  }
+}
+
+///|
+fn Suite::name(self : Suite) -> String {
+  match self {
+    Elm => "elm"
+    Python => "python"
+    MoonbitNative => "moonbit-native"
+    MoonbitPortable => "moonbit-portable"
+    Conformance => "conformance"
+  }
+}
+
+///|
+let about : String =
+  #|Qualify the published extensions and the SDK conformance fixture guest on the CLI's worker host, from the native CLI and the npm CLI (an unpacked npm pack of apps/morphir). SUITE is elm (Elm extension executables v0.4.1 and elm-classic v0.5.1, and the Elm v0.5.0-preview.2 WASM module), python (Python extension 0.4.1 and 0.4.2), moonbit-native and moonbit-portable (the MoonBit guest as a process worker or a morphir-bytes-v1 WASM worker, with the shared MEP kit), conformance (the morphir-extension-sdk fixture guest in apps/morphir/fixtures/sdk-guest) or all.
+  #|
+  #|The script builds the inputs (moon build of apps/morphir and apps/morphir-extension, bun run build, npm pack, and scripts/package-mep-extension.mbtx for moonbit-portable), then runs apps/morphir/scripts/extension-qualification.ts for each suite. The driver downloads each pinned artifact of apps/morphir/fixtures/qualification/published.json into a new, empty directory and uses it only when its SHA-256 equals the pin. It writes <evidence>/<suite>.json, one receipt with one row for each operation: extension, version, cli (native, npm or mck), platform, operation, result (passed, failed or known-failure, with the finding and its follow-up bead), guest SHA-256 and output digests. A known failure is an operation that fails for a recorded cause outside the host; it does not fail the suite, and it fails the suite when it passes.
+  #|
+  #|Build, download and driver output goes to stderr. Without --json, stdout has one summary line for each suite. With --json, stdout is one morphir/command-result 0.1.0 value written after every receipt: result {evidence, suites: [{suite, state, receiptPath, receiptSha256, passed, knownFailures, failed}], receipts: [<receipt>]}. A suite whose inputs could not be built (for example the portable guest's packaging) has state failed and error instead of a receipt, and the other suites still run. A failure has error {code, message} instead of result: qualification_failed (exit 1) when a suite failed, step_failed with the exit status of a failed build step, invalid_arguments (exit 2) for invalid arguments. --help prints this help and runs nothing; --help --json returns it as result.help.
+
+///|
+fn command() -> @argparse.Command {
+  @argparse.Command(
+    "extension-qualification",
+    about~,
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    positionals=[
+      @argparse.PositionArg(
+        "SUITE",
+        about="elm, python, moonbit-native, moonbit-portable, conformance or all",
+      ),
+    ],
+    flags=[
+      @argparse.FlagArg("json", about="Write one command-result on stdout"),
+      @argparse.FlagArg("help", short='h', about="Print the help; run nothing"),
+    ],
+    options=[
+      @argparse.OptionArg(
+        "evidence",
+        about="Directory for receipts and scratch files; default .dev/extension-qualification/evidence",
+      ),
+      @argparse.OptionArg(
+        "python",
+        about="Python 3.12 or later for the Python consumer check; default: uv python find '>=3.12'",
+      ),
+    ],
+  )
+}
+
+///|
+suberror StepFailed {
+  StepFailed(Int32, String)
+}
+
+///|
+/// Runs one build step with its output on stderr.
+async fn step(
+  program : String,
+  args : Array[String],
+  env? : Map[String, String],
+) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    extra_env=env.unwrap_or(Map([])),
+    stdout=@stdio.stderr,
+    stderr=@stdio.stderr,
+  )
+  guard code == 0 else {
+    raise StepFailed(
+      if code > 0 {
+        code
+      } else {
+        1
+      },
+      "\{program} \{args.join(" ")} failed with status \{code}",
+    )
+  }
+}
+
+///|
+async fn sha256_of(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+/// The number of receipt rows with a result.
+fn count(receipt : Json, result : String) -> Int32 {
+  match field(receipt, "rows") {
+    Array(rows) =>
+      rows.filter(row => field(row, "result") == Json::string(result)).length()
+    _ => 0
+  }
+}
+
+///|
+/// The summary of one receipt.
+fn summary(
+  suite : Suite,
+  path : String,
+  digest : String,
+  receipt : Json,
+) -> Json {
+  {
+    "suite": suite.name(),
+    "state": field(receipt, "state"),
+    "receiptPath": path,
+    "receiptSha256": digest,
+    "passed": count(receipt, "passed"),
+    "knownFailures": count(receipt, "known-failure"),
+    "failed": count(receipt, "failed"),
+  }
+}
+
+///|
+/// The npm command-line script that ships with the Node on PATH:
+/// <prefix>/node_modules/npm on Windows, <prefix>/lib/node_modules/npm
+/// elsewhere.
+async fn npm_cli() -> String {
+  let (code, out, err) = @process.collect_output("node", ["-e", npm_cli_probe])
+  let path = out.text().trim().to_owned()
+  guard code == 0 && path != "" else {
+    raise StepFailed(
+      1,
+      "cannot find npm beside node: " + err.text().trim().to_owned(),
+    )
+  }
+  path
+}
+
+///|
+let npm_cli_probe : String =
+  #|const {dirname, join} = require('node:path'); const {existsSync} = require('node:fs');
+  #|const prefix = dirname(process.execPath);
+  #|const found = [join(prefix, 'node_modules/npm/bin/npm-cli.js'), join(prefix, '../lib/node_modules/npm/bin/npm-cli.js')].find(existsSync);
+  #|if (!found) process.exit(1); console.log(found);
+
+///|
+/// Packages the portable MoonBit guest into `portable`, afresh.
+async fn package_portable(portable : String) -> Unit {
+  step("bun", [
+    "install", "--frozen-lockfile", "--cwd", "pkgs/morphir-host/embedding",
+  ])
+  // The packaging refuses an existing destination.
+  if @fs.exists(portable) {
+    @fs.rmdir(portable, recursive=true)
+  }
+  step("moonx", ["scripts/package-mep-extension.mbtx"], env={
+    "MORPHIR_MEP_ARTIFACTS": portable,
+  })
+}
+
+///|
+/// The summary of a suite whose inputs could not be built: failed, with no
+/// receipt.
+fn unbuilt(suite : Suite, message : String) -> Json {
+  {
+    "suite": suite.name(),
+    "state": "failed",
+    "error": message,
+    "passed": 0,
+    "knownFailures": 0,
+    "failed": 0,
+  }
+}
+
+///|
+/// Python 3.12 or later for the consumer check, from uv when it is installed.
+async fn find_python() -> String? {
+  let (code, out, _) = @process.collect_output("uv", [
+    "python", "find", ">=3.12",
+  ]) catch {
+    _ => return None
+  }
+  let path = out.text().trim().to_owned()
+  if code == 0 && path != "" {
+    Some(path)
+  } else {
+    None
+  }
+}
+
+///|
+async fn execute(
+  suites : Array[Suite],
+  evidence : String,
+  python : String?,
+) -> (Bool, Json) {
+  let root = @fs.realpath(".")
+  // The directory may exist: the workflow's step helper makes it first.
+  if !@fs.exists(evidence) {
+    @fs.mkdir(evidence, recursive=true)
+  }
+  let evidence = @fs.realpath(evidence)
+  let built = "\{root}/_build/native/release/build"
+  step("moon", ["build", "--target", "native", "--release", "apps/morphir"])
+  step("bun", ["install", "--frozen-lockfile"])
+  step("bun", ["run", "--cwd", "apps/morphir", "build"])
+  // The npm CLI is the package that npm pack makes, unpacked in a new
+  // directory, as a user installs it.
+  let npm = "\{evidence}/npm"
+  if @fs.exists(npm) {
+    @fs.rmdir(npm, recursive=true)
+  }
+  @fs.mkdir(npm, recursive=true)
+  // npm runs through Node: on Windows npm is npm.cmd, which a process call
+  // that adds .exe cannot start.
+  step("node", [
+    npm_cli(),
+    "pack",
+    "--ignore-scripts",
+    "--silent",
+    "--pack-destination",
+    npm,
+    "./apps/morphir",
+  ])
+  step("tar", ["-xzf", "\{npm}/morphir-morphir-0.1.0.tgz", "-C", npm])
+  let moonbit = suites.contains(MoonbitNative) ||
+    suites.contains(MoonbitPortable)
+  if moonbit {
+    step("moon", [
+      "build", "--target", "native", "--release", "apps/morphir-extension",
+    ])
+  }
+  let portable = "\{evidence}/portable-mep"
+  // A packaging failure fails only the moonbit-portable suite; the other
+  // suites still run.
+  let portable_error : Ref[String?] = Ref(None)
+  if suites.contains(MoonbitPortable) {
+    package_portable(portable) catch {
+      StepFailed(_, message) => portable_error.val = Some(message)
+      error => portable_error.val = Some(error.to_string())
+    }
+  }
+  let python = match python {
+    Some(path) => Some(path)
+    None => if suites.contains(Python) { find_python() } else { None }
+  }
+  let summaries : Array[Json] = []
+  let receipts : Array[Json] = []
+  let mut passed = true
+  for suite in suites {
+    if suite == MoonbitPortable && portable_error.val is Some(message) {
+      passed = false
+      summaries.push(
+        unbuilt(suite, "the portable guest was not packaged: " + message),
+      )
+      continue
+    }
+    let receipt_path = "\{evidence}/\{suite.name()}.json"
+    if @fs.exists(receipt_path) {
+      @fs.remove(receipt_path)
+    }
+    let args = [
+      "apps/morphir/scripts/extension-qualification.ts",
+      "--suite",
+      suite.name(),
+      "--evidence",
+      evidence,
+      "--native",
+      "\{built}/morphir/morphir/morphir.exe",
+      "--npm-entry",
+      "\{npm}/package/bin/morphir.js",
+      "--native-guest",
+      "\{built}/finos/morphir-extension/morphir-extension.exe",
+      "--portable",
+      "\{portable}/extension",
+    ]
+    if python is Some(path) {
+      args.append(["--python", path])
+    }
+    let code = @process.run(
+      "node",
+      args,
+      stdout=@stdio.stderr,
+      stderr=@stdio.stderr,
+    )
+    guard @fs.exists(receipt_path) else {
+      raise StepFailed(
+        if code > 0 {
+          code
+        } else {
+          1
+        },
+        "the driver wrote no receipt for \{suite.name()} (status \{code})",
+      )
+    }
+    let receipt = @fs.read_file(receipt_path).json()
+    let item = summary(suite, receipt_path, sha256_of(receipt_path), receipt)
+    if code != 0 || field(receipt, "state") != Json::string("passed") {
+      passed = false
+    }
+    summaries.push(item)
+    receipts.push(receipt)
+  }
+  (
+    passed,
+    {
+      "evidence": evidence,
+      "suites": Json::array(summaries),
+      "receipts": Json::array(receipts),
+    },
+  )
+}
+
+///|
+fn document(state : String, code : Int32, body : (String, Json)) -> String {
+  let fields : Map[String, Json] = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "extension-qualification",
+    "state": state,
+    "exitCode": code,
+    "diagnostics": [],
+  }
+  fields[body.0] = body.1
+  Json::object(fields).stringify() + "\n"
+}
+
+///|
+async fn refuse(
+  json : Bool,
+  code : Int32,
+  kind : String,
+  message : String,
+) -> Unit {
+  if json {
+    @stdio.stdout.write(
+      document("failed", code, ("error", { "code": kind, "message": message })),
+    )
+  } else {
+    @stdio.stderr.write("extension-qualification: \{message}\n")
+  }
+  @sys.exit(code)
+}
+
+///|
+fn summary_line(item : Json) -> String {
+  let text = fn(name : String) {
+    match field(item, name) {
+      String(value) => value
+      Number(value, ..) => value.to_int().to_string()
+      _ => ""
+    }
+  }
+  let line = "\{text("suite")}: \{text("state")} (\{text("passed")} passed, \{text("knownFailures")} known failures, \{text("failed")} failed) \{text("receiptPath")}"
+  match field(item, "error") {
+    String(error) => line + ": " + error
+    _ => line
+  }
+}
+
+///|
+async fn main {
+  let json = @env.args().contains("--json")
+  let matches = command().parse(argv=@env.args()[1:]) catch {
+    error => {
+      refuse(json, 2, "invalid_arguments", error.to_string())
+      return
+    }
+  }
+  let json = matches.flags.get("json").unwrap_or(false)
+  if matches.flags.get("help").unwrap_or(false) {
+    if json {
+      @stdio.stdout.write(
+        document(
+          "succeeded",
+          0,
+          ("result", { "help": command().render_help() }),
+        ),
+      )
+    } else {
+      @stdio.stdout.write(command().render_help() + "\n")
+    }
+    return
+  }
+  let suites = match matches.values.get("SUITE") {
+    Some([text, ..]) => Suite::select(text)
+    _ => None
+  }
+  guard suites is Some(suites) else {
+    refuse(
+      json, 2, "invalid_arguments", "SUITE must be elm, python, moonbit-native, moonbit-portable, conformance or all",
+    )
+    return
+  }
+  let evidence = match matches.values.get("evidence") {
+    Some([path, ..]) => path
+    _ => ".dev/extension-qualification/evidence"
+  }
+  let python = match matches.values.get("python") {
+    Some([path, ..]) => Some(path)
+    _ => None
+  }
+  let (passed, result) = execute(suites, evidence, python) catch {
+    StepFailed(code, message) => {
+      refuse(json, code, "step_failed", message)
+      return
+    }
+    error => {
+      refuse(json, 1, "command_failed", error.to_string())
+      return
+    }
+  }
+  guard field(result, "suites") is Array(items) else { return }
+  if !passed {
+    let failed = items
+      .filter(item => field(item, "state") != Json::string("passed"))
+      .map(summary_line)
+    refuse(
+      json,
+      1,
+      "qualification_failed",
+      "a suite failed: " + failed.join("; "),
+    )
+    return
+  }
+  if json {
+    @stdio.stdout.write(document("succeeded", 0, ("result", result)))
+  } else {
+    for item in items {
+      @stdio.stdout.write(summary_line(item) + "\n")
+    }
+  }
+}
+
+///|
+test "a SUITE argument selects suites" {
+  assert_eq(Suite::select("all").map(suites => suites.length()), Some(5))
+  assert_true(Suite::select("python") is Some([Python]))
+  assert_true(Suite::select("moonbit-portable") is Some([MoonbitPortable]))
+  assert_true(Suite::select("rust") is None)
+  assert_eq(all_suites.map(Suite::name), [
+    "elm", "python", "moonbit-native", "moonbit-portable", "conformance",
+  ])
+}
+
+///|
+test "a summary counts the rows of each result" {
+  let receipt : Json = {
+    "state": "passed",
+    "rows": [
+      { "result": "passed" },
+      { "result": "passed" },
+      { "result": "known-failure" },
+    ],
+  }
+  let item = summary(Elm, "/e/elm.json", "ab", receipt)
+  assert_eq(field(item, "passed"), Json::number(2.0))
+  assert_eq(field(item, "knownFailures"), Json::number(1.0))
+  assert_eq(field(item, "failed"), Json::number(0.0))
+  assert_eq(
+    summary_line(item),
+    "elm: passed (2 passed, 1 known failures, 0 failed) /e/elm.json",
+  )
+}
+
+///|
+test "a suite whose inputs were not built is failed with its cause" {
+  let item = unbuilt(MoonbitPortable, "the portable guest was not packaged: x")
+  assert_eq(field(item, "state"), Json::string("failed"))
+  assert_eq(field(item, "suite"), Json::string("moonbit-portable"))
+  assert_eq(
+    field(item, "error"),
+    Json::string("the portable guest was not packaged: x"),
+  )
+}

@@ -433,10 +433,63 @@ session cases: MEP `0.1` compile from claimed sources, an unclaimed operation, a
 unsuccessful answer, a failed shutdown, cancellation during generate and the
 deadline.
 
-`mise run test:portable-mep-cli`, `mise run test:cli-native-prerequisites` and
-`mise run test:cli-extism-python` still write retired pins. They are rewritten for
-contract `0.2.0` pins and the worker host when the published extensions are
-qualified on it (group 7 of the OpenSpec change `host-extensions-as-workers`).
+### Published extensions and fixture guests
+
+The published extensions are examples of conformant extensions, not the
+definition of support. `scripts/extension-qualification.mbtx` runs them, and an
+independent fixture guest, from the native CLI and from the npm CLI, as a user
+installs it (an unpacked `npm pack` of `apps/morphir`). Every task accepts
+`--json`:
+
+| Task | Suite | What it checks |
+| --- | --- | --- |
+| `mise run test:cli-extension-elm` | `elm` | Elm extension executables `v0.4.1` and elm-classic `v0.5.1` (process workers): describe with the release descriptor, compile of `apps/morphir/fixtures/elm-extension/v1/src`, and no `node` on the PATH of the native run. Elm `v0.5.0-preview.2` (one WASM module, `morphir-bytes-v1`): describe, compile of `v1/package` on the model line, generate, and recompile of the generated sources to the same model |
+| `mise run test:cli-extism-python` | `python` | Python extension `0.4.1`: one document for IR 3 and 4, and the refusal of two documents. `0.4.2`: compile of the two-module fixture for IR 3 and 4, generate, a consumer check of the generated Python, recompile of the generated files to the same IR, and the IR version check |
+| `mise run test:cli-native-prerequisites` | `moonbit-native` | The native MoonBit guest as a process worker: the shared kit's source, consumer and JSON artifacts through both CLIs, and the shared MEP kit run against the guest |
+| `mise run test:portable-mep-cli` | `moonbit-portable` | The portable MoonBit guest (`morphir-bytes-v1`): the same checks, with the shared kit run through `morphir extension worker` of the native CLI |
+| `mise run test:extension-conformance` | `conformance` | The `morphir-extension-sdk` fixture guest in `apps/morphir/fixtures/sdk-guest` (see its README): build receipt, WASI and Morphir host function imports, claims of a language that no host knows, compile, generate, recompile, host function answers and guest diagnostics |
+| `mise run test:extension-qualification` | `all` | All five suites |
+
+Each run builds the CLIs and the guests that it needs. It downloads each
+pinned artifact of `apps/morphir/fixtures/qualification/published.json` into a
+new, empty directory under `.dev/extension-qualification/downloads` and uses it
+only when its SHA-256 equals the pin. It writes one receipt for each suite,
+`.dev/extension-qualification/evidence/<suite>.json` (`--evidence DIR` selects
+another directory). A receipt names the platform, the CLI build (commit, a dirty
+flag and the program SHA-256) and one row for each operation: extension,
+version, CLI (`native`, `npm` or `mck` for the shared kit runner), operation,
+result, guest SHA-256, descriptor SHA-256 and the digests of the published
+files. With `--json`, stdout is one `morphir/command-result` with `result.suites`
+(state and row counts of each receipt) and `result.receipts`; build and driver
+output goes to stderr. A failed suite exits 1 with `qualification_failed`.
+
+A row is `passed`, `failed` or `known-failure`. A known failure is an operation
+that fails for a recorded cause outside the host, with its finding and
+follow-up bead. It does not fail the suite, and it fails the suite when it
+passes, so the record is removed. The current known failures are:
+
+- Elm extension `v0.4.1` compile. The extension requires
+  `package.exposedModules` in `morphir.frontend.compile`; the MEP model makes it
+  optional and the host, which conforms, does not send it. Describe passes.
+  Bead `morphir-ukvn.5.64.36.16`: elm-classic `v0.5.1` (the same JavaScript
+  extension, renamed) fixes it, and its compile passes.
+- The shared MEP kit against the MoonBit guest. The kit
+  `spec/mep/mck/guest-moonbit-bool.json` asks for the frontend profile
+  `moonbit-model-bool-library-v1`, which the guest retired, so the case
+  `compile-ion` fails after describe, initialize and the notifications pass.
+  Follow-up: bead `morphir-ukvn.5.64.36.17` (finos/morphir). For the same
+  reason `mise run test:portable-mep-mck` does not pass.
+
+No shared kit profile fits the SDK fixture guest, because each shared profile
+names its own extension. The `conformance` suite is therefore a local check. A
+generic kit profile is bead `morphir-ukvn.5.64.36.15`.
+
+These tasks are manual. No pull request or merge-queue job runs them, because
+they download published releases and build several guests. The workflow
+`.github/workflows/extension-qualification.yml`, started only by
+`workflow_dispatch`, runs one suite on one runner through
+`scripts/extension-qualification-run.mbtx`, which saves the JSON result for the
+artifact and keeps the qualification's exit status.
 
 ## Controlled local repositories
 
@@ -484,24 +537,8 @@ Every lifecycle command accepts `--json` and writes one `morphir/command-result`
 after required writes. These commands do not automatically join installed
 selection to invocation. That downstream acceptance remains morphir-ukvn.5.64.30.
 
-**Pending.** `mise run test:cli-native-prerequisites` still writes retired pins and
-calls the removed helper route, so it does not pass against this CLI. It is
-rewritten for contract `0.2.0` pins and the worker host in group 7 of the OpenSpec
-change `host-extensions-as-workers`; see [Qualification](#qualification). Until
-then, the description below records what the task covered before the worker host:
-
-```sh
-mise run test:cli-native-prerequisites -- --shared /path/to/finos/morphir --json
-```
-
-It freezes separately built native guests and fault peers, tests embedded Boolean
-and Elm compilation, compile/retain/generate/consumer execution, malformed/oversized
-frames, tuple and context refusal, crashes, diagnostics, deadlines, cancellation,
-shutdown and cleanup. It also tests local publication/install, a real version
-update, corrupt and disabled selections, offline replay and removal in a fresh
-home. It reruns the existing portable provider tests and CLI unit suite. The task
-passes the produced CLI, adapter and guest paths explicitly to each test process,
-binding its receipts to tested artifacts even when the caller has artifact
-override variables set. Evidence and host pins stay under `.dev/native-services`;
-no installed matrix, new CI job,
-release or default switch is performed.
+`mise run test:cli-native-prerequisites` used to test these commands with the
+retired helper route. It now qualifies the native MoonBit guest on the worker
+host; see [Qualification](#qualification). The Rust adapter acceptance stays
+available as `moon run scripts/native-services.mbtx -- --acceptance --shared
+/path/to/finos/morphir --json` until the helper routes are removed.
