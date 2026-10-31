@@ -18,6 +18,7 @@
 {"id":"morphir-0ley","title":"Decide the disposition of crates/morphir-live","status":"closed","priority":2}
 {"id":"morphir-0qvv","title":"Move crates.io publishing to trusted publishing","status":"open","priority":3}
 {"id":"morphir-0r6n","title":"Retire draft25 schema validator workaround","status":"open","priority":3}
+{"id":"morphir-0r8n","title":"Group Rust and GitHub Actions Renovate updates","status":"closed","priority":2}
 {"id":"morphir-0rgk","title":"morphir-common cache_maintenance_inventory tests fail on case-insensitive filesystems","status":"closed","priority":3}
 {"id":"morphir-0tca","title":"Scope YAML float lexemes to admitted Value paths","status":"open","priority":2}
 {"id":"morphir-0w4","title":"Implement distribution BDD features","status":"closed","priority":1}
@@ -596,6 +597,10 @@
 {"id":"morphir-li1","title":"Define diagnostics and artifact modeling for pipeline results","status":"closed","priority":1}
 {"id":"morphir-lnr","title":"Add zerolog structured logging to Morphir CLI","status":"open","priority":2}
 {"id":"morphir-lqgb","title":"Task graph: declared inputs, source tracking, install as a graph node","status":"open","priority":2}
+{"id":"morphir-ltut","title":"morphir-openapi: schema projection for the SDK Decimal type (finos/morphir-extensions#20)","status":"closed","priority":2}
+{"id":"morphir-ltut.1","title":"OpenSpec change: Decimal projection for morphir-openapi","status":"closed","priority":2}
+{"id":"morphir-ltut.2","title":"Implement Decimal projection test-first","status":"closed","priority":2}
+{"id":"morphir-ltut.3","title":"Prepare morphir-openapi minor release and qualify dry-run bundle","status":"closed","priority":2}
 {"id":"morphir-luz","title":"Improve validation performance for large Morphir IR JSON files","status":"open","priority":2}
 {"id":"morphir-lzzk","title":"Stabilize stalled-download diagnostic test under CI load","status":"open","priority":2}
 {"id":"morphir-m7mh","title":"Update parent pin and CLI proof for Python multiple modules","status":"closed","priority":2}
@@ -812,6 +817,7 @@
 {"id":"morphir-sjgr","title":"Shepherd and merge Gleam parser and integration PRs","status":"closed","priority":1}
 {"id":"morphir-snaf","title":"Add Rust pattern matching for IR v3 and v4","status":"closed","priority":2}
 {"id":"morphir-snf","title":"Implement morphir decoration-setup command","status":"closed","priority":2}
+{"id":"morphir-sugs","title":"Restore MEP contract IR generation and drift check with the morphir-gleam extension","status":"open","priority":2}
 {"id":"morphir-szb","title":"WIT Frontend for Morphir IR v4","status":"open","priority":1}
 {"id":"morphir-szr","title":"Support archive expansion policies","status":"open","priority":2}
 {"id":"morphir-t9cg","title":"Public compile entry points take a type external callers cannot obtain (GH #897)","status":"open","priority":3}
@@ -971,13 +977,15 @@
 {"id":"morphir-ukvn.1.15.5","title":"Elm MEP guest over the morphir-bytes-v1 ABI","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.15.6","title":"Release workflow, attestations and docs for the Elm extension","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.15.7","title":"Rename the JavaScript Elm extension to Elm classic","status":"closed","priority":2}
-{"id":"morphir-ukvn.1.15.8","title":"JavaScriptCore's OMG Wasm tier gives varying answers for the Elm extension module","status":"open","priority":2}
+{"id":"morphir-ukvn.1.15.8","title":"JavaScriptCore's OMG Wasm tier gives varying answers for the Elm extension module","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.16","title":"Move finos/morphir-elm to Bun 1.4.2 or later and drop the JavaScriptCore OMG workaround","status":"closed","priority":3}
+{"id":"morphir-ukvn.1.17","title":"Remove the built-in Gleam provider and the gleam subcommand from the Rust CLI","status":"in_progress","priority":1}
 {"id":"morphir-ukvn.1.2","title":"A1b: publish the core crates to crates.io at 0.x.y","status":"closed","priority":1}
 {"id":"morphir-ukvn.1.3","title":"A2: the common ecosystem repo layout, packaging command and change-scoped CI","status":"open","priority":1}
 {"id":"morphir-ukvn.1.3.1","title":"A2/F4: specify MoonBit extension packaging and qualify transport boundaries","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.3.2","title":"A2: bundle explicit native MEP process artifacts through the canonical CLI","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.3.3","title":"Qualify the reusable ecosystem repository template and extension release workflow","status":"open","priority":2}
-{"id":"morphir-ukvn.1.4","title":"A3: move the Gleam extension to finos/morphir-gleam, built in by pin","status":"open","priority":1}
+{"id":"morphir-ukvn.1.4","title":"A3: move the Gleam extension to finos/morphir-gleam, built in by pin","status":"closed","priority":1}
 {"id":"morphir-ukvn.1.5","title":"A10: TypeScript extension in finos/morphir-typescript","status":"open","priority":1}
 {"id":"morphir-ukvn.1.6","title":"A4: move the Python extension to finos/morphir-python","status":"in_progress","priority":1}
 {"id":"morphir-ukvn.1.6.1","title":"Move and qualify the standalone Rust compiler","status":"closed","priority":2}
@@ -988,7 +996,7 @@
 {"id":"morphir-ukvn.1.6.6","title":"Measure native and Python integration costs","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.6.7","title":"Remove the old provider and prepare ecosystem cutover","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.6.8","title":"A4 release: publish the qualified Python compiler and cut over the live provider","status":"closed","priority":1}
-{"id":"morphir-ukvn.1.7","title":"A5: move the Avro and OpenAPI extensions to finos/morphir","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.1.7","title":"A5: move the Avro and OpenAPI extensions to finos/morphir","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.8","title":"A6: move Elm-native to finos/morphir-elm","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.9","title":"A9: restructure finos/morphir-scala and decommission morphir-scala-elm","status":"open","priority":2}
 {"id":"morphir-ukvn.10","title":"Archive completed Python documentation OpenSpec change","status":"closed","priority":3}
@@ -1372,6 +1380,8 @@
 {"id":"morphir-ukvn.5.64.36","title":"Host extensions as MEP workers in the MoonBit CLI","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.36.1","title":"Worker session core and host API","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.10","title":"Upgrade moonbitlang/async from 0.22.4 to 0.22.7","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.11","title":"npm CLI hangs on extism-kernel-v1 pins after extension.cancelled (macOS arm64)","status":"closed","priority":1}
+{"id":"morphir-ukvn.5.64.36.12","title":"Run native CLI acceptance with the Extism npm check on the nightly macos-15 lane","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.36.2","title":"Native process workers","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.3","title":"Node process workers","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.4","title":"MoonBit Extism host in moonrockz/extism","status":"closed","priority":2}
@@ -1382,7 +1392,7 @@
 {"id":"morphir-ukvn.5.64.36.9","title":"Retire the helper routes","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.37","title":"Run core-Wasm guests from any language: document trees and descriptor-pinned modules","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.37.1","title":"Claims and probe session on the core-Wasm route","status":"open","priority":2}
-{"id":"morphir-ukvn.5.64.37.2","title":"Source trees as relative-URI documents","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.37.2","title":"Source trees as relative-URI documents","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.5.64.37.3","title":"Descriptor-pinned core-Wasm modules","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.37.4","title":"Qualify the morphir-gleam 0.4.0 module","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.4","title":"Invoke a pinned native MEP provider from the MoonBit CLI","status":"closed","priority":1}
@@ -1744,6 +1754,13 @@
 {"id":"morphir-w96a.5","title":"IR-3: coverage, schema and report gates, CI routing to Rust (GH #851)","status":"closed","priority":1}
 {"id":"morphir-wct","title":"Implement glob-based member discovery","status":"closed","priority":2}
 {"id":"morphir-wrmw","title":"Make configured-command path assertion portable on Windows","status":"closed","priority":2}
+{"id":"morphir-x4ep","title":"Get the open Renovate PRs green and merged","status":"open","priority":2}
+{"id":"morphir-x4ep.1","title":"Fix and merge Renovate #278 rust-patch","status":"in_progress","priority":2}
+{"id":"morphir-x4ep.2","title":"Fix and merge Renovate #276 wasm-bindgen","status":"closed","priority":2}
+{"id":"morphir-x4ep.3","title":"Fix and merge Renovate #185 rust-minor","status":"in_progress","priority":2}
+{"id":"morphir-x4ep.4","title":"Fix and merge Renovate #293 rust-major","status":"in_progress","priority":2}
+{"id":"morphir-x4ep.5","title":"Fix and merge Renovate #184 gleam-core digest","status":"in_progress","priority":2}
+{"id":"morphir-x4ep.6","title":"Split 0.x Cargo minors out of rust-minor and hold getrandom at 0.2","status":"open","priority":2}
 {"id":"morphir-x4q1","title":"morphir_devkit test binary intermittently hangs and is killed (exit 137/144)","status":"open","priority":3}
 {"id":"morphir-x59","title":"Add error code appendix to validation reports","status":"closed","priority":2}
 {"id":"morphir-x7nn","title":"Expose Gleam as a native extension","status":"closed","priority":2}
@@ -1762,6 +1779,7 @@
 {"id":"morphir-xgd9.9","title":"Gap: the package MCK suite (spec/package/mck) is not vendored or embedded in the released mck driver","status":"open","priority":2}
 {"id":"morphir-xihy","title":"Implement classic-to-v4 IR converter","status":"open","priority":2}
 {"id":"morphir-xo35","title":"Align protocol.md MEP examples with the Gleam contract (types, initialize members, diagnostic data)","status":"closed","priority":3}
+{"id":"morphir-xu3p","title":"Separate Renovate Rust toolchain upgrades","status":"closed","priority":2}
 {"id":"morphir-y5p3","title":"Harden Avro IDL rendering and validation","status":"closed","priority":2}
 {"id":"morphir-y66y","title":"Advance morphir-ui after PR #15","status":"closed","priority":2}
 {"id":"morphir-y68p","title":"Insight: accessibility pass on selectable node labels","status":"open","priority":3}
@@ -1773,6 +1791,7 @@
 {"id":"morphir-yzxj","title":"Dogfood the complete Morphir V3 model through the Gleam extension","status":"closed","priority":2}
 {"id":"morphir-z0r","title":"Add new module validation to release:validate task","status":"closed","priority":2}
 {"id":"morphir-z2j3","title":"Use whole-union exposure and read-only public type access","status":"closed","priority":1}
+{"id":"morphir-z40j","title":"Pin morphir-openapi 0.4.0 (Decimal projection)","status":"open","priority":2}
 {"id":"morphir-z7f","title":"Update documentation references","status":"closed","priority":3}
 {"id":"morphir-zdb","title":"Implement decoration value file loader/saver","status":"closed","priority":2}
 {"id":"morphir-zp32","title":"Bring the published v4 books fixture onto canonical names","status":"open","priority":2}
