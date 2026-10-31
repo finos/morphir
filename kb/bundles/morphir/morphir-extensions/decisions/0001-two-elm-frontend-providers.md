@@ -1,7 +1,7 @@
 ---
 type: Decision Record
 title: Two Elm frontend providers
-description: The Rust CLI chose the JavaScript frontend, renamed morphir-elm-classic from 0.5.0, as its default and morphir-elm-native as opt-in.
+description: The CLI keeps morphir-elm as the default Elm frontend and morphir-elm-native as an opt-in provider until the native one reaches value and type-inference parity.
 state: Accepted
 decided: 2026-09-18
 tags: [elm, extensions, frontend, mep]
@@ -9,15 +9,6 @@ status: stable
 ---
 
 # Two Elm frontend providers
-
-Naming update, 2026-10-31: this decision records the Rust CLI's JavaScript frontend,
-then named `morphir-elm`. From [0.5.0](https://github.com/finos/morphir-elm/releases/tag/extension%2Felm-classic%2Fv0.5.0),
-that extension is `morphir-elm-classic`, short id `elm-classic`, released on
-`extension/elm-classic/v*`. References to `morphir-elm` below retain the historical
-JavaScript identity, including the unchanged `extension/elm/v0.1.0` through `v0.4.1` releases.
-The new `morphir-elm` is a MoonBit Wasm extension using `morphir-bytes-v1` and MEP
-`0.2.0-draft.1`, first released as `extension/elm/v0.5.0-preview.1`. It does not yet
-support package dependencies. This decision does not select that new extension.
 
 The `morphir` CLI registers two Elm frontends rather than one. `morphir-elm`, the JS process
 extension (`ecosystem/morphir-elm/cli2/mep/`, morphir-elm#1285), stays the default for `.elm`
