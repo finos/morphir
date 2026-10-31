@@ -42,9 +42,9 @@ verify the artifact's attestation, and rename the descriptor to `release.json`:
 
 ```console
 mkdir -p bundles/openapi
-gh release download extension/openapi/v0.3.0 -R finos/morphir-extensions --dir bundles/openapi \
+gh release download extension/openapi/v0.4.0 -R finos/morphir-extensions --dir bundles/openapi \
   --pattern '*.wasm' --pattern '*.wasm.sha256' --pattern '*.release.json'
-gh attestation verify bundles/openapi/morphir-openapi-0.3.0.wasm -R finos/morphir-extensions \
+gh attestation verify bundles/openapi/morphir-openapi-0.4.0.wasm -R finos/morphir-extensions \
   --signer-workflow finos/morphir-extensions/.github/workflows/extension-release.yml
 mv bundles/openapi/*.release.json bundles/openapi/release.json
 ```
@@ -114,7 +114,8 @@ then applies CLI options in command-line order. The last CLI value for a key
 wins. The CLI parses a value as JSON when possible; otherwise it passes a
 string. Option names use `snake_case`.
 
-The `json-schema` target only ever reads `unsupported` — `version`,
+The `json-schema` target reads only `unsupported` and the `decimal_*`
+options (see [Decimal](#decimal)) — `version`,
 `projection`, `result_responses`, `error_status`, and `operations` all shape
 `paths`, which JSON Schema documents never have. Option decoding runs before
 the backend looks at the target, so a value one of these options accepts is
@@ -132,6 +133,9 @@ generation with `JSC002` regardless of `--target`. See
 | Option | Accepted values | Default |
 |---|---|---|
 | `unsupported` | `error`, `warn-and-skip` | `error` |
+| `decimal_encoding` | `string`, `number` | `string` |
+| `decimal_precision` | Integer from 1 through 1000; set it with `decimal_scale` | Not set |
+| `decimal_scale` | Integer from 0 through `decimal_precision`; set it with `decimal_precision` | Not set |
 
 Unknown options, wrong JSON types, and invalid enum values fail with
 `JSC002`.
@@ -163,6 +167,7 @@ argument.
 | `String` | `{"type": "string"}` |
 | `Char` | `{"type": "string", "maxLength": 1}` |
 | `Unit` | `{"type": "null"}` |
+| `Decimal` | `{"type": "string", "format": "decimal", "pattern": ...}`; see [Decimal](#decimal) |
 | `Maybe a` | `{"anyOf": [<a>, {"type": "null"}]}` |
 | `List a` | `{"type": "array", "items": <a>}` |
 | `Set a` | `{"type": "array", "items": <a>, "uniqueItems": true}` |
@@ -183,6 +188,65 @@ from traversal order, so two declarations that would produce the same schema
 name are `JSC004` name collisions rather than a silent rename.
 
 A `Dict` with a non-`String` key has no object schema and fails with `JSC003`.
+
+## Decimal
+
+From `morphir-openapi` 0.4.0, the Morphir SDK `Decimal`
+(`morphir/SDK:decimal#decimal`) has a schema. Earlier releases refused IR
+that uses `Decimal` with `JSC003`.
+
+Examples in this section use this record from the extension's tests:
+
+```elm
+type alias Offer =
+    { price : Decimal
+    , discount : Maybe Decimal
+    }
+```
+
+By default, a `Decimal` is a string that keeps the exact value. The `price`
+field projects to:
+
+```json
+{
+  "type": "string",
+  "format": "decimal",
+  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+}
+```
+
+The pattern accepts plain decimal notation, as Morphir data codecs write it,
+for example `"12.50"`, `"0"` and `"-0.05"`. It refuses a JSON number,
+an exponent (`"1e3"`), a `+` sign and `".5"`.
+
+Set `decimal_encoding` to `number` to write a `Decimal` as a JSON number.
+Most consumers read a JSON number as binary floating point, so this encoding
+can lose the exact value:
+
+```toml
+[codegen.json-schema]
+decimal_encoding = "number"
+```
+
+```json
+{ "type": "number", "format": "decimal" }
+```
+
+Set `decimal_precision` and `decimal_scale` together to bound the digits of
+the string pattern. They have the same meaning as in the Avro extension.
+With `decimal_precision = 10` and `decimal_scale = 2`, `price` projects to:
+
+```json
+{
+  "type": "string",
+  "format": "decimal",
+  "pattern": "^-?(0|[1-9][0-9]{0,7})(\\.[0-9]{1,2})?$"
+}
+```
+
+These combinations fail with `JSC002`: only one of the two bounds, a bound
+with `decimal_encoding = "number"`, a precision outside 1 through 1000, or a
+scale larger than the precision.
 
 ## Diagnostic codes
 

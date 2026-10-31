@@ -42,9 +42,9 @@ verify the artifact's attestation, and rename the descriptor to `release.json`:
 
 ```console
 mkdir -p bundles/openapi
-gh release download extension/openapi/v0.3.0 -R finos/morphir-extensions --dir bundles/openapi \
+gh release download extension/openapi/v0.4.0 -R finos/morphir-extensions --dir bundles/openapi \
   --pattern '*.wasm' --pattern '*.wasm.sha256' --pattern '*.release.json'
-gh attestation verify bundles/openapi/morphir-openapi-0.3.0.wasm -R finos/morphir-extensions \
+gh attestation verify bundles/openapi/morphir-openapi-0.4.0.wasm -R finos/morphir-extensions \
   --signer-workflow finos/morphir-extensions/.github/workflows/extension-release.yml
 mv bundles/openapi/*.release.json bundles/openapi/release.json
 ```
@@ -153,6 +153,9 @@ TOML's `version = "3.0"` is already a string.
 | `result_responses` | `data`, `split` | `data` |
 | `error_status` | Integer from 400 through 599 | `400` |
 | `operations` | Map from an exact Morphir FQName to a per-operation override | Empty map |
+| `decimal_encoding` | `string`, `number` | `string` |
+| `decimal_precision` | Integer from 1 through 1000; set it with `decimal_scale` | Not set |
+| `decimal_scale` | Integer from 0 through `decimal_precision`; set it with `decimal_precision` | Not set |
 
 Unknown options, wrong JSON types, invalid enum values, an `error_status`
 outside 400–599, and an `operations` override `path` that does not start with
@@ -315,6 +318,71 @@ breaks on recursive types. The downgrade keeps the `allOf` form and instead
 records a `JSC003` warning naming the schema or property, so the gap is
 visible rather than silent. Generate with `version = "3.1"` instead if a
 consumer must enforce the null case.
+
+## Decimal
+
+From `morphir-openapi` 0.4.0, the Morphir SDK `Decimal`
+(`morphir/SDK:decimal#decimal`) has a schema in OpenAPI 3.1 and 3.0. Earlier
+releases refused IR that uses `Decimal` with `JSC003`. The `json-schema`
+target uses the same schema; see
+[Generate JSON Schema](./json-schema.md#decimal).
+
+Examples in this section use this record from the extension's tests:
+
+```elm
+type alias Offer =
+    { price : Decimal
+    , discount : Maybe Decimal
+    }
+```
+
+By default, a `Decimal` is a string that keeps the exact value. In
+`components/schemas/Offer`, the OpenAPI 3.1 document has:
+
+```json
+{
+  "price": {
+    "type": "string",
+    "format": "decimal",
+    "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+  },
+  "discount": {
+    "anyOf": [
+      {
+        "type": "string",
+        "format": "decimal",
+        "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+      },
+      { "type": "null" }
+    ]
+  }
+}
+```
+
+With `version = "3.0"`, `price` is the same, and `discount` is the `price`
+schema with `"nullable": true`.
+
+Set `decimal_encoding` to `number` to write a `Decimal` as a JSON number.
+Most consumers read a JSON number as binary floating point, so this encoding
+can lose the exact value:
+
+```console
+morphir generate --target openapi --option decimal_encoding=number
+```
+
+`price` then projects to:
+
+```json
+{ "type": "number", "format": "decimal" }
+```
+
+`decimal_precision` and `decimal_scale` bound the digits of the string
+pattern. Set both or neither. They have the same meaning as in the Avro
+extension. With `decimal_precision = 10` and `decimal_scale = 2`, the pattern
+is `^-?(0|[1-9][0-9]{0,7})(\.[0-9]{1,2})?$`. These combinations fail with
+`JSC002`: only one of the two bounds, a bound with
+`decimal_encoding = "number"`, a precision outside 1 through 1000, or a scale
+larger than the precision.
 
 ## Diagnostic codes
 
