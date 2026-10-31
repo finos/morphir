@@ -36,10 +36,12 @@ table.
 `InitializeParams.modelTransport` contains the host offer. It is optional and
 omitted by legacy-only peers. `ExtensionCapabilities.modelTransport` contains
 the extension's selected session support. It is also optional; absence or an
-empty tuple list grants no model operation. The extension selects a subset of
-its own support intersected with the host offer. The host verifies that subset
-before dispatch. Static claims and extension description cannot substitute for
-the live host offer and initialized session capabilities.
+empty tuple list grants no model operation. The extension selects the
+intersection of its own support with the host offer, in host order (see
+[Offer order and the default tuple](#offer-order-and-the-default-tuple)). The
+host verifies that subset before dispatch. Static claims and extension
+description cannot substitute for the live host offer and initialized session
+capabilities.
 
 When a static claim set is available, the new draft permits only
 `modelTransport` to narrow within the claim: session tuples and guarantee IDs
@@ -73,9 +75,12 @@ sequenceDiagram
     participant H as Host
     participant G as Extension adapter
     participant C as Pure component
-    H->>G: initialize(versions, host modelTransport offer)
-    G-->>H: exact MEP draft, selected bilateral tuples and bounds
+    H->>G: initialize(versions, host modelTransport offer in preference order)
+    G-->>H: exact MEP draft, selected bilateral tuples in host order, bounds
     H->>H: verify selection, retain original model bytes
+    opt model tuple is not agreed for generateModel
+        H->>H: convert to an agreed tuple, or refuse
+    end
     H->>G: generateModel(model, admitted input tuple, target, context, requirements)
     G->>G: bound, decode, verify format and admit evidence
     alt unsupported tuple, stale evidence or unknown requirement
@@ -86,6 +91,54 @@ sequenceDiagram
         G-->>H: GenerateResult
     end
 ```
+
+### Offer order and the default tuple
+
+The host offer lists every tuple that the host supports for an operation, in
+the host's preference order. The first offered tuple for an operation is the
+host's default for that operation. No wire member names the default: the order
+of `tuples` gives it. Tuples for different operations can interleave, so
+compare order only among tuples that have the same `operation`.
+
+The extension selects the offered tuples that it supports and keeps the host's
+order. It does not reorder them to show its own preference. For each operation,
+the host uses the first agreed tuple. The first agreed tuple is the first tuple
+in the host offer for that operation that is also in the session support.
+Because the extension keeps the host order, it is also the first session tuple
+for that operation.
+
+When the host requires one format for an operation, for example because the
+user gave an explicit model format, the host offers only that tuple for the
+operation. If the extension does not support that tuple, the agreement for the
+operation is empty.
+
+An empty agreement for a requested operation is the only negotiation failure.
+The host refuses the operation and sends no request for it. A host reports this
+refusal as `extension.tuple_unavailable`. This is a host outcome code, not a new
+JSON-RPC error number. When the host does not require a format, an extension
+that does not support the host's default but supports another offered tuple is
+not an error: the session uses the first agreed tuple. For generation, a model
+that the host has in a tuple outside the agreement is also not an error when the
+host can convert it (see
+[Host conversion for generation](#host-conversion-for-generation)).
+
+In this example the host prefers Ion and also offers JSON for compilation. A
+JSON-only extension agrees on JSON, and the host compiles with JSON. Tuples show
+only `operation` and `codec`. Each codec uses its profile from the table in
+[Profiles and encoded payloads](#profiles-and-encoded-payloads), and all tuples
+have the same envelope and IR versions.
+
+```text
+host offer       [compileModel/ion-binary, compileModel/morphir-json]
+extension        [compileModel/morphir-json]
+session support  [compileModel/morphir-json]   -> use morphir-json
+
+host offer       [compileModel/ion-binary]      (host requires Ion)
+extension        [compileModel/morphir-json]
+session support  []                             -> extension.tuple_unavailable
+```
+
+This is a clarification of the `0.2.0-draft.1` draft. It adds no wire member.
 
 ## Profiles and encoded payloads
 
@@ -159,7 +212,9 @@ immutable logical revision, not the encoded payload digest. Changes to semantic
 content or facts mint a new revision. A component must invalidate affected
 evidence unless its explicit contract proves that guarantee and scope survive.
 Exact transcoding may keep the logical revision while recomputing length and
-digest. Opaque retention keeps the complete original bytes, including unknown
+digest. Host conversion for generation is different: the converted model always
+has its own revision (see
+[Host conversion for generation](#host-conversion-for-generation)). Opaque retention keeps the complete original bytes, including unknown
 Ion facts, ordered annotations, symbols, decimal scale and provenance.
 
 Evidence is a claim with `guarantee`, `modelId`, `modelRevision`,
@@ -224,6 +279,68 @@ Unsupported methods use `-32601`. Invalid shapes, digests or bounds use
 can use `-32602` with a structured reason. Compiler/generator semantic failures
 use their existing diagnostics. Corpus observation labels are not new RPC error
 numbers. Errors and logs must not echo arbitrary payload content or secrets.
+
+### Host conversion for generation
+
+The host can have a model in a tuple that the session does not agree for
+`morphir.backend.generateModel`. For example, the host has a `morphir-model`
+Ion model, and the session agrees only on the `morphir-ir` JSON tuple for
+generation. If the host can convert the model to a tuple that the session
+agrees for `generateModel`, the host must convert the model and send the
+converted model. The request `input` is that agreed tuple. This is not an
+error. The request is the same as any other `generateModel` request in that
+tuple.
+
+The operation fails only when the host cannot convert the model to an agreed
+tuple. Then the host sends no request and reports `extension.tuple_unavailable`.
+
+These rules apply to a host conversion:
+
+1. **Loss rules.** The conversion follows the host's own loss rules. The host
+   refuses a conversion that would drop source or naming provenance. It reports
+   its lossy-conversion error, for example `data.lossy_conversion` in the
+   MoonBit CLI, and sends no request. The JSON profile rules in
+   [Profiles and encoded payloads](#profiles-and-encoded-payloads) also apply.
+2. **New payload.** The converted model is a new model payload. It has its own
+   `decodedByteLength`, `sha256` and `revision`. The host keeps the original
+   model bytes. The conversion does not replace the retained model.
+3. **Guarantees and evidence.** Required guarantees and evidence that apply to
+   the original payload do not carry over automatically. Evidence binds the
+   original revision, so it does not match the converted model. The host can
+   send evidence for the converted model only when that evidence binds the new
+   revision and its checker or trust policy accepts it. The extension admits
+   the converted model and its evidence as it admits any other model.
+4. **Before dispatch.** The host converts before it sends the request. This is
+   not a retry after the extension refuses admission. The extension does not
+   ask for a conversion, and the host does not resend a refused request in a
+   different tuple.
+5. **Scope.** This rule applies only to `generateModel`. This draft does not
+   define host conversion for `compileModel` dependencies.
+
+```text
+host model        morphir-model/ion-binary
+session support   [generateModel/morphir-ir/morphir-json]
+host can convert  -> send the converted JSON model (new digest and revision)
+conversion lossy  -> lossy-conversion error, no request
+no conversion     -> extension.tuple_unavailable, no request
+```
+
+The spec leaves these details to the host:
+
+- which conversions it implements;
+- which agreed tuple it converts to when it can convert to more than one. The
+  recommended target is the first agreed tuple in host order to which it can
+  convert;
+- its loss rules beyond the provenance rule above, and the name of its
+  lossy-conversion error;
+- how it mints the new revision, and whether the converted model keeps the
+  original `modelId`;
+- whether it tells the user about the conversion.
+
+The same rule is written for the MoonBit CLI in
+[finos/morphir-moonbit#281](https://github.com/finos/morphir-moonbit/pull/281).
+This rule adds no wire member and does not change the `0.2.0-draft.1` draft
+version.
 
 ## Delivery boundaries
 

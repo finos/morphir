@@ -180,7 +180,7 @@
                 },
                 "initialize-params": {
                   "Public": {
-                    "doc": "Parameters of `morphir.initialize`. Full SemVer protocol versions are used\nby the model-operation draft; legacy `0.1` remains an explicit exception.\n`model_transport` (wire `modelTransport`) is left out when absent. Absence\nmeans legacy-only, never an implicit offer of model transport.",
+                    "doc": "Parameters of `morphir.initialize`. Full SemVer protocol versions are used\nby the model-operation draft; legacy `0.1` remains an explicit exception.\n`model_transport` (wire `modelTransport`) is left out when absent. Absence\nmeans legacy-only, never an implicit offer of model transport. The offer\nlists every supported tuple in preference order; the first tuple for each\noperation is the host's default. A host that requires one format offers\nonly that tuple.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -609,7 +609,7 @@
                 },
                 "extension-capabilities": {
                   "Public": {
-                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend`, `workspace` and `modelTransport` are left out\nwhen absent. An absent `modelTransport` means legacy-only.\n- `modelTransport` before initialization is guest support. In a session\nit contains only tuples explicitly offered by both peers and limits no\nlarger than either peer's limits. It is not a Cartesian product.\nUnder the new draft, agreement with static claims permits this narrowing\nfor modelTransport only; legacy capability equality rules are unchanged.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `streaming`, `incremental`,\n`cancellation`, `progress` or `modelTransport`.",
+                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend`, `workspace` and `modelTransport` are left out\nwhen absent. An absent `modelTransport` means legacy-only.\n- `modelTransport` before initialization is guest support. In a session\nit contains only tuples explicitly offered by both peers and limits no\nlarger than either peer's limits. It is not a Cartesian product. The\nextension keeps the host offer order, and the host uses the first agreed\ntuple for each operation. Only an empty agreement is a failure.\nUnder the new draft, agreement with static claims permits this narrowing\nfor modelTransport only; legacy capability equality rules are unchanged.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `streaming`, `incremental`,\n`cancellation`, `progress` or `modelTransport`.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -1757,7 +1757,7 @@
                 },
                 "model-codec": {
                   "Public": {
-                    "doc": "The representation of a complete model document. Wire values are\n`ion-binary` and `morphir-json`. Ion binary is preferred; JSON remains a\nsupported explicit choice. A codec does not assert a semantic guarantee.\nIon uses media type `application/ion` with its binary version marker;\nMorphir JSON uses `application/json` encoded as UTF-8.",
+                    "doc": "The representation of a complete model document. Wire values are\n`ion-binary` and `morphir-json`. Ion binary is the recommended default;\nJSON remains a supported choice. The host offer order, not the codec, sets\nthe default of a session. A codec does not assert a semantic guarantee.\nIon uses media type `application/ion` with its binary version marker;\nMorphir JSON uses `application/json` encoded as UTF-8.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -2346,7 +2346,7 @@
                 },
                 "generate-model-request": {
                   "Public": {
-                    "doc": "Generate from a retained model. `input` selects an admitted generateModel\ntuple; the model's profile, codec, envelope and semantic IR version must\nmatch it. `target` is the exact advertised target, independent of profile.\nEvidence must bind this model revision and `contextDigest`, and be admitted\nfor each exact required scope before pure generation. The result reuses\nGenerateResult and Artifact, including their existing binary encoding.\nWire rules: absent `requiredGuarantees` or `options` is read as empty.",
+                    "doc": "Generate from a retained model. `input` selects an admitted generateModel\ntuple; the model's profile, codec, envelope and semantic IR version must\nmatch it. `target` is the exact advertised target, independent of profile.\nEvidence must bind this model revision and `contextDigest`, and be admitted\nfor each exact required scope before pure generation. The result reuses\nGenerateResult and Artifact, including their existing binary encoding.\nIf the host has the model in a tuple that the session does not agree, but\ncan convert it to an agreed tuple, the host sends the converted model. The\nconverted model has its own digest and revision, and evidence for the\noriginal does not carry over. The host refuses a lossy conversion. Only\nwhen it cannot convert does it report `extension.tuple_unavailable`.\nWire rules: absent `requiredGuarantees` or `options` is read as empty.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",

@@ -371,6 +371,23 @@ and backend operations, not a new extension type. This is a new contract rule;
 the current SDK's equality-based checker needs a follow-up runtime change.
 See [model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md).
 
+The host offer lists the tuples for each operation in preference order, and the
+first tuple for an operation is the host's default. The extension keeps the
+host order, and the host uses the first agreed tuple. A host that requires one
+format offers only that tuple. An extension that does not support the default
+but supports another offered tuple is not an error. Only an empty agreement for
+an operation refuses it. This clarifies the `0.2.0-draft.1` draft and adds no
+wire member.
+
+For `morphir.backend.generateModel`, a host can have a model in a tuple that the
+session does not agree. If the host can convert the model to an agreed tuple,
+it must convert it and send the converted model. This is not an error. The
+conversion follows the host's loss rules, so a conversion that would drop
+source or naming provenance is refused with the host's lossy-conversion error.
+The converted model has its own digest and revision, and guarantees and
+evidence for the original do not carry over automatically. Only when the host
+cannot convert the model does it report `extension.tuple_unavailable`.
+
 Comparing two claim sets, as publication and installation do, is a comparison
 of equal documents.
 
