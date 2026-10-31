@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The CLI no longer has a built-in Gleam provider (`morphir-gleam`, and its `morphir-gleam-binding` alias) or the `morphir gleam compile`, `generate` and `roundtrip` commands. The Gleam extension now lives in [finos/morphir-gleam](https://github.com/finos/morphir-gleam) (finos/morphir-gleam#23) and is released there as `extension/gleam/v0.4.0`, a core-Wasm guest for the MoonBit CLI. The CLI now has no default built-in provider: the native Elm provider stays opt-in, and `morphir generate` uses installed extensions only. The `examples/gleam` scenarios are gone, and the package examples publish an Elm model and stop after restore. `mise run spec:mep` cannot refresh `spec/mep/generated/mep.ir.json` until the contract compiles with the morphir-gleam extension; `spec:mep-check` checks the committed IR.
+
 ### Changed
+
+- `ecosystem/morphir-gleam` points to finos/morphir-gleam `main`, after the Gleam extension moved there.
 
 - The Avro and OpenAPI bundle pins move to finos/morphir-extensions, which now owns both extensions: `extension/avro/v0.3.0` and `extension/openapi/v0.3.0`. The artifacts are named after the extension id (`morphir-avro-0.3.0`, `morphir-openapi-0.3.0`) and carry build provenance attestations. The generate guides download from finos/morphir-extensions and verify the attestation; releases up to `0.2.0` stay in finos/morphir-rust.
 

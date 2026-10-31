@@ -1,8 +1,8 @@
 ---
 version: 1
 title: Resolve, restore and consume signed local Libraries
-description: Provision explicit package trust, refresh authenticated metadata, resolve a published root into a verified full lock, restore its graph, and generate and compile a restored Library in a consumer project.
-tags: [area:package, area:generate, language:gleam, backend:gleam, ir:v4, kind:positive, suite:offline, workspace:directory]
+description: Provision explicit package trust, refresh authenticated metadata, resolve a published root into a verified full lock, and restore its graph into a consumer project.
+tags: [area:package, ir:v4, kind:positive, suite:offline, workspace:directory]
 provider: rego
 ---
 
@@ -203,67 +203,6 @@ passes if {
     input.stdoutJson.profile == "local-library-mvp"
     count(input.stdoutJson.packages) == 2
     input.artifacts.provider.value.distribution.Library.packageName == "example/eligibility"
-}
-```
-
-### Consume the restored provider
-
-Generate Gleam code from the restored eligibility Library using the consumer's
-configuration. The built-in backend needs no downloaded executable or network.
-This demonstrates provider consumption; it does not claim cross-package linking
-or execution of the generated program.
-
-```yaml morphir:command
-id: generate
-name: Generate source from the restored Library
-timeout_seconds: 60
-stdout_json: true
-```
-
-```sh
-morphir gleam --json generate --config consumer/morphir.toml --input consumer/libraries/example.com/finance/eligibility/1.2.0/ir.json --output consumer/generated
-```
-
-```yaml morphir:golden
-id: generated-source
-command: generate
-actual: consumer/generated/decision.gleam
-expected_file: golden/decision.gleam
-line_endings: lf
-```
-
-### Compile in the consumer project
-
-The generated provider contains a concrete Decision type and constructor function.
-Compile it under the consumer's package identity to prove it is usable source.
-
-```yaml morphir:command
-id: compile
-name: Compile the consumed Library source
-timeout_seconds: 60
-stdout_json: true
-```
-
-```sh
-morphir gleam --json compile --config consumer/morphir.toml --input consumer/generated --output consumer/compiled
-```
-
-```yaml morphir:assertion
-id: compile-check
-command: compile
-entrypoints: [data.consumed.passes]
-```
-
-```rego
-package consumed
-import rego.v1
-
-passes if {
-    input.exitCode == 0
-    input.stdoutJson.success == true
-    input.stdoutJson.ir.distribution.Library.packageName == "examples/library-consumer"
-    input.stdoutJson.ir.distribution.Library.def.modules.decision.Public.types.decision
-    input.stdoutJson.ir.distribution.Library.def.modules.decision.Public.values["default-decision"]
 }
 ```
 

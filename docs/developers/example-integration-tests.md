@@ -319,7 +319,7 @@ crate using Regorus.
 
 | Tag dimension | Examples |
 | --- | --- |
-| Source language | `language:elm`, `language:gleam` |
+| Source language | `language:elm` |
 | Frontend under test | `frontend:elm-native`, `frontend:morphir-elm` |
 | Configuration | `config:none`, `config:json`, `config:toml`, `config:yaml` |
 | Workflow | `area:compile`, `area:install`, `area:workspace`, `area:generate` |
@@ -499,10 +499,10 @@ Golden checks do not add another evaluator provider.
 For a checked-in expected file, the Markdown metadata fence stands alone:
 
 ```yaml morphir:golden
-id: generated-source
-command: generate
-actual: .morphir/out/generate/gleam.dest/main.gleam
-expected_file: golden/main.gleam
+id: canonical-yaml
+command: migrate
+actual: output.yaml
+expected_file: golden/library.v4.yaml
 ```
 
 `actual` is relative to the temporary project workspace. `expected_file` is
@@ -519,18 +519,18 @@ Prose may separate the fences as with existing paired blocks.
 
 ````markdown
 ```yaml morphir:golden
-id: generated-function
-command: generate
-actual: .morphir/out/generate/gleam.dest/main.gleam
-select: {kind: lines, start: 3, end: 5}
+id: yaml-header
+command: migrate
+actual: output.yaml
+select: {kind: lines, start: 1, end: 3}
 ```
 
-Compare this exact function, including indentation and the final newline:
+Compare these exact lines, including indentation and the final newline:
 
-```gleam
-pub fn hello() {
-  "world"
-}
+```yaml
+formatVersion: 4
+distribution:
+  Library:
 ```
 ````
 
@@ -568,8 +568,8 @@ sent to the evaluator, including any explicit normalization. Diffs are diagnosti
 text, not patches to apply. There is no automatic golden-update mode: edit and
 review expectations intentionally.
 
-See the [Gleam example](https://github.com/finos/morphir/blob/main/examples/gleam/compile-generate/scenarios.md)
-for whole-file, line-range and marker checks alongside semantic Rego assertions.
+See the [migration example](https://github.com/finos/morphir/blob/main/examples/cli/migrate/scenarios.md)
+for a whole-file check alongside a semantic Rego assertion.
 
 ## Isolation and diagnosis
 
@@ -622,7 +622,7 @@ The [single-file Elm scenario](https://github.com/finos/morphir/blob/main/exampl
 verifies native type compilation and installation. It does not establish Elm
 function lowering or native Morphir IR evaluation. The
 [example catalog](https://github.com/finos/morphir/blob/main/examples/README.md) also covers reference Elm functions,
-classic JSON, TOML/YAML projects, member selection and Gleam generation, with
+classic JSON, TOML/YAML projects and member selection, with
 explicit prerequisites and limits for each claim.
 
 Old `scenario.md` and `test.yaml` files are not executable coverage.

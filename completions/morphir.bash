@@ -447,7 +447,7 @@ cmd itest display_order=8 args_override_self=#false help="Run Markdown and Gherk
     complete dir type=path
 }
 cmd compile display_order=9 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {
-    flag "-l --language" help="Source language (e.g., gleam, elm)" {
+    flag "-l --language" help="Source language (e.g., elm)" {
         arg <LANGUAGE>
     }
     flag --extension help="Extension id that provides the language (for example `morphir-elm-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider" {
@@ -1665,68 +1665,16 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
         }
     }
 }
-cmd gleam display_order=26 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
-    flag --json help="Output as JSON"
-    flag --json-lines help="Output as JSON Lines (streaming)"
-    cmd compile display_order=0 args_override_self=#false help="Compile Gleam source to Morphir IR" unknown_flags=error {
-        flag "-i --input" help="Source files or a directory; see `morphir compile --input`" var=#true {
-            arg <INPUT>… var=#true
-        }
-        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
-            arg <OUTPUT>
-        }
-        flag --package-name help="Package name override" {
-            arg <PACKAGE_NAME>
-        }
-        flag --config help="Explicit config file path" {
-            arg <CONFIG>
-        }
-        flag --project help="Declared workspace-relative member path or exact project name" {
-            arg <PROJECT>
-        }
-    }
-    cmd generate display_order=1 args_override_self=#false help="Generate Gleam code from Morphir IR" unknown_flags=error {
-        flag "-i --input" help="Path to the Morphir IR file or directory" {
-            arg <INPUT>
-        }
-        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
-            arg <OUTPUT>
-        }
-        flag --config help="Explicit config file path" {
-            arg <CONFIG>
-        }
-        flag --project help="Declared workspace-relative member path or exact project name" {
-            arg <PROJECT>
-        }
-    }
-    cmd roundtrip display_order=2 args_override_self=#false help="Roundtrip: compile then generate (for testing)" unknown_flags=error {
-        flag "-i --input" help="Source files or a directory; see `morphir compile --input`" var=#true {
-            arg <INPUT>… var=#true
-        }
-        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
-            arg <OUTPUT>
-        }
-        flag --package-name help="Package name override" {
-            arg <PACKAGE_NAME>
-        }
-        flag --config help="Explicit config file path" {
-            arg <CONFIG>
-        }
-        flag --project help="Declared workspace-relative member path or exact project name" {
-            arg <PROJECT>
-        }
-    }
-}
-cmd schema display_order=27 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
+cmd schema display_order=26 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
     flag "-o --output" help="Output file path (optional)" {
         arg <OUTPUT>
     }
     complete output type=path
 }
-cmd version display_order=28 args_override_self=#false help="Print version information" unknown_flags=error {
+cmd version display_order=27 args_override_self=#false help="Print version information" unknown_flags=error {
     flag --json help="Output version info as JSON"
 }
-cmd usage hide=#true display_order=29 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
+cmd usage hide=#true display_order=28 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
 __USAGE_EOF__
     # shellcheck disable=SC2207
 	COMPREPLY=($(compgen -W "$(command usage complete-word --shell bash -f "$spec_file" --cword="$cword" -- "${words[@]}")" -- "$cur"))

@@ -1,8 +1,9 @@
 # Publish and consume a local Library
 
-This source-built early-access example starts with `src/main.gleam`, compiles a
-classic V4 Library, and publishes a signed release to a new local registry. A
-separate consumer can then resolve, restore and generate source from that release.
+This source-built early-access example starts with `src/Main.elm`, compiles a
+classic V4 Library with the native Elm frontend, and publishes a signed release to
+a new local registry. A separate consumer can then resolve and restore that
+release.
 The publisher path is currently qualified on macOS. It first ships in the
 v0.4.0-beta.6 binary.
 
@@ -12,8 +13,8 @@ It starts from an absent registry and uses public, test-only signing seeds in
 `fixture/keys`. The signed bootstrap root and pinned policy under `fixture/`
 are frozen inputs; never reuse these keys for a real registry.
 
-Follow [Create a Library](../../../docs/user-guides/packaging/creating-a-library.md#source-built-cli-preview)
-and [Publish locally](../../../docs/user-guides/packaging/publishing-locally.md#source-built-cli-preview)
+Follow [Create a Library](../../../docs/user-guides/packaging/creating-a-library.md#cli-authoring-preview)
+and [Publish locally](../../../docs/user-guides/packaging/publishing-locally.md#cli-publication-preview)
 from a source checkout. Keep the same shell and its `$work` variable for both
 steps. `bootstrap.mjs` builds only the tutorial's **public** unsigned root and
 trust policy from CLI key information and the signed root bytes. It never opens
@@ -31,11 +32,12 @@ cd "$work/consumer"
 morphir package trust init --root root.json --policy policy.json --state trust-state
 morphir package resolve --root example.com/finance/hello@1.0.0 --policy policy.json --registry "$work/registry" --state trust-state --output morphir.lock --assurance portable
 morphir package restore --policy policy.json --lock morphir.lock --registry "$work/registry" --state trust-state --output libraries --assurance portable
-morphir gleam generate --config morphir.toml --input libraries/example.com/finance/hello/1.0.0/ir.json --output generated
-morphir gleam compile --config morphir.toml --input generated --output compiled
 ```
 
-The restored IR is at `libraries/example.com/finance/hello/1.0.0/ir.json`.
+The restored IR is at `libraries/example.com/finance/hello/1.0.0/ir.json`. To
+generate source from it, use a backend extension. For Gleam, use the extension
+from [finos/morphir-gleam](https://github.com/finos/morphir-gleam) with the
+MoonBit Morphir CLI.
 The [installing guide](../../../docs/user-guides/packaging/installing-and-using.md)
 explains trust state, the lock file, and restoration in more detail.
 

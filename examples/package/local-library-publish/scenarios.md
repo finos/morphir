@@ -1,8 +1,8 @@
 ---
 version: 1
 title: Publish and consume a local Library
-description: Compile a Gleam model, create and sign a classic V4 Library, publish it into an absent local registry, then independently resolve, restore, generate and compile it in a consumer project.
-tags: [area:package, area:compile, area:generate, language:gleam, ir:v4, kind:positive, suite:macos-publisher, workspace:directory]
+description: Compile an Elm model, create and sign a classic V4 Library, publish it into an absent local registry, then independently resolve and restore it in a consumer project.
+tags: [area:package, area:compile, language:elm, ir:v4, kind:positive, suite:macos-publisher, workspace:directory]
 provider: rego
 ---
 
@@ -19,7 +19,7 @@ The signed bootstrap root and its pinned policy are separate, frozen inputs.
 
 ```yaml morphir:command
 id: compile-author
-name: Compile the author project's Gleam source to classic V4 IR
+name: Compile the author project's Elm source to classic V4 IR
 timeout_seconds: 90
 stdout_json: true
 captures:
@@ -44,7 +44,7 @@ passes if {
     input.exitCode == 0
     input.artifacts.ir.value.formatVersion == 4
     input.artifacts.ir.value.distribution.Library.packageName == "examples/hello"
-    input.artifacts.ir.value.distribution.Library.def.modules.main.Public.values.hello.Public
+    input.artifacts.ir.value.distribution.Library.def.modules.main.Public.types.greeting.Public
 }
 ```
 
@@ -298,52 +298,5 @@ passes if {
     input.exitCode == 0
     input.artifacts.restored.value.formatVersion == 4
     input.artifacts.restored.value.distribution.Library.packageName == "examples/hello"
-}
-```
-
-```yaml morphir:command
-id: generate
-name: Generate Gleam source from the restored Library
-timeout_seconds: 60
-```
-
-```sh
-morphir gleam generate --config consumer/morphir.toml --input consumer/libraries/example.com/finance/hello/1.0.0/ir.json --output consumer/generated
-```
-
-```yaml morphir:golden
-id: generated-main
-command: generate
-actual: consumer/generated/main.gleam
-expected_file: golden/main.gleam
-line_endings: lf
-```
-
-```yaml morphir:command
-id: compile-consumer
-name: Compile the generated source in the consumer project
-timeout_seconds: 90
-captures:
-  - {name: ir, path: consumer/compiled/morphir-ir.json, format: json}
-```
-
-```sh
-morphir gleam compile --config consumer/morphir.toml --input consumer/generated --output consumer/compiled
-```
-
-```yaml morphir:assertion
-id: consumed-library
-command: compile-consumer
-entrypoints: [data.consumer_compiled.passes]
-```
-
-```rego
-package consumer_compiled
-import rego.v1
-
-passes if {
-    input.exitCode == 0
-    input.artifacts.ir.value.formatVersion == 4
-    input.artifacts.ir.value.distribution.Library.packageName == "examples/library-consumer"
 }
 ```

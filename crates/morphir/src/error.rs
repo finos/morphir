@@ -202,7 +202,7 @@ mod tests {
             code: Some("TEST".to_owned()),
             message: "example warning".to_owned(),
             location: Some(SourceLocation {
-                uri: "file:///workspace/main.gleam".to_owned(),
+                uri: "file:///workspace/Main.elm".to_owned(),
                 range: SourceRange {
                     start: SourcePosition {
                         line: 4,
@@ -219,7 +219,7 @@ mod tests {
 
         assert_eq!(
             diagnostics[0].file.as_deref(),
-            Some("file:///workspace/main.gleam")
+            Some("file:///workspace/Main.elm")
         );
         assert_eq!(diagnostics[0].line, Some(4));
         assert_eq!(diagnostics[0].column, Some(7));

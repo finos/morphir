@@ -32,7 +32,7 @@ use version::selected_ir_version;
 /// Options for the compile command
 #[derive(Debug, Default)]
 pub struct CompileOptions {
-    /// Language to compile (e.g., "gleam", "elm")
+    /// Language to compile (e.g., "elm")
     pub language: Option<String>,
     /// Extension id that provides the language (for example `morphir-elm-native`);
     /// overrides `[frontend.<language>] extension`, and defaults to the
@@ -437,10 +437,6 @@ mod incremental_tests {
             "elm",
             "morphir-elm-native"
         )));
-        assert!(provider_supports_incremental(&resolve(
-            "gleam",
-            "morphir-gleam"
-        )));
     }
 
     // The key names the provider and the shape of what it was asked for. The
@@ -461,13 +457,22 @@ mod incremental_tests {
 
     // `cache_key` is a pure function of `(resolved, options)`: a non-Elm
     // provider is keyed exactly the same way, since neither carries a
-    // prelude any more.
+    // prelude any more. Resolving an installed provider does not start it.
+    #[cfg(unix)]
     #[test]
     fn a_non_elm_provider_is_keyed_the_same_way() {
-        let resolved = resolve("gleam", "morphir-gleam-binding");
+        let temp = tempfile::tempdir().unwrap();
+        let (guest, record) = crate::extensions::installed_fixture::rejecting_frontend();
+        let (home, snapshot) =
+            crate::extensions::installed_fixture::install_process(temp.path(), record, &guest);
+        let resolved =
+            crate::extensions::extension_registry_for(&home, [snapshot], Some("fixture"))
+                .unwrap()
+                .resolve_frontend("elm", "4.0.0", morphir_host::InvocationPolicy::PreferDirect)
+                .unwrap();
         let key = cache_key(&resolved, &options());
 
-        assert_eq!(key.extension_id, "morphir-gleam");
+        assert_eq!(key.extension_id, "fixture");
         assert_eq!(key.ir_version, "4.0.0");
         assert!(!key.types_only);
     }

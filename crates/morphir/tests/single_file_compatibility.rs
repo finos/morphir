@@ -2,11 +2,11 @@
 //! `morphir` binary. They were written against the CLI's own single-file Elm
 //! route before it was removed (finos/morphir#917, step 1) and now run through
 //! the one compile route, where the provider synthesizes the project through
-//! workspace discovery. Two tests changed on purpose, and each says why:
+//! workspace discovery. One test changed on purpose, and says why:
 //! `ir_version_4_on_standalone_single_file_compile` (the CLI no longer refuses
-//! a version its provider serves) and
-//! `a_lone_gleam_source_compiles_as_a_synthesized_project` (a suffix selects
-//! the provider that declares it).
+//! a version its provider serves). The multi-file selection tests used the
+//! built-in Gleam provider until it left the CLI for finos/morphir-gleam; they
+//! now select the opt-in native Elm provider with `--extension`.
 //!
 //! ## Deliberate coverage gaps
 //!
@@ -54,6 +54,13 @@ fn distribution(dir: &std::path::Path) -> serde_json::Value {
     let bytes = fs::read(dir.join(".morphir/out/compile.dest/morphir-ir.json")).unwrap();
     serde_json::from_slice(&bytes).unwrap()
 }
+
+/// The id of the opt-in native Elm provider, the only built-in.
+const NATIVE_ELM: &str = "morphir-elm-native";
+
+const ALPHA: &str = "module Alpha exposing (Alpha)\n\n\ntype Alpha\n    = Alpha\n";
+const BETA: &str = "module Beta exposing (Beta)\n\n\ntype Beta\n    = Beta\n";
+const WIDGET: &str = "module Widget exposing (Size)\n\n\ntype Size\n    = Size\n";
 
 /// A lone file's package name is derived from its declared module name,
 /// lowercased with dots replaced by dashes, under `local/`. Its exposure is
@@ -452,7 +459,7 @@ fn a_refusal_before_compiling_tombstones_the_previous_success() {
     );
 }
 
-/// A whole-project compile (built-in Gleam provider) with no `--ir-version`
+/// A whole-project compile (native Elm provider) with no `--ir-version`
 /// defaults to IR v4 — the opposite of the standalone single-file route
 /// above, which always emits v3. This is the divergence a later refactor
 /// merging the two compile routes must confront rather than silently erase.
@@ -464,10 +471,14 @@ fn ir_version_default_for_whole_project_compile() {
     fs::create_dir_all(dir.join("src")).unwrap();
     fs::write(
         dir.join("morphir.toml"),
-        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['api']\n\n[frontend]\nlanguage = 'gleam'\n",
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\nexposed_modules = ['Api']\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n",
     )
     .unwrap();
-    fs::write(dir.join("src/api.gleam"), "pub type Answer { Answer }\n").unwrap();
+    fs::write(
+        dir.join("src/Api.elm"),
+        "module Api exposing (Answer)\n\n\ntype Answer\n    = Answer\n",
+    )
+    .unwrap();
 
     let (ok, _out, err) = morphir(dir, &["compile"]);
     assert!(ok, "{err}");
@@ -476,34 +487,8 @@ fn ir_version_default_for_whole_project_compile() {
     assert_eq!(
         ir["formatVersion"],
         serde_json::json!(4),
-        "expected the whole-project Gleam route to default to IR v4"
+        "expected the whole-project route to default to IR v4"
     );
-}
-
-/// A lone Gleam source compiles as a synthesized project, with no CLI
-/// change for the language. This test used to pin a refusal: the CLI routed
-/// only `.elm` files to single-file compilation, so `widget.gleam` fell
-/// through to the project path and died looking for a `morphir.toml`. The
-/// suffix now selects the provider that declares it, and the provider names
-/// the package and its module.
-#[test]
-fn a_lone_gleam_source_compiles_as_a_synthesized_project() {
-    let temp = tempfile::tempdir().unwrap();
-    let dir = temp.path();
-    fs::write(dir.join("widget.gleam"), "pub type Size {\n  Size\n}\n").unwrap();
-
-    let (ok, _out, err) = morphir(dir, &["compile", "--input", "widget.gleam"]);
-    assert!(ok, "{err}");
-
-    let ir = distribution(dir);
-    assert_eq!(ir["formatVersion"], serde_json::json!(3));
-    assert_eq!(
-        ir["distribution"][1],
-        serde_json::json!([["local"], ["widget"]])
-    );
-    let modules = ir["distribution"][3]["modules"].as_array().unwrap();
-    assert_eq!(modules.len(), 1, "expected exactly one exposed module");
-    assert_eq!(modules[0][0], serde_json::json!([["widget"]]));
 }
 
 /// Several sources from one directory compile together under an explicit
@@ -512,19 +497,21 @@ fn a_lone_gleam_source_compiles_as_a_synthesized_project() {
 fn a_named_multi_file_selection_exposes_every_selected_module() {
     let temp = tempfile::tempdir().unwrap();
     let dir = temp.path();
-    fs::write(dir.join("alpha.gleam"), "pub type Alpha {\n  Alpha\n}\n").unwrap();
-    fs::write(dir.join("beta.gleam"), "pub type Beta {\n  Beta\n}\n").unwrap();
+    fs::write(dir.join("Alpha.elm"), ALPHA).unwrap();
+    fs::write(dir.join("Beta.elm"), BETA).unwrap();
 
     let (ok, _out, err) = morphir(
         dir,
         &[
             "compile",
             "--input",
-            "alpha.gleam",
+            "Alpha.elm",
             "--input",
-            "beta.gleam",
+            "Beta.elm",
             "--package-name",
             "acme/pair",
+            "--extension",
+            NATIVE_ELM,
         ],
     );
     assert!(ok, "{err}");
@@ -556,12 +543,20 @@ fn a_named_multi_file_selection_exposes_every_selected_module() {
 fn an_unnamed_multi_file_selection_requires_a_package_name() {
     let temp = tempfile::tempdir().unwrap();
     let dir = temp.path();
-    fs::write(dir.join("alpha.gleam"), "pub type Alpha {\n  Alpha\n}\n").unwrap();
-    fs::write(dir.join("beta.gleam"), "pub type Beta {\n  Beta\n}\n").unwrap();
+    fs::write(dir.join("Alpha.elm"), ALPHA).unwrap();
+    fs::write(dir.join("Beta.elm"), BETA).unwrap();
 
     let (ok, _out, err) = morphir(
         dir,
-        &["compile", "--input", "alpha.gleam", "--input", "beta.gleam"],
+        &[
+            "compile",
+            "--input",
+            "Alpha.elm",
+            "--input",
+            "Beta.elm",
+            "--extension",
+            NATIVE_ELM,
+        ],
     );
     assert!(!ok, "expected the selection to be refused");
     assert!(err.contains("workspace.selection.name-required"), "{err}");
@@ -572,16 +567,18 @@ fn an_unnamed_multi_file_selection_requires_a_package_name() {
 fn a_repeated_input_counts_once() {
     let temp = tempfile::tempdir().unwrap();
     let dir = temp.path();
-    fs::write(dir.join("widget.gleam"), "pub type Size {\n  Size\n}\n").unwrap();
+    fs::write(dir.join("Widget.elm"), WIDGET).unwrap();
 
     let (ok, _out, err) = morphir(
         dir,
         &[
             "compile",
             "--input",
-            "widget.gleam",
+            "Widget.elm",
             "--input",
-            "./widget.gleam",
+            "./Widget.elm",
+            "--extension",
+            NATIVE_ELM,
         ],
     );
     assert!(ok, "{err}");
@@ -595,23 +592,21 @@ fn a_selection_spanning_directories_is_refused() {
     let dir = temp.path();
     fs::create_dir_all(dir.join("src")).unwrap();
     fs::create_dir_all(dir.join("lib")).unwrap();
-    fs::write(
-        dir.join("src/alpha.gleam"),
-        "pub type Alpha {\n  Alpha\n}\n",
-    )
-    .unwrap();
-    fs::write(dir.join("lib/beta.gleam"), "pub type Beta {\n  Beta\n}\n").unwrap();
+    fs::write(dir.join("src/Alpha.elm"), ALPHA).unwrap();
+    fs::write(dir.join("lib/Beta.elm"), BETA).unwrap();
 
     let (ok, _out, err) = morphir(
         dir,
         &[
             "compile",
             "--input",
-            "src/alpha.gleam",
+            "src/Alpha.elm",
             "--input",
-            "lib/beta.gleam",
+            "lib/Beta.elm",
             "--package-name",
             "acme/pair",
+            "--extension",
+            NATIVE_ELM,
         ],
     );
     assert!(!ok, "expected the selection to be refused");
@@ -629,15 +624,22 @@ fn a_suffix_no_provider_declares_names_the_available_languages() {
     let dir = temp.path();
     fs::write(dir.join("notes.xyz"), "anything\n").unwrap();
 
-    let (ok, _out, err) = morphir(dir, &["compile", "--input", "notes.xyz"]);
+    let (ok, _out, err) = morphir(
+        dir,
+        &["compile", "--input", "notes.xyz", "--extension", NATIVE_ELM],
+    );
     assert!(!ok, "expected the compile to be refused");
     assert!(err.contains("'.xyz'"), "{err}");
-    assert!(err.contains("gleam"), "{err}");
+    assert!(err.contains("elm"), "{err}");
 }
 
 /// An implicit generate refuses a compile of an explicit selection: its IR
 /// holds only the selected modules, which need not match the project.
 /// `--from-partial-compile` acknowledges it.
+///
+/// No backend is built in, and none is installed here, so an acknowledged
+/// generate goes on to fail at backend resolution. That failure, and not the
+/// refusal, is what shows the acknowledgement took effect.
 #[test]
 fn generate_refuses_a_partial_compile_unless_acknowledged() {
     let temp = tempfile::tempdir().unwrap();
@@ -645,17 +647,17 @@ fn generate_refuses_a_partial_compile_unless_acknowledged() {
     fs::create_dir_all(dir.join("src")).unwrap();
     fs::write(
         dir.join("morphir.toml"),
-        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\n\n[frontend]\nlanguage = 'gleam'\n\n[codegen]\ntargets = ['gleam']\n",
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n\n[codegen]\ntargets = ['elm']\n",
     )
     .unwrap();
     fs::write(
-        dir.join("src/api.gleam"),
-        "pub type Answer {\n  Answer\n}\n",
+        dir.join("src/Api.elm"),
+        "module Api exposing (Answer)\n\n\ntype Answer\n    = Answer\n",
     )
     .unwrap();
     fs::write(
-        dir.join("src/other.gleam"),
-        "pub type Other {\n  Other\n}\n",
+        dir.join("src/Other.elm"),
+        "module Other exposing (Other)\n\n\ntype Other\n    = Other\n",
     )
     .unwrap();
 
@@ -664,7 +666,7 @@ fn generate_refuses_a_partial_compile_unless_acknowledged() {
         &[
             "compile",
             "--input",
-            "src/api.gleam",
+            "src/Api.elm",
             "--config",
             "morphir.toml",
         ],
@@ -679,27 +681,16 @@ fn generate_refuses_a_partial_compile_unless_acknowledged() {
     assert!(err.contains("--from-partial"), "{err}");
 
     let (ok, _out, err) = morphir(dir, &["generate", "--from-partial-compile"]);
-    assert!(ok, "{err}");
+    assert!(!ok, "no backend generates Elm here");
+    assert!(!err.contains("--from-partial"), "{err}");
+    assert!(err.contains("elm"), "{err}");
 
     // A project compile carries no mark, so generate consumes it silently.
     let (ok, _out, err) = morphir(dir, &["compile"]);
     assert!(ok, "{err}");
     let (ok, _out, err) = morphir(dir, &["generate"]);
-    assert!(ok, "{err}");
-}
-
-/// A standalone roundtrip has no project for its generate half to read, so
-/// it is refused before anything compiles.
-#[test]
-fn a_standalone_roundtrip_is_refused_before_compiling() {
-    let temp = tempfile::tempdir().unwrap();
-    let dir = temp.path();
-    fs::write(dir.join("widget.gleam"), "pub type Size {\n  Size\n}\n").unwrap();
-
-    let (ok, _out, err) = morphir(dir, &["gleam", "roundtrip", "--input", "widget.gleam"]);
-    assert!(!ok, "expected the roundtrip to be refused");
-    assert!(err.contains("roundtrip needs a project"), "{err}");
-    assert!(!dir.join(".morphir/out/compile.json").exists());
+    assert!(!ok, "no backend generates Elm here");
+    assert!(!err.contains("--from-partial"), "{err}");
 }
 
 /// `--extension morphir-elm-native` alone, with no configuration present at
@@ -1045,27 +1036,35 @@ fn an_unavailable_configured_extension_does_not_block_another_provider() {
     fs::create_dir_all(dir.join("src")).unwrap();
     fs::write(
         dir.join("morphir.toml"),
-        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\n\n[frontend]\nlanguage = 'gleam'\n\n[extensions.offline-codegen]\ncommand = 'no-such-executable'\nenabled = true\n",
+        "[project]\nname = 'acme/widgets'\nversion = '1.0.0'\nsource_directory = 'src'\n\n[frontend]\nlanguage = 'elm'\n\n[frontend.elm]\nextension = 'morphir-elm-native'\n\n[extensions.offline-codegen]\ncommand = 'no-such-executable'\nenabled = true\n",
     )
     .unwrap();
-    fs::write(dir.join("src/api.gleam"), "pub type Answer { Answer }\n").unwrap();
+    fs::write(
+        dir.join("src/Api.elm"),
+        "module Api exposing (Answer)\n\n\ntype Answer\n    = Answer\n",
+    )
+    .unwrap();
 
+    // The project names its provider, so the project compile asks no
+    // configured extension at all.
     let (ok, _out, err) = morphir(dir, &["compile"]);
     assert!(ok, "{err}");
-    assert!(
-        err.contains("offline-codegen"),
-        "expected a skip warning: {err}"
-    );
 
+    // A selection asks every configured extension what it provides, and
+    // skips the one that cannot start.
     let (ok, _out, err) = morphir(
         dir,
         &[
             "compile",
             "--input",
-            "src/api.gleam",
+            "src/Api.elm",
             "--config",
             "morphir.toml",
         ],
     );
     assert!(ok, "{err}");
+    assert!(
+        err.contains("offline-codegen"),
+        "expected a skip warning: {err}"
+    );
 }

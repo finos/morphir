@@ -36,11 +36,9 @@ the original historical fixture remains unchanged.
 
 The root package `example.com/finance/loan-rules` version `1.0.0` depends on
 `example.com/finance/eligibility` version `1.2.0`. Both payloads satisfy the official
-Morphir v4 JSON schema. A separate consumer project generates and compiles the
-restored eligibility Library. Its complete generated module is frozen in
-[expected/decision.gleam](expected/decision.gleam). This establishes consumption
-of a restored provider. It does not establish cross-package reference lowering
-in the Gleam backend.
+Morphir v4 JSON schema. A separate consumer project restores the eligibility
+Library. This fixture does not establish code generation from a restored
+provider.
 
 ## Execute and verify
 

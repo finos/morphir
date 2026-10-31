@@ -43,10 +43,10 @@ fn actual_yaml_compile_declares_complete_primary_and_captures_exact_original_byt
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path();
     fs::create_dir(root.join("models")).unwrap();
-    fs::write(root.join("morphir.toml"),"[project]\nname='acme/originals'\nversion='1.0.0'\nsource_directory='models'\nexposed_modules=['api']\n[frontend]\nlanguage='gleam'\n[ir]\nlayout='single-file'\nformat='yaml'\n").unwrap();
+    fs::write(root.join("morphir.toml"),"[project]\nname='acme/originals'\nversion='1.0.0'\nsource_directory='models'\nexposed_modules=['Api']\n[frontend]\nlanguage='elm'\n[frontend.elm]\nextension='morphir-elm-native'\n[ir]\nlayout='single-file'\nformat='yaml'\n").unwrap();
     fs::write(
-        root.join("models/api.gleam"),
-        "pub type Answer { Answer }\n",
+        root.join("models/Api.elm"),
+        "module Api exposing (Answer)\n\n\ntype Answer\n    = Answer\n",
     )
     .unwrap();
     let result = compile(root);

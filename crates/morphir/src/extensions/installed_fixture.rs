@@ -142,12 +142,12 @@ pub(crate) fn install_process(
     (home, snapshot)
 }
 
-/// A `gleam` frontend at IR `4.0.0`, id `fixture`, that refuses every
+/// An `elm` frontend at IR `4.0.0`, id `fixture`, that refuses every
 /// compile with RPC error -32001 `does not compile`: the guest program and
 /// its index record.
 #[cfg(unix)]
 pub(crate) fn rejecting_frontend() -> (Vec<u8>, Value) {
-    let language = serde_json::json!([{"id": "gleam", "fileExtensions": [".gleam"]}]);
+    let language = serde_json::json!([{"id": "elm", "fileExtensions": [".elm"]}]);
     let guest = mep_guest(
         &serde_json::json!({
             "protocolVersion": "0.1",

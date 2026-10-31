@@ -57,7 +57,7 @@ fn parse(text: &str) -> anyhow::Result<(super::model::Metadata, Vec<super::model
 #[test]
 fn discovers_nested_examples_and_selects_whole_categories_and_all_tags() {
     let temp = tempfile::tempdir().unwrap();
-    for name in ["elm/z", "elm/nested/a", "gleam/a", "node_modules/hidden"] {
+    for name in ["elm/z", "elm/nested/a", "scala/a", "node_modules/hidden"] {
         let dir = temp.path().join(name);
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("scenarios.md"), SCENARIO).unwrap();

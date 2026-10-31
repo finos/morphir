@@ -9,7 +9,6 @@ use morphir_extension_sdk::protocol::methods;
 use morphir_extension_sdk::{
     CompileRequest, CompileResult, GenerateRequest, GenerateResult, NativeExtension,
 };
-use morphir_gleam_binding::GleamExtension;
 use morphir_host::{InvocationMode, Registry, Resolved};
 use morphir_host_native::process::ProcessLaunch;
 use morphir_host_native::{InstalledSource, NativeSource};
@@ -44,25 +43,11 @@ pub fn extension_registry(
 /// The native Elm provider is opt-in: it is registered only when `only` names
 /// it, so a command that does not ask for it by id behaves as though it were
 /// not built in at all.
-///
-/// The former Gleam id is an alias for its native provider, unless an installed
-/// extension still uses that id. An exact installed selection remains binding.
 pub fn extension_registry_for(
     home: &MorphirHome,
     installed: impl IntoIterator<Item = InstalledExtensionSnapshot>,
     only: Option<&str>,
 ) -> Result<Registry, CliError> {
-    let installed: Vec<_> = installed.into_iter().collect();
-    let only = match only {
-        Some("morphir-gleam-binding")
-            if !installed.iter().any(|snapshot| {
-                snapshot.installed().extension_id().as_str() == "morphir-gleam-binding"
-            }) =>
-        {
-            Some("morphir-gleam")
-        }
-        selector => selector,
-    };
     let mut registry = Registry::new();
     for (language, builtin, opt_in) in builtin_providers()? {
         let requested = only == Some(builtin.info().id.as_str());
@@ -98,15 +83,7 @@ pub fn extension_registry_for(
 
 /// The built-in native providers: their language, the provider, and whether
 /// it is registered only when selected by id.
-fn builtin_providers() -> Result<[(&'static str, NativeExtension, bool); 2], CliError> {
-    let gleam = NativeExtension::builder(GleamExtension)
-        .with_frontend()
-        .with_backend()
-        .with_workspace()
-        .finish()
-        .map_err(|error| CliError::Extension {
-            message: format!("Failed to construct native Gleam provider: {error}"),
-        })?;
+fn builtin_providers() -> Result<[(&'static str, NativeExtension, bool); 1], CliError> {
     let elm = NativeExtension::builder(ElmExtension)
         .with_frontend()
         .with_backend()
@@ -115,7 +92,7 @@ fn builtin_providers() -> Result<[(&'static str, NativeExtension, bool); 2], Cli
         .map_err(|error| CliError::Extension {
             message: format!("Failed to construct native Elm provider: {error}"),
         })?;
-    Ok([("Gleam", gleam, false), ("Elm", elm, true)])
+    Ok([("Elm", elm, true)])
 }
 
 /// Invoke a resolved frontend through only the mode selected by the registry.
@@ -337,43 +314,65 @@ mod tests {
     }
 
     #[test]
-    fn gleam_native_selectors_resolve_to_the_same_native_provider() {
+    fn the_native_elm_selector_resolves_the_native_provider() {
         let temp = tempfile::tempdir().unwrap();
         let home = MorphirHome::resolve_from(Some(temp.path().as_os_str()), None).unwrap();
-        for selector in [None, Some("morphir-gleam"), Some("morphir-gleam-binding")] {
-            let registry = super::extension_registry_for(&home, [], selector).unwrap();
-            for policy in [
-                InvocationPolicy::PreferDirect,
-                InvocationPolicy::ProtocolOnly,
-            ] {
-                let frontend = registry.resolve_frontend("gleam", "4", policy).unwrap();
-                let backend = registry.resolve_backend("gleam", "4", policy).unwrap();
-                assert_eq!(frontend.info().id, "morphir-gleam");
-                assert_eq!(backend.info().id, "morphir-gleam");
-                let expected = match policy {
-                    InvocationPolicy::PreferDirect => super::InvocationMode::NativeDirect,
-                    InvocationPolicy::ProtocolOnly => super::InvocationMode::NativeMep,
-                };
-                assert_eq!(frontend.invocation_mode(), expected);
-                assert_eq!(backend.invocation_mode(), expected);
-                assert!(frontend.capabilities().workspace.is_some());
-                if policy == InvocationPolicy::PreferDirect {
-                    assert!(frontend.native().unwrap().workspace().is_some());
-                }
+        let registry = super::extension_registry_for(&home, [], Some(ELM)).unwrap();
+        for policy in [
+            InvocationPolicy::PreferDirect,
+            InvocationPolicy::ProtocolOnly,
+        ] {
+            let frontend = registry.resolve_frontend("elm", "4", policy).unwrap();
+            let backend = registry.resolve_backend("elm", "4", policy).unwrap();
+            assert_eq!(frontend.info().id, ELM);
+            assert_eq!(backend.info().id, ELM);
+            let expected = match policy {
+                InvocationPolicy::PreferDirect => super::InvocationMode::NativeDirect,
+                InvocationPolicy::ProtocolOnly => super::InvocationMode::NativeMep,
+            };
+            assert_eq!(frontend.invocation_mode(), expected);
+            assert_eq!(backend.invocation_mode(), expected);
+            assert!(frontend.capabilities().workspace.is_some());
+            if policy == InvocationPolicy::PreferDirect {
+                assert!(frontend.native().unwrap().workspace().is_some());
             }
+        }
+    }
+
+    // The native Elm provider is opt-in and Gleam is no longer built in, so a
+    // registry that no selector restricts has no built-in provider at all.
+    #[test]
+    fn an_unrestricted_registry_has_no_builtin_provider() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = MorphirHome::resolve_from(Some(temp.path().as_os_str()), None).unwrap();
+        let registry = extension_registry(&home, []).unwrap();
+        for language in ["elm", "gleam"] {
+            assert!(
+                registry
+                    .resolve_frontend(language, "4", InvocationPolicy::PreferDirect)
+                    .is_err(),
+                "{language}"
+            );
+            assert!(
+                registry
+                    .resolve_backend(language, "4", InvocationPolicy::PreferDirect)
+                    .is_err(),
+                "{language}"
+            );
         }
     }
 
     fn compile_request(output_dir: &Path) -> CompileRequest {
         CompileRequest {
-            language_id: "gleam".into(),
+            language_id: "elm".into(),
             sources: SourceSet {
                 root: Some("file:///workspace/src".into()),
                 documents: vec![SourceDocument {
-                    uri: "file:///workspace/src/main.gleam".into(),
-                    language_id: "gleam".into(),
+                    uri: "file:///workspace/src/Main.elm".into(),
+                    language_id: "elm".into(),
                     version: 1,
-                    text: "pub fn hello() {\n  \"world\"\n}\n".into(),
+                    text: "module Main exposing (..)\n\n\ntype alias Greeting =\n    String\n"
+                        .into(),
                 }],
             },
             package: CompilePackage {
@@ -395,11 +394,37 @@ mod tests {
     }
 
     fn resolve_frontend(registry: &Registry, policy: InvocationPolicy) -> Resolved {
-        registry.resolve_frontend("gleam", "4.0.0", policy).unwrap()
+        registry.resolve_frontend("elm", "4.0.0", policy).unwrap()
     }
 
-    fn resolve_backend(registry: &Registry, policy: InvocationPolicy) -> Resolved {
-        registry.resolve_backend("gleam", "4.0.0", policy).unwrap()
+    /// The id of the opt-in native Elm provider.
+    const ELM: &str = morphir_elm_binding::EXTENSION_ID;
+
+    fn elm_compile_request() -> CompileRequest {
+        CompileRequest {
+            language_id: "elm".into(),
+            sources: SourceSet {
+                root: Some("file:///workspace/src".into()),
+                documents: vec![SourceDocument {
+                    uri: "file:///workspace/src/Example/Hello.elm".into(),
+                    language_id: "elm".into(),
+                    version: 1,
+                    text: "module Example.Hello exposing (..)\n\n\ntype alias Greeting =\n    String\n"
+                        .into(),
+                }],
+            },
+            package: CompilePackage {
+                name: "example".into(),
+                exposed_modules: Some(vec!["Example.Hello".into()]),
+            },
+            dependencies: vec![],
+            baseline: None,
+            options: CompileOptions {
+                types_only: false,
+                ir_version: "4.0.0".into(),
+                extra: HashMap::new(),
+            },
+        }
     }
 
     /// A configured process provider that speaks MEP over stdio and refuses
@@ -521,22 +546,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn real_gleam_direct_and_native_mep_results_are_identical() {
+    async fn real_elm_direct_and_native_mep_results_are_identical() {
         let temp = tempfile::tempdir().unwrap();
         let home =
             MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
-        let registry = extension_registry(&home, []).unwrap();
-        let compile_request = compile_request(&temp.path().join("compile"));
+        let registry = super::extension_registry_for(&home, [], Some(ELM)).unwrap();
+        let compile_request = elm_compile_request();
         let direct_compile = invoke_frontend(
             temp.path(),
-            &resolve_frontend(&registry, InvocationPolicy::PreferDirect),
+            &registry
+                .resolve_frontend("elm", "4.0.0", InvocationPolicy::PreferDirect)
+                .unwrap(),
             compile_request.clone(),
         )
         .await
         .unwrap();
         let protocol_compile = invoke_frontend(
             temp.path(),
-            &resolve_frontend(&registry, InvocationPolicy::ProtocolOnly),
+            &registry
+                .resolve_frontend("elm", "4.0.0", InvocationPolicy::ProtocolOnly)
+                .unwrap(),
             compile_request,
         )
         .await
@@ -549,19 +578,23 @@ mod tests {
         let ir = direct_compile.ir.unwrap();
         let generate_request = GenerateRequest {
             ir,
-            target: "gleam".into(),
+            target: "elm".into(),
             options: HashMap::new(),
         };
         let direct_generate = invoke_backend(
             temp.path(),
-            &resolve_backend(&registry, InvocationPolicy::PreferDirect),
+            &registry
+                .resolve_backend("elm", "4.0.0", InvocationPolicy::PreferDirect)
+                .unwrap(),
             generate_request.clone(),
         )
         .await
         .unwrap();
         let protocol_generate = invoke_backend(
             temp.path(),
-            &resolve_backend(&registry, InvocationPolicy::ProtocolOnly),
+            &registry
+                .resolve_backend("elm", "4.0.0", InvocationPolicy::ProtocolOnly)
+                .unwrap(),
             generate_request,
         )
         .await

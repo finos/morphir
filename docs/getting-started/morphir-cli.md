@@ -152,7 +152,6 @@ The Rust CLI includes:
 | `morphir tool` | Manage Morphir tools |
 | `morphir dist` | Manage Morphir distributions |
 | `morphir extension` | Manage Morphir extensions |
-| `morphir gleam` | Native Gleam compilation and generation |
 | `morphir schema` | Generate JSON Schema for Morphir IR |
 | `morphir version` | Print version information |
 
@@ -337,25 +336,16 @@ is ignored, exactly as `extension` behaves. That warning goes to stderr, and to
 the `diagnostics` of `--json` and `--json-lines` output, so a client reading the
 result envelope sees it too.
 
-## Native Gleam provider (`morphir-gleam`)
+## Gleam support
 
-Gleam compilation and generation use the built-in Rust extension by default.
-It runs in process without installing an extension or a Gleam executable.
-For a Gleam project, select the provider explicitly with
-`morphir compile --extension morphir-gleam`, then generate code with
-`morphir generate --target gleam`. `morphir extension list` reports its mode
-as `native-direct`.
+This Rust CLI does not compile or generate Gleam. Gleam support is in
+[finos/morphir-gleam](https://github.com/finos/morphir-gleam). That repository
+releases the Gleam extension for the MoonBit Morphir CLI,
+[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit). Use the
+MoonBit CLI for Gleam projects.
 
-The provider supports IR v3/v4 types, including records represented as ADTs
-and sum types, diagnostics and incremental compilation. V4 also supports a
-subset of Gleam functions. It uses the official Gleam parser; it does not run
-Gleam's type inference.
-
-The old `morphir-gleam-binding` selector remains an alias. If an installed
-extension has that exact old id, selecting it still uses that installation.
-An installed Gleam provider continues to take precedence for commands without
-an explicit selector. The native implementation also ships as an optional
-WASM package under the `morphir-gleam` extension id.
+The only built-in provider in this Rust CLI is `morphir-elm-native`. You must
+select it explicitly. `morphir generate` uses only installed extensions.
 
 ## Incremental compile cache
 

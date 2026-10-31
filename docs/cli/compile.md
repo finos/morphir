@@ -6,7 +6,7 @@
 Compile source code to Morphir IR
 
 ## Flags
-- **`-l --language <LANGUAGE>`** — Source language (e.g., gleam, elm)
+- **`-l --language <LANGUAGE>`** — Source language (e.g., elm)
 - **`--extension <EXTENSION>`** — Extension id that provides the language (for example `morphir-elm-native`); overrides `[frontend.<language>] extension`, and defaults to the language's default provider
 - **`-i --input <INPUT>…`** — Source files or a directory. Files compile exactly those sources, named by the provider that declares their suffix; repeat the flag to select several from one directory. A directory replaces the project's source directory
 - **`-o --output <OUTPUT>`** — Install task outputs into this directory after the run. Canonical output stays under .morphir/out
