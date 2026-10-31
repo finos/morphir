@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The Avro and OpenAPI bundle pins move to finos/morphir-extensions, which now owns both extensions: `extension/avro/v0.3.0` and `extension/openapi/v0.3.0`. The artifacts are named after the extension id (`morphir-avro-0.3.0`, `morphir-openapi-0.3.0`) and carry build provenance attestations. The generate guides download from finos/morphir-extensions and verify the attestation; releases up to `0.2.0` stay in finos/morphir-rust.
+
 ## [0.4.0-beta.11] - 2026-10-31
 
 ### Added
