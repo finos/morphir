@@ -67,9 +67,10 @@ let generation_cli_options : Array[String] = [
 let model_options : Array[String] = ["model-format", "unit-id", "filename"]
 
 ///|
+/// `extension-helper` and `node` stay declared so that the commands can
+/// refuse them with `extension.option_retired`.
 let extension_options : Array[String] = [
-  "extension-pin", "extension-helper", "node", "timeout", "cancel-file", "log-file",
-  "log-format",
+  "extension-pin", "extension-helper", "node", "timeout", "cancel-file",
 ]
 
 ///|
@@ -318,9 +319,9 @@ fn render_help(path : String) -> String {
     } else if path == "worksheet" {
       " <file|->"
     } else if path == "extension compile" {
-      " <source.mbt>"
+      " <source>"
     } else if path == "extension generate" {
-      " <model-envelope.json>"
+      " <model>"
     } else {
       " [path]"
     }
@@ -365,13 +366,16 @@ fn render_help(path : String) -> String {
     text += "No runner, interpreter or kit is acquired automatically.\n"
     text += "\nExample: morphir mck --runner-pin runner.json workbench check --kit KIT --report REPORT\n"
   } else if path.has_prefix("extension") {
-    text += "\nRun one fresh MEP session with an explicitly pinned extension binding.\n"
-    text += "Bindings: core-wasm-process in pinned Node; native-process via shared Rust services.\n"
-    text += "The pin fixes the runtime, host modules, guest Wasm/manifest and execution profile.\n"
-    text += "Component Model and Extism bindings require their own qualified adapters.\n"
-    text += "compile writes model-envelope.json plus model.ionb (Ion, default) or model.json.\n"
-    text += "generate reads a model envelope and writes the returned artifacts.\n"
-    text += "Wire cancellation is unsupported; cancellation terminates the guest process.\n"
+    text += "\ndescribe, compile and generate run a pinned extension on the CLI's worker host.\n"
+    text += "A contract 0.2.0 pin names the artifact (path, sha256), its runtime and an optional descriptor.\n"
+    text += "The host probes the worker, then runs one fresh session; no helper or Node runtime is used.\n"
+    text += "Process runtimes run now; WASM runtimes are refused with extension.runtime_unavailable.\n"
+    text += "Sources and operations come from the extension's claims: compile reads the claimed file extensions.\n"
+    text += "compile writes model-envelope.json and model.ionb or model.json, or morphir-ir.json on MEP 0.1.\n"
+    text += "generate reads a model envelope or Morphir IR JSON and writes the returned artifacts.\n"
+    text += "JSON returns morphir/command-result 0.1.0; diagnostics and guest stderr go to stderr.\n"
+    text += "Exit 0 success, 1 failure, 2 refusal, 124 deadline, 130 cancellation, 143 SIGTERM, in every mode.\n"
+    text += "Old pins, --extension-helper and --node are refused; see https://github.com/finos/morphir-moonbit/blob/main/apps/morphir/docs/extension.md#migrate-a-pin.\n"
     text += "Local repository/bundle commands use --services-pin and --services-helper.\n"
     text += "They return morphir/command-result 0.1.0, with logs on stderr; failures exit 1.\n"
     text += "Install/update require an exact --version and enabled --repository.\n"

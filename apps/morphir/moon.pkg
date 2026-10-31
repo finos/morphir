@@ -1,11 +1,11 @@
 pkgtype(kind: "executable")
 
-supported_targets = "native+js"
+supported_targets = "native"
 
 import {
   "morphir/morphir/cli",
-  "moonrockz/moon-lander-hosting" @hosting,
   "moonrockz/moon-lander-hosting/logging" @bridge,
   "moonbitlang/async",
   "finos/morphir-host/platform",
+  "finos/morphir-host/worker/process/native" @native_worker,
 }

@@ -130,6 +130,52 @@ pub impl Show for IrVersionName with fn output(self, logger) {
 pub extend IrVersionName with Show::{to_string, output}
 
 ///|
+/// The flags of a frontend claim, from the handshake's `FrontendCapability`.
+/// An absent flag is false. `compile` is an operation, not a flag, and
+/// `fragments` is reserved with no meaning, so the host keeps neither here.
+///
+/// - `incremental`: the frontend accepts incremental baselines.
+/// - `multi_document`: one request can carry more than one document. A
+///   frontend without it compiles exactly one document for each request.
+pub struct FrontendFlags {
+  incremental : Bool
+  multi_document : Bool
+} derive(Eq, Compare, Debug)
+
+///|
+pub extend FrontendFlags with Eq::{equal, not_equal}
+
+///|
+pub extend FrontendFlags with Compare::{compare, op_lt, op_le, op_gt, op_ge}
+
+///|
+pub extend FrontendFlags with @debug.Debug::{to_repr}
+
+///|
+pub fn FrontendFlags::new(
+  incremental~ : Bool = false,
+  multi_document~ : Bool = false,
+) -> FrontendFlags {
+  { incremental, multi_document, }
+}
+
+///|
+/// The flags that `self` sets and `live` does not, by their wire names.
+pub fn FrontendFlags::dropped_in(
+  self : FrontendFlags,
+  live : FrontendFlags,
+) -> Array[String] {
+  let dropped = []
+  if self.incremental && !live.incremental {
+    dropped.push("incremental")
+  }
+  if self.multi_document && !live.multi_document {
+    dropped.push("multiDocument")
+  }
+  dropped
+}
+
+///|
 /// What an extension says it is and does: everything activation compares
 /// with the live answer of a worker. Claims describe a guest; they do not
 /// grant it execution authority. Each list is a sorted set, so two claims are
@@ -141,6 +187,7 @@ pub struct Claims {
   operations : Array[Operation]
   languages : Array[LanguageClaim]
   frontend_ir_versions : Array[IrVersionName]
+  frontend_flags : FrontendFlags
   targets : Array[@ids.BackendId]
   backend_ir_versions : Array[IrVersionName]
   model_tuples : Array[ModelTuple]
@@ -162,6 +209,7 @@ pub fn Claims::new(
   operations~ : ArrayView[Operation] = [],
   languages~ : ArrayView[LanguageClaim] = [],
   frontend_ir_versions~ : ArrayView[IrVersionName] = [],
+  frontend_flags~ : FrontendFlags = FrontendFlags::new(),
   targets~ : ArrayView[@ids.BackendId] = [],
   backend_ir_versions~ : ArrayView[IrVersionName] = [],
   model_tuples~ : ArrayView[ModelTuple] = [],
@@ -186,6 +234,7 @@ pub fn Claims::new(
     operations: sorted_set(operations),
     languages: merged,
     frontend_ir_versions: sorted_set(frontend_ir_versions),
+    frontend_flags,
     targets: sorted_set(targets),
     backend_ir_versions: sorted_set(backend_ir_versions),
     model_tuples: sorted_set(model_tuples),

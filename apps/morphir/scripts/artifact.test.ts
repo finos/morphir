@@ -8,8 +8,8 @@ import {cliArtifact, stageCliArtifact} from './artifact.ts';
 test('portable staging refuses stale outputs and qualifies the selected producer bytes', () => {
   const build = mkdtempSync(join(tmpdir(), 'morphir-artifacts-'));
   try {
-    for (const target of ['wasm', 'wasm-gc']) {
-      const canonical = join(build, target, 'release/build/morphir/morphir/morphir.wasm');
+    for (const target of ['js', 'wasm', 'wasm-gc']) {
+      const canonical = join(build, target, `release/build/morphir/morphir/morphir.${target === 'js' ? 'js' : 'wasm'}`);
       mkdirSync(dirname(canonical), {recursive: true});
       writeFileSync(canonical, 'stale output');
       assert.throws(() => stageCliArtifact(build, target), /Missing CLI artifact/);

@@ -24,7 +24,7 @@ impl @conformance.Fixture for NativeFixture with fn start(
   let spec = @worker.WorkerSpec::new(
     artifact,
     Process(
-      platform=@native.host_platform().unwrap(),
+      platform=@native.host_machine().unwrap().platforms()[0],
       args=[..flags.map(flag => flag.argument()), ..args],
     ),
   )

@@ -91,6 +91,17 @@ pub fn Answer::equal(Self, Self) -> Bool
 pub fn Answer::not_equal(Self, Self) -> Bool
 pub fn Answer::to_repr(Self) -> @debug.Repr
 
+pub(all) enum Arch {
+  Aarch64
+  X86_64
+} derive(Eq, @debug.Debug)
+pub fn Arch::equal(Self, Self) -> Bool
+pub fn Arch::not_equal(Self, Self) -> Bool
+pub fn Arch::output(Self, &Logger) -> Unit
+pub fn Arch::to_repr(Self) -> @debug.Repr
+pub fn Arch::to_string(Self) -> String
+pub impl Show for Arch
+
 pub struct ArtifactPath {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -137,13 +148,14 @@ pub struct Claims {
   operations : Array[Operation]
   languages : Array[LanguageClaim]
   frontend_ir_versions : Array[IrVersionName]
+  frontend_flags : FrontendFlags
   targets : Array[@ids.BackendId]
   backend_ir_versions : Array[IrVersionName]
   model_tuples : Array[ModelTuple]
 } derive(Eq, @debug.Debug)
 pub fn Claims::equal(Self, Self) -> Bool
 pub fn Claims::from_describe(Json) -> Self raise ValueError
-pub fn Claims::new(ExtensionId, ExtensionVersion, protocol_lines? : ArrayView[ProtocolLine], operations? : ArrayView[Operation], languages? : ArrayView[LanguageClaim], frontend_ir_versions? : ArrayView[IrVersionName], targets? : ArrayView[@ids.BackendId], backend_ir_versions? : ArrayView[IrVersionName], model_tuples? : ArrayView[ModelTuple]) -> Self
+pub fn Claims::new(ExtensionId, ExtensionVersion, protocol_lines? : ArrayView[ProtocolLine], operations? : ArrayView[Operation], languages? : ArrayView[LanguageClaim], frontend_ir_versions? : ArrayView[IrVersionName], frontend_flags? : FrontendFlags, targets? : ArrayView[@ids.BackendId], backend_ir_versions? : ArrayView[IrVersionName], model_tuples? : ArrayView[ModelTuple]) -> Self
 pub fn Claims::not_equal(Self, Self) -> Bool
 pub fn Claims::offers(Self, Operation) -> Bool
 pub fn Claims::to_repr(Self) -> @debug.Repr
@@ -354,6 +366,21 @@ pub fn FrameDirection::equal(Self, Self) -> Bool
 pub fn FrameDirection::not_equal(Self, Self) -> Bool
 pub fn FrameDirection::to_repr(Self) -> @debug.Repr
 
+pub struct FrontendFlags {
+  incremental : Bool
+  multi_document : Bool
+} derive(Compare, Eq, @debug.Debug)
+pub fn FrontendFlags::compare(Self, Self) -> Int32
+pub fn FrontendFlags::dropped_in(Self, Self) -> Array[String]
+pub fn FrontendFlags::equal(Self, Self) -> Bool
+pub fn FrontendFlags::new(incremental? : Bool, multi_document? : Bool) -> Self
+pub fn FrontendFlags::not_equal(Self, Self) -> Bool
+pub fn FrontendFlags::op_ge(Self, Self) -> Bool
+pub fn FrontendFlags::op_gt(Self, Self) -> Bool
+pub fn FrontendFlags::op_le(Self, Self) -> Bool
+pub fn FrontendFlags::op_lt(Self, Self) -> Bool
+pub fn FrontendFlags::to_repr(Self) -> @debug.Repr
+
 pub struct GenerateRequest {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -381,8 +408,8 @@ pub fn Host::supports(Self, WorkerRuntime) -> Bool
 pub async fn[X] Host::with_session(Self, WorkerSpec, expected~ : Claims, offer~ : Offer, deadline? : Deadline, stop? : StopSignal, async (Session) -> X) -> X
 
 pub(all) enum HostPlatform {
-  Native(Platform)
-  Node(Platform)
+  Native(Machine)
+  Node(Machine)
   Browser
 } derive(Eq, @debug.Debug)
 pub fn HostPlatform::admit(Self, WorkerRuntime) -> Unit raise Refusal
@@ -449,6 +476,23 @@ pub fn LanguageClaim::op_le(Self, Self) -> Bool
 pub fn LanguageClaim::op_lt(Self, Self) -> Bool
 pub fn LanguageClaim::to_repr(Self) -> @debug.Repr
 
+pub(all) enum Libc {
+  Glibc
+  Musl
+} derive(Compare, Eq, @debug.Debug)
+pub fn Libc::compare(Self, Self) -> Int32
+pub fn Libc::equal(Self, Self) -> Bool
+pub fn Libc::loaders(Self, Arch) -> Array[String]
+pub fn Libc::not_equal(Self, Self) -> Bool
+pub fn Libc::op_ge(Self, Self) -> Bool
+pub fn Libc::op_gt(Self, Self) -> Bool
+pub fn Libc::op_le(Self, Self) -> Bool
+pub fn Libc::op_lt(Self, Self) -> Bool
+pub fn Libc::output(Self, &Logger) -> Unit
+pub fn Libc::to_repr(Self) -> @debug.Repr
+pub fn Libc::to_string(Self) -> String
+pub impl Show for Libc
+
 pub struct Limits {
   request_bytes : Int32
   response_bytes : Int32
@@ -462,6 +506,26 @@ pub fn Limits::not_equal(Self, Self) -> Bool
 pub fn Limits::to_json(Self) -> Json
 pub fn Limits::to_repr(Self) -> @debug.Repr
 pub impl ToJson for Limits
+
+pub struct Machine {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn Machine::arch(Self) -> Arch
+pub fn Machine::detect(Os, Arch, present~ : (String) -> Bool) -> Self
+pub fn Machine::equal(Self, Self) -> Bool
+pub fn Machine::libcs(Self) -> Array[Libc]
+pub fn Machine::mismatch(Self, Platform) -> String?
+pub fn Machine::new(Os, Arch, libcs? : Array[Libc]) -> Self
+pub fn Machine::not_equal(Self, Self) -> Bool
+pub fn Machine::of(Platform) -> Self
+pub fn Machine::os(Self) -> Os
+pub fn Machine::output(Self, &Logger) -> Unit
+pub fn Machine::path_style(Self) -> PathStyle
+pub fn Machine::platforms(Self) -> Array[Platform]
+pub fn Machine::runs(Self, Platform) -> Bool
+pub fn Machine::to_repr(Self) -> @debug.Repr
+pub fn Machine::to_string(Self) -> String
+pub impl Show for Machine
 
 pub struct MemoryChannel {
   // private fields
@@ -624,6 +688,18 @@ pub fn Operation::to_repr(Self) -> @debug.Repr
 pub fn Operation::to_string(Self) -> String
 pub impl Show for Operation
 
+pub(all) enum Os {
+  MacOs
+  Linux
+  Windows
+} derive(Eq, @debug.Debug)
+pub fn Os::equal(Self, Self) -> Bool
+pub fn Os::not_equal(Self, Self) -> Bool
+pub fn Os::output(Self, &Logger) -> Unit
+pub fn Os::to_repr(Self) -> @debug.Repr
+pub fn Os::to_string(Self) -> String
+pub impl Show for Os
+
 pub struct Outcome[T] {
   class : OutcomeClass[T]
   diagnostics : Array[Diagnostic]
@@ -665,13 +741,16 @@ pub(all) enum Platform {
   Aarch64PcWindowsMsvc
   X86_64PcWindowsMsvc
 } derive(Compare, Eq, @debug.Debug)
+pub fn Platform::arch(Self) -> Arch
 pub fn Platform::compare(Self, Self) -> Int32
 pub fn Platform::equal(Self, Self) -> Bool
+pub fn Platform::libc(Self) -> Libc?
 pub fn Platform::not_equal(Self, Self) -> Bool
 pub fn Platform::op_ge(Self, Self) -> Bool
 pub fn Platform::op_gt(Self, Self) -> Bool
 pub fn Platform::op_le(Self, Self) -> Bool
 pub fn Platform::op_lt(Self, Self) -> Bool
+pub fn Platform::os(Self) -> Os
 pub fn Platform::output(Self, &Logger) -> Unit
 pub fn Platform::parse(String) -> Self raise ValueError
 pub fn Platform::path_style(Self) -> PathStyle

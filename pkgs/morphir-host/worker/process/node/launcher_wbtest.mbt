@@ -12,7 +12,7 @@ extern "js" fn make_link(target : String, path : String) -> Unit =
 
 ///|
 fn host_path(text : String) -> @worker.ArtifactPath raise {
-  let style = host_platform().unwrap().path_style()
+  let style = host_machine().unwrap().path_style()
   @worker.ArtifactPath::parse(text, style)
 }
 
@@ -198,7 +198,7 @@ async test "staging refuses links, directories and artifacts in memory" {
 async test "the launcher starts a process worker on the host platform" {
   let directory = make_test_directory()
   let (path, args) = fixture_artifact(directory)
-  let platform = host_platform().unwrap()
+  let platform = host_machine().unwrap().platforms()[0]
   let spec = @worker.WorkerSpec::new(
     file_artifact(path),
     Process(platform~, args~),
@@ -230,7 +230,9 @@ async test "the launcher refuses a WASM runtime and another platform" {
     _ => false
   }
   assert_true(refused)
-  let other : @worker.Platform = if host_platform() == Some(X86_64PcWindowsMsvc) {
+  let other : @worker.Platform = if host_machine()
+    .unwrap()
+    .runs(X86_64PcWindowsMsvc) {
     Aarch64AppleDarwin
   } else {
     X86_64PcWindowsMsvc
@@ -249,4 +251,38 @@ async test "the launcher refuses a WASM runtime and another platform" {
   }
   assert_eq(refused, Some(other))
   ignore(remove_directory(directory))
+}
+
+///|
+extern "js" fn make_directory(path : String) -> Unit =
+  #| (path) => process.getBuiltinModule('node:fs').mkdirSync(path, {recursive: true})
+
+///|
+async test "the machine's C libraries come from the loader files under the root" {
+  guard !host_is_windows() else { return }
+  let root = make_test_directory()
+  // Nothing under the root yet: no C library.
+  assert_eq(machine_under(root, Linux, X86_64).libcs(), [])
+  // A directory where a loader should be does not count.
+  make_directory(root + "/lib/ld-musl-x86_64.so.1")
+  assert_eq(machine_under(root, Linux, X86_64).libcs(), [])
+  // The glibc loader path is a link to the loader, as on Debian.
+  make_directory(root + "/lib/x86_64-linux-gnu")
+  make_directory(root + "/lib64")
+  write_file(root + "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2", "")
+  make_link(
+    "../lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+    root + "/lib64/ld-linux-x86-64.so.2",
+  )
+  let glibc = machine_under(root, Linux, X86_64)
+  assert_eq(glibc.libcs(), [Glibc])
+  assert_true(glibc.runs(X86_64UnknownLinuxGnu))
+  assert_false(glibc.runs(X86_64UnknownLinuxMusl))
+  // The loaders of the other architecture do not count.
+  assert_eq(machine_under(root, Linux, Aarch64).libcs(), [])
+  write_file(root + "/lib/ld-musl-aarch64.so.1", "")
+  assert_eq(machine_under(root, Linux, Aarch64).libcs(), [Musl])
+  // macOS reads no loader files.
+  assert_eq(machine_under(root, MacOs, Aarch64).libcs(), [])
+  ignore(remove_directory(root))
 }

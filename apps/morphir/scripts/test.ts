@@ -8,6 +8,7 @@ import {verifyConfigurationCorpus} from './configuration-parity.ts';
 import {exerciseConfiguration} from './configuration-acceptance.ts';
 import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
+import { exerciseExtensionWorker } from './extension-worker-acceptance.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
 import type { Json } from '../../../types/data.ts';
 import assert from "node:assert/strict";
@@ -163,17 +164,20 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.match(JSON.parse(run(['mck', '--help', '--json']).stdout).usage, /report check\/render\/compare/);
   if (target === 'wasm' || target === 'wasm-gc' || (target === 'native' && process.platform === 'win32')) {
     assert.match(JSON.parse(run(['--json', 'mck', 'check', 'kit'], 2).stdout).error, /mck.runtime_unavailable/);
-    assert.match(JSON.parse(run(['--json', 'extension', 'describe'], 2).stdout).error, /extension.runtime_unavailable/);
-    put('extism-pin.json', JSON.stringify({binding:'extism-wasm'}));
-    const refusedExtism = JSON.parse(run(['extension','describe','--extension-pin','extism-pin.json','--extension-helper','extism.mjs','--json'],1).stdout);
-    assert.equal(refusedExtism.error.code,'extension.unsupported_target');
-    assert.ok(!('result' in refusedExtism));
+  }
+  if (target === 'wasm' || target === 'wasm-gc') {
+    // The WASI entry has no worker host; it refuses before it reads a pin.
+    put('portable-pin.json', JSON.stringify({contractVersion:'0.2.0'}));
+    const refused = JSON.parse(run(['extension','describe','--extension-pin','portable-pin.json','--json'],2).stdout);
+    assert.equal(refused.profile,'morphir/command-result');
+    assert.equal(refused.error.code,'extension.runtime_unavailable');
+    assert.ok(!('result' in refused));
   } else {
-    // Hosts with process effects still select nothing implicitly.
-    assert.match(JSON.parse(run(['--json', 'extension', 'describe'], 2).stdout).error, /extension.explicit_pin_and_helper_required/);
+    // Hosts with a worker host still select nothing implicitly.
+    assert.equal(JSON.parse(run(['--json', 'extension', 'describe'], 2).stdout).error.code, 'extension.pin_required');
   }
   // Help remains portable on every target, including those that refuse dispatch.
-  assert.match(run(['extension', 'compile', '--help']).stdout, /Usage: morphir extension compile <source.mbt>[\s\S]*core-wasm-process/);
+  assert.match(run(['extension', 'compile', '--help']).stdout, /Usage: morphir extension compile <source>[\s\S]*worker host/);
   assert.match(JSON.parse(run(['--json', 'extension', 'compile', 'x.mbt', '--target', 'moonbit'], 2).stdout).error, /--target/);
   exerciseScaffolding(directory, run);
   assert.equal(lines(["--help"])[0].type, "help");
@@ -829,7 +833,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
 if (selected.some(target => target === 'js' || target === 'native')) {
   execFileSync(process.execPath, ['--experimental-transform-types', '--test',
     join(appDirectory, 'scripts/test-connected-session.ts'), join(appDirectory, 'scripts/test-mck-provider.ts'),
-    join(appDirectory, 'scripts/test-extension-provider.ts'), join(appDirectory, 'scripts/configuration-parity.test.ts'),
+    join(appDirectory, 'scripts/configuration-parity.test.ts'),
     join(appDirectory, 'scripts/artifact.test.ts'),
     join(workspaceDirectory, 'pkgs/morphir-host/runners/terminal-worker.test.ts')], {
     cwd: workspaceDirectory, stdio: 'inherit', timeout: 30000,
@@ -865,8 +869,13 @@ for (const target of selected) {
   const binary: string = admittedNative || stageCliArtifact(join(workspaceDirectory, "_build"), target);
   const directory = mkdtempSync(join(tmpdir(), "morphir-cli-"));
   try {
-    if (!headlessOnly && target === "native") exercise(binary, [], directory, target);
-    else if (!headlessOnly && target === "js") exercise(process.execPath, [binary], directory, target);
+    if (!headlessOnly && target === "native") {
+      exercise(binary, [], directory, target);
+      exerciseExtensionWorker({command: binary, prefix: []}, workspaceDirectory, target);
+    } else if (!headlessOnly && target === "js") {
+      exercise(process.execPath, [binary], directory, target);
+      exerciseExtensionWorker({command: process.execPath, prefix: [binary]}, workspaceDirectory, target);
+    }
     else if (!headlessOnly) {
       const artifact = binary;
       if (target === "wasm") {
@@ -906,7 +915,10 @@ if (selected.includes("js")) {
     const installed = join(directory,"node_modules/@morphir/morphir/bin/morphir.js");
     const fixture = join(directory,"fixture");
     mkdirSync(fixture);
-    if (!headlessOnly) exercise(process.execPath,[installed],fixture,"npm",join(directory,"node_modules/@morphir/morphir/build-provider/library-build.mjs"));
+    if (!headlessOnly) {
+      exercise(process.execPath,[installed],fixture,"npm",join(directory,"node_modules/@morphir/morphir/build-provider/library-build.mjs"));
+      exerciseExtensionWorker({command: process.execPath, prefix: [installed]}, workspaceDirectory, "npm");
+    }
     const installedRoot = join(directory, 'node_modules/@morphir/morphir');
     await headlessAcceptance('js', join(installedRoot, 'dist/morphir.js'), installed, installedRoot);
     console.log("Installed npm package integration passed");

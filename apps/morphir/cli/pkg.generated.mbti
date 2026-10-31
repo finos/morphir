@@ -3,6 +3,7 @@ package "morphir/morphir/cli"
 
 import {
   "finos/morphir-host/diagnostics",
+  "finos/morphir-host/worker",
   "moonrockz/moon-lander-hosting",
   "moonrockz/moon-lander-logging",
   "moonrockz/moon-lander-logging-hosting-async",
@@ -22,8 +23,14 @@ pub fn Invocation::diagnostics(Self) -> @diagnostics.Settings
 pub async fn Invocation::execute(Self, @moon-lander-hosting.Context[Unit]) -> Unit
 pub fn Invocation::host(Self, &@moon-lander-logging.Logger, async () -> Unit) -> @moon-lander-hosting.Host[Unit] raise
 pub fn Invocation::log_directory(Self) -> @moon-lander-logging-hosting-async.LogDirectory raise
-pub fn Invocation::prepare(Array[String]) -> Self raise
+pub fn Invocation::prepare(Array[String], workers? : WorkerHosting) -> Self raise
 pub fn Invocation::report_unstarted_stop(Self, Int32) -> Unit
+
+pub struct WorkerHosting {
+  // private fields
+}
+pub fn WorkerHosting::new(@worker.HostPlatform, process? : &@worker.Launcher, wasm? : &@worker.Launcher) -> Self
+pub fn WorkerHosting::none() -> Self
 
 // Type aliases
 

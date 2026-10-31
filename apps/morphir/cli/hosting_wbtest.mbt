@@ -13,6 +13,7 @@ fn hosted_fixture() -> Invocation raise {
     settings: { level: Off, files: Disabled, },
     cancel_file: "",
     command_started: Ref(false),
+    workers: WorkerHosting::none(),
   }
 }
 

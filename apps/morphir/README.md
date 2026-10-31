@@ -12,7 +12,7 @@ mise exec -- moon update
 
 ```sh
 mise exec -- moon run apps/morphir --target native -- run path/to/workspace --all
-mise exec -- moon run apps/morphir --target js -- workspace path/to/workspace --json
+mise exec -- moon run apps/morphir/node --target js -- workspace path/to/workspace --json
 ```
 
 Or build and run a standalone executable:
@@ -42,14 +42,12 @@ The package is named `@morphir/morphir`. After installing a packed or published 
 commands to an explicitly pinned prebuilt canonical backend. See the
 [MCK guide](docs/mck.md) for provisioning, supported hosts, output and cancellation.
 
-`morphir extension describe|compile|generate` runs an explicitly pinned MEP extension in a fresh
-guest process. Bindings include the saved core-Wasm guest in a pinned Node host and an explicit
-native process through the shared Rust host. The explicit `extism-wasm` binding supports
-the Python bundle's legacy MEP 0.1 and plain JSON IR 3/4 workflow; see the
-[Python Extism guide](docs/extension.md#explicit-python-extism-bundles) for its qualification
-task, pins, denied access and target matrix. Local repository and bundle lifecycle commands
-use the shared distribution library;
-see the [extension guide](docs/extension.md) for pins, reports, limits and cancellation.
+`morphir extension describe|compile|generate` runs an explicitly pinned MEP extension on the
+CLI's own worker host, with no helper, Node runtime or Rust build. A contract `0.2.0` pin names the
+artifact and its runtime; process workers run now, and WASM runtimes are refused until the WASM
+worker host is available. Sources and operations come from the extension's claims. Local
+repository and bundle lifecycle commands use the shared distribution library; see the
+[extension guide](docs/extension.md) for pins, the pin migration, reports, limits and platforms.
 
 `morphir compile` exposes embedded rich compilation without an extension host:
 

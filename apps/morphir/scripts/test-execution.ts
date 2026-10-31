@@ -33,7 +33,7 @@ try {
   if(llvmHome)targets.push('llvm');
   const targetOptions=(target: string)=>target==='llvm'?['--home',llvmHome!,'--toolchain-pin',llvmPin!,...dependencies]:options;
   run(moon,['build','--target','js']);run(moon,['build','--target','native']);
-  const js=join(repo,'_build/js/debug/build/morphir/morphir/morphir.js');
+  const js=join(repo,'_build/js/debug/build/morphir/morphir/node/node.js');
   const native=join(repo,'_build/native/debug/build/morphir/morphir/morphir.exe');
   for(const [program,prefix] of [[process.execPath,[js]],[native,[]]] as const) {
     const cancelledFile=join(root,prefix.length?'node-cancel':'native-cancel');

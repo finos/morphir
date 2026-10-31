@@ -24,8 +24,15 @@ async fn fixture() -> @worker.ArtifactRef {
 
 ///|
 #cfg(not(platform="windows"))
+fn machine() -> @worker.Machine {
+  @native.host_machine().unwrap()
+}
+
+///|
+/// A platform that this machine runs.
+#cfg(not(platform="windows"))
 fn platform() -> @worker.Platform {
-  @native.host_platform().unwrap()
+  machine().platforms()[0]
 }
 
 ///|
@@ -259,7 +266,7 @@ async test "a symbolic link to an artifact is refused" {
 #cfg(not(platform="windows"))
 async test "a process launcher refuses other runtimes, platforms and memory artifacts" {
   let launcher = @native.ProcessLauncher::new()
-  let other = if platform() is X86_64UnknownLinuxGnu {
+  let other = if machine().runs(X86_64UnknownLinuxGnu) {
     @worker.Platform::Aarch64AppleDarwin
   } else {
     X86_64UnknownLinuxGnu

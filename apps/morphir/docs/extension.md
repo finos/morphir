@@ -1,248 +1,429 @@
-# Pinned extension commands
+# Extension commands on the worker host
 
-`morphir extension describe|compile|generate` invokes a provider selected by an
-explicit pin. Each operation writes to a new output directory. Repository and
-bundle commands below manage local installations separately. Invocation never
-silently substitutes an installed provider or another engine.
+`morphir extension describe`, `compile` and `generate` run one Morphir extension
+that you select with an explicit pin. The CLI runs the extension itself, on its
+own worker host. You do not need Node, a helper module, a services pin or a Rust
+build. The native CLI and the npm CLI run the same session code.
 
-The portable `core-wasm-process` binding runs a saved core-Wasm guest
-(`model.wasm` plus its binary Ion `manifest.ion`) runs inside the Node process
-host in `pkgs/morphir-host/embedding`, which speaks Content-Length JSON-RPC on
-stdio. This is the route qualified by issue #152. It is not a WebAssembly
-Component Model binding. The explicit `native-process` route delegates to the
-shared Rust host as described below. The separate `extism-wasm` profile runs the
-Python bundle through that host's Extism engine. Component Model execution
-requires its own qualified adapter.
+The worker host knows no list of languages or extensions. It reads what the
+extension claims when it describes itself: its identity, its protocol lines, its
+operations, its languages with their file extensions, its targets and its model
+tuples. Any extension that conforms to the Morphir Extension Protocol (MEP) and to
+a supported runtime runs with no change to the CLI.
 
-## A portable example
+This version runs **process workers**: native executables that speak
+Content-Length framed MEP on stdio, such as the native MoonBit guest or the Elm
+extension executables. Pins with a `wasm` runtime are refused with
+`extension.runtime_unavailable` until the WASM worker host is available.
 
-Package the MoonBit extension, then write a pin over the bytes you built:
+## An example with the native MoonBit guest
+
+The native MoonBit guest in `apps/morphir-extension` is a process worker. Build it
+and the native CLI, then write a pin over the bytes that you built. Set
+`PLATFORM` to the release platform of your host, for example
+`aarch64-apple-darwin` or `x86_64-unknown-linux-gnu`.
 
 ```sh
-mise run package:mep-extension
-mise exec -- bun run --cwd apps/morphir build
-```
-
-```json
+mise run build:extension
+moon build apps/morphir --target native --release
+guest="$PWD/_build/native/release/build/finos/morphir-extension/morphir-extension.exe"
+morphir="$PWD/_build/native/release/build/morphir/morphir/morphir.exe"
+digest=$(shasum -a 256 "$guest" 2>/dev/null || sha256sum "$guest")
+digest=${digest%% *}
+PLATFORM=aarch64-apple-darwin
+mkdir -p .dev/extension-example && cd .dev/extension-example
+cat > pin.json <<EOF
 {
-  "contractVersion": "0.1.0-draft.1",
-  "binding": "core-wasm-process",
-  "executionProfile": {
-    "id": "morphir/mep-bytes-v1/v1-draft",
-    "sha256": "6ed5e96fa9c7f7dcaa179efc88e517307463cfeddc5e2eeae854f0395e7a4ec6"
-  },
-  "runtime": {
-    "name": "node",
-    "version": "v24.22.1",
-    "executable": "/tools/node-24.22.1/bin/node",
-    "sha256": "<SHA-256 of that executable>"
-  },
-  "host": {
-    "root": "/work/morphir-moonbit/pkgs/morphir-host/embedding",
-    "modules": { "node-mep-cli.mjs": "<SHA-256>", "...": "one entry per host module" }
-  },
-  "artifact": {
-    "directory": "/work/morphir-moonbit/.dev/portable-mep/extension",
-    "wasmSha256": "<SHA-256 of model.wasm>",
-    "manifestSha256": "<SHA-256 of manifest.ion>"
-  },
-  "origin": "where these bytes came from"
+  "contractVersion": "0.2.0",
+  "artifact": { "path": "$guest", "sha256": "$digest" },
+  "runtime": { "kind": "process", "platform": "$PLATFORM", "args": [] },
+  "origin": "local build of apps/morphir-extension"
 }
+EOF
+printf 'pub fn eligible(active : Bool, vip : Bool) -> Bool { active && !vip }\n' > main.mbt
 ```
 
-`host.modules` must list exactly the twelve modules the Node host loads:
-`node-mep-cli.mjs`, `node-mep-stdio.mjs`, `node-mep-adapter.mjs`,
-`node-mep-worker.mjs`, `mep-adapter.mjs`, `mep-frames.mjs`, `wasm-memory.mjs`,
-`node-artifacts.mjs`, `artifacts.mjs`, `assembly.mjs`, `index.mjs` and
-`dist/bridge.mjs`. Rebuilding the embedding package can change these bytes even
-when the source does not, because the bundler writes a build-specific debug ID.
-Write the pin after the last build. `scripts/portable-mep-cli.mbtx` shows how.
-
-Then compile a MoonBit source file and generate a library from the result:
+Then describe the guest, compile the source and generate a library from the
+model. Each operation writes to a new output directory:
 
 ```sh
-export MORPHIR_EXTENSION_PIN=/work/pin.json
-morphir extension describe
-morphir extension compile src/main.mbt --package my/bool --output model
-morphir extension generate model/model-envelope.json --output generated
+"$morphir" extension describe --extension-pin pin.json
+"$morphir" extension compile main.mbt --package acme/rules --output model --extension-pin pin.json
+"$morphir" extension generate model/model-envelope.json --output generated --extension-pin pin.json
 ```
 
-`compile` writes `model/model-envelope.json`, the MorphirModel envelope exactly as
-the guest returned it, and `model/model.ionb`, its decoded payload. The CLI checks
-the payload's length and SHA-256 before publishing either file. `generate` sends
-that envelope back unchanged and writes every returned artifact, including the
-guest's retention sidecars `mep/source-model.ionb` and `mep/source-envelope.json`.
+`describe` prints the identity and claims of the guest:
 
-The npm launcher selects its adjacent helper. A native executable needs
-`--extension-helper /installed/build-provider/extension.mjs` (or
-`MORPHIR_EXTENSION_HELPER`) and can name the Node that runs the helper with
-`--node`. The guest always runs under the pinned runtime, not under `--node`.
+```text
+morphir-moonbit 0.1.0: process worker; MEP 0.1, 0.2.0-draft.1; morphir.backend.generate, morphir.frontend.compileModel, morphir.backend.generateModel
+```
 
-## What each portable session does
+`compile` writes `model/model-envelope.json`, the model envelope as the guest
+returned it, and `model/model.ionb`, its decoded payload. `generate` sends that
+envelope back unchanged and writes every returned artifact, including the guest's
+sidecars `mep/source-model.ionb` and `mep/source-envelope.json`. With the npm
+CLI, use `node apps/morphir/bin/morphir.js` (after `bun run --cwd apps/morphir
+build`) or the installed `morphir` command with the same arguments.
+`MORPHIR_EXTENSION_PIN` can name the pin instead of `--extension-pin`.
 
-The CLI builds the whole session before it starts a process: `describe`,
-`initialize` with exactly one model tuple, the operation, `shutdown` and the
-`exit` notification. `describe` alone sends `describe` and `exit`. The helper
-reads the runtime, every host module and both artifact files through no-follow
-descriptors. It hashes each one and copies the bytes it hashed into a private
-temporary directory. It checks the SHA-256 against the pin, confirms the copied
-runtime reports `v24.22.1`, and starts the guest from those copies. Replacing a
-pinned file after verification cannot change what runs. The guest gets an empty
-environment and an empty working directory. The copies are removed after its
-process group has exited.
+## The pin
 
-The guest serves the pipelined requests in order. Afterwards the CLI decodes the
-frames and requires one response per request, in order, with matching IDs. A guest
-that exits early leaves an `extension.incomplete_session` failure, never a partial
-success. Initialization must agree on MEP `0.2.0-draft.1` and return the offered
-tuple. An empty intersection is `extension.tuple_unavailable`.
+A pin is a JSON object with contract `0.2.0`. It names an artifact and its
+runtime, which is the same shape that the installed extension catalog records, so
+a pin and a catalog entry are read by one decoder.
 
-Ion is the default: `--model-format ion` selects `morphir-model` with
-`ion-binary`, and `--model-format json` selects `morphir-ir` with `morphir-json`.
-There is no fallback between them. The MoonBit frontend refuses JSON compilation
-that would drop source and naming provenance with `data.lossy_conversion`.
-`generate` takes the tuple from the envelope and refuses anything other than those
-two pairs, envelope `0.1.0-draft.1` and IR `4.0.0`, before a process starts.
-
-The CLI offers 2 MiB decoded and 2,796,204 encoded model bytes, depth 128 and
-100,000 nodes. The guest uses the lower of its own limits and these. The framed
-request must fit in 4 MiB. Guest stdout is capped at 16 MiB and its stderr at
-64 KiB. The Node host keeps its own limits: 256 MiB Wasm memory, a 10-second worker
-deadline per call and only the three `morphir_bytes_v1` byte callbacks as imports.
-
-Source files enter the request with a clean relative path, or only their file
-name when the path is absolute or contains `..`. The context digest is the SHA-256
-of the package name and options for `compile`, and of the target and model
-identity for `generate`.
-
-## Portable output, exit status and cancellation
-
-Human output prints a summary on stdout and diagnostics on stderr. `--json` prints
-one report, and `--json-lines` wraps it in `{"type":"extension","data":...}`. The
-report has the profile `morphir/cli/extension-command`, contract
-`0.1.0-draft.1`, the operation, `state`, `exitCode`, the verified pin, the guest's
-`extension` identity, the negotiated tuple and limits, the guest's `result` with
-its diagnostics, the published files with their sizes and SHA-256, lifecycle facts
-and the guest's stderr.
-
-| Exit | State | Meaning |
+| Field | Required | Meaning |
 | --- | --- | --- |
-| 0 | `completed` | The operation succeeded and output was published. |
-| 1 | `completed` | The guest answered with `success: false`, for example source errors or a lossy JSON request. |
-| 1 | `failed` | The guest rejected the operation with a JSON-RPC error (for example `digest_mismatch`), exited early, answered out of order or wrote files. |
-| 2 | `refused` | A pin, identity, runtime version, negotiation or local input check failed. Identity refusals start no guest. |
-| 124 | `failed` | The `--timeout` deadline expired. The default is 60000 ms and the maximum 594000 ms. |
-| 130 | `cancelled` | SIGINT or `--cancel-file PATH` stopped the session. |
+| `contractVersion` | Yes | `"0.2.0"` |
+| `artifact` | Yes | `{"path": <absolute path>, "sha256": <64 hex digits>}` of the executable or WASM module |
+| `runtime` | Yes | `{"kind": "process", "platform": <release platform>, "args": [...]}` or `{"kind": "wasm", "abi": "extism-kernel-v1" \| "morphir-bytes-v1"}`; `abi` is optional |
+| `descriptor` | No | `{"path": <absolute path>, "sha256": <64 hex digits>}` of a release descriptor (`release.json`) |
+| `origin` | Yes | Where the bytes came from, 1 to 2048 characters; the report repeats it |
 
-MEP wire cancellation is not supported, and the report says so
-(`wireCancellation: false`). Cancellation and deadlines terminate the guest's
-whole process group, and the helper confirms the group has exited before the
-CLI returns. Output is written to `<output>.morphir-partial` and renamed into
-place without replacement, so a failure never leaves a partial output directory.
-An existing output path is refused. The command writes no log files.
+The CLI refuses a pin with `extension.pin_invalid` when it has an unknown field
+(the message names the field), a relative path, a missing digest, a runtime that
+mixes process and WASM members, or a platform that is not a release platform.
+Process `args` are forwarded to the worker unchanged, as an array, including
+empty values and `--`.
 
-Supported hosts are the npm launcher on Node and native MoonBit on Linux and
-macOS. Wasm, Wasm GC and native Windows print help but refuse dispatch with
-`extension.runtime_unavailable`.
+The CLI hashes the bytes that it reads and runs a private copy of those bytes, so
+a later change to the original file cannot change what runs. A digest that
+differs from the pin is refused with `extension.digest_mismatch` and no process
+starts.
 
-## Qualification
+When the pin names a descriptor, the CLI reads it before it starts any worker: it
+checks its digest, finds the one entry in its `artifacts` list with the pinned
+artifact's SHA-256 and decodes the `claims` of that entry. A descriptor that
+fails one of these checks is refused with `extension.digest_mismatch` or
+`extension.descriptor_invalid` and exit status 2, and no process starts. After
+the probe, the recorded claims must equal the live claims of the worker. Drift
+is refused with `extension.claims_mismatch` and exit status 2, before any
+operation.
 
-```sh
-MORPHIR_MEP_KIT=/path/to/finos/morphir/spec/mep/mck/guest-moonbit-bool.json \
-MORPHIR_MEP_KIT_SHA256=<kit SHA-256> \
-mise run test:portable-mep-cli
-```
+## What one command does
 
-The script builds the embedding host, the npm CLI and the native CLI, pins the
-current bytes and runs the real command on both CLI builds. It compiles the shared
-kit's Boolean source and generates from the result. Then it builds the kit's own
-consumer against the returned library and requires the kit's expected stdout. It
-also generates from the kit's plain Morphir JSON and requires the kit's expected
-artifacts byte for byte. It covers lossy JSON refusal, malformed source, a retired
-source profile, a tampered payload digest, an unsupported tuple, an existing
-output, a wrong Wasm digest, an unsupported binding, a cancel file and a deadline.
-Every invocation runs with its own `TMPDIR`, which must be empty afterwards.
-Evidence goes to `MORPHIR_MEP_CLI_EVIDENCE`, default `.dev/portable-mep-cli`, which
-must not exist yet.
+Consider `extension compile main.mbt --package acme/rules --output model`:
 
-`scripts/test-extension-provider.ts` runs in routine CLI tests with a stand-in
-pinned runtime. It checks identity refusal before launch, a runtime version
-mismatch, separate stdout and stderr, guest file writes, execution of verified
-copies when pinned paths change during a run, process-group cleanup after a deadline or cancellation, and the stderr
-limit.
+1. The CLI checks its local inputs: the options, the timeout, that `model`
+   and `model.morphir-partial` do not exist (the message names the one that
+   exists; `extension.output_exists`), and that the parent directory of
+   `model` exists (`extension.input_invalid`). It reads and decodes the pin, and
+   reads and checks the descriptor when the pin names one.
+2. **Probe.** It starts a first worker, sends `morphir.extension.describe`,
+   offering MEP `0.2.0-draft.1` and `0.1`, then `morphir.exit`, and stops the
+   worker. The answer gives the claims. The descriptor's claims, when the pin
+   names a descriptor, are compared with them.
+3. **Offer.** The protocol line comes from the claims, not from the pin. A
+   frontend that claims `morphir.frontend.compileModel` compiles on MEP
+   `0.2.0-draft.1` with one model tuple; Ion is preferred, and
+   `--model-format json` selects the JSON tuple. A frontend that claims only
+   `morphir.frontend.compile` compiles on MEP `0.1`. An operation that the
+   extension does not claim is refused with `extension.capability_unavailable`
+   and exit status 2.
+4. **Sources.** The CLI reads a bounded snapshot of the source file or
+   directory. It reads only the files with the file extensions that the
+   extension claims, in name order, and sends the claimed language ID. A
+   single file keeps its clean relative path as its URI; an absolute path or a
+   path with `..` keeps only its file name. Files in a directory keep their
+   path relative to that directory. A frontend that does not claim
+   `multiDocument` compiles one document for each request, so a snapshot with
+   more than one source file is refused with `extension.capability_unavailable`
+   and exit status 2 before the session. The walk skips hidden directories (names
+   that start with `.`) and the build and dependency directories `.git`,
+   `.mooncakes`, `_build`, `node_modules` and `.venv`. It refuses, with
+   `extension.input_invalid`, a symbolic link, a special file, and an entry
+   name that contains `\`, `/`, `:` or NUL or is `.` or `..`, because such a
+   name would make a document URI absolute or traversing.
+5. **Session.** It starts a fresh worker from the same verified bytes and sends
+   `morphir.initialize`. It requires the returned identity and capabilities to
+   equal the probed claims, then sends `morphir.initialized` and the operation.
+   It checks the reply's ID, shape and size, then sends `morphir.shutdown` and
+   `morphir.exit`.
+6. **Stop.** The host confirms that the worker's whole process tree has stopped.
+7. **Publish.** Only then does it write the files into `model.morphir-partial`
+   and rename that directory to `model` without replacement.
+8. **Report.** It writes the summary or the JSON report.
 
-## Explicit native processes
+`generate` follows the same steps. Its input selects the line: a model envelope
+(with `envelopeVersion`) is sent on MEP `0.2.0-draft.1` with the envelope's
+tuple; plain Morphir IR JSON is sent to `morphir.backend.generate` on MEP `0.1`.
 
-Build the adapter against the pinned shared checkout using Rust 1.98.0. The
-MoonBit build script verifies the shared revision and library tree, uses the
-tracked Cargo lock and writes `.dev/native-services/host-pin.json`:
+## Compile and generate options
 
-```sh
-moon run scripts/native-services.mbtx -- --shared /path/to/finos/morphir --json
-```
+| Option | Commands | Meaning |
+| --- | --- | --- |
+| `--extension-pin FILE` | all | The pin; or `MORPHIR_EXTENSION_PIN` |
+| `<source>` | compile | A source file, or a directory snapshot of claimed source files |
+| `<model>` | generate | A model envelope, or plain Morphir IR JSON |
+| `--package NAME` | compile | The package name; required |
+| `--model-format ion\|json` | compile | The model tuple on the model line; Ion is the default. MEP `0.1` compiles return Morphir JSON and refuse `ion` |
+| `--frontend-profile ID` | compile | The frontend profile option on the model line |
+| `--ir-version V` | compile, generate | Compile on MEP `0.1`: one of the claimed frontend IR versions; required when the extension claims more than one. An exact claimed name comes first. A major-only name such as `4` selects the highest claimed version with that major (`4.1.0` before `4.0.0`, by number). A full name that is not claimed, such as `4.2.0` or `4.0.0` for a claim of `4`, is refused with `extension.capability_unavailable`. Generate: optional, a check of the model's IR version by the same rule: the model's version equals `V`, or `V` names only its major. On the model line, it checks the IR version of the tuple: `4` or `4.0.0` for `4.0.0` |
+| `--target ID` | generate | One of the claimed targets; required when the extension claims more than one |
+| `--output DIR` | compile, generate | A new output directory; required |
+| `--timeout MS` | all | The deadline for the whole command, from 1 to 594000 ms; 60000 ms by default |
+| `--cancel-file PATH` | all | The command stops with exit status 130 when this file exists |
 
-The adapter links the shared `morphir-host`, `morphir-host-native`,
-`morphir-extension-sdk` and `morphir-distribution` libraries at finos/morphir
-`fc9f723a2cf0adae1299892c6cc4bee5ebcf4560`. It does not invoke the Rust product CLI
-or implement a checker. Copy the generated host pin into this explicit provider pin:
+Compile on the model line writes `model-envelope.json` and `model.ionb` or
+`model.json`. The CLI checks the payload's tuple, length and SHA-256 before it
+publishes. Compile on MEP `0.1` sends the selected IR version as
+`options.irVersion` and writes the guest's IR as `morphir-ir.json`. Before it
+publishes, the `irVersion` that the result reports and the IR's
+`formatVersion` must agree with the selected version, and the IR must decode
+with the versioned Morphir IR JSON codec of that version. Otherwise the CLI
+refuses the result with `extension.result_invalid` and exit status 1, and
+publishes nothing.
+
+Generate on MEP `0.1` takes the IR version from the model's `formatVersion`,
+because on MEP `0.1` `irVersion` is a frontend compile option and a backend reads
+the version from the IR. The request carries empty `options`, never
+`options.irVersion`. Before the session, the backend must claim the model's IR
+version (an exact claimed name, or for a major-only `formatVersion` the highest
+claimed version with that major), or the CLI refuses with
+`extension.capability_unavailable`. An `--ir-version` is optional and acts as a
+check: when it is not the model's `formatVersion` or its major only, the CLI
+refuses the model with `extension.ir_version_mismatch`. Both refusals exit with
+status 2.
+Generate on the model line offers and sends the envelope's own tuple, which the
+extension must claim (`extension.tuple_unavailable`), and refuses an
+`--ir-version` that differs from the envelope's `irVersion` with
+`extension.ir_version_mismatch`.
+Generate writes the returned artifacts at their relative paths; an absolute,
+traversing or repeated path, or a path that is also a directory, is refused with
+`extension.result_invalid`. Paths are compared by a key that is
+NFC-normalized and case-folded, so `README.md` and `Readme.md`, two Unicode
+forms of `café.txt`, or a file `docs` and a directory `Docs/` collide and are
+refused, because a case-insensitive or normalizing file system would write them
+to one name.
+
+## Report and exit status
+
+In human mode, stdout holds one summary line. Diagnostics, the guest's stderr and
+the failure message go to stderr. With `--json`, stdout holds exactly one
+`morphir/command-result` `0.1.0` object; `--json-lines` wraps it in
+`{"type": "result", "data": ...}`. Progress, diagnostics and the guest's stderr
+still go to stderr, so a guest that writes to stderr cannot corrupt stdout. The
+report is written after the output is published.
+
+Every report has `profile`, `contractVersion`, `command` (`extension.describe`,
+`extension.compile` or `extension.generate`), `state`, `exitCode` and
+`diagnostics` (the guest's diagnostics). Success has `state: "succeeded"` and
+`result`; failure has `state: "failed"` and `error: {code, message}` instead.
+
+| `result` member | Content |
+| --- | --- |
+| `worker` | `kind` (`process`), `runtime`, `artifact` (`path`, `sha256`), `origin` and, with a descriptor, `descriptorSha256` |
+| `extension` | `id` and `version` from the claims |
+| `claims` | describe only: protocol versions, operations, languages, IR versions, the frontend flags (`frontendFlags`: `incremental`, `multiDocument`), targets and model tuples |
+| `protocolVersion` | compile and generate: the negotiated line, `0.1` or `0.2.0-draft.1` |
+| `negotiated` | `protocolVersion`, the `tuple` on the model line, and the negotiated model `limits`: `maxEncodedBytes`, `maxDecodedBytes`, `maxDepth`, `maxNodes` |
+| `bounds` | The enforced bounds: `requestBytes`, `responseBytes`, `deadlineMs`, `stderrTailBytes`, and for compile `sourceFiles` and `sourceBytes`; WASM workers add the engine bounds (memory ceiling, instruction budget, call deadline) |
+| `output` | `directory` and `files`, each with `path`, `bytes` and `sha256` |
+| `lifecycle` | `probe`, `shutdown`, `workerStopped`, `wireCancellation: false`, and `worker`: the stop `status`, `code` or `signal`, and `stopMethod` |
+| `stderr` | The guest's stderr tail as `text`, and `truncated` |
+
+The exit status is the same in human mode and in JSON mode:
+
+| Exit | Meaning | Examples of `error.code` |
+| --- | --- | --- |
+| 0 | The operation succeeded and the output is published | |
+| 1 | The guest answered `success: false`, the session failed, or the output could not be published | `extension.operation_unsuccessful`, `extension.incomplete_session`, `extension.unexpected_response`, `extension.response_limit`, `extension.guest_error`, `extension.result_invalid`, `extension.output_failed`, `extension.budget_exhausted` (WASM workers) |
+| 2 | A pin, identity, claim, negotiation or local input check refused the work before an operation | `extension.pin_required`, `extension.pin_invalid`, `extension.pin_retired`, `extension.option_retired`, `extension.runtime_unavailable`, `extension.platform_mismatch`, `extension.digest_mismatch`, `extension.descriptor_invalid`, `extension.claims_mismatch`, `extension.capability_unavailable`, `extension.protocol_unavailable`, `extension.tuple_unavailable`, `extension.request_limit`, `extension.worker_runtime_mismatch` (WASM workers), `extension.ir_version_mismatch`, `extension.input_invalid`, `extension.output_exists` |
+| 124 | The `--timeout` deadline passed | `extension.deadline` |
+| 130 | SIGINT, the `--cancel-file` or a cancellation of the command's task stopped the command | `extension.cancelled` |
+| 143 | SIGTERM stopped the command | `extension.cancelled` |
+
+A cancellation is never reported as `extension.host_failed`: the host stops the
+worker's whole process tree, publishes nothing and reports `extension.cancelled`.
+
+Parser errors keep the CLI's syntax status 2 and its existing error output.
+`--help` and `--help --json` print the command help and run nothing. The host never
+sends MEP wire cancellation; a deadline or a cancellation stops the worker's whole
+process tree. A failure leaves no output directory and no
+`<output>.morphir-partial`.
+
+## Limits
+
+| Bound | Value |
+| --- | --- |
+| Pin file | 64 KiB |
+| Descriptor file | 1 MiB |
+| Artifact | 512 MiB |
+| Request frame, host to worker | 4 MiB |
+| Response body, worker to host | 16 MiB |
+| Frame header | 8 KiB |
+| Offered model limits | 2,796,204 encoded bytes, 2 MiB decoded, depth 128, 100,000 nodes; the worker's smaller values apply |
+| Generate input | 4 MiB, depth 128, 100,000 nodes |
+| Compile sources | 1,024 files, 2 MiB in total, 16,384 directory entries, depth 32 |
+| Guest stderr kept | The last 64 KiB |
+| Deadline | 60,000 ms by default, at most 594,000 ms, for the probe and the session together |
+| Grace after `exit` | 2 seconds, then the host stops the tree |
+| Confirmation that the tree stopped | 5 seconds |
+
+Each process worker runs a private copy of its artifact in a new process group
+(Unix), with an empty environment and an empty private working directory, and it
+inherits only its three standard streams. A process that leaves its process group
+with `setsid` or `setpgid` is outside the tree that the host can stop. Native
+process workers have no sandbox beyond this isolation. The rules are in
+`pkgs/morphir-host/worker/process/native/README.mbt.md` and
+`pkgs/morphir-host/worker/process/node/README.md`.
+
+## Platforms
+
+| CLI | Process workers | WASM workers |
+| --- | --- | --- |
+| Native, macOS and Linux | Supported | Refused: `extension.runtime_unavailable` |
+| npm package on Node, macOS and Linux | Supported, through Node `child_process` | Refused: `extension.runtime_unavailable` |
+| Native and npm on Windows x64 and arm64 | Not qualified: the job-object stop is not complete (tasks 2.3, 3.2 and 7.5) | Refused: `extension.runtime_unavailable` |
+| WASI builds (`wasm`, `wasm-gc`) | Refused: `extension.runtime_unavailable` | Refused: `extension.runtime_unavailable` |
+
+A process artifact that the machine cannot run is refused with
+`extension.platform_mismatch`. The host checks the machine at run time, not
+the target of the CLI executable: the operating system and the architecture
+must match, and on Linux the artifact's C library must be present. The CLI
+finds glibc and musl from their dynamic loaders, for example
+`/lib64/ld-linux-x86-64.so.2` and `/lib/ld-musl-x86_64.so.1`, so the static
+musl CLI on a glibc machine runs a `x86_64-unknown-linux-gnu` artifact. The
+message names what the host has, for example `this host runs x86_64 Linux
+with glibc; the artifact needs musl`. Help is available on every build.
+
+## Migrate a pin
+
+The refusal messages point to this section by its URL,
+<https://github.com/finos/morphir-moonbit/blob/main/apps/morphir/docs/extension.md#migrate-a-pin>,
+because the npm package does not ship the docs.
+
+### BREAKING: retired pins and options
+
+Contracts `0.1.0` and `0.1.0-draft.1` are retired. The CLI refuses them with
+`extension.pin_retired`, and refuses `--extension-helper` and `--node` with
+`extension.option_retired`, both with exit status 2. `MORPHIR_EXTENSION_HELPER`,
+`--services-pin` and `--services-helper` are not read by these commands. Rewrite
+the pin as follows; the host, helper and Node runtime fields have no replacement,
+because the CLI runs the worker itself.
+
+**Native process (`native-process`, contract 0.1.0).** Before:
 
 ```json
 {
   "contractVersion": "0.1.0",
   "binding": "native-process",
-  "host": {
-    "executable": "/work/adapter",
-    "sha256": "<adapter SHA-256>",
-    "sourceRevision": "fc9f723a2cf0adae1299892c6cc4bee5ebcf4560"
-  },
+  "host": { "executable": "/work/adapter", "sha256": "<adapter SHA-256>", "sourceRevision": "fc9f723a…" },
   "artifact": {
     "executable": "/work/morphir-moonbit",
-    "sha256": "<native guest SHA-256>",
+    "sha256": "<guest SHA-256>",
     "extensionId": "morphir-moonbit",
     "version": "0.1.0",
     "args": []
   },
-  "origin": "description of the explicitly selected local build"
+  "origin": "local build"
 }
 ```
 
-Use the same describe/compile/generate arguments as above, with
-`--extension-helper /work/apps/morphir/build-provider/native-services.mjs` and
-`--extension-pin native.json`. The native helper is always explicit, including
-from the npm launcher. Pin after building; rebuilding either executable invalidates
-its old digest. Optional native `artifact.args` is an opaque array, forwarded
-unchanged, including empty strings and delimiters.
+After: `artifact.executable` becomes `artifact.path`, `artifact.args` moves to
+`runtime.args`, and the runtime names the platform. The identity comes from the
+live describe, or from a descriptor.
 
-For an operation, the shared host first describes an immutable executable copy
-and closes that probe. It then initializes a new copy of the same verified bytes,
-holding identity, version and capabilities to the description. The shared SDK
-owns immutable tuple negotiation, request/result checks, framing and shutdown.
-Compile and generate negotiate separate tuples. Payload bytes remain exact; the
-retained envelope round-trips to the generator's source-envelope sidecar without
-changing bytes. Optional claims are assertions, not authenticated authorship.
+```json
+{
+  "contractVersion": "0.2.0",
+  "artifact": { "path": "/work/morphir-moonbit", "sha256": "<guest SHA-256>" },
+  "runtime": { "kind": "process", "platform": "aarch64-apple-darwin", "args": [] },
+  "origin": "local build"
+}
+```
 
-Native execution has no enforced sandbox. The adapter and provider inherit no
-user environment. The helper owns a private temporary root and the entire process
-group, terminates it on cancellation or deadline, and cleans its storage after
-the group stops. Wire cancellation remains unsupported. Guest diagnostics use
-stderr. Requests are limited to 4 MiB, helper replies to 16 MiB, and shared MEP
-frames to the canonical host's 64 MiB limit; model negotiation has the smaller
-limits shown in the report. Explicit executables are limited to 128 MiB.
-Native commands record bounded cleanup observations through the existing telemetry
-sink at `.morphir/logs/execution.ionb`. `--log-file` and `--log-format` honor explicit
-paths and existing formats, including JSON Lines. Portable extension invocation
-keeps its existing no-file-logging behavior and explicitly refuses these native
-log controls.
+**Portable core-Wasm guest (`core-wasm-process`, contract 0.1.0-draft.1).**
+Before, the pin named a Node runtime, twelve host modules, an execution profile
+and an artifact directory with `model.wasm` and `manifest.ion`. After, it names
+the WASM module and its ABI:
 
-Native JSON results use `morphir/command-result` version `0.1.0`, with `command`,
-`state`, `exitCode` and `diagnostics`. Success has `result.binding`, `result.session`,
-output digest receipts and lifecycle facts. Failure has `error: {code, message}`
-instead of `result`; expected validation failures exit 1, cancellation exits 130
-and parser syntax retains exit 2. Human mode currently prints the same structured
-report. Help keeps the existing CLI help schema. The portable success schema is
-unchanged. Wasm/Wasm GC and native Windows refuse execution explicitly; their help
-remains available. This source acceptance is scoped to macOS arm64 and does not
-claim installed or other-platform qualification.
+```json
+{
+  "contractVersion": "0.2.0",
+  "artifact": { "path": "/work/extension/model.wasm", "sha256": "<model.wasm SHA-256>" },
+  "runtime": { "kind": "wasm", "abi": "morphir-bytes-v1" },
+  "origin": "mise run package:mep-extension"
+}
+```
+
+**Python Extism bundle (`extism-wasm`, contract 0.1.0).** Before, the pin named a
+host executable, a Node runtime, three helper modules and a bundle directory with
+`descriptorSha256` and `wasmSha256`. After, it names the WASM file and the
+descriptor, each with its own digest:
+
+```json
+{
+  "contractVersion": "0.2.0",
+  "artifact": { "path": "/work/python/morphir-python-binding-0.4.2.wasm", "sha256": "10acafa0f0282c5240e9620a5f2bb21629cc7580b9add528e7b77c7e54db22b5" },
+  "runtime": { "kind": "wasm", "abi": "extism-kernel-v1" },
+  "descriptor": { "path": "/work/python/release.json", "sha256": "72770f73f05a72535fd8c86ad4629175019037441a758b827c1ba47cc9a52ebd" },
+  "origin": "finos/morphir-python extension/python/v0.4.2"
+}
+```
+
+The two WASM pins decode now and are refused with `extension.runtime_unavailable`
+until the WASM worker host is available.
+
+### BREAKING: the report schema
+
+All three commands now write one `morphir/command-result` `0.1.0` report and use
+one exit table. The portable route wrote `morphir/cli/extension-command`
+`0.1.0-draft.1`; the native and Extism routes wrote `morphir/command-result`
+with route-specific `result` members and exited 1 on an expected refusal. This
+table gives where each old member is now.
+
+| Old member | Where it is now |
+| --- | --- |
+| `profile: "morphir/cli/extension-command"`, `contractVersion: "0.1.0-draft.1"` | `profile: "morphir/command-result"`, `contractVersion: "0.1.0"` |
+| `operation` (`describe`, …) | `command` (`extension.describe`, …) |
+| `state`: `completed`, `refused`, `failed`, `cancelled` | `state`: `succeeded` or `failed`; the kind of failure is in `exitCode` and `error.code` |
+| `exitCode` | `exitCode`, with the same table in human and JSON mode; refusals now exit 2 on every route |
+| `binding` (the verified pin) | `result.worker`: `kind`, `runtime`, `artifact`, `origin`, `descriptorSha256` |
+| `access` (`guestImports`, `wireCancellation`, `hostCancellation`, `fileLogging`) | `result.lifecycle.wireCancellation` and `result.bounds`; there is no file logging |
+| `extension` | `result.extension` (`id`, `version`) |
+| `negotiated` (`protocolVersion`, `tuple`, `limits`) | `result.protocolVersion` and `result.negotiated` (`tuple`, `limits` with `maxDepth` and `maxNodes`) |
+| `result` (the guest's raw result) | The published files are in `result.output`; the guest's diagnostics are in `diagnostics`; describe claims are in `result.claims` |
+| `output` (`directory`, `files`) | `result.output` (`directory`, `files` with `path`, `bytes`, `sha256`) |
+| `lifecycle` (`process`, `exitCode`, `shutdown`, `workDirectoryEmpty`) | `result.lifecycle` (`worker.status`, `worker.code`, `worker.stopMethod`, `shutdown`, `workerStopped`) |
+| `stderr` (text) | `result.stderr` (`text`, `truncated`); the guest's stderr is also copied to stderr |
+| `error` (text) | `error` (`code`, `message`), on failure only |
+| Native/Extism `result.binding`, `result.session`, `result.outputs`, `result.outputDirectory`, `result.access` | `result.worker`, `result.negotiated` and `result.bounds`, `result.output`, `result.output.directory`, `result.lifecycle` |
+| JSON-lines record type `extension` | Record type `result` |
+
+Some error codes changed with the new host: `extension.invalid_pin` is now
+`extension.pin_invalid`, `extension.explicit_pin_and_helper_required` is
+`extension.pin_required`, `extension.identity_mismatch` and
+`extension.integrity_mismatch` are `extension.digest_mismatch`,
+`extension.unsupported_binding` is `extension.pin_retired` or
+`extension.pin_invalid`, `extension.unsupported_target` is
+`extension.runtime_unavailable`, `execution.cancelled` is `extension.cancelled`
+and `execution.deadline` is `extension.deadline`.
+
+### BREAKING: `--log-file` and `--log-format` are removed
+
+`extension describe`, `compile` and `generate` no longer accept `--log-file` and
+`--log-format`; the parser refuses them with its syntax status 2. The guest's
+stderr is in the report and on stderr, and the CLI's `--log-level` diagnostics
+still apply. Remove the two options from scripts that call these commands.
+
+## Qualification
+
+The routine CLI tests (`mise run test:cli`) run the commands with the native
+MoonBit guest from the native CLI, the Node CLI and the installed npm package, on
+macOS and Linux: describe, compile and generate into fresh output directories,
+with the published digests checked against the files. They also check the
+refusals for an existing output, a retired option, a retired pin and descriptor
+drift, a guest that writes to stderr in JSON mode, and a cancel file. The CLI
+unit tests drive the same command code against scripted in-memory workers for the
+session cases: MEP `0.1` compile from claimed sources, an unclaimed operation, an
+unsuccessful answer, a failed shutdown, cancellation during generate and the
+deadline.
+
+`mise run test:portable-mep-cli`, `mise run test:cli-native-prerequisites` and
+`mise run test:cli-extism-python` still write retired pins. They are rewritten for
+contract `0.2.0` pins and the worker host when the published extensions are
+qualified on it (group 7 of the OpenSpec change `host-extensions-as-workers`).
 
 ## Controlled local repositories
 
@@ -285,12 +466,16 @@ offline without executing them or reopening the repository. Uninstall removes
 active state and retains the shared content-addressed cache. No signed registry or
 authenticated publisher chain is required for this explicit local workflow.
 
-Every lifecycle command accepts `--json` and uses the native finite-result schema
-above. Diagnostics and child logs go to stderr; successful output appears only
+Every lifecycle command accepts `--json` and writes one `morphir/command-result`
+`0.1.0` object; expected failures exit 1. Diagnostics and child logs go to stderr; successful output appears only
 after required writes. These commands do not automatically join installed
 selection to invocation. That downstream acceptance remains morphir-ukvn.5.64.30.
 
-Run the focused real native source-CLI path with:
+**Pending.** `mise run test:cli-native-prerequisites` still writes retired pins and
+calls the removed helper route, so it does not pass against this CLI. It is
+rewritten for contract `0.2.0` pins and the worker host in group 7 of the OpenSpec
+change `host-extensions-as-workers`; see [Qualification](#qualification). Until
+then, the description below records what the task covered before the worker host:
 
 ```sh
 mise run test:cli-native-prerequisites -- --shared /path/to/finos/morphir --json
@@ -307,199 +492,3 @@ binding its receipts to tested artifacts even when the caller has artifact
 override variables set. Evidence and host pins stay under `.dev/native-services`;
 no installed matrix, new CI job,
 release or default switch is performed.
-
-## Explicit Python Extism bundles
-
-The `extism-wasm` binding runs the existing `morphir-python` extension through
-shared Rust host libraries. It is separate from `core-wasm-process`, whose byte
-callbacks and rich-model methods do not implement the Extism ABI. The Rust product
-CLI is not invoked. The selected host executable embeds the shared Extism engine,
-MEP session checks and canonical distribution descriptor parser.
-
-Full multi-module qualification requires a corrected bundle advertising
-`frontend.multiDocument=true`. Python 0.4.1 omits that claim, so the adapter
-refuses requests with more than one source document for that release. There is
-no digest-based exception. Single-document use still undergoes all ordinary
-identity, language, IR and operation checks.
-
-The corrected release is [Python extension 0.4.2](https://github.com/finos/morphir-python/releases/tag/extension/python/v0.4.2),
-from source commit `1f547d17f648d5b398862f9dfceb05b6d463cb3f`.
-Its WASM SHA-256 is
-`10acafa0f0282c5240e9620a5f2bb21629cc7580b9add528e7b77c7e54db22b5`;
-the descriptor SHA-256 is
-`72770f73f05a72535fd8c86ad4629175019037441a758b827c1ba47cc9a52ebd`.
-The qualification task rechecks those selected bytes and live capabilities.
-
-The acceptance path is `mise run test:cli-extism-python`. It requires an existing
-local bundle, an exact shared-source checkout and an independently installed
-matching Python API. Acquisition happens before this command. For the corrected
-Python 0.4.2 bundle, the independent Python packages used by the fixture are
-`morphir-python==0.1.0`, `morphir-python-native==0.1.1` and `morphir==0.1.0`.
-The native package's compiler identity must report `0.4.2`; package and extension
-versions are separate contracts.
-
-From the repository root, acquire the release and prepare the independent API:
-
-```sh
-mkdir -p .dev/extism/python-bundle
-gh release download extension/python/v0.4.2 --repo finos/morphir-python --dir .dev/extism/python-bundle
-cp .dev/extism/python-bundle/morphir-python-binding-0.4.2.release.json .dev/extism/python-bundle/release.json
-uv venv --python 3.14 .dev/extism/python-api
-uv pip install --python .dev/extism/python-api/bin/python morphir-python==0.1.0
-```
-
-Then qualify against a checkout at the shared revision required by
-`scripts/native-services.mbtx`. Dependencies and Rust 1.98.0 must already be
-available; the task does not install them or download a bundle:
-
-```sh
-mise run test:cli-extism-python -- --shared /path/to/pinned/finos/morphir --bundle "$PWD/.dev/extism/python-bundle" --python "$PWD/.dev/extism/python-api/bin/python" --json
-```
-
-The task builds the pinned host and CLI candidates, checks the helper and command
-boundaries, unpacks the actual npm package into an isolated location and checks a
-relocated native release executable. It compiles the two-module loans fixture in
-IR 3 and 4, compares it with the independent Python API, generates Python, checks
-selected consumer results and recompiles without changing the IR. It also checks
-failure statuses, unsupported input, diagnostics and cleanup. Guest network
-access is denied by the engine policy. Invocation uses a retained local bundle
-copy in a fresh Morphir home and does not consult an extension repository.
-
-Success writes `.dev/extism/qualification.json` and a reusable local
-`.dev/extism/python-pin.json`. The receipt records platform/architecture, exact
-CLI, host, runtime, helper, bundle and check digests, source identities and the
-API/consumer results. It is evidence for those inputs only. A missing, failed,
-skipped or mismatched receipt cannot qualify another build or platform. Keep the
-bundle and pin local. Rebuilding a pinned file requires creating and qualifying
-a new pin.
-
-One local macOS arm64 run used a 111,185,856-byte host, about 106 MiB.
-The first describe invocation through each of the four entry points took
-3.9 to 4.4 seconds, including verification, copies and guest initialization.
-These are observations from that run, with no disk-cache control or startup
-guarantee. The receipt retains every call duration and the exact host digest.
-
-After qualification, these repository entry-point commands use the generated pin:
-
-```sh
-node apps/morphir/bin/morphir.js extension describe --extension-pin .dev/extism/python-pin.json --extension-helper "$PWD/apps/morphir/build-provider/extism.mjs" --json
-node apps/morphir/bin/morphir.js extension compile apps/morphir/fixtures/extism-python/v1 --package acme/example --ir-version 3 --output .dev/extism/example-ir3 --extension-pin .dev/extism/python-pin.json --extension-helper "$PWD/apps/morphir/build-provider/extism.mjs" --json
-node apps/morphir/bin/morphir.js extension generate .dev/extism/example-ir3/morphir-ir.json --ir-version 3 --output .dev/extism/example-python3 --extension-pin .dev/extism/python-pin.json --extension-helper "$PWD/apps/morphir/build-provider/extism.mjs" --json
-```
-
-Use a new output directory for every operation. Repeat with `--ir-version 4` and
-new output paths for draft IR 4. Compile accepts one UTF-8 `.py` file or a bounded,
-sorted directory snapshot of Python modules. Relative module paths are retained;
-symlinks and special entries are refused. Source code is statically parsed, never
-imported by the plugin. The Python interpreter above is used by the qualification
-harness to check generated code, not made available to the guest.
-
-### Protocol and IR boundary
-
-This profile offers exactly MEP `0.1` and calls `morphir.frontend.compile` and
-`morphir.backend.generate`. It checks exported metadata, performs live describe,
-then initializes a fresh container held to the same identity and capabilities.
-Shutdown must be acknowledged; the container is dropped and the isolated host
-process reaped before output publication. Describe drops its probe container too.
-
-`--ir-version` is required for compile and generate. Accepted aliases are `3`,
-`3.0.0`, `4` and `4.0.0`; the model header must agree. Compile writes plain
-`morphir-ir.json`, using the guest's classic-v3 or compact-v4 representation.
-Generate validates it with the corresponding MoonBit versioned JSON codec and
-passes it without migration. JSON is the default for this binding; an explicit
-`--model-format json` is accepted. Semantic JSON values are retained without implicit migration, including the
-qualified exact integers. Rich-envelope byte retention is a different contract.
-
-Ion, YAML, MorphirModel envelopes, IR 1/2/3.1, rich profiles and implicit conversion
-are refused. An IR 4 spelling does not authorize MEP `0.2.0-draft.1`, envelope
-`0.1.0-draft.1`, `compileModel`, `generateModel` or rich-model guarantees. Those
-require a separate guest/profile qualification. The fixture proves a bounded
-Python subset with local imports, algebraic data types, tuples, conditional
-functions and lambdas; it does not qualify arbitrary Python or every IR value.
-
-### Pins, authority and limits
-
-The generated pin has contractVersion `0.1.0`, binding `extism-wasm` and
-executionProfile `morphir/extism-mep-0.1/v1`. Its fields are:
-
-| Field | Meaning |
-| --- | --- |
-| `host` | Absolute executable, SHA-256 and exact shared `sourceRevision` |
-| `runtime` | Absolute Node executable, exact version and SHA-256 |
-| `helper` | Absolute root and exact SHA-256 map for `extism.mjs`, `supervision.mjs`, `windows-job.mjs` |
-| `artifact` | Absolute bundle directory, descriptor and WASM SHA-256, extension ID and version |
-| `origin` | User-visible asserted source of the selected bytes |
-
-`artifact.descriptorSha256` covers `release.json`; `artifact.wasmSha256` must
-select exactly one canonical version-2 WASM artifact. Unknown pin fields are
-refused. The explicit helper path must be `<helper.root>/extism.mjs`. The CLI
-verifies and copies the bootstrap modules before loading them. That trusted
-bootstrap then verifies no-follow snapshots of the selected Node, host,
-descriptor and guest before running their copies. Changes to original paths
-cannot substitute different executed bytes. The outer CLI runtime and installed
-CLI package remain the verifier's trust base.
-
-Descriptor claims are compared with live describe and initialized capabilities.
-A successful invocation reports scoped `claimCheck: "runtime-verified"` and
-`provenance: "asserted"`. Installation's unchecked WASM claims alone grant no
-execution authority, and digests or probes do not authenticate an author.
-Signatures are optional. There is no automatic installed-provider fallback.
-
-The guest has no preopened workspace paths, no inherited user environment, no
-HTTP hosts and no subprocess interface. It receives source/IR in requests and
-returns artifacts for host publication. The existing bounded Morphir callbacks
-see only an empty private workspace. Host cancellation terminates the complete
-process group; wire cancellation is unavailable.
-The CLI also checks the cancellation file while preparing inputs and immediately
-before the publication rename. A marker observed after helper exit still refuses
-publication with exit status 130.
-
-| Resource | Extism profile ceiling |
-| --- | --- |
-| Descriptor / WASM file | 1 MiB / 128 MiB |
-| Control request / helper reply / stderr | 4 MiB / 16 MiB / 64 KiB |
-| WASM memory / fuel per call | 256 MiB / 1,000,000,000 |
-| Engine call / default session | 30 seconds / 60 seconds |
-| Maximum explicit session timeout | 594 seconds |
-| Plain IR bytes / depth / nodes | 2 MiB / 128 / 100,000 |
-| Python sources / directory depth | 1,024 files, 2 MiB total, 16,384 entries / 32 |
-| Generated files / decoded total | 1,024 / 8 MiB |
-
-These are independent limits. Escaped JSON must also fit its enclosing request
-or reply budget. The shared legacy 64 MiB frame ceiling is not widened. No
-artifact-response profile with a larger memory budget is selected. Output paths
-must be safe relative paths, unique under portable normalization; absolute,
-traversing, symlink-escaping and case-colliding artifacts fail. Validation,
-shutdown or write failure leaves no published partial destination.
-
-### Results and supported targets
-
-Extism commands accept `--json` and emit one `morphir/command-result` version
-`0.1.0` object on stdout. `command` is `extension.describe`, `extension.compile`
-or `extension.generate`; `state`, `exitCode` and `diagnostics` are always present.
-Success adds `result.binding`, `result.session`, output digests and lifecycle/access
-facts. Failure adds `error: {code, message}` instead of `result`. Python diagnostic
-code, severity, location and related data remain in `diagnostics`; child logs use
-stderr. Human mode currently prints the same finite result. Expected validation
-refusals exit 1, cancellation exits 130 and parser syntax retains exit 2. Existing
-portable/native success and help schemas remain unchanged. Extism file-log
-controls are explicitly unavailable. No new self-test flag is reserved.
-
-Refusals use stable `extension.*` codes for invalid pins, integrity/identity,
-unsupported binding/profile/target/model format, IR mismatch, capability/session
-failure, resource limits, unsafe artifacts and incomplete cleanup. A guest
-`success: false` is `extension.operation_unsuccessful`, with its original Python
-diagnostics. `execution.cancelled` retains cancellation status.
-
-| Host / CLI entry point | Qualification scope |
-| --- | --- |
-| macOS arm64, native debug/release and Node JS/npm | Python 0.4.2 source/relocated/unpacked-package acceptance; candidate receipt required |
-| Linux GNU x86_64/aarch64, macOS x86_64 | Planned; unqualified until independent candidate receipts pass |
-| Windows, Linux musl, browser, MoonBit wasm/wasm-gc | Unsupported execution; explicit refusal, help remains available |
-
-This does not release an installed native host distribution or qualify other
-platforms. The opt-in task is the candidate evidence path; no recurring CI or
-scarce-runner job is added. Related documentation work is tracked by
-`morphir-ukvn.9`, finos/morphir-python `openspec/changes/add-documentation-site`.
-That site can document the current adapter matrix without waiting for additional
-platform support here.

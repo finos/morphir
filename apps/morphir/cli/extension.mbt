@@ -1,342 +1,406 @@
 ///|
-/// The one binding this command dispatches: a saved core-Wasm MEP guest served
-/// by the pinned Node process host. It is not a Component Model binding.
-priv enum ExtensionBinding {
-  CoreWasmProcess
+/// The section of `apps/morphir/docs/extension.md` that explains how to
+/// rewrite an old pin. It is a URL, because the npm package ships no docs.
+let extension_migration : String = "https://github.com/finos/morphir-moonbit/blob/main/apps/morphir/docs/extension.md#migrate-a-pin"
+
+///|
+let extension_pin_contract : String = "0.2.0"
+
+///|
+/// The source snapshot bounds of `extension compile`: files read, bytes read
+/// in total, directory entries listed and directory depth. Each bound is
+/// inclusive.
+priv struct ExtensionSourceLimits {
+  files : Int32
+  bytes : Int32
+  entries : Int32
+  depth : Int32
 }
 
 ///|
-/// Runtimes qualified for the binding. A new runtime needs new route evidence.
-priv enum ExtensionRuntime {
-  Node24_22_0
-  Node24_22_1
+let extension_source_limits : ExtensionSourceLimits = {
+  files: 1024,
+  bytes: 2097152,
+  entries: 16384,
+  depth: 32,
 }
 
 ///|
-priv enum ExtensionOperation {
+/// The directories that the source walk skips, with every other hidden
+/// directory: version control, build output and dependencies.
+let extension_skipped_directories : Array[String] = [
+  ".git", ".mooncakes", "_build", "node_modules", ".venv",
+]
+
+///|
+/// The three commands that run an extension on the worker host.
+priv enum ExtensionCommand {
   Describe
   Compile
   Generate
 }
 
 ///|
-/// The two model tuples the saved guest qualifies. Ion is the default.
-priv enum ExtensionModelTuple {
-  IonModel
-  JsonIr
-} derive(Eq)
+fn ExtensionCommand::of(command : String) -> ExtensionCommand? {
+  match command {
+    "extension describe" => Some(Describe)
+    "extension compile" => Some(Compile)
+    "extension generate" => Some(Generate)
+    _ => None
+  }
+}
 
 ///|
+/// The stable command name of the report.
+fn ExtensionCommand::name(self : ExtensionCommand) -> String {
+  match self {
+    Describe => "extension.describe"
+    Compile => "extension.compile"
+    Generate => "extension.generate"
+  }
+}
+
+///|
+/// How a command that did not succeed ends. Each status has one exit code,
+/// in human and JSON mode.
+priv enum ExtensionStatus {
+  /// A pin, identity, claim, negotiation or local input check refused the
+  /// work before an operation.
+  Refused
+  /// The guest answered `success: false`, the session failed or the output
+  /// could not be published.
+  Failed
+  /// The session deadline passed.
+  TimedOut
+  /// The user cancelled the command.
+  Cancelled
+}
+
+///|
+fn ExtensionStatus::exit_code(self : ExtensionStatus) -> Int32 {
+  match self {
+    Refused => 2
+    Failed => 1
+    TimedOut => 124
+    Cancelled => cancellation_exit_code()
+  }
+}
+
+///|
+/// The error codes of the extension commands. The worker host's own codes
+/// keep their names.
+priv enum ExtensionCode {
+  Worker(@worker.FailureCode)
+  PinRequired
+  PinInvalid
+  PinRetired
+  OptionRetired
+  DescriptorInvalid
+  InputInvalid
+  IrVersionMismatch
+  OutputExists
+  GuestError
+  OperationUnsuccessful
+  ResultInvalid
+  OutputFailed
+  HostFailed
+  DeadlinePassed
+  OperationCancelled
+}
+
+///|
+fn ExtensionCode::name(self : ExtensionCode) -> String {
+  match self {
+    Worker(code) => code.to_string()
+    PinRequired => "extension.pin_required"
+    PinInvalid => "extension.pin_invalid"
+    PinRetired => "extension.pin_retired"
+    OptionRetired => "extension.option_retired"
+    DescriptorInvalid => "extension.descriptor_invalid"
+    InputInvalid => "extension.input_invalid"
+    IrVersionMismatch => "extension.ir_version_mismatch"
+    OutputExists => "extension.output_exists"
+    GuestError => "extension.guest_error"
+    OperationUnsuccessful => "extension.operation_unsuccessful"
+    ResultInvalid => "extension.result_invalid"
+    OutputFailed => "extension.output_failed"
+    HostFailed => "extension.host_failed"
+    DeadlinePassed => "extension.deadline"
+    OperationCancelled => "extension.cancelled"
+  }
+}
+
+///|
+priv suberror ExtensionError {
+  ExtensionError(
+    status~ : ExtensionStatus,
+    code~ : ExtensionCode,
+    message~ : String
+  )
+}
+
+///|
+fn refused(code : ExtensionCode, message : String) -> ExtensionError {
+  ExtensionError(status=Refused, code~, message~)
+}
+
+///|
+fn failed(code : ExtensionCode, message : String) -> ExtensionError {
+  ExtensionError(status=Failed, code~, message~)
+}
+
+///|
+fn input_invalid(message : String) -> ExtensionError {
+  refused(InputInvalid, message)
+}
+
+///|
+/// The error for the way a worker session ended.
+fn ending_error(ending : @worker.Ending) -> ExtensionError {
+  match ending {
+    Refused(code~, message~) => refused(Worker(code.code()), message)
+    Failed(Host(code~, message~)) => failed(Worker(code.code()), message)
+    Failed(Guest(code~, message~, ..)) =>
+      failed(GuestError, "the guest answered error \{code}: \{message}")
+    Deadline =>
+      ExtensionError(
+        status=TimedOut,
+        code=DeadlinePassed,
+        message="the session deadline passed",
+      )
+    Cancelled =>
+      ExtensionError(
+        status=Cancelled,
+        code=OperationCancelled,
+        message="the command was cancelled",
+      )
+  }
+}
+
+///|
+fn refusal_error(refusal : @worker.Refusal) -> ExtensionError {
+  match refusal {
+    Refusal(code~, message~) => refused(Worker(code.code()), message)
+  }
+}
+
+///|
+/// An explicit worker pin in contract 0.2.0: the artifact and its runtime,
+/// the same shape the installed catalog records, an optional release
+/// descriptor and the origin.
 priv struct ExtensionPin {
-  binding : ExtensionBinding
-  runtime : ExtensionRuntime
-  runtime_executable : String
-  runtime_sha256 : String
-  host_root : String
-  host_modules : Map[String, String]
-  artifact_directory : String
-  wasm_sha256 : String
-  manifest_sha256 : String
+  spec : @worker.WorkerSpec
+  descriptor : @worker.ArtifactRef?
   origin : String
 }
 
 ///|
-/// One fresh guest session. Requests are pipelined: the guest serves them in
-/// order, and responses are matched by id after the process exits.
-priv struct ExtensionPlan {
-  operation : ExtensionOperation
-  messages : Array[Json]
-  tuple : ExtensionModelTuple?
-  output : String
-}
-
-///|
-/// Host-process facts returned by the helper. `exited` means the guest process
-/// ended by itself; the protocol outcome is decided from its framed output.
-priv struct ExtensionProcess {
-  state : String
-  exit_code : Int32?
-  stderr : String
-  error : String
-  work_directory_empty : Bool
-}
-
-///|
-let extension_contract : String = "0.1.0-draft.1"
-
-///|
-let extension_profile : String = "morphir/cli/extension-command"
-
-///|
-let mep_protocol : String = "0.2.0-draft.1"
-
-///|
-let mep_execution_profile : String = "morphir/mep-bytes-v1/v1-draft"
-
-///|
-/// SHA-256 of the complete morphir/mep-bytes-v1 contract text in
-/// pkgs/morphir-host/embedding/mep-adapter.mts.
-let mep_execution_profile_sha256 : String = "6ed5e96fa9c7f7dcaa179efc88e517307463cfeddc5e2eeae854f0395e7a4ec6"
-
-///|
-/// The Node process host's complete module closure, as qualified by
-/// scripts/portable-mep-check.mbtx and scripts/portable-mep-mck.mbtx.
-let extension_host_modules : Array[String] = [
-  "node-mep-cli.mjs", "node-mep-stdio.mjs", "node-mep-adapter.mjs", "node-mep-worker.mjs",
-  "mep-adapter.mjs", "mep-frames.mjs", "wasm-memory.mjs", "node-artifacts.mjs", "artifacts.mjs",
-  "assembly.mjs", "index.mjs", "dist/bridge.mjs",
+let extension_pin_fields : Array[String] = [
+  "contractVersion", "artifact", "runtime", "descriptor", "origin",
 ]
 
 ///|
-/// Offered model limits. The guest takes the lower value of each; the complete
-/// framed request must also fit the helper's 4 MiB process-input bound.
-let extension_limits : Json = {
-  "maxEncodedBytes": 2796204,
-  "maxDecodedBytes": 2097152,
-  "maxDepth": 128,
-  "maxNodes": 100000,
-}
-
-///|
-fn ExtensionOperation::name(self : ExtensionOperation) -> String {
-  match self {
-    Describe => "describe"
-    Compile => "compile"
-    Generate => "generate"
+/// Decodes a pin at the boundary. A retired contract, an unknown field, a
+/// relative path or a missing digest is refused, never ignored.
+fn ExtensionPin::decode(
+  value : Json,
+  style : @worker.PathStyle,
+) -> ExtensionPin raise ExtensionError {
+  guard value is Object(fields) else {
+    raise refused(PinInvalid, "the pin is not a JSON object")
   }
-}
-
-///|
-fn ExtensionModelTuple::tuple(
-  self : ExtensionModelTuple,
-  operation : String,
-) -> Json {
-  let (profile, codec) = match self {
-    IonModel => ("morphir-model", "ion-binary")
-    JsonIr => ("morphir-ir", "morphir-json")
+  match fields.get("contractVersion") {
+    Some(String("0.2.0")) => ()
+    Some(String("0.1.0" | "0.1.0-draft.1" as old)) =>
+      raise refused(
+        PinRetired,
+        "pin contract \{old} is retired: write a contract \{extension_pin_contract} pin with an artifact and a runtime (see \{extension_migration})",
+      )
+    _ =>
+      raise refused(
+        PinInvalid,
+        "the pin needs contractVersion \{extension_pin_contract}",
+      )
   }
-  {
-    "operation": operation,
-    "profile": profile,
-    "codec": codec,
-    "envelopeVersion": "0.1.0-draft.1",
-    "irVersion": "4.0.0",
-  }
-}
-
-///|
-fn ExtensionModelTuple::file_name(self : ExtensionModelTuple) -> String {
-  match self {
-    IonModel => "model.ionb"
-    JsonIr => "model.json"
-  }
-}
-
-///|
-fn extension_model_format(text : String) -> ExtensionModelTuple raise {
-  match text {
-    "" | "ion" | "ion-binary" => IonModel
-    "json" | "morphir-json" => JsonIr
-    _ => raise @config.Invalid("extension.unsupported_model_format")
-  }
-}
-
-///|
-fn extension_sha256(bytes : Bytes) -> String {
-  @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
-}
-
-///|
-fn extension_text(
-  fields : Map[String, Json],
-  name : String,
-  limit~ : Int32 = 4096,
-) -> String raise {
-  guard fields.get(name) is Some(String(text)) &&
-    text.length() > 0 &&
-    text.length() <= limit &&
-    !text.contains("\u0000") else {
-    raise @config.Invalid("extension.invalid_pin")
-  }
-  text
-}
-
-///|
-fn extension_digest(fields : Map[String, Json], name : String) -> String raise {
-  let text = extension_text(fields, name)
-  guard mck_hex(text, 64) else {
-    raise @config.Invalid("extension.invalid_pin")
-  }
-  text
-}
-
-///|
-fn extension_path(fields : Map[String, Json], name : String) -> String raise {
-  let text = extension_text(fields, name)
-  guard mck_absolute(text) else {
-    raise @config.Invalid("extension.invalid_pin")
-  }
-  text
-}
-
-///|
-/// Decode the explicit pin at the boundary. Unknown members, other bindings,
-/// runtimes or execution profiles are refused rather than ignored.
-fn extension_pin(value : Json) -> ExtensionPin raise {
-  guard value is Object(fields) &&
-    fields.length() == 7 &&
-    fields.get("contractVersion") == Some(Json::string(extension_contract)) &&
-    fields.get("binding") is Some(String(binding)) &&
-    fields.get("executionProfile") is Some(Object(profile)) &&
-    fields.get("runtime") is Some(Object(runtime)) &&
-    fields.get("host") is Some(Object(host)) &&
-    fields.get("artifact") is Some(Object(artifact)) &&
-    fields.get("origin") is Some(String(_)) else {
-    raise @config.Invalid("extension.invalid_pin")
-  }
-  let binding = match binding {
-    "core-wasm-process" => CoreWasmProcess
-    _ => raise @config.Invalid("extension.unsupported_binding")
-  }
-  guard profile.length() == 2 &&
-    profile.get("id") == Some(Json::string(mep_execution_profile)) &&
-    profile.get("sha256") == Some(Json::string(mep_execution_profile_sha256)) else {
-    raise @config.Invalid("extension.unsupported_execution_profile")
-  }
-  guard runtime.length() == 4 &&
-    runtime.get("name") == Some(Json::string("node")) &&
-    runtime.get("version") is Some(String(version)) else {
-    raise @config.Invalid("extension.invalid_pin")
-  }
-  let runtime_version = match version {
-    "v24.22.0" => Node24_22_0
-    "v24.22.1" => Node24_22_1
-    _ => raise @config.Invalid("extension.unsupported_runtime")
-  }
-  guard host.length() == 2 && host.get("modules") is Some(Object(modules)) else {
-    raise @config.Invalid("extension.invalid_pin")
-  }
-  guard modules.length() == extension_host_modules.length() else {
-    raise @config.Invalid("extension.incomplete_host_modules")
-  }
-  let host_modules : Map[String, String] = Map([])
-  for name in extension_host_modules {
-    guard modules.contains(name) else {
-      raise @config.Invalid("extension.incomplete_host_modules")
+  for name, _ in fields {
+    guard extension_pin_fields.contains(name) else {
+      raise refused(
+        PinInvalid,
+        "the pin has the field \{name}, which contract \{extension_pin_contract} does not have",
+      )
     }
-    host_modules[name] = extension_digest(modules, name)
   }
-  guard artifact.length() == 3 else {
-    raise @config.Invalid("extension.invalid_pin")
+  guard fields.get("origin") is Some(String(origin)) &&
+    origin != "" &&
+    origin.length() <= 2048 &&
+    !origin.contains_char('\u0000') else {
+    raise refused(PinInvalid, "the pin needs an origin of 1 to 2048 characters")
   }
-  {
-    binding,
-    runtime: runtime_version,
-    runtime_executable: extension_path(runtime, "executable"),
-    runtime_sha256: extension_digest(runtime, "sha256"),
-    host_root: extension_path(host, "root"),
-    host_modules,
-    artifact_directory: extension_path(artifact, "directory"),
-    wasm_sha256: extension_digest(artifact, "wasmSha256"),
-    manifest_sha256: extension_digest(artifact, "manifestSha256"),
-    origin: extension_text(fields, "origin", limit=2048),
+  let spec = @worker.WorkerSpec::from_json(value, style) catch {
+    error => raise refused(PinInvalid, "the pin is not valid: \{error}")
   }
-}
-
-///|
-fn ExtensionPin::to_json(self : ExtensionPin) -> Json {
-  let modules : Map[String, Json] = Map([])
-  for name in extension_host_modules {
-    modules[name] = Json::string(self.host_modules.get(name).unwrap_or(""))
-  }
-  {
-    "contractVersion": extension_contract,
-    "binding": match self.binding {
-      CoreWasmProcess => "core-wasm-process"
-    },
-    "executionProfile": {
-      "id": mep_execution_profile,
-      "sha256": mep_execution_profile_sha256,
-    },
-    "runtime": {
-      "name": "node",
-      "version": match self.runtime {
-        Node24_22_0 => "v24.22.0"
-        Node24_22_1 => "v24.22.1"
-      },
-      "executable": self.runtime_executable,
-      "sha256": self.runtime_sha256,
-    },
-    "host": { "root": self.host_root, "modules": Json::object(modules) },
-    "artifact": {
-      "directory": self.artifact_directory,
-      "wasmSha256": self.wasm_sha256,
-      "manifestSha256": self.manifest_sha256,
-    },
-    "origin": self.origin,
-  }
-}
-
-///|
-fn extension_request(id : Int32, name : String, params : Json) -> Json {
-  { "jsonrpc": "2.0", "id": id, "method": name, "params": params }
-}
-
-///|
-fn extension_operation_method(operation : ExtensionOperation) -> String {
-  match operation {
-    Describe => "morphir.extension.describe"
-    Compile => "morphir.frontend.compileModel"
-    Generate => "morphir.backend.generateModel"
-  }
-}
-
-///|
-/// Describe never initializes, so it ends with exit alone. Rich operations
-/// offer exactly the selected tuple: there is no silent codec fallback.
-fn extension_messages(
-  operation : ExtensionOperation,
-  tuple : ExtensionModelTuple?,
-  params : Json,
-) -> Array[Json] {
-  let messages = [
-    extension_request(1, "morphir.extension.describe", {
-      "protocolVersions": [mep_protocol],
-    }),
-  ]
-  if tuple is Some(tuple) {
-    let rpc_name = extension_operation_method(operation)
-    messages.push(
-      extension_request(2, "morphir.initialize", {
-        "protocolVersions": [mep_protocol],
-        "host": { "name": "morphir-moonbit-cli", "version": "0.1.0" },
-        "modelTransport": {
-          "tuples": [tuple.tuple(rpc_name)],
-          "limits": extension_limits,
-          "guarantees": [],
+  let descriptor = match fields.get("descriptor") {
+    None => None
+    Some(descriptor) =>
+      Some(
+        @worker.ArtifactRef::from_json(descriptor, style) catch {
+          error =>
+            raise refused(
+              PinInvalid,
+              "the pin descriptor is not valid: \{error}",
+            )
         },
-      }),
-    )
-    messages.push({ "jsonrpc": "2.0", "method": "morphir.initialized" })
-    messages.push(extension_request(3, rpc_name, params))
-    messages.push(extension_request(4, "morphir.shutdown", {}))
+      )
   }
-  messages.push({ "jsonrpc": "2.0", "method": "morphir.exit" })
-  messages
+  { spec, descriptor, origin, }
+}
+
+///|
+/// Refuses the options of the retired helper routes. The worker host needs
+/// no helper and no Node runtime.
+fn extension_retired_options(cli : Cli) -> Unit raise ExtensionError {
+  for option in ["extension-helper", "node"] {
+    if !values(cli, option).is_empty() {
+      raise refused(
+        OptionRetired,
+        "--\{option} is retired: the CLI runs extensions on its own worker host. Remove the option (see \{extension_migration})",
+      )
+    }
+  }
+}
+
+///|
+/// The local inputs of one command, checked before any worker starts.
+priv struct ExtensionInputs {
+  path : String
+  output : String
+  package_name : String
+  codec : @worker.ModelCodec?
+  profile : String
+  ir_version : String
+  target : String
+  timeout_ms : Int32
+}
+
+///|
+fn ExtensionInputs::read(
+  cli : Cli,
+  command : ExtensionCommand,
+) -> ExtensionInputs raise ExtensionError {
+  let path = value(cli, "path")
+  let model_format = value(cli, "model-format")
+  let timeout_ms = build_timeout(value(cli, "timeout", fallback="60000")) catch {
+    _ => raise input_invalid("--timeout needs a whole number of milliseconds")
+  }
+  ignore(
+    @worker.Deadline::of_ms(timeout_ms) catch {
+      _ => raise input_invalid("--timeout allows at most 594000 ms")
+    },
+  )
+  let inputs : ExtensionInputs = {
+    path,
+    output: "",
+    package_name: value(cli, "package"),
+    codec: None,
+    profile: value(cli, "frontend-profile"),
+    ir_version: value(cli, "ir-version"),
+    target: value(cli, "target"),
+    timeout_ms,
+  }
+  match command {
+    Describe => {
+      if path != "" {
+        raise input_invalid("describe takes no input")
+      }
+      if value(cli, "output") != "" {
+        raise input_invalid("describe writes no output")
+      }
+      inputs
+    }
+    Compile | Generate => {
+      if path == "" || path == "-" {
+        raise input_invalid(
+          if command is Compile {
+            "compile needs a source file or directory"
+          } else {
+            "generate needs a model file"
+          },
+        )
+      }
+      if command is Compile && inputs.package_name == "" {
+        raise input_invalid("compile needs --package")
+      }
+      let codec : @worker.ModelCodec? = match (command, model_format) {
+        (_, "") => None
+        (Compile, "ion" | "ion-binary") => Some(IonBinary)
+        (Compile, "json" | "morphir-json") => Some(MorphirJson)
+        (Compile, other) =>
+          raise input_invalid(
+            "--model-format \{other} is not ion-binary or morphir-json",
+          )
+        (_, _) =>
+          raise input_invalid("generate takes the model format from its input")
+      }
+      let output = value(cli, "output")
+      if output == "" {
+        raise input_invalid("\{command.name()} needs --output")
+      }
+      let output = fresh_output(output) catch {
+        @config.Invalid(message) => raise refused(OutputExists, message)
+        error => raise failed(OutputFailed, @host.error_message(error))
+      }
+      let parent = output_parent(output)
+      guard (@platform.kind(parent) catch { _ => -1 }) == 2 else {
+        raise input_invalid(
+          "the parent directory \{parent} of --output \{output} does not exist",
+        )
+      }
+      { ..inputs, codec, output, }
+    }
+  }
+}
+
+///|
+/// The parent directory of an output path: `.` for a bare name, the root for
+/// a path directly under it.
+fn output_parent(output : String) -> String {
+  let slash = output.rev_find("/")
+  let backslash = output.rev_find("\\")
+  let index = match (slash, backslash) {
+    (Some(a), Some(b)) => Some(if a > b { a } else { b })
+    (Some(a), None) | (None, Some(a)) => Some(a)
+    (None, None) => None
+  }
+  match index {
+    None => "."
+    Some(0) => output[:1].to_owned()
+    // A drive root such as `C:\` keeps its separator.
+    Some(at) if at == 2 && output[1:2] == ":" => output[:3].to_owned()
+    Some(at) => output[:at].to_owned()
+  }
+}
+
+///|
+/// One source document of a compile request.
+priv struct ExtensionSource {
+  uri : String
+  text : String
 }
 
 ///|
 /// A clean relative path keeps its nesting; otherwise only the file name is
 /// declared. Absolute host paths never enter the model's source provenance.
-fn extension_document_uri(path : String) -> String raise {
-  let normal = path.replace_all(old="\\", new="/")
-  let parts = normal.split("/").map(p => p.to_owned()).to_array()
+fn extension_document_uri(path : String) -> String {
+  let parts = path
+    .replace_all(old="\\", new="/")
+    .split("/")
+    .map(part => part.to_owned())
+    .to_array()
   let name = parts[parts.length() - 1]
-  guard name.has_suffix(".mbt") && name.length() > 4 else {
-    raise @config.Invalid("extension.moonbit_source_required")
-  }
   if mck_absolute(path) ||
-    parts.any(p => p == "" || p == "." || p == ".." || p.contains(":")) {
+    parts.any(part => {
+      part == "" || part == "." || part == ".." || part.contains(":")
+    }) {
     name
   } else {
     parts.join("/")
@@ -344,983 +408,1239 @@ fn extension_document_uri(path : String) -> String raise {
 }
 
 ///|
-fn extension_compile_params(
-  cli : Cli,
-  tuple : ExtensionModelTuple,
-  text : String,
-) -> Json raise {
-  let package_name = value(cli, "package")
-  if package_name == "" {
-    raise @config.Invalid("extension.package_required")
+/// The file extensions of every language that the extension claims.
+fn extension_claimed_extensions(claims : @worker.Claims) -> Array[String] {
+  let extensions : Array[String] = []
+  for language in claims.languages {
+    for extension in language.file_extensions {
+      let text = extension.to_string()
+      if !extensions.contains(text) {
+        extensions.push(text)
+      }
+    }
   }
-  let options : Map[String, Json] = Map([
-    ("typesOnly", Json::boolean(false)),
-    ("irVersion", Json::string("4.0.0")),
-  ])
-  let profile = value(cli, "frontend-profile")
-  if profile != "" {
-    options["profile"] = Json::string(profile)
+  extensions
+}
+
+///|
+/// The claimed language of the documents: the first language whose file
+/// extensions cover every document. The CLI holds no list of languages.
+fn extension_language(
+  claims : @worker.Claims,
+  documents : Array[ExtensionSource],
+) -> (@ids.LanguageId, Array[ExtensionSource]) raise ExtensionError {
+  if documents.is_empty() {
+    raise input_invalid(
+      "no source file has a file extension that \{claims.extension_id} claims (\{extension_claimed_extensions(claims).join(", ")})",
+    )
   }
-  // The declared context is the package and options; there are no
-  // dependencies or incremental baselines in this binding.
-  let context : Json = {
-    "package": package_name,
-    "options": Json::object(options),
+  for language in claims.languages {
+    let covers = documents.all(document => {
+      language.file_extensions.any(extension => {
+        document.uri.has_suffix(extension.to_string())
+      })
+    })
+    if covers {
+      return (language.language_id, documents)
+    }
   }
-  {
-    "languageId": "moonbit",
-    "sources": {
-      "documents": [
-        {
-          "uri": extension_document_uri(value(cli, "path")),
-          "languageId": "moonbit",
-          "version": 0,
-          "text": text,
-        },
-      ],
-    },
-    "package": { "name": package_name },
-    "options": Json::object(options),
-    "contextDigest": extension_sha256(@utf8.encode(context.stringify())),
-    "output": tuple.tuple("morphir.frontend.compileModel"),
+  raise input_invalid(
+    "the sources mix languages; \{claims.extension_id} compiles one language at a time",
+  )
+}
+
+///|
+/// A frontend that does not claim `multiDocument` compiles exactly one
+/// document for each request, so a snapshot with more is refused before any
+/// session.
+fn extension_document_count(
+  claims : @worker.Claims,
+  documents : Array[ExtensionSource],
+) -> Unit raise ExtensionError {
+  if documents.length() > 1 && !claims.frontend_flags.multi_document {
+    raise refused(
+      Worker(CapabilityUnavailable),
+      "\{claims.extension_id} \{claims.version} does not claim multiDocument and compiles one source file for each request; the sources have \{documents.length()} files",
+    )
   }
 }
 
 ///|
-/// Only the qualified envelope and IR drafts are forwarded; the guest still
-/// checks payload length, digest and critical members itself.
-fn extension_envelope_tuple(envelope : Json) -> ExtensionModelTuple raise {
-  guard envelope is Object(fields) &&
-    fields.get("envelopeVersion") == Some(Json::string("0.1.0-draft.1")) &&
-    fields.get("irVersion") == Some(Json::string("4.0.0")) &&
+/// Name order by UTF-16 code unit, so that `app` comes before `nested`.
+/// `String` compares lengths first.
+fn extension_name_order(left : String, right : String) -> Int32 {
+  let length = if left.length() < right.length() {
+    left.length()
+  } else {
+    right.length()
+  }
+  for index in 0..<length {
+    if left.code_unit_at(index) != right.code_unit_at(index) {
+      return left.code_unit_at(index).compare(right.code_unit_at(index))
+    }
+  }
+  left.length().compare(right.length())
+}
+
+///|
+/// Why a directory entry name cannot become part of a document URI, or
+/// `None` when it can. A name with a separator, a drive colon or a NUL, or a
+/// name that is empty, `.` or `..`, would make the URI absolute or
+/// traversing.
+fn extension_source_name(name : String) -> String? {
+  if name == "" || name == "." || name == ".." {
+    Some("is empty, . or ..")
+  } else if name.contains("/") || name.contains("\\") {
+    Some("contains a path separator")
+  } else if name.contains(":") {
+    Some("contains a colon")
+  } else if name.contains_char('\u0000') {
+    Some("contains NUL")
+  } else {
+    None
+  }
+}
+
+///|
+/// Reads a bounded snapshot of the source file or directory. Only files with
+/// a claimed extension are read. Directory entries are visited in name order;
+/// hidden, build and dependency directories are skipped; a link, a special
+/// entry or an unsafe name is refused.
+fn extension_sources(
+  path : String,
+  extensions : Array[String],
+  check : () -> Unit raise ExtensionError,
+  limits~ : ExtensionSourceLimits = extension_source_limits,
+) -> Array[ExtensionSource] raise ExtensionError {
+  let documents : Array[ExtensionSource] = []
+  let mut total = 0
+  let mut entries = 0
+  let claimed = (name : String) => {
+    extensions.any(extension => name.has_suffix(extension))
+  }
+  fn read(file : String, uri : String) -> Unit raise ExtensionError {
+    check()
+    if documents.length() >= limits.files {
+      raise input_invalid("the sources have more than \{limits.files} files")
+    }
+    let bytes = @platform.read_input(file, limits.bytes) catch {
+      error =>
+        raise input_invalid(
+          "cannot read \{file}: \{@host.error_message(error)}",
+        )
+    }
+    total += bytes.length()
+    if total > limits.bytes {
+      raise input_invalid("the sources have more than \{limits.bytes} bytes")
+    }
+    let text = @utf8.decode(bytes[:]) catch {
+      _ => raise input_invalid("\{file} is not UTF-8 text")
+    }
+    documents.push({ uri, text, })
+  }
+
+  fn walk(
+    directory : String,
+    relative : String,
+    depth : Int32,
+  ) -> Unit raise ExtensionError {
+    check()
+    if depth > limits.depth {
+      raise input_invalid(
+        "the source directory is deeper than \{limits.depth} levels",
+      )
+    }
+    let names = @platform.list_bounded(directory, 4096) catch {
+      error =>
+        raise input_invalid(
+          "cannot list \{directory}: \{@host.error_message(error)}",
+        )
+    }
+    names.sort_by(extension_name_order)
+    for name in names {
+      entries += 1
+      if entries > limits.entries {
+        raise input_invalid(
+          "the source directory has more than \{limits.entries} entries",
+        )
+      }
+      if extension_source_name(name) is Some(reason) {
+        raise input_invalid(
+          "the source entry \{repr(name)} in \{directory} \{reason}",
+        )
+      }
+      let full = directory + "/" + name
+      let uri = if relative == "" { name } else { relative + "/" + name }
+      match (@platform.kind(full) catch { _ => -1 }) {
+        1 => if claimed(name) { read(full, uri) }
+        2 =>
+          if !name.has_prefix(".") &&
+            !extension_skipped_directories.contains(name) {
+            walk(full, uri, depth + 1)
+          }
+        _ => raise input_invalid("\{full} is a link or a special file")
+      }
+    }
+  }
+
+  match (@platform.kind(path) catch { _ => -1 }) {
+    1 => {
+      if !claimed(path) {
+        raise input_invalid(
+          "\{path} does not have a claimed file extension (\{extensions.join(", ")})",
+        )
+      }
+      read(path, extension_document_uri(path))
+    }
+    2 => walk(path, "", 0)
+    _ => raise input_invalid("\{path} is not a regular file or a directory")
+  }
+  documents
+}
+
+///|
+/// The compile offer: the model line when the extension claims
+/// `compileModel`, otherwise MEP 0.1 `compile`.
+fn extension_compile_offer(
+  claims : @worker.Claims,
+  codec : @worker.ModelCodec?,
+) -> @worker.Offer raise ExtensionError {
+  let operation : @worker.Operation = if claims.offers(CompileModel) {
+    CompileModel
+  } else {
+    Compile
+  }
+  if operation is Compile && codec is Some(IonBinary) {
+    raise input_invalid(
+      "\{claims.extension_id} compiles on MEP 0.1, which returns Morphir JSON",
+    )
+  }
+  @worker.Offer::select(claims, operation, codec?) catch {
+    refusal => raise refusal_error(refusal)
+  }
+}
+
+///|
+/// The generate offer for a model envelope, on the model line, or for plain
+/// Morphir IR JSON, on MEP 0.1. The model line offers the envelope's own
+/// tuple, which the extension must claim.
+fn extension_generate_offer(
+  claims : @worker.Claims,
+  envelope : @worker.ModelTuple?,
+) -> @worker.Offer raise ExtensionError {
+  match envelope {
+    Some(tuple) => {
+      ignore(
+        @worker.Offer::select(
+          claims,
+          GenerateModel,
+          profile=tuple.profile,
+          codec=tuple.codec,
+        ) catch {
+          refusal => raise refusal_error(refusal)
+        },
+      )
+      guard claims.model_tuples.contains(tuple) else {
+        raise refused(
+          Worker(TupleUnavailable),
+          "\{claims.extension_id} does not claim the envelope's tuple (envelope \{tuple.envelope_version}, IR \{tuple.ir_version})",
+        )
+      }
+      Model(tuple)
+    }
+    None =>
+      @worker.Offer::select(claims, Generate) catch {
+        refusal => raise refusal_error(refusal)
+      }
+  }
+}
+
+///|
+/// The major part of an IR version name: `4` for `4.0.0`.
+fn extension_ir_major(name : String) -> String {
+  match name.find(".") {
+    Some(index) => name[:index].to_owned()
+    None => name
+  }
+}
+
+///|
+/// Two IR version names agree when they are equal, or when one of them names
+/// only a major version and the majors are equal: `4` agrees with `4.0.0`,
+/// `4.0.0` does not agree with `4.1.0`. It checks what a guest returned.
+fn extension_ir_agrees(left : String, right : String) -> Bool {
+  left == right ||
+  (
+    (!left.contains(".") || !right.contains(".")) &&
+    extension_ir_major(left) == extension_ir_major(right)
+  )
+}
+
+///|
+/// Whether a version that is there, a claimed one or the model's, serves the
+/// selected one: the names are equal, or the selection names only a major
+/// version and the version has that major. `4` selects `4.1.0`; `4.0.0` does
+/// not select `4`, and `4.2.0` does not select `4.1.0`.
+fn extension_ir_serves(version : String, selected : String) -> Bool {
+  version == selected ||
+  (!selected.contains(".") && extension_ir_major(version) == selected)
+}
+
+///|
+/// The numeric parts of an IR version name: `[4, 10, 0]` for `4.10.0`. A
+/// part that is not a number is -1, so it orders first.
+fn extension_ir_parts(name : String) -> Array[Int32] {
+  name
+  .split(".")
+  .map(part => @string.parse_int(part) catch { _ => -1 })
+  .collect()
+}
+
+///|
+/// Orders two IR version names part by part, with a missing part as 0:
+/// `4.10.0` after `4.9.0`, `4.1` after `4.0.0`.
+fn extension_ir_order(left : String, right : String) -> Int32 {
+  let left = extension_ir_parts(left)
+  let right = extension_ir_parts(right)
+  let count = if left.length() > right.length() {
+    left.length()
+  } else {
+    right.length()
+  }
+  for i in 0..<count {
+    let order = left.get(i).unwrap_or(0).compare(right.get(i).unwrap_or(0))
+    if order != 0 {
+      return order
+    }
+  }
+  0
+}
+
+///|
+/// The highest of the IR version names by `extension_ir_order`.
+fn extension_ir_highest(names : Array[String]) -> String? {
+  names.fold(init=None, (highest, name) => {
+    match highest {
+      Some(other) if extension_ir_order(other, name) >= 0 => highest
+      _ => Some(name)
+    }
+  })
+}
+
+///|
+/// The format version of a Morphir IR JSON document, as text: `3` for
+/// `"formatVersion": 3`, `4.0.0` for `"formatVersion": "4.0.0"`.
+fn extension_format_version(ir : Json) -> String? {
+  guard ir is Object(fields) else { return None }
+  match fields.get("formatVersion") {
+    Some(String(text)) => Some(text)
+    Some(Number(number, ..)) if number >= 0.0 &&
+      number == number.to_int().to_double() => Some(number.to_int().to_string())
+    _ => None
+  }
+}
+
+///|
+/// The claimed IR version for a MEP 0.1 call: the one named by `--ir-version`,
+/// or the only claimed version. An exact claimed name comes first. A
+/// major-only name such as `4` selects the highest claimed version with that
+/// major. A full name that is not claimed is refused, also when its major is
+/// claimed.
+fn extension_ir_version(
+  claims : @worker.Claims,
+  claimed : Array[@worker.IrVersionName],
+  selected : String,
+) -> String? raise ExtensionError {
+  let names = claimed.map(name => name.to_string())
+  if selected == "" {
+    return match names {
+      [] => None
+      [only] => Some(only)
+      _ =>
+        raise input_invalid(
+          "\{claims.extension_id} claims IR versions \{names.join(", ")}: select one with --ir-version",
+        )
+    }
+  }
+  if names.contains(selected) {
+    return Some(selected)
+  }
+  match
+    extension_ir_highest(
+      names.filter(name => extension_ir_serves(name, selected)),
+    ) {
+    Some(version) => Some(version)
+    None =>
+      raise refused(
+        Worker(CapabilityUnavailable),
+        "\{claims.extension_id} does not claim IR version \{selected}",
+      )
+  }
+}
+
+///|
+/// The claimed target: `--target`, or the only claimed target.
+fn extension_target(
+  claims : @worker.Claims,
+  selected : String,
+) -> String raise ExtensionError {
+  let targets = claims.targets.map(target => target.to_string())
+  if selected == "" {
+    guard targets is [only] else {
+      raise input_invalid(
+        "\{claims.extension_id} claims targets \{targets.join(", ")}: select one with --target",
+      )
+    }
+    return only
+  }
+  guard targets.contains(selected) else {
+    raise refused(
+      Worker(CapabilityUnavailable),
+      "\{claims.extension_id} does not claim the target \{selected}",
+    )
+  }
+  selected
+}
+
+///|
+fn extension_documents(
+  language : @ids.LanguageId,
+  documents : Array[ExtensionSource],
+) -> Json {
+  {
+    "documents": Json::array(
+      documents.map(document => {
+        "uri": document.uri,
+        "languageId": language.to_string(),
+        "version": 0,
+        "text": document.text,
+      }),
+    ),
+  }
+}
+
+///|
+/// The parameters of a compile call on the negotiated line.
+fn extension_compile_params(
+  inputs : ExtensionInputs,
+  claims : @worker.Claims,
+  offer : @worker.Offer,
+  language : @ids.LanguageId,
+  documents : Array[ExtensionSource],
+  ir_version : String?,
+) -> Map[String, Json] raise ExtensionError {
+  match offer {
+    Model(tuple) => {
+      if inputs.ir_version != "" && !["4", "4.0.0"].contains(inputs.ir_version) {
+        raise input_invalid("a model compile returns IR 4.0.0")
+      }
+      let options : Map[String, Json] = {
+        "typesOnly": false,
+        "irVersion": tuple.ir_version.to_string(),
+      }
+      if inputs.profile != "" {
+        options["profile"] = Json::string(inputs.profile)
+      }
+      // The declared context is the package and options; there are no
+      // dependencies or incremental baselines.
+      let context : Json = {
+        "package": inputs.package_name,
+        "options": Json::object(options),
+      }
+      {
+        "languageId": language.to_string(),
+        "sources": extension_documents(language, documents),
+        "package": { "name": inputs.package_name },
+        "options": Json::object(options),
+        "contextDigest": extension_sha256(@utf8.encode(context.stringify())),
+        "output": tuple.to_json(),
+      }
+    }
+    Legacy => {
+      if inputs.profile != "" {
+        raise input_invalid(
+          "--frontend-profile needs a model compile, which \{claims.extension_id} does not claim",
+        )
+      }
+      let options : Map[String, Json] = { "typesOnly": false }
+      if ir_version is Some(version) {
+        options["irVersion"] = Json::string(version)
+      }
+      {
+        "languageId": language.to_string(),
+        "sources": extension_documents(language, documents),
+        "package": { "name": inputs.package_name },
+        "dependencies": [],
+        "options": Json::object(options),
+      }
+    }
+  }
+}
+
+///|
+/// The model tuple of a model envelope, or `None` for plain Morphir IR JSON.
+fn extension_envelope_tuple(
+  value : Json,
+) -> @worker.ModelTuple? raise ExtensionError {
+  guard value is Object(fields) && fields.contains("envelopeVersion") else {
+    return None
+  }
+  guard fields.get("envelopeVersion") is Some(String(envelope)) &&
+    fields.get("irVersion") is Some(String(ir)) &&
     fields.get("profile") is Some(String(profile)) &&
     fields.get("payload") is Some(Object(payload)) &&
     payload.get("codec") is Some(String(codec)) else {
-    raise @config.Invalid("extension.unsupported_model_envelope")
+    raise input_invalid("the model envelope has no complete tuple")
   }
-  match (profile, codec) {
-    ("morphir-model", "ion-binary") => IonModel
-    ("morphir-ir", "morphir-json") => JsonIr
-    _ => raise @config.Invalid("extension.unsupported_model_tuple")
-  }
-}
-
-///|
-fn extension_generate_params(
-  envelope : Json,
-  tuple : ExtensionModelTuple,
-  target : String,
-) -> Json {
-  let identity : Json = match envelope {
-    Object(fields) =>
-      {
-        "target": target,
-        "modelId": fields.get("modelId").unwrap_or(Json::null()),
-        "revision": fields.get("revision").unwrap_or(Json::null()),
-      }
-    _ => Json::null()
-  }
-  {
-    "model": envelope,
-    "input": tuple.tuple("morphir.backend.generateModel"),
-    "target": target,
-    "contextDigest": extension_sha256(@utf8.encode(identity.stringify())),
-  }
-}
-
-///|
-fn extension_output(cli : Cli, operation : ExtensionOperation) -> String raise {
-  if operation is Describe {
-    if value(cli, "output") != "" {
-      raise @config.Invalid("extension.describe_has_no_output")
-    }
-    return ""
-  }
-  let output = value(cli, "output")
-  if output == "" {
-    raise @config.Invalid("extension.output_required")
-  }
-  let mut output = output
-  while output.length() > 1 &&
-        (output.has_suffix("/") || output.has_suffix("\\")) {
-    output = output[:output.length() - 1].to_owned()
-  }
-  if @platform.kind(output) != 0 ||
-    @platform.kind(output + ".morphir-partial") != 0 {
-    raise @config.Invalid("extension.output_exists")
-  }
-  output
-}
-
-///|
-/// Read and validate every local input before any process starts.
-fn extension_plan(
-  cli : Cli,
-  operation : ExtensionOperation,
-) -> ExtensionPlan raise {
-  let path = value(cli, "path")
-  let output = extension_output(cli, operation)
-  match operation {
-    Describe => {
-      if path != "" {
-        raise @config.Invalid("extension.describe_takes_no_input")
-      }
-      {
-        operation,
-        messages: extension_messages(operation, None, {}),
-        tuple: None,
-        output,
-      }
-    }
-    Compile => {
-      if path == "" || path == "-" {
-        raise @config.Invalid("extension.source_required")
-      }
-      let tuple = extension_model_format(value(cli, "model-format"))
-      let bytes = @platform.read_input(path, 1048576)
-      let text = @utf8.decode(bytes[:]) catch {
-        _ => raise @config.Invalid("extension.invalid_source_encoding")
-      }
-      let params = extension_compile_params(cli, tuple, text)
-      {
-        operation,
-        messages: extension_messages(operation, Some(tuple), params),
-        tuple: Some(tuple),
-        output,
-      }
-    }
-    Generate => {
-      if path == "" || path == "-" {
-        raise @config.Invalid("extension.model_envelope_required")
-      }
-      if value(cli, "model-format") != "" {
-        raise @config.Invalid("extension.model_format_from_envelope")
-      }
-      let bytes = @platform.read_input(path, 4194304)
-      let envelope = @model_wire.parse_bounded(
-        @utf8.decode(bytes[:]),
-        max_depth=128,
-        max_nodes=100000,
-        max_string_units=4194304,
-      ) catch {
-        _ => raise @config.Invalid("extension.invalid_model_envelope")
-      }
-      let tuple = extension_envelope_tuple(envelope)
-      let params = extension_generate_params(
-        envelope,
-        tuple,
-        value(cli, "target", fallback="moonbit"),
-      )
-      {
-        operation,
-        messages: extension_messages(operation, Some(tuple), params),
-        tuple: Some(tuple),
-        output,
-      }
-    }
-  }
-}
-
-///|
-fn extension_frames(plan : ExtensionPlan) -> Bytes raise {
-  let buffer = Buffer()
-  for message in plan.messages {
-    buffer.write_bytes(@mep.encode_frame(message.stringify()))
-  }
-  let bytes = buffer.to_bytes()
-  if bytes.length() > 4194304 {
-    raise @config.Invalid("extension.request_limit")
-  }
-  bytes
-}
-
-///|
-/// The protocol outcome of one session, before any output is written.
-priv struct ExtensionOutcome {
-  state : String
-  exit_code : Int32
-  error : String
-  extension : Json
-  negotiated : Json
-  result : Json
-  shutdown : String
-}
-
-///|
-fn extension_failure(
-  state : String,
-  code : Int32,
-  error : String,
-) -> ExtensionOutcome {
-  {
-    state,
-    exit_code: code,
-    error,
-    extension: Json::null(),
-    negotiated: Json::null(),
-    result: Json::null(),
-    shutdown: "not-observed",
-  }
-}
-
-///|
-fn extension_error_text(response : Json) -> String {
-  match response {
-    Object(fields) =>
-      match fields.get("error") {
-        Some(Object(error)) => {
-          let code = match error.get("code") {
-            Some(Number(_, repr=Some(text))) => text
-            Some(Number(n, ..)) => n.to_int().to_string()
-            _ => "?"
-          }
-          let message = match error.get("message") {
-            Some(String(text)) => text
-            _ => ""
-          }
-          code + " " + message
-        }
-        _ => "invalid response"
-      }
-    _ => "invalid response"
-  }
-}
-
-///|
-/// Pure interpretation of the guest's framed replies. Responses must answer the
-/// requests in order; a missing reply is an incomplete session, never success.
-fn extension_outcome(
-  plan : ExtensionPlan,
-  process : ExtensionProcess,
-  stdout : Bytes,
-) -> ExtensionOutcome {
-  // A deadline is reported as such even when it expires during identity checks.
-  if process.state != "exited" && process.error.contains("execution.deadline") {
-    return extension_failure("failed", 124, process.error)
-  }
-  match process.state {
-    "exited" => ()
-    "refused" => return extension_failure("refused", 2, process.error)
-    "cancelled" => return extension_failure("cancelled", 130, process.error)
-    _ => return extension_failure("failed", 1, process.error)
-  }
-  let decoder = @mep.Decoder::new()
-  let bodies = try {
-    let frames = decoder.feed(stdout)
-    decoder.finish()
-    frames
-  } catch {
-    _ => return extension_failure("failed", 1, "extension.invalid_frame")
-  }
-  let responses : Array[Json] = []
-  for body in bodies {
-    let text = @utf8.decode(body[:]) catch {
-      _ => return extension_failure("failed", 1, "extension.invalid_response")
-    }
-    let response = @model_wire.parse_bounded(
-      text,
-      max_depth=256,
-      max_nodes=1000000,
-      max_string_units=16777216,
+  Some(
+    @worker.ModelTuple::parse(
+      "morphir.backend.generateModel", profile, codec, envelope, ir,
     ) catch {
-      _ => return extension_failure("failed", 1, "extension.invalid_response")
-    }
-    responses.push(response)
-  }
-  let expected = plan.messages.filter(m => {
-    m is Object(fields) && fields.contains("id")
-  })
-  if responses.length() > expected.length() {
-    return extension_failure("failed", 1, "extension.unsolicited_response")
-  }
-  for i, response in responses {
-    guard response is Object(fields) &&
-      fields.get("jsonrpc") == Some(Json::string("2.0")) &&
-      expected[i] is Object(request) &&
-      fields.get("id") == request.get("id") &&
-      fields.contains("result") != fields.contains("error") else {
-      return extension_failure("failed", 1, "extension.invalid_response")
-    }
-  }
-  let complete = responses.length() == expected.length() &&
-    process.exit_code == Some(0)
-  let failed = fn(error : String) {
-    extension_failure(
-      "failed",
-      1,
-      if complete {
-        error
-      } else {
-        "extension.incomplete_session: " + error
-      },
-    )
-  }
-  if responses.is_empty() {
-    return failed("extension.guest_failed")
-  }
-  let describe = match responses[0] {
-    Object(fields) => fields.get("result")
-    _ => None
-  }
-  guard describe is Some(Object(claims)) &&
-    claims.get("extension") is Some(Object(_) as extension) else {
-    return extension_failure(
-      "refused",
-      2,
-      "extension.describe_refused: " + extension_error_text(responses[0]),
-    )
-  }
-  guard plan.tuple is Some(tuple) else {
-    if !complete {
-      return failed("extension.guest_failed")
-    }
-    return {
-      state: "completed",
-      exit_code: 0,
-      error: "",
-      extension,
-      negotiated: Json::null(),
-      result: Json::object(claims),
-      shutdown: "not-applicable",
-    }
-  }
-  if responses.length() < 2 {
-    return failed("extension.guest_failed")
-  }
-  let rpc_name = extension_operation_method(plan.operation)
-  let offered = tuple.tuple(rpc_name)
-  let negotiated = match responses[1] {
-    Object(fields) => fields.get("result")
-    _ => None
-  }
-  guard negotiated is Some(Object(selection)) &&
-    selection.get("protocolVersion") == Some(Json::string(mep_protocol)) &&
-    selection.get("capabilities") is Some(Object(capabilities)) &&
-    capabilities.get("modelTransport") is Some(Object(transport)) &&
-    transport.get("tuples") is Some(Array(tuples)) else {
-    let outcome = extension_failure(
-      "refused",
-      2,
-      "extension.negotiation_refused: " + extension_error_text(responses[1]),
-    )
-    return { ..outcome, extension, }
-  }
-  let agreed : Json = {
-    "protocolVersion": mep_protocol,
-    "tuple": offered,
-    "limits": transport.get("limits").unwrap_or(Json::null()),
-  }
-  if !tuples.contains(offered) {
-    return {
-      ..extension_failure("refused", 2, "extension.tuple_unavailable"),
-      extension,
-      negotiated: agreed,
-    }
-  }
-  if responses.length() < 3 {
-    return {
-      ..failed("extension.guest_failed"),
-      extension,
-      negotiated: agreed,
-    }
-  }
-  let result = match responses[2] {
-    Object(fields) => fields.get("result")
-    _ => None
-  }
-  guard result is Some(Object(result_fields) as result) else {
-    return {
-      ..failed(
-        "extension.operation_error: " + extension_error_text(responses[2]),
-      ),
-      extension,
-      negotiated: agreed,
-    }
-  }
-  let shutdown = if responses.length() >= 4 &&
-    responses[3] is Object(fields) &&
-    fields.get("result") is Some(Object(_)) {
-    "acknowledged"
-  } else {
-    "not-acknowledged"
-  }
-  if !complete || shutdown != "acknowledged" {
-    return {
-      ..failed("extension.guest_failed"),
-      extension,
-      negotiated: agreed,
-      result,
-      shutdown,
-    }
-  }
-  let success = result_fields.get("success") == Some(Json::boolean(true))
-  {
-    state: "completed",
-    exit_code: if success {
-      0
-    } else {
-      1
+      error =>
+        raise input_invalid("the model envelope is not supported: \{error}")
     },
-    error: if success {
-      ""
-    } else {
-      "extension.operation_unsuccessful"
-    },
-    extension,
-    negotiated: agreed,
-    result,
-    shutdown,
+  )
+}
+
+///|
+/// The parameters of a generate call on the negotiated line.
+fn extension_generate_params(
+  inputs : ExtensionInputs,
+  claims : @worker.Claims,
+  offer : @worker.Offer,
+  model : Json,
+) -> Map[String, Json] raise ExtensionError {
+  let target = extension_target(claims, inputs.target)
+  match offer {
+    Model(tuple) => {
+      let envelope = tuple.ir_version.to_string()
+      if inputs.ir_version != "" &&
+        !extension_ir_serves(envelope, inputs.ir_version) {
+        raise refused(
+          IrVersionMismatch,
+          "--ir-version \{inputs.ir_version} differs from the envelope's IR \{envelope}",
+        )
+      }
+      let identity : Json = match model {
+        Object(fields) =>
+          {
+            "target": target,
+            "modelId": fields.get("modelId").unwrap_or(Json::null()),
+            "revision": fields.get("revision").unwrap_or(Json::null()),
+          }
+        _ => Json::null()
+      }
+      {
+        "model": model,
+        "input": tuple.to_json(),
+        "target": target,
+        "contextDigest": extension_sha256(@utf8.encode(identity.stringify())),
+      }
+    }
+    Legacy => {
+      // On MEP 0.1, irVersion is a frontend compile option: a backend reads
+      // the IR version from the IR's formatVersion. --ir-version is a check
+      // of the model's version, and the backend must claim that version.
+      let claimed = claims.backend_ir_versions
+      if inputs.ir_version != "" || !claimed.is_empty() {
+        guard extension_format_version(model) is Some(format) else {
+          raise input_invalid("\{inputs.path} has no formatVersion")
+        }
+        if inputs.ir_version != "" &&
+          !extension_ir_serves(format, inputs.ir_version) {
+          raise refused(
+            IrVersionMismatch,
+            "\{inputs.path} has formatVersion \{format}; the selected IR version is \{inputs.ir_version}",
+          )
+        }
+        ignore(extension_ir_version(claims, claimed, format))
+      }
+      { "ir": model, "target": target, "options": {} }
+    }
   }
 }
 
 ///|
-/// The decoded payload must match the length and digest the guest declared.
+/// The decoded payload must match the tuple, length and digest that the
+/// guest declared.
 fn extension_model_bytes(
   result : Json,
-  tuple : ExtensionModelTuple,
-) -> (Json, Bytes) raise {
+  tuple : @worker.ModelTuple,
+) -> (Json, Bytes) raise ExtensionError {
   guard result is Object(fields) &&
     fields.get("model") is Some(Object(model_fields) as model) &&
-    extension_envelope_tuple(model) == tuple &&
+    model_fields.get("profile") == Some(Json::string(tuple.profile.to_string())) &&
+    model_fields.get("envelopeVersion") ==
+    Some(Json::string(tuple.envelope_version.to_string())) &&
+    model_fields.get("irVersion") ==
+    Some(Json::string(tuple.ir_version.to_string())) &&
     model_fields.get("payload") is Some(Object(payload)) &&
+    payload.get("codec") == Some(Json::string(tuple.codec.to_string())) &&
     payload.get("content") is Some(String(content)) &&
     payload.get("sha256") is Some(String(digest)) &&
     payload.get("decodedByteLength") is Some(Number(length, ..)) else {
-    raise @config.Invalid("extension.invalid_model_result")
+    raise failed(
+      ResultInvalid,
+      "the compile result has no model of the offered tuple",
+    )
   }
   let bytes = @base64.decode(content) catch {
-    _ => raise @config.Invalid("extension.invalid_model_result")
+    _ => raise failed(ResultInvalid, "the model payload is not base64")
   }
   guard bytes.length().to_double() == length &&
     extension_sha256(bytes) == digest else {
-    raise @config.Invalid("extension.model_integrity")
+    raise failed(
+      ResultInvalid,
+      "the model payload does not match its declared length and SHA-256",
+    )
   }
   (model, bytes)
 }
 
 ///|
-/// Generated paths are relative, slash-separated and confined to the output.
-fn extension_artifacts(result : Json) -> Array[(String, Bytes)] raise {
-  guard result is Object(fields) &&
-    fields.get("artifacts") is Some(Array(artifacts)) &&
-    artifacts.length() <= 10000 else {
-    raise @config.Invalid("extension.invalid_artifacts")
+/// The artifacts of a generate result, confined to the output directory.
+fn extension_generated(
+  result : Json,
+) -> Array[(String, Bytes)] raise ExtensionError {
+  extension_artifacts(result) catch {
+    @config.Invalid(message) => raise failed(ResultInvalid, message)
+    error => raise failed(ResultInvalid, @host.error_message(error))
   }
-  let seen : Map[String, Bool] = Map([])
-  let files = []
-  for artifact in artifacts {
-    guard artifact is Object(item) &&
-      item.get("path") is Some(String(path)) &&
-      path.length() <= 1024 &&
-      !mck_absolute(path) &&
-      !path.contains("\\") &&
-      !path.contains(":") &&
-      !path.contains("\u0000") &&
-      path.split("/").all(p => p != "" && p != "." && p != "..") &&
-      item.get("content") is Some(String(content)) &&
-      item.get("binary") is Some(binary) &&
-      (binary == Json::boolean(true) || binary == Json::boolean(false)) &&
-      !seen.contains(path) else {
-      raise @config.Invalid("extension.invalid_artifacts")
-    }
-    seen[path] = true
-    let bytes = if binary == Json::boolean(true) {
-      @base64.decode(content) catch {
-        _ => raise @config.Invalid("extension.invalid_artifacts")
-      }
-    } else {
-      @utf8.encode(content)
-    }
-    files.push((path, bytes))
-  }
-  // A file path cannot also be a directory prefix of another artifact.
-  for entry in files {
-    if files.any(other => other.0.has_prefix(entry.0 + "/")) {
-      raise @config.Invalid("extension.invalid_artifacts")
-    }
-  }
-  files
 }
 
 ///|
-/// Files the operation publishes, decided before anything is written.
-fn extension_files(
-  plan : ExtensionPlan,
-  outcome : ExtensionOutcome,
-) -> Array[(String, Bytes)] raise {
-  if outcome.exit_code != 0 {
-    return []
+/// The plain Morphir IR JSON of a MEP 0.1 compile result. The IR version that
+/// the result reports and the IR's format version must agree with the
+/// selected IR version, and the IR must decode with the versioned JSON codec
+/// of that version.
+fn extension_ir_file(
+  result : Json,
+  selected : String?,
+) -> Bytes raise ExtensionError {
+  guard result is Object(fields) && fields.get("ir") is Some(Object(_) as ir) else {
+    raise failed(ResultInvalid, "the compile result has no IR object")
   }
-  match (plan.operation, plan.tuple) {
-    (Compile, Some(tuple)) => {
-      let (model, bytes) = extension_model_bytes(outcome.result, tuple)
+  guard extension_format_version(ir) is Some(format) else {
+    raise failed(ResultInvalid, "the compile result's IR has no formatVersion")
+  }
+  let reported = match fields.get("irVersion") {
+    None => None
+    Some(String(version)) => Some(version)
+    Some(_) => raise failed(ResultInvalid, "the result's irVersion is not text")
+  }
+  let expected = selected.unwrap_or(reported.unwrap_or(format))
+  if reported is Some(version) && !extension_ir_agrees(version, expected) {
+    raise failed(
+      ResultInvalid,
+      "the result reports IR version \{version}; the selected IR version is \{expected}",
+    )
+  }
+  if !extension_ir_agrees(format, expected) {
+    raise failed(
+      ResultInvalid,
+      "the result's IR has formatVersion \{format}; the selected IR version is \{expected}",
+    )
+  }
+  ignore(
+    @versioned_json.from_json(ir) catch {
+      error =>
+        raise failed(
+          ResultInvalid,
+          "the result's IR is not valid Morphir IR \{format} JSON: \{@host.error_message(error)}",
+        )
+    },
+  )
+  @utf8.encode(ir.stringify())
+}
+
+///|
+/// The files that a successful call publishes, decided before anything is
+/// written.
+fn extension_files(
+  command : ExtensionCommand,
+  offer : @worker.Offer,
+  result : Json,
+  ir_version : String?,
+) -> Array[(String, Bytes)] raise ExtensionError {
+  match (command, offer) {
+    (Compile, Model(tuple)) => {
+      let (model, bytes) = extension_model_bytes(result, tuple)
       [
         ("model-envelope.json", @utf8.encode(model.stringify())),
-        (tuple.file_name(), bytes),
+        (
+          if tuple.codec is IonBinary {
+            "model.ionb"
+          } else {
+            "model.json"
+          },
+          bytes,
+        ),
       ]
     }
-    (Generate, Some(_)) => extension_artifacts(outcome.result)
-    _ => []
+    (Compile, Legacy) =>
+      [("morphir-ir.json", extension_ir_file(result, ir_version))]
+    (Generate, _) => extension_generated(result)
+    (Describe, _) => []
   }
 }
 
 ///|
-/// Write into a sibling staging directory, then publish it with a
-/// no-replacement rename. A failure leaves no partial destination.
-fn extension_publish(
-  output : String,
-  files : Array[(String, Bytes)],
-  check~ : () -> Unit raise = fn() {  },
-) -> Array[Json] raise {
-  check()
-  let staging = output + ".morphir-partial"
-  @platform.mkdir(staging)
-  let created : Array[String] = []
-  let directories : Array[String] = [staging]
-  errdefer {
-    for path in created.rev() {
-      @platform.remove_file(path) catch {
-        _ => ()
-      }
-    }
-    for directory in directories.rev() {
-      @platform.remove_dir(directory) catch {
-        _ => ()
-      }
-    }
+/// Reads the release descriptor of a pin before any worker starts: its
+/// digest, the one entry for the pinned artifact and the claims recorded
+/// there. A bad descriptor starts no process.
+fn extension_descriptor(
+  descriptor : @worker.ArtifactRef,
+  artifact : @worker.Sha256,
+) -> @worker.Claims raise ExtensionError {
+  guard descriptor.source is File(path) else {
+    raise refused(DescriptorInvalid, "the descriptor is not a file")
   }
-  let receipts : Array[Json] = []
-  for entry in files {
-    check()
-    let (path, bytes) = entry
-    let parts = path.split("/").map(p => p.to_owned()).to_array()
-    let mut parent = staging
-    for i in 0..<(parts.length() - 1) {
-      parent = parent + "/" + parts[i]
-      if @platform.kind(parent) == 0 {
-        @platform.mkdir(parent)
-        directories.push(parent)
-      }
-    }
-    @platform.write_bytes(staging + "/" + path, bytes)
-    created.push(staging + "/" + path)
-    receipts.push({
-      "path": path,
-      "bytes": bytes.length(),
-      "sha256": extension_sha256(bytes),
-    })
+  let bytes = @platform.read_input(path.to_string(), 1048576) catch {
+    error =>
+      raise refused(
+        DescriptorInvalid,
+        "cannot read the descriptor \{path}: \{@host.error_message(error)}",
+      )
   }
-  check()
-  @platform.rename_directory_new(staging, output)
-  receipts
-}
-
-///|
-fn extension_report(
-  plan : ExtensionPlan,
-  pin : ExtensionPin,
-  process : ExtensionProcess,
-  outcome : ExtensionOutcome,
-  outputs : Array[Json],
-) -> Json {
-  {
-    "profile": extension_profile,
-    "contractVersion": extension_contract,
-    "operation": plan.operation.name(),
-    "state": outcome.state,
-    "exitCode": outcome.exit_code,
-    "binding": pin.to_json(),
-    "access": {
-      "guestImports": "declared morphir_bytes_v1 byte callbacks only, checked by the host loader",
-      "wireCancellation": false,
-      "hostCancellation": "guest process-group termination",
-      "fileLogging": false,
-    },
-    "extension": outcome.extension,
-    "negotiated": outcome.negotiated,
-    "result": outcome.result,
-    "output": if plan.output == "" || outputs.is_empty() {
-      Json::null()
-    } else {
-      { "directory": plan.output, "files": Json::array(outputs) }
-    },
-    "lifecycle": {
-      "process": process.state,
-      "exitCode": match process.exit_code {
-        Some(code) => Json::number(code.to_double())
-        None => Json::null()
-      },
-      "shutdown": outcome.shutdown,
-      "workDirectoryEmpty": process.work_directory_empty,
-    },
-    "stderr": process.stderr,
-    "error": if outcome.error == "" {
-      Json::null()
-    } else {
-      Json::string(outcome.error)
-    },
+  let actual = @worker.Sha256::of(bytes)
+  guard actual == descriptor.sha256 else {
+    raise refused(
+      Worker(DigestMismatch),
+      "the descriptor has SHA-256 \{actual}; the pin names \{descriptor.sha256}",
+    )
   }
-}
-
-///|
-fn extension_diagnostics(result : Json) -> Array[String] {
-  guard result is Object(fields) &&
-    fields.get("diagnostics") is Some(Array(items)) else {
-    return []
+  let document = @utf8.decode(bytes[:]) catch {
+    _ => raise refused(DescriptorInvalid, "the descriptor is not UTF-8 JSON")
   }
-  items.map(item => {
-    guard item is Object(d) else { return item.stringify() }
-    let text = fn(name : String) {
-      match d.get(name) {
-        Some(String(s)) => s
-        _ => ""
-      }
-    }
-    let at = match d.get("location") {
-      Some(Object(location)) =>
-        match (location.get("uri"), location.get("range")) {
-          (Some(String(uri)), Some(Object(range))) =>
-            match range.get("start") {
-              Some(Object(start)) =>
-                match (start.get("line"), start.get("character")) {
-                  (Some(Number(line, ..)), Some(Number(column, ..))) =>
-                    uri +
-                    ":" +
-                    (line.to_int() + 1).to_string() +
-                    ":" +
-                    (column.to_int() + 1).to_string() +
-                    ": "
-                  _ => uri + ": "
-                }
-              _ => uri + ": "
-            }
-          _ => ""
-        }
-      _ => ""
-    }
-    at + text("severity") + " " + text("code") + ": " + text("message")
+  let parsed = @model_wire.parse_bounded(
+    document,
+    max_depth=64,
+    max_nodes=100000,
+    max_string_units=1048576,
+  ) catch {
+    _ => raise refused(DescriptorInvalid, "the descriptor is not JSON")
+  }
+  guard parsed is Object(fields) &&
+    fields.get("artifacts") is Some(Array(entries)) else {
+    raise refused(DescriptorInvalid, "the descriptor has no artifact list")
+  }
+  let digest = Json::string(artifact.to_string())
+  let matching = entries.filter(entry => {
+    entry is Object(item) && item.get("sha256") == Some(digest)
   })
-}
-
-///|
-fn extension_emit(report : Json, mode : OutputMode) -> Unit {
-  match mode {
-    JSON => println(report.stringify())
-    JSONLines => emit_record("extension", report)
-    Human => {
-      guard report is Object(fields) else { return }
-      let extension = match fields.get("extension") {
-        Some(Object(e)) =>
-          match (e.get("id"), e.get("version")) {
-            (Some(String(id)), Some(String(version))) => id + " " + version
-            _ => "extension"
-          }
-        _ => "extension"
-      }
-      let result = fields.get("result").unwrap_or(Json::null())
-      for line in extension_diagnostics(result) {
-        @platform.stderr(line + "\n")
-      }
-      match fields.get("output") {
-        Some(Object(output)) =>
-          if output.get("files") is Some(Array(files)) &&
-            output.get("directory") is Some(String(directory)) {
-            println(
-              extension +
-              " via core-wasm-process: wrote " +
-              files.length().to_string() +
-              " file(s) to " +
-              directory,
-            )
-          }
-        _ =>
-          if fields.get("operation") == Some(Json::string("describe")) &&
-            fields.get("exitCode") == Some(Json::number(0.0)) {
-            println(extension + " via core-wasm-process")
-            println(result.stringify())
-          }
-      }
-      if fields.get("stderr") is Some(String(stderr)) && stderr != "" {
-        @platform.stderr(stderr)
-      }
-      if fields.get("error") is Some(String(error)) {
-        @platform.stderr(error + "\n")
-      }
-    }
+  guard matching is [Object(entry)] && entry.get("claims") is Some(recorded) else {
+    raise refused(
+      DescriptorInvalid,
+      "the descriptor has no single entry with claims for the artifact \{artifact}",
+    )
+  }
+  @worker.Claims::from_describe(recorded) catch {
+    error =>
+      raise refused(
+        DescriptorInvalid,
+        "the descriptor claims are not valid: \{error}",
+      )
   }
 }
 
 ///|
-/// Interpret the helper's reply, publish outputs and emit the report. Every
-/// path returns an exit status; a write failure is reported, never hidden.
-fn extension_finish(
-  plan : ExtensionPlan,
-  pin : ExtensionPin,
-  reply : String,
-  stdout : Bytes,
-  mode : OutputMode,
-) -> Int32 {
-  let parsed = Some(@json.parse(reply)) catch { _ => None }
-  let process : ExtensionProcess = match parsed {
-    Some(Object(fields)) if fields.get("profile") ==
-      Some(Json::string(extension_profile)) &&
-      fields.get("contractVersion") == Some(Json::string(extension_contract)) &&
-      fields.get("state") is Some(String(state)) =>
-      {
-        state,
-        exit_code: match fields.get("exitCode") {
-          Some(Number(n, ..)) => Some(n.to_int())
-          _ => None
-        },
-        stderr: match fields.get("stderr") {
-          Some(String(text)) => text
-          _ => ""
-        },
-        error: match fields.get("error") {
-          Some(String(text)) => text
-          _ => ""
-        },
-        work_directory_empty: fields.get("workDirectoryEmpty") ==
-        Some(Json::boolean(true)),
-      }
-    _ =>
-      {
-        state: "failed",
-        exit_code: None,
-        stderr: "",
-        error: "extension.invalid_helper_reply",
-        work_directory_empty: false,
-      }
+/// The claims that a descriptor records must equal the live claims.
+fn extension_descriptor_matches(
+  recorded : @worker.Claims,
+  live : @worker.Claims,
+) -> Unit raise ExtensionError {
+  guard recorded == live else {
+    raise refused(
+      Worker(ClaimsMismatch),
+      "the descriptor claims differ from the live describe of \{live.extension_id} \{live.version}",
+    )
   }
-  let mut outcome = extension_outcome(plan, process, stdout)
-  if outcome.exit_code == 0 && !process.work_directory_empty {
-    outcome = {
-      ..outcome,
-      state: "failed",
-      exit_code: 1,
-      error: "extension.guest_wrote_files",
-    }
+}
+
+///|
+fn extension_claims_json(claims : @worker.Claims) -> Json {
+  let strings = (items : Array[String]) => Json::array(items.map(Json::string))
+  {
+    "extension": {
+      "id": claims.extension_id.to_string(),
+      "version": claims.version.to_string(),
+    },
+    "protocolVersions": strings(
+      claims.protocol_lines.map(line => line.to_string()),
+    ),
+    "operations": strings(
+      claims.operations.map(operation => operation.to_string()),
+    ),
+    "languages": Json::array(
+      claims.languages.map(language => {
+        "id": language.language_id.to_string(),
+        "fileExtensions": strings(
+          language.file_extensions.map(extension => extension.to_string()),
+        ),
+      }),
+    ),
+    "frontendIrVersions": strings(
+      claims.frontend_ir_versions.map(version => version.to_string()),
+    ),
+    "frontendFlags": {
+      "incremental": claims.frontend_flags.incremental,
+      "multiDocument": claims.frontend_flags.multi_document,
+    },
+    "targets": strings(claims.targets.map(target => target.to_string())),
+    "backendIrVersions": strings(
+      claims.backend_ir_versions.map(version => version.to_string()),
+    ),
+    "modelTuples": Json::array(
+      claims.model_tuples.map(tuple => tuple.to_json()),
+    ),
   }
-  let outputs = try {
-    let files = extension_files(plan, outcome)
-    if files.is_empty() {
-      []
+}
+
+///|
+fn extension_worker_json(pin : ExtensionPin) -> Json {
+  let fields : Map[String, Json] = {
+    "kind": pin.spec.runtime.kind().to_string(),
+    "runtime": pin.spec.runtime.to_json(),
+    "artifact": {
+      "path": match pin.spec.artifact.source {
+        File(path) => Json::string(path.to_string())
+        Memory(_) => Json::null()
+      },
+      "sha256": pin.spec.artifact.sha256.to_string(),
+    },
+    "origin": pin.origin,
+  }
+  if pin.descriptor is Some(descriptor) {
+    fields["descriptorSha256"] = Json::string(descriptor.sha256.to_string())
+  }
+  Json::object(fields)
+}
+
+///|
+fn extension_stderr_text(tail : @worker.StderrTail) -> String {
+  @utf8.decode_lossy(tail.bytes()[:])
+}
+
+///|
+/// The outcome of one command, before it is written.
+priv struct ExtensionReport {
+  command : ExtensionCommand
+  outcome : Result[(Json, String), ExtensionError]
+  diagnostics : Array[@worker.Diagnostic]
+}
+
+///|
+fn ExtensionReport::failure(
+  command : ExtensionCommand,
+  error : ExtensionError,
+  diagnostics~ : Array[@worker.Diagnostic] = [],
+) -> ExtensionReport {
+  { command, outcome: Err(error), diagnostics, }
+}
+
+///|
+fn ExtensionReport::exit_code(self : ExtensionReport) -> Int32 {
+  match self.outcome {
+    Ok(_) => 0
+    Err(ExtensionError(status~, ..)) => status.exit_code()
+  }
+}
+
+///|
+/// One `morphir/command-result` 0.1.0 object: `result` on success, `error`
+/// on failure.
+fn ExtensionReport::to_json(self : ExtensionReport) -> Json {
+  let fields : Map[String, Json] = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": self.command.name(),
+    "state": if self.outcome is Ok(_) {
+      "succeeded"
     } else {
-      extension_publish(plan.output, files)
-    }
-  } catch {
-    error => {
-      outcome = {
-        ..outcome,
-        state: "failed",
-        exit_code: 1,
-        error: match error {
-          @config.Invalid(code) => code
-          _ => "extension.output_failed: " + @host.error_message(error)
-        },
-      }
-      []
-    }
+      "failed"
+    },
+    "exitCode": self.exit_code(),
+    "diagnostics": Json::array(self.diagnostics.map(d => d.to_json())),
   }
-  extension_emit(extension_report(plan, pin, process, outcome, outputs), mode)
-  outcome.exit_code
+  match self.outcome {
+    Ok((result, _)) => fields["result"] = result
+    Err(ExtensionError(code~, message~, ..)) =>
+      fields["error"] = { "code": code.name(), "message": message }
+  }
+  Json::object(fields)
 }
 
 ///|
-fn extension_command(cli : Cli, mode : OutputMode) -> Int32 raise {
-  let operation = match cli.command {
-    "extension describe" => Describe
-    "extension compile" => Compile
-    "extension generate" => Generate
-    _ => raise @config.Invalid("extension.command_required")
+fn extension_diagnostic_line(diagnostic : @worker.Diagnostic) -> String {
+  let at = match diagnostic.location {
+    Some(location) =>
+      "\{location.uri}:\{location.start.line + 1}:\{location.start.character + 1}: "
+    None => ""
+  }
+  let code = match diagnostic.code {
+    Some(code) => " " + code
+    None => ""
+  }
+  "\{at}\{diagnostic.severity}\{code}: \{diagnostic.message}"
+}
+
+///|
+/// Writes the report. Diagnostics and failures go to stderr; stdout holds
+/// only the summary, or the one JSON object.
+fn ExtensionReport::emit(self : ExtensionReport, mode : OutputMode) -> Unit {
+  for diagnostic in self.diagnostics {
+    @platform.stderr(extension_diagnostic_line(diagnostic) + "\n")
+  }
+  if self.outcome is Err(ExtensionError(code~, message~, ..)) {
+    @platform.stderr(code.name() + ": " + message + "\n")
+  }
+  match mode {
+    JSON => println(self.to_json().stringify())
+    JSONLines => emit_record("result", self.to_json())
+    Human => if self.outcome is Ok((_, summary)) { println(summary) }
+  }
+}
+
+///|
+/// What a command needs from its run: the worker launchers and the stop
+/// probe of the CLI's lifetime.
+priv struct ExtensionRun {
+  hosting : WorkerHosting
+  stopped : () -> Bool
+}
+
+///|
+/// Runs one command and returns its report. It never raises: every failure
+/// is in the report with its exit status.
+async fn extension_run(cli : Cli, run : ExtensionRun) -> ExtensionReport {
+  guard ExtensionCommand::of(cli.command) is Some(command) else {
+    return ExtensionReport::failure(
+      Describe,
+      input_invalid("unknown extension command \{cli.command}"),
+    )
+  }
+  let diagnostics : Array[@worker.Diagnostic] = []
+  // `catch` cannot see an async cancellation, so `handle_cancellation`
+  // reports it: a cancelled command exits 130, never with host_failed. The
+  // host stops the worker tree before the cancellation reaches this point.
+  let outcome = try
+    @async.handle_cancellation(() => {
+      extension_execute(cli, command, run, diagnostics)
+    })
+  catch {
+    ExtensionError(..) as error => Err(error)
+    @platform.Interrupted => Err(ending_error(Cancelled))
+    error => Err(failed(HostFailed, @host.error_message(error)))
+  } noraise {
+    Some(result) => Ok(result)
+    None => Err(ending_error(Cancelled))
+  }
+  { command, outcome, diagnostics, }
+}
+
+///|
+async fn extension_execute(
+  cli : Cli,
+  command : ExtensionCommand,
+  run : ExtensionRun,
+  diagnostics : Array[@worker.Diagnostic],
+) -> (Json, String) {
+  extension_retired_options(cli)
+  guard run.hosting.host() is Some(host) else {
+    raise refused(
+      Worker(RuntimeUnavailable),
+      "this CLI build has no worker host; use the native or npm CLI",
+    )
   }
   let pin_path = value(
     cli,
     "extension-pin",
     fallback=@platform.environment().get("MORPHIR_EXTENSION_PIN").unwrap_or(""),
   )
-  let helper = value(
-    cli,
-    "extension-helper",
-    fallback=@platform.environment()
-      .get("MORPHIR_EXTENSION_HELPER")
-      .unwrap_or(""),
-  )
-  if pin_path == "" || helper == "" {
-    if !connected_supported() {
-      raise @config.Invalid("extension.runtime_unavailable")
-    }
-    raise @config.Invalid("extension.explicit_pin_and_helper_required")
+  if pin_path == "" {
+    raise refused(
+      PinRequired,
+      "give a contract \{extension_pin_contract} pin with --extension-pin or MORPHIR_EXTENSION_PIN",
+    )
   }
-  let pin_bytes = @platform.read_input(pin_path, 65536)
+  let inputs = ExtensionInputs::read(cli, command)
+  let pin_bytes = @platform.read_input(pin_path, 65536) catch {
+    error =>
+      raise refused(
+        PinInvalid,
+        "cannot read the pin \{pin_path}: \{@host.error_message(error)}",
+      )
+  }
   let pin_json = @json.parse(@utf8.decode(pin_bytes[:])) catch {
-    _ => raise @config.Invalid("extension.invalid_pin")
+    _ => raise refused(PinInvalid, "the pin \{pin_path} is not UTF-8 JSON")
   }
-  if pin_json is Object(fields) &&
-    fields.get("binding") == Some(Json::string("extism-wasm")) {
-    return extism_command(cli, mode, pin_json, helper, operation)
+  let pin = ExtensionPin::decode(pin_json, run.hosting.path_style())
+  let kind = pin.spec.runtime.kind()
+  guard run.hosting.kinds().contains(kind) else {
+    raise refused(
+      Worker(RuntimeUnavailable),
+      "this CLI starts \{run.hosting.kinds().map(kind => kind.to_string()).join(" and ")} workers, not \{kind} workers",
+    )
   }
-  if !connected_supported() {
-    raise @config.Invalid("extension.runtime_unavailable")
-  }
-  if value(cli, "ir-version") != "" {
-    raise @config.Invalid("extension.ir_version_requires_extism")
-  }
-  if pin_json is Object(fields) &&
-    fields.get("binding") == Some(Json::string("native-process")) {
-    return native_extension_command(cli, mode, pin_json, helper, operation) catch {
-      cause => {
-        let message = @host.error_message(cause)
-        @platform.stderr(message + "\n")
-        native_services_emit(
-          native_services_report(cli.command, Json::null(), message, 1),
-          mode,
-        )
-        1
-      }
+  let started = @platform.monotonic_seconds()
+  fn remaining() -> @worker.Deadline raise ExtensionError {
+    let left = inputs.timeout_ms -
+      ((@platform.monotonic_seconds() - started) * 1000.0).to_int()
+    @worker.Deadline::of_ms(left) catch {
+      _ => raise ending_error(Deadline)
     }
   }
-  if value(cli, "log-file") != "" || value(cli, "log-format") != "" {
-    raise @config.Invalid("extension.portable_file_logging_unavailable")
+
+  fn check() -> Unit raise ExtensionError {
+    if (run.stopped)() {
+      raise ending_error(Cancelled)
+    }
+    ignore(remaining())
   }
-  let pin = extension_pin(pin_json)
-  let timeout = build_timeout(value(cli, "timeout", fallback="60000"))
-  if timeout > 594000 {
-    raise @config.Invalid("extension.timeout_limit: maximum 594000 ms")
-  }
-  let plan = extension_plan(cli, operation)
-  let frames = extension_frames(plan)
-  let root = @platform.temporary()
-  let control : Json = {
-    "profile": extension_profile,
-    "contractVersion": extension_contract,
-    "pin": pin.to_json(),
-    "requestFile": root + "/request.bin",
-    "responseFile": root + "/response.bin",
-    "workDirectory": root + "/guest",
-    "timeout": timeout,
-    "cancelFile": value(cli, "cancel-file"),
-  }
-  @platform.write_bytes(root + "/request.bin", frames)
-  @platform.mkdir(root + "/guest")
-  extension_dispatch(
-    helper,
-    control,
-    root,
-    value(cli, "node", fallback="node"),
-    timeout,
-    fn(reply) {
-      let stdout = @platform.read_input(root + "/response.bin", 16777216) catch {
-        _ => b""
+
+  // The descriptor is read and checked before the probe starts a worker.
+  let recorded = pin.descriptor.map(descriptor => {
+    extension_descriptor(descriptor, pin.spec.artifact.sha256)
+  })
+  let stop = @worker.StopSignal::new(run.stopped)
+  let description = host.probe(pin.spec, deadline=remaining(), stop~) catch {
+    @worker.Ended(ending, report~) => {
+      // The guest's own logs go to stderr even when the session failed.
+      if report.stop is Some(stop) {
+        @platform.stderr(extension_stderr_text(stop.stderr))
       }
-      let code = extension_finish(plan, pin, reply, stdout, mode)
-      extension_cleanup(root)
-      code
+      raise ending_error(ending)
+    }
+    error => raise error
+  }
+  let claims = description.claims
+  if recorded is Some(recorded) {
+    extension_descriptor_matches(recorded, claims)
+  }
+  let worker = extension_worker_json(pin)
+  let identity = "\{claims.extension_id} \{claims.version}"
+  if command is Describe {
+    let result : Json = {
+      "worker": worker,
+      "extension": {
+        "id": claims.extension_id.to_string(),
+        "version": claims.version.to_string(),
+      },
+      "claims": extension_claims_json(claims),
+      "lifecycle": { "probe": "described", "workerStopped": true },
+    }
+    let lines = claims.protocol_lines.map(line => line.to_string()).join(", ")
+    let operations = claims.operations
+      .map(operation => operation.to_string())
+      .join(", ")
+    return (
+      result,
+      "\{identity}: \{pin.spec.runtime.kind()} worker; MEP \{lines}; \{operations}",
+    )
+  }
+  // Inputs that need the claims are read after the probe, before any call.
+  let (offer, params, ir_version) = match command {
+    Compile => {
+      let offer = extension_compile_offer(claims, inputs.codec)
+      let ir_version = match offer {
+        Legacy =>
+          extension_ir_version(
+            claims,
+            claims.frontend_ir_versions,
+            inputs.ir_version,
+          )
+        Model(_) => None
+      }
+      let documents = extension_sources(
+        inputs.path,
+        extension_claimed_extensions(claims),
+        check,
+      )
+      let (language, documents) = extension_language(claims, documents)
+      extension_document_count(claims, documents)
+      (
+        offer,
+        extension_compile_params(
+          inputs, claims, offer, language, documents, ir_version,
+        ),
+        ir_version,
+      )
+    }
+    _ => {
+      let bytes = @platform.read_input(inputs.path, 4194304) catch {
+        error =>
+          raise input_invalid(
+            "cannot read \{inputs.path}: \{@host.error_message(error)}",
+          )
+      }
+      let model = @model_wire.parse_bounded(
+        @utf8.decode(bytes[:]),
+        max_depth=128,
+        max_nodes=100000,
+        max_string_units=4194304,
+      ) catch {
+        _ => raise input_invalid("\{inputs.path} is not a bounded JSON model")
+      }
+      let offer = extension_generate_offer(
+        claims,
+        extension_envelope_tuple(model),
+      )
+      (offer, extension_generate_params(inputs, claims, offer, model), None)
+    }
+  }
+  let call = match command {
+    Compile =>
+      Ok(@worker.CompileRequest::new(params)) catch {
+        refusal => raise refusal_error(refusal)
+      }
+    _ =>
+      Err(@worker.GenerateRequest::new(params)) catch {
+        refusal => raise refusal_error(refusal)
+      }
+  }
+  check()
+  let (outcome, report) = host.with_session(
+    pin.spec,
+    expected=claims,
+    offer~,
+    deadline=remaining(),
+    stop~,
+    async fn(session) {
+      let outcome = match call {
+        Ok(request) => session.compile(request).map(compiled => compiled.result)
+        Err(request) =>
+          session.generate(request).map(generated => generated.result)
+      }
+      (outcome, session.close())
     },
-  )
-}
-
-///|
-/// Remove only the files this command creates. A guest that wrote into its
-/// working directory leaves it in place, and the report already says so.
-fn extension_cleanup(root : String) -> Unit {
-  for name in ["control.json", "request.bin", "response.bin"] {
-    let file = try @platform.kind(root + "/" + name) == 1 catch {
-      _ => false
-    }
-    if file {
-      @platform.remove_file(root + "/" + name) catch {
-        _ => ()
-      }
-    }
-  }
-  @platform.remove_dir(root + "/guest") catch {
-    _ => ()
-  }
-  @platform.remove_dir(root) catch {
-    _ => ()
-  }
-}
-
-///|
-#cfg(target="js")
-extern "js" fn extension_start(
-  helper : String,
-  config : String,
-  interrupted : () -> Bool,
-  finish : (String) -> Int32,
-  started : (String) -> Unit,
-) -> @js_async.Promise[Int32] =
-  #| (helper, config, interrupted, finish, started) => {
-  #|   const failed = JSON.stringify({profile:'morphir/cli/extension-command',contractVersion:'0.1.0-draft.1',state:'failed',exitCode:null,stderr:'',error:'extension.helper_unavailable',workDirectoryEmpty:false});
-  #|   return import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
-  #|     .then(module=>module.extensionCommand(JSON.parse(config),interrupted,started))
-  #|     .then(reply=>JSON.stringify(reply),()=>failed)
-  #|     .then(reply=>{process.exitCode=finish(reply); return process.exitCode;});
-  #| }
-
-///|
-#cfg(target="js")
-fn extension_dispatch(
-  helper : String,
-  control : Json,
-  _root : String,
-  _node : String,
-  _timeout : Int32,
-  finish : (String) -> Int32,
-) -> Int32 {
-  remember_completion(
-    extension_start(
-      helper,
-      control.stringify(),
-      @platform.interruption_requested,
-      finish,
-      @platform.process_started,
-    ),
-  )
-  0
-}
-
-///|
-#cfg(target="native")
-fn extension_dispatch(
-  helper : String,
-  control : Json,
-  root : String,
-  node : String,
-  timeout : Int32,
-  finish : (String) -> Int32,
-) -> Int32 raise {
-  @platform.write(root + "/control.json", control.stringify())
-  let result = @platform.process(
-    node,
-    [helper, "--morphir-extension-v1", root + "/control.json"],
-    @platform.cwd(),
-    "",
-    timeout + 10000,
   ) catch {
-    _ => Json::null()
-  }
-  let reply = match result {
-    Object(fields) =>
-      match (fields.get("exitCode"), fields.get("stdout")) {
-        (Some(Number(0.0, ..)), Some(String(source))) => source
-        _ => ""
+    @worker.Ended(ending, report~) => {
+      // The guest's own logs go to stderr even when the session failed.
+      if report.stop is Some(stop) {
+        @platform.stderr(extension_stderr_text(stop.stderr))
       }
-    _ => ""
+      raise ending_error(ending)
+    }
+    error => raise error
   }
-  finish(reply)
+  diagnostics.append(outcome.diagnostics)
+  let stderr = match report.stop {
+    Some(stop) => stop.stderr
+    None => outcome.stderr
+  }
+  @platform.stderr(extension_stderr_text(stderr))
+  let result = match outcome.class {
+    Completed(result) => result
+    Unsuccessful =>
+      raise failed(OperationUnsuccessful, "\{identity} answered success: false")
+    Failed(fault) => raise ending_error(Failed(fault))
+    Refused(code~, message~) => raise ending_error(Refused(code~, message~))
+    Deadline => raise ending_error(Deadline)
+    Cancelled => raise ending_error(Cancelled)
+  }
+  if report.ending is Some(ending) {
+    raise ending_error(ending)
+  }
+  // Publish only when the worker tree has stopped.
+  guard report.stop is Some(stopped) && !(stopped.status is Unconfirmed(_)) else {
+    raise failed(
+      Worker(TreeTerminationFailed),
+      "the host could not confirm that the worker tree stopped",
+    )
+  }
+  let files = extension_files(command, offer, result, ir_version)
+  let receipts = extension_publish(inputs.output, files, check=fn() raise {
+    check()
+  }) catch {
+    ExtensionError(..) as error => raise error
+    error =>
+      raise failed(
+        OutputFailed,
+        "cannot publish \{inputs.output}: \{@host.error_message(error)}",
+      )
+  }
+  let session = report.to_json()
+  let negotiated : Map[String, Json] = {
+    "protocolVersion": offer.line().to_string(),
+  }
+  if report.negotiated is Some(agreed) {
+    if agreed.offer is Model(tuple) {
+      negotiated["tuple"] = tuple.to_json()
+    }
+    negotiated["limits"] = agreed.limits.model.to_json()
+  }
+  let bounds : Map[String, Json] = {
+    "requestBytes": report.limits.request_bytes,
+    "responseBytes": report.limits.response_bytes,
+    "deadlineMs": inputs.timeout_ms,
+    "stderrTailBytes": 65536,
+  }
+  if report.extism is Some(profile) {
+    bounds["extism"] = profile.to_json()
+  }
+  if command is Compile {
+    bounds["sourceFiles"] = Json::number(
+      extension_source_limits.files.to_double(),
+    )
+    bounds["sourceBytes"] = Json::number(
+      extension_source_limits.bytes.to_double(),
+    )
+  }
+  let lifecycle : Map[String, Json] = {
+    "probe": "described",
+    "shutdown": "acknowledged",
+    "workerStopped": true,
+    "wireCancellation": false,
+  }
+  if session is Object({ "worker": stop, .. }) {
+    lifecycle["worker"] = stop
+  }
+  let result : Json = {
+    "worker": worker,
+    "extension": {
+      "id": claims.extension_id.to_string(),
+      "version": claims.version.to_string(),
+    },
+    "protocolVersion": offer.line().to_string(),
+    "negotiated": Json::object(negotiated),
+    "bounds": Json::object(bounds),
+    "output": { "directory": inputs.output, "files": Json::array(receipts) },
+    "lifecycle": Json::object(lifecycle),
+    "stderr": {
+      "text": extension_stderr_text(stderr),
+      "truncated": stderr.truncated(),
+    },
+  }
+  (
+    result,
+    "\{identity} on MEP \{offer.line()}: wrote \{receipts.length()} file(s) to \{inputs.output}",
+  )
 }
 
 ///|
-#cfg(any(target="wasm", target="wasm-gc"))
-fn extension_dispatch(
-  _helper : String,
-  _control : Json,
-  _root : String,
-  _node : String,
-  _timeout : Int32,
-  _finish : (String) -> Int32,
-) -> Int32 raise {
-  raise @config.Invalid("extension.runtime_unavailable")
+/// The entry of `extension describe|compile|generate`.
+async fn extension_command(cli : Cli, context : CommandContext) -> Int32 {
+  let cancel_path = value(cli, "cancel-file")
+  let cancel_file = if cancel_path == "" {
+    ""
+  } else {
+    @metadata_grants.host_path(
+      cancel_path,
+      @platform.cwd(),
+      @platform.system_type(),
+    )
+  }
+  let stopped = () => {
+    @platform.interruption_requested() ||
+    (try {
+      (context.check_cancelled)()
+      false
+    } catch {
+      _ => true
+    }) ||
+    (cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0)
+  }
+  let report = extension_run(cli, { hosting: context.workers, stopped, })
+  report.emit(context.mode)
+  report.exit_code()
 }

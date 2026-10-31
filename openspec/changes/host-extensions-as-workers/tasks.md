@@ -91,16 +91,17 @@
 
 ## 6. Extension commands on the worker host (morphir-ukvn.5.64.36.6)
 
-- [ ] 6.1 Decode pin contract `0.2.0` and refuse retired pins and options (CLI-1); verify the "Worker pin contract"
+- [x] 6.1 Decode pin contract `0.2.0` and refuse retired pins and options (CLI-1); verify the "Worker pin contract"
   and "Retired pins and options" scenarios
-- [ ] 6.2 Switch `extension describe|compile|generate` to the host API, take the protocol line from the describe
+- [x] 6.2 Switch `extension describe|compile|generate` to the host API, take the protocol line from the describe
   answer, and select sources and operations from the claims, removing the Python-specific source handling of
   `extism.mbt`; verify the "No helper, Node or service pin", "Compile and generate options" and "Sources and
-  operations from claims" scenarios and the updated CLI unit tests
-- [ ] 6.3 Write the `morphir/command-result` report and the exit table in human and JSON mode (CLI-2); verify the
+  operations from claims" scenarios and the updated CLI unit tests. Done for process runtimes; WASM runtimes are
+  refused with `extension.runtime_unavailable` until group 5 supplies the WASM launchers
+- [x] 6.3 Write the `morphir/command-result` report and the exit table in human and JSON mode (CLI-2); verify the
   "JSON report" and "Exit status" scenarios, including stdout parsing while the guest writes to stderr
-- [ ] 6.4 Keep safe publication after the worker tree has stopped; verify the "Safe publication" scenario
-- [ ] 6.5 Rewrite `apps/morphir/docs/extension.md` for the worker host: pins, migration from old pins, limits,
+- [x] 6.4 Keep safe publication after the worker tree has stopped; verify the "Safe publication" scenario
+- [x] 6.5 Rewrite `apps/morphir/docs/extension.md` for the worker host: pins, migration from old pins, limits,
   enforced bounds per host and the platform table; verify the documented commands run as written
 
 ## 7. Qualify the published extensions on the worker host (morphir-ukvn.5.64.36.7)

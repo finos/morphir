@@ -552,26 +552,30 @@ int32_t morphir_worker_process_alive(int32_t pid) {
   return 1;
 }
 
-// The host's target triple as an index: 1 aarch64-apple-darwin,
-// 2 x86_64-apple-darwin, 3 aarch64-unknown-linux-gnu, 4 x86_64-unknown-linux-gnu,
-// 5 aarch64-unknown-linux-musl, 6 x86_64-unknown-linux-musl, or 0.
+// The operating system and the architecture of this host as an index:
+// 1 aarch64 macOS, 2 x86_64 macOS, 3 aarch64 Linux, 4 x86_64 Linux, or 0.
+// The C library is not part of it: the MoonBit side finds the C libraries of
+// the machine from their dynamic loaders, whatever this executable links.
 MOONBIT_FFI_EXPORT
-int32_t morphir_worker_host_platform(void) {
+int32_t morphir_worker_host_machine(void) {
 #if defined(__APPLE__) && defined(__aarch64__)
   return 1;
 #elif defined(__APPLE__) && defined(__x86_64__)
   return 2;
-#elif defined(__linux__) && defined(__GLIBC__) && defined(__aarch64__)
-  return 3;
-#elif defined(__linux__) && defined(__GLIBC__) && defined(__x86_64__)
-  return 4;
 #elif defined(__linux__) && defined(__aarch64__)
-  return 5;
+  return 3;
 #elif defined(__linux__) && defined(__x86_64__)
-  return 6;
+  return 4;
 #else
   return 0;
 #endif
+}
+
+// Whether a regular file exists at the NUL-terminated path, after links.
+MOONBIT_FFI_EXPORT
+int32_t morphir_worker_file_present(moonbit_bytes_t path) {
+  struct stat status;
+  return stat((const char *)path, &status) == 0 && S_ISREG(status.st_mode);
 }
 
 #endif

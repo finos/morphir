@@ -31,7 +31,7 @@ impl @conformance.Fixture for WindowsFixture with fn start(
   let spec = @worker.WorkerSpec::new(
     self.node,
     Process(
-      platform=@native.host_platform().unwrap(),
+      platform=@native.host_machine().unwrap().platforms()[0],
       args=[self.script, ..flags.map(flag => flag.argument()), ..args],
     ),
   )

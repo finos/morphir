@@ -29,9 +29,9 @@ async function notebookDownloads(page: Page, source: string) {
   const workspace = fileURLToPath(new URL('../../../', import.meta.url));
   try {
     await writeFile(join(directory, 'worksheet.scm'), source);
-    execFileSync('moon', ['build', 'apps/morphir', '--target', 'js', '--release'], {cwd: workspace, stdio: ['ignore', 'pipe', 'pipe']});
+    execFileSync('moon', ['build', 'apps/morphir/node', '--target', 'js', '--release'], {cwd: workspace, stdio: ['ignore', 'pipe', 'pipe']});
     const worker = new URL('../../../pkgs/morphir-host/runners/terminal-worker.mjs', import.meta.url).href;
-    const artifact = new URL('../../../_build/js/release/build/morphir/morphir/morphir.js', import.meta.url).href;
+    const artifact = new URL('../../../_build/js/release/build/morphir/morphir/node/node.js', import.meta.url).href;
     const launcher = join(directory, 'launcher.mjs');
     await writeFile(launcher, `import {terminalWorker} from ${JSON.stringify(worker)};\nif (!terminalWorker(new URL(import.meta.url),process.argv.slice(2))) await import(${JSON.stringify(artifact)});\n`);
     for (const format of ['ipynb', 'dib']) {

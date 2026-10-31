@@ -17,7 +17,7 @@ const runner = pin?.executable ?? process.env.MORPHIR_MCK_BIN;
 assert.ok(runner, 'Set MORPHIR_MCK_BIN to the maintained upstream Rust executable');
 const cliBuild = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/build-model-cli');
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(cliBuild, `${target}/${profile}/build/morphir/morphir/morphir${target === 'js' ? '.js' : '.exe'}`));
+const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(cliBuild, `${target}/${profile}/build/morphir/morphir/${target === 'js' ? 'node/node.js' : 'morphir.exe'}`));
 const launcher = resolve(process.env.MORPHIR_HEADLESS_LAUNCHER ?? binary);
 const build = resolve(repo, process.env.MORPHIR_MODEL_MCK_BUILD ?? '.dev/headless-model-mck');
 const evidence = resolve(repo, process.env.MORPHIR_MODEL_MCK_EVIDENCE ?? '.dev/headless-model-mck-evidence');

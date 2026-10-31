@@ -1,9 +1,10 @@
 ///|
 /// Where the host runs. Native and Node hosts start process and WASM
-/// workers; a browser host starts WASM workers only.
+/// workers on the machine they find at run time; a browser host starts WASM
+/// workers only.
 pub(all) enum HostPlatform {
-  Native(Platform)
-  Node(Platform)
+  Native(Machine)
+  Node(Machine)
   Browser
 } derive(Eq, Debug)
 
@@ -36,18 +37,17 @@ pub fn HostPlatform::admit(
     )
   }
   match (self, runtime) {
-    (Native(host) | Node(host), Process(platform~, ..)) if platform != host =>
-      raise Refusal(
-        code=PlatformMismatch,
-        message="the artifact is built for \{platform}; this host is \{host}",
-      )
+    (Native(machine) | Node(machine), Process(platform~, ..)) =>
+      if machine.mismatch(platform) is Some(message) {
+        raise Refusal(code=PlatformMismatch, message~)
+      }
     _ => ()
   }
 }
 
 ///|
-/// Whether this host can start the runtime: its kind, and for a process its
-/// platform.
+/// Whether this host can start the runtime: its kind, and for a process
+/// whether the machine runs its platform.
 pub fn HostPlatform::supports(
   self : HostPlatform,
   runtime : WorkerRuntime,

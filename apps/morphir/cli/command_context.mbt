@@ -18,6 +18,7 @@ priv struct CommandContext {
   clock : () -> Double
   check_cancelled : () -> Unit raise
   failed : (FailurePresentation, Error) -> Int32
+  workers : WorkerHosting
 }
 
 ///|
@@ -49,6 +50,7 @@ fn command_context(
     failed: fn(presentation, error) {
       report_command_failure(presentation, mode, error)
     },
+    workers: WorkerHosting::none(),
   }
 }
 
@@ -57,9 +59,19 @@ fn[Req] command_sender(
   command : String,
   handler : (CommandContext, Req) -> Int32 raise,
 ) -> @mediator_async.Sender[CommandContext, Req, Int32] {
-  @mediator_async.sender((context, request) => {
+  async_command_sender(command, (context, request) => {
     complete_command(handler(context, request))
-  }).use_(
+  })
+}
+
+///|
+/// A sender for a handler that awaits its own work, with the same timing,
+/// logging, cancellation and failure middleware.
+fn[Req] async_command_sender(
+  command : String,
+  handler : async (CommandContext, Req) -> Int32,
+) -> @mediator_async.Sender[CommandContext, Req, Int32] {
+  @mediator_async.sender(handler).use_(
     @mediator_async.middleware(async fn(next, context, request) {
       let started = (context.clock)()
       let logger = @logging.with_category(

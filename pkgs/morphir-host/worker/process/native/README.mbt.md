@@ -18,9 +18,14 @@ Assume that the host must run the Elm extension executable for
 `aarch64-apple-darwin`. The pin gives its path and its SHA-256, and the runtime
 `Process(platform=Aarch64AppleDarwin, args=[])`.
 
-1. `ProcessLauncher::launch` makes sure that the runtime is a process for the
-   platform that the host runs on. Otherwise it refuses with
-   `RuntimeUnavailable` or `PlatformMismatch`.
+1. `ProcessLauncher::launch` makes sure that the runtime is a process for a
+   platform that the machine runs. Otherwise it refuses with
+   `RuntimeUnavailable` or `PlatformMismatch`. `host_machine` takes the
+   operating system and the architecture from this executable. On Linux it
+   finds the C libraries from their dynamic loaders, for example
+   `/lib64/ld-linux-x86-64.so.2` for glibc and `/lib/ld-musl-x86_64.so.1` for
+   musl, and runs no program. A static musl host on a glibc machine therefore
+   runs `x86_64-unknown-linux-gnu` artifacts.
 2. `stage` opens the artifact without following a symbolic link, reads it and
    hashes the bytes that it read. If the hash is not the one in the
    specification, it refuses with `DigestMismatch` and no process starts. It

@@ -52,6 +52,18 @@ fn os_text(text : String) -> Bytes raise @worker.LaunchError {
 
 ///|
 #cfg(not(platform="windows"))
+#borrow(path)
+extern "C" fn file_present_ffi(path : Bytes) -> Int32 = "morphir_worker_file_present"
+
+///|
+/// Whether a regular file exists at `path`, after links.
+#cfg(not(platform="windows"))
+fn file_present(path : String) -> Bool {
+  (file_present_ffi(os_text(path)) catch { _ => 0 }) == 1
+}
+
+///|
+#cfg(not(platform="windows"))
 fn read_artifact(path : String) -> Bytes raise @worker.LaunchError {
   let problem : FixedArray[Int32] = [0, 0]
   let bytes = read_artifact_ffi(

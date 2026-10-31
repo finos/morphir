@@ -39,7 +39,10 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/encoding/base64",
+  "moonbit-community/casefold",
+  "moonbit-community/unicode-normalization" @normalization,
   "finos/morphir-moonbit/mep",
+  "finos/morphir-host/worker",
 }
 
 import {
@@ -50,6 +53,9 @@ import {
 } for "wbtest"
 
 // The JS adapters use connected_core. Other targets use their own adapters.
+// The worker host is for the native and Node entries: wasm-gc has no async
+// event loop, and on wasm its driver would import non-WASI functions. The
+// extension commands build on native and js; the WASI builds refuse them.
 
 warnings = "-29"
 
@@ -58,5 +64,13 @@ warnings = "-29"
 max_concurrent_tests = 1
 
 options(
-  targets: { "hosting_wbtest.mbt": [ "native", "js" ] },
+  targets: {
+    "hosting_wbtest.mbt": [ "native", "js" ],
+    "extension.mbt": [ "native", "js" ],
+    "worker_hosting.mbt": [ "native", "js" ],
+    "extension_unhosted.mbt": [ "wasm", "wasm-gc" ],
+    "extension_wbtest.mbt": [ "native", "js" ],
+    "extension_session_wbtest.mbt": [ "native", "js" ],
+    "mep_recording_wbtest.mbt": [ "native" ],
+  },
 )

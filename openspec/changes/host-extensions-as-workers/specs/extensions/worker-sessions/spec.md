@@ -157,7 +157,7 @@ specification that combines fields of both runtimes, or has no digest, SHALL be 
 - **THEN** the host starts that artifact with the recorded arguments, unchanged
 
 #### Scenario: Platform mismatch
-- **WHEN** a process specification names a platform other than the host's
+- **WHEN** a process specification names a platform the host cannot run
 - **THEN** the host refuses it with `extension.platform_mismatch` and starts nothing
 
 ### Requirement: Host worker support

@@ -34,10 +34,10 @@ const framing = join(build, 'js/debug/build/finos/morphir-workbench/mck/json-fra
 const adapter = join(build, 'adapter/headless-mck.js');
 const lanes: { producer: string; target: string; artifact: string; artifactSha256: string; report: string; reportSha256: string }[] = [];
 for (const target of ['js', 'native']) {
-  checked('moon', ['build', 'apps/morphir', '--target', target, '--target-dir', build]);
+  checked('moon', ['build', target === 'js' ? 'apps/morphir/node' : 'apps/morphir', '--target', target, '--target-dir', build]);
   checked('moon', ['build', `apps/morphir-workbench/mck/capabilities/${target}`, '--target', target, '--target-dir', build]);
   const extension = target === 'js' ? '.js' : '.exe';
-  const cli = join(build, `${target}/debug/build/morphir/morphir/morphir${extension}`);
+  const cli = join(build, `${target}/debug/build/morphir/morphir/${target === 'js' ? 'node/node' : 'morphir'}${extension}`);
   const workbench = join(build, `${target}/debug/build/finos/morphir-workbench/mck/capabilities/${target}/${target}${extension}`);
   for (const [producer, artifact] of [['primary-cli', cli], ['workbench-shared-policy', workbench]] as const) {
     const artifactHash = hash(artifact);

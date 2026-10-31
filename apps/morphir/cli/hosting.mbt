@@ -10,10 +10,15 @@ pub struct Invocation {
   priv settings : @diagnostics.Settings
   priv cancel_file : String
   priv command_started : Ref[Bool]
+  priv workers : WorkerHosting
 }
 
 ///|
-pub fn Invocation::prepare(args : Array[String]) -> Invocation raise {
+/// `workers` holds the worker launchers of the entry for this target.
+pub fn Invocation::prepare(
+  args : Array[String],
+  workers~ : WorkerHosting = WorkerHosting::none(),
+) -> Invocation raise {
   let cli = parse_cli(args)
   let mode = if flag(cli, "json-lines") {
     JSONLines
@@ -35,6 +40,7 @@ pub fn Invocation::prepare(args : Array[String]) -> Invocation raise {
       settings: { level: Warn, files: Disabled, },
       cancel_file: "",
       command_started: Ref(false),
+      workers,
     }
   }
   let input = match cli.command {
@@ -82,6 +88,7 @@ pub fn Invocation::prepare(args : Array[String]) -> Invocation raise {
     settings,
     cancel_file,
     command_started: Ref(false),
+    workers,
   }
 }
 
@@ -317,6 +324,7 @@ pub async fn Invocation::execute(
     ..command_context(self.mode, configuration=self.configuration.framework()),
     logger,
     check_cancelled: fn() raise { ctx.check_cancelled() },
+    workers: self.workers,
   }
   let status = if self.cli.help {
     help_command(self.cli, self.mode)

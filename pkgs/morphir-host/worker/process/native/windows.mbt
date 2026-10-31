@@ -77,6 +77,13 @@ fn os_text(text : String) -> Bytes raise @worker.LaunchError {
 }
 
 ///|
+/// Windows has no C library loaders to find, so detection asks for no file.
+#cfg(platform="windows")
+fn file_present(_path : String) -> Bool {
+  false
+}
+
+///|
 #cfg(platform="windows")
 fn read_artifact(path : String) -> Bytes raise @worker.LaunchError {
   let problem : FixedArray[Int32] = [0, 0]

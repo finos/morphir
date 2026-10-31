@@ -1,21 +1,34 @@
 ///|
-extern "C" fn host_platform_ffi() -> Int32 = "morphir_worker_host_platform"
+extern "C" fn host_machine_ffi() -> Int32 = "morphir_worker_host_machine"
 
 ///|
-/// The platform that this host runs on, or `None` where the host has no
-/// process worker support.
-pub fn host_platform() -> @worker.Platform? {
-  match host_platform_ffi() {
-    1 => Some(Aarch64AppleDarwin)
-    2 => Some(X86_64AppleDarwin)
-    3 => Some(Aarch64UnknownLinuxGnu)
-    4 => Some(X86_64UnknownLinuxGnu)
-    5 => Some(Aarch64UnknownLinuxMusl)
-    6 => Some(X86_64UnknownLinuxMusl)
-    7 => Some(Aarch64PcWindowsMsvc)
-    8 => Some(X86_64PcWindowsMsvc)
-    _ => None
+/// The machine that this host runs on, or `None` where the host has no
+/// process worker support. The operating system and the architecture are
+/// those of this executable; on Linux the C libraries are those whose
+/// dynamic loaders the machine has, so a static musl host on a glibc machine
+/// runs gnu artifacts.
+pub fn host_machine() -> @worker.Machine? {
+  let (os, arch) : (@worker.Os, @worker.Arch) = match host_machine_ffi() {
+    1 => (MacOs, Aarch64)
+    2 => (MacOs, X86_64)
+    3 => (Linux, Aarch64)
+    4 => (Linux, X86_64)
+    5 => (Windows, Aarch64)
+    6 => (Windows, X86_64)
+    _ => return None
   }
+  Some(machine_under("", os, arch))
+}
+
+///|
+/// The machine of `os` and `arch` whose loader paths are under `root`, the
+/// file-system root for a real host.
+fn machine_under(
+  root : String,
+  os : @worker.Os,
+  arch : @worker.Arch,
+) -> @worker.Machine {
+  @worker.Machine::detect(os, arch, present=path => file_present(root + path))
 }
 
 ///|
@@ -89,7 +102,7 @@ pub impl @worker.Launcher for ProcessLauncher with fn launch(self, spec, limits)
       @worker.RuntimeKind::Process,
     ])
   }
-  guard host_platform() is Some(host) && host == platform else {
+  guard host_machine() is Some(machine) && machine.runs(platform) else {
     raise @worker.LaunchError::PlatformMismatch(platform)
   }
   self.start(stage(spec.artifact, root?=self.staging_root), args, limits~)

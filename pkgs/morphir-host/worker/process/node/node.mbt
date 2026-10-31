@@ -323,20 +323,21 @@ extern "js" fn write_private_copy(
   #| }
 
 ///|
-/// The host's target triple, or "" for a host without a release platform.
-extern "js" fn host_triple() -> String =
+/// The operating system and the architecture of the Node host as an index:
+/// 1 aarch64 macOS, 2 x86_64 macOS, 3 aarch64 Linux, 4 x86_64 Linux,
+/// 5 aarch64 Windows, 6 x86_64 Windows, or 0.
+extern "js" fn host_machine_code() -> Int32 =
   #| () => {
-  #|   const arch = {arm64: 'aarch64', x64: 'x86_64'}[process.arch];
-  #|   if (!arch) return '';
-  #|   switch (process.platform) {
-  #|     case 'darwin': return arch + '-apple-darwin';
-  #|     case 'win32': return arch + '-pc-windows-msvc';
-  #|     case 'linux': {
-  #|       const glibc = process.report?.getReport?.()?.header?.glibcVersionRuntime;
-  #|       return arch + '-unknown-linux-' + (glibc ? 'gnu' : 'musl');
-  #|     }
-  #|     default: return '';
-  #|   }
+  #|   const arch = {arm64: 0, x64: 1}[process.arch];
+  #|   const os = {darwin: 1, linux: 3, win32: 5}[process.platform];
+  #|   return arch === undefined || os === undefined ? 0 : os + arch;
+  #| }
+
+///|
+/// Whether a regular file exists at `path`, after links.
+extern "js" fn file_present(path : String) -> Bool =
+  #| (path) => {
+  #|   try { return process.getBuiltinModule('node:fs').statSync(path).isFile(); } catch { return false; }
   #| }
 
 ///|

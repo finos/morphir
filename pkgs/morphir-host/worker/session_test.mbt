@@ -912,18 +912,23 @@ fn dual_result(
   tuples~ : Array[@worker.ModelTuple] = [ion_tuple, json_generate_tuple],
   languages~ : Array[Json] = [{ "id": "elm", "fileExtensions": [".elm"] }],
   targets~ : Array[Json] = ["typescript"],
+  multi_document~ : Bool = false,
   protocol? : String,
 ) -> Json {
-  let capabilities : Map[String, Json] = {
-    "frontend": {
-      "languages": Json::array(languages),
-      "irVersions": if legacy {
-        ["3"]
-      } else {
-        []
-      },
-      "compile": legacy,
+  let frontend : Map[String, Json] = {
+    "languages": Json::array(languages),
+    "irVersions": if legacy {
+      ["3"]
+    } else {
+      []
     },
+    "compile": legacy,
+  }
+  if multi_document {
+    frontend["multiDocument"] = true
+  }
+  let capabilities : Map[String, Json] = {
+    "frontend": Json::object(frontend),
     "backend": {
       "targets": Json::array(targets),
       "irVersions": if legacy {
@@ -958,8 +963,12 @@ fn dual_result(
 }
 
 ///|
-fn activation_of(offer : @worker.Offer, live : Json) -> @worker.Step {
-  let expected = @worker.Claims::from_describe(dual_result()) catch {
+fn activation_of(
+  offer : @worker.Offer,
+  live : Json,
+  recorded~ : Json = dual_result(),
+) -> @worker.Step {
+  let expected = @worker.Claims::from_describe(recorded) catch {
     error => abort(error.to_string())
   }
   let (conversation, _) = @worker.Conversation::activate(offer, expected~)
@@ -1054,6 +1063,42 @@ test "claims drift by line: a dual-line guest is compared only within the offere
   assert_eq(methods(activation_of(Model(ion_tuple), other)), [
     "morphir.shutdown",
   ])
+}
+
+///|
+test "claims drift: a frontend that drops multiDocument is drift on the compile lines" {
+  let recorded = dual_result(multi_document=true)
+  assert_true(
+    activation_of(
+      Legacy,
+      dual_result(multi_document=true, protocol="0.1"),
+      recorded~,
+    )
+    is Activated(_, ..),
+  )
+  assert_eq(
+    methods(activation_of(Legacy, dual_result(protocol="0.1"), recorded~)),
+    ["morphir.shutdown"],
+  )
+  assert_eq(
+    methods(
+      activation_of(
+        Model(ion_tuple),
+        dual_result(tuples=[ion_tuple], protocol="0.2.0-draft.1"),
+        recorded~,
+      ),
+    ),
+    ["morphir.shutdown"],
+  )
+  // A generateModel session does not compile, so the flag does not count.
+  assert_true(
+    activation_of(
+      Model(json_generate_tuple),
+      dual_result(tuples=[json_generate_tuple], protocol="0.2.0-draft.1"),
+      recorded~,
+    )
+    is Activated(_, ..),
+  )
 }
 
 ///|

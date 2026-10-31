@@ -1,7 +1,7 @@
 # Recorded MoonBit MEP session
 
 ```jsonrpc host -> extension
-{"jsonrpc":"2.0","id":1,"method":"morphir.extension.describe","params":{"protocolVersions":["0.2.0-draft.1"]}}
+{"jsonrpc":"2.0","id":1,"method":"morphir.extension.describe","params":{"protocolVersions":["0.2.0-draft.1","0.1"]}}
 ```
 
 ```jsonrpc extension -> host

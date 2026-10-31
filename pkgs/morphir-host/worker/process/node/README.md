@@ -19,8 +19,10 @@ let stop = channel.close()
 ```
 
 `launch` refuses a WASM runtime and an artifact in memory with
-`RuntimeUnavailable`, and a platform other than the host's with
-`PlatformMismatch`. Then it stages the artifact and starts the verified copy.
+`RuntimeUnavailable`, and a platform that the machine cannot run with
+`PlatformMismatch`. `host_machine` finds the machine as the native launcher
+does: Node's operating system and architecture, and on Linux each C library
+whose dynamic loader is present, whatever Node itself links. Then it stages the artifact and starts the verified copy.
 The channel checks frames against the session's `limits`.
 
 ## How a worker starts

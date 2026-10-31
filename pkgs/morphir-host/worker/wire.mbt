@@ -250,9 +250,10 @@ fn read_ir_versions(
 let understood_paths : Array[String] = [
   "protocolVersions", "protocolVersion", "extension", "extension.id", "extension.version",
   "capabilities", "capabilities.frontend", "capabilities.frontend.languages", "capabilities.frontend.irVersions",
-  "capabilities.frontend.compile", "capabilities.backend", "capabilities.backend.targets",
-  "capabilities.backend.irVersions", "capabilities.backend.generate", "capabilities.modelTransport",
-  "capabilities.modelTransport.tuples", "capabilities.modelTransport.limits", "critical",
+  "capabilities.frontend.compile", "capabilities.frontend.incremental", "capabilities.frontend.multiDocument",
+  "capabilities.backend", "capabilities.backend.targets", "capabilities.backend.irVersions",
+  "capabilities.backend.generate", "capabilities.modelTransport", "capabilities.modelTransport.tuples",
+  "capabilities.modelTransport.limits", "critical",
 ]
 
 ///|
@@ -341,6 +342,14 @@ fn read_claims(result : Json) -> Claims raise ValueError {
       frontend.bind(value => field_at(value, ["irVersions"])),
       "frontend irVersions",
     ),
+    frontend_flags=FrontendFlags::new(
+      incremental=flag(
+        field_at(result, ["capabilities", "frontend", "incremental"]),
+      ),
+      multi_document=flag(
+        field_at(result, ["capabilities", "frontend", "multiDocument"]),
+      ),
+    ),
     targets~,
     backend_ir_versions=read_ir_versions(
       backend.bind(value => field_at(value, ["irVersions"])),
@@ -373,10 +382,11 @@ fn[T : Show + Eq] missing(
 /// count. Each line then counts only what it carries:
 ///
 /// - MEP 0.1 (`Legacy`): the legacy operations, the languages with their file
-///   extensions, the targets, and the frontend and backend IR versions. The
-///   recorded model tuples do not count.
+///   extensions, the frontend flags, the targets, and the frontend and backend
+///   IR versions. The recorded model tuples do not count.
 /// - MEP 0.2.0-draft.1 (`Model`): the languages with their file extensions
-///   for a compileModel tuple, and the targets for a generateModel tuple. The
+///   and the frontend flags for a compileModel tuple, and the targets for a
+///   generateModel tuple. The
 ///   legacy operations and the IR versions do not count. The offered tuple is
 ///   checked separately; the worker leaves out the tuples that were not
 ///   offered.
@@ -419,6 +429,10 @@ fn compare_claims(expected : Claims, live : Claims, offer : Offer) -> String? {
       (false, [missing("targets", expected.targets, live.targets)])
   }
   if languages {
+    let dropped = expected.frontend_flags.dropped_in(live.frontend_flags)
+    if !dropped.is_empty() {
+      return Some("the worker dropped the frontend flags \{dropped.join(", ")}")
+    }
     let changed = expected.languages.filter(claim => {
       !live.languages.contains(claim)
     })

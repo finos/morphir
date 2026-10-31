@@ -442,14 +442,14 @@ int32_t morphir_worker_process_alive(int32_t pid) {
   return ok && code == STILL_ACTIVE ? 1 : 0;
 }
 
-// The host's target triple as an index: 7 aarch64-pc-windows-msvc,
-// 8 x86_64-pc-windows-msvc, or 0.
+// The operating system and the architecture of this host as an index:
+// 5 aarch64 Windows, 6 x86_64 Windows, or 0.
 MOONBIT_FFI_EXPORT
-int32_t morphir_worker_host_platform(void) {
+int32_t morphir_worker_host_machine(void) {
 #if defined(_M_ARM64) || defined(__aarch64__)
-  return 7;
+  return 5;
 #elif defined(_M_X64) || defined(__x86_64__)
-  return 8;
+  return 6;
 #else
   return 0;
 #endif

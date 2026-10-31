@@ -9,6 +9,7 @@ async fn assert_middleware_timing() -> Unit {
     clock: fn() { ticks.val },
     check_cancelled: fn() { () },
     failed: fn(_, _) { -1 },
+    workers: WorkerHosting::none(),
   }
   let sender : @mediator_async.Sender[CommandContext, Int32, Int32] = command_sender(
     "project list",
@@ -60,6 +61,7 @@ async fn assert_middleware_cancellation() -> Unit {
       failures.val += 1
       130
     },
+    workers: WorkerHosting::none(),
   }
   let sender : @mediator_async.Sender[CommandContext, Unit, Int32] = command_sender(
     "compile",

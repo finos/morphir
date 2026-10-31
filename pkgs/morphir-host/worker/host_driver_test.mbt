@@ -105,7 +105,7 @@ async test "probe a staged artifact: the probe returns claims and the worker is 
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let received = []
   @async.with_task_group(group => {
@@ -129,7 +129,7 @@ async test "probe of a guest that does not describe: describe_failed and no clai
     let (channel, worker) = @worker.MemoryChannel::pair()
     let host = @worker.Host::new(
       @worker.MemoryLauncher::new(channel),
-      Native(Aarch64AppleDarwin),
+      Native(@worker.Machine::of(Aarch64AppleDarwin)),
     )
     let failure = @async.with_task_group(group => {
       group.spawn_bg(() => {
@@ -167,7 +167,7 @@ async test "deadline: the worker is stopped, its stderr is kept and wire cancell
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let received = []
   @async.with_task_group(group => {
@@ -200,7 +200,7 @@ async test "caller cancels: a stop interrupts a pending receive and stops the wo
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Node(Aarch64AppleDarwin),
+    Node(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let stopping = Ref(false)
   let received = []
@@ -256,7 +256,10 @@ async test "browser host and a process artifact: runtime_unavailable and nothing
 async test "platform mismatch: a process for another platform is refused and nothing starts" {
   let (channel, _worker) = @worker.MemoryChannel::pair()
   let launcher = { channel, specs: [], limits: [], }
-  let host = @worker.Host::new(launcher, Native(Aarch64AppleDarwin))
+  let host = @worker.Host::new(
+    launcher,
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
   let spec = process_spec(platform=X86_64UnknownLinuxGnu)
   assert_false(host.supports(spec.runtime))
   let failure = try
@@ -288,7 +291,10 @@ async test "specification from an installed catalog: the host starts it with the
   let spec = @worker.WorkerSpec::from_json(entry, Posix)
   let (channel, worker) = @worker.MemoryChannel::pair()
   let launcher = { channel, specs: [], limits: [], }
-  let host = @worker.Host::new(launcher, Native(Aarch64AppleDarwin))
+  let host = @worker.Host::new(
+    launcher,
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
   @async.with_task_group(group => {
     group.spawn_bg(() => serve(worker, [], legacy_guest()))
     let session = host.activate(spec, expected=legacy_claims(), offer=Legacy)
@@ -306,7 +312,10 @@ async test "specification from an installed catalog: the host starts it with the
 async test "launch limits: the launcher gets the session's frame limits" {
   let (channel, worker) = @worker.MemoryChannel::pair()
   let launcher = { channel, specs: [], limits: [], }
-  let host = @worker.Host::new(launcher, Native(Aarch64AppleDarwin))
+  let host = @worker.Host::new(
+    launcher,
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
   @async.with_task_group(group => {
     group.spawn_bg(() => serve(worker, [], legacy_guest()))
     let session = host.activate(
@@ -327,7 +336,7 @@ async test "claims drift through the host: claims_mismatch, shutdown and exit, n
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let received = []
   let failure = @async.with_task_group(group => {
@@ -363,7 +372,7 @@ async test "the report states the limits that applied and how the worker stopped
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Node(Aarch64AppleDarwin),
+    Node(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   @async.with_task_group(group => {
     group.spawn_bg(() => serve(worker, [], legacy_guest()))
@@ -410,7 +419,7 @@ async test "same guest, two worker kinds: the host sends the same messages and r
     let (channel, worker) = @worker.MemoryChannel::pair()
     let host = @worker.Host::new(
       @worker.MemoryLauncher::new(channel),
-      Native(Aarch64AppleDarwin),
+      Native(@worker.Machine::of(Aarch64AppleDarwin)),
     )
     let received = []
     let outcome = @async.with_task_group(group => {
@@ -509,7 +518,10 @@ async fn blocked_activation(
 ) -> (@worker.Ending, @worker.StopStatus)? {
   let (memory, worker) = @worker.MemoryChannel::pair()
   let channel = { inner: memory, sends_left: sends, }
-  let host = @worker.Host::new({ channel, }, Native(Aarch64AppleDarwin))
+  let host = @worker.Host::new(
+    { channel, },
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
   let ended = @async.with_task_group(group => {
     group.spawn_bg(no_wait=true, () => serve(worker, [], legacy_guest()))
     @async.with_timeout_opt(5000, () => {
@@ -562,7 +574,10 @@ async test "blocked send: a stop interrupts a send that never finishes" {
 ///|
 async test "launch and stop: a stop interrupts a launch that never finishes" {
   let stopping = Ref(false)
-  let host = @worker.Host::new(HangingLauncher::{ }, Native(Aarch64AppleDarwin))
+  let host = @worker.Host::new(
+    HangingLauncher::{ },
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
   let ended = @async.with_task_group(group => {
     group.spawn_bg(() => {
       @async.sleep(30)
@@ -589,7 +604,7 @@ async test "task cancellation: cancelling the enclosing task during compile abor
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   @async.with_task_group(group => {
     group.spawn_bg(() => {
@@ -614,7 +629,7 @@ async test "with_session: the session is closed after the work, and aborted when
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let received = []
   @async.with_task_group(group => {
@@ -636,7 +651,7 @@ async test "with_session: the session is closed after the work, and aborted when
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let received = []
   let failed = @async.with_task_group(group => {
@@ -662,7 +677,7 @@ async test "with_session: the session is closed after the work, and aborted when
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   @async.with_task_group(group => {
     group.spawn_bg(() => serve(worker, [], legacy_guest()))
@@ -684,7 +699,7 @@ async test "concurrent calls: a second call is refused and a close waits for the
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let received = []
   @async.with_task_group(group => {

@@ -47,7 +47,9 @@ test "decode a catalog entry" {
   // A browser host offers WASM artifacts only.
   assert_false(@worker.HostPlatform::Browser.supports(spec.runtime))
   assert_true(
-    @worker.HostPlatform::Native(Aarch64AppleDarwin).supports(spec.runtime),
+    @worker.HostPlatform::Native(@worker.Machine::of(Aarch64AppleDarwin)).supports(
+      spec.runtime,
+    ),
   )
 }
 ```
@@ -104,12 +106,20 @@ operation. The worker must return the offered tuple unchanged.
 
 Activation compares the claims only within the offered protocol line. The
 extension ID and version always count. On MEP `0.1` the legacy operations,
-the languages with their file extensions, the targets and the IR versions
-count. On MEP `0.2.0-draft.1` the languages count for a `compileModel` tuple
-and the targets for a `generateModel` tuple. A recorded entry that is missing
+the languages with their file extensions, the frontend flags, the targets and
+the IR versions count. On MEP `0.2.0-draft.1` the languages and the frontend
+flags count for a `compileModel` tuple and the targets for a `generateModel`
+tuple. A recorded entry that is missing
 or changed is a drift. An offer whose tuple is not in the recorded claims is
 `extension.claims_mismatch` before any worker starts. A claim set whose
 `critical` member names a path that the host does not read is refused.
+
+`claims.frontend_flags` holds the handshake's frontend flags as a
+`FrontendFlags` record: `incremental` and `multi_document`
+(`capabilities.frontend.multiDocument`). An absent flag is false. A frontend
+without `multi_document` compiles exactly one document for each request, so a
+host refuses a request with more documents before it starts a session. A
+recorded flag that the live worker drops is a drift.
 
 The example runs a fake legacy guest on the in-memory channel. A real host
 uses the process or WASM launcher instead of `MemoryLauncher`. The example
@@ -177,7 +187,7 @@ async test "probe, activate, compile and close" {
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let claims = @async.with_task_group(group => {
     group.spawn_bg(() => fake_guest(worker))
@@ -189,7 +199,7 @@ async test "probe, activate, compile and close" {
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(
     @worker.MemoryLauncher::new(channel),
-    Native(Aarch64AppleDarwin),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
   )
   let request = @worker.CompileRequest::new({
     "languageId": "elm",

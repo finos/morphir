@@ -17,7 +17,7 @@ function run(program: string,args: string[],status=0) {
   return result;
 }
 const moon=join(home,'bin/moon');
-const cli=join(repo,'_build/js/debug/build/morphir/morphir/morphir.js');
+const cli=join(repo,'_build/js/debug/build/morphir/morphir/node/node.js');
 const dependencies=['finos/morphir-sdk=pkgs/morphir-sdk','finos/morphir-execution=pkgs/morphir-execution','moonrockz/ion=.mooncakes/moonrockz/ion','moonbitlang/x=.mooncakes/moonbitlang/x','moonbitlang/async=.mooncakes/moonbitlang/async'].flatMap(v=>['--dependency',v]);
 const llvmHome=process.env.MORPHIR_LLVM_HOME,llvmPin=process.env.MORPHIR_LLVM_PIN;
 assert.equal(Boolean(llvmHome),Boolean(llvmPin),'Supply both MORPHIR_LLVM_HOME and MORPHIR_LLVM_PIN');

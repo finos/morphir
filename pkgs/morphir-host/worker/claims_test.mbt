@@ -212,6 +212,57 @@ test "a model tuple has five closed parts" {
 }
 
 ///|
+test "claims read the frontend capability flags; an absent flag is false" {
+  let flagged = @worker.Claims::from_describe({
+    "protocolVersions": ["0.1"],
+    "extension": { "id": "morphir-python", "version": "0.4.2" },
+    "capabilities": {
+      "frontend": {
+        "languages": [{ "id": "python", "fileExtensions": [".py"] }],
+        "irVersions": ["4"],
+        "compile": true,
+        "incremental": true,
+        "fragments": true,
+        "multiDocument": true,
+      },
+    },
+  })
+  assert_eq(
+    flagged.frontend_flags,
+    @worker.FrontendFlags::new(incremental=true, multi_document=true),
+  )
+  let plain = @worker.Claims::from_describe(claim_set([]))
+  assert_eq(plain.frontend_flags, @worker.FrontendFlags::new())
+  assert_false(plain.frontend_flags.multi_document)
+  // The flags are part of the claims, so a recorded flag that differs is a
+  // different claim set.
+  assert_true(flagged != plain)
+  assert_eq(
+    @worker.Claims::new(
+      @worker.ExtensionId::parse("morphir-python"),
+      @worker.ExtensionVersion::parse("0.4.2"),
+      frontend_flags=@worker.FrontendFlags::new(multi_document=true),
+    ).frontend_flags.multi_document,
+    true,
+  )
+  // The host reads the flags, so a claim set may mark them critical.
+  assert_true(
+    (try
+      @worker.Claims::from_describe(
+        claim_set([
+          "capabilities.frontend.multiDocument", "capabilities.frontend.incremental",
+        ]),
+      )
+    catch {
+      _ => None
+    } noraise {
+      claims => Some(claims)
+    })
+    is Some(_),
+  )
+}
+
+///|
 fn claim_set(critical : Json) -> Json {
   {
     "protocolVersions": ["0.1"],
