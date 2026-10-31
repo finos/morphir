@@ -46,7 +46,10 @@ pub type DescribeParams {
 /// Parameters of `morphir.initialize`. Full SemVer protocol versions are used
 /// by the model-operation draft; legacy `0.1` remains an explicit exception.
 /// `model_transport` (wire `modelTransport`) is left out when absent. Absence
-/// means legacy-only, never an implicit offer of model transport.
+/// means legacy-only, never an implicit offer of model transport. The offer
+/// lists every supported tuple in preference order; the first tuple for each
+/// operation is the host's default. A host that requires one format offers
+/// only that tuple.
 pub type InitializeParams {
   InitializeParams(
     protocol_versions: List(String),
@@ -135,7 +138,9 @@ pub type WorkspaceCapability {
 ///   when absent. An absent `modelTransport` means legacy-only.
 /// - `modelTransport` before initialization is guest support. In a session
 ///   it contains only tuples explicitly offered by both peers and limits no
-///   larger than either peer's limits. It is not a Cartesian product.
+///   larger than either peer's limits. It is not a Cartesian product. The
+///   extension keeps the host offer order, and the host uses the first agreed
+///   tuple for each operation. Only an empty agreement is a failure.
 ///   Under the new draft, agreement with static claims permits this narrowing
 ///   for modelTransport only; legacy capability equality rules are unchanged.
 /// - The four flags `streaming`, `incremental`, `cancellation` and
@@ -501,8 +506,9 @@ pub type ModelOperation {
 }
 
 /// The representation of a complete model document. Wire values are
-/// `ion-binary` and `morphir-json`. Ion binary is preferred; JSON remains a
-/// supported explicit choice. A codec does not assert a semantic guarantee.
+/// `ion-binary` and `morphir-json`. Ion binary is the recommended default;
+/// JSON remains a supported choice. The host offer order, not the codec, sets
+/// the default of a session. A codec does not assert a semantic guarantee.
 /// Ion uses media type `application/ion` with its binary version marker;
 /// Morphir JSON uses `application/json` encoded as UTF-8.
 pub type ModelCodec {

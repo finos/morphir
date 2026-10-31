@@ -36,10 +36,12 @@ table.
 `InitializeParams.modelTransport` contains the host offer. It is optional and
 omitted by legacy-only peers. `ExtensionCapabilities.modelTransport` contains
 the extension's selected session support. It is also optional; absence or an
-empty tuple list grants no model operation. The extension selects a subset of
-its own support intersected with the host offer. The host verifies that subset
-before dispatch. Static claims and extension description cannot substitute for
-the live host offer and initialized session capabilities.
+empty tuple list grants no model operation. The extension selects the
+intersection of its own support with the host offer, in host order (see
+[Offer order and the default tuple](#offer-order-and-the-default-tuple)). The
+host verifies that subset before dispatch. Static claims and extension
+description cannot substitute for the live host offer and initialized session
+capabilities.
 
 When a static claim set is available, the new draft permits only
 `modelTransport` to narrow within the claim: session tuples and guarantee IDs
@@ -73,8 +75,8 @@ sequenceDiagram
     participant H as Host
     participant G as Extension adapter
     participant C as Pure component
-    H->>G: initialize(versions, host modelTransport offer)
-    G-->>H: exact MEP draft, selected bilateral tuples and bounds
+    H->>G: initialize(versions, host modelTransport offer in preference order)
+    G-->>H: exact MEP draft, selected bilateral tuples in host order, bounds
     H->>H: verify selection, retain original model bytes
     H->>G: generateModel(model, admitted input tuple, target, context, requirements)
     G->>G: bound, decode, verify format and admit evidence
@@ -86,6 +88,51 @@ sequenceDiagram
         G-->>H: GenerateResult
     end
 ```
+
+### Offer order and the default tuple
+
+The host offer lists every tuple that the host supports for an operation, in
+the host's preference order. The first offered tuple for an operation is the
+host's default for that operation. No wire member names the default: the order
+of `tuples` gives it. Tuples for different operations can interleave, so
+compare order only among tuples that have the same `operation`.
+
+The extension selects the offered tuples that it supports and keeps the host's
+order. It does not reorder them to show its own preference. For each operation,
+the host uses the first agreed tuple. The first agreed tuple is the first tuple
+in the host offer for that operation that is also in the session support.
+Because the extension keeps the host order, it is also the first session tuple
+for that operation.
+
+When the host requires one format for an operation, for example because the
+user gave an explicit model format, the host offers only that tuple for the
+operation. If the extension does not support that tuple, the agreement for the
+operation is empty.
+
+An empty agreement for a requested operation is the only negotiation failure.
+The host refuses the operation and sends no request for it. A host reports this
+refusal as `extension.tuple_unavailable`. This is a host outcome code, not a new
+JSON-RPC error number. When the host does not require a format, an extension
+that does not support the host's default but supports another offered tuple is
+not an error: the session uses the first agreed tuple.
+
+In this example the host prefers Ion and also offers JSON for compilation. A
+JSON-only extension agrees on JSON, and the host compiles with JSON. Tuples show
+only `operation` and `codec`. Each codec uses its profile from the table in
+[Profiles and encoded payloads](#profiles-and-encoded-payloads), and all tuples
+have the same envelope and IR versions.
+
+```text
+host offer       [compileModel/ion-binary, compileModel/morphir-json]
+extension        [compileModel/morphir-json]
+session support  [compileModel/morphir-json]   -> use morphir-json
+
+host offer       [compileModel/ion-binary]      (host requires Ion)
+extension        [compileModel/morphir-json]
+session support  []                             -> extension.tuple_unavailable
+```
+
+This is a clarification of the `0.2.0-draft.1` draft. It adds no wire member.
 
 ## Profiles and encoded payloads
 

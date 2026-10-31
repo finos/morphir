@@ -79,7 +79,7 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `ModuleResult` | `sourceDigest`, `interfaceDigest`, `ir` and `frontendState` are left out when absent. `dependsOn` and `diagnostics` are read as empty when absent. |
 | `ModelOperation` | Exact method strings `morphir.frontend.compileModel` and `morphir.backend.generateModel`; require MEP `0.2.0-draft.1`. |
 | `ModelCodec`, `ModelLayout` | `ion-binary` or `morphir-json`; layout `single-document`. Media type derives from the codec. |
-| `ModelTransportSupport` | Unique complete tuples; absent `guarantees` defaults to empty. Session tuples and limits cannot exceed either peer's offer. |
+| `ModelTransportSupport` | Unique complete tuples; absent `guarantees` defaults to empty. Host offer order is preference order, and the first tuple for each operation is the host's default. Session tuples keep the host order, and session tuples and limits cannot exceed either peer's offer. Only an empty agreement for an operation is a negotiation failure. |
 | `ModelPayload` | Both codecs use canonical padded base64; decoded length and SHA-256 bind exact bytes. |
 | `MorphirModel` | Absent `evidence` and `critical` default to empty; omit empty `critical`. Exact unknown critical paths refuse admission. |
 | `CompileModelRequest` | Absent `dependencies` defaults to empty. Output and dependency formats must match the selected tuple. |
