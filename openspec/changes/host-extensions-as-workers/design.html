@@ -663,11 +663,11 @@ release</td></tr>
 <li>The exact grace period after <code>exit</code> (the specs fix 2 seconds) may need tuning for the Bun-built Elm
 executable's shutdown; this changes no behavior beyond the bound.</li>
 <li>Whether the Workbench adopts the browser launcher in <code>morphir-ukvn.5.64.21</code> or in its own change.</li>
-<li>Whether <code>generate</code> on the worker host takes the conversion rule that
-<code>run-core-wasm-guests-from-any-language</code> (finos/morphir-moonbit#281) adds: when the guest does not
-support the tuple of the input envelope, the host converts the model to an agreed tuple. Until then,
-<code>generate</code> requires the envelope's tuple, as today.</li>
 </ul>
+<p><em>Note.</em> The <code>generate</code> conversion is no longer an open question. The decision is SEL-4 of
+<code>run-core-wasm-guests-from-any-language</code> (finos/morphir-moonbit#281), and the MEP text is in
+finos/morphir#1115 and its follow-up, bead <code>morphir-hv6m</code> (MCK checks of the selection order and the
+conversion).</p>
 </main>
 </body>
 </html>
