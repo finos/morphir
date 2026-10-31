@@ -205,7 +205,7 @@ async test "record native MEP host and guest sessions" {
       transcript.to_string(),
     )
     // The guest accepts this host fault. The Smithy state model must find it.
-    guard offer is Model(tuple) &&
+    guard offer is Model([tuple]) &&
       replies[2] is Object({ "result": result, .. }) else {
       fail("the compile did not answer with a result")
     }

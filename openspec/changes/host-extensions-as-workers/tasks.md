@@ -103,7 +103,7 @@
 - [x] 6.4 Keep safe publication after the worker tree has stopped; verify the "Safe publication" scenario
 - [x] 6.5 Rewrite `apps/morphir/docs/extension.md` for the worker host: pins, migration from old pins, limits,
   enforced bounds per host and the platform table; verify the documented commands run as written
-- [ ] 6.6 Change model tuple negotiation to SES-3 in `pkgs/morphir-host/worker` (`Offer`, `Offer::select`, the
+- [x] 6.6 Change model tuple negotiation to SES-3 in `pkgs/morphir-host/worker` (`Offer`, `Offer::select`, the
   activation check in `session.mbt`) and in `apps/morphir/cli/extension.mbt`: offer every supported tuple in the
   host's order, use the first agreed tuple, offer only the tuple that `--model-format` requires, report
   `extension.tuple_unavailable` only for an empty agreement and `extension.agreement_mismatch` for an answer outside

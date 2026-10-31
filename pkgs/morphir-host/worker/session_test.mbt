@@ -65,6 +65,15 @@ let json_generate_tuple : @worker.ModelTuple = @worker.ModelTuple::new(
 )
 
 ///|
+let json_compile_tuple : @worker.ModelTuple = @worker.ModelTuple::new(
+  CompileModel,
+  MorphirIr,
+  MorphirJson,
+  V0_1_0Draft1,
+  V4_0_0,
+)
+
+///|
 /// A model guest, like the MoonBit guest, that answers with the given tuples
 /// and decoded-byte limit.
 fn model_result(
@@ -450,28 +459,20 @@ test "version the host did not offer: initialization is refused before any opera
 }
 
 ///|
-test "tuple not supported: the session is refused and no operation is sent" {
-  let json_compile = @worker.ModelTuple::new(
-    CompileModel,
-    MorphirIr,
-    MorphirJson,
-    V0_1_0Draft1,
-    V4_0_0,
-  )
+test "model tuple negotiation: the host offers every tuple that it supports, in its order" {
+  // The worker declares JSON first; the host keeps its own order.
   let claims = @worker.Claims::from_describe(
-    model_result([ion_tuple, json_compile]),
+    model_result([json_compile_tuple, ion_tuple]),
   )
-  // The host offers morphir-ir with morphir-json; the worker returns only Ion.
-  let (conversation, step) = @worker.Conversation::activate(
-    Model(json_compile),
-    expected=claims,
-  )
+  let offer = @worker.Offer::select(claims, CompileModel)
+  assert_eq(offer, Model([ion_tuple, json_compile_tuple]))
+  let (_, step) = @worker.Conversation::activate(offer, expected=claims)
   guard sends(step)[0].json()
     is Object({ "params": Object({ "modelTransport": transport, .. }), .. }) else {
     fail("no model transport offer")
   }
   assert_eq(transport, {
-    "tuples": [json_compile.to_json()],
+    "tuples": [ion_tuple.to_json(), json_compile_tuple.to_json()],
     "limits": {
       "maxEncodedBytes": 2796204,
       "maxDecodedBytes": 2097152,
@@ -480,20 +481,203 @@ test "tuple not supported: the session is refused and no operation is sent" {
     },
     "guarantees": [],
   })
+}
+
+///|
+test "model tuple negotiation: a worker without the default tuple agrees on JSON" {
+  // The worker supports only the JSON tuple, like the morphir-gleam guest.
+  let claims = @worker.Claims::from_describe(model_result([json_compile_tuple]))
+  let offer = @worker.Offer::select(claims, CompileModel)
+  assert_eq(offer, Model([ion_tuple, json_compile_tuple]))
+  let (conversation, _) = @worker.Conversation::activate(offer, expected=claims)
   let (conversation, step) = conversation.on(
-    answer(1, model_result([ion_tuple], protocol="0.2.0-draft.1")),
+    answer(1, model_result([json_compile_tuple], protocol="0.2.0-draft.1")),
   )
-  assert_eq(methods(step), ["morphir.shutdown"])
-  let (_, step) = conversation.on(answer(2, {}))
-  assert_eq(methods(step), ["morphir.exit"])
-  assert_eq(refused_code(step), Some(TupleUnavailable))
+  guard step is Activated(negotiated, ..) else {
+    fail("not activated: \{@debug.to_string(step)}")
+  }
+  assert_eq(negotiated.offer, offer)
+  assert_eq(negotiated.tuple, Some(json_compile_tuple))
+  let (_, step) = conversation.compile(compile_request())
+  assert_eq(methods(step), ["morphir.frontend.compileModel"])
+  guard sends(step)[0].json()
+    is Object({ "params": Object({ "output": output, .. }), .. }) else {
+    fail("no output tuple")
+  }
+  assert_eq(output, json_compile_tuple.to_json())
+}
+
+///|
+test "model tuple negotiation: a worker that supports every offered tuple uses the default" {
+  let claims = @worker.Claims::from_describe(
+    model_result([ion_tuple, json_compile_tuple]),
+  )
+  let offer = @worker.Offer::select(claims, CompileModel)
+  let (conversation, _) = @worker.Conversation::activate(offer, expected=claims)
+  let (conversation, step) = conversation.on(
+    answer(
+      1,
+      model_result([ion_tuple, json_compile_tuple], protocol="0.2.0-draft.1"),
+    ),
+  )
+  guard step is Activated(negotiated, ..) else { fail("not activated") }
+  assert_eq(negotiated.tuple, Some(ion_tuple))
+  let (_, step) = conversation.compile(compile_request())
+  guard sends(step)[0].json()
+    is Object({ "params": Object({ "output": output, .. }), .. }) else {
+    fail("no output tuple")
+  }
+  assert_eq(output, ion_tuple.to_json())
+}
+
+///|
+/// Activates a compile session with `offer` and the worker's `agreed`
+/// tuples, then answers `shutdown`. Returns the methods that the host sent
+/// after `initialize`, and the refusal code.
+fn refused_agreement(
+  offer : @worker.Offer,
+  agreed : Json,
+) -> (Array[String], @worker.RefusalCode?) {
+  let claims = @worker.Claims::from_describe(
+    model_result([ion_tuple, json_compile_tuple]),
+  ) catch {
+    error => abort(error.to_string())
+  }
+  let (conversation, _) = @worker.Conversation::activate(offer, expected=claims)
+  let answered : Json = match model_result([], protocol="0.2.0-draft.1") {
+    Object(fields) => {
+      let fields = fields.copy()
+      guard fields.get("capabilities") is Some(Object(capabilities)) &&
+        capabilities.get("modelTransport") is Some(Object(transport)) else {
+        abort("no model transport")
+      }
+      let capabilities = capabilities.copy()
+      let transport = transport.copy()
+      transport["tuples"] = agreed
+      capabilities["modelTransport"] = Json::object(transport)
+      fields["capabilities"] = Json::object(capabilities)
+      Json::object(fields)
+    }
+    json => json
+  }
+  let (conversation, first) = conversation.on(answer(1, answered))
+  let (_, second) = conversation.on(answer(2, {}))
+  (methods(first) + methods(second), refused_code(second))
+}
+
+///|
+test "model tuple negotiation: no offered tuple supported is tuple_unavailable" {
+  let both = @worker.Offer::Model([ion_tuple, json_compile_tuple])
+  assert_eq(
+    refused_agreement(both, []),
+    (["morphir.shutdown", "morphir.exit"], Some(TupleUnavailable)),
+  )
+}
+
+///|
+test "required model tuple: the host offers only the required tuple" {
+  let claims = @worker.Claims::from_describe(
+    model_result([ion_tuple, json_compile_tuple]),
+  )
+  // --model-format json requires morphir-ir with morphir-json.
+  let required = @worker.Offer::select(claims, CompileModel, codec=MorphirJson)
+  assert_eq(required, Model([json_compile_tuple]))
+  assert_eq(
+    @worker.Offer::select(claims, CompileModel, codec=IonBinary),
+    Model([ion_tuple]),
+  )
+  // A worker that supports only Ion gives an empty agreement.
+  assert_eq(
+    refused_agreement(required, []),
+    (["morphir.shutdown", "morphir.exit"], Some(TupleUnavailable)),
+  )
+  // Claims without the required tuple refuse it before any worker starts.
+  let ion_only = @worker.Claims::from_describe(model_result([ion_tuple]))
+  let refused = try
+    @worker.Offer::select(ion_only, CompileModel, codec=MorphirJson)
+  catch {
+    Refusal(code~, ..) => Some(code)
+  } noraise {
+    _ => None
+  }
+  assert_eq(refused, Some(TupleUnavailable))
+}
+
+///|
+test "agreement follows the offer: an agreement out of the host's order is agreement_mismatch" {
+  let both = @worker.Offer::Model([ion_tuple, json_compile_tuple])
+  assert_eq(
+    refused_agreement(both, [json_compile_tuple.to_json(), ion_tuple.to_json()]),
+    (["morphir.shutdown", "morphir.exit"], Some(AgreementMismatch)),
+  )
+  // A tuple that the worker returns twice does not keep the order either.
+  assert_eq(
+    refused_agreement(both, [ion_tuple.to_json(), ion_tuple.to_json()]),
+    (["morphir.shutdown", "morphir.exit"], Some(AgreementMismatch)),
+  )
+}
+
+///|
+test "agreement follows the offer: a tuple that the host did not offer is agreement_mismatch" {
+  // --model-format json offers only the JSON tuple; the worker answers Ion.
+  let required = @worker.Offer::Model([json_compile_tuple])
+  assert_eq(
+    refused_agreement(required, [ion_tuple.to_json()]),
+    (["morphir.shutdown", "morphir.exit"], Some(AgreementMismatch)),
+  )
+  // A tuple with a part that the host does not know was not offered either.
+  let unknown : Json = {
+    "operation": "morphir.frontend.compileModel",
+    "profile": "morphir-ir",
+    "codec": "cbor",
+    "envelopeVersion": "0.1.0-draft.1",
+    "irVersion": "4.0.0",
+  }
+  assert_eq(
+    refused_agreement(required, [json_compile_tuple.to_json(), unknown]),
+    (["morphir.shutdown", "morphir.exit"], Some(AgreementMismatch)),
+  )
+}
+
+///|
+test "negotiated model transport is not drift: four described tuples, two agreed, smaller limits" {
+  // Like the MoonBit guest: generate and compile, each with Ion and JSON.
+  let ion_generate_tuple = @worker.ModelTuple::new(
+    GenerateModel,
+    MorphirModel,
+    IonBinary,
+    V0_1_0Draft1,
+    V4_0_0,
+  )
+  let described = [
+    ion_generate_tuple, json_generate_tuple, ion_tuple, json_compile_tuple,
+  ]
+  let claims = @worker.Claims::from_describe(model_result(described))
+  assert_eq(claims.model_tuples.length(), 4)
+  let offer = @worker.Offer::select(claims, CompileModel)
+  let (conversation, _) = @worker.Conversation::activate(offer, expected=claims)
+  let (_, step) = conversation.on(
+    answer(
+      1,
+      model_result(
+        [ion_tuple, json_compile_tuple],
+        decoded=1000,
+        protocol="0.2.0-draft.1",
+      ),
+    ),
+  )
+  guard step is Activated(negotiated, ..) else {
+    fail("not activated: \{@debug.to_string(step)}")
+  }
+  assert_eq(negotiated.tuple, Some(ion_tuple))
+  assert_eq(negotiated.limits.model.decoded_bytes, 1000)
 }
 
 ///|
 test "smaller worker limit: a model request is checked against the worker's limit" {
   let claims = model_claims()
   let (conversation, _) = @worker.Conversation::activate(
-    Model(json_generate_tuple),
+    Model([json_generate_tuple]),
     expected=claims,
   )
   let (conversation, step) = conversation.on(
@@ -552,7 +736,7 @@ test "limits: a MEP 0.1 WASM guest also has the restricted Extism profile" {
   let host = @worker.Limits::host()
   let process = @worker.WorkerRuntime::Process(platform=X86_64UnknownLinuxGnu, args=[])
   assert_eq(host.for_session(Legacy, process), host)
-  assert_eq(host.for_session(Model(ion_tuple), Wasm(abi=None)), host)
+  assert_eq(host.for_session(Model([ion_tuple]), Wasm(abi=None)), host)
   let profile = @worker.ExtismProfile::restricted()
   assert_eq(profile.memory_bytes, 256 * 1024 * 1024)
   assert_eq(profile.instructions, 1000000000L)
@@ -564,7 +748,7 @@ test "limits: a MEP 0.1 WASM guest also has the restricted Extism profile" {
 ///|
 test "claims match: activation returns a session that accepts calls" {
   let (conversation, _) = @worker.Conversation::activate(
-    Model(ion_tuple),
+    Model([ion_tuple]),
     expected=model_claims(),
   )
   let (conversation, step) = conversation.on(
@@ -572,7 +756,8 @@ test "claims match: activation returns a session that accepts calls" {
   )
   assert_eq(methods(step), ["morphir.initialized"])
   guard step is Activated(negotiated, ..) else { fail("not activated") }
-  assert_eq(negotiated.offer, Model(ion_tuple))
+  assert_eq(negotiated.offer, Model([ion_tuple]))
+  assert_eq(negotiated.tuple, Some(ion_tuple))
   let (_, step) = conversation.compile(compile_request())
   assert_eq(methods(step), ["morphir.frontend.compileModel"])
 }
@@ -620,7 +805,7 @@ test "unsupported call: a frontend-only session refuses generate and sends nothi
 ///|
 test "session calls: a model session refuses the other model operation" {
   let (conversation, _) = @worker.Conversation::activate(
-    Model(ion_tuple),
+    Model([ion_tuple]),
     expected=model_claims(),
   )
   let (conversation, _) = conversation.on(
@@ -732,11 +917,22 @@ test "offer selection picks the protocol line and tuple from the claims" {
   assert_eq(@worker.Offer::select(legacy_claims(), Compile), Legacy)
   assert_eq(
     @worker.Offer::select(model_claims(), CompileModel, codec=IonBinary),
-    Model(ion_tuple),
+    Model([ion_tuple]),
   )
+  // The host offers both of its generate tuples, Ion first, though the
+  // MoonBit guest claims only the JSON one.
   assert_eq(
     @worker.Offer::select(model_claims(), GenerateModel),
-    Model(json_generate_tuple),
+    Model([
+      @worker.ModelTuple::new(
+        GenerateModel,
+        MorphirModel,
+        IonBinary,
+        V0_1_0Draft1,
+        V4_0_0,
+      ),
+      json_generate_tuple,
+    ]),
   )
   let refusal = (claims : @worker.Claims, operation : @worker.Operation) => {
     try @worker.Offer::select(claims, operation, codec=IonBinary) catch {
@@ -755,9 +951,9 @@ test "offer selection picks the protocol line and tuple from the claims" {
 ///|
 test "same guest, two worker kinds: the session sends the same messages" {
   let run = (runtime : @worker.WorkerRuntime) => {
-    let limits = @worker.Limits::host().for_session(Model(ion_tuple), runtime)
+    let limits = @worker.Limits::host().for_session(Model([ion_tuple]), runtime)
     let (conversation, first) = @worker.Conversation::activate(
-      Model(ion_tuple),
+      Model([ion_tuple]),
       expected=model_claims(),
       limits~,
     )
@@ -804,7 +1000,7 @@ test "claims drift: a bad shutdown answer keeps claims_mismatch as the reason" {
 /// A model generate session, activated with the worker's own limits.
 fn ready_generate() -> @worker.Conversation {
   let (conversation, _) = @worker.Conversation::activate(
-    Model(json_generate_tuple),
+    Model([json_generate_tuple]),
     expected=model_claims(),
   )
   let (conversation, step) = conversation.on(
@@ -849,7 +1045,7 @@ test "declared size does not match the payload: the request is refused before it
 ///|
 test "declared size does not match the payload: a compiled model fails with response_limit" {
   let (conversation, _) = @worker.Conversation::activate(
-    Model(ion_tuple),
+    Model([ion_tuple]),
     expected=model_claims(),
   )
   let (conversation, _) = conversation.on(
@@ -997,14 +1193,14 @@ test "claims drift by line: a dual-line guest is compared only within the offere
   // not count.
   assert_true(
     activation_of(
-      Model(ion_tuple),
+      Model([ion_tuple]),
       dual_result(legacy=false, tuples=[ion_tuple], targets=[], protocol=model),
     )
     is Activated(_, ..),
   )
   assert_true(
     activation_of(
-      Model(json_generate_tuple),
+      Model([json_generate_tuple]),
       dual_result(
         legacy=false,
         tuples=[json_generate_tuple],
@@ -1019,7 +1215,7 @@ test "claims drift by line: a dual-line guest is compared only within the offere
   assert_eq(
     methods(
       activation_of(
-        Model(ion_tuple),
+        Model([ion_tuple]),
         dual_result(
           tuples=[ion_tuple],
           languages=[{ "id": "elm", "fileExtensions": [".elm", ".x"] }],
@@ -1032,7 +1228,7 @@ test "claims drift by line: a dual-line guest is compared only within the offere
   assert_eq(
     methods(
       activation_of(
-        Model(ion_tuple),
+        Model([ion_tuple]),
         dual_result(
           tuples=[ion_tuple],
           languages=[{ "id": "elm", "fileExtensions": [".x"] }],
@@ -1045,7 +1241,7 @@ test "claims drift by line: a dual-line guest is compared only within the offere
   assert_eq(
     methods(
       activation_of(
-        Model(json_generate_tuple),
+        Model([json_generate_tuple]),
         dual_result(tuples=[json_generate_tuple], targets=[], protocol=model),
       ),
     ),
@@ -1060,7 +1256,7 @@ test "claims drift by line: a dual-line guest is compared only within the offere
     }
     json => json
   }
-  assert_eq(methods(activation_of(Model(ion_tuple), other)), [
+  assert_eq(methods(activation_of(Model([ion_tuple]), other)), [
     "morphir.shutdown",
   ])
 }
@@ -1083,7 +1279,7 @@ test "claims drift: a frontend that drops multiDocument is drift on the compile 
   assert_eq(
     methods(
       activation_of(
-        Model(ion_tuple),
+        Model([ion_tuple]),
         dual_result(tuples=[ion_tuple], protocol="0.2.0-draft.1"),
         recorded~,
       ),
@@ -1093,7 +1289,7 @@ test "claims drift: a frontend that drops multiDocument is drift on the compile 
   // A generateModel session does not compile, so the flag does not count.
   assert_true(
     activation_of(
-      Model(json_generate_tuple),
+      Model([json_generate_tuple]),
       dual_result(tuples=[json_generate_tuple], protocol="0.2.0-draft.1"),
       recorded~,
     )
@@ -1110,7 +1306,7 @@ test "claims drift by line: an offer from a stale record fails before initialize
     V0_1_0Draft1,
     V4_0_0,
   )
-  let refused = try @worker.Offer::Model(stale).check(model_claims()) catch {
+  let refused = try @worker.Offer::Model([stale]).check(model_claims()) catch {
     Refusal(code~, ..) => Some(code)
   } noraise {
     _ => None
@@ -1119,7 +1315,7 @@ test "claims drift by line: an offer from a stale record fails before initialize
 }
 
 ///|
-test "offer selection prefers Ion, then JSON, whatever order the worker declares" {
+test "offer selection offers only the host's tuples, whatever the worker declares" {
   let json_model = @worker.ModelTuple::new(
     CompileModel,
     MorphirModel,
@@ -1134,16 +1330,48 @@ test "offer selection prefers Ion, then JSON, whatever order the worker declares
     V0_1_0Draft1,
     V4_0_0,
   )
-  let claims = @worker.Claims::from_describe(model_result([json_model, ion_ir]))
-  assert_eq(@worker.Offer::select(claims, CompileModel), Model(ion_ir))
-  assert_eq(
-    @worker.Offer::select(claims, CompileModel, profile=MorphirModel),
-    Model(json_model),
+  // The host supports Ion with morphir-model and JSON with morphir-ir.
+  assert_eq(@worker.ModelOperation::CompileModel.host_tuples(), [
+    ion_tuple, json_compile_tuple,
+  ])
+  let claims = @worker.Claims::from_describe(
+    model_result([json_model, json_compile_tuple, ion_ir]),
   )
   assert_eq(
-    @worker.Offer::select(claims, CompileModel, codec=MorphirJson),
-    Model(json_model),
+    @worker.Offer::select(claims, CompileModel),
+    Model([ion_tuple, json_compile_tuple]),
   )
+  assert_eq(
+    @worker.Offer::select(claims, CompileModel, profile=MorphirIr),
+    Model([json_compile_tuple]),
+  )
+  // A worker that claims only tuples that the host does not support is
+  // refused before any worker starts.
+  let other = @worker.Claims::from_describe(model_result([json_model, ion_ir]))
+  let refused = try @worker.Offer::select(other, CompileModel) catch {
+    Refusal(code~, ..) => Some(code)
+  } noraise {
+    _ => None
+  }
+  assert_eq(refused, Some(TupleUnavailable))
+}
+
+///|
+test "offer check: an empty model offer or one of two operations is refused" {
+  let refusal = (offer : @worker.Offer) => {
+    try offer.check(model_claims()) catch {
+      Refusal(code~, ..) => Some(code)
+    } noraise {
+      _ => None
+    }
+  }
+  assert_eq(refusal(Model([])), Some(TupleUnavailable))
+  assert_eq(
+    refusal(Model([ion_tuple, json_generate_tuple])),
+    Some(TupleUnavailable),
+  )
+  // An offer with one recorded tuple among others passes.
+  assert_eq(refusal(Model([ion_tuple, json_compile_tuple])), None)
 }
 
 ///|

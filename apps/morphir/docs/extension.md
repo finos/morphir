@@ -119,8 +119,17 @@ Consider `extension compile main.mbt --package acme/rules --output model`:
    names a descriptor, are compared with them.
 3. **Offer.** The protocol line comes from the claims, not from the pin. A
    frontend that claims `morphir.frontend.compileModel` compiles on MEP
-   `0.2.0-draft.1` with one model tuple; Ion is preferred, and
-   `--model-format json` selects the JSON tuple. A frontend that claims only
+   `0.2.0-draft.1`. The CLI offers every model tuple that it supports, in its
+   order of preference: `morphir-model` with `ion-binary` (the default), then
+   `morphir-ir` with `morphir-json`. The extension agrees on the offered tuples
+   that it supports, in the CLI's order, and the session uses the first agreed
+   tuple. Thus an extension that supports only JSON compiles with JSON, with no
+   error. `--model-format` requires one tuple, so the CLI then offers only that
+   tuple. Only an empty agreement is refused, with
+   `extension.tuple_unavailable`. An agreement that holds a tuple that the CLI
+   did not offer, or that does not keep the CLI's order, is refused with
+   `extension.agreement_mismatch`. Both refusals send no operation and exit
+   with status 2. A frontend that claims only
    `morphir.frontend.compile` compiles on MEP `0.1`. An operation that the
    extension does not claim is refused with `extension.capability_unavailable`
    and exit status 2.
@@ -160,7 +169,7 @@ tuple; plain Morphir IR JSON is sent to `morphir.backend.generate` on MEP `0.1`.
 | `<source>` | compile | A source file, or a directory snapshot of claimed source files |
 | `<model>` | generate | A model envelope, or plain Morphir IR JSON |
 | `--package NAME` | compile | The package name; required |
-| `--model-format ion\|json` | compile | The model tuple on the model line; Ion is the default. MEP `0.1` compiles return Morphir JSON and refuse `ion` |
+| `--model-format ion\|json` | compile | The one model tuple that the CLI offers on the model line. Without it, the CLI offers Ion, then JSON, and uses the first tuple that the extension agrees on. MEP `0.1` compiles return Morphir JSON and refuse `ion` |
 | `--frontend-profile ID` | compile | The frontend profile option on the model line |
 | `--ir-version V` | compile, generate | Compile on MEP `0.1`: one of the claimed frontend IR versions; required when the extension claims more than one. An exact claimed name comes first. A major-only name such as `4` selects the highest claimed version with that major (`4.1.0` before `4.0.0`, by number). A full name that is not claimed, such as `4.2.0` or `4.0.0` for a claim of `4`, is refused with `extension.capability_unavailable`. Generate: optional, a check of the model's IR version by the same rule: the model's version equals `V`, or `V` names only its major. On the model line, it checks the IR version of the tuple: `4` or `4.0.0` for `4.0.0` |
 | `--target ID` | generate | One of the claimed targets; required when the extension claims more than one |
@@ -169,7 +178,7 @@ tuple; plain Morphir IR JSON is sent to `morphir.backend.generate` on MEP `0.1`.
 | `--cancel-file PATH` | all | The command stops with exit status 130 when this file exists |
 
 Compile on the model line writes `model-envelope.json` and `model.ionb` or
-`model.json`. The CLI checks the payload's tuple, length and SHA-256 before it
+`model.json`, by the agreed tuple. The CLI checks the payload's tuple, length and SHA-256 before it
 publishes. Compile on MEP `0.1` sends the selected IR version as
 `options.irVersion` and writes the guest's IR as `morphir-ir.json`. Before it
 publishes, the `irVersion` that the result reports and the IR's
@@ -232,7 +241,7 @@ The exit status is the same in human mode and in JSON mode:
 | --- | --- | --- |
 | 0 | The operation succeeded and the output is published | |
 | 1 | The guest answered `success: false`, the session failed, or the output could not be published | `extension.operation_unsuccessful`, `extension.incomplete_session`, `extension.unexpected_response`, `extension.response_limit`, `extension.guest_error`, `extension.result_invalid`, `extension.output_failed`, `extension.budget_exhausted` (WASM workers) |
-| 2 | A pin, identity, claim, negotiation or local input check refused the work before an operation | `extension.pin_required`, `extension.pin_invalid`, `extension.pin_retired`, `extension.option_retired`, `extension.runtime_unavailable`, `extension.platform_mismatch`, `extension.digest_mismatch`, `extension.descriptor_invalid`, `extension.claims_mismatch`, `extension.capability_unavailable`, `extension.protocol_unavailable`, `extension.tuple_unavailable`, `extension.request_limit`, `extension.worker_runtime_mismatch` (WASM workers), `extension.ir_version_mismatch`, `extension.input_invalid`, `extension.output_exists` |
+| 2 | A pin, identity, claim, negotiation or local input check refused the work before an operation | `extension.pin_required`, `extension.pin_invalid`, `extension.pin_retired`, `extension.option_retired`, `extension.runtime_unavailable`, `extension.platform_mismatch`, `extension.digest_mismatch`, `extension.descriptor_invalid`, `extension.claims_mismatch`, `extension.capability_unavailable`, `extension.protocol_unavailable`, `extension.tuple_unavailable`, `extension.agreement_mismatch`, `extension.request_limit`, `extension.worker_runtime_mismatch` (WASM workers), `extension.ir_version_mismatch`, `extension.input_invalid`, `extension.output_exists` |
 | 124 | The `--timeout` deadline passed | `extension.deadline` |
 | 130 | SIGINT, the `--cancel-file` or a cancellation of the command's task stopped the command | `extension.cancelled` |
 | 143 | SIGTERM stopped the command | `extension.cancelled` |

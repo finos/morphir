@@ -201,7 +201,7 @@ pub impl ToJson for SessionReport with fn to_json(self) {
     fields["protocolVersion"] = Json::string(
       negotiated.offer.line().to_string(),
     )
-    if negotiated.offer is Model(tuple) {
+    if negotiated.tuple is Some(tuple) {
       fields["tuple"] = tuple.to_json()
     }
   }

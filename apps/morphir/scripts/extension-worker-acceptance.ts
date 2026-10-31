@@ -85,6 +85,8 @@ export function exerciseExtensionWorker(cli: CliInvocation, workspace: string, l
     assert.equal(compiled.state, 'succeeded');
     assert.equal(compiled.exitCode, 0);
     assert.equal(compiled.result!.protocolVersion, '0.2.0-draft.1');
+    // The CLI offers Ion, then JSON. The MoonBit guest supports both, so it
+    // agrees on both and the session uses Ion.
     assert.equal(compiled.result!.negotiated.tuple.codec, 'ion-binary');
     assert.equal(compiled.result!.negotiated.limits.maxDepth, 128);
     assert.equal(compiled.result!.lifecycle.shutdown, 'acknowledged');

@@ -96,13 +96,24 @@ A session must be closed: until then its worker runs. Use `with_session`
 unless you need the session outside one function. The function can close the
 session itself to read its report; a second close returns the same report.
 
-`Offer::select(claims, operation, profile?, codec?)` picks what activation
+`Offer::select(claims, operation, profile?, codec?)` makes what activation
 offers from the probed claims: MEP `0.1` for the legacy `compile` and
-`generate` methods, or MEP `0.2.0-draft.1` with exactly one model tuple for
-`compileModel` and `generateModel`. When several claimed tuples match, the
-host's preference decides, Ion and then JSON, not the order in which the
-worker declared them. It raises `Refusal` when the claims cannot serve the
-operation. The worker must return the offered tuple unchanged.
+`generate` methods, or MEP `0.2.0-draft.1` for `compileModel` and
+`generateModel`. On the model line the host offers every tuple that it
+supports for the operation (`ModelOperation::host_tuples`), in its order of
+preference: `morphir-model` with `ion-binary`, then `morphir-ir` with
+`morphir-json`. The first tuple is the default; the order is the only signal
+for it. A profile or codec is a requirement, for example `--model-format
+json`: the offer then holds only the matching tuple. `select` raises `Refusal`
+when the claims cannot serve the operation or claim none of the tuples that it
+would offer.
+
+The worker returns the offered tuples that it supports, in the host's order,
+and the session uses the first one (the `tuple` of `Negotiated`). A worker that does
+not support the default is a valid partner. An empty agreement is
+`extension.tuple_unavailable`. An agreement with a tuple that the host did not
+offer, or in another order, is `extension.agreement_mismatch`. Both end the
+session with `shutdown` and `exit` before any operation.
 
 Activation compares the claims only within the offered protocol line. The
 extension ID and version always count. On MEP `0.1` the legacy operations,
@@ -110,8 +121,8 @@ the languages with their file extensions, the frontend flags, the targets and
 the IR versions count. On MEP `0.2.0-draft.1` the languages and the frontend
 flags count for a `compileModel` tuple and the targets for a `generateModel`
 tuple. A recorded entry that is missing
-or changed is a drift. An offer whose tuple is not in the recorded claims is
-`extension.claims_mismatch` before any worker starts. A claim set whose
+or changed is a drift. An offer none of whose tuples is in the recorded claims
+is `extension.claims_mismatch` before any worker starts. A claim set whose
 `critical` member names a path that the host does not read is refused.
 
 `claims.frontend_flags` holds the handshake's frontend flags as a
@@ -255,7 +266,8 @@ generate call made while another call or a close is in flight also raises
 the call to finish, then closes; it never sends `shutdown` during the call.
 
 Refusal codes: `extension.request_limit`, `extension.protocol_unavailable`,
-`extension.tuple_unavailable`, `extension.claims_mismatch`,
+`extension.tuple_unavailable`, `extension.agreement_mismatch`,
+`extension.claims_mismatch`,
 `extension.capability_unavailable`, `extension.platform_mismatch`,
 `extension.runtime_unavailable`, `extension.digest_mismatch`,
 `extension.abi_unsupported`, `extension.abi_mismatch`,

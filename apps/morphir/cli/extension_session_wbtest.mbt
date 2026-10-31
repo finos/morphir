@@ -10,7 +10,8 @@ priv struct FakeGuest {
 
 ///|
 /// Starts one in-memory worker for each launch, with the scripted guest,
-/// and records every method that a worker received.
+/// and records every method that a worker received, the operation calls and
+/// the model transport offers of `initialize`.
 priv struct ScriptedLauncher {
   group : @async.TaskGroup[Unit]
   guest : FakeGuest
@@ -18,6 +19,7 @@ priv struct ScriptedLauncher {
   calls : Array[Json]
   /// The bounds that the channel states, as a WASM host's channel does.
   bounds : @worker.EnforcedBounds?
+  offers : Array[Json]
 }
 
 ///|
@@ -36,8 +38,20 @@ fn fake_initialize(describe : Json, params : Json) -> Json {
     let capabilities = capabilities.copy()
     match (offered.get("modelTransport"), capabilities.get("modelTransport")) {
       (Some(Object(offer)), Some(Object(transport))) => {
+        // Like a real guest: the offered tuples that it supports, in the
+        // host's order.
+        let supported = match transport.get("tuples") {
+          Some(Array(tuples)) => tuples
+          _ => []
+        }
+        let offered = match offer.get("tuples") {
+          Some(Array(tuples)) => tuples
+          _ => []
+        }
         let transport = transport.copy()
-        transport["tuples"] = offer.get("tuples").unwrap_or(Json::array([]))
+        transport["tuples"] = Json::array(
+          offered.filter(tuple => supported.contains(tuple)),
+        )
         capabilities["modelTransport"] = Json::object(transport)
       }
       _ => capabilities.remove("modelTransport")
@@ -53,6 +67,7 @@ async fn fake_serve(
   guest : FakeGuest,
   methods : Array[String],
   calls : Array[Json],
+  offers : Array[Json],
 ) -> Unit {
   worker.write_stderr(@utf8.encode(guest.stderr))
   while true {
@@ -69,7 +84,12 @@ async fn fake_serve(
     guard fields.get("id") is Some(id) else { continue }
     let answer = match name {
       "morphir.extension.describe" => Some(Ok(guest.describe))
-      "morphir.initialize" => Some(Ok(fake_initialize(guest.describe, params)))
+      "morphir.initialize" => {
+        if params is Object({ "modelTransport": offer, .. }) {
+          offers.push(offer)
+        }
+        Some(Ok(fake_initialize(guest.describe, params)))
+      }
       "morphir.shutdown" => Some(guest.shutdown)
       _ => {
         calls.push(params)
@@ -98,7 +118,7 @@ async fn fake_serve(
 impl @worker.Launcher for ScriptedLauncher with fn launch(self, _spec, _limits) {
   let (channel, worker) = @worker.MemoryChannel::pair(bounds?=self.bounds)
   self.group.spawn_bg(() => {
-    fake_serve(worker, self.guest, self.methods, self.calls)
+    fake_serve(worker, self.guest, self.methods, self.calls, self.offers)
   })
   channel
 }
@@ -110,6 +130,7 @@ priv struct FakeRun {
   json : Json
   methods : Array[String]
   calls : Array[Json]
+  offers : Array[Json]
 }
 
 ///|
@@ -128,6 +149,7 @@ async fn fake_run(
       methods: [],
       calls: [],
       bounds,
+      offers: [],
     }
     let hosting = if hosted {
       WorkerHosting::new(
@@ -143,6 +165,7 @@ async fn fake_run(
       json: report.to_json(),
       methods: launcher.methods,
       calls: launcher.calls,
+      offers: launcher.offers,
     })
   })
   guard finished.val is Some(run) else { abort("the run did not finish") }
@@ -165,6 +188,7 @@ async fn fake_command(
       methods: [],
       calls: [],
       bounds: None,
+      offers: [],
     }
     let context = {
       ..command_context(mode),
@@ -412,6 +436,128 @@ async test "compile on the model line publishes the model and reports the sessio
       },
     },
   ])
+}
+
+///|
+/// A compile result with a `morphir-ir` model in Morphir JSON.
+fn fake_json_model_result() -> Json {
+  let bytes = @utf8.encode("{\"formatVersion\":4}")
+  {
+    "success": true,
+    "diagnostics": [],
+    "model": {
+      "envelopeVersion": "0.1.0-draft.1",
+      "irVersion": "4.0.0",
+      "profile": "morphir-ir",
+      "modelId": "fixture",
+      "revision": "1",
+      "payload": {
+        "codec": "morphir-json",
+        "decodedByteLength": bytes.length(),
+        "sha256": extension_sha256(bytes),
+        "content": @base64.encode(bytes[:]),
+      },
+    },
+  }
+}
+
+///|
+/// A model frontend that supports only the compile tuples with `codecs`.
+fn fake_model_describe(codecs : Array[String]) -> Json {
+  extension_test_claims(
+    frontend={
+      "languages": [{ "id": "moonbit", "fileExtensions": [".mbt"] }],
+      "irVersions": ["4.0.0"],
+      "compile": false,
+    },
+    tuples=codecs.map(codec => {
+      extension_test_tuple("morphir.frontend.compileModel", codec)
+    }),
+  )
+}
+
+///|
+fn fake_compile_args(
+  workspace : FakeWorkspace,
+  output : String,
+) -> Array[String] {
+  [
+    "extension",
+    "compile",
+    workspace.root + "/main.mbt",
+    "--package",
+    "acme/ready",
+    "--output",
+    workspace.root + "/" + output,
+    "--extension-pin",
+    workspace.pin,
+    "--json",
+  ]
+}
+
+///|
+async test "model tuple negotiation: the CLI offers Ion, then JSON, and a JSON-only guest compiles with JSON" {
+  let workspace = fake_workspace()
+  let run = fake_run(
+    fake_compile_args(workspace, "json-model"),
+    fake_guest(describe=fake_model_describe(["morphir-json"]), reply=(_, _) => {
+      Some(Ok(fake_json_model_result()))
+    }),
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  // The host offers both of its tuples, in its order.
+  assert_eq(run.offers.length(), 1)
+  assert_eq(fake_field(run.offers[0], ["tuples"]), [
+    extension_test_tuple("morphir.frontend.compileModel", "ion-binary"),
+    extension_test_tuple("morphir.frontend.compileModel", "morphir-json"),
+  ])
+  // The session uses the agreed JSON tuple, and no error is reported.
+  assert_eq(
+    fake_field(run.calls[0], ["output"]),
+    extension_test_tuple("morphir.frontend.compileModel", "morphir-json"),
+  )
+  let result = fake_field(run.json, ["result"])
+  assert_eq(
+    fake_field(result, ["negotiated", "tuple"]),
+    extension_test_tuple("morphir.frontend.compileModel", "morphir-json"),
+  )
+  guard fake_field(result, ["output", "files"]) is Array(files) else {
+    fail("no published files")
+  }
+  assert_eq(files.map(file => fake_field(file, ["path"])), [
+    "model-envelope.json", "model.json",
+  ])
+  // A guest that supports both tuples agrees on both and uses Ion.
+  let run = fake_run(fake_compile_args(workspace, "ion-model"), fake_guest())
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  assert_eq(
+    fake_field(run.json, ["result", "negotiated", "tuple", "codec"]),
+    "ion-binary",
+  )
+}
+
+///|
+async test "required model tuple: --model-format json offers only JSON, which an Ion-only guest refuses" {
+  let workspace = fake_workspace()
+  let run = fake_run(
+    fake_compile_args(workspace, "required") + ["--model-format", "json"],
+    fake_guest(describe=fake_model_describe(["ion-binary", "morphir-json"]), reply=(
+      _,
+      _,
+    ) => Some(Ok(fake_json_model_result()))),
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  assert_eq(fake_field(run.offers[0], ["tuples"]), [
+    extension_test_tuple("morphir.frontend.compileModel", "morphir-json"),
+  ])
+  let run = fake_run(
+    fake_compile_args(workspace, "refused") + ["--model-format", "json"],
+    fake_guest(describe=fake_model_describe(["ion-binary"])),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.tuple_unavailable")
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+  assert_false(fake_exists(workspace.root + "/refused"))
 }
 
 ///|
@@ -1040,6 +1186,7 @@ async test "an async cancellation of the command exits 130, not host_failed" {
       methods,
       calls: [],
       bounds: None,
+      offers: [],
     }
     let hosting = WorkerHosting::new(
       Native(@worker.Machine::of(X86_64UnknownLinuxGnu)),

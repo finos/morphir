@@ -65,7 +65,9 @@ async fn describe_compile_generate(
     profile=MorphirModel,
     codec=IonBinary,
   )
-  guard compile_offer is Model(compile_tuple) else { fail("not a model offer") }
+  guard compile_offer is Model([compile_tuple]) else {
+    fail("not a model offer")
+  }
   let compiled = host.with_session(spec, expected=claims, offer=compile_offer, session => {
     session.compile(@worker.CompileRequest::new(compile_params(compile_tuple)))
   })
@@ -81,7 +83,7 @@ async fn describe_compile_generate(
     profile=MorphirModel,
     codec=IonBinary,
   )
-  guard generate_offer is Model(generate_tuple) else {
+  guard generate_offer is Model([generate_tuple]) else {
     fail("not a model offer")
   }
   let generated = host.with_session(

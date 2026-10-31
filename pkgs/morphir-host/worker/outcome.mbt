@@ -8,6 +8,7 @@ pub(all) enum FailureCode {
   RequestLimit
   ProtocolUnavailable
   TupleUnavailable
+  AgreementMismatch
   DescribeFailed
   ClaimsMismatch
   CapabilityUnavailable
@@ -41,6 +42,7 @@ pub impl Show for FailureCode with fn output(self, logger) {
       RequestLimit => "extension.request_limit"
       ProtocolUnavailable => "extension.protocol_unavailable"
       TupleUnavailable => "extension.tuple_unavailable"
+      AgreementMismatch => "extension.agreement_mismatch"
       DescribeFailed => "extension.describe_failed"
       ClaimsMismatch => "extension.claims_mismatch"
       CapabilityUnavailable => "extension.capability_unavailable"
@@ -68,6 +70,7 @@ pub(all) enum RefusalCode {
   RequestLimit
   ProtocolUnavailable
   TupleUnavailable
+  AgreementMismatch
   ClaimsMismatch
   CapabilityUnavailable
   PlatformMismatch
@@ -91,6 +94,7 @@ pub fn RefusalCode::code(self : RefusalCode) -> FailureCode {
     RequestLimit => RequestLimit
     ProtocolUnavailable => ProtocolUnavailable
     TupleUnavailable => TupleUnavailable
+    AgreementMismatch => AgreementMismatch
     ClaimsMismatch => ClaimsMismatch
     CapabilityUnavailable => CapabilityUnavailable
     PlatformMismatch => PlatformMismatch

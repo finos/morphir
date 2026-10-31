@@ -436,7 +436,7 @@ async test "same guest, two worker kinds: the host sends the same messages and r
       let session = host.activate(
         spec,
         expected=model_claims(),
-        offer=Model(ion_tuple),
+        offer=Model([ion_tuple]),
       )
       let outcome = session.compile(compile_request())
       ignore(session.close())

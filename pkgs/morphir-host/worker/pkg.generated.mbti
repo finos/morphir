@@ -351,6 +351,7 @@ pub(all) enum FailureCode {
   RequestLimit
   ProtocolUnavailable
   TupleUnavailable
+  AgreementMismatch
   DescribeFailed
   ClaimsMismatch
   CapabilityUnavailable
@@ -656,6 +657,7 @@ pub(all) enum ModelOperation {
 } derive(Compare, Eq, @debug.Debug)
 pub fn ModelOperation::compare(Self, Self) -> Int32
 pub fn ModelOperation::equal(Self, Self) -> Bool
+pub fn ModelOperation::host_tuples(Self) -> Array[ModelTuple]
 pub fn ModelOperation::not_equal(Self, Self) -> Bool
 pub fn ModelOperation::op_ge(Self, Self) -> Bool
 pub fn ModelOperation::op_gt(Self, Self) -> Bool
@@ -705,6 +707,7 @@ pub impl ToJson for ModelTuple
 
 pub struct Negotiated {
   offer : Offer
+  tuple : ModelTuple?
   limits : Limits
 } derive(Eq, @debug.Debug)
 pub fn Negotiated::equal(Self, Self) -> Bool
@@ -713,7 +716,7 @@ pub fn Negotiated::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Offer {
   Legacy
-  Model(ModelTuple)
+  Model(Array[ModelTuple])
 } derive(Eq, @debug.Debug)
 pub fn Offer::check(Self, Claims) -> Unit raise Refusal
 pub fn Offer::equal(Self, Self) -> Bool
@@ -835,6 +838,7 @@ pub(all) enum RefusalCode {
   RequestLimit
   ProtocolUnavailable
   TupleUnavailable
+  AgreementMismatch
   ClaimsMismatch
   CapabilityUnavailable
   PlatformMismatch

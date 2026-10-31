@@ -408,14 +408,25 @@ test "an operation that the extension does not claim is refused before any call"
       ],
     ),
   )
-  guard extension_compile_offer(model, None) is Model(tuple) else {
+  // Without --model-format the host offers both of its tuples, Ion first,
+  // though the extension declares JSON first.
+  guard extension_compile_offer(model, None) is Model(tuples) else {
     fail("no model offer")
   }
-  assert_eq(tuple.codec, IonBinary)
-  guard extension_compile_offer(model, Some(MorphirJson)) is Model(tuple) else {
+  assert_eq(tuples.map(tuple => tuple.codec), [IonBinary, MorphirJson])
+  // --model-format requires one tuple, so the host offers only that tuple.
+  guard extension_compile_offer(model, Some(MorphirJson)) is Model(tuples) else {
     fail("no model offer")
   }
-  assert_eq(tuple.codec, MorphirJson)
+  assert_eq(tuples.map(tuple => (tuple.profile, tuple.codec)), [
+    (MorphirIr, MorphirJson),
+  ])
+  guard extension_compile_offer(model, Some(IonBinary)) is Model(tuples) else {
+    fail("no model offer")
+  }
+  assert_eq(tuples.map(tuple => (tuple.profile, tuple.codec)), [
+    (MorphirModel, IonBinary),
+  ])
 }
 
 ///|

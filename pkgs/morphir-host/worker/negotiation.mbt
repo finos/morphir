@@ -12,10 +12,12 @@ pub extend Refusal with @debug.Debug::{to_repr}
 
 ///|
 /// What the host offers in `initialize`: MEP 0.1 for the legacy compile and
-/// generate methods, or MEP 0.2.0-draft.1 with exactly one model tuple.
+/// generate methods, or MEP 0.2.0-draft.1 with the model tuples of one
+/// operation in the host's order of preference (SES-3). The first tuple is
+/// the host's default; the order is the only signal for it.
 pub(all) enum Offer {
   Legacy
-  Model(ModelTuple)
+  Model(Array[ModelTuple])
 } derive(Eq, Debug)
 
 ///|
@@ -37,21 +39,38 @@ pub fn Offer::line(self : Offer) -> ProtocolLine {
 pub fn Offer::operations(self : Offer) -> Array[Operation] {
   match self {
     Legacy => [Compile, Generate]
-    Model(tuple) => [tuple.operation.operation()]
+    Model(tuples) => {
+      let operations : Array[Operation] = []
+      for tuple in tuples {
+        let operation = tuple.operation.operation()
+        if !operations.contains(operation) {
+          operations.push(operation)
+        }
+      }
+      operations
+    }
   }
 }
 
 ///|
-/// The host's codec preference, best first: Ion, then JSON.
-let codec_preference : Array[ModelCodec] = [IonBinary, MorphirJson]
+/// The model tuples that the host supports for the operation, in its order
+/// of preference: `morphir-model` with `ion-binary`, then `morphir-ir` with
+/// `morphir-json`, both with envelope `0.1.0-draft.1` and IR `4.0.0`.
+pub fn ModelOperation::host_tuples(self : ModelOperation) -> Array[ModelTuple] {
+  [
+    ModelTuple::new(self, MorphirModel, IonBinary, V0_1_0Draft1, V4_0_0),
+    ModelTuple::new(self, MorphirIr, MorphirJson, V0_1_0Draft1, V4_0_0),
+  ]
+}
 
 ///|
-/// Picks the offer for an operation from an extension's claims, usually the
-/// claims of a describe probe. A model operation takes a claimed tuple that
-/// matches the operation and the optional profile and codec. When several
-/// match, the host's preference decides (Ion, then JSON), not the order in
-/// which the worker declared them. It raises `Refusal` when the claims cannot
-/// serve the operation.
+/// Makes the offer for an operation from an extension's claims, usually the
+/// claims of a describe probe. A model operation offers every tuple that the
+/// host supports for it, in the host's order, whatever order the worker
+/// declared. An optional profile or codec is a requirement: the offer then
+/// holds only the matching tuples, for example only the JSON tuple for
+/// `--model-format json`. It raises `Refusal` when the claims cannot serve
+/// the operation, or claim none of the tuples that it would offer.
 pub fn Offer::select(
   claims : Claims,
   operation : Operation,
@@ -71,20 +90,19 @@ pub fn Offer::select(
     )
   }
   guard operation.model() is Some(model) else { return Legacy }
-  let matching = claims.model_tuples.filter(tuple => {
-    tuple.operation == model &&
-    (profile is None || profile == Some(tuple.profile)) &&
-    (codec is None || codec == Some(tuple.codec))
-  })
-  for preferred in codec_preference {
-    if matching.search_by(tuple => tuple.codec == preferred) is Some(index) {
-      return Model(matching[index])
-    }
+  let offered = model
+    .host_tuples()
+    .filter(tuple => {
+      (profile is None || profile == Some(tuple.profile)) &&
+      (codec is None || codec == Some(tuple.codec))
+    })
+  guard offered.iter().any(tuple => claims.model_tuples.contains(tuple)) else {
+    raise Refusal(
+      code=TupleUnavailable,
+      message="\{claims.extension_id} claims no tuple that the host offers for \{operation}",
+    )
   }
-  raise Refusal(
-    code=TupleUnavailable,
-    message="\{claims.extension_id} claims no matching tuple for \{operation}",
-  )
+  Model(offered)
 }
 
 ///|
@@ -237,10 +255,12 @@ pub fn Limits::for_session(
 }
 
 ///|
-/// What activation agreed with a worker: the offer it accepted and the
-/// effective limits.
+/// What activation agreed with a worker: the host's offer, the tuple that the
+/// session uses on the model line (the first tuple that the worker agreed
+/// on) and the effective limits.
 pub struct Negotiated {
   offer : Offer
+  tuple : ModelTuple?
   limits : Limits
 } derive(Eq, Debug)
 
@@ -305,7 +325,7 @@ fn Call::make(
   // The model method is the longer name, so this bound holds on either line.
   let size = framed_size(
     call
-    .message(first_operation_id, kind.operation(Model(placeholder_tuple)))
+    .message(first_operation_id, kind.operation(Model([placeholder_tuple])))
     .size(),
   )
   let limit = Limits::host().request_bytes
