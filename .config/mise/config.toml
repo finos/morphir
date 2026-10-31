@@ -31,12 +31,14 @@ bin_path = "bin"
 # The archive alone has no core or moonx. Complete Unix installs the same way
 # locally and in CI, using the upstream installer and the exact mise version.
 # The upstream Unix installer supports Linux x64/ARM64 and Apple Silicon.
+# The "-" markers remove the newlines around each command. Windows runs the hook
+# with `cmd /s /c`, which stops at the first newline: a leading newline runs nothing.
 postinstall = """
-{% if os() != "windows" %}
+{%- if os() != "windows" -%}
 bash -c 'set -euo pipefail; export PATH="$MISE_TOOL_INSTALL_PATH/bin:$PATH"; curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME="$MISE_TOOL_INSTALL_PATH" bash -s -- "$MISE_TOOL_VERSION"'
-{% else %}
+{%- else -%}
 pwsh -NoProfile -File "{{config_root}}/tools/bootstrap-moonbit-windows.ps1"
-{% endif %}
+{%- endif -%}
 """
 
 [tools."http:moonbit".platforms]
@@ -44,6 +46,8 @@ linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/mo
 linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-linux-aarch64.tar.gz" }
 macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-darwin-aarch64.tar.gz" }
 windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-windows-x86_64.zip", format = "zip" }
+# No Windows arm64 build is published; Windows on Arm runs the x64 build under emulation.
+windows-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-windows-x86_64.zip", format = "zip" }
 
 [env]
 # Environment variables for the project
