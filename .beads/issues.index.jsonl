@@ -147,7 +147,7 @@
 {"id":"morphir-6ps","title":"Remove GoReleaser configuration","status":"closed","priority":1}
 {"id":"morphir-6uvn","title":"Model the v4 naming codec in Morphir","status":"open","priority":2}
 {"id":"morphir-6y9z","title":"mise tasks using a bash shebang fail on Windows without POSIX bash","status":"open","priority":3}
-{"id":"morphir-70af","title":"build: upgrade MoonBit to 0.10.18+6c83a7f62","status":"in_progress","priority":2}
+{"id":"morphir-70af","title":"build: upgrade MoonBit to 0.10.18+6c83a7f62","status":"closed","priority":2}
 {"id":"morphir-72fv","title":"Control the CLI banner through flag, environment and configuration","status":"closed","priority":2}
 {"id":"morphir-72u","title":"Sync GitHub Actions workflows with just recipes","status":"closed","priority":2}
 {"id":"morphir-764","title":"Create reusable TUI framework for interactive morphir commands","status":"closed","priority":1}
@@ -1386,13 +1386,16 @@
 {"id":"morphir-ukvn.5.64.36.12","title":"Run native CLI acceptance with the Extism npm check on the nightly macos-15 lane","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.36.13","title":"Adopt browser Web Worker extension hosts in the Workbench","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.36.14","title":"Request a browser worker-module asset of the Elm extension from finos/morphir-elm","status":"open","priority":3}
+{"id":"morphir-ukvn.5.64.36.15","title":"Add a generic guest profile to the shared MEP conformance kit","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.64.36.16","title":"morphir-elm MEP compile must accept an absent package.exposedModules","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.17","title":"Move the shared MoonBit MEP kit to the moonbit-model-stable-v1 profile","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.5.64.36.2","title":"Native process workers","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.3","title":"Node process workers","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.4","title":"MoonBit Extism host in moonrockz/extism","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.5","title":"WASM workers","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.6","title":"Extension commands on the worker host","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.64.36.7","title":"Qualify the published extensions on the worker host","status":"open","priority":2}
-{"id":"morphir-ukvn.5.64.36.8","title":"Browser Web Worker feasibility","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.64.36.7","title":"Qualify the published extensions on the worker host","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.64.36.8","title":"Browser Web Worker feasibility","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.36.9","title":"Retire the helper routes","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.37","title":"Run core-Wasm guests from any language: document trees and descriptor-pinned modules","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.37.1","title":"Claims and probe session on the core-Wasm route","status":"open","priority":2}
@@ -1799,6 +1802,7 @@
 {"id":"morphir-z7f","title":"Update documentation references","status":"closed","priority":3}
 {"id":"morphir-zdb","title":"Implement decoration value file loader/saver","status":"closed","priority":2}
 {"id":"morphir-zp32","title":"Bring the published v4 books fixture onto canonical names","status":"open","priority":2}
+{"id":"morphir-zva9","title":"finos/morphir-moonbit: Windows mise postinstall runs nothing (leading newline under cmd /s /c)","status":"open","priority":2}
 {"id":"morphir-zvf","title":"Add WIT bindings module with parser and package support","status":"closed","priority":2}
 {"id":"morphir-zwq4","title":"Make morphir-ui MORPHIR_HOME config test portable on Windows","status":"closed","priority":2}
 {"id":"morphir-zz6f","title":"morphir doctor: diagnose long path support and path budget","status":"open","priority":2}
