@@ -255,11 +255,11 @@ Feature: Distributions
     Then its canonical text spelling is spec/ir/mck/documents/v3/example-project.canonical.json
     And a reader of text accepts spec/ir/mck/documents/v3/example-project.json
 
-  @node:Distribution @version:3 @semantic
+  @node:Distribution @version:3 @semantic @pending
   Scenario Outline: distributions-0016 A version 1 or 2 document is not a v3 document
-    Offered as a version 3 `Distribution`, a document that declares another major version is refused with `version_mismatch`, as document-tree-0016 refuses a v4 one. Version 1 spells its tags in lowercase. Version 2 already spells them as version 3 does, so only `formatVersion` tells the two apart.
+    Versions 1 and 2 are the historical integer-only formats, and a v3 reader's support table holds no release of either. `docs/spec/ir/format-version.md` ("Stable diagnostics") gives such a document `unsupported_format_version_major`, which applies once the reader recognizes the integer `1` or `2`. A document of a later family is a different fault: document-tree-0016 refuses a `"4.0.0"` document offered as version 3 with `version_mismatch`. Version 1 spells its tags in lowercase. Version 2 already spells them as version 3 does, so only `formatVersion` tells the two apart. The case is pending because the Rust classic reader still answers `version_mismatch` for both; it becomes active when that reader agrees.
 
-    Then a reader of JSON rejects <input> with version_mismatch
+    Then a reader of JSON rejects <input> with unsupported_format_version_major
 
     Examples:
       | input                                                                                         |

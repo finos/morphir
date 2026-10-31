@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The IR kit holds every binding's v3 `morphir-ir.json` reader to one contract: 35 new
-  `@version:3` cases, two of them pending, cover names, literals, types, patterns, values, typed attributes,
+  `@version:3` cases, three of them pending, cover names, literals, types, patterns, values, typed attributes,
   definitions, specifications and whole `Library` documents, and name the diagnostics for
-  malformed JSON, version 1 and 2 documents, unknown tags and wrong shapes. Three unedited
+  malformed JSON, unknown tags and wrong shapes. Three unedited
   morphir-elm documents under `spec/ir/mck/documents/v3/` must read as a `Library`.
 
 ### Changed
