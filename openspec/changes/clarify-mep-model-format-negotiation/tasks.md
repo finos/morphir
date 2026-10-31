@@ -1,6 +1,6 @@
 # Tasks
 
-## 1. Spec text (bead morphir-1q2c, finos/morphir#1115 and its follow-up pull request)
+## 1. Spec text (bead morphir-1q2c, finos/morphir#1115 and finos/morphir#1117)
 
 - [x] 1.1 State offer order, the default tuple, the required single-tuple offer and the empty-agreement failure in `spec/mep/model-transport.md` ("Offer order and the default tuple"); verified by `mise run spec:mep-check` and `mise run mck:check`.
 - [x] 1.2 Make the Gleam contract comments, the generated `spec/mep/generated/mep.ir.json`, the Smithy comments, the `spec/mep/README.md` wire-rule table and `docs/design/draft/extensions/protocol.md` agree; verified by `mise run spec:mep-check` and `mise run spec:mep-smithy-check`.

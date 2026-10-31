@@ -51,8 +51,8 @@ None. `openspec/specs/` has no capability for MEP model transport.
 - Bead `morphir-1q2c` owns this change and the spec text.
 - Bead `morphir-hv6m` owns the MCK cases and runner support (related to
   `morphir-1q2c`).
-- Pull request finos/morphir#1115 and its follow-up pull request for the
-  host-conversion decisions of 2026-10-31.
+- Pull requests finos/morphir#1115 and finos/morphir#1117 (the
+  host-conversion decisions of 2026-10-31).
 - Evidence: finos/morphir-gleam#31. The same rule is written for the MoonBit CLI
   in finos/morphir-moonbit#281.
 
