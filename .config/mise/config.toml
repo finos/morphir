@@ -37,12 +37,14 @@ bin_path = "bin"
 depends = ["bun"]
 # The compiler archive alone omits core and moonx. Complete the installation
 # inside mise's tool directory, using the exact selected version.
+# The "-" markers remove the newlines around each command. Windows runs the hook
+# with `cmd /s /c`, which stops at the first newline: a leading newline runs nothing.
 postinstall = """
-{% if os() != "windows" %}
+{%- if os() != "windows" -%}
 bash -c 'set -euo pipefail; export PATH="$MISE_TOOL_INSTALL_PATH/bin:$PATH"; curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME="$MISE_TOOL_INSTALL_PATH" bash -s -- "$MISE_TOOL_VERSION"'
-{% else %}
+{%- else -%}
 bun "{{config_root}}/tools/bootstrap-moonbit-windows.ts" --core-sha256 af149c0e8bf9ad9144fcec9e41aa2e34005c0043b5d5d8ff96be11ddef3bfb58
-{% endif %}
+{%- endif -%}
 """
 
 [tools."http:moonbit".platforms]
