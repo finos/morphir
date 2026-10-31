@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clarify-mep-model-format-negotiation: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>clarify-mep-model-format-negotiation: design</h1>
+<p class="meta">OpenSpec change | 2026-10-31 | spec text done in finos/morphir#1115; MCK checks in bead morphir-hv6m</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#flow">Negotiation and dispatch flow</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See <a href="proposal.md">proposal.md</a> for the reason for this change. The
+contract is in <code>spec/mep/model-transport.md</code> (MEP
+<code>0.2.0-draft.1</code>). A tuple has five members: <code>operation</code>,
+<code>profile</code>, <code>codec</code>, <code>envelopeVersion</code> and
+<code>irVersion</code>. Peers compare all five exactly. The host sends its offer
+in <code>InitializeParams.modelTransport</code>, and the extension returns its
+session support in <code>ExtensionCapabilities.modelTransport</code>. Both are
+ordered lists, but the draft did not give the order a meaning.</p>
+<p>Constraints: the draft is shipped by several SDKs, so the change must add no
+wire member and keep the draft version. The Rust SDK already selects the
+intersection in host order (<code>NegotiatedModelTransport::select</code>). The
+JSON profile cannot carry rich Ion content without loss, and the spec already
+refuses a lossy projection with <code>data.lossy_conversion</code>.</p>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> one rule that every host and extension can apply to
+find the tuple for each operation, with exactly one failure outcome for
+negotiation; a defined host behavior when a model for generation is not in an
+agreed tuple.</p>
+<p><strong>Non-goals:</strong> a new wire member or draft version; host
+conversion for <code>compileModel</code> dependencies; a universal conversion
+algorithm or a lossy export policy; changes in finos/morphir-rust,
+finos/morphir-moonbit or finos/morphir-gleam (they follow in their own
+repositories); the MCK cases (bead <code>morphir-hv6m</code>).</p>
+
+<h2 id="flow">Negotiation and dispatch flow</h2>
+<svg viewBox="0 0 760 360" role="img" aria-labelledby="flow-title" xmlns="http://www.w3.org/2000/svg">
+<title id="flow-title">Host offer, extension selection, host use of the first agreed tuple, and host conversion for generation</title>
+<style>
+.b{fill:none;stroke:currentColor;stroke-width:1.5}
+.t{font:13px system-ui,sans-serif;fill:currentColor}
+.a{stroke:currentColor;stroke-width:1.5;marker-end:url(#arr)}
+</style>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+<rect class="b" x="10" y="10" width="220" height="70" rx="6"/>
+<text class="t" x="20" y="35">Host offer, preference order</text>
+<text class="t" x="20" y="55">first tuple per operation</text>
+<text class="t" x="20" y="72">= default; required = only tuple</text>
+<rect class="b" x="270" y="10" width="220" height="70" rx="6"/>
+<text class="t" x="280" y="35">Extension selects</text>
+<text class="t" x="280" y="55">intersection with its support,</text>
+<text class="t" x="280" y="72">in host order</text>
+<rect class="b" x="530" y="10" width="220" height="70" rx="6"/>
+<text class="t" x="540" y="35">Agreement for operation</text>
+<text class="t" x="540" y="55">empty: extension.tuple_unavailable</text>
+<text class="t" x="540" y="72">else: use first agreed tuple</text>
+<line class="a" x1="230" y1="45" x2="268" y2="45"/>
+<line class="a" x1="490" y1="45" x2="528" y2="45"/>
+<rect class="b" x="270" y="140" width="220" height="60" rx="6"/>
+<text class="t" x="280" y="165">generateModel: is the model</text>
+<text class="t" x="280" y="185">in an agreed tuple?</text>
+<line class="a" x1="640" y1="80" x2="490" y2="150"/>
+<rect class="b" x="10" y="260" width="220" height="60" rx="6"/>
+<text class="t" x="20" y="285">yes: send the model</text>
+<text class="t" x="20" y="305">as it is</text>
+<rect class="b" x="270" y="260" width="220" height="80" rx="6"/>
+<text class="t" x="280" y="285">no, host can convert:</text>
+<text class="t" x="280" y="305">send converted model, new</text>
+<text class="t" x="280" y="325">digest and revision, no old evidence</text>
+<rect class="b" x="530" y="260" width="220" height="80" rx="6"/>
+<text class="t" x="540" y="285">no, conversion is lossy:</text>
+<text class="t" x="540" y="305">lossy-conversion error</text>
+<text class="t" x="540" y="325">no conversion: tuple_unavailable</text>
+<line class="a" x1="300" y1="200" x2="150" y2="258"/>
+<line class="a" x1="380" y1="200" x2="380" y2="258"/>
+<line class="a" x1="460" y1="200" x2="620" y2="258"/>
+</svg>
+
+<pre><code>host offer       [compileModel/ion-binary, compileModel/morphir-json]
+extension        [compileModel/morphir-json]
+session support  [compileModel/morphir-json]   -&gt; use morphir-json
+
+host offer       [compileModel/ion-binary]      (host requires Ion)
+extension        [compileModel/morphir-json]
+session support  []                             -&gt; extension.tuple_unavailable</code></pre>
+
+<h2 id="decisions">Decisions</h2>
+<p>Damian Reeves decided NEG-1 to NEG-4 on 2026-10-30 and CONV-1 to CONV-3 on
+2026-10-31.</p>
+
+<h3 id="neg-1">NEG-1. Offer order expresses the default</h3>
+<p>The host lists every tuple it supports for an operation in preference order,
+and the first tuple is the default. <strong>Alternative rejected:</strong>
+explicit wire members, for example a <code>default</code> tuple or a
+<code>preferred</code> rank on <code>ModelTransportSupport</code>, and a
+<code>required</code> flag. They would need a new draft version and new SDK
+types in every language, and they can disagree with the list order. Order is
+already on the wire and the Rust SDK already keeps it.</p>
+
+<h3 id="neg-2">NEG-2. The extension keeps host order</h3>
+<p>The extension returns the intersection in host order, and the host uses the
+first agreed tuple. <strong>Alternative rejected:</strong> the extension orders
+its selection by its own preference. Then two peers can each claim the first
+place, and the host would need a tie rule. The host owns the default because the
+host owns the retained model and the user's request.</p>
+
+<h3 id="neg-3">NEG-3. A required format is a single-tuple offer</h3>
+<p>When the host requires one format, for example an explicit
+<code>--model-format</code>, it offers only that tuple. <strong>Alternative
+rejected:</strong> a <code>required</code> wire flag (see <a href="#neg-1">NEG-1</a>).
+A single-tuple offer gives the same result with the existing intersection rule.</p>
+
+<h3 id="neg-4">NEG-4. Only an empty agreement fails</h3>
+<p>An empty agreement for a requested operation is the only negotiation failure,
+reported as <code>extension.tuple_unavailable</code>. A missing default with
+another agreed tuple is not an error. <strong>Alternative rejected:</strong>
+refuse when the default is not agreed, an option that
+finos/morphir-moonbit#281 asked about. finos/morphir-gleam#31 shows that a JSON-only guest
+works when the host also offers JSON.</p>
+
+<h3 id="conv-1">CONV-1. The host converts a model for generation</h3>
+<p>For <code>generateModel</code>, when the model is not in an agreed tuple but the
+host can convert it to one, the host converts and sends the converted model.
+Only when it cannot convert does it report
+<code>extension.tuple_unavailable</code>. <strong>Alternatives rejected:</strong>
+(a) refuse with <code>extension.tuple_unavailable</code>: this refuses work that
+the host can do; (b) the extension converts: the extension agreed only tuples it
+can read, and the host owns the retained model and its loss rules; (c) a retry
+after admission fails: the spec already forbids an automatic JSON retry. The
+conversion happens before dispatch.</p>
+
+<h3 id="conv-2">CONV-2. Loss, identity and evidence rules</h3>
+<p>The conversion follows the host's own loss rules, and a conversion that would
+drop source or naming provenance is refused with the host's lossy-conversion
+error (<code>data.lossy_conversion</code> in the MoonBit CLI). The converted
+model is a new payload with its own length, digest and revision. Required
+guarantees and evidence for the original do not carry over automatically,
+because evidence binds the original revision. <strong>Alternative
+rejected:</strong> keep the revision as exact transcoding can. A profile change
+is not an exact transcoding, and a shared revision would let evidence for the
+original appear to match the converted model.</p>
+
+<h3 id="conv-3">CONV-3. Details left to the host</h3>
+<p>The spec leaves to the host: which conversions it implements; which agreed
+tuple it converts to when there is more than one (recommended: the first agreed
+tuple in host order that it can reach); its loss rules beyond provenance and the
+name of its lossy-conversion error; how it mints the new revision and whether
+the converted model keeps <code>modelId</code>; and whether it tells the user.
+<strong>Alternative rejected:</strong> define a conversion algorithm in this
+draft. No second host implements conversion yet.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>An older extension reorders its selection, and the host reads the order
+as the extension's preference.</td><td>The host finds the first agreed tuple by
+host offer order, not by session order. The MCK checks the order (bead
+<code>morphir-hv6m</code>).</td></tr>
+<tr><td>A host converts with loss and the backend generates from incomplete
+content.</td><td>The provenance rule and the existing JSON profile rules refuse
+lossy conversion. The new revision stops old evidence from matching.</td></tr>
+<tr><td>Hosts differ in which conversions they implement, so the same extension
+works with one host and not another.</td><td>The outcome is still defined:
+convert, lossy-conversion error, or <code>extension.tuple_unavailable</code>.
+Hosts state their conversions in their own documentation.</td></tr>
+<tr><td>The rule is not checked by the MCK, so implementations can drift.</td><td>Bead
+<code>morphir-hv6m</code> adds cases (a) to (e) and runner support.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>No wire change, so no peer must upgrade at the same time. Hosts that refused
+a non-default agreement change to the first agreed tuple (MoonBit:
+finos/morphir-moonbit#281). Extensions that reordered their selection change to
+keep host order. Rollback is a text revert of finos/morphir#1115; no data or
+version changes.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>Should the MCK host checks run as synthetic host transcripts in this
+repository or wait for host qualification in finos/morphir#965? Bead
+<code>morphir-hv6m</code> decides this; the spec does not change.</li>
+</ul>
+
+</main>
+</body>
+</html>
