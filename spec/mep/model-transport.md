@@ -342,11 +342,9 @@ These rules apply to a host conversion:
    user explicitly allows loss for that operation, for example with the flag
    `--allow-model-loss` on one `morphir generate` command in the MoonBit CLI.
    The permission applies to that one operation only. When the host drops data,
-   it tells the user about each kind of data that it dropped, for example
-   metadata, provenance or annotations, and writes the same list in the
-   conversion record (rule 6). A host with a machine-readable report also adds
-   the conversion to it, for example
-   `conversion: {from, to, dropped}` in the MoonBit CLI JSON report.
+   it warns the user about each kind of data that it dropped, for example
+   metadata, provenance or annotations, and puts the same list in the
+   conversion report (rule 6).
 4. **Identity.** The converted model is a new model payload. It has its own
    `decodedByteLength`, `sha256` and `revision`. It keeps the `modelId` of the
    original. The host derives the new `revision` deterministically from the
@@ -363,18 +361,18 @@ These rules apply to a host conversion:
    send evidence for the converted model only when that evidence binds the new
    revision and its checker or trust policy accepts it. The extension admits
    the converted model and its evidence as it admits any other model.
-6. **Conversion record.** The host keeps a record that links the converted model
-   to the original. The record contains the original tuple and the converted
-   tuple, the original revision and payload SHA-256, the converted revision and
-   payload SHA-256, and the list of dropped data. The list is empty when the
-   conversion is lossless. The record does not need to contain the original
-   bytes. The record location is reserved for the host. The host must not let
-   an artifact from the extension overwrite the record. If an artifact in the
-   result uses the conversion record path, the host publishes nothing from
-   that result. The error code and exit status of
-   this refusal are host-defined. For example, the MoonBit CLI writes
-   `mep/conversion.json` next to the generated artifacts and refuses the
-   command when an artifact uses that path.
+6. **Conversion report.** The host must report every conversion to the user,
+   lossless or lossy, as a diagnostic or notification. The report contains the
+   original tuple and the converted tuple, the original revision and payload
+   SHA-256, the converted revision and payload SHA-256, and the list of dropped
+   data. The list is empty unless the user explicitly allowed loss. The host
+   must not add a file to the output of the extension for this report. The
+   form of the report is host-defined. For example, the MoonBit CLI reports the
+   diagnostic `extension.model_converted` with severity `info` and the data
+   `from` and `to`, each with `profile`, `codec`, `revision` and
+   `payloadSha256`, and `dropped`. The diagnostic is in the command
+   diagnostics, which are in the JSON report with `--json`, and it is one
+   line on stderr. The MoonBit CLI creates no file in the output folder for it.
 7. **Before dispatch.** The host converts before it sends the request. This is
    not a retry after the extension refuses admission. The extension does not
    ask for a conversion, and the host does not resend a refused request in a
@@ -385,9 +383,11 @@ These rules apply to a host conversion:
 ```text
 host model        morphir-model/ion-binary
 session support   [generateModel/morphir-ir/morphir-json]
-lossless          -> send the converted JSON model (same modelId, new revision)
+lossless          -> send the converted JSON model (same modelId, new revision),
+                     report the conversion
 lossy             -> lossy-conversion error, no request
-lossy, allowed    -> send the converted JSON model, report the dropped data
+lossy, allowed    -> send the converted JSON model, report the conversion
+                     and the dropped data
 no conversion     -> extension.tuple_unavailable, no request
 ```
 
@@ -395,11 +395,8 @@ The spec leaves these details to the host:
 
 - which conversions it implements;
 - the name of its lossy-conversion error and how the user allows loss;
-- the error code and exit status when an extension artifact uses the
-  conversion record path;
-- the format and location of the conversion record and of the dropped-data
-  report;
-- whether it tells the user about a lossless conversion.
+- the form of the conversion report, for example a diagnostic code or a
+  notification, and how it shows the dropped data.
 
 The MoonBit CLI implements this rule in its host library, which every MoonBit
 host front end shares

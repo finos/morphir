@@ -686,8 +686,8 @@ pub type CompileModelResult {
 /// when no agreed tuple is lossless does it select the first such tuple. The
 /// converted model keeps its `modelId`, has its own digest and a revision
 /// derived from that digest, and evidence for the original does not carry
-/// over. The host keeps a record that links it to the original, and publishes
-/// nothing from a result with an artifact at the record path. The host
+/// over. The host reports every conversion to the user as a diagnostic or
+/// notification, and adds no file to the result for it. The host
 /// refuses a lossy conversion, and the refusal is not
 /// `extension.tuple_unavailable`, unless the user allows loss for that
 /// operation. Only when it cannot convert does it report

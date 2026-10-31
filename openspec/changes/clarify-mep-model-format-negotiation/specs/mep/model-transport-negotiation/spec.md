@@ -134,7 +134,7 @@ data that it dropped.
 #### Scenario: Lossy conversion with permission
 - **WHEN** a conversion to the agreed tuple would drop provenance and annotations and the user explicitly allowed loss for this operation
 - **THEN** the host converts the model and sends the `generateModel` request
-- **AND** the host tells the user that it dropped provenance and annotations, and records them in the conversion record
+- **AND** the host warns the user that it dropped provenance and annotations, and lists them as dropped data in the conversion report
 
 #### Scenario: Permission does not carry over
 - **WHEN** the user allowed loss for one generation and then starts a second generation without permission
@@ -161,23 +161,24 @@ original payload SHALL NOT carry over to the converted model automatically.
 - **THEN** the host does not send that evidence as evidence for the converted model
 - **AND** the host sends evidence for the converted model only when it binds the new revision and its checker or trust policy accepts it
 
-### Requirement: Host keeps a conversion record
-For each conversion, the host SHALL keep a record that links the converted model
-to the original. The record SHALL contain the original and converted tuples,
-the original and converted revisions and payload SHA-256 digests, and the list
-of dropped data, which is empty for a lossless conversion.
+### Requirement: Host reports every conversion
+For each conversion, lossless or lossy, the host SHALL report the conversion to
+the user as a diagnostic or notification. The report SHALL contain the original
+and converted tuples, the original and converted revisions and payload SHA-256
+digests, and the list of dropped data, which is empty unless the user explicitly
+allowed loss. The host SHALL NOT add a file to the output of the extension for
+this report. The form of the report SHALL be host-defined.
 
-#### Scenario: Lossless conversion record
+#### Scenario: Lossless conversion is reported
 - **WHEN** the host converts a model without loss
-- **THEN** the host writes a conversion record with both tuples, both revisions, both payload digests and an empty dropped list, for example `mep/conversion.json` in the MoonBit CLI
+- **THEN** the host reports the conversion with both tuples, both revisions, both payload digests and an empty dropped list
+- **AND** in the MoonBit CLI, for example, the report is the diagnostic `extension.model_converted` with severity `info` and the data `from` and `to`, each with `profile`, `codec`, `revision` and `payloadSha256`, and `dropped`
 
-### Requirement: Conversion record path is reserved for the host
-The conversion record path SHALL be reserved for the host. The host SHALL NOT
-let an extension artifact overwrite the record. The host SHALL publish nothing
-from a result in which an extension artifact uses the conversion record path.
-The error code and exit status of this refusal SHALL be host-defined.
+#### Scenario: Report is in the diagnostics and on stderr
+- **WHEN** the MoonBit CLI converts a model for `morphir generate`
+- **THEN** the `extension.model_converted` diagnostic is in the command diagnostics, and in the JSON report when the user gives `--json`
+- **AND** the CLI writes one human-readable line for it on stderr
 
-#### Scenario: Extension artifact at the record path
-- **WHEN** the extension returns a result in which an artifact uses the conversion record path
-- **THEN** the host publishes nothing from that result and does not write the artifact over the record
-- **AND** the host reports a refusal with its own error code and exit status, for example a refused `morphir generate` command in the MoonBit CLI
+#### Scenario: No output file is added
+- **WHEN** the host converts a model for generation
+- **THEN** the host adds no file for the conversion to the output of the extension, and the published artifacts are only the artifacts of the extension

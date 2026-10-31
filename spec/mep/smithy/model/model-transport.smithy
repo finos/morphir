@@ -268,7 +268,8 @@ structure CompileModelResult {
 /// admitted generateModel tuple. `target` is the exact advertised target.
 /// When the host converts a model to an agreed tuple, `model` is the
 /// converted model. It keeps its `modelId` and has its own digest and a
-/// revision derived from that digest.
+/// revision derived from that digest. The host reports the conversion as a
+/// diagnostic or notification, not as an artifact.
 // GAP smithy-2qe.34.24: nothing checks that `input` is an admitted
 // session tuple, or that `model` agrees with it.
 structure GenerateModelRequest {

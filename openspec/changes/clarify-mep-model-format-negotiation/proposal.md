@@ -31,11 +31,12 @@ a durable capability.
   `extension.tuple_unavailable`, unless the user explicitly allows loss for
   that one operation. When loss is allowed, the host reports the dropped data.
 - The converted model keeps its `modelId` and has its own digest and a
-  deterministic revision derived from the converted payload digest. The host
-  keeps a conversion record that links the converted model to the original, and
-  an extension artifact must not overwrite it. The host publishes nothing from
-  a result in which an extension artifact uses the conversion record path; the
-  error code and exit status are host-defined.
+  deterministic revision derived from the converted payload digest.
+- The host reports every conversion to the user as a diagnostic or
+  notification with the original and converted tuple, revision and payload
+  digest, and the dropped data. It adds no file to the output of the extension
+  for this report. The form is host-defined, for example the MoonBit diagnostic
+  `extension.model_converted`.
 - No new wire member. No change to the `0.2.0-draft.1` version.
 
 ## Capabilities

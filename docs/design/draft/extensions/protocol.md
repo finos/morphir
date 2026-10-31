@@ -390,11 +390,12 @@ lossy conversion with its lossy-conversion error, which is not
 operation. When loss is allowed, the host reports the data that it dropped. The
 converted model keeps its `modelId` and has its own digest and a revision
 derived from that digest. Guarantees and evidence for the original do not carry
-over automatically. The host keeps a conversion record that links the converted
-model to the original, and an extension artifact must not overwrite it. The host
-publishes nothing from a result in which an extension artifact uses the
-conversion record path; the error code and exit status are host-defined. Only
-when the host cannot convert the model does it report
+over automatically. The host reports every conversion to the user as a
+diagnostic or notification with the original and converted tuple, revision and
+payload digest, and the dropped data. It adds no file to the output of the
+extension for this report, and the form of the report is host-defined. For
+example, the MoonBit CLI reports the diagnostic `extension.model_converted`.
+Only when the host cannot convert the model does it report
 `extension.tuple_unavailable`.
 
 Comparing two claim sets, as publication and installation do, is a comparison
