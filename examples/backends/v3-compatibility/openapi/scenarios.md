@@ -101,16 +101,16 @@ passes if {
 }
 ```
 
-### Install the pinned provider 0.3.0
+### Install the pinned provider 0.4.0
 
 ```yaml morphir:command
 id: install
-name: Install the pinned provider 0.3.0
+name: Install the pinned provider 0.4.0
 timeout_seconds: 180
 ```
 
 ```sh
-morphir extension install morphir-openapi --repository fixture --version 0.3.0
+morphir extension install morphir-openapi --repository fixture --version 0.4.0
 ```
 
 ```yaml morphir:assertion

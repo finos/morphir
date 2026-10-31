@@ -18,9 +18,9 @@ sha256 = "e1bb2d233455453ac86273538ee7bef2d97bd216114ef41238dfaa4de77e77ff"
 
 [bundles.openapi]
 repository = "finos/morphir-extensions"
-tag = "extension/openapi/v0.3.0"
-artifact = "morphir-openapi-0.3.0"
-sha256 = "03355b9d103c63d361ea67572c3c9d7383adc840af612b4a6101caeb2807a6f8"
+tag = "extension/openapi/v0.4.0"
+artifact = "morphir-openapi-0.4.0"
+sha256 = "3ec823ba4c4270afd1a804c6b055c0771ad11076060ce7fee87aa9e97d89fd42"
 
 # finos/morphir-python owns the Python extension. Bundles up to extension/python/v0.4.0 remain in
 # the finos/morphir-rust releases.
