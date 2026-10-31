@@ -35,6 +35,9 @@ sha256 = "b2f911d1b59a44d32a892e4aa3c6d3994399dcd14d58e58e97c9ed9076337912"
 # that owns it. CI runs on x86_64 Linux, so that archive is the one pinned. `sha256` is the digest
 # of the archive.
 
+# Keep the JavaScript 0.4.1 release under its original identity. From 0.5.0, it is
+# morphir-elm-classic on extension/elm-classic/v*. extension/elm/v0.5.0+ names the
+# MoonBit Wasm extension, which this file does not pin.
 [executables.elm]
 repository = "finos/morphir-elm"
 tag = "extension/elm/v0.4.1"

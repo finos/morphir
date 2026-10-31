@@ -10,7 +10,7 @@ Compile-time extensions to the Morphir CLI: frontend and process providers, thei
 
 ## Orientation
 
-* [Elm extension delivery](/design/elm-extension-delivery.md) - How the morphir-elm process extension reaches users and CI: published executables, pinned releases, local index installation and the remaining process-bundle publication gap.
+* [Elm extension delivery](/design/elm-extension-delivery.md) - How the JavaScript Elm extension, renamed morphir-elm-classic from 0.5.0, reaches users and CI through published executables.
 * [Capability claims across the extension lifecycle](/design/capability-claims.md) - How an extension's capability claim set travels unchanged from the guest through packaging, publication, installation and a session, how the host checks the claims, and how hosts and extensions stay compatible while the formats change.
 
 ## Decisions

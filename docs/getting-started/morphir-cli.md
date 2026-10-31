@@ -161,13 +161,21 @@ Run `morphir --help` for the current command list. Some commands are experimenta
 ## Native Elm provider (`morphir-elm-native`)
 
 `morphir compile` selects the frontend that compiles a language through the
-`--extension` flag. By default, compiling Elm sources uses the `morphir-elm`
-extension, the mature JavaScript frontend that ships from
+`--extension` flag. This Rust CLI defaults to the legacy `morphir-elm`
+JavaScript extension that ships from
 [finos/morphir-elm](https://github.com/finos/morphir-elm) and produces both
 types and values. This repository also ships an experimental, built-in native
 Elm frontend, `morphir-elm-native`, written in Rust.
 
-Select it explicitly. A project that always wants it names it in
+From 0.5.0, the JavaScript extension is named `morphir-elm-classic`, short id
+`elm-classic`, and uses `extension/elm-classic/v*` release tags. The pinned
+`extension/elm/v0.4.1` release retains its original id and executable names.
+The new `morphir-elm` is a MoonBit Wasm extension, first released as
+`extension/elm/v0.5.0-preview.1`, using MEP `0.2.0-draft.1` and the
+`morphir-bytes-v1` ABI. It does not yet support package dependencies.
+The JavaScript provider references below describe the legacy release.
+
+Select the native provider explicitly. A project that always wants it names it in
 `morphir.toml`, under `[frontend.elm]`, the frontend's language-specific
 table:
 
@@ -211,8 +219,8 @@ with neither flag uses the default provider. The Morphir Playground and
 browser compile uses the same provider the command line does.
 
 `morphir-elm-native` is **types-only today**: it compiles type declarations
-and signatures but not value bodies. `morphir-elm` remains the default
-extension for Elm and is the only provider that compiles values, so keep
+and signatures but not value bodies. The legacy JavaScript `morphir-elm` remains
+this Rust CLI's default and compiles values, so keep
 using it for production Elm workflows.
 
 ### Choosing the Elm prelude

@@ -133,6 +133,11 @@ carry unchanged.
 
 ## The capability claim set
 
+The 0.3.0 examples in this note retain the JavaScript extension's historical
+`morphir-elm` identity and filenames. From 0.5.0, it is `morphir-elm-classic`,
+short id `elm-classic`, with `morphir-elm-classic-extension-*` files released on
+`extension/elm-classic/v*`. The new `morphir-elm` is a MoonBit Wasm extension.
+
 A claim set has the same content in every phase. This is the draft.2 spelling (source `spec`, renamed
 by decision 0007):
 
