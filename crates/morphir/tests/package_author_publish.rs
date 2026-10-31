@@ -688,8 +688,8 @@ fn local_registry_cli_publishes_signed_library_from_an_absent_registry() {
     )
     .unwrap();
     std::fs::copy(
-        source().join("examples/package/local-library-publish/src/main.gleam"),
-        author.join("src/main.gleam"),
+        source().join("examples/package/local-library-publish/src/Main.elm"),
+        author.join("src/Main.elm"),
     )
     .unwrap();
     let compiled_ir = author.join("compiled/morphir-ir.json");
@@ -877,35 +877,4 @@ fn local_registry_cli_publishes_signed_library_from_an_absent_registry() {
         std::fs::read(&restored_ir).unwrap(),
         std::fs::read(&ir).unwrap()
     );
-    let config = consumer.join("morphir.toml");
-    std::fs::copy(
-        source().join("examples/package/local-library-publish/consumer/morphir.toml"),
-        &config,
-    )
-    .unwrap();
-    let generated = consumer.join("generated");
-    let compiled = consumer.join("compiled");
-    run(&[
-        "gleam",
-        "--json",
-        "generate",
-        "--config",
-        config.to_str().unwrap(),
-        "--input",
-        restored_ir.to_str().unwrap(),
-        "--output",
-        generated.to_str().unwrap(),
-    ]);
-    assert!(generated.join("main.gleam").exists());
-    run(&[
-        "gleam",
-        "--json",
-        "compile",
-        "--config",
-        config.to_str().unwrap(),
-        "--input",
-        generated.to_str().unwrap(),
-        "--output",
-        compiled.to_str().unwrap(),
-    ]);
 }

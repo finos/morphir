@@ -39,9 +39,9 @@ async fn a_home_with_no_installed_backend_cannot_generate_an_uninstalled_target(
     );
 }
 
-/// A home with nothing installed still offers the built-in providers: the
-/// registry the playground projects is the same one `morphir compile` uses,
-/// and it carries the built-ins.
+/// A home with nothing installed offers no provider: the registry the
+/// playground projects is the same one `morphir compile` uses, and no
+/// built-in is registered unless a compile selects it by id.
 #[tokio::test]
 async fn the_catalog_reads_the_home_it_was_built_with() {
     let (_root, home) = empty_home();
@@ -57,7 +57,7 @@ async fn the_catalog_reads_the_home_it_was_built_with() {
         "an empty home offers no installed targets"
     );
     assert!(
-        catalog.frontend("gleam").is_some(),
-        "the built-in Gleam frontend is always offered: {catalog:?}"
+        catalog.frontends.is_empty(),
+        "an empty home offers no frontends: {catalog:?}"
     );
 }

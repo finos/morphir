@@ -113,10 +113,6 @@ fn example_copies_exactly_the_fifteen_mvp_inputs() {
         fixture::read_files(&example.join("fixture")).unwrap(),
         inputs
     );
-    assert_eq!(
-        fs::read(example.join("golden/decision.gleam")).unwrap(),
-        fs::read(source().join(mvp::PATH).join("expected/decision.gleam")).unwrap()
-    );
 }
 
 #[test]

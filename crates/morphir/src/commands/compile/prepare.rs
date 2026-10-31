@@ -1,9 +1,7 @@
 //! The one compile route.
 //!
-//! Every compile entry point — `morphir compile`, `morphir gleam compile` and
-//! the compile half of `morphir gleam roundtrip` — produces the same
-//! [`PreparedCompile`] through [`prepare_compile`], and [`execute_compile`]
-//! runs it. What varies is where the project came from, never which code path
+//! Every compile entry point produces the same [`PreparedCompile`] through
+//! [`prepare_compile`], and [`execute_compile`] runs it. What varies is where the project came from, never which code path
 //! compiles it:
 //!
 //! - **a project**: no `--input`, or a directory `--input` that replaces the
@@ -209,21 +207,10 @@ impl Provider {
 /// its output goes, before any source is read or any provider is asked: a
 /// run that fails after that point must never leave the previous success on
 /// disk for `generate` to consume.
-pub async fn prepare_compile(
-    options: CompileOptions,
-    roundtrip: bool,
-) -> Result<PreparedCompile, CliError> {
+pub async fn prepare_compile(options: CompileOptions) -> Result<PreparedCompile, CliError> {
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
     let selection = selects_files(&options.input, &start_dir);
     let config = load_configuration(&options, selection, &start_dir)?;
-    if roundtrip && selection && config.is_none() {
-        return Err(CliError::Validation {
-            message: "morphir gleam roundtrip needs a project: its generate half reads the \
-                      project's configuration, which a standalone source selection does not \
-                      have. Pass --config or --project, or run compile and generate separately"
-                .into(),
-        });
-    }
     if let Some(context) = config.as_ref() {
         report_config_warnings(context);
     }

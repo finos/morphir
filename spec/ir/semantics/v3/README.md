@@ -7,7 +7,8 @@ specification. `cases/arity.json` fixes five expected results independently of
 the compiler and evaluator. `Unit` denotes the V3 `Type.Unit(Nil)` value.
 
 The type model is copied from `examples/gleam/ir-v3` at the start of the pilot.
-That fixture was established in #880. It uses nominal record wrappers and
+That fixture was established in #880. The example was removed with the CLI's
+built-in Gleam provider; Gleam examples now live in finos/morphir-gleam. It uses nominal record wrappers and
 string-backed `Char` and `Decimal` representations. Those fidelity limits do
 not affect the first arity rule, which counts type arguments after a declaration
 has been resolved. Reference resolution, locations, and whole-IR validation
