@@ -1,0 +1,40 @@
+// The native WASM worker (WASM-2): the `morphir extension worker` mode,
+// which serves one guest on stdio, and the launcher that starts it from the
+// CLI's own verified executable through the native process launcher.
+supported_targets = "native"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/wasm",
+  "finos/morphir-host/worker/wasm/guest",
+  "finos/morphir-host/worker/process" @shared,
+  "finos/morphir-host/worker/process/native" @process,
+  "moonrockz/extism/engine",
+  "moonrockz/extism/kernel",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/io",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string" @strconv,
+}
+
+import {
+  "finos/morphir-host/worker/wasm/fixtures",
+  "finos/morphir-host/worker/process/native" @process,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async/process" @spawn,
+} for "test"
+
+// The worker-mode tests serve a guest in the test process, and a guest call
+// blocks the event loop until it ends. Concurrent tests would then miss
+// their session deadlines while they wait, so the tests run one at a time.
+
+max_concurrent_tests = 1
+
+options(
+  "native-stub": [ "executable.c" ],
+)

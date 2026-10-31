@@ -37,6 +37,7 @@ fn worker_hosting() -> @cli.WorkerHosting {
       @cli.WorkerHosting::new(
         Node(machine),
         process=@node_worker.NodeProcessLauncher::new(),
+        wasm=@thread_worker.ThreadLauncher::bundled(),
       )
     None => @cli.WorkerHosting::none()
   }

@@ -44,8 +44,8 @@ commands to an explicitly pinned prebuilt canonical backend. See the
 
 `morphir extension describe|compile|generate` runs an explicitly pinned MEP extension on the
 CLI's own worker host, with no helper, Node runtime or Rust build. A contract `0.2.0` pin names the
-artifact and its runtime; process workers run now, and WASM runtimes are refused until the WASM
-worker host is available. Sources and operations come from the extension's claims. Local
+artifact and its runtime. Process and WASM workers run on the native and npm CLIs; the WASI builds
+refuse them. Sources and operations come from the extension's claims. Local
 repository and bundle lifecycle commands use the shared distribution library; see the
 [extension guide](docs/extension.md) for pins, the pin migration, reports, limits and platforms.
 

@@ -76,6 +76,8 @@ pub(all) suberror ChannelError {
   FrameLimit(direction~ : FrameDirection, declared~ : Int64, limit~ : Int32)
   Stopped
   TransportFailed(String)
+  GuestFailed(GuestFault)
+  Refused(code~ : RefusalCode, message~ : String)
 } derive(Eq, Debug)
 
 ///|
@@ -158,6 +160,25 @@ pub fn WorkerStop::new(
 }
 
 ///|
+/// Why a WASM guest stopped serving during a call. A WASM worker reports it
+/// when its stream ends: the guest trapped, grew its memory past the
+/// ceiling, ran past its per-call deadline or instruction budget, or the
+/// adapter reported a failure, with its message kept.
+pub(all) enum GuestFault {
+  Trap(String)
+  MemoryLimit(String)
+  CallDeadline
+  BudgetExhausted
+  Failure(String)
+} derive(Eq, Debug)
+
+///|
+pub extend GuestFault with Eq::{equal, not_equal}
+
+///|
+pub extend GuestFault with @debug.Debug::{to_repr}
+
+///|
 /// The name of a WASM import, as a module reads it.
 pub struct ImportName {
   module_name : String
@@ -209,8 +230,14 @@ pub(all) suberror LaunchError {
   DigestMismatch(expected~ : Sha256, actual~ : Sha256)
   ArtifactUnreadable(ArtifactProblem)
   AbiUnsupported(ImportName)
+  /// The module does not export `name` with the type `signature`, such as
+  /// `handle` as `() -> i32`.
+  ExportMissing(name~ : String, signature~ : String)
   AbiMismatch(declared~ : WasmAbi, classified~ : WasmAbi)
   WasmFeatureUnsupported(feature~ : String?)
+  /// The module's initial memory, in pages, is above the memory ceiling.
+  MemoryAboveCeiling(initial~ : Int64, ceiling~ : Int32)
+  WorkerRuntimeMismatch(host~ : String, worker~ : String)
   LaunchFailed(String)
 } derive(Eq, Debug)
 

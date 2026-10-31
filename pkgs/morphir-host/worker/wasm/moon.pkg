@@ -1,0 +1,17 @@
+// The pure part of the WASM workers: the import and export reader, the ABI
+// classifier and the memory-maximum rewrite. It reads bytes only, so it
+// builds on all four targets. The adapters over the engine are in
+// `worker/wasm/guest`, because the engine supports native and js only.
+
+import {
+  "finos/morphir-host/worker",
+  "moonrockz/extism/kernel",
+  "moonrockz/extism/wasi",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "finos/morphir-host/worker/wasm/fixtures",
+  "moonbitlang/core/debug",
+} for "test"

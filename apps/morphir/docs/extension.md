@@ -13,8 +13,12 @@ a supported runtime runs with no change to the CLI.
 
 This version runs **process workers**: native executables that speak
 Content-Length framed MEP on stdio, such as the native MoonBit guest or the Elm
-extension executables. Pins with a `wasm` runtime are refused with
-`extension.runtime_unavailable` until the WASM worker host is available.
+extension executables. It also runs **WASM workers**: a WASM module with the
+`extism-kernel-v1` ABI, such as the Python extension, or the `morphir-bytes-v1`
+ABI, such as the portable MoonBit guest. The native CLI runs each WASM guest in a
+worker process of its own executable, through the internal subcommand
+`morphir extension worker`, which users do not run. The npm CLI runs it in a Node
+worker thread. The rules are in `pkgs/morphir-host/worker/wasm/README.mbt.md`.
 
 ## An example with the native MoonBit guest
 
@@ -217,7 +221,7 @@ Every report has `profile`, `contractVersion`, `command` (`extension.describe`,
 | `claims` | describe only: protocol versions, operations, languages, IR versions, the frontend flags (`frontendFlags`: `incremental`, `multiDocument`), targets and model tuples |
 | `protocolVersion` | compile and generate: the negotiated line, `0.1` or `0.2.0-draft.1` |
 | `negotiated` | `protocolVersion`, the `tuple` on the model line, and the negotiated model `limits`: `maxEncodedBytes`, `maxDecodedBytes`, `maxDepth`, `maxNodes` |
-| `bounds` | The enforced bounds: `requestBytes`, `responseBytes`, `deadlineMs`, `stderrTailBytes`, and for compile `sourceFiles` and `sourceBytes`; WASM workers add the engine bounds (memory ceiling, instruction budget, call deadline) |
+| `bounds` | The enforced bounds: `requestBytes`, `responseBytes`, `deadlineMs`, `stderrTailBytes`, and for compile `sourceFiles` and `sourceBytes`; WASM workers add `memoryCeiling`, `instructionBudget` and `callDeadline`, each `{"enforced": true}` or `{"enforced": false, "reason": ...}` |
 | `output` | `directory` and `files`, each with `path`, `bytes` and `sha256` |
 | `lifecycle` | `probe`, `shutdown`, `workerStopped`, `wireCancellation: false`, and `worker`: the stop `status`, `code` or `signal`, and `stopMethod` |
 | `stderr` | The guest's stderr tail as `text`, and `truncated` |
@@ -272,9 +276,9 @@ process workers have no sandbox beyond this isolation. The rules are in
 
 | CLI | Process workers | WASM workers |
 | --- | --- | --- |
-| Native, macOS and Linux | Supported | Refused: `extension.runtime_unavailable` |
-| npm package on Node, macOS and Linux | Supported, through Node `child_process` | Refused: `extension.runtime_unavailable` |
-| Native and npm on Windows x64 and arm64 | Not qualified: the job-object stop is not complete (tasks 2.3, 3.2 and 7.5) | Refused: `extension.runtime_unavailable` |
+| Native, macOS and Linux | Supported | Supported, in a worker process of the CLI (`morphir extension worker`) |
+| npm package on Node, macOS and Linux | Supported, through Node `child_process` | Supported, in a Node worker thread |
+| Native and npm on Windows x64 and arm64 | Not qualified: the job-object stop is not complete (tasks 2.3, 3.2 and 7.5) | Not qualified, for the same reason |
 | WASI builds (`wasm`, `wasm-gc`) | Refused: `extension.runtime_unavailable` | Refused: `extension.runtime_unavailable` |
 
 A process artifact that the machine cannot run is refused with
@@ -362,8 +366,8 @@ descriptor, each with its own digest:
 }
 ```
 
-The two WASM pins decode now and are refused with `extension.runtime_unavailable`
-until the WASM worker host is available.
+The two WASM pins run on the native and npm CLIs. The WASI builds refuse them with
+`extension.runtime_unavailable`.
 
 ### BREAKING: the report schema
 

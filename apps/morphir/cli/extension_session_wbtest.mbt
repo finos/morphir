@@ -16,6 +16,8 @@ priv struct ScriptedLauncher {
   guest : FakeGuest
   methods : Array[String]
   calls : Array[Json]
+  /// The bounds that the channel states, as a WASM host's channel does.
+  bounds : @worker.EnforcedBounds?
 }
 
 ///|
@@ -94,7 +96,7 @@ async fn fake_serve(
 
 ///|
 impl @worker.Launcher for ScriptedLauncher with fn launch(self, _spec, _limits) {
-  let (channel, worker) = @worker.MemoryChannel::pair()
+  let (channel, worker) = @worker.MemoryChannel::pair(bounds?=self.bounds)
   self.group.spawn_bg(() => {
     fake_serve(worker, self.guest, self.methods, self.calls)
   })
@@ -116,10 +118,17 @@ async fn fake_run(
   guest : FakeGuest,
   stopped~ : () -> Bool = () => false,
   hosted~ : Bool = true,
+  bounds? : @worker.EnforcedBounds,
 ) -> FakeRun {
   let finished : Ref[FakeRun?] = Ref(None)
   @async.with_task_group(group => {
-    let launcher = ScriptedLauncher::{ group, guest, methods: [], calls: [], }
+    let launcher = ScriptedLauncher::{
+      group,
+      guest,
+      methods: [],
+      calls: [],
+      bounds,
+    }
     let hosting = if hosted {
       WorkerHosting::new(
         Native(@worker.Machine::of(X86_64UnknownLinuxGnu)),
@@ -150,7 +159,13 @@ async fn fake_command(
 ) -> Int32 {
   let status : Ref[Int32?] = Ref(None)
   @async.with_task_group(group => {
-    let launcher = ScriptedLauncher::{ group, guest, methods: [], calls: [], }
+    let launcher = ScriptedLauncher::{
+      group,
+      guest,
+      methods: [],
+      calls: [],
+      bounds: None,
+    }
     let context = {
       ..command_context(mode),
       workers: WorkerHosting::new(
@@ -1024,6 +1039,7 @@ async test "an async cancellation of the command exits 130, not host_failed" {
       guest: fake_guest(reply=(_, _) => None),
       methods,
       calls: [],
+      bounds: None,
     }
     let hosting = WorkerHosting::new(
       Native(@worker.Machine::of(X86_64UnknownLinuxGnu)),
@@ -1273,4 +1289,46 @@ async test "the exit table is the same in human and JSON mode" {
       msg="JSON \{name}",
     )
   }
+}
+
+///|
+async test "compile reports the WASM bounds that the worker's host enforced in result.bounds" {
+  let workspace = fake_workspace()
+  let args = (output : String) => {
+    [
+      "extension",
+      "compile",
+      workspace.root + "/main.mbt",
+      "--package",
+      "acme/ready",
+      "--output",
+      workspace.root + "/" + output,
+      "--extension-pin",
+      workspace.pin,
+      "--json",
+    ]
+  }
+  let enforced = @worker.EnforcedBounds::new(
+    memory_ceiling=Enforced,
+    instruction_budget=NotEnforced(NoInstructionMetering),
+    call_deadline=Enforced,
+  )
+  let run = fake_run(args("wasm"), fake_guest(), bounds=enforced)
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  let bounds = fake_field(run.json, ["result", "bounds"])
+  assert_eq(fake_field(bounds, ["memoryCeiling"]), { "enforced": true })
+  assert_eq(fake_field(bounds, ["callDeadline"]), { "enforced": true })
+  assert_eq(
+    fake_field(bounds, ["instructionBudget"]),
+    enforced.instruction_budget.to_json(),
+  )
+  // The CLI's own bounds stay.
+  assert_eq(fake_field(bounds, ["deadlineMs"]), 60000)
+  assert_eq(fake_field(bounds, ["stderrTailBytes"]), 65536)
+  // A process worker states no WASM bounds.
+  let process = fake_run(args("process"), fake_guest())
+  guard fake_field(process.json, ["result", "bounds"]) is Object(fields) else {
+    fail("no bounds")
+  }
+  assert_false(fields.contains("memoryCeiling"))
 }

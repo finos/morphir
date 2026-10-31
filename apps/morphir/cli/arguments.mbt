@@ -369,7 +369,7 @@ fn render_help(path : String) -> String {
     text += "\ndescribe, compile and generate run a pinned extension on the CLI's worker host.\n"
     text += "A contract 0.2.0 pin names the artifact (path, sha256), its runtime and an optional descriptor.\n"
     text += "The host probes the worker, then runs one fresh session; no helper or Node runtime is used.\n"
-    text += "Process runtimes run now; WASM runtimes are refused with extension.runtime_unavailable.\n"
+    text += "Process and WASM runtimes run on the native and npm CLIs; WASI builds refuse them with extension.runtime_unavailable.\n"
     text += "Sources and operations come from the extension's claims: compile reads the claimed file extensions.\n"
     text += "compile writes model-envelope.json and model.ionb or model.json, or morphir-ir.json on MEP 0.1.\n"
     text += "generate reads a model envelope or Morphir IR JSON and writes the returned artifacts.\n"
@@ -382,6 +382,9 @@ fn render_help(path : String) -> String {
     text += "Only local native process artifacts on the current platform are supported.\n"
     text += "Remote repositories, channel selection and cross-platform probing are not provided.\n"
     text += "\nExample: morphir extension compile src/main.mbt --extension-pin pin.json --package my/pkg --output out\n"
+    if path == "extension" {
+      text += "\nworker: internal subcommand that the native CLI starts as the WASM worker runtime; users do not run it.\n"
+    }
   }
   if !schema.children.is_empty() {
     text += "\nCommands:\n  " + schema.children.join("\n  ") + "\n"

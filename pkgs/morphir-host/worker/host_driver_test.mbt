@@ -695,6 +695,204 @@ async test "with_session: the session is closed after the work, and aborted when
 }
 
 ///|
+/// A launcher that refuses every specification with one launch error.
+struct RefusingLauncher {
+  error : @worker.LaunchError
+}
+
+///|
+impl @worker.Launcher for RefusingLauncher with fn launch(self, _spec, _limits) {
+  raise self.error
+}
+
+///|
+async test "worker runtime mismatch: a worker of another build is refused before any operation" {
+  let host = @worker.Host::new(
+    RefusingLauncher::{
+      error: WorkerRuntimeMismatch(host="build-a", worker="build-b"),
+    },
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  let failure = try host.probe(wasm_spec()) catch {
+    error => Some(host_error(error))
+  } noraise {
+    _ => None
+  }
+  guard failure is Some((Refused(code=WorkerRuntimeMismatch, message~), report)) else {
+    fail("a worker of another build was not refused")
+  }
+  assert_true(message.contains("build-a") && message.contains("build-b"))
+  assert_true(report.stop is None)
+  assert_eq(
+    @worker.RefusalCode::WorkerRuntimeMismatch.to_string(),
+    "extension.worker_runtime_mismatch",
+  )
+}
+
+///|
+async test "missing export: a module without handle is refused and the message names the export" {
+  let host = @worker.Host::new(
+    RefusingLauncher::{
+      error: ExportMissing(name="handle", signature="() -> i32"),
+    },
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  let failure = try host.probe(wasm_spec()) catch {
+    error => Some(host_error(error))
+  } noraise {
+    _ => None
+  }
+  guard failure is Some((Refused(code=AbiUnsupported, message~), _)) else {
+    fail("a module without handle was not refused")
+  }
+  assert_eq(message, "the module does not export handle as () -> i32")
+}
+
+///|
+async test "memory ceiling: an initial memory above the ceiling fails with memory_limit before any worker" {
+  let host = @worker.Host::new(
+    RefusingLauncher::{
+      error: MemoryAboveCeiling(initial=5000L, ceiling=4096),
+    },
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  let failure = try host.probe(wasm_spec()) catch {
+    error => Some(host_error(error))
+  } noraise {
+    _ => None
+  }
+  guard failure is Some((Failed(Host(code=MemoryLimit, message~)), report)) else {
+    fail("an initial memory above the ceiling did not fail with memory_limit")
+  }
+  assert_eq(
+    message, "the module's initial memory of 5000 pages is above the ceiling of 4096 pages",
+  )
+  assert_true(report.stop is None)
+}
+
+///|
+async test "guest fault: a trap reported by the channel fails the session with guest_trap" {
+  let (channel, worker) = @worker.MemoryChannel::pair()
+  let host = @worker.Host::new(
+    @worker.MemoryLauncher::new(channel),
+    Node(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  @async.with_task_group(group => {
+    group.spawn_bg(() => {
+      serve(worker, [], name => {
+        if name == "morphir.frontend.compile" {
+          worker.fail(Trap("unreachable executed"))
+          None
+        } else {
+          legacy_guest()(name)
+        }
+      })
+    })
+    let session = host.activate(
+      wasm_spec(),
+      expected=legacy_claims(),
+      offer=Legacy,
+    )
+    let outcome = session.compile(compile_request())
+    guard outcome.class is Failed(Host(code=GuestTrap, message~)) else {
+      fail("a trap did not fail the call: \{@debug.to_string(outcome.class)}")
+    }
+    assert_true(message.contains("unreachable executed"))
+    let report = session.close()
+    guard report.ending is Some(Failed(Host(code=GuestTrap, ..))) else {
+      fail("the report does not keep the trap")
+    }
+  })
+}
+
+///|
+async test "enforced bounds: the report states which WASM bounds the host enforced" {
+  let bounds = @worker.EnforcedBounds::new(
+    memory_ceiling=Enforced,
+    instruction_budget=NotEnforced(NoInstructionMetering),
+    call_deadline=Enforced,
+  )
+  let (channel, worker) = @worker.MemoryChannel::pair(bounds~)
+  let host = @worker.Host::new(
+    @worker.MemoryLauncher::new(channel),
+    Node(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  @async.with_task_group(group => {
+    group.spawn_bg(() => serve(worker, [], legacy_guest()))
+    let session = host.activate(
+      wasm_spec(),
+      expected=legacy_claims(),
+      offer=Legacy,
+    )
+    ignore(session.compile(compile_request()))
+    let report = session.close()
+    assert_eq(report.bounds, Some(bounds))
+    guard report.to_json()
+      is Object(
+        {
+          "bounds": Object(
+            {
+              "memoryCeiling": Object({ "enforced": True, .. }),
+              "instructionBudget": Object(
+                {
+                  "enforced": False,
+                  "reason": String("no-instruction-metering"),
+                  ..
+                }
+              ),
+              "callDeadline": Object({ "enforced": True, .. }),
+              ..
+            }
+          ),
+          ..
+        }
+      ) else {
+      fail("the report does not state the enforced bounds")
+    }
+  })
+  // A process channel enforces no WASM bounds, so its report has none.
+  let (channel, worker) = @worker.MemoryChannel::pair()
+  let host = @worker.Host::new(
+    @worker.MemoryLauncher::new(channel),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  @async.with_task_group(group => {
+    group.spawn_bg(() => serve(worker, [], legacy_guest()))
+    let session = host.activate(
+      process_spec(),
+      expected=legacy_claims(),
+      offer=Legacy,
+    )
+    ignore(session.compile(compile_request()))
+    let report = session.close()
+    assert_true(report.bounds is None)
+    assert_true(
+      report.to_json() is Object(fields) && !fields.contains("bounds"),
+    )
+  })
+}
+
+///|
+async test "channel refusal: a refusal of the worker reaches the caller with its code" {
+  let (channel, worker) = @worker.MemoryChannel::pair()
+  let host = @worker.Host::new(
+    @worker.MemoryLauncher::new(channel),
+    Native(@worker.Machine::of(Aarch64AppleDarwin)),
+  )
+  worker.refuse(code=WorkerRuntimeMismatch, message="another build")
+  let failure = try host.probe(wasm_spec()) catch {
+    error => Some(host_error(error))
+  } noraise {
+    _ => None
+  }
+  guard failure is Some((Refused(code=WorkerRuntimeMismatch, message~), report)) else {
+    fail("the refusal did not reach the caller")
+  }
+  assert_eq(message, "another build")
+  assert_true(report.stop is Some(_))
+}
+
+///|
 async test "concurrent calls: a second call is refused and a close waits for the call" {
   let (channel, worker) = @worker.MemoryChannel::pair()
   let host = @worker.Host::new(

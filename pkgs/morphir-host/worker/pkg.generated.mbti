@@ -16,6 +16,8 @@ pub(all) suberror ChannelError {
   FrameLimit(direction~ : FrameDirection, declared~ : Int64, limit~ : Int32)
   Stopped
   TransportFailed(String)
+  GuestFailed(GuestFault)
+  Refused(code~ : RefusalCode, message~ : String)
 } derive(Eq, @debug.Debug)
 pub fn ChannelError::equal(Self, Self) -> Bool
 pub fn ChannelError::not_equal(Self, Self) -> Bool
@@ -34,8 +36,11 @@ pub(all) suberror LaunchError {
   DigestMismatch(expected~ : Sha256, actual~ : Sha256)
   ArtifactUnreadable(ArtifactProblem)
   AbiUnsupported(ImportName)
+  ExportMissing(name~ : String, signature~ : String)
   AbiMismatch(declared~ : WasmAbi, classified~ : WasmAbi)
   WasmFeatureUnsupported(feature~ : String?)
+  MemoryAboveCeiling(initial~ : Int64, ceiling~ : Int32)
+  WorkerRuntimeMismatch(host~ : String, worker~ : String)
   LaunchFailed(String)
 } derive(Eq, @debug.Debug)
 pub fn LaunchError::equal(Self, Self) -> Bool
@@ -141,6 +146,18 @@ pub fn ArtifactSource::equal(Self, Self) -> Bool
 pub fn ArtifactSource::not_equal(Self, Self) -> Bool
 pub fn ArtifactSource::to_repr(Self) -> @debug.Repr
 
+pub(all) enum BoundGap {
+  NoInstructionMetering
+  NoCallInterruption
+  NoMemoryCeiling
+} derive(Eq, @debug.Debug)
+pub fn BoundGap::equal(Self, Self) -> Bool
+pub fn BoundGap::not_equal(Self, Self) -> Bool
+pub fn BoundGap::output(Self, &Logger) -> Unit
+pub fn BoundGap::to_repr(Self) -> @debug.Repr
+pub fn BoundGap::to_string(Self) -> String
+pub impl Show for BoundGap
+
 pub struct Claims {
   extension_id : ExtensionId
   version : ExtensionVersion
@@ -243,6 +260,28 @@ pub fn Ending::equal(Self, Self) -> Bool
 pub fn Ending::not_equal(Self, Self) -> Bool
 pub fn Ending::to_repr(Self) -> @debug.Repr
 
+pub struct EnforcedBounds {
+  memory_ceiling : Enforcement
+  instruction_budget : Enforcement
+  call_deadline : Enforcement
+} derive(Eq, @debug.Debug)
+pub fn EnforcedBounds::equal(Self, Self) -> Bool
+pub fn EnforcedBounds::new(memory_ceiling~ : Enforcement, instruction_budget~ : Enforcement, call_deadline~ : Enforcement) -> Self
+pub fn EnforcedBounds::not_equal(Self, Self) -> Bool
+pub fn EnforcedBounds::to_json(Self) -> Json
+pub fn EnforcedBounds::to_repr(Self) -> @debug.Repr
+pub impl ToJson for EnforcedBounds
+
+pub(all) enum Enforcement {
+  Enforced
+  NotEnforced(BoundGap)
+} derive(Eq, @debug.Debug)
+pub fn Enforcement::equal(Self, Self) -> Bool
+pub fn Enforcement::not_equal(Self, Self) -> Bool
+pub fn Enforcement::to_json(Self) -> Json
+pub fn Enforcement::to_repr(Self) -> @debug.Repr
+pub impl ToJson for Enforcement
+
 pub(all) enum EnvelopeVersion {
   V0_1_0Draft1
 } derive(Compare, Eq, @debug.Debug)
@@ -324,6 +363,8 @@ pub(all) enum FailureCode {
   MemoryLimit
   GuestTrap
   TreeTerminationFailed
+  BudgetExhausted
+  WorkerRuntimeMismatch
 } derive(Eq, @debug.Debug)
 pub fn FailureCode::equal(Self, Self) -> Bool
 pub fn FailureCode::not_equal(Self, Self) -> Bool
@@ -349,6 +390,7 @@ pub(all) enum FaultCode {
   MemoryLimit
   GuestTrap
   TreeTerminationFailed
+  BudgetExhausted
 } derive(Eq, @debug.Debug)
 pub fn FaultCode::code(Self) -> FailureCode
 pub fn FaultCode::equal(Self, Self) -> Bool
@@ -396,6 +438,17 @@ pub fn Generated::equal(Self, Self) -> Bool
 pub fn Generated::new(Json) -> Self
 pub fn Generated::not_equal(Self, Self) -> Bool
 pub fn Generated::to_repr(Self) -> @debug.Repr
+
+pub(all) enum GuestFault {
+  Trap(String)
+  MemoryLimit(String)
+  CallDeadline
+  BudgetExhausted
+  Failure(String)
+} derive(Eq, @debug.Debug)
+pub fn GuestFault::equal(Self, Self) -> Bool
+pub fn GuestFault::not_equal(Self, Self) -> Bool
+pub fn GuestFault::to_repr(Self) -> @debug.Repr
 
 pub struct Host {
   // private fields
@@ -531,8 +584,9 @@ pub struct MemoryChannel {
   // private fields
 }
 pub async fn MemoryChannel::abort(Self, StopReason) -> WorkerStop
+pub fn MemoryChannel::bounds(Self) -> EnforcedBounds?
 pub async fn MemoryChannel::close(Self) -> WorkerStop
-pub fn MemoryChannel::pair(grace_ms? : Int32) -> (Self, MemoryWorker)
+pub fn MemoryChannel::pair(grace_ms? : Int32, bounds? : EnforcedBounds) -> (Self, MemoryWorker)
 pub async fn MemoryChannel::receive(Self) -> Message
 pub async fn MemoryChannel::send(Self, Message) -> Unit
 pub impl Channel for MemoryChannel
@@ -548,7 +602,9 @@ pub struct MemoryWorker {
   // private fields
 }
 pub fn MemoryWorker::exit(Self, code? : Int32) -> Unit
+pub fn MemoryWorker::fail(Self, GuestFault, code? : Int32) -> Unit
 pub async fn MemoryWorker::receive(Self) -> Message
+pub fn MemoryWorker::refuse(Self, code~ : RefusalCode, message~ : String, exit_code? : Int32) -> Unit
 pub async fn MemoryWorker::send(Self, Message) -> Unit
 pub fn MemoryWorker::write_stderr(Self, Bytes) -> Unit
 
@@ -787,6 +843,7 @@ pub(all) enum RefusalCode {
   AbiUnsupported
   AbiMismatch
   WasmFeatureUnsupported
+  WorkerRuntimeMismatch
 } derive(Eq, @debug.Debug)
 pub fn RefusalCode::code(Self) -> FailureCode
 pub fn RefusalCode::equal(Self, Self) -> Bool
@@ -832,11 +889,12 @@ pub struct SessionReport {
   negotiated : Negotiated?
   limits : Limits
   extism : ExtismProfile?
+  bounds : EnforcedBounds?
   stop : WorkerStop?
   ending : Ending?
 } derive(Eq, @debug.Debug)
 pub fn SessionReport::equal(Self, Self) -> Bool
-pub fn SessionReport::new(Limits, negotiated? : Negotiated, extism? : ExtismProfile, stop? : WorkerStop, ending? : Ending) -> Self
+pub fn SessionReport::new(Limits, negotiated? : Negotiated, extism? : ExtismProfile, bounds? : EnforcedBounds, stop? : WorkerStop, ending? : Ending) -> Self
 pub fn SessionReport::not_equal(Self, Self) -> Bool
 pub fn SessionReport::to_json(Self) -> Json
 pub fn SessionReport::to_repr(Self) -> @debug.Repr
@@ -1007,6 +1065,7 @@ pub(open) trait Channel {
   async fn receive(Self) -> Message
   async fn close(Self) -> WorkerStop
   async fn abort(Self, StopReason) -> WorkerStop
+  fn bounds(Self) -> EnforcedBounds? = _
 }
 
 pub(open) trait Launcher {

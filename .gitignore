@@ -59,3 +59,6 @@ pkgs/morphir-elm/conformance/projects/*/morphir-hashes.json
 /pkgs/morphir-host/runners/*.mjs.map
 /pkgs/morphir-host/embedding/*.mjs
 /pkgs/morphir-host/embedding/*.mjs.map
+
+# The generated build stamp of the native CLI (scripts/build-stamp.mbtx)
+apps/morphir/build_stamp.mbt

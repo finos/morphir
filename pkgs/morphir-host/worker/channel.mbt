@@ -6,12 +6,24 @@
 ///
 /// `send` and `receive` raise `ChannelError` for transport faults. They must
 /// let the `moonbitlang/async` cancellation pass through unchanged: an
-/// implementation never turns it into `WorkerClosed` or `Stopped`.
+/// implementation never turns it into `WorkerClosed` or `Stopped`. A WASM
+/// channel raises `GuestFailed` when its guest stopped serving for a fault,
+/// and `Refused` when its worker refused to serve before any request, for
+/// example a worker runtime of another build.
+///
+/// `bounds` states the WASM bounds that the channel's host enforces. By
+/// default a channel has none, as for a process worker.
 pub(open) trait Channel {
   async fn send(Self, Message) -> Unit
   async fn receive(Self) -> Message
   async fn close(Self) -> WorkerStop
   async fn abort(Self, StopReason) -> WorkerStop
+  fn bounds(Self) -> EnforcedBounds? = _
+}
+
+///|
+impl Channel with fn bounds(_) {
+  None
 }
 
 ///|

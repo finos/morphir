@@ -1,0 +1,134 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host/worker/wasm"
+
+import {
+  "finos/morphir-host/worker",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const PAGE_BYTES : Int32 = 65536
+
+pub let bytes_namespace : String
+
+pub let extism_user_namespace : String
+
+pub let handle_export : String
+
+// Errors
+pub(all) suberror MemoryRefusal {
+  MemoryFeature(String)
+  InitialAboveCeiling(initial~ : Int64, ceiling~ : Int32)
+} derive(Eq, @debug.Debug)
+pub fn MemoryRefusal::equal(Self, Self) -> Bool
+pub fn MemoryRefusal::not_equal(Self, Self) -> Bool
+pub fn MemoryRefusal::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror ModuleError {
+  Malformed(offset~ : Int32, reason~ : String)
+} derive(Eq, @debug.Debug)
+pub fn ModuleError::equal(Self, Self) -> Bool
+pub fn ModuleError::not_equal(Self, Self) -> Bool
+pub fn ModuleError::output(Self, &Logger) -> Unit
+pub fn ModuleError::to_repr(Self) -> @debug.Repr
+pub fn ModuleError::to_string(Self) -> String
+pub impl Show for ModuleError
+
+// Types and methods
+pub struct Export {
+  name : String
+  kind : ExternKind
+} derive(Eq, @debug.Debug)
+pub fn Export::equal(Self, Self) -> Bool
+pub fn Export::not_equal(Self, Self) -> Bool
+pub fn Export::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ExternKind {
+  Function(FunctionType)
+  Table
+  Memory(MemoryType)
+  Global
+  Tag
+} derive(Eq, @debug.Debug)
+pub fn ExternKind::equal(Self, Self) -> Bool
+pub fn ExternKind::not_equal(Self, Self) -> Bool
+pub fn ExternKind::to_repr(Self) -> @debug.Repr
+
+pub struct FunctionType {
+  params : Array[ValueType]
+  results : Array[ValueType]
+} derive(Eq, @debug.Debug)
+pub fn FunctionType::equal(Self, Self) -> Bool
+pub fn FunctionType::new(ArrayView[ValueType], ArrayView[ValueType]) -> Self
+pub fn FunctionType::not_equal(Self, Self) -> Bool
+pub fn FunctionType::output(Self, &Logger) -> Unit
+pub fn FunctionType::to_repr(Self) -> @debug.Repr
+pub fn FunctionType::to_string(Self) -> String
+pub impl Show for FunctionType
+
+pub struct Import {
+  name : @worker.ImportName
+  kind : ExternKind
+} derive(Eq, @debug.Debug)
+pub fn Import::equal(Self, Self) -> Bool
+pub fn Import::not_equal(Self, Self) -> Bool
+pub fn Import::to_repr(Self) -> @debug.Repr
+
+pub struct MemoryCeiling {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn MemoryCeiling::equal(Self, Self) -> Bool
+pub fn MemoryCeiling::not_equal(Self, Self) -> Bool
+pub fn MemoryCeiling::of_pages(Int32) -> Self raise ModuleError
+pub fn MemoryCeiling::pages(Self) -> Int32
+pub fn MemoryCeiling::restricted() -> Self
+pub fn MemoryCeiling::to_repr(Self) -> @debug.Repr
+
+pub struct MemoryType {
+  minimum : Int64
+  maximum : Int64?
+  shared : Bool
+  memory64 : Bool
+} derive(Eq, @debug.Debug)
+pub fn MemoryType::equal(Self, Self) -> Bool
+pub fn MemoryType::not_equal(Self, Self) -> Bool
+pub fn MemoryType::to_repr(Self) -> @debug.Repr
+
+pub struct PreparedModule {
+  abi : @worker.WasmAbi
+  module_ : WasmModule
+}
+pub fn PreparedModule::prepare(Bytes, declared? : @worker.WasmAbi, ceiling? : MemoryCeiling) -> Self raise @worker.LaunchError
+
+pub(all) enum ValueType {
+  I32
+  I64
+  F32
+  F64
+  V128
+  FuncRef
+  ExternRef
+  Other(Int32)
+} derive(Eq, @debug.Debug)
+pub fn ValueType::equal(Self, Self) -> Bool
+pub fn ValueType::not_equal(Self, Self) -> Bool
+pub fn ValueType::output(Self, &Logger) -> Unit
+pub fn ValueType::to_repr(Self) -> @debug.Repr
+pub fn ValueType::to_string(Self) -> String
+pub impl Show for ValueType
+
+pub struct WasmModule {
+  // private fields
+}
+pub fn WasmModule::bytes(Self) -> Bytes
+pub fn WasmModule::classify(Self, declared? : @worker.WasmAbi) -> @worker.WasmAbi raise @worker.LaunchError
+pub fn WasmModule::export_function(Self, String) -> FunctionType?
+pub fn WasmModule::exports(Self) -> Array[Export]
+pub fn WasmModule::imports(Self) -> Array[Import]
+pub fn WasmModule::memories(Self) -> Array[MemoryType]
+pub fn WasmModule::read(Bytes) -> Self raise ModuleError
+pub fn WasmModule::with_memory_ceiling(Self, MemoryCeiling) -> Self raise MemoryRefusal
+
+// Type aliases
+
+// Traits

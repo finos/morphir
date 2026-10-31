@@ -1,0 +1,13 @@
+// The entry module of a Node worker thread that serves one WASM guest
+// (WASM-3). The Node CLI ships it as dist/wasm-worker.js. It writes nothing
+// to stdout; every event goes to the host through the parent port.
+pkgtype(kind: "executable")
+
+supported_targets = "js"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/wasm",
+  "finos/morphir-host/worker/wasm/guest",
+  "moonbitlang/core/debug",
+}

@@ -4,8 +4,11 @@ priv struct Link {
   to_host : @aqueue.Queue[Message]
   exits : @aqueue.Queue[Int32]
   grace_ms : Int32
+  bounds : EnforcedBounds?
   stderr : Buffer
   mut exited : Int32?
+  /// Why a WASM worker stopped serving, when it failed or refused.
+  mut ended_by : ChannelError?
   mut stop : WorkerStop?
 }
 
@@ -25,17 +28,21 @@ pub struct MemoryWorker {
 
 ///|
 /// A connected host end and worker end. `close` waits `grace_ms` for the
-/// worker to exit.
+/// worker to exit. `bounds` are the WASM bounds that the channel states, for
+/// a fake WASM worker.
 pub fn MemoryChannel::pair(
   grace_ms~ : Int32 = 2000,
+  bounds? : EnforcedBounds,
 ) -> (MemoryChannel, MemoryWorker) {
   let link = {
     to_worker: @aqueue.Queue(kind=Unbounded),
     to_host: @aqueue.Queue(kind=Unbounded),
     exits: @aqueue.Queue(kind=Unbounded),
     grace_ms,
+    bounds,
     stderr: Buffer(),
     exited: None,
+    ended_by: None,
     stop: None,
   }
   ({ link, }, { link, })
@@ -74,12 +81,20 @@ fn Link::ended(self : Link, reason : StopReason) -> WorkerStop {
 }
 
 ///|
-pub extend MemoryChannel with Channel::{send, receive, close, abort}
+pub extend MemoryChannel with Channel::{send, receive, close, abort, bounds}
+
+///|
+pub impl Channel for MemoryChannel with fn bounds(self) {
+  self.link.bounds
+}
 
 ///|
 pub impl Channel for MemoryChannel with fn send(self, message) {
   let link = self.link
   guard link.stop is None else { raise Stopped }
+  if link.ended_by is Some(error) {
+    raise error
+  }
   guard link.exited is None else { raise WorkerClosed }
   link.to_worker.put(message)
 }
@@ -148,6 +163,40 @@ pub fn MemoryWorker::exit(self : MemoryWorker, code~ : Int32 = 0) -> Unit {
   link.exited = Some(code)
   link.to_host.close(error=WorkerClosed)
   ignore(link.exits.try_put(code) catch { _ => false })
+}
+
+///|
+/// Ends the worker for a guest fault, as a WASM worker does when its guest
+/// traps. The host reads the messages sent before it, then `GuestFailed`.
+pub fn MemoryWorker::fail(
+  self : MemoryWorker,
+  fault : GuestFault,
+  code~ : Int32 = 1,
+) -> Unit {
+  let link = self.link
+  guard link.exited is None && link.stop is None else { return }
+  link.exited = Some(code)
+  link.ended_by = Some(GuestFailed(fault))
+  link.to_host.close(error=GuestFailed(fault))
+  ignore(link.exits.try_put(code) catch { _ => false })
+}
+
+///|
+/// Ends the worker with a refusal before it serves, as a WASM worker of
+/// another build does. The host reads `Refused` with the code and message.
+pub fn MemoryWorker::refuse(
+  self : MemoryWorker,
+  code~ : RefusalCode,
+  message~ : String,
+  exit_code~ : Int32 = 3,
+) -> Unit {
+  let link = self.link
+  guard link.exited is None && link.stop is None else { return }
+  link.exited = Some(exit_code)
+  let error = ChannelError::Refused(code~, message~)
+  link.ended_by = Some(error)
+  link.to_host.close(error~)
+  ignore(link.exits.try_put(exit_code) catch { _ => false })
 }
 
 ///|

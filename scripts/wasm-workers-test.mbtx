@@ -1,0 +1,320 @@
+----
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/sys",
+}
+----
+
+// The package tests of one target with the end-to-end WASM worker tests run
+// for real: builds the native CLI, the native and portable MoonBit guests and
+// the Node thread entry, downloads the pinned Python extension releases, sets
+// the variables that pkgs/morphir-host/worker/wasm/native and
+// pkgs/morphir-host/worker/thread read, and runs `moon test --target <t>`
+// for the workspace with CI=true, so that a missing prerequisite fails.
+
+///|
+/// Where the downloaded and packaged guests go.
+let work : String = ".dev/wasm-workers"
+
+///|
+/// The Python extension releases that the tests run, with their SHA-256.
+let python_releases : Array[(String, String)] = [
+  ("0.4.1", "a04722e16115667fc7c332177805dcb049aef563afcee0e5f80c5fea302f5b4e"),
+  ("0.4.2", "10acafa0f0282c5240e9620a5f2bb21629cc7580b9add528e7b77c7e54db22b5"),
+]
+
+///|
+/// A target whose package tests include the end-to-end worker tests.
+enum Target {
+  Native
+  Js
+} derive(Eq)
+
+///|
+fn Target::parse(text : String) -> Target? {
+  match text {
+    "native" => Some(Native)
+    "js" => Some(Js)
+    _ => None
+  }
+}
+
+///|
+fn Target::name(self : Target) -> String {
+  match self {
+    Native => "native"
+    Js => "js"
+  }
+}
+
+///|
+/// What to test: the whole workspace, which is the package-test path of CI,
+/// or only the two worker packages.
+enum Scope {
+  Workspace
+  Workers
+}
+
+///|
+fn command() -> @argparse.Command {
+  @argparse.Command(
+    "wasm-workers-test",
+    about="Run the package tests of one target (native or js) with the end-to-end WASM worker tests run for real. It builds the native CLI (apps/morphir), the native MoonBit guest (apps/morphir-extension), the Node thread entry (js), installs the embedding package's JavaScript dependencies (bun install --frozen-lockfile) and packages the portable guest (scripts/package-mep-extension.mbtx), downloads the pinned Python extension releases 0.4.1 and 0.4.2 and checks their SHA-256, then runs moon test --target <t> with MORPHIR_CLI, MORPHIR_NATIVE_GUEST, MORPHIR_PORTABLE_GUEST, MORPHIR_PYTHON_EXTENSIONS, MORPHIR_WASM_THREAD_ENTRY and CI=true, so a missing prerequisite fails a test. --scope workspace (default) tests the workspace, as CI does; --scope workers tests only worker/wasm/native or worker/thread. Build and test output goes to stderr. With --json, stdout is one morphir/command-result 0.1.0 value: result {target, scope, steps: [{program, args, exitCode}]}; a failure has error {code, message} and the exit status of the failed step (1 when it has none, 2 for invalid arguments).",
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg("json", about="Write one command-result on stdout"),
+    ],
+    options=[
+      @argparse.OptionArg("target", about="native or js"),
+      @argparse.OptionArg("scope", about="workspace (default) or workers"),
+    ],
+  )
+}
+
+///|
+suberror StepFailed {
+  StepFailed(Int32, String)
+}
+
+///|
+let steps : Array[Json] = []
+
+///|
+/// Runs one step with its output on stderr.
+async fn step(
+  program : String,
+  args : Array[String],
+  cwd? : String,
+  env? : Map[String, String],
+) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    extra_env=env.unwrap_or(Map([])),
+    stdout=@stdio.stderr,
+    stderr=@stdio.stderr,
+    cwd?=cwd.map(path => path[:]),
+  )
+  steps.push({ "program": program, "args": args, "exitCode": code })
+  guard code == 0 else {
+    raise StepFailed(
+      if code > 0 {
+        code
+      } else {
+        1
+      },
+      "\{program} \{args.join(" ")} failed with status \{code}",
+    )
+  }
+}
+
+///|
+/// The SHA-256 of a file in lowercase hexadecimal, or "" when it cannot be
+/// read.
+async fn sha256_of(path : String) -> String {
+  let bytes = @fs.read_file(path).binary() catch { _ => return "" }
+  let digest = StringBuilder()
+  for byte in @crypto.sha256(bytes) {
+    let value = byte.to_int()
+    digest.write_char("0123456789abcdef"[value >> 4].unsafe_to_char())
+    digest.write_char("0123456789abcdef"[value & 15].unsafe_to_char())
+  }
+  digest.to_string()
+}
+
+///|
+/// Downloads the Python extension releases that are missing, and checks the
+/// SHA-256 of each.
+async fn python_extensions(root : String) -> Unit {
+  for release in python_releases {
+    let (version, digest) = release
+    let directory = "\{root}/\{version}"
+    let file = "\{directory}/morphir-python-binding-\{version}.wasm"
+    if !@fs.exists(file) || sha256_of(file) != digest {
+      @fs.mkdir(directory, recursive=true) catch {
+        _ => ()
+      }
+      step("curl", [
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--output",
+        file,
+        "https://github.com/finos/morphir-python/releases/download/extension%2Fpython%2Fv\{version}/morphir-python-binding-\{version}.wasm",
+      ])
+    }
+    let found = sha256_of(file)
+    guard found == digest else {
+      raise StepFailed(
+        1,
+        "the Python extension \{version} has SHA-256 \{found}; expected \{digest}",
+      )
+    }
+  }
+}
+
+///|
+async fn execute(target : Target, scope : Scope) -> Json {
+  let root = @fs.realpath(".")
+  let built = "\{root}/_build"
+  // The CLI and the native guest that both targets' tests start, and the
+  // thread entry of the js tests. A path argument builds only that package.
+  step("moon", [
+    "build", "--target", "native", "--release", "apps/morphir", "apps/morphir-extension",
+  ])
+  if target == Js {
+    step("moon", [
+      "build", "--target", "js", "--release", "pkgs/morphir-host/worker/thread/entry",
+    ])
+  }
+  // The packaging builds with the embedding package's JavaScript tools, which
+  // a fresh checkout does not have yet.
+  step("bun", [
+    "install", "--frozen-lockfile", "--cwd", "pkgs/morphir-host/embedding",
+  ])
+  // The packaging refuses an existing destination, so each run packages the
+  // portable guest afresh.
+  let portable = "\{root}/\{work}/portable-mep"
+  if @fs.exists(portable) {
+    @fs.rmdir(portable, recursive=true)
+  }
+  step("moonx", ["scripts/package-mep-extension.mbtx"], env={
+    "MORPHIR_MEP_ARTIFACTS": portable,
+  })
+  let python = "\{root}/\{work}/python"
+  python_extensions(python)
+  let env : Map[String, String] = {
+    "CI": "true",
+    "MORPHIR_CLI": "\{built}/native/release/build/morphir/morphir/morphir.exe",
+    "MORPHIR_NATIVE_GUEST": "\{built}/native/release/build/finos/morphir-extension/morphir-extension.exe",
+    "MORPHIR_PORTABLE_GUEST": "\{portable}/extension/model.wasm",
+    "MORPHIR_PYTHON_EXTENSIONS": python,
+    "MORPHIR_WASM_THREAD_ENTRY": "\{built}/js/release/build/finos/morphir-host/worker/thread/entry/entry.js",
+  }
+  match scope {
+    Workspace => step("moon", ["test", "--target", target.name()], env~)
+    Workers =>
+      step(
+        "moon",
+        [
+          "test",
+          "--target",
+          target.name(),
+          match target {
+            Native => "worker/wasm/native"
+            Js => "worker/thread"
+          },
+        ],
+        cwd="pkgs/morphir-host",
+        env~,
+      )
+  }
+  {
+    "target": target.name(),
+    "scope": match scope {
+      Workspace => "workspace"
+      Workers => "workers"
+    },
+    "steps": steps,
+  }
+}
+
+///|
+fn document(state : String, code : Int32, body : (String, Json)) -> String {
+  let fields : Map[String, Json] = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "wasm-workers-test",
+    "state": state,
+    "exitCode": code,
+    "diagnostics": [],
+  }
+  fields[body.0] = body.1
+  Json::object(fields).stringify() + "\n"
+}
+
+///|
+async fn refuse(
+  json : Bool,
+  code : Int32,
+  kind : String,
+  message : String,
+) -> Unit {
+  if json {
+    @stdio.stdout.write(
+      document("failed", code, ("error", { "code": kind, "message": message })),
+    )
+  } else {
+    @stdio.stderr.write("wasm-workers-test: \{message}\n")
+  }
+  @sys.exit(code)
+}
+
+///|
+async fn main {
+  let json = @env.args().contains("--json")
+  let matches = command().parse(argv=@env.args()[1:]) catch {
+    error => {
+      refuse(json, 2, "invalid_arguments", error.to_string())
+      return
+    }
+  }
+  let target = match matches.values.get("target") {
+    Some([text, ..]) => Target::parse(text)
+    _ => None
+  }
+  guard target is Some(target) else {
+    refuse(json, 2, "invalid_arguments", "--target must be native or js")
+    return
+  }
+  let scope = match matches.values.get("scope") {
+    None | Some(["workspace", ..]) => Some(Workspace)
+    Some(["workers", ..]) => Some(Workers)
+    _ => None
+  }
+  guard scope is Some(scope) else {
+    refuse(json, 2, "invalid_arguments", "--scope must be workspace or workers")
+    return
+  }
+  let result = execute(target, scope) catch {
+    StepFailed(code, message) => {
+      refuse(json, code, "step_failed", message)
+      return
+    }
+    error => {
+      refuse(json, 1, "command_failed", error.to_string())
+      return
+    }
+  }
+  if json {
+    @stdio.stdout.write(document("succeeded", 0, ("result", result)))
+  }
+}
+
+///|
+test "targets and their names" {
+  assert_true(Target::parse("native") is Some(Native))
+  assert_true(Target::parse("js") is Some(Js))
+  assert_true(Target::parse("wasm") is None)
+  assert_eq(Target::name(Js), "js")
+}
+
+///|
+async test "sha256_of gives the lowercase hexadecimal digest of a file" {
+  let directory = @fs.tmpdir(prefix="wasm-workers-test-")
+  defer (@fs.rmdir(directory, recursive=true) catch { _ => () })
+  @fs.write_file(directory + "/abc", b"abc")
+  assert_eq(
+    sha256_of(directory + "/abc"),
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  )
+  assert_eq(sha256_of(directory + "/missing"), "")
+}

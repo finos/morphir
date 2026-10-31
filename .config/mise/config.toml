@@ -297,6 +297,10 @@ run = "moonx scripts/portable-mep-mck.mbtx"
 description = "Run the saved MEP guest through the primary CLI extension command"
 run = "moonx scripts/portable-mep-cli.mbtx"
 
+[tasks."test:wasm-workers"]
+description = "Run the package tests of one target with the end-to-end WASM worker tests: --target native|js [--scope workers] [--json]"
+run = "moonx scripts/wasm-workers-test.mbtx"
+
 [tasks."test:cli-extism-python"]
 description = "Qualify an explicit local Python Extism bundle through native and packaged CLI entry points"
 run = "moonx scripts/extism-python.mbtx"

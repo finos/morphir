@@ -178,6 +178,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   }
   // Help remains portable on every target, including those that refuse dispatch.
   assert.match(run(['extension', 'compile', '--help']).stdout, /Usage: morphir extension compile <source>[\s\S]*worker host/);
+  assert.match(run(['extension', '--help']).stdout, /worker: internal subcommand/);
   assert.match(JSON.parse(run(['--json', 'extension', 'compile', 'x.mbt', '--target', 'moonbit'], 2).stdout).error, /--target/);
   exerciseScaffolding(directory, run);
   assert.equal(lines(["--help"])[0].type, "help");

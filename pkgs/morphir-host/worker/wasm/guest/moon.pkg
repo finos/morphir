@@ -1,0 +1,31 @@
+// The guest adapters over the moonrockz/extism engine: morphir-bytes-v1 and
+// extism-kernel-v1, and the loader that classifies, caps and compiles a
+// module. The engine has native and js backends only.
+supported_targets = "+native+js"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/wasm",
+  "moonrockz/extism",
+  "moonrockz/extism/engine",
+  "moonrockz/extism/wasi",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/deque",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/random",
+}
+
+import {
+  "finos/morphir-host/worker/wasm/fixtures",
+  "moonrockz/extism/kernel",
+  "moonbitlang/x/fs",
+} for "test"
+
+options(
+  targets: {
+    "bytes_native_test.mbt": [ "native" ],
+    "extism_native_test.mbt": [ "native" ],
+  },
+)

@@ -9,4 +9,5 @@ import {
   "moonbitlang/async",
   "finos/morphir-host/platform",
   "finos/morphir-host/worker/process/node" @node_worker,
+  "finos/morphir-host/worker/thread" @thread_worker,
 }

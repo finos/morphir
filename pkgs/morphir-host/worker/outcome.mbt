@@ -20,6 +20,8 @@ pub(all) enum FailureCode {
   MemoryLimit
   GuestTrap
   TreeTerminationFailed
+  BudgetExhausted
+  WorkerRuntimeMismatch
 } derive(Eq, Debug)
 
 ///|
@@ -51,6 +53,8 @@ pub impl Show for FailureCode with fn output(self, logger) {
       MemoryLimit => "extension.memory_limit"
       GuestTrap => "extension.guest_trap"
       TreeTerminationFailed => "execution.tree_termination_failed"
+      BudgetExhausted => "extension.budget_exhausted"
+      WorkerRuntimeMismatch => "extension.worker_runtime_mismatch"
     },
   )
 }
@@ -72,6 +76,7 @@ pub(all) enum RefusalCode {
   AbiUnsupported
   AbiMismatch
   WasmFeatureUnsupported
+  WorkerRuntimeMismatch
 } derive(Eq, Debug)
 
 ///|
@@ -94,6 +99,7 @@ pub fn RefusalCode::code(self : RefusalCode) -> FailureCode {
     AbiUnsupported => AbiUnsupported
     AbiMismatch => AbiMismatch
     WasmFeatureUnsupported => WasmFeatureUnsupported
+    WorkerRuntimeMismatch => WorkerRuntimeMismatch
   }
 }
 
@@ -116,6 +122,7 @@ pub(all) enum FaultCode {
   MemoryLimit
   GuestTrap
   TreeTerminationFailed
+  BudgetExhausted
 } derive(Eq, Debug)
 
 ///|
@@ -135,6 +142,7 @@ pub fn FaultCode::code(self : FaultCode) -> FailureCode {
     MemoryLimit => MemoryLimit
     GuestTrap => GuestTrap
     TreeTerminationFailed => TreeTerminationFailed
+    BudgetExhausted => BudgetExhausted
   }
 }
 

@@ -287,6 +287,13 @@ fn Conversation::transport_fault(
       message="a request frame has \{declared} bytes; the limit is \{limit}",
     )
   }
+  if error is GuestFailed(fault) {
+    return fault.ending()
+  }
+  // The worker refused to serve before it read a request.
+  if error is Refused(code~, message~) {
+    return Refused(code~, message~)
+  }
   Failed(
     match error {
       FrameInvalid(text) => Host(code=FrameInvalid, message=text)
@@ -298,7 +305,8 @@ fn Conversation::transport_fault(
           code=ResponseLimit,
           message="a frame declared \{declared} bytes; the limit is \{limit}",
         )
-      WorkerClosed | Stopped =>
+      // A guest fault and a refusal returned above.
+      WorkerClosed | Stopped | GuestFailed(_) | Refused(..) =>
         match self.phase {
           Describing =>
             Host(
@@ -766,4 +774,30 @@ pub fn Conversation::close(
     raise SessionUnavailable("the session cannot close in its current state")
   }
   self.shutdown(ShuttingDown)
+}
+
+///|
+/// How a WASM guest fault ends a session. A per-call deadline is a deadline;
+/// an exhausted instruction budget is a resource limit, not a timeout.
+fn GuestFault::ending(self : GuestFault) -> Ending {
+  match self {
+    Trap(text) =>
+      Failed(Host(code=GuestTrap, message="the guest trapped: \{text}"))
+    MemoryLimit(text) =>
+      Failed(
+        Host(
+          code=MemoryLimit,
+          message="the guest grew its memory past the ceiling: \{text}",
+        ),
+      )
+    CallDeadline => Deadline
+    BudgetExhausted =>
+      Failed(
+        Host(
+          code=BudgetExhausted,
+          message="the guest used its instruction budget for the call",
+        ),
+      )
+    Failure(text) => Failed(Host(code=IncompleteSession, message=text))
+  }
 }

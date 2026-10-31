@@ -1578,6 +1578,13 @@ async fn extension_execute(
   if report.extism is Some(profile) {
     bounds["extism"] = profile.to_json()
   }
+  // A WASM worker's host states which bounds it enforced: the memory
+  // ceiling, the instruction budget and the per-call deadline.
+  if report.bounds is Some(enforced) && enforced.to_json() is Object(fields) {
+    for name, value in fields {
+      bounds[name] = value
+    }
+  }
   if command is Compile {
     bounds["sourceFiles"] = Json::number(
       extension_source_limits.files.to_double(),

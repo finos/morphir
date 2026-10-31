@@ -1,0 +1,7 @@
+// Crafted WASM modules for the tests of the WASM workers. A module is built
+// from typed parts, so a test states exactly the imports, exports, memory and
+// code that it needs.
+
+import {
+  "moonbitlang/core/encoding/utf8",
+}

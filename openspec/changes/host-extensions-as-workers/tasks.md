@@ -73,20 +73,20 @@
 
 ## 5. WASM workers (morphir-ukvn.5.64.36.5)
 
-- [ ] 5.1 Implement the import and export reader, the profile classifier over the import surfaces of WASM-1 and
+- [x] 5.1 Implement the import and export reader, the profile classifier over the import surfaces of WASM-1 and
   WASM-4, and the memory-maximum rewrite; verify the "Any conformant extension runs", "ABI classification", "Extism
   import surface" and "Declared ABI must agree" scenarios with the Python modules, the portable MoonBit guest and
   crafted modules
-- [ ] 5.2 Implement the `morphir-bytes-v1` adapter over the engine package; verify the "Byte callback adapter"
+- [x] 5.2 Implement the `morphir-bytes-v1` adapter over the engine package; verify the "Byte callback adapter"
   scenario: the portable guest returns the same envelopes as the native guest
-- [ ] 5.3 Implement the Extism adapter over the plugin API with the WASM-4 policy and the four Morphir host functions
+- [x] 5.3 Implement the Extism adapter over the plugin API with the WASM-4 policy and the four Morphir host functions
   registered by this repository; verify the "Extism kernel adapter", "WASI sandbox" and "Host function policy"
   scenarios with the Python guest and crafted guests, including undelivered notifications and a trap
-- [ ] 5.4 Add the `morphir extension worker` mode with the build identity check and a `--json` startup report on
+- [x] 5.4 Add the `morphir extension worker` mode with the build identity check and a `--json` startup report on
   stderr, and the native WASM launcher over the process launcher (WASM-2); verify the "Native WASM worker runtime",
   "Memory ceiling", "Per-call budget" and "Unsupported WASM features" scenarios, and record the CLI binary size
   before and after in the pull request
-- [ ] 5.5 Add the Node worker-thread launcher and its entry module built from MoonBit, shipped in the npm package
+- [x] 5.5 Add the Node worker-thread launcher and its entry module built from MoonBit, shipped in the npm package
   (WASM-3); verify the "Node worker threads" scenario and that the npm package runs it from an unpacked tarball
 
 ## 6. Extension commands on the worker host (morphir-ukvn.5.64.36.6)

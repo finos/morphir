@@ -8,4 +8,19 @@ import {
   "moonbitlang/async",
   "finos/morphir-host/platform",
   "finos/morphir-host/worker/process/native" @native_worker,
+  "finos/morphir-host/worker/wasm/native" @wasm_worker,
 }
+
+// The build stamp of the WASM worker identity: the version from moon.mod and
+// the git commit, written into build_stamp.mbt (not committed) before the
+// build. See pkgs/morphir-host/worker/wasm/README.mbt.md.
+
+options(
+  "pre-build": [
+    {
+      "command": "moonx $mod_dir/../../scripts/build-stamp.mbtx --version-file $mod_dir/moon.mod --output $output",
+      "input": [ "moon.mod" ],
+      "output": "build_stamp.mbt",
+    },
+  ],
+)

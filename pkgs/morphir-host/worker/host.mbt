@@ -90,16 +90,18 @@ pub fn StopSignal::requested(self : StopSignal) -> Bool {
 
 ///|
 /// What a finished session reports: what it negotiated, the limits that
-/// applied, the restricted Extism profile when it applied, how the worker
-/// stopped and why the session ended early, if it did. The host never sends
-/// `$/cancelRequest`; `to_json` states `wireCancellation: false`. Under
-/// `limits`, `to_json` gives the byte limits that the host enforces, and
-/// under `limits.negotiated` the depth and node limits that were negotiated.
-/// The party that decodes the model enforces those two, not the host.
+/// applied, the restricted Extism profile when it applied, the WASM bounds
+/// that the host enforced, how the worker stopped and why the session ended
+/// early, if it did. The host never sends `$/cancelRequest`; `to_json`
+/// states `wireCancellation: false`. Under `limits`, `to_json` gives the byte
+/// limits that the host enforces, and under `limits.negotiated` the depth and
+/// node limits that were negotiated. The party that decodes the model
+/// enforces those two, not the host.
 pub struct SessionReport {
   negotiated : Negotiated?
   limits : Limits
   extism : ExtismProfile?
+  bounds : EnforcedBounds?
   stop : WorkerStop?
   ending : Ending?
 } derive(Eq, Debug)
@@ -115,10 +117,11 @@ pub fn SessionReport::new(
   limits : Limits,
   negotiated? : Negotiated,
   extism? : ExtismProfile,
+  bounds? : EnforcedBounds,
   stop? : WorkerStop,
   ending? : Ending,
 ) -> SessionReport {
-  { negotiated, limits, extism, stop, ending, }
+  { negotiated, limits, extism, bounds, stop, ending, }
 }
 
 ///|
@@ -204,6 +207,9 @@ pub impl ToJson for SessionReport with fn to_json(self) {
   }
   if self.extism is Some(profile) {
     fields["extismProfile"] = profile.to_json()
+  }
+  if self.bounds is Some(bounds) {
+    fields["bounds"] = bounds.to_json()
   }
   if self.stop is Some(stop) {
     fields["worker"] = stop.report()

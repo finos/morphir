@@ -61,8 +61,10 @@ test "failure codes use the documented names" {
     (MemoryLimit, "extension.memory_limit"),
     (GuestTrap, "extension.guest_trap"),
     (TreeTerminationFailed, "execution.tree_termination_failed"),
+    (BudgetExhausted, "extension.budget_exhausted"),
+    (WorkerRuntimeMismatch, "extension.worker_runtime_mismatch"),
   ]
-  assert_eq(table.length(), 19)
+  assert_eq(table.length(), 21)
   for row in table {
     let (code, text) = row
     assert_eq(code.to_string(), text)
@@ -83,6 +85,7 @@ test "refusal and fault codes each map to one failure code" {
     AbiUnsupported,
     AbiMismatch,
     WasmFeatureUnsupported,
+    WorkerRuntimeMismatch,
   ]
   let faults : Array[@worker.FaultCode] = [
     IncompleteSession,
@@ -93,15 +96,16 @@ test "refusal and fault codes each map to one failure code" {
     MemoryLimit,
     GuestTrap,
     TreeTerminationFailed,
+    BudgetExhausted,
   ]
   let codes = refusals.map(code => code.code().to_string())
   codes.push_iter(faults.iter().map(code => code.code().to_string()))
   let unique = codes.copy()
   unique.sort()
   unique.dedup()
-  // Together the two sets cover all 19 codes, and no code is in both.
-  assert_eq(unique.length(), 19)
-  assert_eq(codes.length(), 19)
+  // Together the two sets cover all 21 codes, and no code is in both.
+  assert_eq(unique.length(), 21)
+  assert_eq(codes.length(), 21)
   assert_eq(
     @worker.RefusalCode::ClaimsMismatch.to_string(),
     "extension.claims_mismatch",

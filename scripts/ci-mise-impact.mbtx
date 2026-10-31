@@ -939,6 +939,7 @@ let task_table : Array[(String, Effect)] = [
   ("scheme-docs:check", Checks([ElmScheme])),
   ("build:ci-native", Checks([Code])),
   ("test:mep-process", Checks([Code])),
+  ("test:wasm-workers", Checks([Code])),
   ("test:mep-smithy", Checks([Code])),
   ("test:moonbit-frontend", Checks([Code, Frontend])),
   ("test:conformance", Checks([Code, Conformance])),

@@ -24,5 +24,8 @@ export function stageCliArtifact(build: string, target: string): string {
   mkdirSync(dirname(destination), {recursive: true});
   copyFileSync(source, destination);
   if (statSync(destination).size !== statSync(source).size) throw new Error(`Incomplete CLI artifact: ${destination}`);
+  // The Node worker-thread entry of WASM guests runs beside the CLI bundle.
+  const threadEntry = join(build, target, 'release/build/finos/morphir-host/worker/thread/entry/entry.js');
+  if (target === 'js' && existsSync(threadEntry)) copyFileSync(threadEntry, join(dirname(destination), 'wasm-worker.js'));
   return destination;
 }

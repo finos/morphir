@@ -41,6 +41,24 @@ test "notebook options belong to their subcommands" {
 }
 
 ///|
+test "extension help names the internal worker subcommand and the WASM runtimes" {
+  let help = parse_cli(["extension", "--help"]).help_text
+  assert_true(
+    help.contains(
+      "worker: internal subcommand that the native CLI starts as the WASM worker runtime; users do not run it.",
+    ),
+  )
+  assert_true(help.contains("Process and WASM runtimes run"))
+  assert_true(!help.contains("WASM runtimes are refused"))
+  // Only `morphir extension` lists it; its commands do not.
+  assert_true(
+    !parse_cli(["extension", "compile", "--help"]).help_text.contains(
+      "internal subcommand",
+    ),
+  )
+}
+
+///|
 test "the parser selects subcommands and global output without exiting for help" {
   let cli = parse_cli(["--json", "toolchain", "run", "work", "--help"])
   assert_eq(cli.command, "toolchain run")

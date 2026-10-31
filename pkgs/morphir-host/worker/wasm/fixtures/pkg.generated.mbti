@@ -1,0 +1,98 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host/worker/wasm/fixtures"
+
+// Values
+pub fn byte_callbacks() -> Array[ImportedFunction]
+
+pub fn bytes_guest(Bytes) -> Bytes
+
+pub fn constant_guest(Int32) -> Bytes
+
+pub fn echo_code() -> Bytes
+
+pub fn echo_guest() -> Bytes
+
+pub fn extism_cache_guest() -> Bytes
+
+pub fn extism_echo_guest() -> Bytes
+
+pub fn extism_error_guest() -> Bytes
+
+pub fn extism_guest(Array[Byte], extra? : Array[ImportedFunction], result? : Int32) -> Bytes
+
+pub fn extism_http_guest() -> Bytes
+
+pub fn extism_log_level_guest() -> Bytes
+
+pub fn extism_logging_guest(Int32, LoggingEnd) -> Bytes
+
+pub fn extism_runaway_guest() -> Bytes
+
+pub fn extism_text_guest(Bytes, result? : Int32) -> Bytes
+
+pub fn extism_trapping_guest() -> Bytes
+
+pub fn extism_wasi_guest() -> Bytes
+
+pub fn extism_workspace_guest() -> Bytes
+
+pub let first_extra_import : Int32
+
+pub fn growing_guest(Int32) -> Bytes
+
+pub fn kernel_imports() -> Array[ImportedFunction]
+
+pub fn kernel_text(Bytes, Int32) -> Array[Byte]
+
+pub fn module_(imports? : Array[ImportedFunction], functions? : Array[DefinedFunction], memory? : Memory) -> Bytes
+
+pub fn output_block(Int32) -> Array[Byte]
+
+pub fn runaway_guest() -> Bytes
+
+pub fn sleb(Int32) -> Array[Byte]
+
+pub fn trapping_guest() -> Bytes
+
+pub fn writing_guest(Bytes, Int32) -> Bytes
+
+// Errors
+
+// Types and methods
+pub struct DefinedFunction {
+  export_name : String?
+  params : Array[Type]
+  results : Array[Type]
+  locals : Array[Type]
+  code : Bytes
+}
+pub fn DefinedFunction::new(export_name? : String, params? : Array[Type], results? : Array[Type], locals? : Array[Type], Bytes) -> Self
+
+pub struct ImportedFunction {
+  module_name : String
+  name : String
+  params : Array[Type]
+  results : Array[Type]
+}
+pub fn ImportedFunction::new(String, String, Array[Type], Array[Type]) -> Self
+
+pub(all) enum LoggingEnd {
+  Trap
+  Spin
+}
+
+pub struct Memory {
+  minimum : Int32
+  maximum : Int32?
+  exported : Bool
+}
+pub fn Memory::new(Int32, maximum? : Int32, exported? : Bool) -> Self
+
+pub(all) enum Type {
+  I32
+  I64
+}
+
+// Type aliases
+
+// Traits

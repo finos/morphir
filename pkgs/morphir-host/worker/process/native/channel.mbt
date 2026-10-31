@@ -185,7 +185,13 @@ fn transport_error(error : Error) -> @worker.ChannelError {
 }
 
 ///|
-pub extend ProcessChannel with @worker.Channel::{send, receive, close, abort}
+pub extend ProcessChannel with @worker.Channel::{
+  send,
+  receive,
+  close,
+  abort,
+  bounds,
+}
 
 ///|
 pub impl @worker.Channel for ProcessChannel with fn send(self, message) {

@@ -1,0 +1,24 @@
+// The Node worker-thread launcher of WASM workers (WASM-3). Each guest runs
+// in its own Node worker thread, from the entry module that
+// worker/thread/entry builds; a deadline or a cancellation terminates the
+// thread and waits until it has terminated.
+supported_targets = "js"
+
+import {
+  "finos/morphir-host/worker",
+  "finos/morphir-host/worker/wasm",
+  "finos/morphir-host/worker/wasm/guest",
+  "finos/morphir-host/worker/process" @shared,
+  "moonbitlang/async",
+  "moonbitlang/async/aqueue",
+  "moonbitlang/async/js_async",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string" @strconv,
+}
+
+import {
+  "finos/morphir-host/worker/wasm/fixtures",
+  "finos/morphir-host/worker/process/node" @node_process,
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+} for "wbtest"

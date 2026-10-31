@@ -1167,3 +1167,56 @@ test "diagnostics: a malformed diagnostic keeps the valid ones and is named" {
   assert_eq(named.code, Some("extension.unexpected_response"))
   assert_true(named.message.contains("diagnostic 1"))
 }
+
+///|
+test "guest fault: each WASM guest fault ends the session with its own class and code" {
+  let (conversation, _) = ready_legacy().compile(compile_request())
+  let failed = (fault : @worker.GuestFault) => {
+    let (_, step) = conversation.on(ChannelFailed(GuestFailed(fault)))
+    guard step is Finished(EndedEarly(ending), stop=Abort(reason), ..) else {
+      fail("a guest fault did not end the session: \{@debug.to_string(step)}")
+    }
+    (ending, reason)
+  }
+  guard failed(Trap("unreachable"))
+    is (Failed(Host(code=GuestTrap, message~)), Fault) &&
+    message.contains("unreachable") else {
+    fail("a trap did not fail the session with guest_trap")
+  }
+  guard failed(MemoryLimit("memory.grow past 4096 pages"))
+    is (Failed(Host(code=MemoryLimit, message~)), Fault) &&
+    message.contains("4096") else {
+    fail("a refused growth did not fail the session with memory_limit")
+  }
+  assert_true(failed(CallDeadline) is (Deadline, _))
+  assert_true(
+    failed(BudgetExhausted) is (Failed(Host(code=BudgetExhausted, ..)), Fault),
+  )
+  guard failed(Failure("handle returned -1"))
+    is (Failed(Host(code=IncompleteSession, message~)), Fault) &&
+    message.contains("handle returned -1") else {
+    fail("a guest failure did not keep its message")
+  }
+}
+
+///|
+test "channel refusal: a worker that refused to serve ends the session as refused" {
+  let (conversation, _) = @worker.Conversation::probe()
+  let (_, step) = conversation.on(
+    ChannelFailed(
+      Refused(
+        code=WorkerRuntimeMismatch,
+        message="the worker runtime is build b; the host is build a",
+      ),
+    ),
+  )
+  guard step
+    is Finished(
+      EndedEarly(Refused(code=WorkerRuntimeMismatch, message~)),
+      stop=Abort(Fault),
+      ..
+    ) else {
+    fail("a refusal did not end the session: \{@debug.to_string(step)}")
+  }
+  assert_true(message.contains("build b"))
+}
