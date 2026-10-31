@@ -23,7 +23,7 @@ import {
   "moonrockz/moon-lander-hosting@0.8.0",
   "moonrockz/moon-lander@0.8.0",
   "moonbitlang/x@0.5.5",
-  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.7",
   "moonbit-community/rabbita@0.16.3",
   "finos/morphir-scheme@0.1.0",
   "finos/morphir-ir@0.1.0",

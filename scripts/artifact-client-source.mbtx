@@ -1,10 +1,9 @@
-///|
-/// Check or reproduce the exact audited upstream artifact client source.
+----
 import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
@@ -12,6 +11,9 @@ import {
   "moonbitlang/x@0.5.5/crypto",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Check or reproduce the exact audited upstream artifact client source.
 
 ///|
 // Selected only at the owned CLI boundary, never from a child or a path value.

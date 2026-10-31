@@ -1,17 +1,19 @@
-///|
-/// Build only the CI CLI, with isolated output for each target. Based on Smithy's
-/// zig-cross wrappers: https://github.com/moonrockz/smithy/tree/main/apps/zig-cross
-/// Workarounds track https://github.com/moonbitlang/moon/issues/2320.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
+----
+
+// Build only the CI CLI, with isolated output for each target. Based on Smithy's
+// zig-cross wrappers: https://github.com/moonrockz/smithy/tree/main/apps/zig-cross
+// Workarounds track https://github.com/moonbitlang/moon/issues/2320.
 
 ///|
 fn target_info(target : String) -> (String, String, String) raise {

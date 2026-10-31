@@ -1,17 +1,19 @@
-///|
-/// Vendor pinned Morphir JSON examples and regenerate the portable codec tests.
-/// --morphir and --morphir-elm read the recorded commits, never checkout contents.
+----
 import {
   "moonbitlang/core/env",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Vendor pinned Morphir JSON examples and regenerate the portable codec tests.
+// --morphir and --morphir-elm read the recorded commits, never checkout contents.
 
 ///|
 let morphir_pin = "5c5307d89f34d876e8f1ebf561ec55efbadf9fa0"

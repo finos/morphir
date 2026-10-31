@@ -73,8 +73,8 @@ function build(path: string, target: 'native' | 'wasm', name: string) {
   return artifact;
 }
 const stubSource = `import {
-  "moonbitlang/async@0.22.1", "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/stdio", "moonbitlang/core/env",
+  "moonbitlang/async@0.22.7", "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio", "moonbitlang/core/env",
   "moonbitlang/core/json", "moonbitlang/x@0.5.5/sys",
 }
 async fn main {
@@ -239,8 +239,9 @@ function qualify(target: 'native' | 'wasm', artifact: string) {
     ['mode', '--requested', 'run', '--requested', 'evidence']]) {
     const r = invoke('default-refusal', args, [], { status: 1 });
     assert.equal(r.calls.length, 0);
-    assert.equal((target === 'native' ? r.out : r.err).length, 0);
-    assert.match((target === 'native' ? r.err : r.out).toString(), /^(Failure\(|error:)/);
+    // Since moonbitlang/async 0.22.7 a refusal goes to stderr on Wasm too.
+    assert.equal(r.out.length, 0);
+    assert.match(r.err.toString(), /^(Failure\(|error:)/);
   }
   for (const args of [['--json', '--help'], ['--help', '--json'], ['--json', '-h'], ['help', '--json'],
     ...['fingerprint', 'lookup', 'mode', 'record'].flatMap(name => [[name, '--help', '--json'], ['--json', name, '-h'], ['help', name, '--json']])]) {

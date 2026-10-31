@@ -1,3 +1,16 @@
+----
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
+}
+----
+
 // Runs pinned morphir-elm make on every project in pkgs/morphir-elm/conformance/projects, writes each
 // expected/morphir-ir.json as compact JSON, and regenerates pkgs/morphir-elm/conformance/parity_data_wbtest.mbt
 // with the same compact JSON (with line breaks in long lines), and pkgs/morphir-engine/acceptance/elm/projects.mbt
@@ -5,18 +18,6 @@
 //
 // Run it from the repository root with `mise run elm:parity-refresh` or
 // `moon run scripts/elm-parity-refresh.mbtx`.
-
-///|
-import {
-  "moonbitlang/core/env",
-  "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
-  "moonbitlang/core/json",
-  "moonbitlang/x@0.5.5/sys",
-}
 
 ///|
 let root : String = "pkgs/morphir-elm/conformance"
@@ -125,7 +126,7 @@ let json_line_width : Int32 = 60000
 /// `json` with a line break after the first comma outside a string once a line has `width` characters. A JSON
 /// reader takes the line break as whitespace, so the text holds the same JSON.
 fn wrap_json(json : String, width : Int32) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut column = 0
   let mut in_string = false
   let mut escaped = false

@@ -1,57 +1,10 @@
-///|
-/// Evidence for the macOS qualification lanes. The lanes run tests of the whole
-/// workspace, so their result depends on the inputs of those lanes and not on
-/// the tree. The input fingerprint names those inputs: a SHA-256 of a schema
-/// line, the lane set name and one `<mode> <object>\t<path>` line per
-/// `git ls-tree -r HEAD` entry under an input. A nightly run that passed on a
-/// fingerprint records evidence under it; a later run on the same fingerprint
-/// can reuse it. The list of inputs is an allowlist, so a new top-level area is
-/// not an input until someone adds it; a self-test checks that every workflow
-/// that a `macos-*` job of qualification.yml uses is an input.
-///
-/// The nightly `evidence` job runs `mode`, which runs the lookup: it lists the artifacts named
-/// `macos-evidence-v1-<fingerprint>` and accepts one only when the GitHub API
-/// shows that a successful scheduled or dispatched run of
-/// nightly-qualification.yml on `main` of this repository (not a fork, and at a
-/// commit in the history of `refs/heads/main`) uploaded it at most 7 days ago,
-/// and the artifact has not expired. On a hit the macOS lanes reuse the
-/// evidence; on a miss, or while a `macos-breach` issue is open (or cannot be
-/// read), they run. Each `gh` call is tried twice; when the API
-/// still cannot be read, the lookup prints a `::warning::` on stderr and the
-/// lanes run. The `record` job runs `record`
-/// after a passing `run` on `main` and uploads the file it writes.
-///
-/// Usage:
-///   ci-evidence.mbtx fingerprint [--json]   print the fingerprint of HEAD
-///   ci-evidence.mbtx lookup --fingerprint HEX [--repo OWNER/NAME] [--json]
-///       print the macOS mode; --json prints {"macos":"run"|"reuse","evidence":EvidenceRef|null}
-///       (--repo defaults to GITHUB_REPOSITORY)
-///   ci-evidence.mbtx mode --requested evidence|run [--repo OWNER/NAME] [--json] [--github-output]
-///       fingerprint HEAD and choose the macOS mode: `run` looks nothing up;
-///       `evidence` reads the breach issue and looks up evidence. --requested
-///       defaults to CI_MACOS_REQUESTED. --github-output appends fingerprint=,
-///       macos= and evidence= lines to the file named by GITHUB_OUTPUT
-///   ci-evidence.mbtx record --fingerprint HEX --sha SHA --run ID --out FILE [--json]
-///       fail unless HEAD has the fingerprint, then write the evidence file
-///   ci-evidence.mbtx --self-test            run the built-in tests
-///
-/// JSON may also be selected at the root before any command or invalid data.
-/// Root/subcommand --help, -h and help [COMMAND] report result.help without
-/// command effects; --self-test --json runs the same tests with notes on stderr.
-/// New results use profile morphir/command-result, contractVersion 0.1.0,
-/// command ci.evidence[.COMMAND], state, exitCode and diagnostics. Success adds
-/// result; failure adds error {code,message}, with invalid-arguments for syntax
-/// or domain validation and command-failed for execution/write failures. Record's
-/// result names output, artifact and the exact evidence object written to disk.
-/// Stdout is one UTF-8 JSON value plus LF; notices and test notes use stderr.
-/// Existing fingerprint/lookup/mode success objects remain bare. Expected JSON
-/// refusals exit 1; text-mode abort behavior and lookup fallback stay unchanged.
+----
 import {
   "moonbit-community/yaml@0.0.8",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/env",
@@ -60,6 +13,55 @@ import {
   "moonbitlang/x@0.5.5/crypto",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Evidence for the macOS qualification lanes. The lanes run tests of the whole
+// workspace, so their result depends on the inputs of those lanes and not on
+// the tree. The input fingerprint names those inputs: a SHA-256 of a schema
+// line, the lane set name and one `<mode> <object>\t<path>` line per
+// `git ls-tree -r HEAD` entry under an input. A nightly run that passed on a
+// fingerprint records evidence under it; a later run on the same fingerprint
+// can reuse it. The list of inputs is an allowlist, so a new top-level area is
+// not an input until someone adds it; a self-test checks that every workflow
+// that a `macos-*` job of qualification.yml uses is an input.
+//
+// The nightly `evidence` job runs `mode`, which runs the lookup: it lists the artifacts named
+// `macos-evidence-v1-<fingerprint>` and accepts one only when the GitHub API
+// shows that a successful scheduled or dispatched run of
+// nightly-qualification.yml on `main` of this repository (not a fork, and at a
+// commit in the history of `refs/heads/main`) uploaded it at most 7 days ago,
+// and the artifact has not expired. On a hit the macOS lanes reuse the
+// evidence; on a miss, or while a `macos-breach` issue is open (or cannot be
+// read), they run. Each `gh` call is tried twice; when the API
+// still cannot be read, the lookup prints a `::warning::` on stderr and the
+// lanes run. The `record` job runs `record`
+// after a passing `run` on `main` and uploads the file it writes.
+//
+// Usage:
+//   ci-evidence.mbtx fingerprint [--json]   print the fingerprint of HEAD
+//   ci-evidence.mbtx lookup --fingerprint HEX [--repo OWNER/NAME] [--json]
+//       print the macOS mode; --json prints {"macos":"run"|"reuse","evidence":EvidenceRef|null}
+//       (--repo defaults to GITHUB_REPOSITORY)
+//   ci-evidence.mbtx mode --requested evidence|run [--repo OWNER/NAME] [--json] [--github-output]
+//       fingerprint HEAD and choose the macOS mode: `run` looks nothing up;
+//       `evidence` reads the breach issue and looks up evidence. --requested
+//       defaults to CI_MACOS_REQUESTED. --github-output appends fingerprint=,
+//       macos= and evidence= lines to the file named by GITHUB_OUTPUT
+//   ci-evidence.mbtx record --fingerprint HEX --sha SHA --run ID --out FILE [--json]
+//       fail unless HEAD has the fingerprint, then write the evidence file
+//   ci-evidence.mbtx --self-test            run the built-in tests
+//
+// JSON may also be selected at the root before any command or invalid data.
+// Root/subcommand --help, -h and help [COMMAND] report result.help without
+// command effects; --self-test --json runs the same tests with notes on stderr.
+// New results use profile morphir/command-result, contractVersion 0.1.0,
+// command ci.evidence[.COMMAND], state, exitCode and diagnostics. Success adds
+// result; failure adds error {code,message}, with invalid-arguments for syntax
+// or domain validation and command-failed for execution/write failures. Record's
+// result names output, artifact and the exact evidence object written to disk.
+// Stdout is one UTF-8 JSON value plus LF; notices and test notes use stderr.
+// Existing fingerprint/lookup/mode success objects remain bare. Expected JSON
+// refusals exit 1; text-mode abort behavior and lookup fallback stay unchanged.
 
 ///|
 /// The first line of the fingerprint text. Change it when the meaning of the

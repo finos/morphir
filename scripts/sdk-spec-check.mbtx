@@ -1,17 +1,18 @@
-// Checks pkgs/morphir-sdk-spec/sdk.scm against pkgs/morphir-sdk/conformance/bindings.json, and checks that
-// pkgs/morphir-sdk-spec/sdk_data.mbt is fresh. It runs the native `sdkgen check` tool of pkgs/morphir-typing-tools.
-
-///|
+----
 import {
-  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.7/fs",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Checks pkgs/morphir-sdk-spec/sdk.scm against pkgs/morphir-sdk/conformance/bindings.json, and checks that
+// pkgs/morphir-sdk-spec/sdk_data.mbt is fresh. It runs the native `sdkgen check` tool of pkgs/morphir-typing-tools.
 
 ///|
 async fn execute() -> Json {

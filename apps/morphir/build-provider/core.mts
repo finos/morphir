@@ -3,8 +3,8 @@ import {readFileSync,readdirSync,realpathSync,lstatSync} from 'node:fs';
 import {join} from 'node:path';
 import {hash} from './identity.mjs';
 import {isWithin} from './paths.mjs';
-export const coreCommit='eb321a18f7a33d37114546682a8d1cd6658afab8';
-export const coreSourceSha256='697db11ed55162a1e911bb8392ba23bcdcc5d17317b56f6910ebdca022fa5963';
+export const coreCommit='417988f6e19738a7f683ce19a6cf5aaf52c96965';
+export const coreSourceSha256='5438bf99976daf54091564ea9c504bfb5ab9dc493e4f6736a7a4df33b6a99f69';
 export type CoreSelection='stable'|'llvm-nightly';
 export function checkedCore(home: string,compilerVersion: string,selection: CoreSelection='stable',check: ()=>void=()=>{}) {
   check();

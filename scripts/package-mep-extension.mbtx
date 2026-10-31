@@ -1,15 +1,17 @@
-///|
-/// Acquire the full graph, then publish a saved extension with the packaged
-/// compiler. Runtime hosts use only the saved artifact and explicit byte ABI.
+----
 import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Acquire the full graph, then publish a saved extension with the packaged
+// compiler. Runtime hosts use only the saved artifact and explicit byte ABI.
 
 ///|
 async fn output(command : String, args : Array[String]) -> String {
@@ -172,7 +174,7 @@ async fn main {
   let result : Json = try {
     let matches = json_command().parse(argv~)
     if matches.flags.get_or_default("help", false) ||
-      matches.subcommand.is_some() {
+      matches.subcommand is Some(_) {
       {
         "render_help": legacy_command().render_help(),
         "json_help": json_command().render_help(),

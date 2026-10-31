@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {release,version as osVersion} from 'node:os';
 import {hash,fileIdentity,treeIdentity} from './identity.mjs';
 import {checkedCore} from './core.mjs';
-export const stableVersion='0.10.17+d971670cd';
+export const stableVersion='0.10.18+6c83a7f62';
 export function run(program: string,args: string[],timeout=10000) {
   const result=spawnSync(program,args,{encoding:'utf8',timeout,maxBuffer:1048576,env:{...process.env,MOONBIT_NEW_NATIVE:'0'}});
   assert.ok(!result.error,result.error?.message ?? "Child process failed");assert.equal(result.status,0,result.stderr);return result.stdout+result.stderr;

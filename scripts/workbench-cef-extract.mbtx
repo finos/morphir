@@ -1,18 +1,20 @@
-///|
-/// Narrow tar-compatible adapter for Proton's pinned Windows CEF setup.
-/// CMake's archive engine avoids the runner's external MSYS bzip2 pipe.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/argparse",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
 }
+----
+
+// Narrow tar-compatible adapter for Proton's pinned Windows CEF setup.
+// CMake's archive engine avoids the runner's external MSYS bzip2 pipe.
 
 ///|
 let json_mode : Ref[Bool] = Ref(false)

@@ -1,15 +1,17 @@
-///|
-/// Build, bundle or qualify the native MoonBit MEP guest. Host acquisition is explicit.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/argparse",
 }
+----
+
+// Build, bundle or qualify the native MoonBit MEP guest. Host acquisition is explicit.
 
 ///|
 let json_mode : Ref[Bool] = Ref(false)

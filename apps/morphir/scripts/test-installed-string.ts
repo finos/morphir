@@ -6,7 +6,7 @@ import {capabilities} from '../build-provider/capabilities.mts';
 import {hash} from '../build-provider/identity.mts';
 
 const profile='moonbit-model-stable-v1';
-const corePin='0.10.17+d971670cd+tree:eb321a18f7a33d37114546682a8d1cd6658afab8';
+const corePin='0.10.18+6c83a7f62+tree:417988f6e19738a7f683ce19a6cf5aaf52c96965';
 
 // Every advertised stable String type, operator and SDK call appears in one library.
 const source=`/// Installed String qualification library. λ😀
@@ -115,7 +115,7 @@ export function testInstalledString({run,root,receipts,cli,helper,cwd,home,llvmH
   // Ion text carries the same source facts; checked Morphir JSON refuses to drop them.
   assert.equal(JSON.parse(sourceCall(['run','.','--checkpoint-format','ion-text','--json']).stdout).successful,true);
   const text=readFileSync(join(compileDir,'Main.ion'),'utf8');
-  for(const token of [profile,'well-formed-utf16','utf16-shortlex','moonbit-source-string-index-v1','moonbit-source-binding-v1','String::contains','String::has_prefix','String::has_suffix','String::is_empty','string-method','pinned-implicit-string-to-stringview','eb321a18f7a33d37114546682a8d1cd6658afab8','Installed String qualification library.'])assert.ok(text.includes(token),token);
+  for(const token of [profile,'well-formed-utf16','utf16-shortlex','moonbit-source-string-index-v1','moonbit-source-binding-v1','String::contains','String::has_prefix','String::has_suffix','String::is_empty','string-method','pinned-implicit-string-to-stringview','417988f6e19738a7f683ce19a6cf5aaf52c96965','Installed String qualification library.'])assert.ok(text.includes(token),token);
   const textCheckpoint=join(output,'Main.ion');writeFileSync(textCheckpoint,text);
   // A future fact beside the frontend provenance must not prevent replay.
   const future=join(output,'Main-future.ion');

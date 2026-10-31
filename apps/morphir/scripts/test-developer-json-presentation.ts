@@ -41,9 +41,9 @@ function build(source: string, name: string, targetRuntime: 'native' | 'wasm' = 
   return artifact;
 }
 const stubSource = `import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",

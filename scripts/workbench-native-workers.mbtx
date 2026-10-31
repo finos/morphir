@@ -1,15 +1,17 @@
-///|
-/// Qualify real native subprocesses without loading Proton or CEF.
+----
 import {
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/fs",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Qualify real native subprocesses without loading Proton or CEF.
 
 ///|
 async fn execute() -> Unit {

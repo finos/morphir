@@ -26,6 +26,6 @@ import {
   "finos/morphir-execution@0.1.0",
   "finos/morphir-ir@0.1.0",
   "finos/morphir-moonbit@0.1.0",
-  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.7",
   "moonbitlang/x@0.5.5",
 }

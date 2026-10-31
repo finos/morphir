@@ -1,6 +1,6 @@
 {
   "profile": "morphir-native-otel-dependencies-v1",
-  "compilerVersion": "0.10.17+d971670cd",
+  "compilerVersion": "0.10.18+6c83a7f62",
   "packages": [
     {
       "name": "moonbit-community/opentelemetry",
@@ -16,9 +16,9 @@
     },
     {
       "name": "moonbitlang/async",
-      "version": "0.22.4",
-      "url": "https://download.mooncakes.io/user/moonbitlang/async/0.22.4.zip",
-      "sha256": "2ffdb85cb229cfe9219161a7f2b959215a79a0d75b7e642cb346713f168a1457"
+      "version": "0.22.7",
+      "url": "https://download.mooncakes.io/user/moonbitlang/async/0.22.7.zip",
+      "sha256": "370f87d096c09c0ed0614ceaa0561f77021f85ffce9ec0acb05492fbb599dbaf"
     },
     {
       "name": "moonbitlang/x",

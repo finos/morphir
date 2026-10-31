@@ -1,14 +1,16 @@
-///|
-/// Git only dispatches here; MoonBit owns the portable validation sequence.
+----
 import {
   "moonbitlang/core/json",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Git only dispatches here; MoonBit owns the portable validation sequence.
 
 ///|
 fn push_command() -> @argparse.Command {

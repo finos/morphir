@@ -60,9 +60,10 @@ fn main {
   }
   serve(
     line => {
-      let response = @mck.handle_line(line) catch {
-        _ => abort("workbench: invalid JSON")
-      }
+      // The JS caller catches the panic and reports the failure. Since
+      // MoonBit 0.10.18, abort on JS also writes its message to stderr,
+      // which in JSON mode carries only events, so panic without a message.
+      let response = @mck.handle_line(line) catch { _ => panic() }
       match response {
         None => ""
         Some(value) => value.stringify()

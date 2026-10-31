@@ -14,11 +14,9 @@ fn handle(source : String) -> String raise {
     let root = @ion_text.read_ion(
       @wire.string(@wire.field(request, "source"))[:],
     )
-    return @ion_binary.write_binary_value(root)
-      .to_array()
-      .map(b => b.to_int())
-      .to_json()
-      .stringify()
+    return Json(
+      @ion_binary.write_binary_value(root).to_array().map(b => b.to_int()),
+    ).stringify()
   }
   let bytes = @wire.array(@wire.field(request, "bytes")).map(value => {
     guard value is Number(n, ..) && n >= 0.0 && n <= 255.0 && n.floor() == n else {

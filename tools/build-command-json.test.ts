@@ -15,7 +15,7 @@ if (process.env.MORPHIR_BUILD_JSON_STUB === '1') {
   const code = Number(process.env.MORPHIR_BUILD_JSON_CHILD_EXIT ?? '0');
   if (code) { process.stdout.write('child stdout\n'); process.stderr.write('child stderr\n'); process.exit(code); }
   if (process.env.MORPHIR_BUILD_JSON_TYPED_REFUSAL && program === 'moonc') {
-    console.log('v0.10.17+d971670cd');
+    console.log('v0.10.18+6c83a7f62');
   } else if (process.env.MORPHIR_BUILD_JSON_TYPED_REFUSAL && program === 'git') {
     if (args[0] !== 'status') console.log('642fd13ea74bc46c3f5344844c9cca4ffbae368a');
   } else if (process.env.MORPHIR_BUILD_JSON_TYPED_REFUSAL && args.includes('pkgs/morphir-moonbit-frontend/typed-acceptance')) {
@@ -302,7 +302,7 @@ try {
   const typedRefusal = fixture('typed-model-refusal');
   mkdirSync(join(typedRefusal, 'tools'), { recursive: true });
   copyFileSync(join(root, 'tools/moonbit-core-pin.json'), join(typedRefusal, 'tools/moonbit-core-pin.json'));
-  writeFileSync(join(typedRefusal, 'moon.mod'), 'name = "fixture/core"\nversion = "0.10.17+d971670cd"\n');
+  writeFileSync(join(typedRefusal, 'moon.mod'), 'name = "fixture/core"\nversion = "0.10.18+6c83a7f62"\n');
   const refusalEnv = { MORPHIR_BUILD_JSON_TYPED_REFUSAL: '1' };
   const oldRefusal = invoke('typed-source-check', [], typedRefusal, 0, refusalEnv);
   assert.notEqual(oldRefusal.exitCode, 0);

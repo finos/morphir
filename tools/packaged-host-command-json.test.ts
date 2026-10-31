@@ -55,7 +55,7 @@ function put(path: string, value: string) {mkdirSync(dirname(path), {recursive: 
 // A native MoonBit child fixture works on each native CI host. It records the
 // process boundary and simulates only finite child responses, never acquisition.
 put(join(evidence, 'fixture.mbtx'), `import {
-  "moonbitlang/async@0.22.4", "moonbitlang/async@0.22.4/fs", "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7", "moonbitlang/async@0.22.7/fs", "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env", "moonbitlang/core/json", "moonbitlang/core/string", "moonbitlang/x@0.5.5/sys",
 }
 async fn main {
@@ -231,7 +231,7 @@ test('current Wasmoon main keeps its bare report and literal argv through an inj
   // Compile the production main/parser/prefix code with an execution adapter.
   // This is CLI qualification, not a component-engine or host capability claim.
   put(join(evidence, 'wasmoon-cli.mbtx'), `import {
-    "moonbitlang/async@0.22.4", "moonbitlang/async@0.22.4/stdio", "moonbitlang/core/env",
+    "moonbitlang/async@0.22.7", "moonbitlang/async@0.22.7/stdio", "moonbitlang/core/env",
     "moonbitlang/core/json", "moonbitlang/core/argparse", "moonbitlang/x@0.5.5/sys",
   }
   async fn execute(paths : ArrayView[String]) -> Json { { "paths": paths.to_owned() } }

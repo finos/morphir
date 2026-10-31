@@ -1,17 +1,19 @@
-///|
-/// Select focused CI checks. Unknown paths and empty diffs select every suite.
-/// Use --event in Actions, BASE HEAD locally, or --self-test to check the rules;
-/// --json prints the selection as one JSON object.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
+----
+
+// Select focused CI checks. Unknown paths and empty diffs select every suite.
+// Use --event in Actions, BASE HEAD locally, or --self-test to check the rules;
+// --json prints the selection as one JSON object.
 
 ///|
 let suites : Array[String] = [
@@ -795,7 +797,7 @@ async fn timeout_test() -> Unit {
     root + "/scripts/ci-mise-impact.mbtx",
     (
       #|import {
-      #|  "moonbitlang/async@0.22.1",
+      #|  "moonbitlang/async@0.22.7",
       #|}
       #|
       #|///|
@@ -1945,9 +1947,9 @@ fn selection_json(selection : Map[String, Bool]) -> Json {
 /// that content is `crash`.
 let fake_reuse_script : String =
   #|import {
-  #|  "moonbitlang/async@0.22.1",
-  #|  "moonbitlang/async@0.22.1/fs",
-  #|  "moonbitlang/async@0.22.1/stdio",
+  #|  "moonbitlang/async@0.22.7",
+  #|  "moonbitlang/async@0.22.7/fs",
+  #|  "moonbitlang/async@0.22.7/stdio",
   #|  "moonbitlang/core/env",
   #|}
   #|
@@ -2402,8 +2404,8 @@ async fn push_verdict_order_test(script : String) -> Array[String] {
     root + "/scripts/ci-mise-impact.mbtx",
     (
       #|import {
-      #|  "moonbitlang/async@0.22.1",
-      #|  "moonbitlang/async@0.22.1/fs",
+      #|  "moonbitlang/async@0.22.7",
+      #|  "moonbitlang/async@0.22.7/fs",
       #|}
       #|async fn main {
       #|  @fs.write_file("mise-invoked", "called\n")
@@ -2466,7 +2468,7 @@ async fn reuse_timeout_test() -> Array[String] {
     root + "/scripts/ci-reuse.mbtx",
     (
       #|import {
-      #|  "moonbitlang/async@0.22.1",
+      #|  "moonbitlang/async@0.22.7",
       #|}
       #|
       #|///|

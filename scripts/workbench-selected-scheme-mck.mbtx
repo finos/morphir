@@ -1,16 +1,18 @@
-///|
-/// Opt-in selected Scheme witness through the existing independent Rust MCK.
-/// This gate does not qualify the full policy or advertise a runtime capability.
+----
 import {
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Opt-in selected Scheme witness through the existing independent Rust MCK.
+// This gate does not qualify the full policy or advertise a runtime capability.
 
 ///|
 async fn checked(program : String, args : Array[String]) -> Unit {

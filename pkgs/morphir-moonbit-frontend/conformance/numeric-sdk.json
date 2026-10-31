@@ -4,7 +4,7 @@
   "sourceModule": "finos/morphir-sdk",
   "sourceVersion": "0.1.0",
   "sourceTree": "9c83a100383570236b3d781362524008f76dd56d",
-  "compiler": "0.10.17+d971670cd",
+  "compiler": "0.10.18+6c83a7f62",
   "types": [
     "@integer.Integer",
     "@integer.Integer?",

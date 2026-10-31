@@ -63,8 +63,8 @@ function completion(value: ReturnType<typeof run>, name: string, status = 0): Co
   return parsed;
 }
 const fixture = `import {
-  "moonbitlang/async@0.22.4", "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/stdio", "moonbitlang/core/env", "moonbitlang/core/json",
+  "moonbitlang/async@0.22.7", "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio", "moonbitlang/core/env", "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
 }
 async fn main {

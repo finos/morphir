@@ -1,16 +1,18 @@
-///|
-/// Opt-in immutable Scheme execution checking through the independent Rust MCK.
-/// This gate qualifies controlled Session traces, not native/HTTP/UI provider offers.
+----
 import {
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Opt-in immutable Scheme execution checking through the independent Rust MCK.
+// This gate qualifies controlled Session traces, not native/HTTP/UI provider offers.
 
 ///|
 async fn checked(program : String, args : Array[String]) -> Unit {

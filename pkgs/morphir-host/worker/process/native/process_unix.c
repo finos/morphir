@@ -318,10 +318,11 @@ static int morphir_pipe(int fds[2]) {
 // `identity`. Each pipe end is its own open file description, so the
 // worker's ends stay blocking. The worker's ends are never registered with
 // the host's event loop, and the host closes them as soon as posix_spawn
-// returns: an event loop registration of an end that the worker shares
-// would outlive the host's copy. No step can fail after posix_spawn starts
-// the worker. Returns 0, or an errno with no descriptor left open and no
-// process started.
+// returns. (Before moonbitlang/async 0.22.6, an epoll registration of an end
+// that the worker shares outlived the host's copy: moonbitlang/async#571.
+// The stub keeps its own pipes for the atomic close-on-exec above.) No step
+// can fail after posix_spawn starts the worker. Returns 0, or an errno with
+// no descriptor left open and no process started.
 MOONBIT_FFI_EXPORT
 int32_t morphir_worker_spawn(
   moonbit_bytes_t path,

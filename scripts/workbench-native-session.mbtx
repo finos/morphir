@@ -1,14 +1,16 @@
-///|
-/// Test desktop session authority without downloading CEF or building its host.
+----
 import {
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Test desktop session authority without downloading CEF or building its host.
 
 ///|
 async fn execute() -> Unit {

@@ -109,7 +109,7 @@ fn finite_failure(error : Error) -> Unit {
 }
 
 ///|
-fn main raise {
+fn main {
   let argv = finite_argv()
   if argv is ["--json", ..] {
     try {

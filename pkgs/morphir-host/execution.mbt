@@ -343,7 +343,7 @@ pub fn process_execution(
               ),
               ("moonrockz/ion", "0.6.0", "ion-v1", "ion-0.6.0"),
               ("moonbitlang/x", "0.5.6", "moonbit-x", "x-0.5.6"),
-              ("moonbitlang/async", "0.22.5", "moonbit-async", "async-0.22.5"),
+              ("moonbitlang/async", "0.22.7", "moonbit-async", "async-0.22.7"),
             ] {
             deps.push({ module_name, version, api_profile, semantic_pin, })
           }

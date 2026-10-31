@@ -49,7 +49,7 @@ test "tree originals reject escaping and conflicting portable inventories" {
     } catch {
       _ => true
     }
-    assert_true(refused, msg=paths.to_string())
+    assert_true(refused, msg=@debug.to_string(paths))
   }
 }
 

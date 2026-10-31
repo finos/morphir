@@ -1,14 +1,11 @@
-///|
-/// Qualify explicitly installed clients against a pinned shared signed service.
-/// The selected Rust checkout must be clean and at the accepted source revision.
-/// Test keys and fresh trust are confined to disposable test fixture destinations.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonrockz/ion@0.5.0/binary",
@@ -16,6 +13,11 @@ import {
   "moonrockz/ion@0.5.0/text",
   "moonrockz/ion@0.5.0/json" @ion_json,
 }
+----
+
+// Qualify explicitly installed clients against a pinned shared signed service.
+// The selected Rust checkout must be clean and at the accepted source revision.
+// Test keys and fresh trust are confined to disposable test fixture destinations.
 
 ///|
 let rust_revision = "ce68e7d1861b35bf51b6ddcaf6d48d5f93824893"

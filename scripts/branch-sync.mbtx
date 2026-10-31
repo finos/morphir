@@ -1,18 +1,20 @@
-///|
-/// Keep finos/morphir-moonbit `main` and finos/morphir `moonshots` on one
-/// commit. The run in each repository fast-forwards the other repository's
-/// branch to its own branch, and only when its own branch is ahead and its
-/// `ci-ok` check passed. It never merges, rebases or force-pushes. When the
-/// branches have diverged it pushes nothing and exits 1.
+----
 import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Keep finos/morphir-moonbit `main` and finos/morphir `moonshots` on one
+// commit. The run in each repository fast-forwards the other repository's
+// branch to its own branch, and only when its own branch is ahead and its
+// `ci-ok` check passed. It never merges, rebases or force-pushes. When the
+// branches have diverged it pushes nothing and exits 1.
 
 ///|
 struct RepoSlug(String) derive(Eq, Debug)

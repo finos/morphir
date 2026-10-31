@@ -1,10 +1,10 @@
 ----
 import {
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
-  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
@@ -219,7 +219,7 @@ async fn execute() -> Json {
         #|const {fileIdentity,treeIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/identity.mjs')));
         #|const {compilerIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/capabilities.mjs')));
         #|const {checkedCore}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/core.mjs')));
-        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(checkedCore(home,'0.10.17+d971670cd'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
+        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(checkedCore(home,'0.10.18+6c83a7f62'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
       ),
       repo,
       home,

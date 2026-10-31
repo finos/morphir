@@ -1,9 +1,9 @@
 ----
 import {
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
-  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
@@ -480,8 +480,8 @@ async fn execute() -> Json {
     fail("Choose a new CLI evidence directory to preserve earlier results")
   }
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.17+d971670cd") else {
-    fail("Pinned MoonBit 0.10.17 is required")
+  guard compiler.contains("0.10.18+6c83a7f62") else {
+    fail("Pinned MoonBit 0.10.18 is required")
   }
   let node = @fs.realpath(
     checked("node", ["-p", "process.execPath"]).trim().to_owned(),

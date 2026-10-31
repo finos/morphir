@@ -1,16 +1,18 @@
-///|
-/// Fetch the canonical pinned finos/morphir bd-plan tool, then delegate to Bun.
-/// This wrapper owns acquisition only; the upstream tracker tool remains unchanged.
+----
 import {
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Fetch the canonical pinned finos/morphir bd-plan tool, then delegate to Bun.
+// This wrapper owns acquisition only; the upstream tracker tool remains unchanged.
 
 ///|
 let revision = "d6b7cfa4cd614c85a087c009505c2856d5c73086"

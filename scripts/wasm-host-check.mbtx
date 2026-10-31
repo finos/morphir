@@ -1,10 +1,10 @@
 ----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
-  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
   "moonbitlang/core/json",
@@ -218,7 +218,7 @@ async fn native_probe(checkout : String) -> Json {
   )
   @fs.write_file(
     probe + "/moon.mod",
-    "name = \"morphir/wasmoon-host-probe\"\nimport { \"Milky2018/wasmoon@0.16.0\", \"moonbitlang/async@0.22.5\", \"moonbitlang/x@0.5.5\", }\n",
+    "name = \"morphir/wasmoon-host-probe\"\nimport { \"Milky2018/wasmoon@0.16.0\", \"moonbitlang/async@0.22.7\", \"moonbitlang/x@0.5.5\", }\n",
   )
   @fs.write_file(
     probe + "/moon.pkg",
@@ -422,8 +422,8 @@ async fn qualify() -> Unit {
     @fs.remove(build + "/run.ion")
   }
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.17+d971670cd") else {
-    fail("MoonBit 0.10.17+d971670cd required")
+  guard compiler.contains("0.10.18+6c83a7f62") else {
+    fail("MoonBit 0.10.18+6c83a7f62 required")
   }
   // These fixture sources are copied into generated modules outside moon.work.
   for fixture in ["guest", "resources", "callbacks", "wasmoon"] {

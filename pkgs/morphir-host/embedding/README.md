@@ -217,8 +217,8 @@ with the host's limits and import policy.
 
 ## Pin and tests
 
-The adapter pins `@moonbit/moonc-worker@0.1.202610234`, compiler revision
-`0.10.17+d971670cd`. Compiler APIs are defined by the
+The adapter pins `@moonbit/moonc-worker@0.1.202610291`, compiler revision
+`0.10.18+6c83a7f62`. Compiler APIs are defined by the
 [MoonBit worker package](https://www.npmjs.com/package/@moonbit/moonc-worker).
 The [upstream toolchain documentation](https://www.moonbitlang.com/blog/moonbit-wasm-toolchain)
 also describes matching compiler/core versions.

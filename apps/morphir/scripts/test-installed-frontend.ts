@@ -19,7 +19,7 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
   const sourceDryLog=join(project,'.morphir/logs/frontend.ionb');
   const inventory: PipelineReport=JSON.parse(sourceCall(['run','.','--dry-run','--log','--json']).stdout);
   assert.ok(!existsSync(sourceDryLog));
-  assert.deepEqual(inventory.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))),[{source:'src/Main.mbt',unitId:'Main',frontend:'moonbit',profile:'moonbit-model-stable-v1',dependencies:{'moonbitlang/parser':'0.4.5','moonbitlang/lexer':'0.4.3','finos/morphir-sdk':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','finos/morphir-sdk/basics':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','moonbitlang/core/builtin':'0.10.17+d971670cd+tree:eb321a18f7a33d37114546682a8d1cd6658afab8'},outputContract:'ir-unit'}]);
+  assert.deepEqual(inventory.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))),[{source:'src/Main.mbt',unitId:'Main',frontend:'moonbit',profile:'moonbit-model-stable-v1',dependencies:{'moonbitlang/parser':'0.4.5','moonbitlang/lexer':'0.4.3','finos/morphir-sdk':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','finos/morphir-sdk/basics':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','moonbitlang/core/builtin':'0.10.18+6c83a7f62+tree:417988f6e19738a7f683ce19a6cf5aaf52c96965'},outputContract:'ir-unit'}]);
   assert.equal(inventory.frontends[0]!.language,'moonbit');
   assert.equal(inventory.frontends[0]!.provider,'finos/morphir-moonbit-frontend');
   assert.equal(inventory.frontends[0]!.defaultProfile,true);

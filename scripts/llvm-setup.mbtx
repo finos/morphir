@@ -1,15 +1,17 @@
-///|
-/// Acquire the audited LLVM compiler/core in a new isolated directory.
+----
 import {
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Acquire the audited LLVM compiler/core in a new isolated directory.
 
 ///|
 // Selected only at the owned CLI boundary, never from a child or a path value.

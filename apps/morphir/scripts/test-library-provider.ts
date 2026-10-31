@@ -45,7 +45,7 @@ function run(patch: Record<string,unknown>={},expectedError?: RegExp) {
   if(expectedError) {assert.notEqual(result.status,0);assert.equal(result.stdout,'');assert.match(result.stderr,expectedError);}
   else {assert.equal(result.status,0,result.stderr);const evidence=JSON.parse(result.stdout);assert.equal(evidence.successful,true);assert.equal(evidence.sourceIdentity,base.sourceIdentity);assert.match(evidence.buildIdentity,/^[a-f0-9]{64}$/);return evidence;}
 }
-function fakeHome(behavior: string,version?: string,compiler='0.10.17+d971670cd') {
+function fakeHome(behavior: string,version?: string,compiler='0.10.18+6c83a7f62') {
   const home=join(root,'home'+serial++);mkdirSync(join(home,'bin'),{recursive:true});mkdirSync(join(home,'lib/core'),{recursive:true});
   assert.ok(process.env.MOON_HOME,'Supply the pinned MoonBit toolchain');
   const core=join(process.env.MOON_HOME,'lib/core');

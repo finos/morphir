@@ -1,24 +1,26 @@
-///|
-/// Check that the package structure of the workspace is valid.
-///
-/// - `moon.work` exists.
-/// - Each package has `moon.mod` and `moon.pkg`, and is an active member of `moon.work`.
-/// - Each module whose root directory is not a package has `moon.mod`, and is an active member of `moon.work`.
-///
-/// A member is active when its line starts, after whitespace, with the quoted path (`"pkgs/x"` or
-/// `"./pkgs/x"`). A commented-out entry starts with `#`, so it does not count.
-///
-/// Run it from the repository root with `mise run validate:packages`, `moonx scripts/validate-packages.mbtx` or
-/// `moon run scripts/validate-packages.mbtx`. It exits with 0 when the structure is valid, else with 1.
+----
 import {
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Check that the package structure of the workspace is valid.
+//
+// - `moon.work` exists.
+// - Each package has `moon.mod` and `moon.pkg`, and is an active member of `moon.work`.
+// - Each module whose root directory is not a package has `moon.mod`, and is an active member of `moon.work`.
+//
+// A member is active when its line starts, after whitespace, with the quoted path (`"pkgs/x"` or
+// `"./pkgs/x"`). A commented-out entry starts with `#`, so it does not count.
+//
+// Run it from the repository root with `mise run validate:packages`, `moonx scripts/validate-packages.mbtx` or
+// `moon run scripts/validate-packages.mbtx`. It exits with 0 when the structure is valid, else with 1.
 
 ///|
 let packages : Array[String] = [

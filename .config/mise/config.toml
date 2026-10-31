@@ -26,7 +26,7 @@ uv = "latest"
 # as "%2B"), taken from https://cli.moonbitlang.com/binaries/<version>/.
 
 [tools."http:moonbit"]
-version = "0.10.17+d971670cd"
+version = "0.10.18+6c83a7f62"
 bin_path = "bin"
 # The archive alone has no core or moonx. Complete Unix installs the same way
 # locally and in CI, using the upstream installer and the exact mise version.
@@ -40,10 +40,10 @@ pwsh -NoProfile -File "{{config_root}}/tools/bootstrap-moonbit-windows.ps1"
 """
 
 [tools."http:moonbit".platforms]
-linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-linux-x86_64.tar.gz" }
-linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-linux-aarch64.tar.gz" }
-macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-darwin-aarch64.tar.gz" }
-windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.17%2Bd971670cd/moonbit-windows-x86_64.zip", format = "zip" }
+linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-linux-x86_64.tar.gz" }
+linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-linux-aarch64.tar.gz" }
+macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-darwin-aarch64.tar.gz" }
+windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-windows-x86_64.zip", format = "zip" }
 
 [env]
 # Environment variables for the project

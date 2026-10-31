@@ -1,19 +1,21 @@
-///|
-/// Find and verify the CI receipt that covers a merge-queue or push run, and
-/// print a verdict. A receipt is trusted only when the GitHub API confirms it;
-/// every failure is an untrusted verdict with the reason. The exit status is
-/// non-zero only for usage errors.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
 }
+----
+
+// Find and verify the CI receipt that covers a merge-queue or push run, and
+// print a verdict. A receipt is trusted only when the GitHub API confirms it;
+// every failure is an untrusted verdict with the reason. The exit status is
+// non-zero only for usage errors.
 
 ///|
 let ci_workflow : String = ".github/workflows/ci.yml"

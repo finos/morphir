@@ -1,23 +1,25 @@
-///|
-/// Check that this checkout or worktree uses the bootstrapped shared beads database.
-///
-/// Every worktree must use the database in the main checkout's .beads. Any bd command (the
-/// SessionStart `bd prime` hook too) creates an empty local database when it finds none, and that
-/// database then hides the shared one. This check only reads; it never calls a bd command that
-/// opens the database before it knows that one exists, so it cannot create one.
-///
-/// Run it with `mise run beads:check`, `moonx scripts/beads-check.mbtx` or
-/// `moon run scripts/beads-check.mbtx`.
+----
 import {
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Check that this checkout or worktree uses the bootstrapped shared beads database.
+//
+// Every worktree must use the database in the main checkout's .beads. Any bd command (the
+// SessionStart `bd prime` hook too) creates an empty local database when it finds none, and that
+// database then hides the shared one. This check only reads; it never calls a bd command that
+// opens the database before it knows that one exists, so it cannot create one.
+//
+// Run it with `mise run beads:check`, `moonx scripts/beads-check.mbtx` or
+// `moon run scripts/beads-check.mbtx`.
 
 ///|
 async fn fail(message : String, hints : Array[String]) -> Unit {

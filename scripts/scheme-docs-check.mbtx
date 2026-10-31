@@ -1,17 +1,18 @@
-// Checks that the generated docs_examples_test.mbt files match the morphir-scheme README.mbt.md chapters.
-// It runs the native `schemedocs check` tool of pkgs/morphir-typing-tools.
-
-///|
+----
 import {
-  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.7/fs",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Checks that the generated docs_examples_test.mbt files match the morphir-scheme README.mbt.md chapters.
+// It runs the native `schemedocs check` tool of pkgs/morphir-typing-tools.
 
 ///|
 async fn execute() -> Json {

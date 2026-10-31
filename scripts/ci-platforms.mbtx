@@ -1,18 +1,20 @@
-///|
-/// Fail when a job that a merge-path event can reach can get a macOS runner, or
-/// when the guard cannot tell. Merge paths are pull_request,
-/// pull_request_target, merge_group and a push with branches or no filter; a
-/// tags-only push is a release trigger. Local `uses:` calls are followed with
-/// the caller's `with` values as the callee's inputs. Prints one line per
-/// violation, or with --json one JSON object; exits 1 when there are any.
+----
 import {
   "moonbit-community/yaml@0.0.8",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
   "moonbitlang/core/argparse",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Fail when a job that a merge-path event can reach can get a macOS runner, or
+// when the guard cannot tell. Merge paths are pull_request,
+// pull_request_target, merge_group and a push with branches or no filter; a
+// tags-only push is a release trigger. Local `uses:` calls are followed with
+// the caller's `with` values as the callee's inputs. Prints one line per
+// violation, or with --json one JSON object; exits 1 when there are any.
 
 ///|
 let default_workflows : String = ".github/workflows"

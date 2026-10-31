@@ -1,16 +1,18 @@
-///|
-/// Fixture preparation may use Moon; actual library assembly and fresh loading
-/// run with an empty PATH and no MOON_HOME in the application acceptance test.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio",
 }
+----
+
+// Fixture preparation may use Moon; actual library assembly and fresh loading
+// run with an empty PATH and no MOON_HOME in the application acceptance test.
 
 ///|
 async fn output(command : String, args : Array[String]) -> String {

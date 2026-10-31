@@ -6,10 +6,10 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/moon_config@0.4.4" @manifest,
   "moonbitlang/lexer@0.4.4/basic",
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
-  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/x@0.5.5/sys",
 }
 ----

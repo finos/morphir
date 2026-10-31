@@ -1,14 +1,16 @@
-///|
-/// Prepare provider tools independently of the MoonBit native build.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
   "moonbitlang/core/json",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
 }
+----
+
+// Prepare provider tools independently of the MoonBit native build.
 
 ///|
 async fn execute(argv : Array[String]) -> Unit {

@@ -213,7 +213,7 @@ steps. Keep the bootstrap needed to install MoonBit small and separate from task
 - Put the script in `scripts/` and run it with `moonx scripts/<name>.mbtx` (Wasm) or `moon run scripts/<name>.mbtx`.
 - Declare its mise task in `.config/mise/config.toml`, for example `run = "moonx scripts/beads-check.mbtx"`.
   `scripts/beads-check.mbtx` (`mise run beads:check`) is the reference example.
-- Pin the version of each import: `"moonbitlang/async@0.22.1/process"`. Use `moonbitlang/async` for processes
+- Pin the version of each import: `"moonbitlang/async@0.22.7/process"`. Use `moonbitlang/async` for processes
   (`collect_output`, `run`), files (`fs`) and `stdio`, and `moonbitlang/x/sys` for `exit`.
 - All mise task names are declared in `.config/mise/config.toml`; their orchestration lives in `scripts/*.mbtx`.
   The legacy Bash/PowerShell pairs and Python fixture generator have been removed. Keep toolchain installation

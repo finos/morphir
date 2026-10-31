@@ -1,11 +1,10 @@
-///|
-/// Acquire immutable provider service/test-fixture assets. No source-build fallback.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
@@ -14,6 +13,9 @@ import {
   "moonrockz/ion@0.5.0/text",
   "moonrockz/ion@0.5.0/json" @ion_json,
 }
+----
+
+// Acquire immutable provider service/test-fixture assets. No source-build fallback.
 
 ///|
 let repository = "finos/morphir-rust"

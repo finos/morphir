@@ -20,7 +20,7 @@ import {
   "moonrockz/moon-lander-logging-hosting-async@0.8.0",
   "moonrockz/moon-lander-hosting@0.8.0",
   "moonrockz/moon-lander@0.8.0",
-  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.7",
   "moonbitlang/x@0.5.5",
   "moonbit-community/casefold@0.1.7",
   "moonbit-community/unicode-normalization@0.6.0",

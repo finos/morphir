@@ -40,7 +40,7 @@ pub fn NativeTelemetry::new(
   if build_text(pin, "profile") != "morphir-native-otel-pin-v1" ||
     build_text(pin, "platform") != platform ||
     build_text(pin, "arch") != @platform.architecture() ||
-    build_text(pin, "compilerVersion") != "0.10.17+d971670cd" ||
+    build_text(pin, "compilerVersion") != "0.10.18+6c83a7f62" ||
     build_text(pin, "otelArchiveIdentity") !=
     "51c7ad32e1344cae45cedfa8d5ee3836d3e22f17ff4796a45a8394917568033f" {
     raise @config.Invalid("observability.native_adapter_pin")

@@ -1,11 +1,10 @@
-///|
-/// Same-run CI artifacts. Binary Ion is authoritative; stdout is a JSON view.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1/stdio",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.7/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
@@ -13,6 +12,9 @@ import {
   "moonrockz/ion@0.5.0/ion",
   "moonrockz/ion@0.5.0/json" @ion_json,
 }
+----
+
+// Same-run CI artifacts. Binary Ion is authoritative; stdout is a JSON view.
 
 ///|
 let profile = "morphir_ci_artifact_v1"

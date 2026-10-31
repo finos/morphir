@@ -76,7 +76,7 @@ try {
       'finos/morphir-execution':['0.1.0','morphir-invocations-v1','morphir-invocations-v1'],
       'moonrockz/ion':['0.6.0','ion-v1','ion-0.6.0'],
       'moonbitlang/x':['0.5.6','moonbit-x','x-0.5.6'],
-      'moonbitlang/async':['0.22.5','moonbit-async','async-0.22.5'],
+      'moonbitlang/async':['0.22.7','moonbit-async','async-0.22.7'],
     };
     if(!driver.length)assert.equal(dependency.moduleName,'finos/morphir-sdk','Unaudited dependency contract');
     const expected=allowed[dependency.moduleName];assert.ok(expected,'Unaudited dependency contract');

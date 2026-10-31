@@ -30,9 +30,9 @@ type Journal = { program: string; executable: string; args: string[]; cwd: strin
 // Self-contained native children continue working with PATH and MOON_HOME empty.
 // Role selection follows the invoked hardlink name, just like the prior fixture.
 const fixtureSource = String.raw`import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
@@ -89,7 +89,7 @@ async fn main {
   if program == "git" {
     if args[0] == "rev-parse" { @stdio.stdout.write("fixture-source-revision\n") }
   } else if program == "moon" {
-    if args[0] == "version" { @stdio.stdout.write("moon 0.1 fixture\nmoonc v0.10.17+d971670cd\n") }
+    if args[0] == "version" { @stdio.stdout.write("moon 0.1 fixture\nmoonc v0.10.18+6c83a7f62\n") }
     else if args[0] == "run" { @stdio.stdout.write(env("PORTABLE_CORE") + "\n") }
     else if args.contains("tree") { @stdio.stdout.write("{\"fixtureGraph\":true}\n") }
     else if args.contains("--dry-run") { @stdio.stdout.write("fixture recipe\n") }
@@ -194,7 +194,7 @@ async function regression() {
     const moonrun = Bun.which('moonrun'); assert.ok(moonrun);
     const version = build([moon, 'version', '--all']);
     versionText = version.stdout.toString();
-    assert.match(version.stdout.toString(), /0\.10\.17\+d971670cd/);
+    assert.match(version.stdout.toString(), /0\.10\.18\+6c83a7f62/);
     assert.equal(Bun.version, '1.4.4');
     mkdirSync(join(root, '.dev'), { recursive: true });
     scratch = mkdtempSync(join(root, '.dev/portable-json-'));

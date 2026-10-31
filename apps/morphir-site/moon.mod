@@ -13,7 +13,7 @@ readme = "README.md"
 preferred_target = "native"
 
 import {
-  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.7",
   "moonbitlang/x@0.5.5",
   "moonbit-community/rabbita@0.16.3",
   "moonbit-community/cmark@0.4.12",

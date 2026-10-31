@@ -1,10 +1,10 @@
 ----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.5/stdio",
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.7/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
   "moonbitlang/core/argparse",
   "moonbitlang/core/debug",
   "moonbitlang/core/env",

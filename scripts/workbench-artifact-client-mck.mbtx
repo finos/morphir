@@ -1,15 +1,17 @@
-///|
-/// Qualify production artifact owners against an explicit independent parent kit.
+----
 import {
   "moonbitlang/core/json",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Qualify production artifact owners against an explicit independent parent kit.
 
 ///|
 async fn checked(

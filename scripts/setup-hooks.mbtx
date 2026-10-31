@@ -1,15 +1,17 @@
-///|
-/// Install the managed Git pre-push dispatcher without replacing custom hooks.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
 }
+----
+
+// Install the managed Git pre-push dispatcher without replacing custom hooks.
 
 ///|
 fn setup_command() -> @argparse.Command {

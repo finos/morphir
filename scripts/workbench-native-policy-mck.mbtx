@@ -1,16 +1,18 @@
-///|
-/// Qualify exact native checking-policy boundaries and controlled owner traces
-/// with the independently authored parent corpus. This is not platform evidence.
+----
 import {
   "moonbitlang/core/json",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Qualify exact native checking-policy boundaries and controlled owner traces
+// with the independently authored parent corpus. This is not platform evidence.
 
 ///|
 async fn checked(program : String, args : Array[String]) -> Unit {

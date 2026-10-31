@@ -1,16 +1,18 @@
-///|
-/// Opt-in browser acceptance against a real Rust morphir ui binary. The
-/// Playwright test owns temporary workspace/home fixtures and host cleanup.
-/// Run: moonx scripts/workbench-live-host.mbtx --host-bin /path/to/morphir
+----
 import {
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Opt-in browser acceptance against a real Rust morphir ui binary. The
+// Playwright test owns temporary workspace/home fixtures and host cleanup.
+// Run: moonx scripts/workbench-live-host.mbtx --host-bin /path/to/morphir
 
 ///|
 async fn execute() -> Unit {

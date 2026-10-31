@@ -1,16 +1,18 @@
-///|
-/// The Smithy validator owns protocol findings. The shared MCK is unchanged.
+----
 import {
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/crypto",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// The Smithy validator owns protocol findings. The shared MCK is unchanged.
 
 ///|
 suberror GateError {

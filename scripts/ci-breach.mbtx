@@ -1,26 +1,28 @@
-///|
-/// Keep one GitHub issue per macOS qualification breach. The nightly report job
-/// passes the result of the qualification call: a failure opens the issue or
-/// comments on the open one, and a pass closes the open one. The exit status is
-/// non-zero when the arguments are invalid or a `gh` call fails.
-///
-/// With `--run-id N`, a breach body lists the jobs of run N that finished
-/// without passing (`gh run view N --json jobs`, which needs `actions: read`).
-/// A failed read does not stop the report: the body says that the list is
-/// missing.
-///
-/// `--dry-run` calls no `gh` command. It takes the open issue from
-/// `--open-issue N` (default: none) and prints the action and the text it
-/// would send.
+----
 import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
 }
+----
+
+// Keep one GitHub issue per macOS qualification breach. The nightly report job
+// passes the result of the qualification call: a failure opens the issue or
+// comments on the open one, and a pass closes the open one. The exit status is
+// non-zero when the arguments are invalid or a `gh` call fails.
+//
+// With `--run-id N`, a breach body lists the jobs of run N that finished
+// without passing (`gh run view N --json jobs`, which needs `actions: read`).
+// A failed read does not stop the report: the body says that the list is
+// missing.
+//
+// `--dry-run` calls no `gh` command. It takes the open issue from
+// `--open-issue N` (default: none) and prints the action and the text it
+// would send.
 
 ///|
 let breach_label : String = "macos-breach"

@@ -1,11 +1,9 @@
-///|
-/// Shared runner owns all verdicts. This gate selects explicit independent
-/// inputs, rechecks saved reports, and compares their actual observations.
+----
 import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
@@ -13,6 +11,10 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
 }
+----
+
+// Shared runner owns all verdicts. This gate selects explicit independent
+// inputs, rechecks saved reports, and compares their actual observations.
 
 ///|
 fn field(value : Json, name : String) -> Json {
@@ -342,7 +344,7 @@ async fn main {
   let result : Json = try {
     let matches = json_command().parse(argv~)
     if matches.flags.get_or_default("help", false) ||
-      matches.subcommand.is_some() {
+      matches.subcommand is Some(_) {
       {
         "render_help": legacy_command().render_help(),
         "json_help": json_command().render_help(),

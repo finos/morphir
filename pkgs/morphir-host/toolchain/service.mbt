@@ -1,5 +1,5 @@
 ///|
-pub let compiler_version : String = "0.10.17+d971670cd"
+pub let compiler_version : String = "0.10.18+6c83a7f62"
 
 ///|
 fn absolute(host : Host, path : String) -> String {

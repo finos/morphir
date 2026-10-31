@@ -1,13 +1,13 @@
 {
   "profile": "morphir/moonbit/core-pin",
   "contractVersion": "0.2.0-draft.1",
-  "compilerVersion": "0.10.17+d971670cd",
-  "coreCommit": "eb321a18f7a33d37114546682a8d1cd6658afab8",
-  "archiveUrl": "https://cli.moonbitlang.com/cores/core-0.10.17%2Bd971670cd.tar.gz",
-  "archiveSha256": "2d837ecbef5933c09726d63682a7695123d622e6aee13525fbc98c4b49433714",
-  "sourceSha256": "697db11ed55162a1e911bb8392ba23bcdcc5d17317b56f6910ebdca022fa5963",
-  "sourceFiles": 1213,
-  "sourceManifestVersion": "0.10.17+d971670cd",
-  "bootstrapWindowsCoreSha256": "80db8f2a2621b3ec358a495c390a0dfbd8ddafdd87a6f69142f069937e2fe40c",
+  "compilerVersion": "0.10.18+6c83a7f62",
+  "coreCommit": "417988f6e19738a7f683ce19a6cf5aaf52c96965",
+  "archiveUrl": "https://cli.moonbitlang.com/cores/core-0.10.18%2B6c83a7f62.tar.gz",
+  "archiveSha256": "30a8ae1c1e1e8fde478ea742cbc928c8f4ae1f5c00090afe3f10c97be9e5da64",
+  "sourceSha256": "5438bf99976daf54091564ea9c504bfb5ab9dc493e4f6736a7a4df33b6a99f69",
+  "sourceFiles": 1825,
+  "sourceManifestVersion": "0.10.18+6c83a7f62",
+  "bootstrapWindowsCoreSha256": "af149c0e8bf9ad9144fcec9e41aa2e34005c0043b5d5d8ff96be11ddef3bfb58",
   "targets": ["js", "wasm", "wasm-gc", "native"]
 }

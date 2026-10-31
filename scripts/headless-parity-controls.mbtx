@@ -1,18 +1,20 @@
-///|
-/// Checker infrastructure controls only. The maintained parent Rust MCK owns
-/// every verdict; this script never executes or qualifies a production adapter.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/async@0.22.4/fs",
-  "moonbitlang/async@0.22.4/process",
-  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
 }
+----
+
+// Checker infrastructure controls only. The maintained parent Rust MCK owns
+// every verdict; this script never executes or qualifies a production adapter.
 
 ///|
 fn field(value : Json, name : String) -> Json {
@@ -206,50 +208,12 @@ let reports : Array[Json] = []
 let details : Map[String, Json] = Map([])
 
 ///|
-suberror CommandExit {
-  CommandExit(Int32)
-}
-
-///|
-fn command_exit(code : Int32) -> Unit raise {
-  if json_output.val {
-    raise CommandExit(code)
-  }
-  @sys.exit(code)
-}
-
-///|
 fn progress() -> @stdio.Output {
   if json_output.val {
     @stdio.stderr
   } else {
     @stdio.stdout
   }
-}
-
-///|
-async fn run_child(
-  program : String,
-  args : Array[String],
-  extra_env~ : Map[String, String] = {},
-  cwd? : StringView,
-) -> Int32 {
-  let code = if json_output.val {
-    @process.run(
-      program,
-      args,
-      extra_env~,
-      cwd?,
-      stdout=@stdio.stderr,
-      stderr=@stdio.stderr,
-    )
-  } else {
-    @process.run(program, args, extra_env~, cwd?)
-  }
-  if json_output.val {
-    checks.push({ "program": program, "args": Json(args), "exitCode": code })
-  }
-  code
 }
 
 ///|
@@ -330,14 +294,6 @@ async fn main {
     return
   }
   execute() catch {
-    CommandExit(0) => ()
-    CommandExit(code) => {
-      let last = checks.last().unwrap_or(Json::null())
-      let message = "Qualification stopped with mapped exit code \{code}. Last completed check: " +
-        last.stringify()
-      emit_failure(code, "qualification-failed", message)
-      return
-    }
     error => {
       emit_failure(1, "command-error", error.to_string())
       return
@@ -346,20 +302,4 @@ async fn main {
   details["checks"] = Json(checks)
   details["reports"] = Json(reports)
   emit_success(Json(details))
-}
-
-///|
-async fn read_report(path : String) -> Json {
-  let value = @fs.read_file(path).json()
-  if json_output.val {
-    reports.push({
-      "path": path,
-      "qualified": field(value, "qualified"),
-      "recordCount": match field(value, "records") {
-        Array(rows) => Json(rows.length())
-        _ => Json::null()
-      },
-    })
-  }
-  value
 }

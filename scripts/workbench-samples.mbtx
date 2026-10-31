@@ -1,17 +1,18 @@
-// Writes the workbench's Elm samples from the Elm corpus: one asset for each sample under
-// apps/morphir-workbench/assets/samples/elm/, and index.json. Run it from the repository root with
-// `mise run workbench:samples`. CI fails when the committed assets differ from its output.
-
-///|
+----
 import {
   "moonbitlang/core/env",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Writes the workbench's Elm samples from the Elm corpus: one asset for each sample under
+// apps/morphir-workbench/assets/samples/elm/, and index.json. Run it from the repository root with
+// `mise run workbench:samples`. CI fails when the committed assets differ from its output.
 
 ///|
 let corpus : String = "pkgs/morphir-elm/conformance/projects"
