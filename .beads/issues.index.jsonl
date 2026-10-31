@@ -36,6 +36,7 @@
 {"id":"morphir-1ir","title":"Port Value IR model to Go","status":"closed","priority":1}
 {"id":"morphir-1kp","title":"WIT support for wasm component model","status":"closed","priority":2}
 {"id":"morphir-1mau","title":"Repair mise run check: missing examples:validate and fixtures:validate tasks, lint:schema fails","status":"closed","priority":3}
+{"id":"morphir-1q2c","title":"MEP spec: state the model-format default and required rule","status":"in_progress","priority":2}
 {"id":"morphir-1qd6","title":"Restore the requested Gleam extension identity","status":"closed","priority":2}
 {"id":"morphir-1qhu","title":"Gherkin foundation and verification stack","status":"open","priority":2}
 {"id":"morphir-1qhu.1","title":"morphir-gherkin: model, .feature and .feature.md readers, navigation, extensions","status":"closed","priority":2}
@@ -79,6 +80,7 @@
 {"id":"morphir-369","title":"Add SQLite-backed VFS backend","status":"open","priority":2}
 {"id":"morphir-3bbm","title":"Process-bundle publish and install through the morphir CLI","status":"closed","priority":3}
 {"id":"morphir-3cr","title":"Load and validate decoration IR files","status":"closed","priority":2}
+{"id":"morphir-3gwz","title":"Clarify Elm classic extension references after rename","status":"closed","priority":2}
 {"id":"morphir-3l0d","title":"Audit IR ingestion parity through Insight and XRay","status":"open","priority":2}
 {"id":"morphir-3l0d.1","title":"Audit morphir-ui IR normalization and Insight/XRay parity","status":"open","priority":2}
 {"id":"morphir-3l0d.2","title":"Audit morphir live workspace and IR delivery contracts","status":"open","priority":2}
@@ -380,6 +382,7 @@
 {"id":"morphir-fdd9","title":"Type initialize host peer kind in MEP","status":"closed","priority":2}
 {"id":"morphir-fkcz","title":"Diagnose Beads linked-worktree database routing","status":"open","priority":2}
 {"id":"morphir-for","title":"Add integration tests for decoration CLI commands","status":"open","priority":2}
+{"id":"morphir-fr6z","title":"Flaky native SIGSEGV in morphir run codecs (platform list <- locate)","status":"open","priority":2}
 {"id":"morphir-fur7","title":"morphir ir migrate: --path-budget writer option for the portable profile","status":"open","priority":2}
 {"id":"morphir-g39y","title":"Playground: reuse a daemon session via SessionHandle instead of a cold invocation per compile","status":"closed","priority":2}
 {"id":"morphir-g5tc","title":"Owner MCK preserves missing references and allowed effects","status":"closed","priority":2}
@@ -455,6 +458,7 @@
 {"id":"morphir-hduh","title":"Publish initial Avro extension release","status":"closed","priority":2}
 {"id":"morphir-hfrz","title":"Add generated migration invariants for Classic to V4","status":"open","priority":2}
 {"id":"morphir-htez","title":"Explore a JavaScript runtime mode for extensions (finos/morphir#857)","status":"open","priority":3}
+{"id":"morphir-hv6m","title":"MEP MCK: check model-format selection order and host conversion","status":"open","priority":2}
 {"id":"morphir-hvp","title":"Implement morphir decoration-validate command","status":"closed","priority":2}
 {"id":"morphir-i18","title":"Add validation report generation with --report flag","status":"closed","priority":2}
 {"id":"morphir-i40i","title":"Fix Docusaurus Prism Gleam bundle resolution on Windows","status":"open","priority":2}
@@ -959,6 +963,14 @@
 {"id":"morphir-ukvn.1.12","title":"A11: JVM extension (Java, Kotlin) in finos/morphir-jvm","status":"open","priority":3}
 {"id":"morphir-ukvn.1.13","title":"Move morphir-config to crates.io trusted publishing","status":"open","priority":2}
 {"id":"morphir-ukvn.1.14","title":"Decide the minimum Rust version of the published crates","status":"open","priority":3}
+{"id":"morphir-ukvn.1.15","title":"Move the MoonBit Elm extension to finos/morphir-elm","status":"open","priority":2}
+{"id":"morphir-ukvn.1.15.1","title":"Import the MoonBit Elm module with its history","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.15.2","title":"MoonBit toolchain, dependency pin and module tasks","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.15.3","title":"Pull-request CI and docs for the MoonBit Elm module","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.15.4","title":"Spike: build and run the Elm guest under the host limits","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.15.5","title":"Elm MEP guest over the morphir-bytes-v1 ABI","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.15.6","title":"Release workflow, attestations and docs for the Elm extension","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.1.15.7","title":"Rename the JavaScript Elm extension to Elm classic","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.1.2","title":"A1b: publish the core crates to crates.io at 0.x.y","status":"closed","priority":1}
 {"id":"morphir-ukvn.1.3","title":"A2: the common ecosystem repo layout, packaging command and change-scoped CI","status":"open","priority":1}
 {"id":"morphir-ukvn.1.3.1","title":"A2/F4: specify MoonBit extension packaging and qualify transport boundaries","status":"closed","priority":2}
@@ -975,8 +987,8 @@
 {"id":"morphir-ukvn.1.6.6","title":"Measure native and Python integration costs","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.6.7","title":"Remove the old provider and prepare ecosystem cutover","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.6.8","title":"A4 release: publish the qualified Python compiler and cut over the live provider","status":"closed","priority":1}
-{"id":"morphir-ukvn.1.7","title":"A5: move the Avro and OpenAPI extensions to finos/morphir","status":"open","priority":2}
-{"id":"morphir-ukvn.1.8","title":"A6: move Elm-native to finos/morphir-elm","status":"open","priority":2}
+{"id":"morphir-ukvn.1.7","title":"A5: move the Avro and OpenAPI extensions to finos/morphir","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.1.8","title":"A6: move Elm-native to finos/morphir-elm","status":"closed","priority":2}
 {"id":"morphir-ukvn.1.9","title":"A9: restructure finos/morphir-scala and decommission morphir-scala-elm","status":"open","priority":2}
 {"id":"morphir-ukvn.10","title":"Archive completed Python documentation OpenSpec change","status":"closed","priority":3}
 {"id":"morphir-ukvn.2","title":"Track 2: WIT contract and components","status":"open","priority":1}
@@ -1346,6 +1358,32 @@
 {"id":"morphir-ukvn.5.64.31","title":"Qualify official Workbench and Playground launch and route migration","status":"open","priority":1}
 {"id":"morphir-ukvn.5.64.32","title":"Qualify and stage the primary CLI release and ecosystem default switch","status":"open","priority":1}
 {"id":"morphir-ukvn.5.64.33","title":"Qualify installed portable MEP flow through the MoonBit CLI","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34","title":"Acquire extensions from GitHub-hosted repositories in the MoonBit CLI","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34.1","title":"Acquisition core in MoonBit with local repositories","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34.2","title":"GitHub-hosted repositories and capability lookup","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34.3","title":"Trust decisions and prompts","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34.4","title":"Publishing and repository admission","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34.5","title":"Provider acquisition in compile and generate","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34.6","title":"morphir setup","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.34.7","title":"Remove the built-in Elm and MoonBit frontends","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.35","title":"Trust and Sigstore verification for extension repositories","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.35.1","title":"Sigstore verification of releases, indexes and admission","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36","title":"Host extensions as MEP workers in the MoonBit CLI","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.1","title":"Worker session core and host API","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.64.36.10","title":"Upgrade moonbitlang/async from 0.22.4 to 0.22.7","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.2","title":"Native process workers","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.64.36.3","title":"Node process workers","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.64.36.4","title":"MoonBit Extism host in moonrockz/extism","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.64.36.5","title":"WASM workers","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.64.36.6","title":"Extension commands on the worker host","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.64.36.7","title":"Qualify the published extensions on the worker host","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.8","title":"Browser Web Worker feasibility","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.36.9","title":"Retire the helper routes","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.37","title":"Run core-Wasm guests from any language: document trees and descriptor-pinned modules","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.37.1","title":"Claims and probe session on the core-Wasm route","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.37.2","title":"Source trees as relative-URI documents","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.37.3","title":"Descriptor-pinned core-Wasm modules","status":"open","priority":2}
+{"id":"morphir-ukvn.5.64.37.4","title":"Qualify the morphir-gleam 0.4.0 module","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.4","title":"Invoke a pinned native MEP provider from the MoonBit CLI","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.64.5","title":"Manage local extension repositories and native bundle lifecycle","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.64.6","title":"Integrate the qualified Wasm extension route with the MoonBit CLI","status":"closed","priority":2}
@@ -1421,7 +1459,8 @@
 {"id":"morphir-ukvn.5.88.1","title":"Task 1: Define the publish set and correct CLI identity","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.5.88.2","title":"Task 2: Implement dependency-aware publishing and consumer checks","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.5.88.3","title":"Task 3: Add gated release jobs and maintainer instructions","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.5.88.4","title":"Task 4: Verify the first authorized Mooncakes release","status":"open","priority":2}
+{"id":"morphir-ukvn.5.88.4","title":"Task 4: Verify the first authorized Mooncakes release","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.88.5","title":"Deliver native macOS CLI through mise for the demo","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.89","title":"Support multiple generation targets per project across the Morphir ecosystem","status":"open","priority":2}
 {"id":"morphir-ukvn.5.89.1","title":"Specify multiple generation targets per project in morphir.toml","status":"open","priority":2}
 {"id":"morphir-ukvn.5.89.2","title":"morphir generate builds every listed target of a project","status":"open","priority":2}
@@ -1461,6 +1500,7 @@
 {"id":"morphir-ukvn.5.90.13.1.1","title":"Task 1: Reliability of the report job","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.90.13.1.2","title":"Task 2: Output and warning correctness","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.90.13.1.3","title":"Task 3: Domain types for bare strings","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.90.14","title":"Fix flaky Workbench typed-evaluation browser test (argument edit races the next paint)","status":"in_progress","priority":1}
 {"id":"morphir-ukvn.5.90.2","title":"Make the repository build-master follow MoonBit scripting and the landing-speed goal","status":"open","priority":2}
 {"id":"morphir-ukvn.5.90.3","title":"Path rule for scripts/llvm-setup.mbtx misses the macOS-only lifecycle step","status":"open","priority":3}
 {"id":"morphir-ukvn.5.90.4","title":"Move from bobzhang/toml to moonbit-community/toml","status":"open","priority":4}
@@ -1523,16 +1563,16 @@
 {"id":"morphir-ukvn.5.98.3","title":"Qualify Python legacy JSON IR operations","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.98.4","title":"Qualify packaged Python Extism support and publish compatibility evidence","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.98.5","title":"Release Python multiDocument capability and matching compiler API","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.99","title":"Adopt Moon-Lander as the application framework for the CLI and Workbench","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.99","title":"Adopt Moon-Lander as the application framework for the CLI and Workbench","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.99.1","title":"Publish the Moon-Lander framework modules on mooncakes.io","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.99.2","title":"Add Moon-Lander dependencies and record the adoption","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.99.3","title":"Load configuration through Moon-Lander","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.5.99.4","title":"Add leveled diagnostic logging","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.99.3","title":"Load configuration through Moon-Lander","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.99.4","title":"Add leveled diagnostic logging","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.99.5","title":"Dispatch commands and Workbench operations through the mediator","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.99.6","title":"Run the CLI through the Moon-Lander host","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.99.6","title":"Run the CLI through the Moon-Lander host","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.99.7","title":"Host the desktop Workbench services","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.99.8","title":"Import and export worksheets as notebooks","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.99.9","title":"Integration checks across hosts","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.99.9","title":"Integration checks across hosts","status":"closed","priority":2}
 {"id":"morphir-ukvn.6","title":"Support entry-root reachability and Morphir tree-shaking","status":"open","priority":3}
 {"id":"morphir-ukvn.7","title":"Conceptual models and executable specifications","status":"open","priority":1}
 {"id":"morphir-ukvn.7.1","title":"Draft and review the conceptual model and executable specification design","status":"in_progress","priority":1}
