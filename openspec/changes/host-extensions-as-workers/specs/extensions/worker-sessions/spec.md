@@ -61,17 +61,51 @@ NOT enable model methods. A worker that selects a version the host did not offer
 - **THEN** the session is refused with `extension.protocol_unavailable` before any operation
 
 ### Requirement: Model tuple negotiation
-For model methods the host SHALL offer exactly one five-part tuple (operation, profile, codec, envelope version, IR
-version) and SHALL require the worker to return that tuple unchanged. Effective model limits SHALL be the smaller of
-the host's and the worker's limits. An empty intersection SHALL be `extension.tuple_unavailable`.
+For model methods the host SHALL offer in `initialize` every five-part tuple (operation, profile, codec, envelope
+version, IR version) that it supports for the operation, in its order of preference, with no wire field for the
+default. The session SHALL use the first agreed tuple. Only an empty agreement SHALL be
+`extension.tuple_unavailable`. Effective model limits SHALL be the smaller of the host's and the worker's limits.
 
-#### Scenario: Tuple not supported
-- **WHEN** the host offers `morphir-ir` with `morphir-json` and the worker supports only Ion
+#### Scenario: Worker without the default tuple
+- **WHEN** the host offers the compile tuples `morphir-model` with `ion-binary`, then `morphir-ir` with
+  `morphir-json`, and the worker supports only the JSON tuple
+- **THEN** the worker agrees on the JSON tuple, the session uses it, and no error is reported
+
+#### Scenario: Worker that supports every offered tuple
+- **WHEN** the host offers the Ion tuple, then the JSON tuple, and the worker supports both
+- **THEN** the worker returns both tuples in the host's order and the session uses the Ion tuple
+
+#### Scenario: No offered tuple supported
+- **WHEN** the worker supports no tuple that the host offers for the operation
 - **THEN** the session is refused with `extension.tuple_unavailable` and no operation is sent
 
 #### Scenario: Smaller worker limit
 - **WHEN** the worker declares a smaller decoded-byte limit than the host's 2 MiB
 - **THEN** the request is checked against the worker's limit before it is sent
+
+### Requirement: Required model tuple
+When the caller requires one model tuple, for example because the user gives `--model-format`, the host SHALL offer
+only that tuple and SHALL NOT use another tuple. A worker that does not support it SHALL give an empty agreement,
+which is `extension.tuple_unavailable`.
+
+#### Scenario: Required tuple not supported
+- **WHEN** the user gives `--model-format json`, so the host offers only `morphir-ir` with `morphir-json`, and the
+  worker supports only Ion
+- **THEN** the session is refused with `extension.tuple_unavailable` and no operation is sent
+
+### Requirement: Agreement follows the offer
+The worker SHALL return the intersection of its own support with the offer, in the host's order. An answer that
+holds a tuple that the host did not offer, or that does not keep the host's order, SHALL be refused with
+`extension.agreement_mismatch` before any operation.
+
+#### Scenario: Agreement out of the host's order
+- **WHEN** the host offers the Ion tuple, then the JSON tuple, and the worker returns the JSON tuple before the Ion
+  tuple
+- **THEN** activation fails with `extension.agreement_mismatch`, sends `shutdown` and `exit`, and sends no operation
+
+#### Scenario: Agreement with a tuple that was not offered
+- **WHEN** the user gives `--model-format json` and the worker answers with the Ion tuple
+- **THEN** activation fails with `extension.agreement_mismatch` and sends no operation
 
 ### Requirement: Limits
 The host SHALL enforce a 4 MiB framed request, a 16 MiB response, model payloads of 2 MiB decoded and 2,796,204
@@ -102,7 +136,8 @@ execution authority and SHALL NOT be cached by the host.
 ### Requirement: Activation against recorded claims
 The host SHALL provide activation that starts a worker from a worker specification and expected claims, initializes
 it, and, before any operation, compares the stable claims of the offered protocol line with the record. Model
-transport is negotiated, not compared: the worker SHALL return the offered tuple and limits no larger than offered.
+transport is negotiated, not compared: the worker SHALL return offered tuples in the host's order, as "Agreement
+follows the offer" states, and limits no larger than offered.
 
 #### Scenario: Claims match
 - **WHEN** an installed extension initializes with the identity and capabilities recorded at install
@@ -113,8 +148,9 @@ transport is negotiated, not compared: the worker SHALL return the offered tuple
 - **THEN** activation fails with `extension.claims_mismatch`, sends `shutdown` and `exit`, and sends no operation
 
 #### Scenario: Negotiated model transport is not drift
-- **WHEN** a guest that described four model tuples answers `initialize` with only the offered tuple and smaller limits
-- **THEN** activation succeeds and the session uses that tuple and the smaller limits
+- **WHEN** a guest that described four model tuples answers `initialize` with only the offered tuples that it
+  supports and smaller limits
+- **THEN** activation succeeds and the session uses the first agreed tuple and the smaller limits
 
 ### Requirement: Session calls
 An activated session SHALL accept compile and generate calls that match the negotiated protocol line and the

@@ -141,7 +141,7 @@ ceiling and the instruction budget. It now serves Content-Length frames on stdio
 what it would see from the Elm executable or the native MoonBit guest: a channel that carries whole MEP messages.</p>
 <p>The session state machine sends <code>morphir.extension.describe</code> to a first worker, compares the live
 claims with <code>release.json</code> and stops that worker. It starts a fresh worker, sends <code>initialize</code>
-with MEP <code>0.1</code>, checks the returned identity and the stable capabilities of the offered line against the claims, and that the model transport is the offered tuple within the offered limits, sends
+with MEP <code>0.1</code>, checks the returned identity and the stable capabilities of the offered line against the claims, and, on the model line, that the agreed tuples are offered tuples in the host's order within the offered limits (<a href="#ses-3">SES-3</a>), sends
 <code>initialized</code>, then <code>morphir.frontend.compile</code>, and checks the reply ID, shape and size. It
 sends <code>shutdown</code> and <code>exit</code>. Inside the worker, each request is one call of the guest's
 <code>handle</code> export; notifications are not delivered, and <code>exit</code> ends the instance and the
@@ -324,11 +324,12 @@ pub fn Host::supports(self : Host, runtime : WorkerRuntime) -&gt; Bool
 pub async fn Host::probe(self : Host, spec : WorkerSpec, deadline~ : Deadline) -&gt; Description raise HostError
 pub(all) enum Offer {
   Legacy                    // MEP 0.1: compile and generate
-  Model(ModelTuple)         // MEP 0.2.0-draft.1: only this tuple's operation
+  Model(Array[ModelTuple])  // MEP 0.2.0-draft.1: one operation's tuples, in the host's order of preference
 }
 
 pub fn Offer::select(claims : Claims, operation : Operation, profile? : Profile, codec? : Codec) -&gt; Offer raise Refusal
-// chooses by the host's preference order (Ion, then JSON), not by the worker's order
+// every tuple the host supports for the operation, in the host's order (Ion, then JSON);
+// a given profile or codec requires that one tuple; refuses when the claims hold none of them
 pub fn Launcher::launch(self : Self, spec : WorkerSpec, limits : Limits) -&gt; Channel raise  // frame limits come from negotiation
 pub async fn Host::activate(
   self : Host, spec : WorkerSpec, expected~ : Claims, offer~ : Offer, deadline~ : Deadline, stop~ : StopSignal,
@@ -342,8 +343,9 @@ staged, verified artifact and returns identity, version and claims. Acquisition 
 entry.</li>
 <li><strong>Activation.</strong> <code>activate</code> takes the stored artifact, its recorded runtime, the
 recorded claims and an <code>Offer</code>. <code>initialize</code> must carry the protocol offer and, for model
-methods, the one tuple, so the caller chooses the offer before the worker starts. <code>Offer::select</code> derives it
-from the claims and the requested operation, so the CLI and acquisition share one selection rule. A
+methods, the offered tuples in the host's order, so the caller chooses the offer before the worker starts.
+<code>Offer::select</code> derives it from the claims and the requested operation, so the CLI and acquisition share
+one selection rule. The session uses the first tuple that the worker agrees on (<a href="#ses-3">SES-3</a>). A
 <code>StopSignal</code> wraps a Moon-Lander stop token; a stop interrupts a pending receive. Acquisition rehashes the stored artifact first (its own requirement); the host hashes the bytes
 it copies again, so the check covers the bytes that run.</li>
 <li><strong>Calls.</strong> <code>compile</code> and <code>generate</code> pick the method from the protocol line
@@ -372,6 +374,32 @@ repository's rules ask for a functional core.</p>
 guest's describe answer, so a user does not choose a protocol.</p>
 <p><em>Alternative.</em> Separate session types per line. They would duplicate lifecycle and response checks, which
 are identical.</p>
+
+<h3 id="ses-3">SES-3. The host offers every model tuple in preference order; a required format offers one</h3>
+<p><em>Decided by Damian Reeves, 2026-10-30.</em> On the model line, the host offers in <code>initialize</code>
+every model tuple that it supports for the operation, in its order of preference. Today that is the Ion tuple
+(<code>morphir-model</code>, <code>ion-binary</code>), then the JSON tuple (<code>morphir-ir</code>,
+<code>morphir-json</code>). The first tuple is the host's default. The order is the only signal for the default:
+there is no new wire field. The worker returns the intersection of its own support with the offer, in the host's
+order. The Rust SDK does this in <code>NegotiatedModelTransport::select</code>. The session uses the first agreed
+tuple.</p>
+<p>For example, a compile with no <code>--model-format</code> and the <code>morphir-gleam</code> 0.4.0 guest, which
+supports only JSON, offers Ion and then JSON. The guest agrees on JSON, and the compile runs with JSON. The host test
+in finos/morphir-gleam#31 shows this. The MoonBit guest supports both tuples, so it agrees on Ion, as before.</p>
+<p>When the caller requires one format, for example because the user gives <code>--model-format</code>, the host
+offers only that tuple. A worker that does not support it gives an empty agreement, and the host reports
+<code>extension.tuple_unavailable</code>. Without a requirement, a worker that does not support the default is a
+valid partner. Only an empty agreement is an error. An answer that holds a tuple that the host did not offer, or
+that does not keep the host's order, is <code>extension.agreement_mismatch</code>. This is the code that
+<code>run-core-wasm-guests-from-any-language</code> (finos/morphir-moonbit#281) adds for an agreement that does not
+match what the host expects. Today the host reports such an answer as <code>extension.tuple_unavailable</code>.</p>
+<p>The same rule goes into the MEP text in finos/morphir#1115 and into SEL-2 of
+<code>run-core-wasm-guests-from-any-language</code>. The first version of this design offered exactly one tuple,
+which <code>Offer::select</code> chose from the probe claims. Groups 1 and 6 implemented that version. Task 6.6
+changes the code to this rule.</p>
+<p><em>Alternatives.</em> (a) Keep the one-tuple offer chosen from the probe claims. It gives the same tuple for the
+guests of today, but it hides the host's preference from the worker and differs from the MEP text. (b) Add a wire
+field that marks the default. The offer order already says it, and a new field needs a protocol change.</p>
 
 <h3 id="chan-1">CHAN-1. A channel carries whole messages; framing belongs to the stdio transport</h3>
 <p>The channel API is <code>send</code>, <code>receive</code>, <code>close</code> and <code>abort</code>, like
@@ -635,6 +663,10 @@ release</td></tr>
 <li>The exact grace period after <code>exit</code> (the specs fix 2 seconds) may need tuning for the Bun-built Elm
 executable's shutdown; this changes no behavior beyond the bound.</li>
 <li>Whether the Workbench adopts the browser launcher in <code>morphir-ukvn.5.64.21</code> or in its own change.</li>
+<li>Whether <code>generate</code> on the worker host takes the conversion rule that
+<code>run-core-wasm-guests-from-any-language</code> (finos/morphir-moonbit#281) adds: when the guest does not
+support the tuple of the input envelope, the host converts the model to an agreed tuple. Until then,
+<code>generate</code> requires the envelope's tuple, as today.</li>
 </ul>
 </main>
 </body>
