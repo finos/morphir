@@ -54,9 +54,10 @@ diverge. The protocol references the vocabulary; the IR specification defines it
 
 Three properties follow from declaring capabilities at all:
 
-**Selection.** A host can pick a provider on what it handles rather than on reputation. The CLI
-currently hard-codes that `morphir-elm` is the default Elm frontend and the native one is opt-in
-(see [Two Elm frontend providers](/decisions/0001-two-elm-frontend-providers.md)); with capability
+**Selection.** A host can pick a provider on what it handles rather than on reputation. The Rust CLI
+hard-codes the legacy JavaScript `morphir-elm` as its default Elm frontend and the native one as opt-in
+(see [Two Elm frontend providers](/decisions/0001-two-elm-frontend-providers.md), including the
+JavaScript extension's rename to `morphir-elm-classic` from 0.5.0); with capability
 sets, that is a fact both providers state.
 
 **Pipeline checking.** Frontends produce IR features; backends consume them; the same vocabulary

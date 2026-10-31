@@ -282,6 +282,11 @@ Elm MEP extension has no supported path to an installed record.
 A release has one descriptor with one entry per artifact. Each entry carries the
 claim set that the artifact returned from `describe` on its own platform:
 
+This 0.3.0 example retains the JavaScript extension's historical identity and
+filename. From 0.5.0, it is `morphir-elm-classic`, short id `elm-classic`, with
+`morphir-elm-classic-extension-*` files on `extension/elm-classic/v*` releases.
+The new `morphir-elm` is a MoonBit Wasm extension.
+
 ```json
 {
   "schemaVersion": "2.0.0-draft.2",

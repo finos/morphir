@@ -268,6 +268,10 @@ signatures is defined. The claim and record formats remain exact draft.2
 contracts pending adoption and stability review. WASM publish/install probes,
 claim signatures and process sandboxing retain the boundaries recorded there.
 
+The 0.3.0 example below uses the JavaScript extension's historical `morphir-elm`
+identity. From 0.5.0, it is `morphir-elm-classic`; the new `morphir-elm` is a
+MoonBit Wasm extension using MEP `0.2.0-draft.1` and the `morphir-bytes-v1` ABI.
+
 ```json
 {
   "claimsVersion": "0.1.0-draft.2",
@@ -952,7 +956,9 @@ Acceptance criteria:
 
 ### Phase 1: expose Morphir Elm as a native extension
 
-Add a `morphir-elm-extension` executable to `finos/morphir-elm`. It wraps the existing compiled Elm worker and TypeScript integration code.
+The original plan added a `morphir-elm-extension` executable to `finos/morphir-elm`.
+From 0.5.0, this JavaScript process extension uses the name `morphir-elm-classic`
+and files named `morphir-elm-classic-extension-*`. It wraps the existing compiled Elm worker and TypeScript integration code.
 
 The adapter will:
 

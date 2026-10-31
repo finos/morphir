@@ -208,7 +208,8 @@ target = "Acme.Std.Core"
 ```
 
 The native `morphir-elm-native` provider reads this setting; the JavaScript
-`morphir-elm` extension ignores it. See [Choosing the Elm
+extension, `morphir-elm` through 0.4.1 and `morphir-elm-classic` from 0.5.0,
+ignores it. See [Choosing the Elm
 prelude](getting-started/morphir-cli.md#choosing-the-elm-prelude).
 
 ### [codegen]

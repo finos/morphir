@@ -1,7 +1,7 @@
 ---
 type: Design Note
 title: Elm extension delivery
-description: "How the morphir-elm process extension reaches users and CI: published executables, pinned releases, local index installation and the remaining process-bundle publication gap."
+description: "How the JavaScript Elm extension, renamed morphir-elm-classic from 0.5.0, reaches users and CI through published executables."
 tags: [extensions, elm, release, mep]
 status: draft
 sources:
@@ -27,7 +27,14 @@ sources:
 
 # Elm extension delivery
 
-The `morphir-elm` extension is delivered as a process extension: one executable per platform, released
+Since 2026-10-31, the JavaScript process extension is named `morphir-elm-classic`,
+short id `elm-classic`. Its tags are `extension/elm-classic/v*` and its files start
+with `morphir-elm-classic-extension-`. The history and configuration below use its
+original `morphir-elm` identity, which still applies to the pinned JavaScript 0.4.1 release.
+The new `morphir-elm` is a MoonBit Wasm extension, first released as
+`extension/elm/v0.5.0-preview.1`. It does not support package dependencies yet.
+
+The legacy JavaScript `morphir-elm` is delivered as a process extension: one executable per platform, released
 from finos/morphir-elm on its own tag. finos/morphir pins a released archive and tests its CLI against
 it. CLI installation works from a prepared local index; publishing a process bundle is still open. This
 note is the narrative home for that capability. It says what is done, what is next, and where the
@@ -38,13 +45,13 @@ supporting documents are.
 The capability is: a user or a CI job gets a working Elm frontend for the `morphir` CLI without
 building it from source, and knows which version it has.
 
-`morphir-elm` is the default Elm frontend. It is the Elm compiler from finos/morphir-elm, compiled to
-JavaScript and wrapped into one executable with `bun build --compile`. The CLI starts that executable
+The Rust CLI defaults to the legacy JavaScript `morphir-elm` provider. It is the Elm compiler from
+finos/morphir-elm, compiled to JavaScript and wrapped into one executable with `bun build --compile`. The CLI starts that executable
 and talks to it over standard input and output with MEP, the Morphir Extension Protocol (JSON requests
 such as `compile`). That makes it a process extension. The other extension kind, a WASM extension, is
 one `.wasm` file that the CLI loads in-process.
 
-[Two Elm frontend providers](/decisions/0001-two-elm-frontend-providers.md) records why `morphir-elm`
+[Two Elm frontend providers](/decisions/0001-two-elm-frontend-providers.md) records why the legacy JavaScript `morphir-elm`
 stays the default while `morphir-elm-native`, a Rust frontend compiled into the CLI, is opt-in.
 
 ## Delivery path
@@ -78,7 +85,8 @@ does not follow the morphir-elm package version. The extension reports that vers
 the CLI refuses an extension whose reported version differs from the version it was discovered with.
 One file therefore feeds the tag check, the release descriptor and the running extension.
 
-A tag `extension/elm/v<version>` starts the workflow. Bun cross-compiles the executable for the six
+Through 0.4.1, a tag `extension/elm/v<version>` started this JavaScript release workflow.
+From 0.5.0, its tag is `extension/elm-classic/v<version>`. Bun cross-compiles the executable for the six
 platforms the `morphir` CLI is released for, on one Linux runner. The workflow then runs the extension
 test suite against the packaged executable on Linux x64, macOS arm64 and Windows arm64, and publishes
 a GitHub release. The release holds one archive and one `.sha256` file per platform, and a

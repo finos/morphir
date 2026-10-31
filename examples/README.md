@@ -59,8 +59,12 @@ resolution, and generated Gleam is inspected but not executed.
 ## Prepare the reference Elm scenarios
 
 Download the executable for your host from the
-[Elm extension 0.4.1 release](https://github.com/finos/morphir-elm/releases/tag/extension/elm/v0.4.1),
-verify the archive against its published checksum, and extract it. Then run:
+[JavaScript Elm extension 0.4.1 release](https://github.com/finos/morphir-elm/releases/tag/extension/elm/v0.4.1),
+verify the archive against its published checksum, and extract it. This release
+keeps its original id and executable names. From 0.5.0, this JavaScript extension
+is `morphir-elm-classic` on `extension/elm-classic/v*`; the new MoonBit Wasm
+`morphir-elm` on `extension/elm/v0.5.0-preview.1` is not used by these scenarios.
+Then run:
 
 ```sh
 mise run examples:prepare-elm -- /path/to/morphir-elm-extension

@@ -76,7 +76,9 @@ flowchart LR
 **Figure 1:** The two extension kinds the CLI hosts today, and the proposed third kind. The dashed edge
 does not exist.
 
-The Elm frontend `morphir-elm` is a process extension. Its compiler is the Elm-to-JavaScript output of
+The Elm frontend surveyed here was the JavaScript process extension `morphir-elm`,
+renamed `morphir-elm-classic` from 0.5.0 on 2026-10-31. The new `morphir-elm` is a
+MoonBit Wasm extension, outside this survey. The process extension's compiler is the Elm-to-JavaScript output of
 morphir-elm, and `bun build --compile` wraps it into one executable per platform (source `elm-mep`).
 That shape has three costs:
 
