@@ -12,28 +12,28 @@
 # extension/avro/v0.2.0 and extension/openapi/v0.2.0 remain in the finos/morphir-rust releases.
 [bundles.avro]
 repository = "finos/morphir-extensions"
-tag = "extension/avro/v0.3.0"
-artifact = "morphir-avro-0.3.0"
-sha256 = "e1bb2d233455453ac86273538ee7bef2d97bd216114ef41238dfaa4de77e77ff"
+tag = "extension/avro/v0.4.0"
+artifact = "morphir-avro-0.4.0"
+sha256 = "7f86a1983028d1e7d6b03de4d553417b05f8fc8eb47e20ab922830b0daecdd5f"
 
 [bundles.openapi]
 repository = "finos/morphir-extensions"
-tag = "extension/openapi/v0.4.0"
-artifact = "morphir-openapi-0.4.0"
-sha256 = "3ec823ba4c4270afd1a804c6b055c0771ad11076060ce7fee87aa9e97d89fd42"
+tag = "extension/openapi/v0.5.0"
+artifact = "morphir-openapi-0.5.0"
+sha256 = "691bb4892c1eaba11b5dbddb06a3217b7430e5c31c0239e8440ad4081c78da4d"
 
 # finos/morphir-python owns the Python extension. Bundles up to extension/python/v0.4.0 remain in
 # the finos/morphir-rust releases.
 [bundles.python]
 repository = "finos/morphir-python"
-tag = "extension/python/v0.4.1"
-artifact = "morphir-python-binding-0.4.1"
-sha256 = "a04722e16115667fc7c332177805dcb049aef563afcee0e5f80c5fea302f5b4e"
+tag = "extension/python/v0.6.0"
+artifact = "morphir-python-binding-0.6.0"
+sha256 = "ce0cba07f0395ff8179b42eb021ade05c68197f69b8e9c0c8bc369d2a035727c"
 
 [bundles.rust]
-tag = "extension/rust/v0.3.0"
-artifact = "morphir-rust-binding-0.3.0"
-sha256 = "b2f911d1b59a44d32a892e4aa3c6d3994399dcd14d58e58e97c9ed9076337912"
+tag = "extension/rust/v0.4.0"
+artifact = "morphir-rust-binding-0.4.0"
+sha256 = "3b3ce74b09cbd9d2789fbd8a4882ddd479d58c622f9a750d2fa32972a0b1378c"
 
 # A process extension is one executable per platform, released as an archive by the repository
 # that owns it. CI runs on x86_64 Linux, so that archive is the one pinned. `sha256` is the digest
@@ -55,7 +55,7 @@ executable = "morphir-elm-extension"
 
 [executables.scala-elm]
 repository = "finos/morphir-scala"
-tag = "v0.5.0-M11"
-asset = "morphir-scala-elm-linux-amd64-0.5.0-M11"
-sha256 = "3dca4b3a5c9c94de845ed6b1901535d595ac04f3b1478215a3a4e2f022a885fe"
+tag = "v0.5.0-M13"
+asset = "morphir-scala-elm-linux-amd64-0.5.0-M13"
+sha256 = "ef94fce393a0c661f6d661d01bacc5414f8962147f80b645cd13cb0340f0c94d"
 executable = "morphir-scala-elm"

@@ -42,9 +42,9 @@ verify the artifact's attestation, and rename the descriptor to `release.json`:
 
 ```console
 mkdir -p bundles/openapi
-gh release download extension/openapi/v0.4.0 -R finos/morphir-extensions --dir bundles/openapi \
+gh release download extension/openapi/v0.5.0 -R finos/morphir-extensions --dir bundles/openapi \
   --pattern '*.wasm' --pattern '*.wasm.sha256' --pattern '*.release.json'
-gh attestation verify bundles/openapi/morphir-openapi-0.4.0.wasm -R finos/morphir-extensions \
+gh attestation verify bundles/openapi/morphir-openapi-0.5.0.wasm -R finos/morphir-extensions \
   --signer-workflow finos/morphir-extensions/.github/workflows/extension-release.yml
 mv bundles/openapi/*.release.json bundles/openapi/release.json
 ```
