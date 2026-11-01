@@ -149,6 +149,44 @@
           "filename": "morphir-python-binding-0.4.2.release.json",
           "sha256": "72770f73f05a72535fd8c86ad4629175019037441a758b827c1ba47cc9a52ebd"
         }
+      },
+      "0.5.0": {
+        "tag": "extension/python/v0.5.0",
+        "sourceRevision": "d1fb8217ae266c588ffe39a5a769aef2943b0fab",
+        "module": {
+          "filename": "morphir-python-binding-0.5.0.wasm",
+          "sha256": "791d6cc60f442b1088b291e9aed4f2740a38b0f0cc920f5f7418735c2b88aeb6"
+        },
+        "descriptor": {
+          "filename": "morphir-python-binding-0.5.0.release.json",
+          "sha256": "a78df591623388a95f3f7f8f7465422cee3dd4f6d86a64224d2a02291d8a81b3"
+        },
+        "processDescriptor": {
+          "filename": "morphir-python-extension-0.5.0.release.json",
+          "sha256": "eeceae73e39dcf87d333584ac731c477465a1cefb7eda36ce26dc8e6b161c310"
+        },
+        "executables": {
+          "aarch64-apple-darwin": {
+            "filename": "morphir-python-extension-0.5.0-aarch64-apple-darwin",
+            "sha256": "5bd282bcec082a473b112e35b60737b00da7facbdb604ba254abefca62359e31"
+          },
+          "x86_64-apple-darwin": {
+            "filename": "morphir-python-extension-0.5.0-x86_64-apple-darwin",
+            "sha256": "071251b7c871af3c345f3c646fda403f5e66633f4f68b6beac8b833102bdfe4b"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "filename": "morphir-python-extension-0.5.0-aarch64-unknown-linux-gnu",
+            "sha256": "3f143226e3591094a9f06819c6eff3c02eb37482d17ca98d265864e1909674fb"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "filename": "morphir-python-extension-0.5.0-x86_64-unknown-linux-gnu",
+            "sha256": "9f65cc6d372658c1898302588308b6f3cc864d5cb94472ceeb750b8c63cf72d3"
+          },
+          "x86_64-pc-windows-msvc": {
+            "filename": "morphir-python-extension-0.5.0-x86_64-pc-windows-msvc.exe",
+            "sha256": "f920e457b171dc00dcaae724beb68d0fb3aa1aef0c2d372b27c5a9c15f4467e1"
+          }
+        }
       }
     }
   },

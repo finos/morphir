@@ -214,6 +214,7 @@ async fn describe_compile_generate(
       CompileModel,
       profile=MorphirModel,
       codec=IonBinary,
+      ir_version=@worker.IrVersionName::parse("4.0.0"),
     )
   } else {
     @worker.Offer::select(claims, Compile)
@@ -241,6 +242,7 @@ async fn describe_compile_generate(
         GenerateModel,
         profile=MorphirModel,
         codec=IonBinary,
+        ir_version=@worker.IrVersionName::parse("4.0.0"),
       )
       guard offer is Model([tuple]) else { fail("not one model tuple") }
       (offer, moonbit_generate(envelope, tuple))

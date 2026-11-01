@@ -110,6 +110,12 @@
   the offer or its order; replace "with one model tuple" in `apps/morphir/docs/extension.md`; verify the "Model tuple
   negotiation", "Required model tuple", "Agreement follows the offer" and "Negotiated model transport is not drift"
   scenarios as tests, and that the MoonBit guest still agrees on Ion
+- [x] 6.7 Negotiate IR 3 model tuples (bead `morphir-ukvn.5.64.36.23`, amendment of SES-3): add IR `3.0.0`, offer both
+  versions with IR `4.0.0` first, narrow the offer with `--ir-version`, intersect it with `--model-format`, make
+  `options.irVersion`, `contextDigest` and the output checks follow the agreed tuple, and compile on MEP `0.1` only for
+  a guest that claims nothing but that line; wrap plain IR for a guest on the model line in shared host code; verify the
+  "Required IR version", "Compile protocol line" and "Plain IR on the model line" scenarios as tests on the worker
+  package and the CLI
 
 ## 7. Qualify the published extensions on the worker host (morphir-ukvn.5.64.36.7)
 
@@ -145,6 +151,10 @@
   failed
 - [x] 7.6 Record every receipt with its exact artifact digests as a comment on this bead; verify each receipt names
   its platform, CLI build and guest digest
+- [x] 7.7 Qualify the Python extension `0.5.0` on the model line (bead `morphir-ukvn.5.64.36.23`), as a WASM worker and
+  as a process worker, from both CLIs: compile and generate at `--ir-version` 3 and 4 with `formatVersion` checked, plain
+  IR through `generateModel`, and the refusals; verify that Python `0.4.1` and `0.4.2` keep MEP `0.1` and that the MoonBit guest still agrees on Ion at
+  IR `4.0.0`. Windows follows task 7.5
 
 ## 8. Browser Web Worker feasibility (morphir-ukvn.5.64.36.8)
 

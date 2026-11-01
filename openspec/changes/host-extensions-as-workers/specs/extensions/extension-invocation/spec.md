@@ -47,6 +47,22 @@ options and meanings, and SHALL derive the protocol line from the guest's descri
 - **THEN** the CLI uses MEP `0.1` `morphir.frontend.compile`, because the guest offers no model methods, and writes
   `morphir-ir.json`
 
+#### Scenario: Python 0.5 compile at each IR version
+- **WHEN** a user compiles with the Python extension `0.5.0`, which claims both lines, with `--ir-version 3` or `4`
+- **THEN** the CLI uses MEP `0.2.0-draft.1` `morphir.frontend.compileModel` with the JSON tuple of that IR version and
+  writes `model-envelope.json` and `model.json`, whose `formatVersion` is that version
+
+#### Scenario: Plain IR with Python 0.5
+- **WHEN** a user generates from a plain IR file of IR 3 or 4 with the Python extension `0.5.0`, which claims both lines
+- **THEN** the CLI passes the file to the host's shared code and sends `morphir.backend.generateModel` with the tuple of
+  that IR version
+
+#### Scenario: Model generate of an IR 3 envelope
+- **WHEN** a user generates from a model envelope of IR `3.0.0` with `--ir-version 3` through a guest that claims its
+  tuple
+- **THEN** the CLI sends `morphir.backend.generateModel` with that tuple; with `--ir-version 4` it refuses the model
+  with `extension.ir_version_mismatch`
+
 ### Requirement: Safe publication
 Output SHALL be written to `<output>.morphir-partial` and renamed into place without replacement only after the
 session closed and the worker tree stopped. An existing output path SHALL be refused. A failure SHALL leave no

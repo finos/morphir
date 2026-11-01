@@ -370,8 +370,9 @@ repository's rules ask for a functional core.</p>
 <h3 id="ses-2">SES-2. One session type serves MEP 0.1 and 0.2.0-draft.1</h3>
 <p>The protocol line is a closed enum. The host offers the line that the requested operation needs: MEP
 <code>0.1</code> for legacy compile and generate, which the Elm and Python guests use, and
-<code>0.2.0-draft.1</code> for model methods, which the MoonBit guest uses. The CLI picks the operation from the
-guest's describe answer, so a user does not choose a protocol.</p>
+<code>0.2.0-draft.1</code> for model methods, which the MoonBit guest and the Python guest from <code>0.5.0</code> use.
+The CLI picks the operation from the guest's describe answer, so a user does not choose a protocol. A guest that claims
+both lines compiles on the model line; see the amendment of <a href="#ses-3">SES-3</a>.</p>
 <p><em>Alternative.</em> Separate session types per line. They would duplicate lifecycle and response checks, which
 are identical.</p>
 
@@ -379,7 +380,7 @@ are identical.</p>
 <p><em>Decided by Damian Reeves, 2026-10-30.</em> On the model line, the host offers in <code>initialize</code>
 every model tuple that it supports for the operation, in its order of preference. Today that is the Ion tuple
 (<code>morphir-model</code>, <code>ion-binary</code>), then the JSON tuple (<code>morphir-ir</code>,
-<code>morphir-json</code>). The first tuple is the host's default. The order is the only signal for the default:
+<code>morphir-json</code>), at IR <code>4.0.0</code> and then at IR <code>3.0.0</code>. The first tuple is the host's default. The order is the only signal for the default:
 there is no new wire field. The worker returns the intersection of its own support with the offer, in the host's
 order. The Rust SDK does this in <code>NegotiatedModelTransport::select</code>. The session uses the first agreed
 tuple.</p>
@@ -400,6 +401,55 @@ changes the code to this rule.</p>
 <p><em>Alternatives.</em> (a) Keep the one-tuple offer chosen from the probe claims. It gives the same tuple for the
 guests of today, but it hides the host's preference from the worker and differs from the MEP text. (b) Add a wire
 field that marks the default. The offer order already says it, and a new field needs a protocol change.</p>
+<p><em>Amended by Damian Reeves, 2026-11-01 (bead <code>morphir-ukvn.5.64.36.23</code>): the host negotiates IR 3 model
+tuples, with no fall back to MEP <code>0.1</code>.</em> A user of the Python extension <code>0.4.2</code> compiled IR 3
+with <code>--ir-version 3</code> on MEP <code>0.1</code>. The Python extension <code>0.5.0</code> also claims the model
+line, with JSON tuples at IR <code>3.0.0</code> and <code>4.0.0</code>, and the host then refused the same command,
+because it offered IR <code>4.0.0</code> only. The IR version is part of the exact tuple, so the host now offers the
+tuples of both versions. The draft defines its two profile and codec pairs independently of the semantic IR version,
+and its kit names Ion at IR <code>3.0.0</code> as a tuple, so the host offers both pairs at each version. Newer IR comes
+first: the order is IR <code>4.0.0</code> Ion, IR <code>4.0.0</code> JSON, IR <code>3.0.0</code> Ion, IR
+<code>3.0.0</code> JSON. A guest that supports both versions therefore uses IR <code>4.0.0</code> unless the user asks
+for another, and the MoonBit guest still agrees on Ion at IR <code>4.0.0</code>.</p>
+<p><code>--ir-version</code> narrows the offer as <code>--model-format</code> does, and the two intersect. For example,
+<code>--ir-version 3</code> with the Python extension <code>0.5.0</code> offers the two tuples of IR <code>3.0.0</code>.
+The guest agrees on the JSON tuple, and the request's <code>output</code>, <code>options.irVersion</code> and
+<code>contextDigest</code>, and the checks on the result, all follow it. With a major-only name, the selection is the
+highest version of that major in the matching tuples that the extension claims. This is the CLI's IR version rule for
+MEP <code>0.1</code>, applied to tuples. The request therefore cannot be final before activation: the CLI sizes a
+request for the default tuple before any worker starts, so an oversized request still starts no worker, and builds the
+final request from the negotiated tuple.</p>
+<p>A format requirement used to leave exactly one tuple. With two IR versions it leaves one tuple for each version, so
+<code>--model-format ion</code> alone offers Ion at IR <code>4.0.0</code>, then Ion at IR <code>3.0.0</code>. The MEP
+text says the host then "offers only that tuple", because every tuple had the same IR version when it was written. A
+worker can still refuse by an empty agreement, so the rule keeps its meaning, but the wording needs a follow-up in
+finos/morphir.</p>
+<p>The MEP <code>0.1</code> path stays only for guests that claim nothing but that line. A guest that claims both lines
+compiles on the model line. When it has no tuple for the request, the host reports
+<code>extension.tuple_unavailable</code>. It does not start a MEP <code>0.1</code> session, even though the guest claims
+legacy compile. A silent fall back would give the user a model of another line and another output layout, without any
+sign, from a command that asked for one exact thing. It would also tie the protocol line to an IR version, which the
+draft keeps independent.</p>
+<p>The same rule covers generate, by a second decision of Damian Reeves on 2026-11-01. A plain IR file has no tuple of
+its own, so the host gives it one. For a guest on the model line, <code>WrappedPlainIr::of</code> in
+<code>pkgs/morphir-host/worker</code> wraps the exact bytes of the file in a <code>morphir-ir</code> and
+<code>morphir-json</code> envelope at the tuple of its <code>formatVersion</code>. The model ID is
+<code>urn:morphir:plain-ir:sha256:&lt;digest&gt;</code> and the revision is <code>sha256:&lt;digest&gt;</code>, from the
+SHA-256 of those bytes. For example, a <code>morphir-ir.json</code> with <code>"formatVersion": 3</code> goes to the
+Python extension <code>0.5.0</code> with <code>morphir.backend.generateModel</code> and the JSON tuple of IR
+<code>3.0.0</code>. The wrapping is shared host code and not CLI code, so the native, Node and browser hosts make one
+envelope from one file, and a host only passes the input. A plain IR file therefore meets the model byte limits, which
+are smaller than the MEP <code>0.1</code> request limit. The file's <code>formatVersion</code> decides the tuple, so
+<code>--ir-version</code> stays a check of it, as for an envelope, and a difference is
+<code>extension.ir_version_mismatch</code>.</p>
+<p><em>Alternatives.</em> (a) Fall back to MEP <code>0.1</code> for IR 3: rejected by the decision above. (b) Offer only
+the tuples that the claims hold: it hides the host's preference, which is the reason for this decision. (c) Fill
+<code>options.irVersion</code> inside the session: the context digest covers the options, and the digest belongs to the
+CLI, so the CLI builds the request from the tuple. The session still refuses a request whose
+<code>options.irVersion</code> differs from the tuple, as the kit's case <code>model-0031</code> requires of a peer.
+(d) For generate, let the input select the method, so plain IR stays on MEP <code>0.1</code> for a guest that claims it:
+rejected, because it keeps a second line for guests on the model line. (e) Refuse plain IR for a guest on the model
+line: rejected, because it removes a documented input.</p>
 
 <h3 id="chan-1">CHAN-1. A channel carries whole messages; framing belongs to the stdio transport</h3>
 <p>The channel API is <code>send</code>, <code>receive</code>, <code>close</code> and <code>abort</code>, like

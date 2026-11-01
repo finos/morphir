@@ -96,24 +96,40 @@ A session must be closed: until then its worker runs. Use `with_session`
 unless you need the session outside one function. The function can close the
 session itself to read its report; a second close returns the same report.
 
-`Offer::select(claims, operation, profile?, codec?)` makes what activation
-offers from the probed claims: MEP `0.1` for the legacy `compile` and
+`Offer::select(claims, operation, profile?, codec?, ir_version?)` makes what
+activation offers from the probed claims: MEP `0.1` for the legacy `compile` and
 `generate` methods, or MEP `0.2.0-draft.1` for `compileModel` and
-`generateModel`. On the model line the host offers every tuple that it
-supports for the operation (`ModelOperation::host_tuples`), in its order of
-preference: `morphir-model` with `ion-binary`, then `morphir-ir` with
-`morphir-json`. The first tuple is the default; the order is the only signal
-for it. A profile or codec is a requirement, for example `--model-format
-json`: the offer then holds only the matching tuple. `select` raises `Refusal`
-when the claims cannot serve the operation or claim none of the tuples that it
-would offer.
+`generateModel`. `Claims::compile_operation` gives the compile method: the model
+method for a guest that claims MEP `0.2.0-draft.1`, and legacy `compile` only for
+a guest that claims nothing but MEP `0.1`. On the model line the host offers
+every tuple that it supports for the operation
+(`ModelOperation::host_tuples`), in its order of preference: IR `4.0.0`, then IR
+`3.0.0`, each with `morphir-model` and `ion-binary`, then with `morphir-ir` and
+`morphir-json`. The first tuple is the default; the order is the only signal for
+it. A profile, codec or IR version is a requirement, and requirements intersect:
+for example `--model-format json` leaves the JSON tuples. An IR version names
+one version exactly, or a major version, which selects the highest version of
+that major in the matching tuples that the extension claims. `select` raises
+`Refusal` when the claims cannot serve the operation or claim none of the tuples
+that it would offer. A guest that claims both protocol lines but no tuple for a
+model method is `TupleUnavailable`: the host does not fall back to MEP `0.1`.
 
 The worker returns the offered tuples that it supports, in the host's order,
 and the session uses the first one (the `tuple` of `Negotiated`). A worker that does
 not support the default is a valid partner. An empty agreement is
 `extension.tuple_unavailable`. An agreement with a tuple that the host did not
 offer, or in another order, is `extension.agreement_mismatch`. Both end the
-session with `shutdown` and `exit` before any operation.
+session with `shutdown` and `exit` before any operation. A compile request whose
+`options.irVersion` names another IR version than the agreed tuple is refused
+without being sent, so a caller builds it from `Session::negotiated`.
+
+`Offer::of_model(claims, tuple)` offers the one tuple of a model that the host
+already has, for example a model envelope on generate; the extension must claim
+it. `WrappedPlainIr::of(bytes, ir)` makes such a model from a plain Morphir IR
+document: a `morphir-ir` and `morphir-json` envelope around the exact bytes, at
+the tuple of the document's `formatVersion`, with a model ID and a revision from
+the SHA-256 of the bytes. Every host uses it for a guest with
+`Claims::on_model_line`, so the same file gives the same envelope on each host.
 
 Activation compares the claims only within the offered protocol line. The
 extension ID and version always count. On MEP `0.1` the legacy operations,

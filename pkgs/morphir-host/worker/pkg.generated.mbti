@@ -170,11 +170,13 @@ pub struct Claims {
   backend_ir_versions : Array[IrVersionName]
   model_tuples : Array[ModelTuple]
 } derive(Eq, @debug.Debug)
+pub fn Claims::compile_operation(Self) -> Operation
 pub fn Claims::equal(Self, Self) -> Bool
 pub fn Claims::from_describe(Json) -> Self raise ValueError
 pub fn Claims::new(ExtensionId, ExtensionVersion, protocol_lines? : ArrayView[ProtocolLine], operations? : ArrayView[Operation], languages? : ArrayView[LanguageClaim], frontend_ir_versions? : ArrayView[IrVersionName], frontend_flags? : FrontendFlags, targets? : ArrayView[@ids.BackendId], backend_ir_versions? : ArrayView[IrVersionName], model_tuples? : ArrayView[ModelTuple]) -> Self
 pub fn Claims::not_equal(Self, Self) -> Bool
 pub fn Claims::offers(Self, Operation) -> Bool
+pub fn Claims::on_model_line(Self) -> Bool
 pub fn Claims::to_repr(Self) -> @debug.Repr
 
 pub struct CompileRequest {
@@ -486,16 +488,19 @@ pub fn ImportName::to_string(Self) -> String
 pub impl Show for ImportName
 
 pub(all) enum IrVersion {
+  V3_0_0
   V4_0_0
 } derive(Compare, Eq, @debug.Debug)
 pub fn IrVersion::compare(Self, Self) -> Int32
 pub fn IrVersion::equal(Self, Self) -> Bool
 pub fn IrVersion::not_equal(Self, Self) -> Bool
+pub fn IrVersion::of_format_version(Json) -> Self?
 pub fn IrVersion::op_ge(Self, Self) -> Bool
 pub fn IrVersion::op_gt(Self, Self) -> Bool
 pub fn IrVersion::op_le(Self, Self) -> Bool
 pub fn IrVersion::op_lt(Self, Self) -> Bool
 pub fn IrVersion::output(Self, &Logger) -> Unit
+pub fn IrVersion::serves(Self, IrVersionName) -> Bool
 pub fn IrVersion::to_repr(Self) -> @debug.Repr
 pub fn IrVersion::to_string(Self) -> String
 pub impl Show for IrVersion
@@ -512,6 +517,7 @@ pub fn IrVersionName::op_le(Self, Self) -> Bool
 pub fn IrVersionName::op_lt(Self, Self) -> Bool
 pub fn IrVersionName::output(Self, &Logger) -> Unit
 pub fn IrVersionName::parse(String) -> Self raise ValueError
+pub fn IrVersionName::serves(Self, Self) -> Bool
 pub fn IrVersionName::to_repr(Self) -> @debug.Repr
 pub fn IrVersionName::to_string(Self) -> String
 pub impl Show for IrVersionName
@@ -719,11 +725,13 @@ pub(all) enum Offer {
   Model(Array[ModelTuple])
 } derive(Eq, @debug.Debug)
 pub fn Offer::check(Self, Claims) -> Unit raise Refusal
+pub fn Offer::default_tuple(Self) -> ModelTuple?
 pub fn Offer::equal(Self, Self) -> Bool
 pub fn Offer::line(Self) -> ProtocolLine
 pub fn Offer::not_equal(Self, Self) -> Bool
+pub fn Offer::of_model(Claims, ModelTuple) -> Self raise Refusal
 pub fn Offer::operations(Self) -> Array[Operation]
-pub fn Offer::select(Claims, Operation, profile? : ModelProfile, codec? : ModelCodec) -> Self raise Refusal
+pub fn Offer::select(Claims, Operation, profile? : ModelProfile, codec? : ModelCodec, ir_version? : IrVersionName) -> Self raise Refusal
 pub fn Offer::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Operation {
@@ -1060,6 +1068,15 @@ pub fn WorkerStop::equal(Self, Self) -> Bool
 pub fn WorkerStop::new(StopStatus, stop_method~ : StopMethod, stderr~ : StderrTail) -> Self
 pub fn WorkerStop::not_equal(Self, Self) -> Bool
 pub fn WorkerStop::to_repr(Self) -> @debug.Repr
+
+pub struct WrappedPlainIr {
+  tuple : ModelTuple
+  envelope : Json
+} derive(Eq, @debug.Debug)
+pub fn WrappedPlainIr::equal(Self, Self) -> Bool
+pub fn WrappedPlainIr::not_equal(Self, Self) -> Bool
+pub fn WrappedPlainIr::of(Bytes, Json) -> Self raise Refusal
+pub fn WrappedPlainIr::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

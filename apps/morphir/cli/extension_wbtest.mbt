@@ -718,7 +718,7 @@ test "an operation that the extension does not claim is refused before any call"
   assert_eq(refusal, Some((2, "extension.capability_unavailable")))
   // A frontend with model tuples compiles on the model line; one without
   // compiles on MEP 0.1.
-  assert_eq(extension_compile_offer(claims, None), Legacy)
+  assert_eq(extension_compile_offer(claims, None, None), Legacy)
   let model = @worker.Claims::from_describe(
     extension_test_claims(
       frontend={
@@ -731,25 +731,62 @@ test "an operation that the extension does not claim is refused before any call"
       ],
     ),
   )
-  // Without --model-format the host offers both of its tuples, Ion first,
-  // though the extension declares JSON first.
-  guard extension_compile_offer(model, None) is Model(tuples) else {
+  // Without a flag the host offers all of its tuples, IR 4.0.0 first and Ion
+  // first in each version, though the extension declares JSON first.
+  guard extension_compile_offer(model, None, None) is Model(tuples) else {
+    fail("no model offer")
+  }
+  assert_eq(tuples.map(tuple => (tuple.ir_version, tuple.codec)), [
+    (V4_0_0, IonBinary),
+    (V4_0_0, MorphirJson),
+    (V3_0_0, IonBinary),
+    (V3_0_0, MorphirJson),
+  ])
+  // --model-format narrows the offer to the tuples of that format.
+  guard extension_compile_offer(model, Some(MorphirJson), None) is Model(tuples) else {
+    fail("no model offer")
+  }
+  assert_eq(tuples.map(tuple => (tuple.profile, tuple.ir_version)), [
+    (MorphirIr, V4_0_0),
+    (MorphirIr, V3_0_0),
+  ])
+  guard extension_compile_offer(model, Some(IonBinary), None) is Model(tuples) else {
+    fail("no model offer")
+  }
+  assert_eq(tuples.map(tuple => (tuple.profile, tuple.ir_version)), [
+    (MorphirModel, V4_0_0),
+    (MorphirModel, V3_0_0),
+  ])
+  // --ir-version narrows it to that version, and the flags intersect.
+  let ir4 = Some(@worker.IrVersionName::parse("4"))
+  guard extension_compile_offer(model, None, ir4) is Model(tuples) else {
     fail("no model offer")
   }
   assert_eq(tuples.map(tuple => tuple.codec), [IonBinary, MorphirJson])
-  // --model-format requires one tuple, so the host offers only that tuple.
-  guard extension_compile_offer(model, Some(MorphirJson)) is Model(tuples) else {
+  assert_true(tuples.iter().all(tuple => tuple.ir_version is V4_0_0))
+  guard extension_compile_offer(model, Some(MorphirJson), ir4) is Model(tuples) else {
     fail("no model offer")
   }
-  assert_eq(tuples.map(tuple => (tuple.profile, tuple.codec)), [
-    (MorphirIr, MorphirJson),
+  assert_eq(tuples.map(tuple => (tuple.codec, tuple.ir_version)), [
+    (MorphirJson, V4_0_0),
   ])
-  guard extension_compile_offer(model, Some(IonBinary)) is Model(tuples) else {
-    fail("no model offer")
+  // This extension claims IR 4.0.0 only: IR 3 is not available, and a guest on
+  // the model line does not fall back to MEP 0.1.
+  let refusal = try {
+    ignore(
+      extension_compile_offer(
+        model,
+        None,
+        Some(@worker.IrVersionName::parse("3")),
+      ),
+    )
+    None
+  } catch {
+    ExtensionError(status~, code~, ..) =>
+      Some((status.exit_code(), code.name()))
+    _ => None
   }
-  assert_eq(tuples.map(tuple => (tuple.profile, tuple.codec)), [
-    (MorphirModel, IonBinary),
-  ])
+  assert_eq(refusal, Some((2, "extension.tuple_unavailable")))
 }
 
 ///|
@@ -761,7 +798,11 @@ fn extension_test_version(
     extension_ir_version(
       @worker.Claims::from_describe(extension_test_claims()),
       claimed.map(name => @worker.IrVersionName::parse(name)),
-      selected,
+      if selected == "" {
+        None
+      } else {
+        Some(@worker.IrVersionName::parse(selected))
+      },
     )
   catch {
     ExtensionError(code~, ..) => Err(code.name())

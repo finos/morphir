@@ -465,14 +465,22 @@ test "model tuple negotiation: the host offers every tuple that it supports, in 
     model_result([json_compile_tuple, ion_tuple]),
   )
   let offer = @worker.Offer::select(claims, CompileModel)
-  assert_eq(offer, Model([ion_tuple, json_compile_tuple]))
+  assert_eq(
+    offer,
+    Model([ion_tuple, json_compile_tuple, ion_tuple_ir3, json_tuple_ir3]),
+  )
   let (_, step) = @worker.Conversation::activate(offer, expected=claims)
   guard sends(step)[0].json()
     is Object({ "params": Object({ "modelTransport": transport, .. }), .. }) else {
     fail("no model transport offer")
   }
   assert_eq(transport, {
-    "tuples": [ion_tuple.to_json(), json_compile_tuple.to_json()],
+    "tuples": [
+      ion_tuple.to_json(),
+      json_compile_tuple.to_json(),
+      ion_tuple_ir3.to_json(),
+      json_tuple_ir3.to_json(),
+    ],
     "limits": {
       "maxEncodedBytes": 2796204,
       "maxDecodedBytes": 2097152,
@@ -488,7 +496,10 @@ test "model tuple negotiation: a worker without the default tuple agrees on JSON
   // The worker supports only the JSON tuple, like the morphir-gleam guest.
   let claims = @worker.Claims::from_describe(model_result([json_compile_tuple]))
   let offer = @worker.Offer::select(claims, CompileModel)
-  assert_eq(offer, Model([ion_tuple, json_compile_tuple]))
+  assert_eq(
+    offer,
+    Model([ion_tuple, json_compile_tuple, ion_tuple_ir3, json_tuple_ir3]),
+  )
   let (conversation, _) = @worker.Conversation::activate(offer, expected=claims)
   let (conversation, step) = conversation.on(
     answer(1, model_result([json_compile_tuple], protocol="0.2.0-draft.1")),
@@ -575,16 +586,16 @@ test "model tuple negotiation: no offered tuple supported is tuple_unavailable" 
 }
 
 ///|
-test "required model tuple: the host offers only the required tuple" {
+test "required model tuple: the host offers only the tuples of the required format" {
   let claims = @worker.Claims::from_describe(
     model_result([ion_tuple, json_compile_tuple]),
   )
   // --model-format json requires morphir-ir with morphir-json.
   let required = @worker.Offer::select(claims, CompileModel, codec=MorphirJson)
-  assert_eq(required, Model([json_compile_tuple]))
+  assert_eq(required, Model([json_compile_tuple, json_tuple_ir3]))
   assert_eq(
     @worker.Offer::select(claims, CompileModel, codec=IonBinary),
-    Model([ion_tuple]),
+    Model([ion_tuple, ion_tuple_ir3]),
   )
   // A worker that supports only Ion gives an empty agreement.
   assert_eq(
@@ -917,22 +928,13 @@ test "offer selection picks the protocol line and tuple from the claims" {
   assert_eq(@worker.Offer::select(legacy_claims(), Compile), Legacy)
   assert_eq(
     @worker.Offer::select(model_claims(), CompileModel, codec=IonBinary),
-    Model([ion_tuple]),
+    Model([ion_tuple, ion_tuple_ir3]),
   )
-  // The host offers both of its generate tuples, Ion first, though the
-  // MoonBit guest claims only the JSON one.
+  // The host offers all of its generate tuples, in its order, though the
+  // MoonBit guest claims only the JSON one of IR 4.0.0.
   assert_eq(
     @worker.Offer::select(model_claims(), GenerateModel),
-    Model([
-      @worker.ModelTuple::new(
-        GenerateModel,
-        MorphirModel,
-        IonBinary,
-        V0_1_0Draft1,
-        V4_0_0,
-      ),
-      json_generate_tuple,
-    ]),
+    Model(@worker.ModelOperation::GenerateModel.host_tuples()),
   )
   let refusal = (claims : @worker.Claims, operation : @worker.Operation) => {
     try @worker.Offer::select(claims, operation, codec=IonBinary) catch {
@@ -1332,18 +1334,18 @@ test "offer selection offers only the host's tuples, whatever the worker declare
   )
   // The host supports Ion with morphir-model and JSON with morphir-ir.
   assert_eq(@worker.ModelOperation::CompileModel.host_tuples(), [
-    ion_tuple, json_compile_tuple,
+    ion_tuple, json_compile_tuple, ion_tuple_ir3, json_tuple_ir3,
   ])
   let claims = @worker.Claims::from_describe(
     model_result([json_model, json_compile_tuple, ion_ir]),
   )
   assert_eq(
     @worker.Offer::select(claims, CompileModel),
-    Model([ion_tuple, json_compile_tuple]),
+    Model([ion_tuple, json_compile_tuple, ion_tuple_ir3, json_tuple_ir3]),
   )
   assert_eq(
     @worker.Offer::select(claims, CompileModel, profile=MorphirIr),
-    Model([json_compile_tuple]),
+    Model([json_compile_tuple, json_tuple_ir3]),
   )
   // A worker that claims only tuples that the host does not support is
   // refused before any worker starts.

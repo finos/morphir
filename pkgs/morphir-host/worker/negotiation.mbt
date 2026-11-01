@@ -53,33 +53,29 @@ pub fn Offer::operations(self : Offer) -> Array[Operation] {
 }
 
 ///|
-/// The model tuples that the host supports for the operation, in its order
-/// of preference: `morphir-model` with `ion-binary`, then `morphir-ir` with
-/// `morphir-json`, both with envelope `0.1.0-draft.1` and IR `4.0.0`.
-pub fn ModelOperation::host_tuples(self : ModelOperation) -> Array[ModelTuple] {
-  [
-    ModelTuple::new(self, MorphirModel, IonBinary, V0_1_0Draft1, V4_0_0),
-    ModelTuple::new(self, MorphirIr, MorphirJson, V0_1_0Draft1, V4_0_0),
-  ]
+/// The first tuple of a model offer: the host's default. MEP 0.1 has none.
+pub fn Offer::default_tuple(self : Offer) -> ModelTuple? {
+  match self {
+    Legacy => None
+    Model(tuples) => tuples.get(0)
+  }
 }
 
 ///|
-/// Makes the offer for an operation from an extension's claims, usually the
-/// claims of a describe probe. A model operation offers every tuple that the
-/// host supports for it, in the host's order, whatever order the worker
-/// declared. An optional profile or codec is a requirement: the offer then
-/// holds only the matching tuples, for example only the JSON tuple for
-/// `--model-format json`. It raises `Refusal` when the claims cannot serve
-/// the operation, or claim none of the tuples that it would offer.
-pub fn Offer::select(
+/// Refuses an operation that the claims do not serve on its protocol line. A
+/// guest that claims both lines and the legacy method, but no tuple for the
+/// model method, is `TupleUnavailable`, because the host does not fall back.
+fn check_operation(
   claims : Claims,
   operation : Operation,
-  profile? : ModelProfile,
-  codec? : ModelCodec,
-) -> Offer raise Refusal {
+) -> Unit raise Refusal {
   guard claims.offers(operation) else {
+    let both_lines = operation.legacy() is Some(legacy) &&
+      claims.offers(legacy) &&
+      claims.protocol_lines.contains(Mep0_1) &&
+      claims.protocol_lines.contains(Mep0_2Draft1)
     raise Refusal(
-      code=CapabilityUnavailable,
+      code=if both_lines { TupleUnavailable } else { CapabilityUnavailable },
       message="\{claims.extension_id} does not claim \{operation}",
     )
   }
@@ -89,20 +85,91 @@ pub fn Offer::select(
       message="\{claims.extension_id} does not claim MEP \{operation.protocol_line()}",
     )
   }
+}
+
+///|
+/// Makes the offer for a model that exists in one tuple, for example a model
+/// envelope on generate: only that tuple, which the extension must claim. The
+/// host does not convert a model to another tuple.
+pub fn Offer::of_model(
+  claims : Claims,
+  tuple : ModelTuple,
+) -> Offer raise Refusal {
+  check_operation(claims, tuple.operation.operation())
+  guard claims.model_tuples.contains(tuple) else {
+    raise Refusal(
+      code=TupleUnavailable,
+      message="\{claims.extension_id} does not claim the model's tuple (\{tuple.profile}, \{tuple.codec}, envelope \{tuple.envelope_version}, IR \{tuple.ir_version})",
+    )
+  }
+  Model([tuple])
+}
+
+///|
+/// The model tuples that the host supports for the operation, in its order of
+/// preference: IR `4.0.0`, then IR `3.0.0`, each with `morphir-model` and
+/// `ion-binary`, then with `morphir-ir` and `morphir-json`, all with envelope
+/// `0.1.0-draft.1`. The MEP draft defines the two profile and codec pairs for
+/// each semantic IR version. Each tuple is a complete combination that the
+/// host lists on purpose, not a product of separate lists.
+pub fn ModelOperation::host_tuples(self : ModelOperation) -> Array[ModelTuple] {
+  [
+    ModelTuple::new(self, MorphirModel, IonBinary, V0_1_0Draft1, V4_0_0),
+    ModelTuple::new(self, MorphirIr, MorphirJson, V0_1_0Draft1, V4_0_0),
+    ModelTuple::new(self, MorphirModel, IonBinary, V0_1_0Draft1, V3_0_0),
+    ModelTuple::new(self, MorphirIr, MorphirJson, V0_1_0Draft1, V3_0_0),
+  ]
+}
+
+///|
+/// Makes the offer for an operation from an extension's claims, usually the
+/// claims of a describe probe. A model operation offers every tuple that the
+/// host supports for it, in the host's order, whatever order the worker
+/// declared. An optional profile, codec or IR version is a requirement, and
+/// requirements intersect: the offer then holds only the matching tuples, for
+/// example only the JSON tuples for `--model-format json`.
+///
+/// An IR version selects by `IrVersionName::serves`: an exact version, or a
+/// major version, which selects the highest version of that major in the
+/// matching tuples that the extension claims. It raises `Refusal` when the
+/// claims cannot serve the operation, or claim none of the tuples that it
+/// would offer. A guest that claims MEP 0.1 and 0.2.0-draft.1 but no tuple for
+/// a model method is `TupleUnavailable`: the host does not fall back to MEP 0.1.
+pub fn Offer::select(
+  claims : Claims,
+  operation : Operation,
+  profile? : ModelProfile,
+  codec? : ModelCodec,
+  ir_version? : IrVersionName,
+) -> Offer raise Refusal {
+  check_operation(claims, operation)
   guard operation.model() is Some(model) else { return Legacy }
   let offered = model
     .host_tuples()
     .filter(tuple => {
       (profile is None || profile == Some(tuple.profile)) &&
-      (codec is None || codec == Some(tuple.codec))
+      (codec is None || codec == Some(tuple.codec)) &&
+      (match ir_version {
+        None => true
+        Some(selected) => tuple.ir_version.serves(selected)
+      })
     })
-  guard offered.iter().any(tuple => claims.model_tuples.contains(tuple)) else {
+  let claimed = offered.filter(tuple => claims.model_tuples.contains(tuple))
+  guard claimed is [first, ..] else {
+    let selection = match ir_version {
+      None => ""
+      Some(selected) => " at IR version \{selected}"
+    }
     raise Refusal(
       code=TupleUnavailable,
-      message="\{claims.extension_id} claims no tuple that the host offers for \{operation}",
+      message="\{claims.extension_id} claims no tuple that the host offers for \{operation}\{selection}",
     )
   }
-  Model(offered)
+  guard ir_version is Some(_) else { return Model(offered) }
+  let highest = claimed.fold(init=first.ir_version, (highest, tuple) => {
+    @cmp.maximum(highest, tuple.ir_version)
+  })
+  Model(offered.filter(tuple => tuple.ir_version == highest))
 }
 
 ///|

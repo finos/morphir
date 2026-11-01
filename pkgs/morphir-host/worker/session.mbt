@@ -753,6 +753,15 @@ fn Conversation::call(
   let call = if negotiated.tuple is Some(tuple) {
     let key = if call.kind is CompileCall { "output" } else { "input" }
     let params = call.params.copy()
+    // The MEP requires that `options.irVersion` equals the tuple's IR version.
+    if call.kind is CompileCall &&
+      field_at(Json::object(params), ["options", "irVersion"]) is Some(named) &&
+      named != Json::string(tuple.ir_version.to_string()) {
+      return refuse(
+        TupleUnavailable,
+        "the request options name another IR version than the session negotiated: \{named.stringify()}",
+      )
+    }
     match params.get(key) {
       None => params[key] = tuple.to_json()
       Some(value) =>

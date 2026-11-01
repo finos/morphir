@@ -64,6 +64,7 @@ async fn describe_compile_generate(
     CompileModel,
     profile=MorphirModel,
     codec=IonBinary,
+    ir_version=@worker.IrVersionName::parse("4.0.0"),
   )
   guard compile_offer is Model([compile_tuple]) else {
     fail("not a model offer")
@@ -82,6 +83,7 @@ async fn describe_compile_generate(
     GenerateModel,
     profile=MorphirModel,
     codec=IonBinary,
+    ir_version=@worker.IrVersionName::parse("4.0.0"),
   )
   guard generate_offer is Model([generate_tuple]) else {
     fail("not a model offer")

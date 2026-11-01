@@ -3,6 +3,9 @@
 /// generate calls: `Ok(result)`, `Err(error)` or `None` for no answer.
 priv struct FakeGuest {
   describe : Json
+  /// The claims that `initialize` answers from, when they differ from those of
+  /// `describe`.
+  live : Json?
   reply : (String, Json) -> Result[Json, Json]?
   shutdown : Result[Json, Json]
   stderr : String
@@ -91,7 +94,7 @@ async fn fake_serve(
         if params is Object({ "modelTransport": offer, .. }) {
           offers.push(offer)
         }
-        Some(Ok(fake_initialize(guest.describe, params)))
+        Some(Ok(fake_initialize(guest.live.unwrap_or(guest.describe), params)))
       }
       "morphir.shutdown" => Some(guest.shutdown)
       _ => {
@@ -273,13 +276,14 @@ fn fake_model_result() -> Json {
 ///|
 fn fake_guest(
   describe~ : Json = fake_moonbit_describe(),
+  live? : Json,
   reply~ : (String, Json) -> Result[Json, Json]? = (_, _) => {
     Some(Ok(fake_model_result()))
   },
   shutdown~ : Result[Json, Json] = Ok({}),
   stderr~ : String = "",
 ) -> FakeGuest {
-  { describe, reply, shutdown, stderr, }
+  { describe, live, reply, shutdown, stderr, }
 }
 
 ///|
@@ -455,14 +459,17 @@ async test "compile on the model line publishes the model and reports the sessio
 
 ///|
 /// A compile result with a `morphir-ir` model in Morphir JSON.
-fn fake_json_model_result() -> Json {
-  let bytes = @utf8.encode("{\"formatVersion\":4}")
+fn fake_json_model_result(
+  ir_version~ : String = "4.0.0",
+  format~ : Int32 = 4,
+) -> Json {
+  let bytes = @utf8.encode("{\"formatVersion\":\{format}}")
   {
     "success": true,
     "diagnostics": [],
     "model": {
       "envelopeVersion": "0.1.0-draft.1",
-      "irVersion": "4.0.0",
+      "irVersion": ir_version,
       "profile": "morphir-ir",
       "modelId": "fixture",
       "revision": "1",
@@ -520,11 +527,13 @@ async test "model tuple negotiation: the CLI offers Ion, then JSON, and a JSON-o
     }),
   )
   assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
-  // The host offers both of its tuples, in its order.
+  // The host offers all of its tuples, in its order.
   assert_eq(run.offers.length(), 1)
   assert_eq(fake_field(run.offers[0], ["tuples"]), [
-    extension_test_tuple("morphir.frontend.compileModel", "ion-binary"),
-    extension_test_tuple("morphir.frontend.compileModel", "morphir-json"),
+    fake_tuple_at("4.0.0", codec="ion-binary"),
+    fake_tuple_at("4.0.0"),
+    fake_tuple_at("3.0.0", codec="ion-binary"),
+    fake_tuple_at("3.0.0"),
   ])
   // The session uses the agreed JSON tuple, and no error is reported.
   assert_eq(
@@ -552,7 +561,7 @@ async test "model tuple negotiation: the CLI offers Ion, then JSON, and a JSON-o
 }
 
 ///|
-async test "required model tuple: --model-format json offers only JSON, which an Ion-only guest refuses" {
+async test "required model format: --model-format json offers only JSON tuples, which an Ion-only guest refuses" {
   let workspace = fake_workspace()
   let run = fake_run(
     fake_compile_args(workspace, "required") + ["--model-format", "json"],
@@ -563,7 +572,8 @@ async test "required model tuple: --model-format json offers only JSON, which an
   )
   assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
   assert_eq(fake_field(run.offers[0], ["tuples"]), [
-    extension_test_tuple("morphir.frontend.compileModel", "morphir-json"),
+    fake_tuple_at("4.0.0"),
+    fake_tuple_at("3.0.0"),
   ])
   let run = fake_run(
     fake_compile_args(workspace, "refused") + ["--model-format", "json"],
@@ -1766,5 +1776,449 @@ async test "a tree of 1,025 documents is refused before any operation session" {
     .contains("limit of 1024 documents"),
     msg=run.json.stringify(),
   )
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+}
+
+///|
+/// A compile tuple of IR version `version`, like those of Python 0.5.
+fn fake_tuple_at(version : String, codec~ : String = "morphir-json") -> Json {
+  guard extension_test_tuple("morphir.frontend.compileModel", codec)
+    is Object(fields) else {
+    abort("a tuple is an object")
+  }
+  let fields = fields.copy()
+  fields["irVersion"] = Json::string(version)
+  Json::object(fields)
+}
+
+///|
+/// A guest on both lines that compiles JSON models at IR 3.0.0 and 4.0.0, and
+/// claims legacy compile too, like Python 0.5.
+fn fake_python_model_describe(
+  versions~ : Array[String] = ["3.0.0", "4.0.0"],
+) -> Json {
+  extension_test_claims(
+    frontend={
+      "languages": [{ "id": "moonbit", "fileExtensions": [".mbt"] }],
+      "irVersions": ["3", "4"],
+      "compile": true,
+      "multiDocument": true,
+    },
+    tuples=versions.map(version => fake_tuple_at(version)),
+  )
+}
+
+///|
+/// Answers a compile with a JSON model of the IR version that the request
+/// names, as a conforming guest does.
+fn fake_python_reply(_method : String, params : Json) -> Result[Json, Json]? {
+  match fake_field(params, ["options", "irVersion"]) {
+    String("3.0.0") =>
+      Some(Ok(fake_json_model_result(ir_version="3.0.0", format=3)))
+    _ => Some(Ok(fake_json_model_result()))
+  }
+}
+
+///|
+async test "--ir-version 3 negotiates an IR 3.0.0 tuple, and the request and the checks follow it" {
+  let workspace = fake_workspace()
+  let run = fake_run(
+    fake_compile_args(workspace, "ir3") + ["--ir-version", "3"],
+    fake_guest(describe=fake_python_model_describe(), reply=fake_python_reply),
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  // The offer holds only the tuples of IR 3.0.0, Ion first.
+  assert_eq(fake_field(run.offers[0], ["tuples"]), [
+    fake_tuple_at("3.0.0", codec="ion-binary"),
+    fake_tuple_at("3.0.0"),
+  ])
+  assert_eq(fake_field(run.calls[0], ["output"]), fake_tuple_at("3.0.0"))
+  assert_eq(fake_field(run.calls[0], ["options", "irVersion"]), "3.0.0")
+  // contextDigest covers the options, so it follows the agreed IR version.
+  let context : Json = {
+    "package": "acme/ready",
+    "options": { "typesOnly": false, "irVersion": "3.0.0" },
+  }
+  assert_eq(
+    fake_field(run.calls[0], ["contextDigest"]),
+    Json::string(extension_sha256(@utf8.encode(context.stringify()))),
+  )
+  let result = fake_field(run.json, ["result"])
+  assert_eq(fake_field(result, ["protocolVersion"]), "0.2.0-draft.1")
+  assert_eq(fake_field(result, ["negotiated", "tuple"]), fake_tuple_at("3.0.0"))
+  assert_eq(
+    fake_file(workspace.root + "/ir3/model.json"),
+    "{\"formatVersion\":3}",
+  )
+  // An exact version gives the same offer.
+  let exact = fake_run(
+    fake_compile_args(workspace, "ir3-exact") + ["--ir-version", "3.0.0"],
+    fake_guest(describe=fake_python_model_describe(), reply=fake_python_reply),
+  )
+  assert_eq(exact.report.exit_code(), 0, msg=exact.json.stringify())
+  assert_eq(exact.offers, run.offers)
+  assert_true(exact.requests[0] == run.requests[0])
+}
+
+///|
+async test "--ir-version 4, and no flag, compile with IR 4.0.0 on a guest of both versions" {
+  let workspace = fake_workspace()
+  let guest = fake_guest(
+    describe=fake_python_model_describe(),
+    reply=fake_python_reply,
+  )
+  let selected = fake_run(
+    fake_compile_args(workspace, "ir4") + ["--ir-version", "4"],
+    guest,
+  )
+  assert_eq(selected.report.exit_code(), 0, msg=selected.json.stringify())
+  assert_eq(fake_field(selected.offers[0], ["tuples"]), [
+    fake_tuple_at("4.0.0", codec="ion-binary"),
+    fake_tuple_at("4.0.0"),
+  ])
+  assert_eq(fake_field(selected.calls[0], ["options", "irVersion"]), "4.0.0")
+  let free = fake_run(fake_compile_args(workspace, "free"), guest)
+  assert_eq(free.report.exit_code(), 0, msg=free.json.stringify())
+  // No flag: the host offers IR 4.0.0 first, and the guest agrees on it.
+  assert_eq(fake_field(free.offers[0], ["tuples"]), [
+    fake_tuple_at("4.0.0", codec="ion-binary"),
+    fake_tuple_at("4.0.0"),
+    fake_tuple_at("3.0.0", codec="ion-binary"),
+    fake_tuple_at("3.0.0"),
+  ])
+  assert_eq(fake_field(free.calls[0], ["output"]), fake_tuple_at("4.0.0"))
+  assert_eq(fake_field(free.calls[0], ["options", "irVersion"]), "4.0.0")
+}
+
+///|
+async test "a guest with only IR 3.0.0 tuples compiles at IR 3.0.0 with no flag" {
+  let workspace = fake_workspace()
+  let run = fake_run(
+    fake_compile_args(workspace, "only-ir3"),
+    fake_guest(
+      describe=fake_python_model_describe(versions=["3.0.0"]),
+      reply=fake_python_reply,
+    ),
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  assert_eq(fake_field(run.calls[0], ["options", "irVersion"]), "3.0.0")
+  assert_eq(fake_field(run.calls[0], ["output"]), fake_tuple_at("3.0.0"))
+}
+
+///|
+async test "a guest on both lines with no tuple for --ir-version is refused and does not fall back to MEP 0.1" {
+  let workspace = fake_workspace()
+  // The claims show it: refused before any operation session starts.
+  let run = fake_run(
+    fake_compile_args(workspace, "refused") + ["--ir-version", "3"],
+    fake_guest(describe=fake_python_model_describe(versions=["4.0.0"])),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.tuple_unavailable")
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+  assert_eq(run.offers, [])
+  assert_false(fake_exists(workspace.root + "/refused"))
+  // An IR version that the host has no tuple for, also.
+  for version in ["5", "4.1.0"] {
+    let run = fake_run(
+      fake_compile_args(workspace, "unknown-" + version) +
+      ["--ir-version", version],
+      fake_guest(describe=fake_python_model_describe()),
+    )
+    assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+    assert_eq(fake_error(run), "extension.tuple_unavailable")
+    assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+  }
+  // Both flags together intersect: JSON at IR 3 has a tuple, Ion at IR 3 has
+  // none, though the guest has Ion at IR 4.0.0.
+  let crossed = fake_guest(
+    describe=extension_test_claims(
+      frontend={
+        "languages": [{ "id": "moonbit", "fileExtensions": [".mbt"] }],
+        "compile": false,
+      },
+      tuples=[
+        fake_tuple_at("4.0.0", codec="ion-binary"),
+        fake_tuple_at("3.0.0"),
+      ],
+    ),
+    reply=fake_python_reply,
+  )
+  let run = fake_run(
+    fake_compile_args(workspace, "crossed") +
+    ["--ir-version", "3", "--model-format", "ion"],
+    crossed,
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.tuple_unavailable")
+  let run = fake_run(
+    fake_compile_args(workspace, "intersect") +
+    ["--ir-version", "3", "--model-format", "json"],
+    crossed,
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  assert_eq(fake_field(run.offers[0], ["tuples"]), [fake_tuple_at("3.0.0")])
+}
+
+///|
+async test "claims with a tuple that the live worker does not agree on are refused after negotiation" {
+  let workspace = fake_workspace()
+  let run = fake_run(
+    fake_compile_args(workspace, "drift") + ["--ir-version", "3"],
+    fake_guest(
+      describe=fake_python_model_describe(),
+      live=fake_python_model_describe(versions=["4.0.0"]),
+    ),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.tuple_unavailable")
+  assert_eq(run.calls, [])
+  assert_eq(run.methods, [
+    "morphir.extension.describe", "morphir.exit", "morphir.initialize", "morphir.shutdown",
+    "morphir.exit",
+  ])
+  assert_false(fake_exists(workspace.root + "/drift"))
+}
+
+///|
+async test "a result that is not of the agreed IR version publishes nothing" {
+  let workspace = fake_workspace()
+  let cases = [
+    // The envelope names IR 4.0.0 under an agreed IR 3.0.0 tuple.
+    ("envelope", fake_json_model_result(ir_version="4.0.0", format=3)),
+    // The payload is IR 4 under an envelope of the agreed IR 3.0.0 tuple.
+    ("format", fake_json_model_result(ir_version="3.0.0", format=4)),
+  ]
+  for case in cases {
+    let (name, result) = case
+    let run = fake_run(
+      fake_compile_args(workspace, name) + ["--ir-version", "3"],
+      fake_guest(describe=fake_python_model_describe(), reply=(_, _) => {
+        Some(Ok(result))
+      }),
+    )
+    assert_eq(run.report.exit_code(), 1, msg=run.json.stringify())
+    assert_eq(fake_error(run), "extension.result_invalid")
+    assert_false(fake_exists(workspace.root + "/" + name))
+  }
+}
+
+///|
+async test "a model generate of an IR 3.0.0 envelope sends its tuple, and --ir-version checks it" {
+  let workspace = fake_workspace()
+  guard fake_json_model_result(ir_version="3.0.0", format=3)
+    is Object({ "model": model, .. }) else {
+    fail("no model")
+  }
+  let input = workspace.root + "/model-envelope.json"
+  @platform.write(input, model.stringify())
+  let tuple : Json = {
+    "operation": "morphir.backend.generateModel",
+    "profile": "morphir-ir",
+    "codec": "morphir-json",
+    "envelopeVersion": "0.1.0-draft.1",
+    "irVersion": "3.0.0",
+  }
+  let guest = fake_guest(
+    describe=extension_test_claims(
+      backend={ "targets": ["moonbit"], "irVersions": ["3"], "generate": true },
+      tuples=[tuple],
+    ),
+    reply=(_, _) => Some(Ok(fake_artifacts())),
+  )
+  let args = (output : String) => {
+    [
+      "extension",
+      "generate",
+      input,
+      "--output",
+      workspace.root + "/" + output,
+      "--extension-pin",
+      workspace.pin,
+      "--json",
+    ]
+  }
+  for selection in [[], ["--ir-version", "3"], ["--ir-version", "3.0.0"]] {
+    let run = fake_run(
+      args("generated-\{selection.length()}-\{selection.last().unwrap_or("")}") +
+      selection,
+      guest,
+    )
+    assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+    assert_eq(fake_field(run.offers[0], ["tuples"]), [tuple])
+    assert_eq(fake_field(run.calls[0], ["input"]), tuple)
+  }
+  let run = fake_run(args("mismatch") + ["--ir-version", "4"], guest)
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.ir_version_mismatch")
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+}
+
+///|
+async test "--ir-version must name a version" {
+  let workspace = fake_workspace()
+  let run = fake_run(
+    fake_compile_args(workspace, "bad") + ["--ir-version", "4 0"],
+    fake_guest(),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.input_invalid")
+  assert_eq(run.methods, [])
+}
+
+///|
+async test "a guest that claims only MEP 0.1 keeps the legacy compile at each --ir-version" {
+  let workspace = fake_workspace()
+  let describe = extension_test_claims(frontend={
+    "languages": [{ "id": "moonbit", "fileExtensions": [".mbt"] }],
+    "irVersions": ["3", "4"],
+    "compile": true,
+    "multiDocument": true,
+  })
+  let run = fake_run(
+    fake_compile_args(workspace, "legacy") + ["--ir-version", "5"],
+    fake_guest(describe~),
+  )
+  // On MEP 0.1 the refusal stays the claimed-version one.
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.capability_unavailable")
+  assert_eq(run.offers, [])
+}
+
+///|
+/// A guest on both lines that generates from JSON models at `versions`, and
+/// claims legacy generate too, like Python 0.5.
+fn fake_generate_describe(versions : Array[String]) -> Json {
+  extension_test_claims(
+    backend={
+      "targets": ["moonbit"],
+      "irVersions": ["3", "4"],
+      "generate": true,
+    },
+    tuples=versions.map(version => fake_generate_tuple(version)),
+  )
+}
+
+///|
+fn fake_generate_tuple(version : String) -> Json {
+  {
+    "operation": "morphir.backend.generateModel",
+    "profile": "morphir-ir",
+    "codec": "morphir-json",
+    "envelopeVersion": "0.1.0-draft.1",
+    "irVersion": version,
+  }
+}
+
+///|
+/// The arguments of a generate of the plain IR file `document`.
+fn fake_plain_generate(
+  workspace : FakeWorkspace,
+  document : String,
+  output : String,
+) -> Array[String] raise {
+  let path = workspace.root + "/" + output + ".morphir-ir.json"
+  @platform.write(path, document)
+  [
+    "extension",
+    "generate",
+    path,
+    "--output",
+    workspace.root + "/" + output,
+    "--extension-pin",
+    workspace.pin,
+    "--json",
+  ]
+}
+
+///|
+async test "plain IR on a guest of both lines goes with generateModel at the tuple of its format version" {
+  let workspace = fake_workspace()
+  let guest = fake_guest(describe=fake_generate_describe(["3.0.0", "4.0.0"]), reply=(
+    _,
+    _,
+  ) => Some(Ok(fake_artifacts())))
+  for
+    case in [
+      ("3.0.0", "{\"formatVersion\":3}", "plain-3"),
+      ("4.0.0", "{\"formatVersion\":4}", "plain-4"),
+      ("3.0.0", "{ \"formatVersion\": \"3.0.0\" }", "plain-text-3"),
+    ] {
+    let (version, document, output) = case
+    let run = fake_run(fake_plain_generate(workspace, document, output), guest)
+    assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+    assert_eq(run.methods, [
+      "morphir.extension.describe", "morphir.exit", "morphir.initialize", "morphir.initialized",
+      "morphir.backend.generateModel", "morphir.shutdown", "morphir.exit",
+    ])
+    assert_eq(fake_field(run.offers[0], ["tuples"]), [
+      fake_generate_tuple(version),
+    ])
+    let call = run.calls[0]
+    assert_eq(fake_field(call, ["input"]), fake_generate_tuple(version))
+    let bytes = @utf8.encode(document)
+    let expected = @worker.WrappedPlainIr::of(bytes, @json.parse(document))
+    assert_eq(fake_field(call, ["model"]), expected.envelope)
+    assert_eq(
+      fake_field(run.json, ["result", "protocolVersion"]),
+      "0.2.0-draft.1",
+    )
+  }
+  // The same file gives the same request.
+  let first = fake_run(
+    fake_plain_generate(workspace, "{\"formatVersion\":4}", "same-a"),
+    guest,
+  )
+  let second = fake_run(
+    fake_plain_generate(workspace, "{\"formatVersion\":4}", "same-b"),
+    guest,
+  )
+  assert_true(first.requests[0] == second.requests[0])
+}
+
+///|
+async test "plain IR on a guest of both lines with no matching tuple is refused and does not fall back to MEP 0.1" {
+  let workspace = fake_workspace()
+  // The guest claims legacy generate, and a generate tuple of IR 4.0.0 only.
+  let guest = fake_guest(describe=fake_generate_describe(["4.0.0"]), reply=(
+    _,
+    _,
+  ) => Some(Ok(fake_artifacts())))
+  let refused = async fn(document : String, output : String, code : String) {
+    let run = fake_run(fake_plain_generate(workspace, document, output), guest)
+    assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+    assert_eq(fake_error(run), code)
+    assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+    assert_false(fake_exists(workspace.root + "/" + output))
+  }
+  refused("{\"formatVersion\":3}", "no-tuple", "extension.tuple_unavailable")
+  // A format version that the host has no tuple for.
+  refused("{\"formatVersion\":5}", "no-host", "extension.tuple_unavailable")
+  refused("{\"modules\":[]}", "no-format", "extension.input_invalid")
+  // --ir-version stays a check of the file's version.
+  let run = fake_run(
+    fake_plain_generate(workspace, "{\"formatVersion\":4}", "mismatch") +
+    ["--ir-version", "3"],
+    guest,
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.ir_version_mismatch")
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+  // A guest on both lines with no generate tuple at all.
+  let run = fake_run(
+    fake_plain_generate(workspace, "{\"formatVersion\":4}", "no-generate"),
+    fake_guest(
+      describe=extension_test_claims(
+        backend={
+          "targets": ["moonbit"],
+          "irVersions": ["4"],
+          "generate": true,
+        },
+        tuples=[fake_tuple_at("4.0.0")],
+      ),
+    ),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.tuple_unavailable")
   assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
 }

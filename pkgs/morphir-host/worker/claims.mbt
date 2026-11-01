@@ -99,9 +99,9 @@ pub fn LanguageClaim::new(
 }
 
 ///|
-/// An IR version as an extension names it, for example `4` or `4.0.0`: 1 to
-/// 32 printable ASCII characters without spaces. The host compares these
-/// names for equality only.
+/// An IR version as an extension or a user names it, for example `4` or
+/// `4.0.0`: 1 to 32 printable ASCII characters without spaces. The host reads
+/// no more of a name than its major part.
 pub struct IrVersionName {
   priv text : String
 } derive(Eq, Compare, Debug)
@@ -119,6 +119,28 @@ pub extend IrVersionName with @debug.Debug::{to_repr}
 pub fn IrVersionName::parse(text : String) -> IrVersionName raise ValueError {
   guard printable_token(text, 32) else { raise InvalidIrVersionName(text) }
   { text, }
+}
+
+///|
+/// The major part of the name: `4` for `4.0.0` and for `4`.
+fn IrVersionName::major(self : IrVersionName) -> String {
+  match self.text.find(".") {
+    Some(index) => self.text[:index].to_owned()
+    None => self.text
+  }
+}
+
+///|
+/// Whether this version, a claimed one or a model's, serves a selection: the
+/// names are equal, or the selection names only a major version and this
+/// version has that major. `4.1.0` serves `4`; `4` does not serve `4.0.0`, and
+/// `4.2.0` does not serve `4.1.0`.
+pub fn IrVersionName::serves(
+  self : IrVersionName,
+  selected : IrVersionName,
+) -> Bool {
+  self == selected ||
+  (!selected.text.contains(".") && self.major() == selected.text)
 }
 
 ///|
@@ -247,6 +269,26 @@ pub fn Claims::offers(self : Claims, operation : Operation) -> Bool {
 }
 
 ///|
+/// Whether this extension works on the model line. A guest that claims MEP
+/// 0.2.0-draft.1 does, also when it claims MEP 0.1; only a guest that claims
+/// nothing but the legacy line works on MEP 0.1. The line follows from the
+/// claims and never from the requested IR version or the input's format, so a
+/// guest with no matching tuple is refused and does not fall back (SES-3).
+pub fn Claims::on_model_line(self : Claims) -> Bool {
+  self.protocol_lines.contains(Mep0_2Draft1)
+}
+
+///|
+/// The operation that compiles with this extension, by its line.
+pub fn Claims::compile_operation(self : Claims) -> Operation {
+  if self.on_model_line() {
+    CompileModel
+  } else {
+    Compile
+  }
+}
+
+///|
 /// The MEP versions the host offers. MEP 0.1 carries the legacy compile and
 /// generate methods; MEP 0.2.0-draft.1 carries the model methods.
 pub(all) enum ProtocolLine {
@@ -329,6 +371,16 @@ pub fn Operation::model(self : Operation) -> ModelOperation? {
     Compile | Generate => None
     CompileModel => Some(CompileModel)
     GenerateModel => Some(GenerateModel)
+  }
+}
+
+///|
+/// The MEP 0.1 method that does the same work as a model method.
+fn Operation::legacy(self : Operation) -> Operation? {
+  match self {
+    Compile | Generate => None
+    CompileModel => Some(Compile)
+    GenerateModel => Some(Generate)
   }
 }
 
@@ -462,7 +514,10 @@ pub impl Show for EnvelopeVersion with fn output(self, logger) {
 pub extend EnvelopeVersion with Show::{to_string, output}
 
 ///|
+/// The IR versions that a model tuple can name, from low to high. Each
+/// version is part of the exact tuple.
 pub(all) enum IrVersion {
+  V3_0_0
   V4_0_0
 } derive(Eq, Compare, Debug)
 
@@ -479,6 +534,7 @@ pub extend IrVersion with @debug.Debug::{to_repr}
 pub impl Show for IrVersion with fn output(self, logger) {
   logger.write_string(
     match self {
+      V3_0_0 => "3.0.0"
       V4_0_0 => "4.0.0"
     },
   )
@@ -488,8 +544,28 @@ pub impl Show for IrVersion with fn output(self, logger) {
 pub extend IrVersion with Show::{to_string, output}
 
 ///|
-/// The one five-part tuple the host offers for a model method. The worker
-/// must return it unchanged.
+/// The IR version of a Morphir IR `formatVersion` that a model tuple can name:
+/// integer `4` denotes exactly `4.0.0`, and the string `4.0.0` is that release.
+/// Any other value has no tuple.
+pub fn IrVersion::of_format_version(format : Json) -> IrVersion? {
+  match format {
+    Number(3.0, ..) | String("3.0.0") => Some(V3_0_0)
+    Number(4.0, ..) | String("4.0.0") => Some(V4_0_0)
+    _ => None
+  }
+}
+
+///|
+/// Whether a tuple of this version serves a selection, by
+/// `IrVersionName::serves`.
+pub fn IrVersion::serves(self : IrVersion, selected : IrVersionName) -> Bool {
+  let version : IrVersionName = { text: self.to_string(), }
+  version.serves(selected)
+}
+
+///|
+/// One five-part tuple that the host offers for a model method. The worker
+/// returns the offered tuples that it supports, unchanged.
 pub struct ModelTuple {
   operation : ModelOperation
   profile : ModelProfile
@@ -544,6 +620,6 @@ pub fn ModelTuple::parse(
     profile: closed_part([MorphirModel, MorphirIr], profile),
     codec: closed_part([IonBinary, MorphirJson], codec),
     envelope_version: closed_part([V0_1_0Draft1], envelope_version),
-    ir_version: closed_part([V4_0_0], ir_version),
+    ir_version: closed_part([V3_0_0, V4_0_0], ir_version),
   }
 }

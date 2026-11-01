@@ -279,7 +279,8 @@ priv struct ExtensionInputs {
   package_name : String
   codec : @worker.ModelCodec?
   profile : String
-  ir_version : String
+  /// `--ir-version`: an exact IR version, or a major version.
+  ir_version : @worker.IrVersionName?
   target : String
   timeout_ms : Int32
   /// `--language`: the claimed language to compile, when the extension
@@ -304,13 +305,22 @@ fn ExtensionInputs::read(
       _ => raise input_invalid("--timeout allows at most 594000 ms")
     },
   )
+  let ir_version = match value(cli, "ir-version") {
+    "" => None
+    text =>
+      Some(
+        @worker.IrVersionName::parse(text) catch {
+          _ => raise input_invalid("--ir-version \{text} is not an IR version")
+        },
+      )
+  }
   let inputs : ExtensionInputs = {
     path,
     output: "",
     package_name: value(cli, "package"),
     codec: None,
     profile: value(cli, "frontend-profile"),
-    ir_version: value(cli, "ir-version"),
+    ir_version,
     target: value(cli, "target"),
     timeout_ms,
     language: None,
@@ -788,66 +798,73 @@ fn extension_sources(
 }
 
 ///|
-/// The compile offer: the model line when the extension claims
-/// `compileModel`, otherwise MEP 0.1 `compile`. On the model line the host
-/// offers every tuple that it supports, Ion first, and the session uses the
-/// first tuple that the extension agrees on. `--model-format` requires one
-/// tuple, so the host offers only that tuple.
+/// The compile offer: the model line when the extension claims it, and MEP 0.1
+/// `compile` only when the extension claims nothing but the legacy line. On
+/// the model line the host offers every tuple that it supports, IR 4.0.0
+/// first, and the session uses the first tuple that the extension agrees on.
+/// `--model-format` and `--ir-version` each narrow the offer, and together
+/// they intersect. No matching tuple is `extension.tuple_unavailable`, never a
+/// fall back to MEP 0.1. On MEP 0.1 `--ir-version` selects from the claimed
+/// frontend IR versions (`extension_ir_version`).
 fn extension_compile_offer(
   claims : @worker.Claims,
   codec : @worker.ModelCodec?,
+  ir_version : @worker.IrVersionName?,
 ) -> @worker.Offer raise ExtensionError {
-  let operation : @worker.Operation = if claims.offers(CompileModel) {
-    CompileModel
-  } else {
-    Compile
-  }
+  let operation = claims.compile_operation()
   if operation is Compile && codec is Some(IonBinary) {
     raise input_invalid(
       "\{claims.extension_id} compiles on MEP 0.1, which returns Morphir JSON",
     )
   }
-  @worker.Offer::select(claims, operation, codec?) catch {
+  @worker.Offer::select(claims, operation, codec?, ir_version?) catch {
     refusal => raise refusal_error(refusal)
   }
 }
 
 ///|
-/// The generate offer for a model envelope, on the model line, or for plain
-/// Morphir IR JSON, on MEP 0.1. The model line offers only the envelope's own
-/// tuple, which the extension must claim: the host does not convert a model
-/// to another tuple.
+/// The generate offer. A model on the model line offers only its own tuple,
+/// which the extension must claim: the host does not convert a model to
+/// another tuple. Plain Morphir IR JSON stays plain only for a guest that claims
+/// nothing but MEP 0.1 (`extension_generate_input`).
 fn extension_generate_offer(
   claims : @worker.Claims,
-  envelope : @worker.ModelTuple?,
+  tuple : @worker.ModelTuple?,
 ) -> @worker.Offer raise ExtensionError {
-  match envelope {
-    Some(tuple) => {
-      guard claims.offers(GenerateModel) else {
-        raise refused(
-          Worker(CapabilityUnavailable),
-          "\{claims.extension_id} does not claim \{@worker.Operation::GenerateModel}",
-        )
+  match tuple {
+    Some(tuple) =>
+      @worker.Offer::of_model(claims, tuple) catch {
+        refusal => raise refusal_error(refusal)
       }
-      guard claims.protocol_lines.contains(Mep0_2Draft1) else {
-        raise refused(
-          Worker(ProtocolUnavailable),
-          "\{claims.extension_id} does not claim MEP \{@worker.ProtocolLine::Mep0_2Draft1}",
-        )
-      }
-      guard claims.model_tuples.contains(tuple) else {
-        raise refused(
-          Worker(TupleUnavailable),
-          "\{claims.extension_id} does not claim the envelope's tuple (\{tuple.profile}, \{tuple.codec}, envelope \{tuple.envelope_version}, IR \{tuple.ir_version})",
-        )
-      }
-      Model([tuple])
-    }
     None =>
       @worker.Offer::select(claims, Generate) catch {
         refusal => raise refusal_error(refusal)
       }
   }
+}
+
+///|
+/// The model that a generate call sends, with its tuple on the model line. A
+/// model envelope goes as it is. For a guest on the model line the host's shared
+/// code wraps plain Morphir IR JSON in an envelope of the file's format version.
+/// For a guest that claims only MEP 0.1, plain IR stays plain, with no tuple.
+fn extension_generate_input(
+  inputs : ExtensionInputs,
+  claims : @worker.Claims,
+  bytes : Bytes,
+  model : Json,
+) -> (@worker.ModelTuple?, Json) raise ExtensionError {
+  let envelope = extension_envelope_tuple(model)
+  guard envelope is None && claims.on_model_line() else {
+    return (envelope, model)
+  }
+  guard extension_format_version(model) is Some(_) else {
+    raise input_invalid("\{inputs.path} has no formatVersion")
+  }
+  let wrapped = @worker.WrappedPlainIr::of(bytes, model) catch {
+    refusal => raise refusal_error(refusal)
+  }
+  (Some(wrapped.tuple), wrapped.envelope)
 }
 
 ///|
@@ -869,16 +886,6 @@ fn extension_ir_agrees(left : String, right : String) -> Bool {
     (!left.contains(".") || !right.contains(".")) &&
     extension_ir_major(left) == extension_ir_major(right)
   )
-}
-
-///|
-/// Whether a version that is there, a claimed one or the model's, serves the
-/// selected one: the names are equal, or the selection names only a major
-/// version and the version has that major. `4` selects `4.1.0`; `4.0.0` does
-/// not select `4`, and `4.2.0` does not select `4.1.0`.
-fn extension_ir_serves(version : String, selected : String) -> Bool {
-  version == selected ||
-  (!selected.contains(".") && extension_ir_major(version) == selected)
 }
 
 ///|
@@ -944,10 +951,10 @@ fn extension_format_version(ir : Json) -> String? {
 fn extension_ir_version(
   claims : @worker.Claims,
   claimed : Array[@worker.IrVersionName],
-  selected : String,
+  selected : @worker.IrVersionName?,
 ) -> String? raise ExtensionError {
-  let names = claimed.map(name => name.to_string())
-  if selected == "" {
+  guard selected is Some(selected) else {
+    let names = claimed.map(name => name.to_string())
     return match names {
       [] => None
       [only] => Some(only)
@@ -957,12 +964,14 @@ fn extension_ir_version(
         )
     }
   }
-  if names.contains(selected) {
-    return Some(selected)
+  if claimed.contains(selected) {
+    return Some(selected.to_string())
   }
   match
     extension_ir_highest(
-      names.filter(name => extension_ir_serves(name, selected)),
+      claimed
+      .filter(name => name.serves(selected))
+      .map(name => name.to_string()),
     ) {
     Some(version) => Some(version)
     None =>
@@ -1015,24 +1024,22 @@ fn extension_documents(
 }
 
 ///|
-/// The parameters of a compile call on the negotiated line.
+/// The parameters of a compile call: with the agreed tuple on the model line,
+/// so `options.irVersion` and `contextDigest` follow that tuple, or with no
+/// tuple on MEP 0.1, which sends the selected `ir_version`.
 fn extension_compile_params(
   inputs : ExtensionInputs,
   claims : @worker.Claims,
-  offer : @worker.Offer,
+  tuple : @worker.ModelTuple?,
   language : @ids.LanguageId,
   documents : Array[ExtensionSource],
   ir_version : String?,
 ) -> Map[String, Json] raise ExtensionError {
-  match offer {
-    Model(_) => {
-      if inputs.ir_version != "" && !["4", "4.0.0"].contains(inputs.ir_version) {
-        raise input_invalid("a model compile returns IR 4.0.0")
-      }
-      // Every tuple that the host offers has IR 4.0.0.
+  match tuple {
+    Some(tuple) => {
       let options : Map[String, Json] = {
         "typesOnly": false,
-        "irVersion": @worker.IrVersion::V4_0_0.to_string(),
+        "irVersion": tuple.ir_version.to_string(),
       }
       if inputs.profile != "" {
         options["profile"] = Json::string(inputs.profile)
@@ -1052,7 +1059,7 @@ fn extension_compile_params(
         "contextDigest": extension_sha256(@utf8.encode(context.stringify())),
       }
     }
-    Legacy => {
+    None => {
       if inputs.profile != "" {
         raise input_invalid(
           "--frontend-profile needs a model compile, which \{claims.extension_id} does not claim",
@@ -1109,12 +1116,11 @@ fn extension_generate_params(
   let target = extension_target(claims, inputs.target)
   match envelope {
     Some(tuple) => {
-      let envelope = tuple.ir_version.to_string()
-      if inputs.ir_version != "" &&
-        !extension_ir_serves(envelope, inputs.ir_version) {
+      if inputs.ir_version is Some(selected) &&
+        !tuple.ir_version.serves(selected) {
         raise refused(
           IrVersionMismatch,
-          "--ir-version \{inputs.ir_version} differs from the envelope's IR \{envelope}",
+          "--ir-version \{selected} differs from the model's IR \{tuple.ir_version}",
         )
       }
       let identity : Json = match model {
@@ -1138,18 +1144,23 @@ fn extension_generate_params(
       // the IR version from the IR's formatVersion. --ir-version is a check
       // of the model's version, and the backend must claim that version.
       let claimed = claims.backend_ir_versions
-      if inputs.ir_version != "" || !claimed.is_empty() {
-        guard extension_format_version(model) is Some(format) else {
+      if inputs.ir_version is Some(_) || !claimed.is_empty() {
+        guard extension_format_version(model) is Some(text) else {
           raise input_invalid("\{inputs.path} has no formatVersion")
         }
-        if inputs.ir_version != "" &&
-          !extension_ir_serves(format, inputs.ir_version) {
+        let format = @worker.IrVersionName::parse(text) catch {
+          _ =>
+            raise input_invalid(
+              "\{inputs.path} has formatVersion \{text}, which is not an IR version",
+            )
+        }
+        if inputs.ir_version is Some(selected) && !format.serves(selected) {
           raise refused(
             IrVersionMismatch,
-            "\{inputs.path} has formatVersion \{format}; the selected IR version is \{inputs.ir_version}",
+            "\{inputs.path} has formatVersion \{format}; the selected IR version is \{selected}",
           )
         }
-        ignore(extension_ir_version(claims, claimed, format))
+        ignore(extension_ir_version(claims, claimed, Some(format)))
       }
       { "ir": model, "target": target, "options": {} }
     }
@@ -1191,6 +1202,43 @@ fn extension_model_bytes(
     )
   }
   (model, bytes)
+}
+
+///|
+/// A Morphir JSON model must be of the agreed tuple's IR version: its
+/// `formatVersion` must agree with the tuple, under the negotiated limits. The
+/// host does not read an Ion payload; a consumer of the Ion model checks it.
+fn extension_model_format(
+  bytes : Bytes,
+  tuple : @worker.ModelTuple,
+  limits : @worker.ModelLimits,
+) -> Unit raise ExtensionError {
+  guard tuple.codec is MorphirJson else { return }
+  let document = @utf8.decode(bytes[:]) catch {
+    _ => raise failed(ResultInvalid, "the JSON model payload is not UTF-8 text")
+  }
+  let model = @model_wire.parse_bounded(
+    document,
+    max_depth=limits.depth,
+    max_nodes=limits.nodes,
+    max_string_units=limits.decoded_bytes,
+  ) catch {
+    _ =>
+      raise failed(
+        ResultInvalid,
+        "the JSON model payload is not a bounded JSON document",
+      )
+  }
+  guard extension_format_version(model) is Some(format) else {
+    raise failed(ResultInvalid, "the JSON model payload has no formatVersion")
+  }
+  let expected = tuple.ir_version.to_string()
+  if !extension_ir_agrees(format, expected) {
+    raise failed(
+      ResultInvalid,
+      "the JSON model payload has formatVersion \{format}; the agreed tuple has IR \{expected}",
+    )
+  }
 }
 
 ///|
@@ -1257,10 +1305,12 @@ fn extension_files(
   agreed : @worker.ModelTuple?,
   result : Json,
   ir_version : String?,
+  limits : @worker.ModelLimits,
 ) -> Array[(String, Bytes)] raise ExtensionError {
   match (command, agreed) {
     (Compile, Some(tuple)) => {
       let (model, bytes) = extension_model_bytes(result, tuple)
+      extension_model_format(bytes, tuple, limits)
       [
         ("model-envelope.json", @utf8.encode(model.stringify())),
         (
@@ -1635,9 +1685,13 @@ async fn extension_execute(
     )
   }
   // Inputs that need the claims are read after the probe, before any call.
-  let (offer, params, ir_version) = match command {
+  let (offer, call, ir_version) = match command {
     Compile => {
-      let offer = extension_compile_offer(claims, inputs.codec)
+      let offer = extension_compile_offer(
+        claims,
+        inputs.codec,
+        inputs.ir_version,
+      )
       let ir_version = match offer {
         Legacy =>
           extension_ir_version(
@@ -1660,13 +1714,20 @@ async fn extension_execute(
       )
       let language = language.language_id
       extension_document_count(claims, documents)
-      (
-        offer,
-        extension_compile_params(
-          inputs, claims, offer, language, documents, ir_version,
-        ),
-        ir_version,
-      )
+      // The request follows the tuple that the session agrees on.
+      let request = (tuple : @worker.ModelTuple?) => {
+        let params = extension_compile_params(
+          inputs, claims, tuple, language, documents, ir_version,
+        )
+        @worker.CompileRequest::new(params) catch {
+          refusal => raise refusal_error(refusal)
+        }
+      }
+      // An oversized request is refused before any worker starts. Every
+      // offered tuple gives a request of about this size; the session checks
+      // the one that it sends.
+      ignore(request(offer.default_tuple()))
+      (offer, Ok(request), ir_version)
     }
     _ => {
       let bytes = @platform.read_input(inputs.path, 4194304) catch {
@@ -1683,20 +1744,16 @@ async fn extension_execute(
       ) catch {
         _ => raise input_invalid("\{inputs.path} is not a bounded JSON model")
       }
-      let envelope = extension_envelope_tuple(model)
-      let offer = extension_generate_offer(claims, envelope)
-      (offer, extension_generate_params(inputs, claims, envelope, model), None)
+      let (tuple, model) = extension_generate_input(
+        inputs, claims, bytes, model,
+      )
+      let offer = extension_generate_offer(claims, tuple)
+      let params = extension_generate_params(inputs, claims, tuple, model)
+      let request = @worker.GenerateRequest::new(params) catch {
+        refusal => raise refusal_error(refusal)
+      }
+      (offer, Err(request), None)
     }
-  }
-  let call = match command {
-    Compile =>
-      Ok(@worker.CompileRequest::new(params)) catch {
-        refusal => raise refusal_error(refusal)
-      }
-    _ =>
-      Err(@worker.GenerateRequest::new(params)) catch {
-        refusal => raise refusal_error(refusal)
-      }
   }
   check()
   let (outcome, report) = host.with_session(
@@ -1707,7 +1764,10 @@ async fn extension_execute(
     stop~,
     async fn(session) {
       let outcome = match call {
-        Ok(request) => session.compile(request).map(compiled => compiled.result)
+        Ok(request) => {
+          let tuple = session.negotiated().bind(agreed => agreed.tuple)
+          session.compile(request(tuple)).map(compiled => compiled.result)
+        }
         Err(request) =>
           session.generate(request).map(generated => generated.result)
       }
@@ -1756,7 +1816,11 @@ async fn extension_execute(
     (Model(_), _) =>
       raise failed(ResultInvalid, "the session reports no agreed model tuple")
   }
-  let files = extension_files(command, agreed, result, ir_version)
+  let limits = match report.negotiated {
+    Some(negotiated) => negotiated.limits.model
+    None => report.limits.model
+  }
+  let files = extension_files(command, agreed, result, ir_version, limits)
   let receipts = extension_publish(inputs.output, files, check=fn() raise {
     check()
   }) catch {

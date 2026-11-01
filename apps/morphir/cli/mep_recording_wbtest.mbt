@@ -99,6 +99,8 @@ async test "record native MEP host and guest sessions" {
     destination + "/compiled",
     "--model-format",
     "ion",
+    "--ir-version",
+    "4.0.0",
   ])
   let inputs = ExtensionInputs::read(cli, Compile)
   let scratch = destination + "/plan.request.bin"
@@ -112,7 +114,7 @@ async test "record native MEP host and guest sessions" {
     fail("the guest did not describe itself")
   }
   let claims = description.claims
-  let offer = extension_compile_offer(claims, inputs.codec)
+  let offer = extension_compile_offer(claims, inputs.codec, inputs.ir_version)
   let language = extension_language(claims, inputs.language)
   let documents = extension_sources(
     inputs.path,
@@ -122,7 +124,14 @@ async test "record native MEP host and guest sessions" {
   )
   let language = language.language_id
   let request = @worker.CompileRequest::new(
-    extension_compile_params(inputs, claims, offer, language, documents, None),
+    extension_compile_params(
+      inputs,
+      claims,
+      offer.default_tuple(),
+      language,
+      documents,
+      None,
+    ),
   )
   // Step the operation session with the guest's replies to find each message.
   let add = (step : @worker.Step) => {

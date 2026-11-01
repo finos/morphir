@@ -5,6 +5,7 @@ import {
   "moonbitlang/async/aqueue",
   "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/base64",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
   "moonrockz/moon-lander-hosting" @hosting,

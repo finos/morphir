@@ -67,7 +67,7 @@ default. The session SHALL use the first agreed tuple. Only an empty agreement S
 `extension.tuple_unavailable`. Effective model limits SHALL be the smaller of the host's and the worker's limits.
 
 #### Scenario: Worker without the default tuple
-- **WHEN** the host offers the compile tuples `morphir-model` with `ion-binary`, then `morphir-ir` with
+- **WHEN** the host offers the compile tuples of IR `4.0.0`, `morphir-model` with `ion-binary`, then `morphir-ir` with
   `morphir-json`, and the worker supports only the JSON tuple
 - **THEN** the worker agrees on the JSON tuple, the session uses it, and no error is reported
 
@@ -83,15 +83,121 @@ default. The session SHALL use the first agreed tuple. Only an empty agreement S
 - **WHEN** the worker declares a smaller decoded-byte limit than the host's 2 MiB
 - **THEN** the request is checked against the worker's limit before it is sent
 
+### Requirement: Host tuple order
+The host's order of preference SHALL be IR `4.0.0`, then IR `3.0.0`, each with `morphir-model` and `ion-binary`, then
+with `morphir-ir` and `morphir-json`, all with envelope `0.1.0-draft.1` (bead: morphir-ukvn.5.64.36.23).
+
+#### Scenario: Worker with both IR versions and no requirement
+- **WHEN** no requirement narrows the offer and the worker supports JSON tuples at IR `3.0.0` and `4.0.0`
+- **THEN** the worker returns the tuples in the host's order and the session uses the JSON tuple of IR `4.0.0`
+
+#### Scenario: Worker with only IR 3.0.0
+- **WHEN** no requirement narrows the offer and the worker supports only the JSON tuple of IR `3.0.0`
+- **THEN** the session uses that tuple, and no error is reported
+
 ### Requirement: Required model tuple
-When the caller requires one model tuple, for example because the user gives `--model-format`, the host SHALL offer
-only that tuple and SHALL NOT use another tuple. A worker that does not support it SHALL give an empty agreement,
-which is `extension.tuple_unavailable`.
+When the caller requires one format, for example because the user gives `--model-format`, the host SHALL offer only
+the tuples of that format and SHALL NOT use another tuple. A worker that supports none of them SHALL give an empty
+agreement, which is `extension.tuple_unavailable`.
 
 #### Scenario: Required tuple not supported
-- **WHEN** the user gives `--model-format json`, so the host offers only `morphir-ir` with `morphir-json`, and the
-  worker supports only Ion
+- **WHEN** the user gives `--model-format json`, so the host offers only `morphir-ir` with `morphir-json`, at IR
+  `4.0.0` and `3.0.0`, and the worker supports only Ion
 - **THEN** the session is refused with `extension.tuple_unavailable` and no operation is sent
+
+### Requirement: Required IR version
+When the caller requires an IR version, for example because the user gives `--ir-version`, the host SHALL offer only
+the tuples of that IR version and SHALL NOT use another tuple (bead: morphir-ukvn.5.64.36.23). A full version SHALL
+select that exact version. A major-only version SHALL select the highest version of that major in the matching tuples
+that the extension claims. A requirement of IR version and a requirement of format SHALL intersect.
+
+#### Scenario: IR 3 selected
+- **WHEN** the user gives `--ir-version 3` and the worker claims JSON tuples at IR `3.0.0` and `4.0.0`
+- **THEN** the host offers only the Ion and JSON tuples of IR `3.0.0`, the worker agrees on the JSON tuple, and the
+  compile request has that tuple as `output` and `options.irVersion` `3.0.0`
+
+#### Scenario: Major version and exact version
+- **WHEN** the user gives `--ir-version 3` in one command and `--ir-version 3.0.0` in another, and `3.0.0` is the only
+  version of that major that the worker claims
+- **THEN** both commands make the same offer and the same request
+
+#### Scenario: IR version and format intersect
+- **WHEN** the worker claims Ion at IR `4.0.0` and JSON at IR `3.0.0`, and the user gives `--ir-version 3` with
+  `--model-format ion`
+- **THEN** the command is refused with `extension.tuple_unavailable`, because no tuple meets both requirements
+
+### Requirement: No tuple at the required IR version
+When the claims show no tuple that meets the requirements, the host SHALL refuse with `extension.tuple_unavailable`
+before an operation session starts. When the claims show one but the live worker agrees on none, the host SHALL refuse
+with `extension.tuple_unavailable` after negotiation and SHALL send no operation (bead: morphir-ukvn.5.64.36.23).
+
+#### Scenario: No tuple at the selected IR version in the claims
+- **WHEN** the user gives `--ir-version 3` and the worker claims tuples of IR `4.0.0` only
+- **THEN** the command is refused with `extension.tuple_unavailable` and starts no operation session
+
+#### Scenario: No agreement at the selected IR version
+- **WHEN** the probed claims hold a tuple of IR `3.0.0`, the user gives `--ir-version 3`, and the live worker agrees
+  on no offered tuple
+- **THEN** the session is refused with `extension.tuple_unavailable` after negotiation and no operation is sent
+
+### Requirement: Request and result follow the agreed tuple
+`options.irVersion`, `contextDigest` and the output checks SHALL follow the agreed tuple, not a constant
+(bead: morphir-ukvn.5.64.36.23). A request whose `options.irVersion` differs from the agreed tuple SHALL be refused
+without being sent.
+
+#### Scenario: Request of another IR version
+- **WHEN** the session agreed a tuple of IR `3.0.0` and a compile request has `options.irVersion` `4.0.0`
+- **THEN** the call is refused with `extension.tuple_unavailable` and nothing is sent
+
+#### Scenario: Result of another IR version
+- **WHEN** the session agreed a JSON tuple of IR `3.0.0` and the result's envelope or `formatVersion` names another
+  IR version
+- **THEN** the command fails with `extension.result_invalid` and publishes nothing
+
+### Requirement: Compile protocol line
+A guest that claims MEP `0.2.0-draft.1` SHALL compile on the model line, also when it claims MEP `0.1` too. Only a
+guest that claims MEP `0.1` and no other offered line SHALL compile on MEP `0.1`. The host SHALL NOT choose MEP `0.1`
+because no tuple matches a requirement, because that hides from the user that the requested combination is not
+available (bead: morphir-ukvn.5.64.36.23).
+
+#### Scenario: Guest on both lines with no matching tuple
+- **WHEN** a guest claims both lines and legacy compile, has no model tuple for the requested IR version, and the
+  user gives `--ir-version 3`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no MEP `0.1` session starts
+
+#### Scenario: Guest on both lines with no compile tuple
+- **WHEN** a guest claims both lines and legacy compile, and its model tuples are only for `generateModel`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no MEP `0.1` session starts
+
+#### Scenario: Guest on the legacy line only
+- **WHEN** a guest claims only MEP `0.1`, also with a model transport in its claims
+- **THEN** it compiles with `morphir.frontend.compile` on MEP `0.1`, and `--ir-version` selects from its claimed
+  frontend IR versions
+
+### Requirement: Plain IR on the model line
+For a guest on the model line, shared code of the host package SHALL wrap plain Morphir IR JSON in a `morphir-ir` and
+`morphir-json` envelope around the exact bytes, with a model ID and a revision from their SHA-256, and the host SHALL
+send it with `morphir.backend.generateModel` at the tuple of its `formatVersion`. No matching tuple SHALL be
+`extension.tuple_unavailable` (bead: morphir-ukvn.5.64.36.23).
+
+#### Scenario: Plain IR at each format version
+- **WHEN** a guest on both lines claims the JSON generate tuples of IR `3.0.0` and `4.0.0`, and the user generates from
+  a plain IR file whose `formatVersion` is `3` or `4`
+- **THEN** the host offers only the tuple of that version and sends the wrapped model with
+  `morphir.backend.generateModel`
+
+#### Scenario: Same file, same envelope
+- **WHEN** two hosts wrap the same bytes
+- **THEN** the envelopes are equal, with `modelId` `urn:morphir:plain-ir:sha256:<digest>` and `revision`
+  `sha256:<digest>`, and other bytes give another revision
+
+#### Scenario: Plain IR with no matching tuple
+- **WHEN** a guest on both lines claims legacy generate and no generate tuple of the file's format version
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no MEP `0.1` session starts
+
+#### Scenario: Plain IR on the legacy line
+- **WHEN** a guest claims only MEP `0.1`
+- **THEN** the host sends the plain IR to `morphir.backend.generate`, as it is
 
 ### Requirement: Agreement follows the offer
 The worker SHALL return the intersection of its own support with the offer, in the host's order. An answer that
@@ -105,6 +211,10 @@ holds a tuple that the host did not offer, or that does not keep the host's orde
 
 #### Scenario: Agreement with a tuple that was not offered
 - **WHEN** the user gives `--model-format json` and the worker answers with the Ion tuple
+- **THEN** activation fails with `extension.agreement_mismatch` and sends no operation
+
+#### Scenario: Agreement at another IR version
+- **WHEN** the user gives `--ir-version 3` and the worker answers with a tuple of IR `4.0.0`
 - **THEN** activation fails with `extension.agreement_mismatch` and sends no operation
 
 ### Requirement: Limits
