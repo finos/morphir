@@ -213,7 +213,7 @@ try {
   assert.equal((await run('gate', [], gate)).out, 'All selected checks passed; unselected checks may be skipped.\n');
   failure(await run('gate', ['--json'], { ...gate, CI_NEEDS: '{"lint":{"result":"skipped"}}' }));
   for (const [mode, inputs, jobs] of [
-    ['native', { runner: 'macos-15' }, ['native-cli', 'mep-process']],
+    ['native', { runner: 'macos-15' }, ['native-cli', 'mep-process', 'native-cli-acceptance']],
     ['installed', { lifecycle: true }, ['lifecycle']],
   ] as [string, object, string[]][]) {
     const needs = Object.fromEntries(jobs.map(j => [j, { result: 'success' }]));

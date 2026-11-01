@@ -176,7 +176,9 @@ has no trigger of its own. Its callers choose the macOS mode with the `macos` in
 signed providers, telemetry, native workspace release build, compiler/frontend/conformance
 and native Workbench checks. The five macOS jobs (`macos-setup`, `macos-native`,
 `macos-installed`, `macos-supervision` and `macos-headless`, all on `macos-15`) run only
-when the mode is `run`. Its `qualification-ok` job writes an Ion receipt, profile
+when the mode is `run`. On `macos-15`, `macos-native` runs the native CLI acceptance on this
+run's darwin-arm64 executable and the npm CLI acceptance (`bun run --cwd apps/morphir test
+js`), which includes the Extism worker check of the npm entry. Its `qualification-ok` job writes an Ion receipt, profile
 `morphir-ci-qualification-v2`, bound to the exact candidate commit and workflow run. The
 receipt records the `macos` mode.
 

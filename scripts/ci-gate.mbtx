@@ -146,6 +146,34 @@ async fn self_test() -> Unit {
       }
     }
   }
+  // The nightly macOS lane requires the CLI acceptance and the provider jobs,
+  // and no Linux-only workspace or acceptance-lane job.
+  let macos_jobs = selected_jobs(Native, {
+    "runner": "macos-15",
+    "full": false,
+    "provider": true,
+    "acceptance-lanes": "[]",
+  })
+  guard macos_jobs ==
+    Json([
+      "native-cli", "mep-process", "native-cli-acceptance", "provider-tools", "installed-provider",
+    ]) else {
+    fail("Wrong macos-15 native requirements")
+  }
+  for state in ["success", "failure", "cancelled", "skipped", "missing"] {
+    let statuses : Map[String, Json] = {
+      "native-cli": { "result": "success" },
+      "mep-process": { "result": "success" },
+      "provider-tools": { "result": "success" },
+      "installed-provider": { "result": "success" },
+    }
+    if state != "missing" {
+      statuses.set("native-cli-acceptance", { "result": state })
+    }
+    guard accepts(Json::object(statuses), macos_jobs) == (state == "success") else {
+      fail("Wrong gate result for macos-15 native CLI acceptance \{state}")
+    }
+  }
   for runner in ["ubuntu-latest", "ubuntu-28.04", "windows-latest", ""] {
     let refused = try {
       ignore(selected_jobs(Native, { "runner": runner }))
@@ -751,9 +779,9 @@ fn selected_jobs(mode : GateMode, inputs : Json) -> Json raise {
       ["ubuntu-24.04", "ubuntu-26.04", "macos-15"].contains(runner) else {
       fail("Unqualified native runner")
     }
-    jobs.append(["native-cli", "mep-process"])
+    // The nightly macos-15 lane also runs the native and npm CLI acceptance.
+    jobs.append(["native-cli", "mep-process", "native-cli-acceptance"])
     if ["ubuntu-24.04", "ubuntu-26.04"].contains(runner) {
-      jobs.push("native-cli-acceptance")
       if fields.get("full") == Some(Json::boolean(true)) {
         jobs.push("native-workspace")
       }

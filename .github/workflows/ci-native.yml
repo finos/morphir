@@ -105,8 +105,11 @@ jobs:
     name: Native CLI acceptance
     runs-on: ${{ inputs.runner }}
     needs: native-cli
-    if: contains(fromJSON('["ubuntu-24.04","ubuntu-26.04"]'), inputs.runner)
-    timeout-minutes: 30
+    # macos-15 is reachable only from the nightly macos-native call of
+    # qualification.yml; ci.yml calls this workflow with ubuntu-26.04 only.
+    if: contains(fromJSON('["ubuntu-24.04","ubuntu-26.04","macos-15"]'), inputs.runner)
+    # macOS adds the npm CLI acceptance (about 9 minutes on a local arm64 host).
+    timeout-minutes: ${{ inputs.runner == 'macos-15' && 45 || 30 }}
     env:
       MORPHIR_CI_NATIVE: ${{ github.workspace }}/.dev/ci/native
     steps:
@@ -123,7 +126,7 @@ jobs:
 
       - name: Resolve pinned workspace packages
         run: moon update
-      - name: Download this run's Linux native executable
+      - name: Download this run's native executable
         uses: actions/download-artifact@v8
         with:
           name: ci-native-${{ inputs.runner }}
@@ -134,7 +137,18 @@ jobs:
         run: bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
       - name: Smoke-test admitted native CLI without rebuilding
         run: bun run --cwd apps/morphir test native
+      # Linux PR CI runs the npm CLI acceptance in ci.yml (build, js); the npm
+      # Extism worker hang of morphir-ukvn.5.64.36.11 was found on macOS arm64.
+      # test js builds only the CLI bundle; the npm CLI starts WASM guests from
+      # the worker-thread entry that it stages beside the bundle.
+      - name: Build the npm CLI worker-thread entry on macOS
+        if: inputs.runner == 'macos-15'
+        run: moon build pkgs/morphir-host/worker/thread/entry --target js --release
+      - name: Qualify the npm CLI and its Extism worker on macOS
+        if: inputs.runner == 'macos-15'
+        run: bun run --cwd apps/morphir test js
       - name: Test acquisition without a MoonBit installation
+        if: inputs.runner != 'macos-15'
         run: node apps/morphir/scripts/test-acquisition.ts "$MORPHIR_CI_NATIVE/morphir-native"
 
   native-acceptance:
