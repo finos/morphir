@@ -582,9 +582,9 @@ installs it (an unpacked `npm pack` of `apps/morphir`). Every task accepts
 | --- | --- | --- |
 | `mise run test:cli-extension-elm` | `elm` | Elm extension executables `v0.4.1`, elm-classic `v0.5.1` (MEP `0.1`) and elm-classic `v0.6.0` (process workers): describe with the release descriptor, compile of `apps/morphir/fixtures/elm-extension/v1/src`, and no `node` on the PATH of the native run. elm-classic `v0.6.0` claims MEP `0.2.0-draft.1` and `0.1`; it compiles on the model line with `morphir.frontend.compileModel`, agrees on the tuple `morphir-ir`, `morphir-json`, IR `4.0.0` from the CLI's offer, and returns an IR `4.0.0` model. Elm `v0.5.0-preview.2` (one WASM module, `morphir-bytes-v1`): describe, compile of `v1/package` on the model line, generate, and recompile of the generated sources to the same model |
 | `mise run test:cli-extism-python` | `python` | Python extension `0.5.0` on the model line, as a WASM worker and as a process worker: compile of the two-module fixture at `--ir-version` 3 and 4 with the tuple and `formatVersion` checked, generate of the model envelope and of the plain IR through `morphir.backend.generateModel`, a consumer check of the generated Python, recompile of the generated files to the same model, the IR version check, IR `4.0.0` with no flag, and `extension.tuple_unavailable` for IR 5 and for Ion at IR 3. `0.4.1`, on MEP `0.1`: one document for IR 3 and 4, and the refusal of two documents. `0.4.2`, on MEP `0.1`: compile of the two-module fixture for IR 3 and 4, generate, a consumer check of the generated Python, recompile of the generated files to the same IR, and the IR version check |
-| `mise run test:cli-native-prerequisites` | `moonbit-native` | The native MoonBit guest as a process worker: the shared kit's source, consumer and JSON artifacts through both CLIs, plain IR at IR 4 through `morphir.backend.generateModel`, the refusal of plain IR at IR 3, which the guest does not claim, and the shared MEP kit run against the guest |
-| `mise run test:portable-mep-cli` | `moonbit-portable` | The portable MoonBit guest (`morphir-bytes-v1`): the same checks, with the shared kit run through `morphir extension worker` of the native CLI |
-| `mise run test:extension-conformance` | `conformance` | The `morphir-extension-sdk` fixture guest in `apps/morphir/fixtures/sdk-guest` (see its README): build receipt, WASI and Morphir host function imports, claims of a language that no host knows, compile, generate, recompile, host function answers and guest diagnostics |
+| `mise run test:cli-native-prerequisites` | `moonbit-native` | The native MoonBit guest as a process worker: the shared kit's source, consumer and JSON artifacts through both CLIs, plain IR at IR 4 through `morphir.backend.generateModel`, the refusal of plain IR at IR 3, which the guest does not claim, and the shared MEP kit `guest-moonbit-bool.json` (profile `moonbit-model-stable-v1`), which the guest serves directly |
+| `mise run test:portable-mep-cli` | `moonbit-portable` | The portable MoonBit guest (`morphir-bytes-v1`): the same checks, with the same shared kit run through `morphir extension worker` of the native CLI |
+| `mise run test:extension-conformance` | `conformance` | The `morphir-extension-sdk` fixture guest in `apps/morphir/fixtures/sdk-guest` (see its README): the shared generic kit `guest-generic-json.json` (profile `generic-json-library-v1`) through `morphir extension worker` of the native CLI; a comparison of each CLI's results with the kit's expected output; and the local checks: build receipt, WASI and Morphir host function imports, claims of a language that no host knows, compile, generate, recompile, host function answers and guest diagnostics |
 | `mise run test:extension-qualification` | `all` | All five suites |
 
 Each run builds the CLIs and the guests that it needs. It downloads each
@@ -603,23 +603,34 @@ output goes to stderr. A failed suite exits 1 with `qualification_failed`.
 A row is `passed`, `failed` or `known-failure`. A known failure is an operation
 that fails for a recorded cause outside the host, with its finding and
 follow-up bead. It does not fail the suite, and it fails the suite when it
-passes, so the record is removed. The current known failures are:
+passes, so the record is removed. The current known failure is Elm extension
+`v0.4.1` compile. The extension requires `package.exposedModules` in
+`morphir.frontend.compile`; the MEP model makes it optional and the host, which
+conforms, does not send it. Describe passes. Bead `morphir-ukvn.5.64.36.16`:
+elm-classic `v0.5.1` (the same JavaScript extension, renamed) fixes it, and its
+compile passes.
 
-- Elm extension `v0.4.1` compile. The extension requires
-  `package.exposedModules` in `morphir.frontend.compile`; the MEP model makes it
-  optional and the host, which conforms, does not send it. Describe passes.
-  Bead `morphir-ukvn.5.64.36.16`: elm-classic `v0.5.1` (the same JavaScript
-  extension, renamed) fixes it, and its compile passes.
-- The shared MEP kit against the MoonBit guest. The kit
-  `spec/mep/mck/guest-moonbit-bool.json` asks for the frontend profile
-  `moonbit-model-bool-library-v1`, which the guest retired, so the case
-  `compile-ion` fails after describe, initialize and the notifications pass.
-  Follow-up: bead `morphir-ukvn.5.64.36.17` (finos/morphir). For the same
-  reason `mise run test:portable-mep-mck` does not pass.
+The `mck` rows use the shared runner and kits of the `mck` section of
+`published.json`, at finos/morphir `v0.4.0-beta.12`. The shared runner launches
+the guest and owns the cases and the verdict. Then `report-check` checks the
+saved report again.
 
-No shared kit profile fits the SDK fixture guest, because each shared profile
-names its own extension. The `conformance` suite is therefore a local check. A
-generic kit profile is bead `morphir-ukvn.5.64.36.15`.
+The kit `guest-generic-json.json` accepts any extension identity, so the SDK
+fixture guest runs it as itself. The runner selects its plan from the guest's
+claims: the `morphir-fixture-flags` language at IR 3, because the guest claims
+only that version and no model tuples. No host change was made for this guest.
+The runner must launch a process that speaks MEP on stdio, and for a WASM guest
+that process is the native CLI's worker mode. The npm CLI therefore runs through
+its public commands instead. The `generic-kit-*` rows run on both CLIs. They
+compile the kit's source and compare the IR with the kit's expected IR, generate
+from that IR and from the kit's own IR, compile the generated files back to the
+expected IR, and check the refusal of the kit's malformed source. The comparison
+ignores object member order and the order of the IR 3 `modules`, `types` and
+`values` lists. The local checks stay, because they cover what the kit does not:
+the imports, the host function answers and more than one document.
+
+`mise run test:portable-mep-mck` is a separate gate with explicit inputs; see
+`apps/morphir-extension/README.md`.
 
 These tasks are manual. No pull request or merge-queue job runs them, because
 they download published releases and build several guests. The workflow

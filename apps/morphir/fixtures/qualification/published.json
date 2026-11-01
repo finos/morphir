@@ -192,38 +192,42 @@
   },
   "mck": {
     "repository": "finos/morphir",
-    "tag": "v0.4.0-beta.11",
-    "sourceRevision": "9d4f4b4de0f9bd10549493bdd9c83f20709055f9",
+    "tag": "v0.4.0-beta.12",
+    "sourceRevision": "d3154e9b9a54162a1409593972ac31c4a369f0ec",
     "runners": {
       "aarch64-apple-darwin": {
-        "filename": "morphir-0.4.0-beta.11-aarch64-apple-darwin.tgz",
-        "sha256": "1a1895c0b189b79c0cbb590c2b43d05c5ea9688bbc4b5cf8be6262cf57c19380"
+        "filename": "morphir-0.4.0-beta.12-aarch64-apple-darwin.tgz",
+        "sha256": "61c25b33782122570f4189cfb42ae701982d89698950135d8d5d4029d187fd38"
       },
       "x86_64-apple-darwin": {
-        "filename": "morphir-0.4.0-beta.11-x86_64-apple-darwin.tgz",
-        "sha256": "e93f826039bbaf95226c7e3cc7698920ae3968ab5c3263633fe0188d334dfcf1"
+        "filename": "morphir-0.4.0-beta.12-x86_64-apple-darwin.tgz",
+        "sha256": "ce33935a58790db141e545bddfca1e1e5ca5f487fbf62abd75acf56697ebfe48"
       },
       "aarch64-unknown-linux-gnu": {
-        "filename": "morphir-0.4.0-beta.11-aarch64-unknown-linux-gnu.tgz",
-        "sha256": "141c7d75a5539e24f344a55c78b00a7cf22397b155f60f7c00787402660fc28f"
+        "filename": "morphir-0.4.0-beta.12-aarch64-unknown-linux-gnu.tgz",
+        "sha256": "edf0b43d4e9291799a6645c34f8c1058b49fe71195e84c04cb2ce07c640c2467"
       },
       "x86_64-unknown-linux-gnu": {
-        "filename": "morphir-0.4.0-beta.11-x86_64-unknown-linux-gnu.tgz",
-        "sha256": "01d0f96bbe73dadf06188d725b823d407c0bf79ef78869d57669744eed9fd437"
+        "filename": "morphir-0.4.0-beta.12-x86_64-unknown-linux-gnu.tgz",
+        "sha256": "1209c7b64f522b5acc397b6d446f0c04758fb75065c38a7d2e4cfa9102e41946"
       },
       "aarch64-pc-windows-msvc": {
-        "filename": "morphir-0.4.0-beta.11-aarch64-pc-windows-msvc.zip",
-        "sha256": "4ca0af7b9e2bc9f632ae49baca6baf615eb0171008d1a6e924a981e3a4a347c6"
+        "filename": "morphir-0.4.0-beta.12-aarch64-pc-windows-msvc.zip",
+        "sha256": "ebdaf284e22d725d0cb5fb532e6a193f2dda3398e282db21a3166ab9b3bbef23"
       },
       "x86_64-pc-windows-msvc": {
-        "filename": "morphir-0.4.0-beta.11-x86_64-pc-windows-msvc.zip",
-        "sha256": "da1a24c53802fcbb2750813b2fd865334b47b3410bdae9afdc64e5a59abb1cba"
+        "filename": "morphir-0.4.0-beta.12-x86_64-pc-windows-msvc.zip",
+        "sha256": "0ae454cb7ccae327cadfca88ec57533c82e526ef8ff87dec0ac158042ba29604"
       }
     },
     "kits": {
       "guest-moonbit-bool": {
         "path": "spec/mep/mck/guest-moonbit-bool.json",
-        "sha256": "59485eb156d50d3f4255c67561fb509e3a938aff1739d22a27099043b236a5d0"
+        "sha256": "8b64137696cf98af0275f38e9d7bcf2bdfb51c12cce65a95f0ae5dddd97beb40"
+      },
+      "guest-generic-json": {
+        "path": "spec/mep/mck/guest-generic-json.json",
+        "sha256": "f16f2a4c577b507527a77a19a383c2c0083b4db1db131cd06d170e65a88598ae"
       },
       "guest-python-json": {
         "path": "spec/mep/mck/guest-python-json.json",

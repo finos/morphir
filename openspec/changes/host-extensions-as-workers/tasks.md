@@ -132,15 +132,20 @@
   receipts
 - [x] 7.3 Rewrite `test:portable-mep-cli` and `test:cli-native-prerequisites` for the worker host and qualify the
   MoonBit native and portable guests with the shared MCK kit; verify the kit's expected output. The kit's source,
-  consumer and JSON artifacts pass from both CLIs; the shared kit run fails at case `compile-ion` because the kit
-  asks for the retired profile `moonbit-model-bool-library-v1` (follow-up bead `morphir-ukvn.5.64.36.17`,
-  finos/morphir)
+  consumer and JSON artifacts pass from both CLIs. The shared kit run at finos/morphir `v0.4.0-beta.12` (kit
+  `8b641376…`, profile `moonbit-model-stable-v1`, bead `morphir-ukvn.5.64.36.17`) passes on the native guest directly
+  and on the portable guest through `morphir extension worker` of the native CLI, 47 observations each, and it is no
+  longer a recorded failure; `test:portable-mep-mck` passes again. Receipts for each platform are on bead
+  `morphir-ukvn.5.64.36.7`
 - [x] 7.4 Add a conformance fixture guest built with `morphir-extension-sdk` at a pinned revision, importing WASI and
   the Morphir host functions, stored with its source and build receipt under `apps/morphir/fixtures`; run the shared
   MEP conformance kit against it and against the MoonBit guest from both CLIs; verify the "Conformance, not a list of
-  extensions" scenarios with no host change made for that guest. No shared kit profile fits the fixture guest, so
-  it passes a local conformance check (`test:extension-conformance`); the shared-kit rerun is pending bead
-  `morphir-ukvn.5.64.36.15`
+  extensions" scenarios with no host change made for that guest. The shared generic kit at finos/morphir
+  `v0.4.0-beta.12` (kit `f16f2a4c…`, profile `generic-json-library-v1`, bead `morphir-ukvn.5.64.36.15`) passes against
+  the fixture guest through `morphir extension worker` of the native CLI, 15 observations, with the plan that its claims
+  select: `morphir-fixture-flags`, IR 3 and no model tier. Both CLIs compare their compile, generate, round-trip and
+  malformed-source results with the kit's expected output. The local check (`test:extension-conformance`) stays.
+  Receipts for each platform are on bead `morphir-ukvn.5.64.36.7`
 - [x] 7.5 Run one Windows x64 qualification of tasks 7.1 to 7.4 after a build-master review; verify the receipts and
   add a `Tested-on:` trailer. Run 41270893387 (windows-latest, suite `all`, `moonrockz/extism` 0.1.1) passes the
   elm, python, moonbit-native and conformance suites. The native Elm `v0.5.0-preview.2` compile takes 1628 ms, inside

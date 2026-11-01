@@ -41,6 +41,7 @@ shasum -a 256 target/wasm32-wasip1/release/morphir_sdk_fixture_guest.wasm
 
 `mise run test:extension-conformance` runs the guest through the native and npm
 CLIs and checks its imports, claims, compile, generate and host function answers.
-No shared MEP kit profile fits this guest: the shared kits qualify the MoonBit
-Boolean library and the Python JSON library profiles, and both name their own
-extension. A generic kit profile is follow-up bead `morphir-ukvn.5.64.36.15`.
+It also runs the shared MEP kit `guest-generic-json.json` (profile
+`generic-json-library-v1`) against the guest, through `morphir extension worker`
+of the native CLI, and compares each CLI's results with the kit's expected output.
+The guest needs no host change for the kit.

@@ -261,6 +261,12 @@ For independent qualification, select the shared Rust CLI containing
 | `MORPHIR_MEP_KIT_SHA256` | Expected kit SHA-256 |
 | `MORPHIR_MEP_MCK_EVIDENCE` | Optional report directory, default `.dev/portable-mep-mck` |
 
+The `mck` section of `apps/morphir/fixtures/qualification/published.json` records
+the current release, `v0.4.0-beta.12`, with the SHA-256 of each runner archive and
+each kit. At that release `MORPHIR_MEP_KIT_SHA256` is
+`8b64137696cf98af0275f38e9d7bcf2bdfb51c12cce65a95f0ae5dddd97beb40`.
+`MORPHIR_MCK_SHA256` is the digest of the unpacked executable, not of its archive.
+
 Run `mise run test:portable-mep-mck`. The shared runner launches both native and
 saved portable guests with empty PATH/MOON_HOME, owns fixed expectations and
 verdicts, and rechecks each report. It records the runner, kit, host executable,

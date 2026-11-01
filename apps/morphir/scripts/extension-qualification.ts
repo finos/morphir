@@ -6,7 +6,7 @@
 //     [--native-guest <MoonBit guest executable>]
 //
 // Suites: elm (task 7.1), python (7.2), moonbit-native and moonbit-portable (7.3),
-// conformance (7.4). `scripts/extension-qualification.mbtx` builds the inputs and
+// conformance (7.4, with the shared generic kit). `scripts/extension-qualification.mbtx` builds the inputs and
 // runs this file; run that script, not this file, from mise.
 //
 // Every downloaded file goes into a new, empty directory and is used only after
@@ -124,8 +124,10 @@ function findFile(root: string, name: string): string | undefined {
   return undefined;
 }
 
+interface SharedKit { path: string; sha256: Sha256; value: any }
+
 /** A shared MEP kit at the pinned finos/morphir revision. */
-function kit(name: 'guest-moonbit-bool' | 'guest-python-json'): { path: string; sha256: Sha256; value: any } {
+function kit(name: 'guest-moonbit-bool' | 'guest-generic-json' | 'guest-python-json'): SharedKit {
   const pin = published.mck.kits[name];
   const url = `https://raw.githubusercontent.com/${published.mck.repository}/${published.mck.sourceRevision}/${pin.path}`;
   const path = fetchPinned(url, `${name}.json`, pin.sha256);
@@ -877,50 +879,142 @@ function moonbitConsumer(directory: string, generated: string, kitValue: any): s
  * `morphir extension worker`, with the CLI's own build identity.
  */
 function mckGuestRun(context: Context, flavour: 'native' | 'portable', artifact: string,
-  shared: { path: string; sha256: Sha256 }, base: { extension: string; version: string; guestSha256: Sha256 }) {
+  shared: SharedKit, base: { extension: string; version: string; guestSha256: Sha256 }) {
+  if (flavour === 'native') {
+    sharedKitRun(context, 'shared-kit-direct', shared, base, () => ({ program: artifact, args: [], identityFiles: [artifact] }));
+  } else {
+    sharedKitRun(context, 'shared-kit-native-cli-worker-mode', shared, base, evidence => workerModeHost(context, 'morphir-bytes-v1', artifact, evidence));
+  }
+}
+
+/** A guest module served by `morphir extension worker` of the native CLI, with the CLI's own build identity. */
+function workerModeHost(context: Context, abi: string, artifact: string, evidence: string): SharedKitHost {
+  const native = context.clis.find(cli => cli.name === 'native')!;
+  const help = run(native, ['extension', 'worker', '--help', '--json'], evidence);
+  const identity = JSON.parse(help.stdout).result.buildIdentity;
+  assert.match(identity, /^[0-9a-f]{64}$/);
+  return {
+    program: native.command,
+    args: ['extension', 'worker', '--abi', abi, '--module', artifact, '--build-identity', identity,
+      '--request-bytes', String(4 * 1024 * 1024), '--response-bytes', String(16 * 1024 * 1024)],
+    identityFiles: [native.command, artifact],
+  };
+}
+
+/** What the shared runner launches, and the files that it pins by their exact bytes. */
+interface SharedKitHost { program: string; args: string[]; identityFiles: string[] }
+
+/** One `mck mep guest-run` of a shared kit, then `report-check` of its report, as one receipt row. */
+function sharedKitRun(context: Context, operation: string, shared: SharedKit,
+  base: { extension: string; version: string; guestSha256: Sha256 }, host: (evidence: string) => SharedKitHost) {
   const { ledger, platform } = context;
   const native = context.clis.find(cli => cli.name === 'native')!;
-  const evidence = mkdtempSync(join(context.scratch, `mck-${flavour}-`));
-  ledger.step({ ...base, cli: 'mck', operation: `shared-kit-${flavour === 'native' ? 'direct' : 'native-cli-worker-mode'}` }, () => {
+  const evidence = mkdtempSync(join(context.scratch, `mck-${operation}-`));
+  ledger.step({ ...base, cli: 'mck', operation }, () => {
     const { runner, archiveSha256 } = mckRunner(platform);
     const report = join(evidence, 'report.json');
-    const args = ['--no-banner', 'mck', 'mep', 'guest-run', '--kit', shared.path, '--expect-kit-sha256', shared.sha256, '--report', report];
-    if (flavour === 'native') args.push('--host', artifact, '--identity-file', artifact);
-    else {
-      const help = run(native, ['extension', 'worker', '--help', '--json'], evidence);
-      const identity = JSON.parse(help.stdout).result.buildIdentity;
-      assert.match(identity, /^[0-9a-f]{64}$/);
-      args.push('--host', native.command);
-      for (const value of ['extension', 'worker', '--abi', 'morphir-bytes-v1', '--module', artifact, '--build-identity', identity,
-        '--request-bytes', String(4 * 1024 * 1024), '--response-bytes', String(16 * 1024 * 1024)]) args.push('--host-arg', value);
-      args.push('--identity-file', native.command, '--identity-file', artifact);
-    }
+    const launched = host(evidence);
+    const args = ['--no-banner', 'mck', 'mep', 'guest-run', '--kit', shared.path, '--expect-kit-sha256', shared.sha256, '--report', report,
+      '--host', launched.program, ...launched.args.flatMap(value => ['--host-arg', value]),
+      ...launched.identityFiles.flatMap(path => ['--identity-file', path])];
     const environment = process.platform === 'win32' ? { ...native.env } : { PATH: '', MOON_HOME: '', HOME: evidence };
     const guestRun = spawnSync(runner, args, { cwd: evidence, env: environment, encoding: 'utf8', timeout: 600000 });
     const observed = existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : undefined;
     const cases = observed?.records?.map((record: { caseId: string }) => record.caseId) ?? [];
-    const detail = `runner ${published.mck.tag} archive ${archiveSha256}; kit ${shared.sha256}; ${cases.length} cases`;
+    const detail = `runner ${published.mck.tag} archive ${archiveSha256}; kit ${shared.sha256}; profile ${shared.value.profile}; ${cases.length} cases`;
     assert.equal(guestRun.status, 0, `${detail}; ${observed?.error ?? guestRun.stderr.slice(-2000)}; cases ${cases.join(', ')}`);
     const recheck = spawnSync(runner, ['--no-banner', 'mck', 'mep', 'report-check', '--kit', shared.path, report],
       { cwd: evidence, env: environment, encoding: 'utf8', timeout: 600000 });
     assert.equal(recheck.status, 0, recheck.stderr.slice(-2000));
     assert.equal(observed.qualified, true);
+    assert.equal(observed.corpusSha256, shared.sha256);
     return { detail, outputs: [{ path: 'report.json', bytes: statSync(report).size, sha256: sha256(report) }] };
-  }, {
-    match: /moonbit_frontend\.unsupported_profile|compile result is not a clean successful main module|frontend source profile changed/,
-    finding: 'the shared kit asks for frontend profile moonbit-model-bool-library-v1, which the MoonBit guest retired in #181, so case compile-ion fails; follow-up bead morphir-ukvn.5.64.36.17 (finos/morphir kit)',
   });
 }
 
-/** The SDK fixture guest: local conformance check, no shared kit profile fits it (task 7.4). */
+/**
+ * IR in the form that the generic kit compares: object members in any order
+ * (`deepEqual` does not read their order) and the IR 3 `modules`, `types` and
+ * `values` lists in any order. Everything else must be equal.
+ */
+export function irMeaning(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(irMeaning);
+  if (value === null || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).map(([key, member]) => {
+    const meaning = irMeaning(member);
+    return [key, ['modules', 'types', 'values'].includes(key) && Array.isArray(meaning)
+      ? [...meaning].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))) : meaning];
+  }));
+}
+
+/**
+ * The generic kit's source, malformed source and expected IR through the public
+ * commands of one CLI. The npm CLI has no worker mode for the shared runner to
+ * launch, so this comparison with the kit's expected output is its kit run; the
+ * kit fixes no generated bytes, so generated files must compile back to that IR.
+ */
+function genericKitRows(context: Context, cli: Cli, shared: SharedKit, pin: string, directory: string,
+  base: { extension: string; version: string; guestSha256: Sha256 }, mine: Record<string, Record<string, Sha256>>) {
+  const { ledger } = context;
+  const language = shared.value.languages['morphir-fixture-flags'];
+  const expected = irMeaning(shared.value.expectedIrVersions['3.0.0']);
+  const packageName: string = shared.value.package.name;
+  const model = (path: string) => irMeaning(JSON.parse(readFileSync(join(directory, path, 'morphir-ir.json'), 'utf8')));
+  const write = (folder: string, documents: { uri: string; text: string }[]) => {
+    mkdirSync(join(directory, folder));
+    for (const document of documents) writeFileSync(join(directory, folder, document.uri), document.text);
+  };
+  const profile = `${shared.value.profile} ${shared.sha256}`;
+  write('kit-src', language.documents);
+  const compiled = ledger.step({ ...base, cli: cli.name, operation: 'generic-kit-compile' }, () => {
+    const report = command(cli, ['extension', 'compile', 'kit-src', '--package', packageName, '--ir-version', '3',
+      '--output', 'kit-model', '--extension-pin', pin], directory, 0);
+    assert.deepEqual(model('kit-model'), expected, 'the compiled IR differs from the kit');
+    mine.kitModel = treeDigests(join(directory, 'kit-model'));
+    return { detail: profile, outputs: outputs(join(directory, 'kit-model'), report.result.output.files) };
+  });
+  if (compiled) {
+    ledger.step({ ...base, cli: cli.name, operation: 'generic-kit-generate-roundtrip' }, () => {
+      const report = command(cli, ['extension', 'generate', 'kit-model/morphir-ir.json', '--output', 'kit-generated',
+        '--extension-pin', pin], directory, 0);
+      command(cli, ['extension', 'compile', 'kit-generated', '--package', packageName, '--ir-version', '3',
+        '--output', 'kit-again', '--extension-pin', pin], directory, 0);
+      assert.deepEqual(model('kit-again'), expected, 'the generated files compile to other IR');
+      mine.kitGenerated = treeDigests(join(directory, 'kit-generated'));
+      return { detail: profile, outputs: outputs(join(directory, 'kit-generated'), report.result.output.files) };
+    });
+  }
+  ledger.step({ ...base, cli: cli.name, operation: 'generic-kit-independent-generate-roundtrip' }, () => {
+    writeFileSync(join(directory, 'kit-ir3.json'), JSON.stringify(shared.value.expectedIrVersions['3.0.0']));
+    const report = command(cli, ['extension', 'generate', 'kit-ir3.json', '--output', 'kit-independent',
+      '--extension-pin', pin], directory, 0);
+    command(cli, ['extension', 'compile', 'kit-independent', '--package', packageName, '--ir-version', '3',
+      '--output', 'kit-independent-again', '--extension-pin', pin], directory, 0);
+    assert.deepEqual(model('kit-independent-again'), expected, 'the generated files compile to other IR');
+    mine.kitIndependent = treeDigests(join(directory, 'kit-independent'));
+    return { detail: profile, outputs: outputs(join(directory, 'kit-independent'), report.result.output.files) };
+  });
+  write('kit-malformed', language.malformed);
+  ledger.step({ ...base, cli: cli.name, operation: 'generic-kit-malformed-source' }, () => {
+    const report = command(cli, ['extension', 'compile', 'kit-malformed', '--package', packageName, '--ir-version', '3',
+      '--output', 'kit-refused', '--extension-pin', pin], directory, 1);
+    assert.equal(report.error.code, 'extension.operation_unsuccessful');
+    assert.equal(existsSync(join(directory, 'kit-refused')), false);
+    return { detail: profile };
+  });
+}
+
+/** The SDK fixture guest: the shared generic kit and the local conformance check (task 7.4). */
 function conformanceSuite(context: Context) {
   const { ledger } = context;
   const root = join(fixtures, 'sdk-guest');
   const receipt = JSON.parse(readFileSync(join(root, 'build-receipt.json'), 'utf8'));
   const artifact = join(root, receipt.artifact.path);
   const base = { extension: 'morphir-sdk-fixture', version: '0.1.0', guestSha256: sha256(artifact) };
-  context.notes.sharedKit = 'No shared MEP kit profile fits this guest: the shared kits qualify the MoonBit Boolean library and Python JSON library profiles, and each names its own extension. A generic kit profile is follow-up bead morphir-ukvn.5.64.36.15.';
+  const shared = kit('guest-generic-json');
+  context.notes.sharedKit = `The shared kit ${shared.value.profile} (${shared.sha256}) runs through morphir extension worker of the native CLI; both CLIs compare the kit's source, malformed source and expected IR through their public commands. The local checks stay.`;
   context.notes.hostChange = 'None: the guest runs on the worker host as it is on main.';
+  sharedKitRun(context, 'shared-generic-kit-native-cli-worker-mode', shared, base, evidence => workerModeHost(context, 'extism-kernel-v1', artifact, evidence));
   ledger.step({ ...base, cli: 'native', operation: 'build-receipt' }, () => {
     assert.equal(base.guestSha256, receipt.artifact.sha256, 'the stored module differs from its build receipt');
     for (const [path, digest] of Object.entries(receipt.sources as Record<string, string>)) {
@@ -986,6 +1080,7 @@ function conformanceSuite(context: Context) {
       assert.ok(report.diagnostics.some((d: { code?: string }) => d.code === 'fixture.syntax'));
       assert.equal(existsSync(join(directory, 'broken')), false);
     });
+    genericKitRows(context, cli, shared, pin, directory, base, mine);
   }
   const { native: nativeOutputs, npm: npmOutputs } = results;
   if (nativeOutputs && npmOutputs) {
