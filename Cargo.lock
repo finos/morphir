@@ -3159,7 +3159,7 @@ dependencies = [
 
 [[package]]
 name = "integration-tests"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "anyhow",
  "cucumber",
@@ -4077,7 +4077,7 @@ dependencies = [
 
 [[package]]
 name = "morphir"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4174,7 +4174,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-bdd"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "cucumber",
  "futures",
@@ -4187,7 +4187,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-common"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "anyhow",
  "cap-fs-ext 4.0.3",
@@ -4262,7 +4262,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-daemon"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "anyhow",
  "morphir-common",
@@ -4281,7 +4281,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-decoration"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "indexmap",
  "morphir-core",
@@ -4294,7 +4294,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-devkit"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "anyhow",
  "cap-std 4.0.3",
@@ -4313,7 +4313,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-distribution"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "flate2",
  "fs2",
@@ -4360,7 +4360,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-evaluator"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "morphir-core",
  "morphir-runtime",
@@ -4390,7 +4390,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-gherkin"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "gherkin",
  "pulldown-cmark",
@@ -4399,7 +4399,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-host"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "async-lock",
  "async-trait",
@@ -4416,7 +4416,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-host-native"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -4451,7 +4451,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-kb"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "chrono",
  "morphir-okf",
@@ -4468,7 +4468,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-mck"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -4504,7 +4504,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-okf"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "pulldown-cmark",
  "regex",
@@ -4516,7 +4516,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-opa"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "morphir-evaluator",
  "regorus",
@@ -4525,7 +4525,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-package"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4597,7 +4597,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-runtime"
-version = "0.4.0-beta.11"
+version = "0.4.0-beta.12"
 dependencies = [
  "morphir-core",
 ]

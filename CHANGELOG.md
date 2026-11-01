@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-beta.12] - 2026-11-01
+
 ### Added
 
 - The MEP guest kit has a generic profile, `generic-json-library-v1`, in `spec/mep/mck/guest-generic-json.json`. It accepts any extension identity, so an extension built with `morphir-extension-sdk` can show conformance without claiming another extension's id. The kit fixes one Bool library and its IR for versions 3 and 4, with source sets for `morphir-fixture-flags`, `python` and `gleam`. `morphir mck mep guest-run` selects the language, the IR versions and the JSON model tier from the guest's `describe` claim and tests each one it selects. It compares IR by meaning and checks generated files by compiling them again. `report-check` rebuilds the plan from the recorded claim. The existing profiles and their digests do not change.
 
 ### Removed
 
-- The CLI no longer has a built-in Gleam provider (`morphir-gleam`, and its `morphir-gleam-binding` alias) or the `morphir gleam compile`, `generate` and `roundtrip` commands. The Gleam extension now lives in [finos/morphir-gleam](https://github.com/finos/morphir-gleam) (finos/morphir-gleam#23) and is released there as `extension/gleam/v0.4.0`, a core-Wasm guest for the MoonBit CLI. The CLI now has no default built-in provider: the native Elm provider stays opt-in, and `morphir generate` uses installed extensions only. The `examples/gleam` scenarios are gone, and the package examples publish an Elm model and stop after restore. `mise run spec:mep` cannot refresh `spec/mep/generated/mep.ir.json` until the contract compiles with the morphir-gleam extension; `spec:mep-check` checks the committed IR.
+- **Breaking**: the CLI no longer has a built-in Gleam provider (`morphir-gleam`, and its `morphir-gleam-binding` alias) or the `morphir gleam compile`, `generate` and `roundtrip` commands. The Gleam extension now lives in [finos/morphir-gleam](https://github.com/finos/morphir-gleam) (finos/morphir-gleam#23) and is released there as `extension/gleam/v0.4.0`, a core-Wasm guest for the MoonBit CLI. The CLI now has no default built-in provider: the native Elm provider stays opt-in, and `morphir generate` uses installed extensions only. The `examples/gleam` scenarios are gone, and the package examples publish an Elm model and stop after restore. `mise run spec:mep` cannot refresh `spec/mep/generated/mep.ir.json` until the contract compiles with the morphir-gleam extension; `spec:mep-check` checks the committed IR.
 
 ### Fixed
 
@@ -627,7 +629,9 @@ alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.10...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-beta.12...HEAD
+[0.4.0-beta.12]: https://github.com/finos/morphir/compare/v0.4.0-beta.11...v0.4.0-beta.12
+[0.4.0-beta.11]: https://github.com/finos/morphir/compare/v0.4.0-beta.10...v0.4.0-beta.11
 [0.4.0-beta.10]: https://github.com/finos/morphir/compare/v0.4.0-beta.9...v0.4.0-beta.10
 [0.4.0-beta.9]: https://github.com/finos/morphir/compare/v0.4.0-beta.8...v0.4.0-beta.9
 [0.4.0-beta.8]: https://github.com/finos/morphir/compare/v0.4.0-beta.7...v0.4.0-beta.8
