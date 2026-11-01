@@ -351,21 +351,81 @@ interface Context {
 }
 
 /**
- * The Elm extensions (task 7.1): the native executables of `v0.4.1` and of
- * elm-classic `v0.5.1` as process workers, and the `v0.5.0-preview.2` WASM
- * module (`morphir-bytes-v1`, the model line).
+ * The Elm extensions (task 7.1): the native executables of `v0.4.1`, of
+ * elm-classic `v0.5.1` (MEP 0.1) and of elm-classic `v0.6.0` (MEP
+ * 0.2.0-draft.1, the model line) as process workers, and the
+ * `v0.5.0-preview.2` WASM module (`morphir-bytes-v1`, the model line).
  */
 function elmSuite(context: Context) {
-  elmProcessGuest(context, published.elm, 'morphir-elm', {
+  elmProcessGuest(context, published.elm, 'morphir-elm', legacyLine, {
     match: /Invalid morphir\.frontend\.compile parameters/,
     finding: 'Elm 0.4.1 requires package.exposedModules (cli2/mep/protocol.ts); the MEP Smithy model makes it optional and the host, which conforms, does not send it; follow-up bead morphir-ukvn.5.64.36.16 (finos/morphir-elm), fixed in elm-classic 0.5.1',
   });
-  elmProcessGuest(context, published.elmClassic, 'morphir-elm-classic');
+  const classic = published.elmClassic;
+  elmProcessGuest(context, { repository: classic.repository, version: '0.5.1', ...classic.releases['0.5.1'] },
+    'morphir-elm-classic', legacyLine);
+  elmProcessGuest(context, { repository: classic.repository, version: '0.6.0', ...classic.releases['0.6.0'] },
+    'morphir-elm-classic', modelLine);
   elmWasmGuest(context);
 }
 
+/** What one Elm executable release claims and returns on its protocol line. */
+interface ElmLine {
+  /** The `protocolVersions` claim, as describe reports it (the host's order). */
+  protocolVersions: string[];
+  /** The model tuples claim of describe. */
+  modelTuples: object[];
+  /** Checks the compile report and the published model, and names it in the row detail. */
+  compiled: (report: any, model: string) => string;
+}
+
+/** MEP 0.1: `morphir.frontend.compile` returns the IR as `morphir-ir.json`, format version 3. */
+const legacyLine: ElmLine = {
+  protocolVersions: ['0.1'],
+  modelTuples: [],
+  compiled: (report, model) => {
+    assert.equal(report.result.protocolVersion, '0.1');
+    assert.equal(report.result.negotiated?.tuple, undefined, 'MEP 0.1 has no model tuple');
+    assert.equal(JSON.parse(readFileSync(join(model, 'morphir-ir.json'), 'utf8')).formatVersion, 3);
+    return 'MEP 0.1 compile; morphir-ir.json formatVersion 3';
+  },
+};
+
+/** The model tuple that elm-classic 0.6.0 claims for `morphir.frontend.compileModel`. */
+const elmModelTuple = {
+  operation: 'morphir.frontend.compileModel', profile: 'morphir-ir', codec: 'morphir-json',
+  envelopeVersion: '0.1.0-draft.1', irVersion: '4.0.0',
+};
+
+/**
+ * MEP 0.2.0-draft.1: the host offers Ion, then JSON (SES-3); the extension
+ * agrees only on Morphir JSON, so the session uses that tuple, and
+ * `morphir.frontend.compileModel` returns an IR 4.0.0 model envelope.
+ */
+const modelLine: ElmLine = {
+  protocolVersions: ['0.1', '0.2.0-draft.1'],
+  modelTuples: [elmModelTuple],
+  compiled: (report, model) => {
+    assert.equal(report.result.protocolVersion, '0.2.0-draft.1');
+    assert.equal(report.result.negotiated.protocolVersion, '0.2.0-draft.1');
+    assert.deepEqual(report.result.negotiated.tuple, elmModelTuple);
+    assert.deepEqual(report.result.output.files.map((file: { path: string }) => file.path).sort(),
+      ['model-envelope.json', 'model.json']);
+    assert.equal(existsSync(join(model, 'morphir-ir.json')), false, 'the model line writes no morphir-ir.json');
+    const envelope = JSON.parse(readFileSync(join(model, 'model-envelope.json'), 'utf8'));
+    assert.equal(envelope.envelopeVersion, elmModelTuple.envelopeVersion);
+    assert.equal(envelope.profile, elmModelTuple.profile);
+    assert.equal(envelope.irVersion, elmModelTuple.irVersion);
+    assert.equal(envelope.payload.codec, elmModelTuple.codec);
+    assert.equal(envelope.payload.sha256, sha256(join(model, 'model.json')), 'model.json is the envelope payload');
+    const ir = JSON.parse(readFileSync(join(model, 'model.json'), 'utf8'));
+    assert.equal(ir.formatVersion, 4, 'the model line returns IR 4.0.0, not format version 3');
+    return `MEP 0.2.0-draft.1 compileModel; tuple ${elmModelTuple.profile}/${elmModelTuple.codec}/${elmModelTuple.irVersion}`;
+  },
+};
+
 /** One Elm release of native executables: describe, the no-Node check and compile of the fixture. */
-function elmProcessGuest(context: Context, elm: any, id: string, known?: KnownFailure) {
+function elmProcessGuest(context: Context, elm: any, id: string, line: ElmLine, known?: KnownFailure) {
   const { ledger, platform } = context;
   const asset = elm.executables[platform];
   assert.ok(asset, `The Elm extension ${elm.version} has no executable for ${platform}`);
@@ -381,8 +441,9 @@ function elmProcessGuest(context: Context, elm: any, id: string, known?: KnownFa
     ledger.step({ ...base, cli: cli.name, operation: 'describe' }, () => {
       const result = described(command(cli, ['extension', 'describe', '--extension-pin', pin], directory, 0), id, elm.version, 'process');
       assert.equal(result.worker.descriptorSha256, elm.descriptor.sha256);
-      assert.deepEqual(result.claims.protocolVersions, ['0.1']);
-      return { detail: `claims ${JSON.stringify(result.claims.languages)}` };
+      assert.deepEqual(result.claims.protocolVersions, line.protocolVersions);
+      assert.deepEqual(result.claims.modelTuples, line.modelTuples);
+      return { detail: `claims MEP ${result.claims.protocolVersions.join(', ')}; languages ${JSON.stringify(result.claims.languages)}` };
     });
     if (cli.name === 'native') {
       ledger.step({ ...base, cli: cli.name, operation: 'environment-without-node' }, () => {
@@ -396,11 +457,9 @@ function elmProcessGuest(context: Context, elm: any, id: string, known?: KnownFa
     ledger.step({ ...base, cli: cli.name, operation: 'compile' }, () => {
       const report = command(cli, ['extension', 'compile', join(fixtures, 'elm-extension/v1/src'), '--package', 'acme/rules',
         '--output', 'model', '--extension-pin', pin], directory, 0);
-      assert.equal(report.result.protocolVersion, '0.1');
-      const ir = JSON.parse(readFileSync(join(directory, 'model/morphir-ir.json'), 'utf8'));
-      assert.equal(ir.formatVersion, 3);
+      const detail = line.compiled(report, join(directory, 'model'));
       compiled[cli.name] = treeDigests(join(directory, 'model'));
-      return { outputs: outputs(join(directory, 'model'), report.result.output.files) };
+      return { outputs: outputs(join(directory, 'model'), report.result.output.files), detail };
     }, known);
   }
   const { native: nativeOutputs, npm: npmOutputs } = compiled;

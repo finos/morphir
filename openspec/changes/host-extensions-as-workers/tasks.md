@@ -117,7 +117,10 @@
   verify compile of the Elm fixture and the absence of Node from the native run's environment. Describe and the
   no-Node check pass; `v0.4.1` compile is a recorded failure of the guest, which requires `package.exposedModules`
   that MEP makes optional (bead `morphir-ukvn.5.64.36.16`). Its fix, elm-classic `v0.5.1`, compiles the fixture from
-  both CLIs, and the Elm `v0.5.0-preview.2` WASM module is qualified as a second Elm guest; no host change
+  both CLIs, and the Elm `v0.5.0-preview.2` WASM module is qualified as a second Elm guest; no host change.
+  elm-classic `v0.6.0` (bead `morphir-ukvn.5.64.36.22`) negotiates MEP `0.2.0-draft.1`, agrees on the tuple
+  `morphir-ir`, `morphir-json`, IR `4.0.0` and returns an IR `4.0.0` model through `compileModel` from both CLIs;
+  `v0.5.1` stays as the MEP `0.1` row, because the suite keeps every qualified release, as for Python
 - [x] 7.2 Rewrite `test:cli-extism-python` for `0.2.0` pins and qualify Python `0.4.1` (single document and the
   multi-document refusal) and `0.4.2` (IR 3 and 4 compile and generate, consumer check) from both CLIs; verify the
   receipts

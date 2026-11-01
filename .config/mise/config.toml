@@ -310,7 +310,7 @@ description = "Qualify the pinned Python extension 0.4.1 and 0.4.2 releases on t
 run = "moonx scripts/extension-qualification.mbtx python"
 
 [tasks."test:cli-extension-elm"]
-description = "Qualify the pinned Elm extension v0.4.1 executables on the worker host from the native and npm CLIs; [--json]"
+description = "Qualify the pinned Elm extension executables (v0.4.1, elm-classic v0.5.1 and v0.6.0) and the Elm WASM module on the worker host from the native and npm CLIs; [--json]"
 run = "moonx scripts/extension-qualification.mbtx elm"
 
 [tasks."test:extension-conformance"]
