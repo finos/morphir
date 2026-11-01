@@ -99,6 +99,24 @@ selected IR version for which the guest claims both a `compileModel` and a
 - **WHEN** a guest claims `0.2.0-draft.1` but no JSON model tuple pair at a selected IR version
 - **THEN** the plan has no model tier
 
+### Requirement: Negotiated tuples and limits
+The model-tier initialize result SHALL select exactly the offered tuples, in
+the host order within each operation; operations can interleave. Its limits
+SHALL be the bilateral minimum. A compiled model SHALL stay inside those limits
+for encoded bytes, decoded bytes, depth (root is one) and value nodes.
+
+#### Scenario: Reversed versions
+- **WHEN** the offer lists compile tuples at `3.0.0` then `4.0.0` and the guest selects `4.0.0` first
+- **THEN** the model-initialize case fails
+
+#### Scenario: Interleaved operations
+- **WHEN** the guest selects the generate tuples before the compile tuples and keeps the order within each operation
+- **THEN** the model-initialize case passes
+
+#### Scenario: Model above a negotiated limit
+- **WHEN** the guest negotiates `maxDecodedBytes` of 64 and returns a larger model
+- **THEN** the compile-model case fails
+
 ### Requirement: Semantic IR comparison
 A compiled IR SHALL equal the expected IR after these rules only: JSON object
 member order is ignored; in IR `3` the order of the `modules`, `types` and

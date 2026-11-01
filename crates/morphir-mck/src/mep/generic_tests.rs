@@ -49,7 +49,12 @@ fn respond(document: &Document, id: &str, request: &Value, describe: &Value) -> 
         }
         "model-initialize" => {
             let mut caps = describe["capabilities"].clone();
-            caps["modelTransport"] = request["params"]["modelTransport"].clone();
+            let mut selected = request["params"]["modelTransport"].clone();
+            for (key, value) in selected["limits"].as_object_mut().unwrap() {
+                let claimed = caps["modelTransport"]["limits"][key].as_u64().unwrap();
+                *value = json!(value.as_u64().unwrap().min(claimed));
+            }
+            caps["modelTransport"] = selected;
             json!({"protocolVersion":"0.2.0-draft.1","extension":describe["extension"],"capabilities":caps})
         }
         "compile" | "roundtrip" | "roundtrip-independent" => {
@@ -424,4 +429,61 @@ fn claims_use_a_supported_format() {
     for claim in [both, future, garbage, renamed, unknown] {
         assert!(describe(claim.clone()).is_err(), "accepted {claim}");
     }
+}
+
+#[test]
+fn compiled_models_stay_inside_the_negotiated_limits() {
+    let kit = kit();
+    let limits = |key: &str, value: u64| {
+        let mut claimed = claim(json!(["4"]), true);
+        claimed["capabilities"]["modelTransport"]["limits"][key] = json!(value);
+        claimed
+    };
+    check_report(&kit, &report(&kit, &claim(json!(["4"]), true))).unwrap();
+    for (key, value) in [
+        ("maxEncodedBytes", 64),
+        ("maxDecodedBytes", 64),
+        ("maxDepth", 3),
+        ("maxNodes", 3),
+    ] {
+        let error = check_report(&kit, &report(&kit, &limits(key, value))).unwrap_err();
+        assert!(error.starts_with("compile-model-vfour"), "{key}: {error}");
+    }
+}
+
+#[test]
+fn selected_tuples_keep_the_host_order_of_each_operation() {
+    let kit = kit();
+    let mut claimed = claim(json!(["3", "4"]), true);
+    claimed["capabilities"]["modelTransport"]["tuples"] = json!([
+        json_tuple(COMPILE, "3.0.0"),
+        json_tuple(GENERATE, "3.0.0"),
+        json_tuple(COMPILE, "4.0.0"),
+        json_tuple(GENERATE, "4.0.0"),
+    ]);
+    let original = report(&kit, &claimed);
+    check_report(&kit, &original).unwrap();
+    let index = case_index(&original, "model-initialize");
+    let pointer = "/observed/result/capabilities/modelTransport/tuples";
+    let tuples = |order: [(&str, &str); 4]| {
+        json!(order.map(|(operation, version)| json_tuple(operation, version)))
+    };
+    // Operations can interleave.
+    let mut interleaved = original.clone();
+    *interleaved["records"][index].pointer_mut(pointer).unwrap() = tuples([
+        (GENERATE, "3.0.0"),
+        (COMPILE, "3.0.0"),
+        (GENERATE, "4.0.0"),
+        (COMPILE, "4.0.0"),
+    ]);
+    check_report(&kit, &interleaved).unwrap();
+    // Versions within one operation cannot change places.
+    let mut reversed = original.clone();
+    *reversed["records"][index].pointer_mut(pointer).unwrap() = tuples([
+        (COMPILE, "4.0.0"),
+        (GENERATE, "4.0.0"),
+        (COMPILE, "3.0.0"),
+        (GENERATE, "3.0.0"),
+    ]);
+    assert!(check_report(&kit, &reversed).is_err());
 }

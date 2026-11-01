@@ -166,7 +166,9 @@ unknown method (`-32601`), `describe` stability, a request after shutdown
 second process with `0.2.0-draft.1` and the selected JSON tuples. It compiles a
 model, generates from it and from an independent model, compiles the files of
 each of those generate cases again with `compileModel`, and refuses a bad
-payload digest (`-32602`). Request ids are numbers counted from 1 in each
+payload digest (`-32602`). The selected tuples must keep the host order within
+each operation, and each compiled model must stay inside the negotiated byte,
+depth and node limits. Request ids are numbers counted from 1 in each
 process.
 
 Outputs are compared by meaning. A compiled IR must equal the expected IR after

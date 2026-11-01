@@ -553,7 +553,12 @@ fn validate_generated(result: &Value, selected: &Selection) -> Result<(), String
         "no generated file has a claimed file extension of the language",
     )
 }
-fn validate_model(document: &Document, model: &Value, version: &str) -> Result<(), String> {
+fn validate_model(
+    document: &Document,
+    model: &Value,
+    version: &str,
+    limits: &Value,
+) -> Result<(), String> {
     require(
         model["envelopeVersion"] == "0.1.0-draft.1"
             && model["profile"] == "morphir-ir"
@@ -572,9 +577,40 @@ fn validate_model(document: &Document, model: &Value, version: &str) -> Result<(
             && model.get("critical").is_none_or(|v| v == &json!([])),
         "JSON compilation must not add evidence or critical members",
     )?;
+    let limit = |key: &str| {
+        limits[key]
+            .as_u64()
+            .ok_or_else(|| format!("negotiated limit {key} missing"))
+    };
+    let encoded = model["payload"]["content"]
+        .as_str()
+        .ok_or("payload content missing")?;
+    require(
+        encoded.len() as u64 <= limit("maxEncodedBytes")?,
+        "encoded payload exceeds the negotiated limit",
+    )?;
     let bytes = decode_payload(&model["payload"])?;
+    require(
+        bytes.len() as u64 <= limit("maxDecodedBytes")?,
+        "decoded payload exceeds the negotiated limit",
+    )?;
     let ir =
         crate::json::strict::parse_exact(std::str::from_utf8(&bytes).map_err(|e| e.to_string())?)?;
+    // The root is at depth one. Containers and scalars count; field names do not.
+    let (max_depth, max_nodes) = (limit("maxDepth")?, limit("maxNodes")?);
+    let (mut nodes, mut pending) = (0_u64, vec![(&ir, 1_u64)]);
+    while let Some((value, depth)) = pending.pop() {
+        nodes += 1;
+        require(
+            depth <= max_depth && nodes <= max_nodes,
+            "decoded model exceeds the negotiated depth or node limit",
+        )?;
+        match value {
+            Value::Array(items) => pending.extend(items.iter().map(|v| (v, depth + 1))),
+            Value::Object(fields) => pending.extend(fields.values().map(|v| (v, depth + 1))),
+            _ => {}
+        }
+    }
     require(
         same_ir(&ir, &document.expected_ir_versions[version]),
         "compiled JSON model differs from the fixed semantic IR",
@@ -610,12 +646,19 @@ fn valid_identity(value: &Value) -> Result<(), String> {
 fn same_tuples(actual: &Value, expected: &Value) -> Result<(), String> {
     let actual = actual.as_array().ok_or("selected tuples missing")?;
     let expected = expected.as_array().unwrap();
+    // The host order holds within one operation; operations can interleave.
+    let of = |list: &'_ [Value], operation: &str| {
+        list.iter()
+            .filter(|t| t["operation"] == operation)
+            .cloned()
+            .collect::<Vec<_>>()
+    };
     require(
         actual.len() == expected.len()
-            && expected
+            && [COMPILE, GENERATE]
                 .iter()
-                .all(|e| actual.iter().filter(|v| *v == e).count() == 1),
-        "selected tuples missing, duplicated or unoffered",
+                .all(|op| of(actual, op) == of(expected, op)),
+        "selected tuples missing, duplicated, unoffered or reordered",
     )
 }
 
@@ -710,7 +753,9 @@ pub(super) fn compare(
         }
         "compile-model" | "roundtrip-model" | "roundtrip-model-independent" => {
             let result = successful_compile(record, v)?;
-            validate_model(document, &result["model"], v)
+            let limits = &observed(previous, "model-initialize")?["capabilities"]["modelTransport"]
+                ["limits"];
+            validate_model(document, &result["model"], v, limits)
         }
         "generate" | "generate-independent" | "generate-model" | "generate-model-independent" => {
             validate_generated(rpc_result(record)?, &selected)
