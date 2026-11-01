@@ -25,5 +25,5 @@ import {
   "finos/morphir-engine@0.1.0",
   "moonbitlang/x@0.5.5",
   "moonbitlang/async@0.22.7",
-  "moonrockz/extism@0.1.0",
+  "moonrockz/extism@0.1.1",
 }

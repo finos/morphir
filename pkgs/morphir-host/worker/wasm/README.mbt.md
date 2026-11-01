@@ -217,7 +217,7 @@ thread, so they need no browser.
 ## Dependency on moonrockz/extism
 
 The engine, the Extism kernel and the plugin API come from the published
-Mooncakes package `moonrockz/extism@0.1.0`, which `pkgs/morphir-host/moon.mod`
+Mooncakes package `moonrockz/extism@0.1.1`, which `pkgs/morphir-host/moon.mod`
 names. The workspace has no local copy of it.
 
 ## Tests with real guests and executables

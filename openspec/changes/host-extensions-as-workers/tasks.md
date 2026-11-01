@@ -132,11 +132,14 @@
   extensions" scenarios with no host change made for that guest. No shared kit profile fits the fixture guest, so
   it passes a local conformance check (`test:extension-conformance`); the shared-kit rerun is pending bead
   `morphir-ukvn.5.64.36.15`
-- [ ] 7.5 Run one Windows x64 qualification of tasks 7.1 to 7.4 after a build-master review; verify the receipts and
-  add a `Tested-on:` trailer. Run 41241517957 failed: every guest session runs, but no output is published, because the
-  native `_WIN32` directory rename is a stub and the Node publication creates the destination before it renames onto
-  it (bead `morphir-ukvn.5.64.36.19`); the portable guest is not packaged on Windows (bead `morphir-ukvn.5.64.36.18`).
-  No `Tested-on:` trailer until a rerun passes
+- [x] 7.5 Run one Windows x64 qualification of tasks 7.1 to 7.4 after a build-master review; verify the receipts and
+  add a `Tested-on:` trailer. Run 41270893387 (windows-latest, suite `all`, `moonrockz/extism` 0.1.1) passes the
+  elm, python, moonbit-native and conformance suites. The native Elm `v0.5.0-preview.2` compile takes 1628 ms, inside
+  the 10000 ms per-call deadline (bead `morphir-ukvn.5.64.36.20`). The remaining failures are the recorded ones: the
+  Elm 0.4.1 compile (bead `morphir-ukvn.5.64.36.16`), the shared kit's retired profile (bead
+  `morphir-ukvn.5.64.36.17`) and the portable guest, which is not packaged on Windows (bead `morphir-ukvn.5.64.36.18`).
+  Earlier runs 41241517957 (no output published, bead `morphir-ukvn.5.64.36.19`) and 41258285145 (Elm call deadline)
+  failed
 - [x] 7.6 Record every receipt with its exact artifact digests as a comment on this bead; verify each receipt names
   its platform, CLI build and guest digest
 
