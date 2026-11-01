@@ -384,7 +384,11 @@ package contracts remain separate.
 
 `morphir mck mep guest-run --host EXE --host-arg ARG... --identity-file FILE...
 --report FILE` executes the shared guest profile. `--kit FILE` selects its fixed
-corpus, defaulting to `spec/mep/mck/guest-moonbit-bool.json`.
+corpus, defaulting to `spec/mep/mck/guest-moonbit-bool.json`. The kit's
+`profile` selects the profile: `moonbit-model-stable-v1`,
+`python-json-library-v1`, or `generic-json-library-v1`
+(`spec/mep/mck/guest-generic-json.json`), which accepts any extension identity
+and selects its cases from the guest's recorded `describe` claim.
 `--expect-kit-sha256 HEX` refuses execution unless the exact corpus bytes match.
 At least one identity file is required. Pin the complete runtime host and guest
 artifact closure, including imported host modules. `--timeout MS` sets the

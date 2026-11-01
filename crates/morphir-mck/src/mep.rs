@@ -4,6 +4,7 @@
 
 mod binary;
 mod envelope;
+mod generic;
 mod metadata;
 mod python;
 #[cfg(test)]
@@ -105,6 +106,7 @@ struct Consumer {
 enum Document {
     Moonbit(Box<MoonbitDocument>),
     Python(Box<python::Document>),
+    Generic(Box<generic::Document>),
 }
 
 pub struct Kit {
@@ -116,12 +118,23 @@ impl Kit {
         match &self.document {
             Document::Moonbit(d) => &d.profile,
             Document::Python(_) => python::PROFILE,
+            Document::Generic(_) => generic::PROFILE,
         }
     }
+    /// The fixed cases of a static profile. A generic kit selects its cases from
+    /// the recorded describe claim; see [`Kit::plan`].
     pub fn case_ids(&self) -> &[&str] {
         match self.document {
             Document::Moonbit(_) => CASES,
             Document::Python(_) => python::CASES,
+            Document::Generic(_) => &["describe"],
+        }
+    }
+    /// The complete required case order for the observations recorded so far.
+    pub fn plan(&self, records: &[Record]) -> Vec<String> {
+        match &self.document {
+            Document::Generic(d) => generic::plan(d, records),
+            _ => self.case_ids().iter().map(|id| (*id).to_owned()).collect(),
         }
     }
     fn moonbit(&self) -> &MoonbitDocument {
@@ -136,6 +149,13 @@ pub fn load_kit(path: &Path) -> Result<Kit, String> {
     let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
     let value = crate::json::strict::parse(text)?;
+    if value["profile"] == generic::PROFILE {
+        let document = generic::load(value)?;
+        return Ok(Kit {
+            document: Document::Generic(Box::new(document)),
+            digest: sha256_hex(&bytes),
+        });
+    }
     if value["profile"] == python::PROFILE {
         let document = python::load(value)?;
         return Ok(Kit {
@@ -365,6 +385,9 @@ fn request(kit: &Kit, id: &str, records: &[Record]) -> Result<Value, String> {
     if let Document::Python(document) = &kit.document {
         return python::request(document, id, records);
     }
+    if let Document::Generic(document) = &kit.document {
+        return generic::request(document, id, records);
+    }
     let compile = || {
         let mut p = kit.moonbit().source.clone();
         p["output"] = tuple(COMPILE, false);
@@ -478,7 +501,11 @@ pub fn run_process(kit: &Kit, identity: Identity, limits: Limits) -> Report {
     };
     let result = (|| -> Result<(), String> {
         let mut session = None;
-        for id in kit.case_ids().iter().copied() {
+        let mut index = 0;
+        // A generic plan grows once the describe claim is recorded.
+        while let Some(id) = kit.plan(&report.records).get(index).cloned() {
+            index += 1;
+            let id = id.as_str();
             if session.is_none() {
                 session = Some(
                     Session::spawn_mep(
@@ -563,11 +590,13 @@ fn adjudicate(kit: &Kit, report: &Report) -> Result<(), String> {
         || report.profile != kit.profile()
         || report.corpus_sha256 != kit.digest
         || report.error.is_some()
-        || report.records.len() != kit.case_ids().len()
+        || report.records.len() != kit.plan(&report.records).len()
     {
         return Err("incomplete report or mismatched corpus identity".into());
     }
-    for (index, (id, record)) in kit.case_ids().iter().zip(&report.records).enumerate() {
+    let plan = kit.plan(&report.records);
+    for (index, (id, record)) in plan.iter().zip(&report.records).enumerate() {
+        let id = id.as_str();
         if record.case_id != *id || record.request != request(kit, id, &report.records[..index])? {
             return Err(format!("case order or request mismatch at {id}"));
         }
@@ -669,6 +698,9 @@ fn admits_ir4(capability: &Value) -> Result<(), String> {
 fn compare(kit: &Kit, record: &Record, previous: &[Record]) -> Result<(), String> {
     if let Document::Python(document) = &kit.document {
         return python::compare(document, record, previous);
+    }
+    if let Document::Generic(document) = &kit.document {
+        return generic::compare(document, record, previous);
     }
     let id = record.case_id.as_str();
     if !id.ends_with("silent") && !is_exit(id) {
