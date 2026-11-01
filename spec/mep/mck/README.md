@@ -127,9 +127,9 @@ qualification requires a successful executable report and independent
 [`guest-generic-json.json`](guest-generic-json.json) selects the
 `generic-json-library-v1` profile. It accepts any extension identity, so a
 guest shows conformance without claiming another extension's id. Use the same
-`guest-run` and `report-check` commands. The OpenSpec change
-`openspec/changes/add-generic-mep-guest-profile` holds the requirements and
-the design.
+`guest-run` and `report-check` commands. The requirements are in
+`openspec/specs/mep/generic-guest-profile/spec.md`. The design is in the archived
+change `openspec/changes/archive/2026-11-01-add-generic-mep-guest-profile`.
 
 The kit fixes one package, `mck/generic` with module `main`, and two public
 Bool constants, `ready = true` and `blocked = false`. It has one expected IR for
