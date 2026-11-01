@@ -223,7 +223,13 @@ pub(super) fn plan(document: &Document, records: &[Record]) -> Vec<String> {
         .map(str::to_owned),
     );
     for v in &selected.versions {
-        for base in ["compile", "generate", "roundtrip", "generate-independent"] {
+        for base in [
+            "compile",
+            "generate",
+            "roundtrip",
+            "generate-independent",
+            "roundtrip-independent",
+        ] {
             plan.push(format!("{base}-{}", suffix(v)));
         }
     }
@@ -244,7 +250,9 @@ pub(super) fn plan(document: &Document, records: &[Record]) -> Vec<String> {
             for base in [
                 "compile-model",
                 "generate-model",
+                "roundtrip-model",
                 "generate-model-independent",
+                "roundtrip-model-independent",
             ] {
                 plan.push(format!("{base}-{}", suffix(v)));
             }
@@ -370,8 +378,12 @@ pub(super) fn request(document: &Document, id: &str, records: &[Record]) -> Resu
                 LEGACY_GENERATE,
                 json!({"ir":document.expected_ir_versions[v],"target":language}),
             ),
-            "roundtrip" => {
-                let generated = observed(records, &format!("generate-{}", suffix(v)))?;
+            "roundtrip"
+            | "roundtrip-independent"
+            | "roundtrip-model"
+            | "roundtrip-model-independent" => {
+                let source = base.replacen("roundtrip", "generate", 1);
+                let generated = observed(records, &format!("{source}-{}", suffix(v)))?;
                 let documents = generated["artifacts"]
                     .as_array()
                     .ok_or("generated artifacts missing")?
@@ -385,9 +397,11 @@ pub(super) fn request(document: &Document, id: &str, records: &[Record]) -> Resu
                         json!({"uri":a["path"],"languageId":language,"version":1,"text":a["content"]})
                     })
                     .collect();
+                // The model tier stays in its own negotiated session.
+                let model = base.starts_with("roundtrip-model");
                 (
-                    LEGACY_COMPILE,
-                    compile_params(document, language, documents, v, false),
+                    if model { COMPILE } else { LEGACY_COMPILE },
+                    compile_params(document, language, documents, v, model),
                 )
             }
             "generate-model" => (
@@ -549,6 +563,23 @@ fn validate_model(document: &Document, model: &Value, version: &str) -> Result<(
         "compiled JSON model differs from the fixed semantic IR",
     )
 }
+/// The supported claims formats: draft.2 names its version `claimsVersion`,
+/// draft.1 names it `statementVersion`. Both names together, another version,
+/// or a `critical` path other than the version field is refused.
+fn claims_format(claim: &Value) -> Result<(), String> {
+    let field = match (claim.get("claimsVersion"), claim.get("statementVersion")) {
+        (Some(v), None) if v == "0.1.0-draft.2" => "claimsVersion",
+        (None, Some(v)) if v == "0.1.0-draft.1" => "statementVersion",
+        _ => return Err("unsupported capability claims format".into()),
+    };
+    require(
+        claim.get("critical").is_none_or(|c| {
+            c.as_array()
+                .is_some_and(|paths| paths.iter().all(|p| p == field))
+        }),
+        "claim names a critical member this reader does not understand",
+    )
+}
 fn valid_identity(value: &Value) -> Result<(), String> {
     require(
         value["id"].as_str().is_some_and(|s| !s.is_empty())
@@ -593,10 +624,7 @@ pub(super) fn compare(
         .map_err(|e| e.to_string())?;
     if id == "describe" {
         let result = rpc_result(record)?;
-        require(
-            result["claimsVersion"].is_string(),
-            "claims version missing",
-        )?;
+        claims_format(result)?;
         require(
             result["protocolVersions"]
                 .as_array()
@@ -656,14 +684,14 @@ pub(super) fn compare(
                 "bilateral selected limits or guarantees differ",
             )
         }
-        "compile" | "roundtrip" => {
+        "compile" | "roundtrip" | "roundtrip-independent" => {
             let result = successful_compile(record, v)?;
             require(
                 same_ir(&result["ir"], &document.expected_ir_versions[v]),
                 "compiled IR differs from the fixed semantic IR",
             )
         }
-        "compile-model" => {
+        "compile-model" | "roundtrip-model" | "roundtrip-model-independent" => {
             let result = successful_compile(record, v)?;
             validate_model(document, &result["model"], v)
         }

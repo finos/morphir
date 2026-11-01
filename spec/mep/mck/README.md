@@ -141,7 +141,10 @@ Document URIs are relative to the source folder, for example `main.py` or
 `acme/rules.py`. The kit refuses an absolute URI, a scheme, a `src/` prefix,
 a backslash, and an empty, `.` or `..` segment.
 
-The first case is `describe`. The runner selects the plan from that claim:
+The first case is `describe`. Its claims format must be `claimsVersion`
+`0.1.0-draft.2` or the draft.1 `statementVersion` `0.1.0-draft.1`, with no
+`critical` path other than that field. The runner selects the plan from the
+claim:
 
 - The language: the first kit language, in lexical order of its id, that the
   guest claims both as a frontend language and as a backend target.
@@ -156,13 +159,14 @@ selected case is required. `report-check` rebuilds the plan from the recorded
 
 The legacy tier runs in one process with MEP `0.1`. For each IR version it
 compiles the fixed source (`morphir.frontend.compile`), generates from the
-result (`morphir.backend.generate`), compiles the generated files again, and
-generates from the kit's expected IR. It also checks a malformed source, an
+result (`morphir.backend.generate`) and generates from the kit's expected IR.
+After each generate case it compiles the generated files again. It also checks a malformed source, an
 unknown method (`-32601`), `describe` stability, a request after shutdown
 (`-32014`), silent notifications and a clean exit. The model tier runs in a
 second process with `0.2.0-draft.1` and the selected JSON tuples. It compiles a
-model, generates from it, generates from an independent model, and refuses a
-bad payload digest (`-32602`). Request ids are numbers counted from 1 in each
+model, generates from it and from an independent model, compiles the files of
+each of those generate cases again with `compileModel`, and refuses a bad
+payload digest (`-32602`). Request ids are numbers counted from 1 in each
 process.
 
 Outputs are compared by meaning. A compiled IR must equal the expected IR after

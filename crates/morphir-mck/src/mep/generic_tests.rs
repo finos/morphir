@@ -52,10 +52,10 @@ fn respond(document: &Document, id: &str, request: &Value, describe: &Value) -> 
             caps["modelTransport"] = request["params"]["modelTransport"].clone();
             json!({"protocolVersion":"0.2.0-draft.1","extension":describe["extension"],"capabilities":caps})
         }
-        "compile" | "roundtrip" => {
+        "compile" | "roundtrip" | "roundtrip-independent" => {
             json!({"success":true,"diagnostics":[{"severity":"info","message":"synthetic"}],"ir":document.expected_ir_versions[version.unwrap()]})
         }
-        "compile-model" => {
+        "compile-model" | "roundtrip-model" | "roundtrip-model-independent" => {
             json!({"success":true,"diagnostics":[],"model":model(document, version.unwrap())})
         }
         "generate" | "generate-independent" | "generate-model" | "generate-model-independent" => {
@@ -139,7 +139,10 @@ fn plan_follows_the_claim_and_starts_with_describe() {
     let model = report(&kit, &claim(json!(["3", "4.0.0"]), true));
     for case in [
         "roundtrip-vthree",
+        "roundtrip-independent-vthree",
         "roundtrip-vfour",
+        "roundtrip-model-vfour",
+        "roundtrip-model-independent-vfour",
         "compile-model-vfour",
         "generate-model-independent-vfour",
         "bad-digest",
@@ -212,6 +215,21 @@ fn complete_observations_are_replayed_and_tampering_fails() {
             "compile-model-vfour",
             "/observed/result/model/payload/sha256",
             json!("0".repeat(64)),
+        ),
+        (
+            "roundtrip-independent-vthree",
+            "/observed/result/ir/formatVersion",
+            json!(4),
+        ),
+        (
+            "roundtrip-model-vfour",
+            "/observed/result/success",
+            json!(false),
+        ),
+        (
+            "roundtrip-model-independent-vfour",
+            "/observed/result/model/irVersion",
+            json!("3.0.0"),
         ),
         (
             "model-initialize",
@@ -339,5 +357,39 @@ fn kit_requires_both_ir_versions_and_a_language() {
     for value in changed {
         std::fs::write(&path, value.to_string()).unwrap();
         assert!(load_kit(&path).is_err());
+    }
+}
+
+#[test]
+fn claims_use_a_supported_format() {
+    let kit = kit();
+    let describe = |claim: Value| {
+        let mut record = Record {
+            case_id: "describe".into(),
+            request: request(document(&kit), "describe", &[]).unwrap(),
+            observed: Value::Null,
+        };
+        record.observed = json!({"jsonrpc":"2.0","id":1,"result":claim});
+        compare(document(&kit), &record, &[])
+    };
+    let current = claim(json!(["3"]), false);
+    describe(current.clone()).unwrap();
+    let mut draft_one = current.clone();
+    draft_one.as_object_mut().unwrap().remove("claimsVersion");
+    draft_one["statementVersion"] = json!("0.1.0-draft.1");
+    draft_one["critical"] = json!(["statementVersion"]);
+    describe(draft_one.clone()).unwrap();
+    let mut both = current.clone();
+    both["statementVersion"] = json!("0.1.0-draft.1");
+    let mut future = current.clone();
+    future["claimsVersion"] = json!("0.1.0-draft.3");
+    let mut garbage = current.clone();
+    garbage["claimsVersion"] = json!("garbage");
+    let mut renamed = draft_one.clone();
+    renamed["critical"] = json!(["claimsVersion"]);
+    let mut unknown = current.clone();
+    unknown["critical"] = json!(["capabilities.future"]);
+    for claim in [both, future, garbage, renamed, unknown] {
+        assert!(describe(claim.clone()).is_err(), "accepted {claim}");
     }
 }
