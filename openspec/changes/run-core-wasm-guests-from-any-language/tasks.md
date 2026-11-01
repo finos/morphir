@@ -20,12 +20,15 @@ the remaining descriptor checks. Group 4 runs the real Gleam module through all 
   model line publishes the model and reports the session` (`extension_session_wbtest.mbt:362`, method order) and
   `probe of a guest that does not describe: describe_failed and no claims` (`host_driver_test.mbt:127`). The spec
   uses main's code `extension.describe_failed` (FIT-1)
-- [ ] 1.3 Select the language from the claims (SEL-3): add `--language` through the command-line parsing library,
+- [x] 1.3 Select the language from the claims (SEL-3): add `--language` through the command-line parsing library,
   refuse several claimed languages without it with `extension.input_invalid` (exit 2, the message names the
   languages; no new code, FIT-1), refuse an unclaimed language with `extension.capability_unavailable`, and collect
   only the file extensions of the selected language. Replace the first-covering-language rule of `extension_language`
   (`apps/morphir/cli/extension.mbt:428`) and the all-languages list of `extension_claimed_extensions` (`:412`);
-  verify the "Language from claims" scenarios in `extension_wbtest.mbt` and `extension_session_wbtest.mbt`
+  verify the "Language from claims" scenarios in `extension_wbtest.mbt` and `extension_session_wbtest.mbt`.
+  Done: `extension_language` and `ExtensionInputs::read` in `apps/morphir/cli/extension.mbt`; tests `language from
+  claims: the only language, the one that --language names, or a refusal` (`extension_wbtest.mbt`) and `language
+  from claims: a guest with several languages needs --language` (`extension_session_wbtest.mbt`)
 - [ ] 1.4 Add tests for the target selection that `extension_target` (`apps/morphir/cli/extension.mbt:789`)
   already does (SEL-3): several claimed targets without `--target` are refused, and an unclaimed `--target` exits 2
   with `extension.capability_unavailable` and starts no operation session; verify the "Unclaimed target" scenario
@@ -99,7 +102,7 @@ the remaining descriptor checks. Group 4 runs the real Gleam module through all 
 
 ## 2. Source trees as relative-URI documents (morphir-ukvn.5.64.37.2)
 
-- [ ] 2.1 Give `extension_sources` (`apps/morphir/cli/extension.mbt:509`) the refusals and the order of the spec
+- [x] 2.1 Give `extension_sources` (`apps/morphir/cli/extension.mbt:509`) the refusals and the order of the spec
   (SRC-2), all with main's code `extension.input_invalid` and exit 2 (FIT-1, decided by Damian Reeves, 2026-10-31;
   no new source codes): a new 1 MiB bound for one file, a message that names each limit and its value, the
   relative path in the message for a link or a special file, a duplicate URI refused, the URI in the message for
@@ -107,23 +110,41 @@ the remaining descriptor checks. Group 4 runs the real Gleam module through all 
   keep main's skip list (FIT-4) and the 4 MiB framed request check of `Call::make`
   (`pkgs/morphir-host/worker/negotiation.mbt:320-337`) last; verify the updated tests in `extension_wbtest.mbt`
   ("Tree limits", "Links and special files", "UTF-8 source text", "Skipped directories" and "Deterministic order"
-  scenarios) with generated trees in a temporary directory, including a first test for text that is not UTF-8
-- [ ] 2.2 Make each URI relative to the source base, add `--source-base` through the command-line parsing library,
+  scenarios) with generated trees in a temporary directory, including a first test for text that is not UTF-8.
+  Done: `extension_sources` and `extension_source_order`; tests `the source snapshot enforces its file, byte, entry
+  and depth limits`, `the default limits refuse 1,025 documents and a file larger than 1 MiB`, `text that is not
+  UTF-8 is refused with the URI of the file`, `a symbolic link in the sources is refused with its relative path`,
+  `documents are sorted by the whole URI in byte order, and a repeated URI is refused` and `the source walk skips
+  hidden, build and dependency directories` (`extension_wbtest.mbt`), and `a tree of 1,025 documents is refused
+  before any operation session` (`extension_session_wbtest.mbt`)
+- [x] 2.2 Make each URI relative to the source base, add `--source-base` through the command-line parsing library,
   and encode each segment as an RFC 3986 path segment instead of refusing names with `:` or `\` (SRC-1, SRC-3);
   keep the single-file rule of `extension_document_uri` (`apps/morphir/cli/extension.mbt:393`) without
-  `--source-base`; verify the "Relative document URIs", "Safe URI segments" and "Single file input" scenarios
+  `--source-base`; verify the "Relative document URIs", "Safe URI segments" and "Single file input" scenarios.
+  Without `--source-base`, a directory input is its own base (option B, decided by Damian Reeves, 2026-11-01,
+  because the current directory broke the published Elm `0.5.0-preview.2` and Python `0.4.2` extensions in the
+  extension qualification suite). Done: `ExtensionSourceBase::segments`, `extension_uri_segment` and
+  `extension_document_uri`; tests `the source base gives each URI its path relative to the base`, `a tree has URIs
+  from the input directory, or from --source-base when given`, `URI segments are percent-encoded and plain names
+  stay the same` and `document identities keep relative nesting and never expose absolute host paths`
+  (`extension_wbtest.mbt`), and `relative document URIs: a tree is named from the input directory or the source
+  base, with no sources.root` (`extension_session_wbtest.mbt`)
 - [x] 2.3 Accept a directory for `compile` and refuse more than one document without the multi-document claim.
   Done on main: `extension_sources` (`apps/morphir/cli/extension.mbt:509-605`) and `extension_document_count`
   (`:456`); tests `compile selects sources by the claimed file extensions and sends the claimed language`
   (`extension_wbtest.mbt:240`) and `Python 0.4.1 with two modules: a frontend without multiDocument is refused`
   (`extension_session_wbtest.mbt:588`)
-- [ ] 2.4 Add tests that two compiles of the same tree give byte-identical `compileModel` requests, and that the same
+- [x] 2.4 Add tests that two compiles of the same tree give byte-identical `compileModel` requests, and that the same
   package and options with different trees give the same `contextDigest` (the digest code is
   `extension_compile_params`, `apps/morphir/cli/extension.mbt:853-863`); verify the "Same tree twice" and "Same
-  options, different trees" scenarios
-- [ ] 2.5 Document the source base, the URI encoding, the limits and their messages, the ignore files of task
-  2.6, and the advice to name `src` from the project directory in `apps/morphir/docs/extension.md` ("What one
-  command does", step 4); verify the examples with the in-memory workers
+  options, different trees" scenarios. Done: test `same tree twice gives byte-identical compileModel requests;
+  other trees keep the contextDigest` (`extension_session_wbtest.mbt`), which compares the encoded request bytes
+- [x] 2.5 Document the source base, the URI encoding, the limits and their messages, and the advice to give
+  `--source-base` for a directory below the root of the module paths in `apps/morphir/docs/extension.md` ("What
+  one command does", step 4); verify the examples with the in-memory workers. The documentation of the ignore
+  files moved to task 2.6. Done: step 4 and the section "Source trees and document URIs"; the examples are the
+  trees of `relative document URIs: a tree is named from the input directory or the source base, with no
+  sources.root` and `a tree has URIs from the input directory, or from --source-base when given`
 - [ ] 2.6 Honor ignore files in the source walk (FIT-4 and IGN-1 to IGN-5, decided by Damian Reeves, 2026-10-31).
   Depends on moonrockz/moonx-tools#16: use its ignore-file library (in place of the earlier candidate
   `moonbit-community/ignore`) and do not start the walk change until a release of it builds for the four targets.
@@ -136,7 +157,8 @@ the remaining descriptor checks. Group 4 runs the real Gleam module through all 
   special-file check. Filter only the entries below the input: read a named file, and walk a named directory, even
   when a pattern matches it. Add `--ignore-mode <git|contained>` (contained reads only the ignore files in the
   walked tree, in or outside a work tree) and the repeatable `--skip-ignore-layer <global|info-exclude|above>`,
-  with `extension.input_invalid`, exit 2, for an unknown value, and document both in the command help. Verify the
+  with `extension.input_invalid`, exit 2, for an unknown value, and document both in the command help and the
+  ignore files in `apps/morphir/docs/extension.md` ("Source trees and document URIs"). Verify the
   scenarios of "Ignore files in the source walk", "Precedence of ignore files", "Git ignore layers", "Ignore layer
   switches", "Contained ignore mode", "Ignore files filter only the walk", the ignore part of "Directory input" and
   "Two machines in contained mode" with generated trees in `extension_wbtest.mbt` (a temporary work tree, a

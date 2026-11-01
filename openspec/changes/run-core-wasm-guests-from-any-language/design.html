@@ -23,7 +23,7 @@
 <body>
 <main>
 <h1>run-core-wasm-guests-from-any-language: design</h1>
-<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.64.37</code> · 2026-10-30, updated 2026-10-31 · scope cut to the work that main does not do yet; FIT-1 to FIT-5, PIN-2, IGN-1 to IGN-5 and PIN-3 answered; Gleam relative nesting and the release resolved; named-directory rule confirmed</p>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.64.37</code> · 2026-10-30, updated 2026-11-01 · default source base changed to the input directory (SRC-1); scope cut to the work that main does not do yet; FIT-1 to FIT-5, PIN-2, IGN-1 to IGN-5 and PIN-3 answered; Gleam relative nesting and the release resolved; named-directory rule confirmed</p>
 
 <nav class="toc" aria-label="Contents">
 <ul>
@@ -209,9 +209,9 @@ the second session, and the message names the JSON tuple that the guest claims. 
 for each module.</p>
 
 <h2 id="request">The request a guest receives</h2>
-<p>The <code>compileModel</code> parameters for the example are below. The URIs are relative to the source base
-(here the current directory), so the Gleam guest finds the <code>src</code> segment and names the modules
-<code>app/money</code>, <code>app/orders</code> and <code>shared/numbers</code>. The request has no
+<p>The <code>compileModel</code> parameters for the example are below. The URIs are relative to the source base,
+which without <code>--source-base</code> is the named directory <code>src</code>, so the Gleam guest names the
+modules <code>app/money</code>, <code>app/orders</code> and <code>shared/numbers</code> from the full paths. The request has no
 <code>sources.root</code>: the protocol defines the root as an absolute URI, and the SDK needs it only for several
 absolute documents (ADR-0009). Relative documents keep their nesting without it, and no host path enters the
 model's source provenance.</p>
@@ -219,9 +219,9 @@ model's source provenance.</p>
   "languageId": "gleam",
   "sources": {
     "documents": [
-      { "uri": "src/app/money.gleam", "languageId": "gleam", "version": 0, "text": "import shared/numbers\n..." },
-      { "uri": "src/app/orders.gleam", "languageId": "gleam", "version": 0, "text": "import app/money\n..." },
-      { "uri": "src/shared/numbers.gleam", "languageId": "gleam", "version": 0, "text": "pub type Number = Int\n" }
+      { "uri": "app/money.gleam", "languageId": "gleam", "version": 0, "text": "import shared/numbers\n..." },
+      { "uri": "app/orders.gleam", "languageId": "gleam", "version": 0, "text": "import app/money\n..." },
+      { "uri": "shared/numbers.gleam", "languageId": "gleam", "version": 0, "text": "pub type Number = Int\n" }
     ]
   },
   "package": { "name": "acme/shop" },
@@ -482,17 +482,31 @@ with no <code>conversion</code> object in <code>result</code>. A consumer that r
 then have to search the diagnostics for the conversion.</p>
 
 <h3 id="src-1">SRC-1. Relative URIs from a source base, no <code>sources.root</code></h3>
-<p>Each URI is the path relative to the source base: <code>--source-base</code>, or the current directory. A single
-file without <code>--source-base</code> keeps today's rule, so MoonBit requests are byte for byte the same.</p>
-<p><em>Why not URIs relative to the named directory?</em> For <code>compile src</code>, those URIs would be
-<code>app/money.gleam</code>. The Gleam 0.4.0 guest has no <code>src</code> segment to find, so it names the
-module <code>money</code> from the file name. The protocol says relative paths keep their nesting, so this is a
-guest deviation, not a host rule; but the host should not produce module names that depend on it.
-finos/morphir-gleam#29 (merged as <code>191a35e</code>, in the release <code>extension/gleam/v0.4.0</code>) fixed
-the deviation: a relative URI with no <code>src</code> segment now keeps its full path as the module name. This
-rule does not change, because it does not depend on the guest, and because URIs relative to the named directory
-still depend on that directory: <code>compile src/app</code> would send <code>money.gleam</code> and give the module
-<code>money</code>.
+<p>Each URI is the path relative to the source base: <code>--source-base</code>, or else the directory that the
+user names. The current directory does not change the URIs; it only makes relative paths absolute. A single file
+without <code>--source-base</code> keeps today's rule, so MoonBit requests are byte for byte the same. Thus
+without <code>--source-base</code> a directory compile sends the URIs that main sends today.</p>
+<p><em>Default decided by Damian Reeves, 2026-11-01 (option B).</em> The first version of this decision made the
+current directory the default base (option A). Damian Reeves chose option B on 2026-11-01 because option A broke
+the published Elm <code>0.5.0-preview.2</code> and Python <code>0.4.2</code> extensions in the extension
+qualification suite (<code>scripts/extension-qualification.mbtx</code>, finos/morphir-moonbit#298). Both name a
+module from its path below the source directory. Under option A, <code>compile generated/src</code> from the
+parent directory sent <code>generated/src/Acme/Rules/Main.elm</code>, and the Elm guest refused it with
+<code>elm.module_name</code> ("the module Acme.Rules.Main must be in Acme/Rules/Main.elm"). <code>compile
+src</code> sent <code>src/acme/rules.py</code>, so the Python guest named the module <code>src.acme.rules</code>,
+generated <code>src/acme/rules.py</code> below the output folder, and the consumer's <code>import
+acme.rules</code> failed. The Gleam guest does not need the current directory: since finos/morphir-gleam#29
+(<code>191a35e</code>, release <code>extension/gleam/v0.4.0</code>) it keeps the full path of a relative URI and
+removes a leading path up to a <code>src</code> segment. Thus <code>compile src</code> (URI
+<code>app/money.gleam</code>) and <code>compile .</code> (URI <code>src/app/money.gleam</code>) both give the
+module <code>app/money</code>; the check with the released module gave byte-identical models.</p>
+<p><em>Why not the current directory?</em> It makes the URIs depend on where the user runs the command, and it
+breaks the extensions above. A user who names a directory below the root of the module paths, such as
+<code>compile src/app</code>, gives that root with <code>--source-base</code>; without it, the URIs are
+<code>money.gleam</code> and <code>orders.gleam</code> and the Gleam guest names the modules <code>money</code>
+and <code>orders</code>.
+<em>Follow-up.</em> A Cargo-style source root, in which the project manifest and the extension's workspace
+discovery give the root, is tracked separately; it is not part of this change.
 <em>Why not synthetic absolute URIs with a root</em>, as the guest's own host test does
 (<code>file:///src/...</code> with root <code>file:///src/</code>)? They would put invented absolute paths into
 diagnostics and source provenance, and the protocol root is meant to be a real location.
@@ -1137,6 +1151,10 @@ tasks are done.</p>
 recorded the confirmation of the named-directory rule (see <a href="#answered">Answered questions</a>). Tasks 4.1
 to 4.3 now use the released module and keep the build from <code>191a35e</code> as the fallback. Task 5.2 records
 this update, so 8 of the 32 tasks are done.</p>
+<p>The update of 2026-11-01 changed the default source base of SRC-1 from the current directory to the named
+directory (option B, decided by Damian Reeves) after the extension qualification suite on main showed that the
+current directory broke the published Elm and Python extensions. Task 2.2, its tests, the spec "Relative document
+URIs" and the CLI documentation follow option B. No task is added.</p>
 
 <h2 id="follow-ups">Follow-up changes</h2>
 <p>Decided by Damian Reeves on 2026-10-31 (IGN-4): this change applies <code>.morphirignore</code> only to
@@ -1275,6 +1293,11 @@ the released module; the build from the pinned commit <code>191a35e</code> stays
 walks a directory that the user names even when a pattern above it matches, and the ignore files still filter the
 entries below it. The spec "Ignore files filter only the walk" says this, and its scenario "Named directory that a
 pattern above matches" now also shows an entry below that is filtered.</li>
+<li id="src-1-base"><strong>Default source base (SRC-1).</strong> Damian Reeves decided on 2026-11-01 (option B):
+without <code>--source-base</code>, the base of a directory input is that directory, and <code>--source-base</code>
+overrides it; a file input keeps today's rule. Option A, the current directory, broke the published Elm
+<code>0.5.0-preview.2</code> and Python <code>0.4.2</code> extensions in the extension qualification suite (see
+<a href="#src-1">SRC-1</a>).</li>
 <li id="library"><strong>Ignore-file library.</strong> Damian Reeves asked on 2026-10-31 for a reusable library and
 moonx tool in moonrockz/moonx-tools (moonrockz/moonx-tools#16). Task 2.6 uses it in place of
 <code>moonbit-community/ignore</code> and depends on it.</li>

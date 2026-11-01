@@ -219,12 +219,29 @@ fn extension_test_tuple(operation : String, codec : String) -> Json {
 }
 
 ///|
+/// A source base for the tests, with POSIX paths. Without `base` the input
+/// directory is the base, so a directory gives URIs relative to it and a
+/// single file follows the rule without `--source-base`.
+fn extension_test_base(path : String, base? : String) -> ExtensionSourceBase {
+  { given: base, cwd: path, style: Posix, }
+}
+
+///|
 /// Reads a source snapshot and returns its URIs, or the error code.
 fn extension_test_sources(
   path : String,
+  base? : String,
   limits~ : ExtensionSourceLimits = extension_source_limits,
 ) -> Result[Array[String], String] {
-  try extension_sources(path, [".gleam"], () => (), limits~) catch {
+  try
+    extension_sources(
+      path,
+      [".gleam"],
+      () => (),
+      base=extension_test_base(path, base?),
+      limits~,
+    )
+  catch {
     ExtensionError(code~, message~, ..) => Err(code.name() + ": " + message)
   } noraise {
     documents => Ok(documents.map(document => document.uri))
@@ -237,9 +254,27 @@ fn extension_test_input_invalid(result : Result[Array[String], String]) -> Bool 
 }
 
 ///|
+/// The refusal of `action`: its code, message and exit status.
+fn extension_test_error(
+  action : () -> Unit raise ExtensionError,
+) -> (String, String, Int32) {
+  try action() catch {
+    ExtensionError(status~, code~, message~) =>
+      (code.name(), message, status.exit_code())
+  } noraise {
+    _ => ("accepted", "", 0)
+  }
+}
+
+///|
 test "compile selects sources by the claimed file extensions and sends the claimed language" {
   let claims = @worker.Claims::from_describe(extension_test_claims())
-  assert_eq(extension_claimed_extensions(claims), [".gleam"])
+  let language = extension_language(claims, None)
+  assert_eq(language.language_id.to_string(), "gleam")
+  let extensions = language.file_extensions.map(extension => {
+    extension.to_string()
+  })
+  assert_eq(extensions, [".gleam"])
   let root = @platform.temporary()
   @platform.mkdir(root + "/src")
   @platform.mkdir(root + "/src/nested")
@@ -249,15 +284,14 @@ test "compile selects sources by the claimed file extensions and sends the claim
   @platform.write(root + "/src/README.md", "not a source")
   let documents = extension_sources(
     root + "/src",
-    extension_claimed_extensions(claims),
+    extensions,
     () => (),
+    base=extension_test_base(root + "/src"),
   )
   assert_eq(documents.map(document => document.uri), [
     "app.gleam", "lib.gleam", "nested/deep.gleam",
   ])
-  let (language, selected) = extension_language(claims, documents)
-  assert_eq(language.to_string(), "gleam")
-  assert_eq(selected.map(document => document.text), [
+  assert_eq(documents.map(document => document.text), [
     "pub fn main() { 1 }", "pub fn lib() { 2 }", "pub fn deep() { 3 }",
   ])
   // A single file keeps its clean relative path; a file without a claimed
@@ -268,13 +302,247 @@ test "compile selects sources by the claimed file extensions and sends the claim
       extension_test_sources(root + "/src/README.md"),
     ),
   )
-  let refusal = try {
-    ignore(extension_language(claims, []))
-    ""
-  } catch {
-    ExtensionError(code~, ..) => code.name()
+  // A directory with no claimed file gives no document and is refused.
+  @platform.mkdir(root + "/docs")
+  @platform.write(root + "/docs/guide.md", "only text")
+  match extension_test_sources(root + "/docs") {
+    Err(message) =>
+      assert_true(
+        message.has_prefix("extension.input_invalid: ") &&
+        message.contains(".gleam"),
+        msg=message,
+      )
+    Ok(uris) => fail("accepted \{uris.join(", ")}")
   }
-  assert_eq(refusal, "extension.input_invalid")
+}
+
+///|
+test "language from claims: the only language, the one that --language names, or a refusal" {
+  let claims = (languages : Array[Json]) => {
+    @worker.Claims::from_describe(
+      extension_test_claims(frontend={
+        "languages": Json::array(languages),
+        "irVersions": ["4"],
+        "compile": true,
+      }),
+    )
+  }
+  let gleam : Json = { "id": "gleam", "fileExtensions": [".gleam"] }
+  let elm : Json = { "id": "elm", "fileExtensions": [".elm"] }
+  let language = (text : String) => Some(@ids.LanguageId::parse(text))
+  let several = claims([elm, gleam])
+  let python = language("python")
+  // One claimed language: the CLI uses it.
+  assert_eq(
+    extension_language(claims([gleam]), None).language_id.to_string(),
+    "gleam",
+  )
+  // Several claimed languages and no choice: input_invalid, exit 2, and the
+  // message names every claimed language.
+  let (code, message, status) = extension_test_error(() => {
+    ignore(extension_language(several, None))
+  })
+  assert_eq((code, status), ("extension.input_invalid", 2))
+  assert_true(
+    message.contains("elm") &&
+    message.contains("gleam") &&
+    message.contains("--language"),
+    msg=message,
+  )
+  // --language selects one of them, with only its file extensions.
+  let selected = extension_language(several, language("gleam"))
+  assert_eq(selected.language_id.to_string(), "gleam")
+  assert_eq(selected.file_extensions.map(extension => extension.to_string()), [
+    ".gleam",
+  ])
+  // A language that the extension does not claim is a capability refusal.
+  let (code, message, status) = extension_test_error(() => {
+    ignore(extension_language(several, python))
+  })
+  assert_eq((code, status), ("extension.capability_unavailable", 2))
+  assert_true(message.contains("python"), msg=message)
+}
+
+///|
+test "the source base gives each URI its path relative to the base" {
+  let base = (given : String?, cwd : String) => ExtensionSourceBase::{
+    given,
+    cwd,
+    style: Posix,
+  }
+  // Without --source-base the input is its own base, wherever the current
+  // directory is.
+  assert_eq(base(None, "/work/shop").segments("src/app/"), [])
+  assert_eq(base(None, "/tmp").segments("/work/shop/src"), [])
+  // A base of the current directory names the path from it.
+  assert_eq(base(Some("."), "/work/shop").segments("src"), ["src"])
+  assert_eq(base(Some("."), "/work/shop").segments("src/app/"), ["src", "app"])
+  assert_eq(base(Some("."), "/work/shop").segments("."), [])
+  // An explicit base gives the same segments for an absolute input.
+  assert_eq(base(Some("/work/shop"), "/tmp").segments("/work/shop/src"), ["src"])
+  // A relative base is relative to the current directory.
+  assert_eq(base(Some("shop"), "/work").segments("shop/src/../src"), ["src"])
+  // An input outside the base is refused, and the message names the base.
+  for
+    (refused, path) in [
+      (base(Some("/work/shop"), "/tmp"), "/other/src"),
+      (base(Some("/work/shop/src"), "/work/shop/src"), ".."),
+      (base(Some("/work/shop"), "/tmp"), "/work/shopping/src"),
+    ] {
+    let (code, message, status) = extension_test_error(() => {
+      ignore(refused.segments(path))
+    })
+    assert_eq((code, status), ("extension.input_invalid", 2), msg=path)
+    assert_true(message.contains(refused.given.unwrap()), msg=message)
+  }
+  // Windows paths compare drive letters without case.
+  let windows = ExtensionSourceBase::{
+    given: Some("C:\\work\\shop"),
+    cwd: "C:\\",
+    style: Windows,
+  }
+  assert_eq(windows.segments("c:\\work\\shop\\src\\app"), ["src", "app"])
+  assert_eq(
+    extension_test_error(() => ignore(windows.segments("D:\\work\\shop"))).0,
+    "extension.input_invalid",
+  )
+}
+
+///|
+test "a tree has URIs from the input directory, or from --source-base when given" {
+  let root = @platform.temporary()
+  @platform.mkdir(root + "/src")
+  @platform.mkdir(root + "/src/app")
+  @platform.mkdir(root + "/src/shared")
+  @platform.write(root + "/src/app/money.gleam", "import shared/numbers\n")
+  @platform.write(root + "/src/app/orders.gleam", "import app/money\n")
+  @platform.write(root + "/src/shared/numbers.gleam", "pub type Number = Int\n")
+  let expected = [
+    "src/app/money.gleam", "src/app/orders.gleam", "src/shared/numbers.gleam",
+  ]
+  // Without --source-base the input directory is the base, also when the
+  // current directory is elsewhere: `compile src` names `app/money.gleam`
+  // and `compile .` names `src/app/money.gleam`.
+  let own = (path : String, cwd : String) => {
+    extension_sources(path, [".gleam"], () => (), base={
+      given: None,
+      cwd,
+      style: Posix,
+    }).map(document => document.uri)
+  }
+  let uris = own(root + "/src", "/elsewhere") catch {
+    ExtensionError(message~, ..) => fail("refused: \{message}")
+  }
+  assert_eq(uris, [
+    "app/money.gleam", "app/orders.gleam", "shared/numbers.gleam",
+  ])
+  let uris = own(root, "/elsewhere") catch {
+    ExtensionError(message~, ..) => fail("refused: \{message}")
+  }
+  assert_eq(uris, expected)
+  // An explicit source base names each file from the base.
+  assert_eq(extension_test_sources(root + "/src", base=root), Ok(expected))
+  // A deeper input keeps the URIs from the base, so module names do not
+  // depend on the directory that the user names.
+  assert_eq(
+    extension_test_sources(root + "/src/app", base=root),
+    Ok(expected[:2].to_owned()),
+  )
+  // A single file with --source-base takes the directory rule; without it,
+  // the earlier rule gives the name of an absolute path.
+  assert_eq(
+    extension_test_sources(root + "/src/app/money.gleam", base=root),
+    Ok(["src/app/money.gleam"]),
+  )
+  assert_eq(
+    extension_test_sources(root + "/src/app/money.gleam"),
+    Ok(["money.gleam"]),
+  )
+  // An input outside the source base is refused and names the base.
+  match extension_test_sources(root + "/src", base=root + "/other") {
+    Err(message) =>
+      assert_true(
+        message.has_prefix("extension.input_invalid: ") &&
+        message.contains(root + "/other"),
+        msg=message,
+      )
+    Ok(uris) => fail("accepted \{uris.join(", ")}")
+  }
+}
+
+///|
+test "URI segments are percent-encoded and plain names stay the same" {
+  let plain = "AZaz09-._~"
+  assert_eq(extension_uri_segment(plain), plain)
+  assert_eq(extension_uri_segment("money.gleam"), "money.gleam")
+  for
+    (name, encoded) in [
+      ("my module.gleam", "my%20module.gleam"),
+      ("a:b", "a%3Ab"),
+      ("100%", "100%25"),
+      ("why?", "why%3F"),
+      ("#1", "%231"),
+      ("a\\b", "a%5Cb"),
+      ("tab\t", "tab%09"),
+      ("caf\u{e9}", "caf%C3%A9"),
+      ("\u{65e5}", "%E6%97%A5"),
+      ("a+b@c", "a%2Bb%40c"),
+    ] {
+    assert_eq(extension_uri_segment(name), encoded, msg=name)
+  }
+  assert_eq(
+    extension_document_uri("src/my module.gleam"),
+    "src/my%20module.gleam",
+  )
+  // Names that a URI cannot carry as a segment are refused; any other name
+  // is encoded.
+  assert_eq(extension_source_name("lib.gleam"), None)
+  assert_eq(extension_source_name(".hidden.gleam"), None)
+  assert_eq(extension_source_name("a:b.gleam"), None)
+  assert_eq(extension_source_name("a\\b.gleam"), None)
+  for name in ["", ".", "..", "a/b.gleam", "/abs.gleam", "nul\u0000.gleam"] {
+    assert_true(extension_source_name(name) is Some(_), msg=name)
+  }
+  let root = @platform.temporary()
+  @platform.mkdir(root + "/src")
+  @platform.write(root + "/src/my module.gleam", "pub fn main() { 1 }")
+  @platform.write(root + "/src/a:b.gleam", "pub fn main() { 2 }")
+  assert_eq(
+    extension_test_sources(root + "/src", base=root),
+    Ok(["src/a%3Ab.gleam", "src/my%20module.gleam"]),
+  )
+}
+
+///|
+test "documents are sorted by the whole URI in byte order, and a repeated URI is refused" {
+  let root = @platform.temporary()
+  @platform.mkdir(root + "/a")
+  @platform.write(root + "/a/b.gleam", "1")
+  @platform.write(root + "/a-c.gleam", "2")
+  @platform.write(root + "/B.gleam", "3")
+  @platform.write(root + "/caf\u{e9}.gleam", "4")
+  // `-` (0x2D) comes before `/` (0x2F), so `a-c.gleam` is before
+  // `a/b.gleam`, though the directory `a` sorts before the file `a-c.gleam`.
+  assert_eq(
+    extension_test_sources(root),
+    Ok(["B.gleam", "a-c.gleam", "a/b.gleam", "caf%C3%A9.gleam"]),
+  )
+  let file = (uri : String) => ExtensionSourceFile::{
+    uri,
+    relative: uri,
+    path: "/tree/" + uri,
+  }
+  assert_eq(
+    extension_source_order([file("b"), file("a-c"), file("a/b")]).map(file => {
+      file.uri
+    }),
+    ["a-c", "a/b", "b"],
+  )
+  let (code, message, status) = extension_test_error(() => {
+    ignore(extension_source_order([file("x.gleam"), file("x.gleam")]))
+  })
+  assert_eq((code, status), ("extension.input_invalid", 2))
+  assert_true(message.contains("x.gleam"), msg=message)
 }
 
 ///|
@@ -291,23 +559,6 @@ test "the source walk skips hidden, build and dependency directories" {
   @platform.mkdir(root + "/build")
   @platform.write(root + "/build/kept.gleam", "kept")
   assert_eq(extension_test_sources(root), Ok(["app.gleam", "build/kept.gleam"]))
-}
-
-///|
-test "directory names that would make a URI unsafe are refused" {
-  assert_eq(extension_source_name("lib.gleam"), None)
-  assert_eq(extension_source_name(".hidden.gleam"), None)
-  for
-    name in [
-      "", ".", "..", "a\\b.gleam", "c:x.gleam", "a:b", "a/b.gleam", "/abs.gleam",
-      "nul\u0000.gleam",
-    ] {
-    assert_true(extension_source_name(name) is Some(_), msg=name)
-  }
-  // A walked name with a colon is refused with input_invalid.
-  let root = @platform.temporary()
-  @platform.write(root + "/a:b.gleam", "pub fn main() { 1 }")
-  assert_true(extension_test_input_invalid(extension_test_sources(root)))
 }
 
 ///|
@@ -334,20 +585,72 @@ test "the source snapshot enforces its file, byte, entry and depth limits" {
       Ok(uris) => fail("accepted \{uris.join(", ")}")
     }
   }
-  refused({ ..limits, files: 2, }, "more than 2 files")
-  refused({ ..limits, bytes: 8, }, "more than 8 bytes")
-  refused({ ..limits, entries: 4, }, "more than 4 entries")
-  refused({ ..limits, depth: 1, }, "deeper than 1 levels")
+  // Each message names the limit and its value.
+  refused({ ..limits, files: 2, }, "limit of 2 documents")
+  refused({ ..limits, bytes: 8, }, "limit of 8 bytes")
+  refused({ ..limits, file_bytes: 3, }, "one.gleam")
+  refused({ ..limits, file_bytes: 3, }, "limit of 3 bytes for one file")
+  refused({ ..limits, entries: 4, }, "limit of 4 entries")
+  refused({ ..limits, depth: 1, }, "limit of 1 directories")
   // Each limit is inclusive.
   assert_true(
     extension_test_sources(root, limits={
       files: 3,
+      file_bytes: 4,
       bytes: 9,
       entries: 5,
       depth: 2,
     })
     is Ok(_),
   )
+}
+
+///|
+test "the default limits refuse 1,025 documents and a file larger than 1 MiB" {
+  assert_eq(extension_source_limits.files, 1024)
+  assert_eq(extension_source_limits.file_bytes, 1048576)
+  assert_eq(extension_source_limits.bytes, 2097152)
+  assert_eq(extension_source_limits.entries, 16384)
+  assert_eq(extension_source_limits.depth, 32)
+  let many = @platform.temporary()
+  for index in 0..<1025 {
+    @platform.write(many + "/m\{index}.gleam", "")
+  }
+  match extension_test_sources(many) {
+    Err(message) =>
+      assert_true(message.contains("limit of 1024 documents"), msg=message)
+    Ok(uris) => fail("accepted \{uris.length()} documents")
+  }
+  let large = @platform.temporary()
+  @platform.write(large + "/large.gleam", "x".repeat(1048577))
+  match extension_test_sources(large) {
+    Err(message) =>
+      assert_true(
+        message.contains("large.gleam") &&
+        message.contains("limit of 1048576 bytes for one file"),
+        msg=message,
+      )
+    Ok(_) => fail("accepted a file larger than 1 MiB")
+  }
+  @platform.write(large + "/large.gleam", "x".repeat(1048576))
+  assert_eq(extension_test_sources(large), Ok(["large.gleam"]))
+}
+
+///|
+test "text that is not UTF-8 is refused with the URI of the file" {
+  let root = @platform.temporary()
+  @platform.mkdir(root + "/src")
+  @platform.write(root + "/src/good.gleam", "pub fn main() { 1 }")
+  @platform.write_bytes(root + "/src/my latin.gleam", b"caf\xe9")
+  match extension_test_sources(root + "/src", base=root) {
+    Err(message) =>
+      assert_true(
+        message.has_prefix("extension.input_invalid: ") &&
+        message.contains("src/my%20latin.gleam"),
+        msg=message,
+      )
+    Ok(uris) => fail("accepted \{uris.join(", ")}")
+  }
 }
 
 ///|
@@ -371,12 +674,32 @@ fn extension_test_symlink(target : String, path : String) -> Unit {
 }
 
 ///|
-async test "a symbolic link in the sources is refused" {
+async test "a symbolic link in the sources is refused with its relative path" {
   let root = @platform.temporary()
-  @platform.write(root + "/app.gleam", "pub fn main() { 1 }")
-  extension_test_symlink(root + "/app.gleam", root + "/link.gleam")
-  assert_true(extension_test_input_invalid(extension_test_sources(root)))
+  @platform.mkdir(root + "/src")
+  @platform.mkdir(root + "/other")
+  @platform.write(root + "/src/app.gleam", "pub fn main() { 1 }")
+  @platform.write(root + "/other/lib.gleam", "pub fn lib() { 2 }")
+  extension_test_symlink(root + "/src/app.gleam", root + "/src/link.gleam")
+  match extension_test_sources(root + "/src", base=root) {
+    Err(message) =>
+      assert_true(
+        message.has_prefix("extension.input_invalid: ") &&
+        message.contains("src/link.gleam") &&
+        !message.contains(root),
+        msg=message,
+      )
+    Ok(uris) => fail("accepted \{uris.join(", ")}")
+  }
+  // A link to a directory is refused and not followed.
+  @platform.remove_file(root + "/src/link.gleam")
+  extension_test_symlink(root + "/other", root + "/src/vendor")
+  match extension_test_sources(root + "/src", base=root) {
+    Err(message) => assert_true(message.contains("src/vendor"), msg=message)
+    Ok(uris) => fail("accepted \{uris.join(", ")}")
+  }
   // A link given as the source itself is refused too.
+  extension_test_symlink(root + "/src/app.gleam", root + "/link.gleam")
   assert_true(
     extension_test_input_invalid(extension_test_sources(root + "/link.gleam")),
   )
@@ -595,11 +918,19 @@ test "extension command syntax keeps its own options" {
   assert_eq(value(cli, "path"), "src/main.mbt")
   assert_eq(value(cli, "ir-version"), "4")
   assert_true(flag(cli, "json"))
+  let cli = parse_cli([
+    "extension", "compile", "src", "--extension-pin", "pin.json", "--package", "my/pkg",
+    "--output", "out", "--language", "gleam", "--source-base", "/work/shop",
+  ])
+  assert_eq(value(cli, "language"), "gleam")
+  assert_eq(value(cli, "source-base"), "/work/shop")
   for
     args in [
       ["extension", "describe", "--package", "x"],
       ["extension"],
       ["extension", "describe", "--services-pin", "pin.json"],
+      ["extension", "describe", "--language", "gleam"],
+      ["extension", "generate", "model.json", "--source-base", "."],
     ] {
     assert_true(
       try {

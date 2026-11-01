@@ -7,11 +7,12 @@ let extension_migration : String = "https://github.com/finos/morphir-moonbit/blo
 let extension_pin_contract : String = "0.2.0"
 
 ///|
-/// The source snapshot bounds of `extension compile`: files read, bytes read
-/// in total, directory entries listed and directory depth. Each bound is
-/// inclusive.
+/// The source snapshot bounds of `extension compile`: documents read, bytes
+/// of one file, bytes read in total, directory entries listed and directory
+/// depth. Each bound is inclusive.
 priv struct ExtensionSourceLimits {
   files : Int32
+  file_bytes : Int32
   bytes : Int32
   entries : Int32
   depth : Int32
@@ -20,6 +21,7 @@ priv struct ExtensionSourceLimits {
 ///|
 let extension_source_limits : ExtensionSourceLimits = {
   files: 1024,
+  file_bytes: 1048576,
   bytes: 2097152,
   entries: 16384,
   depth: 32,
@@ -280,6 +282,11 @@ priv struct ExtensionInputs {
   ir_version : String
   target : String
   timeout_ms : Int32
+  /// `--language`: the claimed language to compile, when the extension
+  /// claims several.
+  language : @ids.LanguageId?
+  /// `--source-base`: the directory that document URIs are relative to.
+  source_base : String?
 }
 
 ///|
@@ -306,6 +313,8 @@ fn ExtensionInputs::read(
     ir_version: value(cli, "ir-version"),
     target: value(cli, "target"),
     timeout_ms,
+    language: None,
+    source_base: None,
   }
   match command {
     Describe => {
@@ -355,7 +364,21 @@ fn ExtensionInputs::read(
           "the parent directory \{parent} of --output \{output} does not exist",
         )
       }
-      { ..inputs, codec, output, }
+      let language = match value(cli, "language") {
+        "" => None
+        text =>
+          Some(
+            @ids.LanguageId::parse(text) catch {
+              _ =>
+                raise input_invalid("--language \{text} is not a language ID")
+            },
+          )
+      }
+      let source_base = match value(cli, "source-base") {
+        "" => None
+        base => Some(base)
+      }
+      { ..inputs, codec, output, language, source_base, }
     }
   }
 }
@@ -388,8 +411,45 @@ priv struct ExtensionSource {
 }
 
 ///|
-/// A clean relative path keeps its nesting; otherwise only the file name is
-/// declared. Absolute host paths never enter the model's source provenance.
+/// One source file that the walk found: its document URI, its path relative
+/// to the source base for messages, and its path on the host.
+priv struct ExtensionSourceFile {
+  uri : String
+  relative : String
+  path : String
+}
+
+///|
+/// Encodes one name as an RFC 3986 path segment. Unreserved characters
+/// (letters, digits, `-`, `.`, `_` and `~`) stay as they are; every other
+/// byte of the UTF-8 name is percent-encoded with uppercase digits, so a
+/// URI never holds a raw `%`, `?`, `#`, `\`, `:`, space, control character
+/// or non-ASCII character.
+fn extension_uri_segment(name : String) -> String {
+  let digits : FixedArray[Char] = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+  ]
+  let builder = StringBuilder()
+  for byte in @utf8.encode(name) {
+    match byte.to_char() {
+      'a'..<='z' | 'A'..<='Z' | '0'..<='9' | '-' | '.' | '_' | '~' as char =>
+        builder.write_char(char)
+      _ => {
+        let code = byte.to_int()
+        builder.write_char('%')
+        builder.write_char(digits[code / 16])
+        builder.write_char(digits[code % 16])
+      }
+    }
+  }
+  builder.to_string()
+}
+
+///|
+/// The URI of a single file without `--source-base`. A clean relative path
+/// keeps its nesting; otherwise only the file name is declared. Absolute
+/// host paths never enter the model's source provenance. Each segment is
+/// percent-encoded.
 fn extension_document_uri(path : String) -> String {
   let parts = path
     .replace_all(old="\\", new="/")
@@ -397,56 +457,125 @@ fn extension_document_uri(path : String) -> String {
     .map(part => part.to_owned())
     .to_array()
   let name = parts[parts.length() - 1]
-  if mck_absolute(path) ||
+  let kept = if mck_absolute(path) ||
     parts.any(part => {
       part == "" || part == "." || part == ".." || part.contains(":")
     }) {
-    name
+    [name]
   } else {
-    parts.join("/")
+    parts
   }
+  kept.map(extension_uri_segment).join("/")
 }
 
 ///|
-/// The file extensions of every language that the extension claims.
-fn extension_claimed_extensions(claims : @worker.Claims) -> Array[String] {
-  let extensions : Array[String] = []
-  for language in claims.languages {
-    for extension in language.file_extensions {
-      let text = extension.to_string()
-      if !extensions.contains(text) {
-        extensions.push(text)
+/// The directory that document URIs are relative to (SRC-1): `--source-base`
+/// when the user gives it, else the input directory itself. The current
+/// directory makes relative paths absolute.
+priv struct ExtensionSourceBase {
+  given : String?
+  cwd : String
+  style : @worker.PathStyle
+}
+
+///|
+/// The names from the source base down to `path`, which must be the base or
+/// below it. Both paths are made absolute against the current directory and
+/// normalized without reading the file system. Without `--source-base` the
+/// input is its own base, so there are no names.
+fn ExtensionSourceBase::segments(
+  self : ExtensionSourceBase,
+  path : String,
+) -> Array[String] raise ExtensionError {
+  guard self.given is Some(base) else { return [] }
+  let relative = match self.style {
+    Posix => {
+      let absolute = (text : String) => {
+        let path = @path_posix.Path(text)
+        let path = if path.is_absolute() {
+          path
+        } else {
+          @path_posix.Path(self.cwd).join(path)
+        }
+        path.normalize()
+      }
+      let relative = absolute(path).relative(base=absolute(base))
+      if relative.is_absolute() {
+        None
+      } else {
+        Some(relative.0)
+      }
+    }
+    Windows => {
+      let absolute = (text : String) => {
+        let path = @path_windows.Path(text)
+        let path = if path.is_absolute() {
+          path
+        } else {
+          @path_windows.Path(self.cwd).join(path)
+        }
+        path.normalize()
+      }
+      let relative = absolute(path).relative(base=absolute(base))
+      if relative.is_absolute() {
+        None
+      } else {
+        Some(relative.0.replace_all(old="\\", new="/"))
       }
     }
   }
-  extensions
+  let segments = match relative {
+    Some(text) =>
+      text
+      .split("/")
+      .filter(part => part != "" && part != ".")
+      .map(part => part.to_owned())
+      .collect()
+    None => [".."]
+  }
+  if segments.contains("..") {
+    raise input_invalid(
+      "\{path} is not at or below the source base \{base}; give a --source-base that contains it",
+    )
+  }
+  segments
 }
 
 ///|
-/// The claimed language of the documents: the first language whose file
-/// extensions cover every document. The CLI holds no list of languages.
+/// The language of a compile (SEL-3): the only language that the extension
+/// claims, or the claimed language that `--language` names. The CLI holds
+/// no list of languages.
 fn extension_language(
   claims : @worker.Claims,
-  documents : Array[ExtensionSource],
-) -> (@ids.LanguageId, Array[ExtensionSource]) raise ExtensionError {
-  if documents.is_empty() {
-    raise input_invalid(
-      "no source file has a file extension that \{claims.extension_id} claims (\{extension_claimed_extensions(claims).join(", ")})",
-    )
+  selected : @ids.LanguageId?,
+) -> @worker.LanguageClaim raise ExtensionError {
+  let names = claims.languages
+    .map(language => language.language_id.to_string())
+    .join(", ")
+  match selected {
+    Some(id) =>
+      match claims.languages.search_by(language => language.language_id == id) {
+        Some(index) => claims.languages[index]
+        None =>
+          raise refused(
+            Worker(CapabilityUnavailable),
+            "\{claims.extension_id} does not claim the language \{id}; it claims \{if names == "" { "no language" } else { names }}",
+          )
+      }
+    None =>
+      match claims.languages {
+        [only] => only
+        [] =>
+          raise refused(
+            Worker(CapabilityUnavailable),
+            "\{claims.extension_id} claims no source language",
+          )
+        _ =>
+          raise input_invalid(
+            "\{claims.extension_id} claims the languages \{names}: select one with --language",
+          )
+      }
   }
-  for language in claims.languages {
-    let covers = documents.all(document => {
-      language.file_extensions.any(extension => {
-        document.uri.has_suffix(extension.to_string())
-      })
-    })
-    if covers {
-      return (language.language_id, documents)
-    }
-  }
-  raise input_invalid(
-    "the sources mix languages; \{claims.extension_id} compiles one language at a time",
-  )
 }
 
 ///|
@@ -466,8 +595,8 @@ fn extension_document_count(
 }
 
 ///|
-/// Name order by UTF-16 code unit, so that `app` comes before `nested`.
-/// `String` compares lengths first.
+/// Order by UTF-16 code unit, so that `app` comes before `nested`. `String`
+/// compares lengths first. A URI is ASCII, so this is its byte order.
 fn extension_name_order(left : String, right : String) -> Int32 {
   let length = if left.length() < right.length() {
     left.length()
@@ -483,17 +612,14 @@ fn extension_name_order(left : String, right : String) -> Int32 {
 }
 
 ///|
-/// Why a directory entry name cannot become part of a document URI, or
-/// `None` when it can. A name with a separator, a drive colon or a NUL, or a
-/// name that is empty, `.` or `..`, would make the URI absolute or
-/// traversing.
+/// Why a directory entry name cannot become a URI segment, or `None` when it
+/// can. An empty name, `.` or `..` would make the URI traverse, and a name
+/// with `/` or NUL is not one entry. Every other name is percent-encoded.
 fn extension_source_name(name : String) -> String? {
   if name == "" || name == "." || name == ".." {
     Some("is empty, . or ..")
-  } else if name.contains("/") || name.contains("\\") {
+  } else if name.contains("/") {
     Some("contains a path separator")
-  } else if name.contains(":") {
-    Some("contains a colon")
   } else if name.contains_char('\u0000') {
     Some("contains NUL")
   } else {
@@ -502,87 +628,102 @@ fn extension_source_name(name : String) -> String? {
 }
 
 ///|
+/// Sorts the files by the whole URI in byte order and refuses two files
+/// with the same URI.
+fn extension_source_order(
+  files : Array[ExtensionSourceFile],
+) -> Array[ExtensionSourceFile] raise ExtensionError {
+  let sorted = files.copy()
+  sorted.sort_by((left, right) => extension_name_order(left.uri, right.uri))
+  for index in 1..<sorted.length() {
+    if sorted[index].uri == sorted[index - 1].uri {
+      raise input_invalid(
+        "the source files \{sorted[index - 1].relative} and \{sorted[index].relative} have the same URI \{sorted[index].uri}",
+      )
+    }
+  }
+  sorted
+}
+
+///|
 /// Reads a bounded snapshot of the source file or directory. Only files with
-/// a claimed extension are read. Directory entries are visited in name order;
-/// hidden, build and dependency directories are skipped; a link, a special
-/// entry or an unsafe name is refused.
+/// a claimed extension are read. Each URI is the path relative to the source
+/// base, with percent-encoded segments. Without `--source-base`, a directory
+/// is its own base and a single file keeps the rule of
+/// `extension_document_uri`. Hidden, build and dependency directories are
+/// skipped; a link, a special entry or an unsafe name is refused. The
+/// documents are in URI byte order.
 fn extension_sources(
   path : String,
   extensions : Array[String],
   check : () -> Unit raise ExtensionError,
+  base~ : ExtensionSourceBase,
   limits~ : ExtensionSourceLimits = extension_source_limits,
 ) -> Array[ExtensionSource] raise ExtensionError {
-  let documents : Array[ExtensionSource] = []
-  let mut total = 0
+  let files : Array[ExtensionSourceFile] = []
   let mut entries = 0
   let claimed = (name : String) => {
     extensions.any(extension => name.has_suffix(extension))
   }
-  fn read(file : String, uri : String) -> Unit raise ExtensionError {
-    check()
-    if documents.length() >= limits.files {
-      raise input_invalid("the sources have more than \{limits.files} files")
-    }
-    let bytes = @platform.read_input(file, limits.bytes) catch {
-      error =>
-        raise input_invalid(
-          "cannot read \{file}: \{@host.error_message(error)}",
-        )
-    }
-    total += bytes.length()
-    if total > limits.bytes {
-      raise input_invalid("the sources have more than \{limits.bytes} bytes")
-    }
-    let text = @utf8.decode(bytes[:]) catch {
-      _ => raise input_invalid("\{file} is not UTF-8 text")
-    }
-    documents.push({ uri, text, })
-  }
-
   fn walk(
     directory : String,
-    relative : String,
+    names : Array[String],
     depth : Int32,
   ) -> Unit raise ExtensionError {
     check()
     if depth > limits.depth {
       raise input_invalid(
-        "the source directory is deeper than \{limits.depth} levels",
+        "the source directory \{names.join("/")} is deeper than the limit of \{limits.depth} directories",
       )
     }
-    let names = @platform.list_bounded(directory, 4096) catch {
+    let listed = @platform.list_bounded(directory, 4096) catch {
       error =>
         raise input_invalid(
           "cannot list \{directory}: \{@host.error_message(error)}",
         )
     }
-    names.sort_by(extension_name_order)
-    for name in names {
+    listed.sort_by(extension_name_order)
+    for name in listed {
       entries += 1
       if entries > limits.entries {
         raise input_invalid(
-          "the source directory has more than \{limits.entries} entries",
+          "the source directory has more entries than the limit of \{limits.entries} entries",
         )
       }
+      let relative = [..names, name]
       if extension_source_name(name) is Some(reason) {
         raise input_invalid(
-          "the source entry \{repr(name)} in \{directory} \{reason}",
+          "the source entry \{repr(name)} in \{names.join("/")} \{reason}",
         )
       }
       let full = directory + "/" + name
-      let uri = if relative == "" { name } else { relative + "/" + name }
       match (@platform.kind(full) catch { _ => -1 }) {
-        1 => if claimed(name) { read(full, uri) }
+        1 =>
+          if claimed(name) {
+            files.push({
+              uri: relative.map(extension_uri_segment).join("/"),
+              relative: relative.join("/"),
+              path: full,
+            })
+          }
         2 =>
           if !name.has_prefix(".") &&
             !extension_skipped_directories.contains(name) {
-            walk(full, uri, depth + 1)
+            walk(full, relative, depth + 1)
           }
-        _ => raise input_invalid("\{full} is a link or a special file")
+        _ =>
+          raise input_invalid(
+            "\{relative.join("/")} is a link or a special file",
+          )
       }
     }
   }
 
+  // An explicit source base is checked before the input is read.
+  let explicit = match base.given {
+    Some(_) => Some(base.segments(path))
+    None => None
+  }
   match (@platform.kind(path) catch { _ => -1 }) {
     1 => {
       if !claimed(path) {
@@ -590,10 +731,58 @@ fn extension_sources(
           "\{path} does not have a claimed file extension (\{extensions.join(", ")})",
         )
       }
-      read(path, extension_document_uri(path))
+      let file : ExtensionSourceFile = match explicit {
+        None => { uri: extension_document_uri(path), relative: path, path, }
+        Some([]) =>
+          raise input_invalid(
+            "\{path} is the source base itself; give a --source-base above it",
+          )
+        Some(names) =>
+          {
+            uri: names.map(extension_uri_segment).join("/"),
+            relative: names.join("/"),
+            path,
+          }
+      }
+      files.push(file)
     }
-    2 => walk(path, "", 0)
+    2 => walk(path, explicit.unwrap_or([]), 0)
     _ => raise input_invalid("\{path} is not a regular file or a directory")
+  }
+  if files.is_empty() {
+    raise input_invalid(
+      "no source file in \{path} has a claimed file extension (\{extensions.join(", ")})",
+    )
+  }
+  if files.length() > limits.files {
+    raise input_invalid(
+      "the sources have \{files.length()} documents, more than the limit of \{limits.files} documents",
+    )
+  }
+  let documents : Array[ExtensionSource] = []
+  let mut total = 0
+  for file in extension_source_order(files) {
+    check()
+    let bytes = @platform.read_input(file.path, limits.file_bytes) catch {
+      @platform.IOError("input.limit") =>
+        raise input_invalid(
+          "the source file \{file.uri} is larger than the limit of \{limits.file_bytes} bytes for one file",
+        )
+      error =>
+        raise input_invalid(
+          "cannot read \{file.relative}: \{@host.error_message(error)}",
+        )
+    }
+    total += bytes.length()
+    if total > limits.bytes {
+      raise input_invalid(
+        "the sources are larger than the limit of \{limits.bytes} bytes of source text in total",
+      )
+    }
+    let text = @utf8.decode(bytes[:]) catch {
+      _ => raise input_invalid("the source file \{file.uri} is not UTF-8 text")
+    }
+    documents.push({ uri: file.uri, text, })
   }
   documents
 }
@@ -1458,12 +1647,18 @@ async fn extension_execute(
           )
         Model(_) => None
       }
+      let language = extension_language(claims, inputs.language)
       let documents = extension_sources(
         inputs.path,
-        extension_claimed_extensions(claims),
+        language.file_extensions.map(extension => extension.to_string()),
         check,
+        base={
+          given: inputs.source_base,
+          cwd: @platform.cwd(),
+          style: run.hosting.path_style(),
+        },
       )
-      let (language, documents) = extension_language(claims, documents)
+      let language = language.language_id
       extension_document_count(claims, documents)
       (
         offer,

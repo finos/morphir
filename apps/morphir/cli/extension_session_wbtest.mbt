@@ -20,6 +20,8 @@ priv struct ScriptedLauncher {
   /// The bounds that the channel states, as a WASM host's channel does.
   bounds : @worker.EnforcedBounds?
   offers : Array[Json]
+  /// The encoded bytes of each operation call, as the worker received them.
+  requests : Array[Bytes]
 }
 
 ///|
@@ -68,6 +70,7 @@ async fn fake_serve(
   methods : Array[String],
   calls : Array[Json],
   offers : Array[Json],
+  requests : Array[Bytes],
 ) -> Unit {
   worker.write_stderr(@utf8.encode(guest.stderr))
   while true {
@@ -93,6 +96,7 @@ async fn fake_serve(
       "morphir.shutdown" => Some(guest.shutdown)
       _ => {
         calls.push(params)
+        requests.push(message.to_bytes())
         (guest.reply)(name, params)
       }
     }
@@ -118,7 +122,14 @@ async fn fake_serve(
 impl @worker.Launcher for ScriptedLauncher with fn launch(self, _spec, _limits) {
   let (channel, worker) = @worker.MemoryChannel::pair(bounds?=self.bounds)
   self.group.spawn_bg(() => {
-    fake_serve(worker, self.guest, self.methods, self.calls, self.offers)
+    fake_serve(
+      worker,
+      self.guest,
+      self.methods,
+      self.calls,
+      self.offers,
+      self.requests,
+    )
   })
   channel
 }
@@ -131,6 +142,7 @@ priv struct FakeRun {
   methods : Array[String]
   calls : Array[Json]
   offers : Array[Json]
+  requests : Array[Bytes]
 }
 
 ///|
@@ -150,6 +162,7 @@ async fn fake_run(
       calls: [],
       bounds,
       offers: [],
+      requests: [],
     }
     let hosting = if hosted {
       WorkerHosting::new(
@@ -166,6 +179,7 @@ async fn fake_run(
       methods: launcher.methods,
       calls: launcher.calls,
       offers: launcher.offers,
+      requests: launcher.requests,
     })
   })
   guard finished.val is Some(run) else { abort("the run did not finish") }
@@ -189,6 +203,7 @@ async fn fake_command(
       calls: [],
       bounds: None,
       offers: [],
+      requests: [],
     }
     let context = {
       ..command_context(mode),
@@ -596,6 +611,8 @@ async test "Python 0.4.1 with two modules: a frontend without multiDocument is r
       "extension",
       "compile",
       sources,
+      "--source-base",
+      workspace.root,
       "--package",
       "acme/loans",
       "--output",
@@ -671,6 +688,8 @@ async test "a frontend without model methods compiles on MEP 0.1 from the claime
       "extension",
       "compile",
       sources,
+      "--source-base",
+      workspace.root,
       "--package",
       "acme/app",
       "--output",
@@ -694,7 +713,7 @@ async test "a frontend without model methods compiles on MEP 0.1 from the claime
     fail("no documents")
   }
   assert_eq(documents.map(document => fake_field(document, ["uri"])), [
-    "app.gleam", "nested/lib.gleam",
+    "src/app.gleam", "src/nested/lib.gleam",
   ])
   assert_eq(fake_field(request, ["options", "irVersion"]), "3")
   assert_eq(fake_file(output + "/morphir-ir.json"), fake_legacy_ir.stringify())
@@ -1187,6 +1206,7 @@ async test "an async cancellation of the command exits 130, not host_failed" {
       calls: [],
       bounds: None,
       offers: [],
+      requests: [],
     }
     let hosting = WorkerHosting::new(
       Native(@worker.Machine::of(X86_64UnknownLinuxGnu)),
@@ -1478,4 +1498,273 @@ async test "compile reports the WASM bounds that the worker's host enforced in r
     fail("no bounds")
   }
   assert_false(fields.contains("memoryCeiling"))
+}
+
+///|
+let fake_gleam_language : Json = { "id": "gleam", "fileExtensions": [".gleam"] }
+
+///|
+/// The claims of a Gleam frontend like morphir-gleam 0.4.0: several
+/// documents in one request, on the JSON model tuple.
+fn fake_gleam_describe(
+  languages~ : Array[Json] = [fake_gleam_language],
+) -> Json {
+  extension_test_claims(
+    frontend={
+      "languages": Json::array(languages),
+      "irVersions": ["4.0.0"],
+      "compile": false,
+      "multiDocument": true,
+    },
+    tuples=[
+      extension_test_tuple("morphir.frontend.compileModel", "morphir-json"),
+    ],
+  )
+}
+
+///|
+fn fake_gleam_guest(
+  languages~ : Array[Json] = [fake_gleam_language],
+) -> FakeGuest {
+  fake_guest(describe=fake_gleam_describe(languages~), reply=(_, _) => {
+    Some(Ok(fake_json_model_result()))
+  })
+}
+
+///|
+/// A Gleam project in `root`: modules in two directories under `src` that
+/// import one another, and files of other languages.
+fn fake_gleam_tree(root : String) -> Unit raise {
+  @platform.mkdir(root + "/src")
+  @platform.mkdir(root + "/src/app")
+  @platform.mkdir(root + "/src/shared")
+  @platform.write(
+    root + "/src/app/money.gleam",
+    "import shared/numbers\npub type Money = numbers.Number\n",
+  )
+  @platform.write(
+    root + "/src/app/orders.gleam",
+    "import app/money\npub type Order = money.Money\n",
+  )
+  @platform.write(root + "/src/shared/numbers.gleam", "pub type Number = Int\n")
+  @platform.write(root + "/src/README.md", "not a source\n")
+  @platform.write(root + "/src/main.elm", "module Main exposing (..)\n")
+}
+
+///|
+/// The arguments of a compile of `input` in the workspace, with `options`
+/// before the shared ones.
+fn fake_tree_compile(
+  workspace : FakeWorkspace,
+  input : String,
+  output : String,
+  options : Array[String],
+) -> Array[String] {
+  [
+    "extension",
+    "compile",
+    input,
+    ..options,
+    "--package",
+    "acme/shop",
+    "--output",
+    workspace.root + "/" + output,
+    "--extension-pin",
+    workspace.pin,
+    "--json",
+  ]
+}
+
+///|
+fn fake_uris(request : Json) -> Array[Json] {
+  guard fake_field(request, ["sources", "documents"]) is Array(documents) else {
+    return []
+  }
+  documents.map(document => fake_field(document, ["uri"]))
+}
+
+///|
+async test "language from claims: a guest with several languages needs --language" {
+  let workspace = fake_workspace()
+  fake_gleam_tree(workspace.root)
+  let elm : Json = { "id": "elm", "fileExtensions": [".elm"] }
+  let base = ["--source-base", workspace.root]
+  let source = workspace.root + "/src"
+  // Several claimed languages and no --language: refused before any
+  // operation session, and the message names both languages.
+  let run = fake_run(
+    fake_tree_compile(workspace, source, "none", base),
+    fake_gleam_guest(languages=[elm, fake_gleam_language]),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.input_invalid")
+  let message = fake_field(run.json, ["error", "message"]).stringify()
+  assert_true(message.contains("elm") && message.contains("gleam"), msg=message)
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+  assert_false(fake_exists(workspace.root + "/none"))
+  // An unclaimed language is a capability refusal, also before any session.
+  let run = fake_run(
+    fake_tree_compile(
+      workspace,
+      source,
+      "python",
+      [..base, "--language", "python"],
+    ),
+    fake_gleam_guest(languages=[elm, fake_gleam_language]),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.capability_unavailable")
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+  // --language gleam sends gleam and reads only the .gleam files.
+  let run = fake_run(
+    fake_tree_compile(
+      workspace,
+      source,
+      "gleam",
+      [..base, "--language", "gleam"],
+    ),
+    fake_gleam_guest(languages=[elm, fake_gleam_language]),
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  let request = run.calls[0]
+  assert_eq(fake_field(request, ["languageId"]), "gleam")
+  assert_eq(fake_uris(request), [
+    "src/app/money.gleam", "src/app/orders.gleam", "src/shared/numbers.gleam",
+  ])
+  guard fake_field(request, ["sources", "documents"]) is Array(documents) else {
+    fail("no documents")
+  }
+  for document in documents {
+    assert_eq(fake_field(document, ["languageId"]), "gleam")
+  }
+}
+
+///|
+async test "relative document URIs: a tree is named from the input directory or the source base, with no sources.root" {
+  let workspace = fake_workspace()
+  fake_gleam_tree(workspace.root)
+  // The guest claims one language, so no --language is needed.
+  let run = fake_run(
+    fake_tree_compile(workspace, workspace.root + "/src", "model", [
+      "--source-base",
+      workspace.root,
+    ]),
+    fake_gleam_guest(),
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  let request = run.calls[0]
+  assert_eq(fake_field(request, ["languageId"]), "gleam")
+  assert_eq(fake_uris(request), [
+    "src/app/money.gleam", "src/app/orders.gleam", "src/shared/numbers.gleam",
+  ])
+  guard fake_field(request, ["sources"]) is Object(sources) else {
+    fail("no sources")
+  }
+  assert_eq(sources.keys().collect(), ["documents"])
+  assert_false(request.stringify().contains(workspace.root))
+  // A deeper input keeps the URIs from the source base.
+  let run = fake_run(
+    fake_tree_compile(workspace, workspace.root + "/src/app", "app", [
+      "--source-base",
+      workspace.root,
+    ]),
+    fake_gleam_guest(),
+  )
+  assert_eq(fake_uris(run.calls[0]), [
+    "src/app/money.gleam", "src/app/orders.gleam",
+  ])
+  // Without --source-base the input directory is the base, wherever the
+  // current directory is.
+  let run = fake_run(
+    fake_tree_compile(workspace, workspace.root + "/src", "own", []),
+    fake_gleam_guest(),
+  )
+  assert_eq(run.report.exit_code(), 0, msg=run.json.stringify())
+  assert_eq(fake_uris(run.calls[0]), [
+    "app/money.gleam", "app/orders.gleam", "shared/numbers.gleam",
+  ])
+  assert_false(run.calls[0].stringify().contains(workspace.root))
+  // An input outside the source base is refused before any operation
+  // session, and the message names the source base.
+  let run = fake_run(
+    fake_tree_compile(workspace, workspace.root + "/src", "outside", [
+      "--source-base",
+      workspace.root + "/other",
+    ]),
+    fake_gleam_guest(),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.input_invalid")
+  assert_true(
+    fake_field(run.json, ["error", "message"])
+    .stringify()
+    .contains(workspace.root + "/other"),
+    msg=run.json.stringify(),
+  )
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
+  assert_false(fake_exists(workspace.root + "/outside"))
+}
+
+///|
+async test "same tree twice gives byte-identical compileModel requests; other trees keep the contextDigest" {
+  let workspace = fake_workspace()
+  fake_gleam_tree(workspace.root)
+  let base = ["--source-base", workspace.root]
+  let first = fake_run(
+    fake_tree_compile(workspace, workspace.root + "/src", "first", base),
+    fake_gleam_guest(),
+  )
+  let second = fake_run(
+    fake_tree_compile(workspace, workspace.root + "/src", "second", base),
+    fake_gleam_guest(),
+  )
+  assert_eq(first.report.exit_code(), 0, msg=first.json.stringify())
+  assert_eq(first.requests.length(), 1)
+  assert_eq(second.requests.length(), 1)
+  assert_true(first.requests[0] == second.requests[0])
+  // The same package and options with another tree: other documents, the
+  // same contextDigest.
+  let other = fake_workspace()
+  @platform.mkdir(other.root + "/src")
+  @platform.write(other.root + "/src/ledger.gleam", "pub type Ledger = Int\n")
+  let third = fake_run(
+    fake_tree_compile(workspace, other.root + "/src", "third", [
+      "--source-base",
+      other.root,
+    ]),
+    fake_gleam_guest(),
+  )
+  assert_eq(third.report.exit_code(), 0, msg=third.json.stringify())
+  assert_eq(fake_uris(third.calls[0]), ["src/ledger.gleam"])
+  assert_eq(
+    fake_field(third.calls[0], ["contextDigest"]),
+    fake_field(first.calls[0], ["contextDigest"]),
+  )
+  assert_true(fake_field(first.calls[0], ["contextDigest"]) is String(_))
+}
+
+///|
+async test "a tree of 1,025 documents is refused before any operation session" {
+  let workspace = fake_workspace()
+  let many = workspace.root + "/many"
+  @platform.mkdir(many)
+  for index in 0..<1025 {
+    @platform.write(many + "/m\{index}.gleam", "pub type T = Int\n")
+  }
+  let run = fake_run(
+    fake_tree_compile(workspace, many, "model", [
+      "--source-base",
+      workspace.root,
+    ]),
+    fake_gleam_guest(),
+  )
+  assert_eq(run.report.exit_code(), 2, msg=run.json.stringify())
+  assert_eq(fake_error(run), "extension.input_invalid")
+  assert_true(
+    fake_field(run.json, ["error", "message"])
+    .stringify()
+    .contains("limit of 1024 documents"),
+    msg=run.json.stringify(),
+  )
+  assert_eq(run.methods, ["morphir.extension.describe", "morphir.exit"])
 }

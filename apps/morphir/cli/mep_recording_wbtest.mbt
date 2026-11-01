@@ -113,12 +113,14 @@ async test "record native MEP host and guest sessions" {
   }
   let claims = description.claims
   let offer = extension_compile_offer(claims, inputs.codec)
-  let (language, documents) = extension_language(
-    claims,
-    extension_sources(inputs.path, extension_claimed_extensions(claims), () => {
-      ()
-    }),
+  let language = extension_language(claims, inputs.language)
+  let documents = extension_sources(
+    inputs.path,
+    language.file_extensions.map(extension => extension.to_string()),
+    () => (),
+    base={ given: None, cwd: @platform.cwd(), style: Posix, },
   )
+  let language = language.language_id
   let request = @worker.CompileRequest::new(
     extension_compile_params(inputs, claims, offer, language, documents, None),
   )

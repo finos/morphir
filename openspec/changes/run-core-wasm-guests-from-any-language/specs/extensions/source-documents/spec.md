@@ -164,16 +164,27 @@ above it.
 
 ### Requirement: Relative document URIs
 Each document URI SHALL be the file's path relative to the source base, with `/` separators. The source base
-SHALL be `--source-base` when given, else the current directory. The input SHALL be at or below the source base.
-The request SHALL NOT contain `sources.root` or an absolute host path.
+SHALL be `--source-base` when given, else the input directory. The current directory SHALL NOT change the URIs.
+The input SHALL be at or below the source base. The request SHALL NOT contain `sources.root` or an absolute host
+path.
 
-#### Scenario: Run from the project directory
-- **WHEN** a user in `/work/shop` compiles `src` and the tree has `src/app/money.gleam`
-- **THEN** that document has the URI `src/app/money.gleam` and the request has no `sources.root`
+#### Scenario: Directory input without a source base
+- **WHEN** a user compiles `src` and the tree has `src/app/money.gleam`
+- **THEN** that document has the URI `app/money.gleam` and the request has no `sources.root`
+
+#### Scenario: Same URIs from any current directory
+- **WHEN** a user in `/work/shop` compiles `src` and a user in `/tmp` compiles `/work/shop/src`, both without
+  `--source-base`
+- **THEN** the two requests have the same URIs
+
+#### Scenario: Module paths of a published extension
+- **WHEN** a user in the parent of `generated` compiles `generated/src`, which holds `Acme/Rules/Main.elm`, with
+  the Elm extension
+- **THEN** that document has the URI `Acme/Rules/Main.elm`, which matches the module `Acme.Rules.Main`
 
 #### Scenario: Explicit source base
 - **WHEN** a user compiles `/work/shop/src` with `--source-base /work/shop`
-- **THEN** the URIs are the same as in the scenario above
+- **THEN** the document has the URI `src/app/money.gleam`
 
 #### Scenario: Input outside the source base
 - **WHEN** a user compiles `/other/src` with `--source-base /work/shop`

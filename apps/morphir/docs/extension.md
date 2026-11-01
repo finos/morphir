@@ -133,20 +133,24 @@ Consider `extension compile main.mbt --package acme/rules --output model`:
    `morphir.frontend.compile` compiles on MEP `0.1`. An operation that the
    extension does not claim is refused with `extension.capability_unavailable`
    and exit status 2.
-4. **Sources.** The CLI reads a bounded snapshot of the source file or
-   directory. It reads only the files with the file extensions that the
-   extension claims, in name order, and sends the claimed language ID. A
-   single file keeps its clean relative path as its URI; an absolute path or a
-   path with `..` keeps only its file name. Files in a directory keep their
-   path relative to that directory. A frontend that does not claim
-   `multiDocument` compiles one document for each request, so a snapshot with
-   more than one source file is refused with `extension.capability_unavailable`
-   and exit status 2 before the session. The walk skips hidden directories (names
+4. **Sources.** The CLI selects the language from the claims. When the
+   extension claims one language, the CLI uses it. When it claims several,
+   `--language` must name one of them. Without `--language`, the command is
+   refused with `extension.input_invalid`, and the message names the claimed
+   languages. A `--language` that the extension does not claim is refused with
+   `extension.capability_unavailable`. Then the CLI reads a bounded snapshot of
+   the source file or directory. It reads only the files with the file
+   extensions of the selected language, and it sends that language ID at the
+   top of the request and in each document. Each document URI is the file's
+   path relative to the source base, with percent-encoded segments, and the
+   documents are in URI byte order (see
+   [Source trees and document URIs](#source-trees-and-document-uris)). A
+   frontend that does not claim `multiDocument` compiles one document for each
+   request, so a snapshot with more than one source file is refused with
+   `extension.capability_unavailable`. The walk skips hidden directories (names
    that start with `.`) and the build and dependency directories `.git`,
-   `.mooncakes`, `_build`, `node_modules` and `.venv`. It refuses, with
-   `extension.input_invalid`, a symbolic link, a special file, and an entry
-   name that contains `\`, `/`, `:` or NUL or is `.` or `..`, because such a
-   name would make a document URI absolute or traversing.
+   `.mooncakes`, `_build`, `node_modules` and `.venv`. Every refusal in this
+   step exits with status 2 and starts no operation session.
 5. **Session.** It starts a fresh worker from the same verified bytes and sends
    `morphir.initialize`. It requires the returned identity and capabilities to
    equal the probed claims, then sends `morphir.initialized` and the operation.
@@ -161,12 +165,123 @@ Consider `extension compile main.mbt --package acme/rules --output model`:
 (with `envelopeVersion`) is sent on MEP `0.2.0-draft.1` with the envelope's
 tuple; plain Morphir IR JSON is sent to `morphir.backend.generate` on MEP `0.1`.
 
+### Source trees and document URIs
+
+A Gleam project keeps its modules in a tree under `src`, and the modules import
+one another by their path below `src`:
+
+```text
+/work/shop/
+  gleam.toml
+  src/
+    app/money.gleam       import shared/numbers
+    app/orders.gleam      import app/money
+    shared/numbers.gleam
+```
+
+Run the compile from the project directory and name `src`:
+
+```sh
+cd /work/shop
+morphir extension compile src --package acme/shop --output model --extension-pin pin.json
+```
+
+The request holds the whole tree as three documents. Each URI is the file's path
+relative to the **source base**. Without `--source-base`, the source base is the
+directory that you name, here `src`:
+
+```json
+{
+  "languageId": "gleam",
+  "sources": {
+    "documents": [
+      { "uri": "app/money.gleam", "languageId": "gleam", "version": 0, "text": "..." },
+      { "uri": "app/orders.gleam", "languageId": "gleam", "version": 0, "text": "..." },
+      { "uri": "shared/numbers.gleam", "languageId": "gleam", "version": 0, "text": "..." }
+    ]
+  }
+}
+```
+
+The Gleam guest names the modules `app/money`, `app/orders` and
+`shared/numbers` from these paths. It also removes a leading path up to a `src`
+segment, so `compile .` from `/work/shop` sends `src/app/money.gleam` and gives
+the same module names. The current directory has no effect on the URIs:
+`compile /work/shop/src` from any directory sends the same request. The request
+has no `sources.root` and no absolute host path, so the model's source
+provenance is the same on every machine.
+
+The default suits the published Elm and Python extensions, which also name a
+module from its path below the source directory. For example, the Elm
+extension requires the module `Acme.Rules.Main` in `Acme/Rules/Main.elm`, so
+`compile generated/src` must send `Acme/Rules/Main.elm`, not
+`generated/src/Acme/Rules/Main.elm`.
+
+When you name a directory below the root of the module paths, give that root
+with `--source-base`. Then each URI is the path relative to the source base, and
+the module names do not depend on the directory that you name. This command
+sends `src/app/money.gleam` and `src/app/orders.gleam`, so the Gleam guest names
+the modules `app/money` and `app/orders`, as for `compile src`:
+
+```sh
+morphir extension compile /work/shop/src/app --source-base /work/shop --package acme/shop --output model --extension-pin pin.json
+```
+
+Without `--source-base`, the same input sends `money.gleam` and `orders.gleam`,
+and the modules are `money` and `orders`.
+
+The input must be the source base or a path below it. The CLI compares the two
+paths after it makes them absolute against the current directory and removes
+`.` and `..`; it does not resolve symbolic links. An input outside the source
+base, such as `/other/src` with `--source-base /work/shop`, is refused with
+`extension.input_invalid`, and the message names the source base. A single
+file without `--source-base` keeps the earlier rule, so a MoonBit request does
+not change: a clean relative path such as `src/main.mbt` keeps its nesting, and
+an absolute path or a path with `..` keeps only its file name. A single file
+with `--source-base` takes its path relative to the source base.
+
+Each URI segment is encoded as an RFC 3986 path segment. Letters, digits, `-`,
+`.`, `_` and `~` stay as they are, so a plain path does not change. Each other
+byte of the UTF-8 name is written as `%` and two uppercase hexadecimal digits:
+`src/my module.gleam` becomes `src/my%20module.gleam`, and `café.gleam` becomes
+`caf%C3%A9.gleam`. Thus a URI never holds a raw `%`, `?`, `#`, `\`, `:`, space,
+control character or non-ASCII character. An entry name that is empty, `.` or
+`..` is refused, and two files that give the same URI are refused, both with
+`extension.input_invalid`.
+
+The documents are sorted by the whole URI in byte order, so `a-c.gleam` comes
+before `a/b.gleam` (`-` is `0x2D` and `/` is `0x2F`). Two compiles of the same
+tree with the same options send byte-identical `compileModel` requests. The
+`contextDigest` is the SHA-256 of the package name and the options only, so
+other trees with the same package and options have the same `contextDigest`.
+
+The CLI checks these limits before it starts the operation session. Each refusal
+has the code `extension.input_invalid`, exit status 2, and a message that names
+the limit and its value, a relative path or a URI:
+
+| Check | Limit | Message |
+| --- | --- | --- |
+| Documents | 1,024 | `the sources have 1025 documents, more than the limit of 1024 documents` |
+| One file | 1 MiB | `the source file src/big.gleam is larger than the limit of 1048576 bytes for one file` |
+| All files | 2 MiB | `the sources are larger than the limit of 2097152 bytes of source text in total` |
+| Directory entries | 16,384 | `the source directory has more entries than the limit of 16384 entries` |
+| Directory depth | 32 | `the source directory src/a/... is deeper than the limit of 32 directories` |
+| Links and special files | none allowed | `src/vendor is a link or a special file` (the path relative to the source base) |
+| UTF-8 text | every file | `the source file src/my%20latin.gleam is not UTF-8 text` (the URI) |
+| No document | at least one | `no source file in docs has a claimed file extension (.gleam)` |
+
+The walk does not follow symbolic links. After these checks, the framed request
+must still fit in 4 MiB, because JSON escaping can make a request larger than its
+sources; a larger request is refused with `extension.request_limit`.
+
 ## Compile and generate options
 
 | Option | Commands | Meaning |
 | --- | --- | --- |
 | `--extension-pin FILE` | all | The pin; or `MORPHIR_EXTENSION_PIN` |
 | `<source>` | compile | A source file, or a directory snapshot of claimed source files |
+| `--language ID` | compile | One of the claimed languages; required when the extension claims more than one |
+| `--source-base DIR` | compile | The directory that document URIs are relative to; by default a directory source is its own base. The source must be this directory or below it |
 | `<model>` | generate | A model envelope, or plain Morphir IR JSON |
 | `--package NAME` | compile | The package name; required |
 | `--model-format ion\|json` | compile | The one model tuple that the CLI offers on the model line. Without it, the CLI offers Ion, then JSON, and uses the first tuple that the extension agrees on. MEP `0.1` compiles return Morphir JSON and refuse `ion` |
@@ -267,7 +382,7 @@ process tree. A failure leaves no output directory and no
 | Frame header | 8 KiB |
 | Offered model limits | 2,796,204 encoded bytes, 2 MiB decoded, depth 128, 100,000 nodes; the worker's smaller values apply |
 | Generate input | 4 MiB, depth 128, 100,000 nodes |
-| Compile sources | 1,024 files, 2 MiB in total, 16,384 directory entries, depth 32 |
+| Compile sources | 1,024 files, 1 MiB for one file, 2 MiB in total, 16,384 directory entries, depth 32 |
 | Guest stderr kept | The last 64 KiB |
 | Deadline | 60,000 ms by default, at most 594,000 ms, for the probe and the session together |
 | Grace after `exit` | 2 seconds, then the host stops the tree |

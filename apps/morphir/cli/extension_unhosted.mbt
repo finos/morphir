@@ -14,8 +14,9 @@ pub fn WorkerHosting::none() -> WorkerHosting {
 /// `extension.runtime_unavailable` and exit 2, in the report of the hosted
 /// targets.
 fn extension_command(cli : Cli, context : CommandContext) -> Int32 {
-  // The WASI entry passes no launchers.
+  // The WASI entry passes no launchers and starts no worker to stop.
   ignore(context.workers)
+  ignore(context.stop_requested)
   let message = "this CLI build has no worker host; use the native or npm CLI"
   let report : Json = {
     "profile": "morphir/command-result",

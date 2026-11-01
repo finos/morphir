@@ -95,8 +95,9 @@ The items below are the whole behavior of the change. Each one says what main al
 - **Source trees.** `compile` accepts a directory and collects the regular files that have an extension the
   selected language claims, in a bounded and sorted snapshot, with no `sources.root`. *On main:* directory input,
   the claimed extensions and no `sources.root`. *Left:* the URI of each document is its path relative to a source
-  base (the current directory, or `--source-base`), each segment is percent-encoded, and documents are sorted by
-  the whole URI in byte order.
+  base (`--source-base`, or else the input directory, so the default URIs do not change), each segment is
+  percent-encoded, and documents are sorted by the whole URI in byte order (SRC-1, decided by Damian Reeves,
+  2026-11-01).
   - The walk keeps main's skip list: hidden directories, `.git`, `.mooncakes`, `_build`, `node_modules` and
     `.venv` (FIT-4, decided by Damian Reeves, 2026-10-31).
   - It also honors ignore files, in `gitignore` syntax with Git's nesting rules. By default it reads the layers
@@ -197,7 +198,8 @@ worker host").
   `data.lossy_conversion` (exit 2) when every conversion would lose data and the user did not give
   `--allow-model-loss`, instead of failing with `extension.tuple_unavailable`. A converting `generate` reports an
   `extension.model_converted` info diagnostic and adds no file to the output. A directory compile names each
-  document relative to the source base, not to the named directory, so `compile src` sends `src/app/money.gleam`. A
+  document relative to the named directory, as before, so `compile src` sends `app/money.gleam`; with
+  `--source-base /work/shop`, `compile /work/shop/src/app` sends `src/app/money.gleam`. A
   directory compile does not read the files that Git ignores (global excludes, `.git/info/exclude` and the
 `.gitignore` files from the work-tree root down) or that a `.morphirignore` ignores; `--ignore-mode contained`
 reads only the ignore files in the tree. A guest

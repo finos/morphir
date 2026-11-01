@@ -248,7 +248,10 @@ fn command_schema(path : String) -> CliSchema {
     "extension describe" => options = extension_options
     "extension compile" => {
       options = extension_options +
-        ["package", "frontend-profile", "model-format", "output", "ir-version"]
+        [
+          "package", "frontend-profile", "model-format", "output", "ir-version",
+          "language", "source-base",
+        ]
       positional = true
     }
     "extension generate" => {
@@ -370,7 +373,9 @@ fn render_help(path : String) -> String {
     text += "A contract 0.2.0 pin names the artifact (path, sha256), its runtime and an optional descriptor.\n"
     text += "The host probes the worker, then runs one fresh session; no helper or Node runtime is used.\n"
     text += "Process and WASM runtimes run on the native and npm CLIs; WASI builds refuse them with extension.runtime_unavailable.\n"
-    text += "Sources and operations come from the extension's claims: compile reads the claimed file extensions.\n"
+    text += "Sources and operations come from the extension's claims: compile reads the file extensions of one claimed language.\n"
+    text += "--language selects that language when the extension claims several.\n"
+    text += "Each document URI is the file's path relative to --source-base (default: the input directory), percent-encoded.\n"
     text += "compile writes model-envelope.json and model.ionb or model.json, or morphir-ir.json on MEP 0.1.\n"
     text += "generate reads a model envelope or Morphir IR JSON and writes the returned artifacts.\n"
     text += "JSON returns morphir/command-result 0.1.0; diagnostics and guest stderr go to stderr.\n"
