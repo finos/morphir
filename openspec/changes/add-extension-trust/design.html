@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>add-extension-trust: design</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> as it is, and write the content inside <main>.
+  Styles and scripts are files in docs/templates/assets/, referenced and not embedded. In a copy, change the
+  "assets/" prefix of each href and src to the relative path from the copy to that directory, for example
+  "../../docs/templates/assets/" from .dev/beads-specs/. See AGENTS.md, "Specs and plans are HTML documents".
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc.
+-->
+<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+</head>
+<body>
+<main>
+<h1>add-extension-trust: design</h1>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.64.35</code> · 2026-10-30 · proposed</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See proposal.md, "Why". This change builds on <code>acquire-extensions-from-repositories</code> (bead
+<code>morphir-ukvn.5.64.34</code>): its acquisition package, <code>extensions/v1</code> layout, index format, publish
+workflow and admission workflow. The MVP already records what this change checks:</p>
+<ul>
+<li>index entries carry the publisher identity (owner/repo and release workflow) registered by the owner;</li>
+<li><code>morphir extension publish --release</code> attaches a <code>.sigstore.json</code> attestation bundle beside each
+  artifact, made by <code>actions/attest</code>;</li>
+<li><code>morphir repository admit</code> attests <code>index.json</code> on every change. That root states the digest of each per-extension history, so the attestation also covers the publisher identities and artifact digests in the histories.</li>
+</ul>
+<p>GitHub artifact attestations are Sigstore bundles: a DSSE envelope with an in-toto SLSA provenance statement, a
+Fulcio certificate for the workflow's OIDC identity and a Rekor log entry. Public repositories use the Sigstore
+public-good instance. A MoonBit verifier is being proposed in moonrockz/moon-lander (worktree
+<code>moon-lander/sigstore-verification</code>).</p>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> one trust decision per repository; one prompt per operation; unattended options for CI;
+verification at install only, with activation offline.</p>
+<p><strong>Non-goals:</strong> a Sigstore TUF client (the trusted root is embedded); signing in the CLI; trust for
+local-directory repositories; publisher repositories that cannot attest (private repositories below GitHub Enterprise
+Cloud).</p>
+
+<h2 id="decisions">Decisions</h2>
+
+<h3 id="trust-1">TRUST-1. The repository is the unit of trust</h3>
+<p>The user trusts repositories; each trusted index names the publisher identity for each entry. Trusting a
+repository trusts its owner's curation, so a new extension or a new publisher that the owner admits later installs
+without a prompt. A changed publisher identity for an extension the user already has asks again on update, for every
+repository including <code>finos</code>; <code>--trust</code> and <code>--trust-all</code> answer it in CI. The
+<code>finos</code> repository and its owner identity (finos/morphir and its admission workflow path) are compiled into
+the CLI as the default trust. For any other repository the owner identity comes from its <code>index.json</code> and is
+shown in the trust prompt (trust on first use).</p>
+<p>Alternative: trust each publisher separately (rejected: more prompts for the common case; an owner who admits a
+publisher already vouches for it).</p>
+
+<h3 id="trust-2">TRUST-2. Attestation is required for GitHub-hosted repositories</h3>
+<p>Once this change lands, an artifact from a GitHub-hosted repository without a valid attestation does not install,
+and an index without a valid owner attestation is searchable but not installable. Local-directory repositories stay
+digest-only. This narrows the 2026-10-17 note in <code>morphir-ukvn.5.64</code>, which made authentication optional:
+the user's trust decision names identities, and only an attestation shows that bytes came from them.</p>
+
+<h3 id="trust-3">TRUST-3. A top-level trust command and shared options</h3>
+<p><code>morphir trust add|list|remove &lt;repository&gt;</code>, stored in <code>extensions/v1/trust.json</code>. The
+MoonBit CLI has no package commands yet; when package trust arrives it can join this command. Every prompting command
+(<code>extension install</code>, <code>extension update</code>, <code>setup</code>, and <code>compile</code> and
+<code>generate</code> with on-demand installation) takes <code>--trust &lt;repository&gt;</code> (repeatable) and
+<code>--trust-all</code>.</p>
+
+<h3 id="sig-1">SIG-1. Verify with the Moon-Lander Sigstore package at install time</h3>
+<p>The acquisition package calls the Moon-Lander verifier with the artifact digest, the attestation bundle, the
+embedded Sigstore public-good trusted root, the policy from the index entry (issuer
+<code>https://token.actions.githubusercontent.com</code>, source repository, signer workflow, hosted runners only) and
+the current time. The bundle comes from the <code>.sigstore.json</code> asset beside the artifact, or from the GitHub
+attestations API by digest as a fallback (with <code>GITHUB_TOKEN</code> when present). It is stored in the lock as an
+optional member of the MVP lock record. Activation does not verify signatures again; it rehashes the stored artifact.</p>
+
+<h3 id="sig-2">SIG-2. Admission uses the same verifier</h3>
+<p><code>morphir repository admit</code> verifies each release's attestations against the registered publisher
+repository and workflow with the same code users run, and admits nothing that fails. Releases admitted by the MVP are
+re-verified once when this change first runs; any that fail are withdrawn from the index with a recorded reason.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>The Moon-Lander verifier is late or misses a target.</td><td>The MVP works without it; this change starts when
+the package passes its conformance fixtures on native and js.</td></tr>
+<tr><td>A renamed release workflow at a <code>finos</code> publisher makes CI updates fail.</td><td>The prompt and the
+error name both identities; CI passes <code>--trust finos</code> after review.</td></tr>
+<tr><td>GitHub API rate limits on attestation lookups.</td><td>Prefer the <code>.sigstore.json</code> asset; use the
+API only as a fallback.</td></tr>
+<tr><td>Trust on first use for non-finos owner identities.</td><td>The prompt shows the identity; the record keeps it;
+a later change of owner identity asks again.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>Group 1 (trust decisions and prompts) can land after the MVP's groups 1 and 2. Group 2 (verification) lands when the
+Moon-Lander verifier is published. Extensions installed before this change keep running; their next update goes
+through verification. The SIG-2 re-verification runs once in the <code>finos</code> admission workflow.</p>
+
+</main>
+</body>
+</html>

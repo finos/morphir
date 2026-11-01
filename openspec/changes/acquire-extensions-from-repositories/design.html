@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>acquire-extensions-from-repositories: design</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> as it is, and write the content inside <main>.
+  Styles and scripts are files in docs/templates/assets/, referenced and not embedded. In a copy, change the
+  "assets/" prefix of each href and src to the relative path from the copy to that directory, for example
+  "../../docs/templates/assets/" from .dev/beads-specs/. See AGENTS.md, "Specs and plans are HTML documents".
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc.
+-->
+<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+</head>
+<body>
+<main>
+<h1>acquire-extensions-from-repositories: design</h1>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.64.34</code> · 2026-10-30 · proposed (MVP pipeline)</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#flow">How the parts fit</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See proposal.md, "Why", for the motivation. This change is the MVP pipeline: it uses and requires no trust.
+<code>add-extension-trust</code> adds trust decisions and Sigstore verification as a fast follower. The facts that
+shape the approach:</p>
+<ul>
+<li>The extension lifecycle commands in <code>apps/morphir/extension.mbt</code> and the explicit
+  <code>--services-pin</code>/<code>--services-helper</code> route described in <code>apps/morphir/docs/extension.md</code>
+  delegate repository, store, catalog and lock work to a Rust helper (<code>apps/morphir/native-services/</code>) that
+  links <code>morphir-distribution</code>, <code>morphir-host</code> and <code>morphir-host-native</code> from
+  finos/morphir.</li>
+<li>Running an extension also needs explicit pins and helpers: <code>core-wasm-process</code> runs inside a pinned Node
+  host, and native and Extism guests go through the Rust helper. A separate change, being planned in the
+  <code>mep-worker-host</code> worktree, gives the CLI its own host on a worker model: an MEP channel connects workers
+  (out-of-process native guests; WASM guests in Web Workers in the browser) to the host. This change waits on it for
+  probing and activation.</li>
+<li>Published bundles already exist and must stay readable: <code>release.json</code> descriptor
+  <code>2.0.0-draft.2</code> with claim sets at <code>0.1.0-draft.2</code>, each artifact with its <code>.sha256</code>
+  file (finos/morphir-python <code>extension/python/v0.4.1</code>, finos/morphir-elm <code>extension/elm/v0.1.0</code> to <code>v0.4.1</code>, which are the Elm classic extension
+  under its old name).</li>
+<li>GitHub serves <code>raw.githubusercontent.com</code>, <code>api.github.com</code> and Pages with
+  <code>Access-Control-Allow-Origin: *</code>, but release asset downloads (<code>github.com/.../releases/download</code>
+  and its <code>release-assets.githubusercontent.com</code> redirect) carry no CORS header. Checked 2026-10-30.</li>
+<li><code>morphir compile</code> selects its frontend in <code>apps/morphir/compilation.mbt</code> from the built-in
+  <code>@moonbit_frontend</code> and <code>@elm_frontend</code> providers, with a <code>--provider</code> override.</li>
+<li><code>adopt-moon-lander</code> (<code>morphir-ukvn.5.99</code>) moves configuration, hosting and logging onto
+  Moon-Lander. This change uses whatever configuration loader is current when each group lands.</li>
+<li>The MoonBit CLI already has <code>morphir toolchain setup</code>. The new top-level <code>morphir setup</code> is a
+  different command.</li>
+</ul>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong></p>
+<ul>
+<li>One acquisition implementation, in MoonBit, that serves native, Node and browser hosts. Only the I/O edges differ.</li>
+<li>Short default paths. A user reaches a working compile in one command (<code>morphir setup</code> or the compile
+  itself). A publisher needs at most three commands, an owner at most three (anti-goal: four or more).</li>
+<li>Installed state is checked at install (digest, probe) and checked offline at every activation.</li>
+<li>Everything the trust follow-up needs is recorded now: publisher identities in index entries, attestations on
+  releases and on the index.</li>
+</ul>
+<p><strong>Non-goals:</strong></p>
+<ul>
+<li>Trust decisions, trust prompts and signature verification. They are <code>add-extension-trust</code>.</li>
+<li>The extension host itself. It is the worker-host change; this change calls it.</li>
+<li>Signing in the CLI. Publishing signs with <code>actions/attest</code> inside the generated workflow.</li>
+<li>A hosted registry service. Admission runs in the owner's GitHub workflow.</li>
+<li>Reading or migrating Rust CLI extension state, or local-directory repositories that the Rust tooling created.</li>
+<li>Package (model) acquisition. Tool acquisition.</li>
+<li>Browser storage edges and an in-browser acceptance test. This change builds the package for js and wasm, filters to
+  WASM artifacts on hosts that cannot start processes, and records mirrored locations; the Workbench wires the browser
+  edges later.</li>
+</ul>
+
+<h2 id="flow">How the parts fit</h2>
+<svg viewBox="0 0 860 300" width="100%" role="img" aria-label="Publisher, repository owner and user flow" font-family="sans-serif" font-size="13" fill="currentColor">
+  <defs><marker id="h" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+  <rect fill="none" stroke="currentColor" stroke-width="1.2" x="10" y="20" width="250" height="110" rx="8"/>
+  <text x="22" y="42">Publisher repo (e.g. finos/morphir-elm)</text>
+  <text x="22" y="66">release workflow:</text>
+  <text x="22" y="86">publish --stage → actions/attest</text>
+  <text x="22" y="106">→ publish --release</text>
+  <rect fill="none" stroke="currentColor" stroke-width="1.2" x="305" y="20" width="250" height="140" rx="8"/>
+  <text x="317" y="42">Owner repo (e.g. finos/morphir)</text>
+  <text x="317" y="66">publishers list (main, reviewed)</text>
+  <text x="317" y="86">admission workflow (schedule)</text>
+  <text x="317" y="106">→ check → index branch</text>
+  <text x="317" y="126">→ serial+1, attest index</text>
+  <text x="317" y="146">→ optional CORS mirror</text>
+  <rect fill="none" stroke="currentColor" stroke-width="1.2" x="600" y="20" width="250" height="250" rx="8"/>
+  <text x="612" y="42">User's CLI</text>
+  <text x="612" y="66">enabled repositories (finos default)</text>
+  <text x="612" y="86">cached indexes + serials</text>
+  <text x="612" y="106">capability query</text>
+  <text x="612" y="126">download → digest</text>
+  <text x="612" y="146">→ probe (worker host)</text>
+  <text x="612" y="166">→ store, catalog, lock</text>
+  <text x="612" y="196">compile/generate:</text>
+  <text x="612" y="216">installed → else query + install</text>
+  <text x="612" y="246">activation: offline rehash</text>
+  <line stroke="currentColor" stroke-width="1.2" marker-end="url(#h)" x1="260" y1="75" x2="303" y2="75"/>
+  <text x="262" y="70">release</text>
+  <line stroke="currentColor" stroke-width="1.2" marker-end="url(#h)" x1="555" y1="95" x2="598" y2="95"/>
+  <text x="556" y="90">index</text>
+  <path stroke="currentColor" stroke-width="1.2" marker-end="url(#h)" d="M135,130 C135,250 560,250 598,150"/>
+  <text x="300" y="232">artifact (native, Node) · mirror (browser)</text>
+</svg>
+
+<h2 id="decisions">Decisions</h2>
+
+<h3 id="dist-1">DIST-1. A pure MoonBit acquisition package with host edges</h3>
+<p>A new package (working name <code>pkgs/morphir-extensions</code>) owns repository reading, resolution, store,
+catalog and lock logic as pure functions over bytes and records. The host supplies four edges: HTTP GET, durable
+storage (filesystem under <code>MORPHIR_HOME</code>, or browser storage), clock and an interactive prompt. Probing and
+activation go through the worker host (HOST-1). <code>apps/morphir</code> wires the native and Node edges; the
+Workbench wires the browser edges later.</p>
+<p>Alternatives: extend the Rust helper with GitHub support (rejected: the Rust CLI and its library path are being
+sunset, and it cannot run in the browser); port the Rust library one to one (rejected: we want the new layout and a
+smaller surface, see DIST-2).</p>
+
+<h3 id="dist-2">DIST-2. A new versioned layout under MORPHIR_HOME</h3>
+<pre><code class="language-bash">$MORPHIR_HOME/extensions/v1/
+  layout.json                      # {"layout": 1}
+  store/sha256/&lt;hex&gt;               # checked artifacts, read-only
+  catalog.json                     # active extension per id
+  locks/&lt;id&gt;.json                  # selection, digests, publisher identity when recorded
+  repositories.json                # configured repositories, enabled flag
+  repositories/&lt;name&gt;/index/...    # last accepted index (cache)
+  repositories/&lt;name&gt;/state.json   # accepted serial, fetched-at</code></pre>
+<p>Writes go to a staging file and are renamed into place; the store is written before the catalog and lock that
+refer to it. Files outside <code>extensions/v1/</code>, including Rust CLI state, are never read or changed. The trust
+follow-up adds <code>trust.json</code> and attestation bundles in locks within <code>v1</code>, as optional members. A
+later incompatible layout uses <code>v2/</code> and an explicit migration.</p>
+
+<h3 id="dist-3">DIST-3. Keep the publisher formats, add an index format</h3>
+<p>The reader accepts the release descriptor <code>2.0.0-draft.2</code> and claims <code>0.1.0-draft.2</code> exactly as
+published, including the draft.1 conversion rules in finos/morphir
+<code>docs/design/draft/extensions/distribution-and-acquisition.md</code>. The repository index is a new document,
+<code>morphir-extension-index</code> <code>0.1.0-draft.1</code>: an <code>index.json</code> with repository name,
+serial, recommended extensions, owner identity and the SHA-256 digest of each history, and one JSON Lines history per
+extension id whose records add the optional publisher identity, channel and artifact locations to the descriptor's
+per-artifact data. The CLI refuses a history whose digest differs from the one in <code>index.json</code>, so the root
+binds everything that resolution reads. Without this binding, a later signature on the root would not protect the
+publisher identities and artifact digests in the histories. Local-directory and GitHub-hosted repositories use the same
+format. Must-ignore-unless-critical applies, as for the descriptors.</p>
+
+<h3 id="host-1">HOST-1. Probe and activation through the worker host</h3>
+<p>The acquisition package asks the worker host to describe a staged artifact (identity, version, claims) and to start
+an installed one from its stored artifact and recorded runtime. It never starts processes or loads WASM itself. Until
+the worker host lands, groups 1 and 2 can land with the probe behind an interface and tested with an in-memory
+worker; installing for real (task 1.6), provider acquisition (group 4) and frontend removal (group 6) wait for the
+worker host.</p>
+
+<h3 id="repo-1">REPO-1. Repository locations and the index branch</h3>
+<p>A GitHub-hosted repository is written <code>github:&lt;owner&gt;/&lt;repo&gt;[@&lt;branch&gt;][/&lt;path&gt;]</code>. The
+default branch is <code>morphir-index</code>, an orphan branch like <code>gh-pages</code>, protected so that only the
+admission workflow writes to it. The CLI reads it from <code>raw.githubusercontent.com</code>, which allows
+cross-origin reads, and never needs the GitHub API to read an index, which avoids its rate limit. Release assets are
+downloaded from their release URL on native and Node. A <code>GITHUB_TOKEN</code> in the environment is sent only to
+GitHub hosts, and only when present.</p>
+
+<h3 id="repo-2">REPO-2. Index freshness by serial</h3>
+<p>The admission workflow increases <code>index.json</code>'s serial on every change. The CLI refuses a lower serial
+than the one it last accepted, which stops an accidental or malicious rollback to an older index. The workflow also
+attests <code>index.json</code> with <code>actions/attest</code>; the MVP does not verify that attestation, and
+<code>add-extension-trust</code> does.</p>
+
+<h3 id="repo-3">REPO-3. Capability lookup over index claims</h3>
+<p>A query is <code>(role, language-or-target, IR release)</code>. The CLI filters index records by claim, platform
+(process artifacts), runtime support of the current host (WASM only where processes cannot start), host version
+(<code>requires.host</code>) and channel, and orders the results: the repository's recommended provider first, then
+by repository order, then newest version. No artifact is downloaded to answer a query.</p>
+
+<h3 id="prov-1">PROV-1. Provider selection reads the catalog, then the repositories</h3>
+<p>Compile and generate build their provider list from the installed catalog, apply an explicit choice (the existing
+<code>--provider</code> option, or the workspace's frontend provider setting), and on a miss run REPO-3. Interactive
+runs offer the result and install it through the same path as <code>extension install</code>; non-interactive runs
+fail with the command to run, unless <code>--install-missing</code> is given. The <code>@elm_frontend</code> and
+<code>@moonbit_frontend</code> imports leave <code>apps/morphir/moon.pkg</code> only after the <code>finos</code> index
+offers both frontends (see <a href="#migration">Migration plan</a>).</p>
+
+<h3 id="prov-2">PROV-2. Compile keeps its output contract</h3>
+<p><code>morphir compile</code> keeps its options (<code>--language</code>, <code>--provider</code>,
+<code>--model-format</code>), its outputs (<code>ion-binary</code>, <code>ion-text</code>, <code>morphir-json</code>
+checkpoints) and its JSON report when the provider is an installed extension. An adapter maps the extension's
+<code>model-envelope.json</code> and <code>model.ionb</code> result into the checkpoint backend. The existing compile tests
+must pass unchanged after group 6; differences are bugs, not migrations.</p>
+
+<h3 id="ux-1">UX-1. Setup: recommended set first, capability view on customize</h3>
+<p>The first screen lists the recommended set (from each enabled repository's <code>index.json</code>) plus providers
+the workspace configuration needs, with "Install the recommended set" selected. "Customize" shows roles, then
+languages or targets, with a provider choice per row. Both end on one review screen that confirms the selection. The
+screens use arrow-key selection when the terminal allows raw input and numbered prompts otherwise. Unattended:
+<code>--defaults</code>, <code>--add &lt;id&gt;</code>, <code>--remove &lt;id&gt;</code>. The trust follow-up adds its
+single trust prompt to the review screen.</p>
+
+<h3 id="pub-1">PUB-1. Publishing inside the release workflow</h3>
+<p>Signing stays with GitHub's action, so the generated workflow has three steps around one command:</p>
+<pre><code class="language-bash">morphir extension publish --stage dist          # bundle, descriptor, describe probe
+# uses: actions/attest@v4   with: subject-path: dist/artifacts/*
+morphir extension publish --release dist        # GitHub release with bundle and .sigstore.json files</code></pre>
+<p><code>morphir extension publish setup</code> writes that workflow (permissions <code>contents: write</code>,
+<code>id-token: write</code>, <code>attestations: write</code>) and prints the publisher identity. The publisher's
+default path is: <code>publish setup</code>, commit and push, push a tag. The three-command limit counts the
+publisher's commands, not the jobs inside the workflow. The MVP creates attestations so that releases admitted now can
+be verified once <code>add-extension-trust</code> lands.</p>
+<p><code>publish --stage</code> does not build the extension. It takes artifacts the publisher's own build made (one
+portable WASM artifact, or one native executable per platform) and an optional existing <code>release.json</code>, and
+produces the bundle; it is the MoonBit replacement for <code>extension bundle</code>. Native artifacts are probed on a
+runner of their platform, so for native extensions the generated workflow is a matrix of stage jobs followed by one
+attest-and-release job. Releases made before this change have no index records and are not admitted; publishers cut
+new releases through the workflow.</p>
+
+<h3 id="pub-2">PUB-2. Admission by the owner's scheduled workflow</h3>
+<p><code>morphir repository setup</code> creates the <code>morphir-index</code> branch with an empty index, a
+<code>morphir-publishers.json</code> file on the default branch and the admission workflow (schedule every 30 minutes
+plus <code>workflow_dispatch</code>). <code>morphir repository publisher add &lt;id&gt; &lt;owner/repo&gt;
+&lt;workflow&gt;</code> edits the publishers file, which the owner merges through their normal review. The workflow runs
+<code>morphir repository admit</code>, which lists releases of each registered publisher repository, checks digests
+and claims with the same code users run, appends index records with the registered publisher identity, increases the
+serial, attests <code>index.json</code> and pushes to the index branch. With mirroring on, it also copies admitted
+artifacts to the repository's Pages site. In the MVP the workflow path is recorded but not checked; the trust
+follow-up checks it through the release attestations.</p>
+<p>Commands that write to GitHub use <code>GITHUB_TOKEN</code> in a workflow, and on a workstation use
+<code>GITHUB_TOKEN</code> or the token from <code>gh auth token</code> when <code>gh</code> is installed. If the
+token cannot set branch protection, <code>repository setup</code> still creates everything else and prints the exact
+protection settings for the owner to apply.</p>
+<p>Alternatives: publishers push to the owner (rejected: a token per publisher, the thing trusted publishing avoids);
+an OIDC exchange service (deferred: no service to run now; <code>admit</code> is the step it would call).</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Until <code>add-extension-trust</code> lands, the CLI installs from any enabled repository without checking who
+published an artifact.</td><td>Only <code>finos</code> is enabled by default, and its index is written only by its
+owner's protected workflow; digests and probes still run; releases and indexes carry attestations from day one, so the
+follow-up can verify everything already admitted.</td></tr>
+<tr><td>The worker host takes longer than planned.</td><td>Groups 1 and 2 and the publishing tooling proceed with an
+in-memory worker in tests; real installs, provider acquisition and frontend removal wait (HOST-1).</td></tr>
+<tr><td>GitHub disables scheduled workflows in public repositories after 60 days without activity.</td><td>The
+admission workflow records a heartbeat, and <code>repository list</code> shows index age so users notice a stalled
+index.</td></tr>
+<tr><td>The first Elm or MoonBit compile now needs the network.</td><td><code>morphir setup</code> and
+<code>--install-missing</code>; local-directory repositories for air-gapped sites; the frontends leave the binary only
+after the <code>finos</code> index serves them.</td></tr>
+<tr><td>Browser hosts cannot download release assets.</td><td>Owner mirroring (PUB-2); the CLI reports entries that
+have no cross-origin location.</td></tr>
+<tr><td>Users lose extensions installed by the Rust CLI.</td><td>Documented as breaking; <code>morphir setup</code>
+reinstalls the common set in one command.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<ol>
+<li>Land the MoonBit acquisition core with the index format, local-directory repositories and the new layout; switch
+the lifecycle commands to it and drop their helper flags (group 1). Real installs need the worker host.</li>
+<li>Land GitHub-hosted repository reading, with serials and capability lookup (group 2).</li>
+<li>Land the publish command and the owner admission tooling (group 3). Create the <code>finos</code> index in
+finos/morphir and publish the Elm, Gleam, MoonBit and Python extensions through it. The Elm and Gleam moves are in
+progress in finos/morphir-elm (<code>vnext</code>) and finos/morphir-gleam.</li>
+<li>Land provider acquisition (group 4) and <code>morphir setup</code> (group 5), once the worker host is available.</li>
+<li>Remove the built-in Elm and MoonBit frontends after the <code>finos</code> index serves both and the setup and
+on-demand paths pass their acceptance tests (group 6).</li>
+<li><code>add-extension-trust</code> follows: trust decisions, prompts and Sigstore verification of releases and
+indexes.</li>
+</ol>
+<p>Rollback: until step 5, the built-in frontends still compile, so a faulty acquisition release does not stop
+compiles. Each step is its own release.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>The admission schedule interval (30 minutes is a starting value).</li>
+<li>Browser storage for the layout: the Origin Private File System or IndexedDB. Decided when the Workbench wires the
+browser edges.</li>
+<li>Whether the owner mirror uses Pages or another CORS-enabled host for large artifacts.</li>
+</ul>
+
+</main>
+</body>
+</html>
