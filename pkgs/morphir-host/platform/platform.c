@@ -61,10 +61,36 @@ int morphir_host_size(const char *path) {
 #endif
   return st.st_size > 16777216 ? 16777217 : (int)st.st_size;
 }
+/* Publish the complete directory tree a at the previously absent path b.
+ * 0: published. 1: b exists or cannot be reserved (destination_unavailable).
+ * 2: the rename failed and b stays absent (create_failed). 3: a reservation
+ * could not be removed (reservation_cleanup_failed). Nothing is replaced. */
 int morphir_host_rename_directory_new(const char *a, const char *b) {
 #ifdef _WIN32
-  /* Native Windows connected effects remain explicitly unavailable. */
-  (void)a; (void)b; return 1;
+  /* MoveFileExW without MOVEFILE_REPLACE_EXISTING refuses any existing b in
+   * the same call that renames, so no reservation and no check-then-rename
+   * race exist. Without MOVEFILE_COPY_ALLOWED it never falls back to a copy:
+   * a move to another volume fails, so publication stays one atomic rename. */
+  wchar_t *source = wide_path(a), *target = wide_path(b);
+  if (!source || !target) { int code = source ? 1 : 2; free(source); free(target); return code; }
+  int result = 0;
+  /* POSIX rename refuses a file or a symbolic link as the source of a
+   * directory publication. The caller owns the staging source. */
+  DWORD attributes = GetFileAttributesW(source);
+  if (attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY) ||
+      (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) result = 2;
+  else if (!MoveFileExW(source, target, 0)) {
+    DWORD error = GetLastError();
+    /* Classify only; the failed call changed nothing. As with mkdir on POSIX,
+     * an existing b or a missing parent of b (the source was found above)
+     * means the destination is unavailable. Other errors, such as another
+     * volume or an open handle in the source tree, leave b absent. */
+    result = error == ERROR_ALREADY_EXISTS || error == ERROR_FILE_EXISTS ||
+        error == ERROR_PATH_NOT_FOUND ||
+        GetFileAttributesW(target) != INVALID_FILE_ATTRIBUTES ? 1 : 2;
+  }
+  free(source); free(target);
+  return result;
 #else
   struct stat owned, current;
   if (mkdir(b, 0700)) return 1;

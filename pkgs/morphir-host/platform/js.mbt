@@ -35,6 +35,20 @@ pub fn kind(path : String) -> Int32 raise {
 extern "js" fn rename_directory_new_js(a : String, b : String) -> Int32 =
   #| (a,b)=>{
   #|   const fs=process.getBuiltinModule('node:fs'); let owned;
+  #|   if(process.platform==='win32'){
+  #|     // Windows never renames a directory onto an existing directory, so a
+  #|     // reservation would block the rename. Node has no no-replace rename:
+  #|     // check, then rename, then classify a failure by what is at b.
+  #|     try { if(!fs.lstatSync(a).isDirectory()) return 2; } catch { return 2; }
+  #|     try { fs.lstatSync(b); return 1; } catch(e) { if(e.code!=='ENOENT') return 1; }
+  #|     try { fs.renameSync(a,b); return 0; }
+  #|     catch {
+  #|       try { fs.lstatSync(b); return 1; } catch(e) { if(e.code!=='ENOENT') return 1; }
+  #|       // As with mkdir on POSIX, a missing parent of b is an unavailable destination.
+  #|       try { return fs.statSync(process.getBuiltinModule('node:path').dirname(b)).isDirectory() ? 2 : 1; }
+  #|       catch { return 1; }
+  #|     }
+  #|   }
   #|   try { fs.mkdirSync(b,{mode:0o700}); } catch { return 1; }
   #|   try { owned=fs.lstatSync(b,{bigint:true}); fs.renameSync(a,b); return 0; }
   #|   catch {
@@ -46,8 +60,19 @@ extern "js" fn rename_directory_new_js(a : String, b : String) -> Int32 =
   #| }
 
 ///|
-/// Reserve a previously absent destination, then rename the complete tree.
-/// A populated reservation is never replaced or recursively removed.
+/// Publish the complete tree at a previously absent destination; never
+/// replace one. On POSIX, reserve the destination with an exclusive mkdir,
+/// then rename onto the reservation; a populated reservation is never replaced
+/// or recursively removed. Windows refuses to rename a directory onto an
+/// existing directory, so there the adapter checks that the destination is
+/// absent and renames without a reservation. Node exposes no no-replace
+/// rename, so a residual race remains on Windows: an entry created at the
+/// destination between the check and the rename. A directory there makes the
+/// rename fail, reported as `destination_unavailable`. A file there meets
+/// libuv's replacing MoveFileExW, which Windows documents as unusable when the
+/// source is a directory, so that rename is expected to fail as well. The
+/// native Windows host refuses an existing destination in the rename call
+/// itself and has no such window.
 pub fn rename_directory_new(a : String, b : String) -> Unit raise {
   match rename_directory_new_js(a, b) {
     0 => ()

@@ -198,12 +198,17 @@ function clis(native: string, npmEntry: string, home: string): Cli[] {
   ];
 }
 
-interface Run { status: number | null; stdout: string; stderr: string; report?: any }
+interface Run { status: number | null; stdout: string; stderr: string; elapsedMs: number; report?: any }
+
+/** The CLI's session deadline: the driver passes no `--timeout`, so the CLI default applies. */
+const sessionDeadlineMs = 60000;
 
 function run(cli: Cli, args: string[], cwd: string, timeout = 240000): Run {
+  const started = performance.now();
   const child: SpawnSyncReturns<string> = spawnSync(cli.command, [...cli.prefix, ...args],
     { cwd, env: cli.env, encoding: 'utf8', timeout, killSignal: 'SIGKILL', maxBuffer: 64 * 1024 * 1024 });
-  const result: Run = { status: child.status, stdout: child.stdout ?? '', stderr: child.stderr ?? '' };
+  const elapsedMs = Math.round(performance.now() - started);
+  const result: Run = { status: child.status, stdout: child.stdout ?? '', stderr: child.stderr ?? '', elapsedMs };
   if (args.includes('--json')) {
     try { result.report = JSON.parse(result.stdout); } catch { /* the assertion below names it */ }
     assert.ok(result.report, `${cli.name} ${args.join(' ')}: stdout is not one JSON document:\n${result.stdout}\n${result.stderr}`);
@@ -213,14 +218,20 @@ function run(cli: Cli, args: string[], cwd: string, timeout = 240000): Run {
 
 /** Runs one command in JSON mode and checks its exit status and report. */
 function command(cli: Cli, args: string[], cwd: string, expected: number): any {
+  return timedCommand(cli, args, cwd, expected).report;
+}
+
+/** As `command`, and also returns the command's wall-clock duration. */
+function timedCommand(cli: Cli, args: string[], cwd: string, expected: number): { report: any; elapsedMs: number } {
   const result = run(cli, [...args, '--json'], cwd);
   const tail = `${result.stdout}\n${result.stderr.slice(-4000)}`;
-  assert.equal(result.status, expected, `${cli.name} ${args.join(' ')} exited ${result.status}:\n${tail}`);
+  assert.equal(result.status, expected,
+    `${cli.name} ${args.join(' ')} exited ${result.status} after ${result.elapsedMs} ms (session deadline ${sessionDeadlineMs} ms):\n${tail}`);
   assert.equal(result.report.profile, 'morphir/command-result', tail);
   assert.equal(result.report.contractVersion, '0.1.0', tail);
   assert.equal(result.report.exitCode, expected, tail);
   assert.equal(result.report.state, expected === 0 ? 'succeeded' : 'failed', tail);
-  return result.report;
+  return { report: result.report, elapsedMs: result.elapsedMs };
 }
 
 // ---------------------------------------------------------------------------
@@ -424,12 +435,14 @@ function elmWasmGuest(context: Context) {
       return { detail: `operations ${result.claims.operations.join(', ')}` };
     });
     const compiled = ledger.step({ ...base, cli: cli.name, operation: 'compile' }, () => {
-      const report = command(cli, ['extension', 'compile', join(fixtures, 'elm-extension/v1/package'), '--package', 'Acme.Rules',
-        '--output', 'model', '--extension-pin', pin], directory, 0);
+      const { report, elapsedMs } = timedCommand(cli, ['extension', 'compile', join(fixtures, 'elm-extension/v1/package'),
+        '--package', 'Acme.Rules', '--output', 'model', '--extension-pin', pin], directory, 0);
       assert.equal(report.result.protocolVersion, '0.2.0-draft.1');
       assert.equal(report.result.negotiated.tuple.codec, 'morphir-json');
       mine.model = treeDigests(join(directory, 'model'));
-      return { outputs: outputs(join(directory, 'model'), report.result.output.files) };
+      // A slow WASM runtime on one platform shows here before it reaches the deadline.
+      return { outputs: outputs(join(directory, 'model'), report.result.output.files),
+        detail: `compiled in ${elapsedMs} ms of the ${report.result.bounds?.deadlineMs ?? sessionDeadlineMs} ms session deadline` };
     });
     if (!compiled) continue;
     ledger.step({ ...base, cli: cli.name, operation: 'generate-and-recompile' }, () => {
@@ -636,8 +649,11 @@ function moonbitConsumer(directory: string, generated: string, kitValue: any): s
   writeFileSync(join(directory, 'moon.work'), `members = ${JSON.stringify([generated, consumer, join(repository, 'pkgs/morphir-sdk')])}\n`);
   const moon = spawnSync('moon', ['-C', directory, 'run', '--target', 'native', 'consumer'], { encoding: 'utf8', timeout: 600000 });
   assert.equal(moon.status, 0, moon.stderr.slice(-4000));
-  assert.equal(moon.stdout, kitValue.consumer.expectedStdout);
-  return moon.stdout;
+  // A Windows console program ends its lines with CRLF; the kit states LF. Only
+  // the line ending is normalized; the text must match exactly.
+  const stdout = moon.stdout.replace(/\r\n/g, '\n');
+  assert.equal(stdout, kitValue.consumer.expectedStdout);
+  return stdout;
 }
 
 /**
