@@ -34,9 +34,9 @@ verify the artifact's attestation, and rename the descriptor to `release.json`:
 
 ```console
 mkdir -p bundles/avro
-gh release download extension/avro/v0.3.0 -R finos/morphir-extensions --dir bundles/avro \
+gh release download extension/avro/v0.4.0 -R finos/morphir-extensions --dir bundles/avro \
   --pattern '*.wasm' --pattern '*.wasm.sha256' --pattern '*.release.json'
-gh attestation verify bundles/avro/morphir-avro-0.3.0.wasm -R finos/morphir-extensions \
+gh attestation verify bundles/avro/morphir-avro-0.4.0.wasm -R finos/morphir-extensions \
   --signer-workflow finos/morphir-extensions/.github/workflows/extension-release.yml
 mv bundles/avro/*.release.json bundles/avro/release.json
 ```
