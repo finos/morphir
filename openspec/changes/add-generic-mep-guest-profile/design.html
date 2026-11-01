@@ -127,7 +127,9 @@ model transport. Rejected: the SDK fixture and Python 0.4.2 could not qualify at
 
 <h3 id="gkp-4">GKP-4. IR comparison by stated rules, not bytes</h3>
 <p>Three rules only: object member order; the order of the IR 3 <code>modules</code>,
-<code>types</code> and <code>values</code> lists; the IR 4 type reference short form. Attributes,
+<code>types</code> and <code>values</code> lists; the IR 4 reference short form, only at an
+<code>outputType</code> or a member of <code>inputTypes</code>. Those are the only type positions in
+the fixed package, and the rule must not turn invalid IR elsewhere into the expected IR. Attributes,
 documentation and every other value still compare exactly. Alternative: the MoonBit kit's
 broader canonical form, which drops <code>attributes</code> and <code>doc</code>. Rejected: it would
 hide real differences in typed IR 3 output.</p>

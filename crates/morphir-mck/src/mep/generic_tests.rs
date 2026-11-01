@@ -299,6 +299,38 @@ fn ir_equivalence_has_only_the_stated_rules() {
         *changed.pointer_mut(pointer).unwrap() = wrong;
         assert!(!same_ir(&changed, v4));
     }
+    // The short form applies only at the IR 4 type positions of a value.
+    let mut package = v4.clone();
+    *package
+        .pointer_mut("/distribution/Library/packageName")
+        .unwrap() = json!({"Reference":{"fqname":"mck/generic"}});
+    assert!(!same_ir(&package, v4), "package name must be a string");
+    let mut body = v4.clone();
+    *body
+        .pointer_mut(
+            "/distribution/Library/def/modules/main/Public/values/ready/Public/ExpressionBody/body",
+        )
+        .unwrap() = json!({"Reference":{"fqname":"mck/generic:main#ready"}});
+    let mut short_body = v4.clone();
+    *short_body
+        .pointer_mut(
+            "/distribution/Library/def/modules/main/Public/values/ready/Public/ExpressionBody/body",
+        )
+        .unwrap() = json!("mck/generic:main#ready");
+    assert!(
+        !same_ir(&body, &short_body),
+        "a value body is not a type position"
+    );
+    let mut input_short = v4.clone();
+    let inputs = "/distribution/Library/def/modules/main/Public/values/ready/Public/ExpressionBody/inputTypes";
+    *input_short.pointer_mut(inputs).unwrap() = json!({"flag":"morphir/SDK:basics#bool"});
+    let mut input_long = v4.clone();
+    *input_long.pointer_mut(inputs).unwrap() =
+        json!({"flag":{"Reference":{"fqname":"morphir/SDK:basics#bool"}}});
+    assert!(
+        same_ir(&input_long, &input_short),
+        "input types are type positions"
+    );
     let mut documented = v3.clone();
     *documented
         .pointer_mut("/distribution/3/modules/0/1/value/values/0/1/value/doc")

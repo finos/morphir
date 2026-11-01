@@ -171,8 +171,9 @@ process.
 
 Outputs are compared by meaning. A compiled IR must equal the expected IR after
 three rules only: JSON object member order is ignored; in IR 3 the order of the
-`modules`, `types` and `values` lists is ignored; in IR 4 a `Reference` with an
-`fqname` and no or empty `args` equals the FQName string. Warning and info
+`modules`, `types` and `values` lists is ignored; in IR 4, at an `outputType`
+or a member of `inputTypes`, a `Reference` with an `fqname` and no or empty
+`args` equals the FQName string. Warning and info
 diagnostics are allowed on success; an `error` diagnostic is not. Generated
 files must be text with unique relative paths. The files with a claimed file
 extension of the language must compile again to the expected IR. The kit does

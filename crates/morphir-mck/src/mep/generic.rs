@@ -450,36 +450,53 @@ fn next_id(records: &[Record]) -> u64 {
 
 /// Equivalence for compiled IR. Only three rules apply: JSON object member
 /// order; the order of the IR 3 `modules`, `types` and `values` name-keyed
-/// lists; and the IR 4 short form of a `Reference` without arguments.
+/// lists; and, at the type positions `outputType` and the members of
+/// `inputTypes`, the IR 4 short form of a `Reference` without arguments.
 pub(super) fn canonical(value: &Value) -> Value {
     match value {
         Value::Array(items) => Value::Array(items.iter().map(canonical).collect()),
         Value::Object(fields) => {
-            if fields.len() == 1
-                && let Some(Value::Object(reference)) = fields.get("Reference")
-                && reference.get("fqname").is_some_and(Value::is_string)
-                && reference.keys().all(|k| k == "fqname" || k == "args")
-                && reference.get("args").is_none_or(|a| a == &json!([]))
-            {
-                return reference["fqname"].clone();
-            }
             let mut out = serde_json::Map::new();
             for (key, item) in fields {
-                let mut item = canonical(item);
-                if matches!(key.as_str(), "modules" | "types" | "values")
-                    && let Value::Array(entries) = &mut item
-                    && entries
-                        .iter()
-                        .all(|e| e.as_array().is_some_and(|pair| pair.len() == 2))
-                {
-                    entries.sort_by_key(|e| e[0].to_string());
-                }
+                let item = match (key.as_str(), item) {
+                    ("outputType", _) => canonical_type(item),
+                    ("inputTypes", Value::Object(inputs)) => Value::Object(
+                        inputs
+                            .iter()
+                            .map(|(name, input)| (name.clone(), canonical_type(input)))
+                            .collect(),
+                    ),
+                    _ => {
+                        let mut item = canonical(item);
+                        if matches!(key.as_str(), "modules" | "types" | "values")
+                            && let Value::Array(entries) = &mut item
+                            && entries
+                                .iter()
+                                .all(|e| e.as_array().is_some_and(|pair| pair.len() == 2))
+                        {
+                            entries.sort_by_key(|e| e[0].to_string());
+                        }
+                        item
+                    }
+                };
                 out.insert(key.clone(), item);
             }
             Value::Object(out)
         }
         _ => value.clone(),
     }
+}
+fn canonical_type(value: &Value) -> Value {
+    if let Some(fields) = value.as_object()
+        && fields.len() == 1
+        && let Some(Value::Object(reference)) = fields.get("Reference")
+        && reference.get("fqname").is_some_and(Value::is_string)
+        && reference.keys().all(|k| k == "fqname" || k == "args")
+        && reference.get("args").is_none_or(|a| a == &json!([]))
+    {
+        return reference["fqname"].clone();
+    }
+    canonical(value)
 }
 fn same_ir(actual: &Value, expected: &Value) -> bool {
     canonical(actual) == canonical(expected)

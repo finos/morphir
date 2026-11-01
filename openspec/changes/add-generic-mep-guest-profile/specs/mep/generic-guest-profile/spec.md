@@ -102,8 +102,8 @@ selected IR version for which the guest claims both a `compileModel` and a
 ### Requirement: Semantic IR comparison
 A compiled IR SHALL equal the expected IR after these rules only: JSON object
 member order is ignored; in IR `3` the order of the `modules`, `types` and
-`values` name-keyed lists is ignored; in IR `4` a `Reference` with an
-`fqname` and no or empty `args` equals its FQName string.
+`values` name-keyed lists is ignored; in IR `4`, at an `outputType` or a member of `inputTypes`, a `Reference` with
+an `fqname` and no or empty `args` equals its FQName string.
 
 #### Scenario: Different value order
 - **WHEN** a guest returns IR `3` with `blocked` before `ready`
@@ -112,6 +112,10 @@ member order is ignored; in IR `3` the order of the `modules`, `types` and
 #### Scenario: Long form type reference
 - **WHEN** a guest returns IR `4` with `{"Reference": {"fqname": "morphir/SDK:basics#bool"}}` as an output type
 - **THEN** it equals the expected `"morphir/SDK:basics#bool"`
+
+#### Scenario: Reference outside a type position
+- **WHEN** a guest returns IR `4` with `{"Reference": {"fqname": "mck/generic"}}` as the `packageName`
+- **THEN** the comparison fails
 
 #### Scenario: Wrong type
 - **WHEN** a guest returns IR `4` with output type `Unit` for `ready`
