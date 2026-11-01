@@ -1,0 +1,280 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "profile": "generic-json-library-v1",
+  "package": {
+    "name": "mck/generic",
+    "exposedModules": [
+      "main"
+    ]
+  },
+  "contextDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "expectedIrVersions": {
+    "3.0.0": {
+      "formatVersion": 3,
+      "distribution": [
+        "Library",
+        [
+          [
+            "mck"
+          ],
+          [
+            "generic"
+          ]
+        ],
+        [],
+        {
+          "modules": [
+            [
+              [
+                [
+                  "main"
+                ]
+              ],
+              {
+                "access": "Public",
+                "value": {
+                  "types": [],
+                  "values": [
+                    [
+                      [
+                        "blocked"
+                      ],
+                      {
+                        "access": "Public",
+                        "value": {
+                          "doc": "",
+                          "value": {
+                            "inputTypes": [],
+                            "outputType": [
+                              "Reference",
+                              {},
+                              [
+                                [
+                                  [
+                                    "morphir"
+                                  ],
+                                  [
+                                    "s",
+                                    "d",
+                                    "k"
+                                  ]
+                                ],
+                                [
+                                  [
+                                    "basics"
+                                  ]
+                                ],
+                                [
+                                  "bool"
+                                ]
+                              ],
+                              []
+                            ],
+                            "body": [
+                              "Literal",
+                              [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "morphir"
+                                    ],
+                                    [
+                                      "s",
+                                      "d",
+                                      "k"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "basics"
+                                    ]
+                                  ],
+                                  [
+                                    "bool"
+                                  ]
+                                ],
+                                []
+                              ],
+                              [
+                                "BoolLiteral",
+                                false
+                              ]
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    [
+                      [
+                        "ready"
+                      ],
+                      {
+                        "access": "Public",
+                        "value": {
+                          "doc": "",
+                          "value": {
+                            "inputTypes": [],
+                            "outputType": [
+                              "Reference",
+                              {},
+                              [
+                                [
+                                  [
+                                    "morphir"
+                                  ],
+                                  [
+                                    "s",
+                                    "d",
+                                    "k"
+                                  ]
+                                ],
+                                [
+                                  [
+                                    "basics"
+                                  ]
+                                ],
+                                [
+                                  "bool"
+                                ]
+                              ],
+                              []
+                            ],
+                            "body": [
+                              "Literal",
+                              [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "morphir"
+                                    ],
+                                    [
+                                      "s",
+                                      "d",
+                                      "k"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "basics"
+                                    ]
+                                  ],
+                                  [
+                                    "bool"
+                                  ]
+                                ],
+                                []
+                              ],
+                              [
+                                "BoolLiteral",
+                                true
+                              ]
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  ],
+                  "doc": null
+                }
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    "4.0.0": {
+      "formatVersion": 4,
+      "distribution": {
+        "Library": {
+          "packageName": "mck/generic",
+          "dependencies": {},
+          "def": {
+            "modules": {
+              "main": {
+                "Public": {
+                  "types": {},
+                  "values": {
+                    "blocked": {
+                      "Public": {
+                        "ExpressionBody": {
+                          "inputTypes": {},
+                          "outputType": "morphir/SDK:basics#bool",
+                          "body": {
+                            "Literal": {
+                              "BoolLiteral": false
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "ready": {
+                      "Public": {
+                        "ExpressionBody": {
+                          "inputTypes": {},
+                          "outputType": "morphir/SDK:basics#bool",
+                          "body": {
+                            "Literal": {
+                              "BoolLiteral": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "languages": {
+    "gleam": {
+      "documents": [
+        {
+          "uri": "main.gleam",
+          "text": "pub fn ready() -> Bool {\n  True\n}\n\npub fn blocked() -> Bool {\n  False\n}\n"
+        }
+      ],
+      "malformed": [
+        {
+          "uri": "main.gleam",
+          "text": "pub fn ready( {\n"
+        }
+      ]
+    },
+    "morphir-fixture-flags": {
+      "documents": [
+        {
+          "uri": "main.flags",
+          "text": "ready = true\nblocked = false\n"
+        }
+      ],
+      "malformed": [
+        {
+          "uri": "main.flags",
+          "text": "ready true\n"
+        }
+      ]
+    },
+    "python": {
+      "documents": [
+        {
+          "uri": "main.py",
+          "text": "def ready() -> bool:\n    return True\n\n\ndef blocked() -> bool:\n    return False\n"
+        }
+      ],
+      "malformed": [
+        {
+          "uri": "main.py",
+          "text": "def ready(:\n"
+        }
+      ]
+    }
+  }
+}
