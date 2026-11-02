@@ -92,9 +92,9 @@ CBOR, and it treats that choice as an assumption.
 ## The single-file spelling
 
 A single file is a datagram: a `morphir::` header, then packages, modules, types and values as top-level elements,
-then `morphir_footer::{}`. The draft also lets a reader accept the same content collapsed into one `morphir::` record.
-The datagram and the record are inverse forms of one file. A writer that starts from the IR emits the datagram. The
-branch reads the record for v3 only.
+then `morphir_footer::{}`. A reader also accepts the same content collapsed into one `morphir::` record, whose
+`dependencies` and `modules` lists hold those elements. The datagram and the record are inverse forms of one file. A
+writer that starts from the IR emits the datagram. A v3 `specs` distribution is read from its datagram only.
 
 Annotations name the node, in the order access, role, kind: `public::def::alias::type`, `public::spec::opaque::type`,
 `public::def::value`. Grouping headers put the noun first: `package::spec`, `module::spec`. Names are canonical strings
@@ -255,7 +255,6 @@ tree, which IR `3.1.0` added ([issue 970](https://github.com/finos/morphir/issue
 
 ## Unresolved
 
-- The v4 reader refuses the collapsed `morphir::` record (`morphir-vvgi.8`).
 - A tree orders modules, and the members inside a module, by path. A v3 module's member order therefore changes on a
   round trip. If a consumer depends on member order, the tree needs an order list, and that list would bring back the
   listing the design avoids.

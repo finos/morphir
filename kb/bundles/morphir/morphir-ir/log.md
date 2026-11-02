@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-01
+
+* **Update**: [Amazon Ion IR format](/ion-ir-format.md) records that a v4 reader accepts the collapsed `morphir::` record, as CLI `0.4.0-beta.12` does, and names the record's `dependencies` and `modules` lists.
+
 ## 2026-09-24
 
 * **Creation**: Added [IR 3.1.0 adds a Specs distribution and v3 document trees](/decisions/0018-ir-3-1-adds-specs-and-v3-document-trees.md). IR `3.1.0` adds a v3 `Specs` distribution and v3 JSON and YAML document trees, writers emit the lowest version that fits, and the reference support table becomes `[3.0.0,3.2.0),[4.0.0,4.1.0)`.
