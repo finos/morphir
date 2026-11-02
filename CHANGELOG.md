@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The CLI no longer ships `zip` 8.6.0, which [GHSA-m665-v7pm-7grj](https://github.com/advisories/GHSA-m665-v7pm-7grj) affects. The root dependency and `ecosystem/morphir-rust` move to `zip` 9.2.1 (finos/morphir-rust#324). The two ZIP extractors in morphir-rust, for tool packages and for remote sources, now refuse an archive whose local headers and central directory disagree. Earlier they extracted such an archive under the central directory names.
+
 ## [0.4.0-beta.12] - 2026-11-01
 
 ### Added

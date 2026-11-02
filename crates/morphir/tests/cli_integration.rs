@@ -3776,7 +3776,7 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
         let mut entry = archive.by_index(index).unwrap();
         let mut bytes = Vec::new();
         entry.read_to_end(&mut bytes).unwrap();
-        entries.insert(entry.name().to_owned(), bytes);
+        entries.insert(entry.name().unwrap().into_owned(), bytes);
     }
     assert_eq!(
         entries.keys().cloned().collect::<Vec<_>>(),
