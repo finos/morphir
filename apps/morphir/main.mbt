@@ -11,7 +11,7 @@ async fn main {
   }
   let wasm = @wasm_worker.WasmProcessLauncher::new(stamp=build_stamp())
   // The staged copy of this executable lives until the CLI is done.
-  defer wasm.release()
+  defer @async.protect_from_cancel(() => wasm.release())
   let invocation = @cli.Invocation::prepare(args, workers=worker_hosting(wasm)) catch {
     error => {
       @platform.exit(@cli.startup_failure(args, error))

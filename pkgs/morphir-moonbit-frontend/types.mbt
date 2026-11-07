@@ -13,12 +13,13 @@ pub(all) struct Input {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Limits {
   max_bytes : Int32
   max_parameters : Int32
   max_depth : Int32
   max_expressions : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Limits::default() -> Limits {
@@ -31,16 +32,18 @@ pub fn Limits::default() -> Limits {
 }
 
 ///|
+#derive(Debug)
 pub(all) struct Diagnostic {
   code : String
   detail : String
   source : @ir.SourceLocation?
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub(all) suberror FrontendError {
   Invalid(Diagnostic)
-} derive(Debug)
+}
 
 ///|
 pub(all) struct NodeMetadata {

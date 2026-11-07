@@ -1,11 +1,12 @@
 ///|
 /// Presentation owns only these reserved outer families. Raw operands are sliced
 /// from the original argv and unwrapped once, never rebuilt from parser values.
+#derive(Eq)
 enum Presentation {
   Legacy(Array[String])
   Structured(Array[String])
   JsonHelp
-} derive(Eq)
+}
 
 ///|
 suberror PresentationError {

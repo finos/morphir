@@ -6,7 +6,8 @@ priv enum CheckingContext {
 }
 
 ///|
-priv struct SelectedPlanId(String) derive(Eq)
+#derive(Eq)
+priv struct SelectedPlanId(String)
 
 ///|
 priv struct AcceptedSelection {

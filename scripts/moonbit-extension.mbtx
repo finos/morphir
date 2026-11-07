@@ -17,9 +17,10 @@ import {
 let json_mode : Ref[Bool] = Ref(false)
 
 ///|
+#derive(Debug)
 suberror ChildFailure {
   ChildFailure(Int32, String)
-} derive(Debug)
+}
 
 ///|
 fn succeeded(result : Json) -> Json {
@@ -69,12 +70,13 @@ async fn print_progress(message : String) -> Unit {
 }
 
 ///|
+#derive(Eq, Debug)
 enum Action {
   Build
   Bundle
   Test
   SelfTest
-} derive(Eq, Debug)
+}
 
 ///|
 fn command() -> @argparse.Command {

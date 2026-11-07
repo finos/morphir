@@ -4,37 +4,41 @@
 // the browser console or invents host capabilities.
 
 ///|
+#derive(Eq)
 pub(all) enum Tab {
   Logs
   Diagnostics
   Output
-} derive(Eq)
+}
 
 ///|
 pub extend Tab with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) enum Size {
   Collapsed
   Normal
   Expanded
-} derive(Eq)
+}
 
 ///|
 pub extend Size with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) enum Severity {
   Info
   Warning
   Error
-} derive(Eq)
+}
 
 ///|
 pub extend Severity with Eq::{equal, not_equal}
 
 ///|
 /// What a failed request ran and how it failed: what its details show and its plain-text report holds.
+#derive(Eq)
 pub(all) struct Failure {
   request_id : Int32
   operation : String
@@ -46,7 +50,7 @@ pub(all) struct Failure {
   context : Array[(String, String)]
   /// The reply as JSON text after `redacted`, bounded; empty when there is none.
   raw : String
-} derive(Eq)
+}
 
 ///|
 pub extend Failure with Eq::{equal, not_equal}
@@ -134,6 +138,7 @@ pub fn redacted(value : Json) -> Json {
 }
 
 ///|
+#derive(Eq)
 pub(all) struct Log {
   id : Int32
   time : String
@@ -141,7 +146,7 @@ pub(all) struct Log {
   severity : Severity
   message : String
   failure : Failure?
-} derive(Eq)
+}
 
 ///|
 pub extend Log with Eq::{equal, not_equal}
@@ -149,24 +154,26 @@ pub extend Log with Eq::{equal, not_equal}
 ///|
 /// `location` is the editor-style position; `coordinates` keeps the original
 /// coordinate profile and values exactly as the reporter supplied them.
+#derive(Eq)
 pub(all) struct Related {
   owner : String
   original : String
   allocated : String
   location : String
   coordinates : String
-} derive(Eq)
+}
 
 ///|
 pub extend Related with Eq::{equal, not_equal}
 
 ///|
 /// Where a problem sits in a project file: a one-based line and a display column (see `display_column`).
+#derive(Eq, Debug)
 pub(all) struct Place {
   path : String
   line : Int32
   column : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Place with Eq::{equal, not_equal}
@@ -175,6 +182,7 @@ pub extend Place with Eq::{equal, not_equal}
 pub extend Place with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq)
 pub(all) struct Diagnostic {
   severity : Severity
   code : String
@@ -185,13 +193,14 @@ pub(all) struct Diagnostic {
   fix : String
   stage : String
   place : Place?
-} derive(Eq)
+}
 
 ///|
 pub extend Diagnostic with Eq::{equal, not_equal}
 
 ///|
 /// Diagnostics from one operation run, scoped to the document revision it read.
+#derive(Eq)
 pub(all) struct Report {
   id : Int32
   time : String
@@ -201,12 +210,13 @@ pub(all) struct Report {
   revision : Int32
   diagnostics : Array[Diagnostic]
   failure : Failure?
-} derive(Eq)
+}
 
 ///|
 pub extend Report with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) struct Outcome {
   id : Int32
   time : String
@@ -216,12 +226,13 @@ pub(all) struct Outcome {
   lines : Array[String]
   terminal : @outcomes.Summary?
   failure : Failure?
-} derive(Eq)
+}
 
 ///|
 pub extend Outcome with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) struct State {
   tab : Tab
   size : Size
@@ -231,7 +242,7 @@ pub(all) struct State {
   next : Int32
   /// The keys of the details the person opened, such as `log-12`, `diagnostic-4-0` or `raw-log-12`.
   open : Array[String]
-} derive(Eq)
+}
 
 ///|
 pub extend State with Eq::{equal, not_equal}

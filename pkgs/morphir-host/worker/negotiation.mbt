@@ -1,8 +1,9 @@
 ///|
 /// A check that refused work before the host sent an operation.
+#derive(Eq, Debug)
 pub(all) suberror Refusal {
   Refusal(code~ : RefusalCode, message~ : String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Refusal with Eq::{equal, not_equal}
@@ -15,10 +16,11 @@ pub extend Refusal with @debug.Debug::{to_repr}
 /// generate methods, or MEP 0.2.0-draft.1 with the model tuples of one
 /// operation in the host's order of preference (SES-3). The first tuple is
 /// the host's default; the order is the only signal for it.
+#derive(Eq, Debug)
 pub(all) enum Offer {
   Legacy
   Model(Array[ModelTuple])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Offer with Eq::{equal, not_equal}
@@ -178,9 +180,10 @@ let max_deadline_ms : Int32 = 594000
 ///|
 /// The time a whole session may take, from the start of its worker to its
 /// stop: 60,000 ms by default and at most 594,000 ms.
+#derive(Eq, Debug)
 pub struct Deadline {
   priv ms : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Deadline with Eq::{equal, not_equal}
@@ -261,13 +264,14 @@ pub impl ToJson for ModelTuple with fn to_json(self) {
 /// guest call, 4 MiB of input and 16 MiB of output. The WASM launcher
 /// enforces memory, instructions and call time; the session enforces input
 /// and output through its request and response limits.
+#derive(Eq, Debug)
 pub struct ExtismProfile {
   memory_bytes : Int32
   instructions : Int64
   call_ms : Int32
   input_bytes : Int32
   output_bytes : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ExtismProfile with Eq::{equal, not_equal}
@@ -325,11 +329,12 @@ pub fn Limits::for_session(
 /// What activation agreed with a worker: the host's offer, the tuple that the
 /// session uses on the model line (the first tuple that the worker agreed
 /// on) and the effective limits.
+#derive(Eq, Debug)
 pub struct Negotiated {
   offer : Offer
   tuple : ModelTuple?
   limits : Limits
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Negotiated with Eq::{equal, not_equal}
@@ -340,10 +345,11 @@ pub extend Negotiated with @debug.Debug::{to_repr}
 ///|
 /// Which kind of call a request makes. The negotiated protocol line chooses
 /// the method.
+#derive(Eq, Debug)
 priv enum CallKind {
   CompileCall
   GenerateCall
-} derive(Eq, Debug)
+}
 
 ///|
 fn CallKind::operation(self : CallKind, offer : Offer) -> Operation {
@@ -367,10 +373,11 @@ fn framed_size(body : Int32) -> Int32 {
 }
 
 ///|
+#derive(Eq, Debug)
 priv struct Call {
   kind : CallKind
   params : Map[String, Json]
-} derive(Eq, Debug)
+}
 
 ///|
 let placeholder_tuple : ModelTuple = {
@@ -418,9 +425,10 @@ fn Call::message(self : Call, id : Int32, operation : Operation) -> Message {
 ///|
 /// The guest-facing parameters of one compile call, for example
 /// `languageId`, `sources` and `package`, and `output` on the model line.
+#derive(Eq, Debug)
 pub struct CompileRequest {
   priv call : Call
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CompileRequest with Eq::{equal, not_equal}
@@ -438,9 +446,10 @@ pub fn CompileRequest::new(
 ///|
 /// The guest-facing parameters of one generate call, for example `ir` and
 /// `target`, or `model`, `input` and `target` on the model line.
+#derive(Eq, Debug)
 pub struct GenerateRequest {
   priv call : Call
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GenerateRequest with Eq::{equal, not_equal}
@@ -457,9 +466,10 @@ pub fn GenerateRequest::new(
 
 ///|
 /// The guest's answer to a compile call that succeeded.
+#derive(Eq, Debug)
 pub struct Compiled {
   result : Json
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Compiled with Eq::{equal, not_equal}
@@ -474,9 +484,10 @@ pub fn Compiled::new(result : Json) -> Compiled {
 
 ///|
 /// The guest's answer to a generate call that succeeded.
+#derive(Eq, Debug)
 pub struct Generated {
   result : Json
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Generated with Eq::{equal, not_equal}

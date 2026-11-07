@@ -4,18 +4,20 @@ pub(all) suberror DocError {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Expect {
   Value(String)
   Fails(String)
   Runs
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Example {
   files : Array[(String, String)]
   expect : Expect
   line : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub(all) struct Chapter {

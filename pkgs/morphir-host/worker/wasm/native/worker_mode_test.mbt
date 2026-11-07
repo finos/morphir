@@ -10,7 +10,7 @@ async fn remove_quietly(directory : String) -> Unit noraise {
 /// removes the directory afterwards.
 async fn with_module_file(bytes : Bytes, body : async (String) -> Unit) -> Unit {
   let directory = @fs.tmpdir(prefix="morphir-wasm-worker-test-")
-  defer remove_quietly(directory)
+  defer @async.protect_from_cancel(() => remove_quietly(directory))
   let path = directory + "/module.wasm"
   @fs.write_file(path, bytes)
   body(path)

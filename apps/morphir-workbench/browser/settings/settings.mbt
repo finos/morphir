@@ -7,11 +7,12 @@ pub let storage_key : String = "morphir-workbench.settings.v1"
 
 ///|
 /// The person's theme choice. System follows the operating system and browser setting.
+#derive(Eq, Debug)
 pub(all) enum ThemePreference {
   System
   Light
   Dark
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ThemePreference with Eq::{equal, not_equal}
@@ -21,10 +22,11 @@ pub extend ThemePreference with @debug.Debug::{to_repr}
 
 ///|
 /// What the page shows.
+#derive(Eq, Debug)
 pub(all) enum Appearance {
   Light
   Dark
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Appearance with Eq::{equal, not_equal}
@@ -105,12 +107,13 @@ pub fn Appearance::label(self : Appearance) -> String {
 
 ///|
 /// How the workspace sidebar at the left edge shows the open workspaces.
+#derive(Eq, Debug)
 pub(all) enum WorkspaceSidebar {
   /// Icons, and a tile with initials per open workspace.
   Collapsed
   /// A card per open workspace with its name, kind and state.
   Expanded
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WorkspaceSidebar with Eq::{equal, not_equal}
@@ -129,12 +132,13 @@ pub fn WorkspaceSidebar::toggle(self : WorkspaceSidebar) -> WorkspaceSidebar {
 
 ///|
 /// How a source document shows its source and its output (Morphir IR or generated files).
+#derive(Eq, Debug)
 pub(all) enum EditorLayout {
   /// Source and output side by side, each pane able to take the full width.
   SideBySide
   /// Source, Morphir IR and Generated as separate tabs, one at a time.
   Tabs
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EditorLayout with Eq::{equal, not_equal}
@@ -166,10 +170,11 @@ pub fn EditorLayout::id(self : EditorLayout) -> String {
 
 ///|
 /// The Workbench settings.
+#derive(Eq, Debug)
 pub(all) enum FilesView {
   Folders
   Projects
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FilesView with Eq::{equal, not_equal}
@@ -178,12 +183,13 @@ pub extend FilesView with Eq::{equal, not_equal}
 pub extend FilesView with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Settings {
   theme : ThemePreference
   workspace_sidebar : WorkspaceSidebar
   editor_layout : EditorLayout
   files_view : FilesView
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Settings with Eq::{equal, not_equal}

@@ -56,6 +56,7 @@ pub(all) enum Expression {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum EntityKind {
   IntentKind
   RequirementKind
@@ -66,7 +67,7 @@ pub(all) enum EntityKind {
   ImplementationKind
   ClaimKind
   EvidenceKind
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EntityKind with Eq::{equal, not_equal}
@@ -94,6 +95,7 @@ pub fn EntityRef::unresolved(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Predicate {
   DerivedFrom
   Refines
@@ -103,7 +105,7 @@ pub(all) enum Predicate {
   Implements
   Supports
   Contradicts
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Predicate with Eq::{equal, not_equal}

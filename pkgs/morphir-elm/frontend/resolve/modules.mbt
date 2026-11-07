@@ -1,11 +1,12 @@
 ///|
 /// One parsed module of the project. `name` is the dotted module name, one element per segment. `path` is the
 /// source path relative to the source directory.
+#derive(Eq, Debug)
 pub(all) struct ParsedModule {
   name : Array[String]
   path : String
   file : @ast.File
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ParsedModule with Eq::{equal, not_equal}

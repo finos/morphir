@@ -1,18 +1,20 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum Order {
   LT
   EQ
   GT
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) suberror SdkError {
   DivisionByZero
   InvalidNumber(String)
   OutOfRange(String)
   InvalidComparison(String)
   UnrepresentableText(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn order(n : Int32) -> Order {

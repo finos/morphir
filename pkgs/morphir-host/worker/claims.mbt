@@ -1,9 +1,10 @@
 ///|
 /// The extension ID a guest reports: 1 to 128 printable ASCII characters
 /// without spaces.
+#derive(Eq, Debug)
 pub struct ExtensionId {
   priv text : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ExtensionId with Eq::{equal, not_equal}
@@ -35,9 +36,10 @@ pub extend ExtensionId with Show::{to_string, output}
 ///|
 /// The extension version a guest reports: 1 to 64 printable ASCII characters
 /// without spaces. The host compares versions for equality only.
+#derive(Eq, Debug)
 pub struct ExtensionVersion {
   priv text : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ExtensionVersion with Eq::{equal, not_equal}
@@ -65,10 +67,11 @@ pub extend ExtensionVersion with Show::{to_string, output}
 /// A language an extension's frontend claims, with the source file
 /// extensions it compiles. Both come from the extension; the host keeps no
 /// list of languages. The extensions are a sorted set and never empty.
+#derive(Eq, Compare, Debug)
 pub struct LanguageClaim {
   language_id : @ids.LanguageId
   file_extensions : Array[@ids.FileExtension]
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend LanguageClaim with Eq::{equal, not_equal}
@@ -102,9 +105,10 @@ pub fn LanguageClaim::new(
 /// An IR version as an extension or a user names it, for example `4` or
 /// `4.0.0`: 1 to 32 printable ASCII characters without spaces. The host reads
 /// no more of a name than its major part.
+#derive(Eq, Compare, Debug)
 pub struct IrVersionName {
   priv text : String
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend IrVersionName with Eq::{equal, not_equal}
@@ -159,10 +163,11 @@ pub extend IrVersionName with Show::{to_string, output}
 /// - `incremental`: the frontend accepts incremental baselines.
 /// - `multi_document`: one request can carry more than one document. A
 ///   frontend without it compiles exactly one document for each request.
+#derive(Eq, Compare, Debug)
 pub struct FrontendFlags {
   incremental : Bool
   multi_document : Bool
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend FrontendFlags with Eq::{equal, not_equal}
@@ -202,6 +207,7 @@ pub fn FrontendFlags::dropped_in(
 /// with the live answer of a worker. Claims describe a guest; they do not
 /// grant it execution authority. Each list is a sorted set, so two claims are
 /// equal when they claim the same things in any order.
+#derive(Eq, Debug)
 pub struct Claims {
   extension_id : ExtensionId
   version : ExtensionVersion
@@ -213,7 +219,7 @@ pub struct Claims {
   targets : Array[@ids.BackendId]
   backend_ir_versions : Array[IrVersionName]
   model_tuples : Array[ModelTuple]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Claims with Eq::{equal, not_equal}
@@ -291,10 +297,11 @@ pub fn Claims::compile_operation(self : Claims) -> Operation {
 ///|
 /// The MEP versions the host offers. MEP 0.1 carries the legacy compile and
 /// generate methods; MEP 0.2.0-draft.1 carries the model methods.
+#derive(Eq, Compare, Debug)
 pub(all) enum ProtocolLine {
   Mep0_1
   Mep0_2Draft1
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend ProtocolLine with Eq::{equal, not_equal}
@@ -330,12 +337,13 @@ pub extend ProtocolLine with Show::{to_string, output}
 ///|
 /// The closed set of MEP operations. `Compile` and `Generate` belong to MEP
 /// 0.1; the model operations belong to MEP 0.2.0-draft.1.
+#derive(Eq, Compare, Debug)
 pub(all) enum Operation {
   Compile
   Generate
   CompileModel
   GenerateModel
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend Operation with Eq::{equal, not_equal}
@@ -401,10 +409,11 @@ pub extend Operation with Show::{to_string, output}
 
 ///|
 /// A model operation: the only operations a model tuple can carry.
+#derive(Eq, Compare, Debug)
 pub(all) enum ModelOperation {
   CompileModel
   GenerateModel
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend ModelOperation with Eq::{equal, not_equal}
@@ -432,10 +441,11 @@ pub impl Show for ModelOperation with fn output(self, logger) {
 pub extend ModelOperation with Show::{to_string, output}
 
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum ModelProfile {
   MorphirModel
   MorphirIr
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend ModelProfile with Eq::{equal, not_equal}
@@ -460,10 +470,11 @@ pub impl Show for ModelProfile with fn output(self, logger) {
 pub extend ModelProfile with Show::{to_string, output}
 
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum ModelCodec {
   IonBinary
   MorphirJson
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend ModelCodec with Eq::{equal, not_equal}
@@ -488,9 +499,10 @@ pub impl Show for ModelCodec with fn output(self, logger) {
 pub extend ModelCodec with Show::{to_string, output}
 
 ///|
+#derive(Eq, Compare, Debug)
 pub(all) enum EnvelopeVersion {
   V0_1_0Draft1
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend EnvelopeVersion with Eq::{equal, not_equal}
@@ -516,10 +528,11 @@ pub extend EnvelopeVersion with Show::{to_string, output}
 ///|
 /// The IR versions that a model tuple can name, from low to high. Each
 /// version is part of the exact tuple.
+#derive(Eq, Compare, Debug)
 pub(all) enum IrVersion {
   V3_0_0
   V4_0_0
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend IrVersion with Eq::{equal, not_equal}
@@ -566,13 +579,14 @@ pub fn IrVersion::serves(self : IrVersion, selected : IrVersionName) -> Bool {
 ///|
 /// One five-part tuple that the host offers for a model method. The worker
 /// returns the offered tuples that it supports, unchanged.
+#derive(Eq, Compare, Debug)
 pub struct ModelTuple {
   operation : ModelOperation
   profile : ModelProfile
   codec : ModelCodec
   envelope_version : EnvelopeVersion
   ir_version : IrVersion
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend ModelTuple with Eq::{equal, not_equal}

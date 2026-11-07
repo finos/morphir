@@ -342,7 +342,7 @@ async fn remove_fixture(root : String) -> Unit {
 /// `pr.payloadBase`.
 async fn merge_parent_self_test() -> Unit {
   let root = @fs.tmpdir(prefix="morphir-ci-gate-")
-  defer remove_fixture(root)
+  defer @async.protect_from_cancel(() => remove_fixture(root))
   async fn git(args : Array[String]) -> String {
     let config = [
       "-c",
@@ -822,11 +822,12 @@ fn selected_jobs(mode : GateMode, inputs : Json) -> Json raise {
 ///|
 /// How a qualification run treats the macOS lanes: `skip` them, `run` them,
 /// or `reuse` recorded evidence of an earlier run instead of running them.
+#derive(Eq)
 priv enum MacosMode {
   Skip
   Run
   Reuse
-} derive(Eq)
+}
 
 ///|
 fn MacosMode::parse(text : String) -> MacosMode raise {
@@ -850,16 +851,18 @@ fn MacosMode::to_string(self : MacosMode) -> String {
 
 ///|
 /// The evidence artifact of an earlier macOS run that a `reuse` run relies on.
+#derive(Eq)
 priv struct EvidenceRef {
   run : Int64
   artifact : Int64
   fingerprint : Fingerprint
   sha : CommitSha
-} derive(Eq)
+}
 
 ///|
 /// A SHA-256 of the evidence inputs: 64 lowercase hex digits.
-priv struct Fingerprint(String) derive(Eq)
+#derive(Eq)
+priv struct Fingerprint(String)
 
 ///|
 /// The fingerprint of an evidence reference, from its JSON field.
@@ -872,7 +875,8 @@ fn Fingerprint::from_json(value : Json?) -> Fingerprint raise {
 
 ///|
 /// A full commit id in lowercase hex.
-priv struct CommitSha(String) derive(Eq)
+#derive(Eq)
+priv struct CommitSha(String)
 
 ///|
 /// The commit of an evidence reference, from its JSON field: 40 digits.
@@ -1329,6 +1333,7 @@ fn gate_command(json~ : Bool = false) -> @argparse.Command {
 ///|
 /// What the gate does. Each mode but `Check` is selected by a flag of its own;
 /// `Check` is the default, which gates the jobs of `CI_REQUIRED_JOBS`.
+#derive(Eq)
 priv enum GateMode {
   SelfTest
   Qualification
@@ -1337,7 +1342,7 @@ priv enum GateMode {
   Native
   Installed
   Check
-} derive(Eq)
+}
 
 ///|
 /// The name of the mode's flag, which is also the mode in the JSON results.

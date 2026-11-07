@@ -1,11 +1,12 @@
 ///|
 /// How serious a guest diagnostic is.
+#derive(Eq, Debug)
 pub(all) enum Severity {
   Error
   Warning
   Info
   Hint
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Severity with Eq::{equal, not_equal}
@@ -42,10 +43,11 @@ pub extend Severity with Show::{to_string, output}
 ///|
 /// A zero-based position. `character` counts UTF-16 code units from the start
 /// of the line, as in the Language Server Protocol.
+#derive(Eq, Debug)
 pub struct SourcePosition {
   line : Int64
   character : Int64
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SourcePosition with Eq::{equal, not_equal}
@@ -55,11 +57,12 @@ pub extend SourcePosition with @debug.Debug::{to_repr}
 
 ///|
 /// A half-open range in a source document, identified by URI.
+#derive(Eq, Debug)
 pub struct SourceLocation {
   uri : String
   start : SourcePosition
   end : SourcePosition
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SourceLocation with Eq::{equal, not_equal}
@@ -69,10 +72,11 @@ pub extend SourceLocation with @debug.Debug::{to_repr}
 
 ///|
 /// More information about a diagnostic, at another location.
+#derive(Eq, Debug)
 pub struct RelatedInformation {
   location : SourceLocation
   message : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RelatedInformation with Eq::{equal, not_equal}
@@ -84,6 +88,7 @@ pub extend RelatedInformation with @debug.Debug::{to_repr}
 /// A diagnostic from a guest. The host keeps every member as the guest sent
 /// it: the code, severity, location, message, related information and the
 /// guest's own data.
+#derive(Eq, Debug)
 pub struct Diagnostic {
   severity : Severity
   code : String?
@@ -91,7 +96,7 @@ pub struct Diagnostic {
   location : SourceLocation?
   related : Array[RelatedInformation]
   data : Json?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Diagnostic with Eq::{equal, not_equal}

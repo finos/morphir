@@ -1,9 +1,10 @@
 ///|
+#derive(Eq)
 pub(all) enum Mode {
   Value
   Json
   Printed
-} derive(Eq)
+}
 
 ///|
 pub extend Mode with Eq::{equal, not_equal}

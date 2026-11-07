@@ -52,11 +52,12 @@ pub fn RevisionContext::implementations(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Freshness {
   Current
   Stale
   Inconclusive
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Freshness with Eq::{equal, not_equal}

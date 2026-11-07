@@ -10,16 +10,18 @@ import {pinPackage, assemblyIdentity, executeAssembly, sha256} from '../assembly
 import {compilerVersion} from '../index.mjs';
 import {createInProcessToolchain} from '../node.mts';
 import {createDirectoryArtifactStore, readDirectoryArtifact} from '../node-artifacts.mjs';
+import {preludePackage} from './prelude.mts';
 
 const profile={id:'test/core-scalar-v1',sha256:'a'.repeat(64)};
 const host:ArtifactHost={targets:['wasm','wasm-gc'],profiles:[profile],encodings:['ion','json']};
 async function fixture(imported=false) {
   const tools=createInProcessToolchain();
   try {
-    const entry=await pinPackage({name:'artifact/example',role:'library',dependencies:[],input:{kind:'source',files:[['main.mbt',imported ?
+    const prelude=await preludePackage();
+    const entry=await pinPackage({name:'artifact/example',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['main.mbt',imported ?
       'fn tick() -> Int32 = "host" "tick"\nlet started : Int32 = tick()\npub fn answer() -> Int32 { started + 41 }' :
       'pub fn answer() -> Int32 { 42 }\npub fn hidden() -> Int32 { 9 }']]}});
-    const packages=[entry];
+    const packages=[entry,prelude];
     return await executeAssembly(tools,{root:entry.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['answer']});
   } finally {tools.dispose();}
 }

@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum Setting {
   Name
   SourceDirectory
@@ -7,7 +8,7 @@ pub(all) enum Setting {
   Provider
   Generation
   DefaultMember
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Setting with Eq::{equal, not_equal}
@@ -29,11 +30,12 @@ fn Setting::keys(self : Setting) -> Array[String] {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SettingValue {
   effective : String?
   override_value : String?
   origin : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SettingValue with Eq::{equal, not_equal}

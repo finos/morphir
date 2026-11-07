@@ -6,6 +6,7 @@ import {mkdtempSync,rmSync,writeFileSync,readdirSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
+import {preludeBundle} from "./prelude.mts";
 
 test("installed npm package compiles without a CLI",()=>{
   const directory=mkdtempSync(join(tmpdir(),"morphir-embedding-package-"));
@@ -17,20 +18,34 @@ test("installed npm package compiles without a CLI",()=>{
     npm(["pack","./node_modules/@moonbit/moonc-worker","--ignore-scripts","--pack-destination",directory]);
     const tarballs=readdirSync(directory).filter(p=>p.endsWith('.tgz')).map(p=>join(directory,p));
     npm(["install","--prefix",directory,"--cache",join(directory,"cache"),"--ignore-scripts","--offline","--no-audit","--no-fund",...tarballs]);
+    // The host owns the pinned prelude. The package ships no core assets.
+    const prelude=preludeBundle();
+    writeFileSync(join(directory,"prelude.mi"),prelude.interface);
+    writeFileSync(join(directory,"prelude.core"),prelude.core);
     writeFileSync(join(directory,"check.mjs"), `
       import {createNodeToolchain} from '@morphir/moonbit-toolchain/node';
       import {pinPackage,assemblyIdentity,executeAssembly,compilerVersion} from '@morphir/moonbit-toolchain';
       import {prepareArtifact,publishArtifact,mepExecutionProfile} from '@morphir/moonbit-toolchain';
       import {createDirectoryArtifactStore} from '@morphir/moonbit-toolchain/node';
+      import {preludeInterfaceName} from '@morphir/moonbit-toolchain';
       import {fileURLToPath} from 'node:url';
+      import {readFileSync} from 'node:fs';
+      const asset=name=>new Uint8Array(readFileSync(new URL(name,import.meta.url)));
+      const preludeInterface=asset('./prelude.mi'),preludeCore=asset('./prelude.core');
       const tools=createNodeToolchain();
       try {
-        const built=await tools.request({operation:'compile',files:[['main.mbt','pub fn answer() -> Int { 42 }']],exports:['answer']});
+        const missing=await tools.request({operation:'compile',files:[['main.mbt','pub fn answer() -> Int { 42 }']],exports:['answer']}).then(()=>null,e=>e);
+        if(missing?.name!=='PreludeRequiredError'||!missing.message.startsWith('embedding.prelude_required: ')) throw new Error('Missing prelude was not named');
+        const built=await tools.request({operation:'compile',files:[['main.mbt','pub fn answer() -> Int { 42 }']],
+          standardInterfaces:[[preludeInterfaceName,preludeInterface]],exports:['answer']});
         const result=await tools.request({operation:'run',artifact:built.artifact,export:'answer'});
         if(result.value!==42) throw new Error('Unexpected result');
-        const dependency=await pinPackage({name:'installed/library',role:'library',dependencies:[],input:{kind:'source',files:[['lib.mbt','pub fn twice(n : Int32) -> Int32 { n * 2 }']]}});
+        const blank={compilerVersion,coreSha256:'0'.repeat(64),sdkSha256:'0'.repeat(64)};
+        const preludeRaw={name:preludeInterfaceName,role:'core',dependencies:[],input:{kind:'prebuilt',interface:preludeInterface,core:preludeCore,identity:blank,target:'wasm',optimization:'optimized'}};
+        const prelude=await pinPackage({...preludeRaw,input:{...preludeRaw.input,identity:await assemblyIdentity(compilerVersion,[preludeRaw])}});
+        const dependency=await pinPackage({name:'installed/library',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['lib.mbt','pub fn twice(n : Int32) -> Int32 { n * 2 }']]}});
         const root=await pinPackage({name:'installed/main',role:'library',dependencies:[{name:'math',pin:dependency.pin}],input:{kind:'source',files:[['main.mbt','pub fn answer() -> Int32 { @math.twice(21) }']]}});
-        const packages=[root,dependency];
+        const packages=[root,dependency,prelude];
         const assembly=await executeAssembly(tools,{root:root.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['answer']});
         if((await tools.request({operation:'run',artifact:assembly.artifact,export:'answer'})).value!==42) throw new Error('Unexpected assembly result');
         const profile={id:'installed/scalar-v1',sha256:'a'.repeat(64)};

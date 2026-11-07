@@ -96,7 +96,7 @@ async fn exercise_parked_originals() -> Unit {
   let (begun, _) = update(base, OpenOriginals, quiet())
   let attempt = begun.document.opening().unwrap()
   let fixture = original_routing_fixture(make_originals_hasher).wait()
-  defer finish_routing_fixture(fixture).wait()
+  defer @async.protect_from_cancel(() => finish_routing_fixture(fixture).wait())
   let owner = routing_owner(fixture)
   let source = run_all(begun, [OriginalsStarted(attempt, owner)])
   let origin = source.active.unwrap()
@@ -150,7 +150,7 @@ async fn exercise_stale_original_attempt() -> Unit {
   let (begun, _) = update(base, OpenOriginals, quiet())
   let old = begun.document.opening().unwrap()
   let fixture = original_routing_fixture(make_originals_hasher).wait()
-  defer finish_routing_fixture(fixture).wait()
+  defer @async.protect_from_cancel(() => finish_routing_fixture(fixture).wait())
   let started = run_all(begun, [OriginalsStarted(old, routing_owner(fixture))])
   let next = match started.document.begin(Idle) {
     Started(document, _) => { ..started, document, }
@@ -174,7 +174,9 @@ async fn exercise_closed_original_visits() -> Unit {
     let (begun, _) = update(routing_model(), OpenOriginals, quiet())
     let attempt = begun.document.opening().unwrap()
     let fixture = original_routing_fixture(make_originals_hasher).wait()
-    defer finish_routing_fixture(fixture).wait()
+    defer @async.protect_from_cancel(() => {
+      finish_routing_fixture(fixture).wait()
+    })
     let started = run_all(begun, [
       OriginalsStarted(attempt, routing_owner(fixture)),
     ])

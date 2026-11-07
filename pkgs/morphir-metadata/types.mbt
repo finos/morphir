@@ -5,9 +5,10 @@ pub const TARGET_NAMES_PREDICATE : String = "morphir://ir/pkg/morphir/naming?for
 pub const ADAPTER_PROFILE : String = "morphir_linked_metadata_v1"
 
 ///|
+#derive(Eq, Debug)
 pub(all) suberror MetadataError {
   Invalid(String, String, String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MetadataError with Eq::{equal, not_equal}
@@ -16,10 +17,11 @@ pub extend MetadataError with Eq::{equal, not_equal}
 pub extend MetadataError with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TargetNames {
   frontend : Map[String, String]
   backend : Map[String, String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TargetNames with Eq::{equal, not_equal}

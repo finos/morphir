@@ -63,8 +63,8 @@ async fn execute() -> Json {
   @fs.mkdir(evidence, recursive=true)
   let evidence = @fs.realpath(evidence)
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.18+6c83a7f62") else {
-    fail("Pinned MoonBit 0.10.18 is required")
+  guard compiler.contains("0.10.20+65efd5b93") else {
+    fail("Pinned MoonBit 0.10.20 is required")
   }
   ignore(
     checked("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"]),

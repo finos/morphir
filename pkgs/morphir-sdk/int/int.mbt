@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Compare, Debug)
 pub struct Int8 {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_int8(n : @integer.Integer) -> Int8? {
@@ -20,9 +21,10 @@ pub fn from_int8(n : Int8) -> @integer.Integer {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub struct Int16Value {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_int16(n : @integer.Integer) -> Int16Value? {
@@ -41,9 +43,10 @@ pub fn from_int16(n : Int16Value) -> @integer.Integer {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub struct Int32Value {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_int32(n : @integer.Integer) -> Int32Value? {
@@ -62,9 +65,10 @@ pub fn from_int32(n : Int32Value) -> @integer.Integer {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub struct Int64Value {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_int64(n : @integer.Integer) -> Int64Value? {
@@ -88,9 +92,10 @@ fn within_unsigned(n : @integer.Integer, maximum : @integer.Integer) -> Bool {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub struct ByteValue {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_byte(n : @integer.Integer) -> ByteValue? {
@@ -107,9 +112,10 @@ pub fn from_byte(n : ByteValue) -> @integer.Integer {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub struct UInt16Value {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_uint16(n : @integer.Integer) -> UInt16Value? {
@@ -126,9 +132,10 @@ pub fn from_uint16(n : UInt16Value) -> @integer.Integer {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub struct UInt32Value {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_uint32(n : @integer.Integer) -> UInt32Value? {
@@ -145,9 +152,10 @@ pub fn from_uint32(n : UInt32Value) -> @integer.Integer {
 }
 
 ///|
+#derive(Eq, Compare, Debug)
 pub struct UInt64Value {
   value : @integer.Integer
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn to_uint64(n : @integer.Integer) -> UInt64Value? {

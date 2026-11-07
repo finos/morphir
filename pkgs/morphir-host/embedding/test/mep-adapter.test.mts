@@ -8,6 +8,7 @@ import {mepExecutionProfile,loadMepAdapter,mepLimits} from '../mep-adapter.mjs';
 import {loadNodeMepAdapter} from '../node-mep-adapter.mjs';
 import {boundWasmMemory,verifyWasmMemory} from '../wasm-memory.mjs';
 import {MepFrames} from '../mep-frames.mjs';
+import {preludePackage} from './prelude.mts';
 
 const encode=(value:string)=>new TextEncoder().encode(value);
 const source=`
@@ -31,8 +32,9 @@ pub fn handle() -> Int32 {
 async function fixture() {
   const tools=createInProcessToolchain();
   try {
-    const pkg=await pinPackage({name:'test/mep-host',role:'library',dependencies:[],input:{kind:'source',files:[['main.mbt',source]]}});
-    const packages=[pkg];
+    const prelude=await preludePackage();
+    const pkg=await pinPackage({name:'test/mep-host',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['main.mbt',source]]}});
+    const packages=[pkg,prelude];
     const result=await executeAssembly(tools,{root:pkg.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['handle']});
     return prepareArtifact({...result,artifact:{...result.artifact,bytes:boundWasmMemory(result.artifact.bytes,mepLimits.memoryPages)}},await mepExecutionProfile());
   }finally{tools.dispose();}
@@ -64,8 +66,9 @@ test('MEP host treats traps and import violations as terminal; fresh sessions re
   const foreign=await (async()=>{
     const tools=createInProcessToolchain();
     try {
-      const pkg=await pinPackage({name:'test/foreign-import',role:'library',dependencies:[],input:{kind:'source',files:[['main.mbt','fn foreign() -> Int32 = "browser" "fetch"\npub fn handle() -> Int32 { foreign() }']]}});
-      const packages=[pkg];return await executeAssembly(tools,{root:pkg.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['handle']});
+      const prelude=await preludePackage();
+      const pkg=await pinPackage({name:'test/foreign-import',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['main.mbt','fn foreign() -> Int32 = "browser" "fetch"\npub fn handle() -> Int32 { foreign() }']]}});
+      const packages=[pkg,prelude];return await executeAssembly(tools,{root:pkg.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['handle']});
     }finally{tools.dispose();}
   })();
   const other=await prepareArtifact(foreign,await mepExecutionProfile());

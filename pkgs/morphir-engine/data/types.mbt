@@ -1,8 +1,9 @@
 ///|
 /// Stable boundary diagnostics. IR codec codes are retained unchanged.
+#derive(Eq, Debug)
 pub(all) suberror BoundaryError {
   Invalid(String, String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend BoundaryError with Eq::{equal, not_equal}
@@ -12,10 +13,11 @@ pub extend BoundaryError with @debug.Debug::{to_repr}
 
 ///|
 /// Binary content is never implicitly interpreted as UTF-8 text.
+#derive(Eq, Debug)
 pub(all) enum Content {
   Text(String)
   Binary(Bytes)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Content with Eq::{equal, not_equal}
@@ -25,10 +27,11 @@ pub extend Content with @debug.Debug::{to_repr}
 
 ///|
 /// IDs are logical identities supplied by a caller, not host filesystem paths.
+#derive(Eq, Debug)
 pub(all) struct SourceSnapshot {
   unit_id : String
   content : Content
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SourceSnapshot with Eq::{equal, not_equal}
@@ -37,10 +40,11 @@ pub extend SourceSnapshot with Eq::{equal, not_equal}
 pub extend SourceSnapshot with @debug.Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub(all) struct NodeMetadata {
   node_id : String
   data : @ion.IonValue
-} derive(Debug)
+}
 
 ///|
 pub extend NodeMetadata with @debug.Debug::{to_repr}
@@ -49,13 +53,14 @@ pub extend NodeMetadata with @debug.Debug::{to_repr}
 /// Rich metadata stays outside the JSON-shaped semantic IR extension model.
 /// Structural transforms need a separate lineage contract; identity processing
 /// can return this value unchanged.
+#derive(Debug)
 pub(all) struct IRUnit {
   id : String
   distribution : @ir.IRFile
   metadata : Array[NodeMetadata]
   annotations : Array[@ion.SymbolToken]
   provenance : Array[@ion.IonValue]
-} derive(Debug)
+}
 
 ///|
 pub extend IRUnit with @debug.Debug::{to_repr}
@@ -63,10 +68,11 @@ pub extend IRUnit with @debug.Debug::{to_repr}
 ///|
 /// The decoded checkpoint's format is independent of its migrated semantic IR.
 /// This result carries no file bytes, retained model handle or host authority.
+#derive(Debug)
 pub struct CheckpointInspection {
   unit : IRUnit
   original_format_version : @version.FormatVersion
-} derive(Debug)
+}
 
 ///|
 pub extend CheckpointInspection with @debug.Debug::{to_repr}
@@ -110,11 +116,12 @@ pub fn IRUnit::validate(
 
 ///|
 /// These are acceptance/traversal budgets, not a streaming-parser guarantee.
+#derive(Eq, Debug)
 pub(all) struct Limits {
   max_bytes : Int32
   max_depth : Int32
   max_values : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Limits with Eq::{equal, not_equal}

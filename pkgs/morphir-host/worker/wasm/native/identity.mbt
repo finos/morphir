@@ -11,10 +11,11 @@ const HOST_VERSION : String = "0.1.0"
 /// The version and the git commit of a CLI build. The build writes them
 /// into a generated constant of the CLI's entry package
 /// (`scripts/build-stamp.mbtx`), which gives them to the worker mode.
+#derive(Eq, Debug)
 pub struct BuildStamp {
   version : String
   commit : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend BuildStamp with Eq::{equal, not_equal}
@@ -39,9 +40,10 @@ pub fn BuildStamp::new(version~ : String, commit~ : String) -> BuildStamp {
 /// clean checkout, so their stamps are exact. The launcher runs a staged copy
 /// of the executable that it hashed once, so a CLI replaced on disk while it
 /// runs does not change the workers it starts.
+#derive(Eq, Debug)
 pub struct BuildIdentity {
   priv digest : @worker.Sha256
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend BuildIdentity with Eq::{equal, not_equal}

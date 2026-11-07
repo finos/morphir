@@ -4,10 +4,11 @@
 
 ///|
 /// A sidebar: the primary one on the left and the secondary one on the right.
+#derive(Eq, Debug)
 pub(all) enum Side {
   Primary
   Secondary
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Side with Eq::{equal, not_equal}
@@ -17,12 +18,13 @@ pub extend Side with @debug.Debug::{to_repr}
 
 ///|
 /// An explorer view: a navigable presentation of one kind of workspace content.
+#derive(Eq, Debug)
 pub(all) enum View {
   Files
   Models
   Generated
   Ideas
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend View with Eq::{equal, not_equal}
@@ -32,10 +34,11 @@ pub extend View with @debug.Debug::{to_repr}
 
 ///|
 /// One sidebar's visibility and width in CSS pixels.
+#derive(Eq, Debug)
 pub(all) struct Sidebar {
   open : Bool
   width : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Sidebar with Eq::{equal, not_equal}
@@ -45,12 +48,13 @@ pub extend Sidebar with @debug.Debug::{to_repr}
 
 ///|
 /// Where each view is, in section order, which sections are collapsed, and both sidebars.
+#derive(Eq, Debug)
 pub(all) struct Layout {
   primary : Sidebar
   secondary : Sidebar
   placement : Array[(View, Side)]
   collapsed : Array[View]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Layout with Eq::{equal, not_equal}
@@ -60,6 +64,7 @@ pub extend Layout with @debug.Debug::{to_repr}
 
 ///|
 /// A change to the layout, from a button, a key, a pointer or the command palette.
+#derive(Eq, Debug)
 pub(all) enum Action {
   Toggle(Side)
   SetOpen(Side, Bool)
@@ -73,7 +78,7 @@ pub(all) enum Action {
   Reveal(View)
   /// A pointer drag on the sidebar's edge ended; the width is final.
   EndResize(Side)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Action with Eq::{equal, not_equal}

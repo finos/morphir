@@ -1,7 +1,8 @@
 ///|
 /// A path in the writable inventory, never an OS locator. Tool directories are
 /// omitted outside model trees; the root recovery directory is always reserved.
-pub struct RelativePath(String) derive(Eq)
+#derive(Eq)
+pub struct RelativePath(String)
 
 ///|
 pub extend RelativePath with Eq::{equal, not_equal}

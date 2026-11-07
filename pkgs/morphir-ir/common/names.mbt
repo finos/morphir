@@ -1,20 +1,23 @@
 ///|
 /// A word and an initialism remain distinct in the semantic name.
+#derive(Eq, Compare, Hash, Debug)
 pub(all) enum NameSegment {
   Word(String)
   Initialism(String)
-} derive(Eq, Compare, Hash, Debug)
+}
 
 ///|
 /// Immutable storage keeps names safe as map keys.
+#derive(Eq, Compare, Hash, Debug)
 pub struct Name {
   segments : @list.List[NameSegment]
-} derive(Eq, Compare, Hash, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) suberror NameError {
   InvalidName(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Decode legacy words using the upstream maximal-single-letter-run rule.
@@ -111,9 +114,10 @@ pub fn Name::to_canonical(self : Name) -> String {
 }
 
 ///|
+#derive(Eq, Compare, Hash, Debug)
 pub struct Path {
   segments : @list.List[Name]
-} derive(Eq, Compare, Hash, Debug)
+}
 
 ///|
 pub fn Path::from_names(segments : Array[Name]) -> Path {
@@ -146,11 +150,12 @@ pub type PackageName = Path
 pub type ModuleName = Path
 
 ///|
+#derive(Eq, Compare, Hash, Debug)
 pub(all) struct FQName {
   package_name : PackageName
   module_name : ModuleName
   local_name : Name
-} derive(Eq, Compare, Hash, Debug)
+}
 
 ///|
 pub fn FQName::parse(text : String) -> FQName raise NameError {

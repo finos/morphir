@@ -1,26 +1,30 @@
 ///|
+#derive(FromJson)
 priv struct Pin {
   name : String
   sha256 : String
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct Import {
   name : String
   pin : Pin
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct Entry {
   pin : Pin
   dependencies : Array[Import]
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct Input {
   root : Pin
   packages : Array[Entry]
-} derive(FromJson)
+}
 
 ///|
 fn Pin::validated(

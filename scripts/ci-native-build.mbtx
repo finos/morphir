@@ -86,10 +86,11 @@ fn ar_wrapper() -> String {
 }
 
 ///|
+#derive(Eq)
 enum Invocation {
   Build(String)
   SelfTest
-} derive(Eq)
+}
 
 ///|
 fn invocation(arguments : ArrayView[String]) -> Invocation raise {

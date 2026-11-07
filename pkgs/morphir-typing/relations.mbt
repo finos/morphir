@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum RelationReason {
   UnresolvedVariable
   UnsupportedConstraint
@@ -6,14 +7,15 @@ pub(all) enum RelationReason {
   CyclicAlias
   LimitExceeded
   UnsupportedShape
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TypeRelation {
   Proven
   Refuted
   Unknown(RelationReason)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TypeRelation with Eq::{equal, not_equal}

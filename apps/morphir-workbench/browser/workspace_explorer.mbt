@@ -1,39 +1,44 @@
 ///|
+#derive(Eq)
 enum WorkspaceNode {
   Folder(String)
   Project(@discovery.ProjectPath)
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum ProjectField {
   Name
   Folder
   Language
   Profile
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 struct NewProjectDraft {
   name : String
   folder : String
   language : String
   profile : String
   problem : String
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum ProjectDialog {
   Adding(NewProjectDraft)
   Removing(@discovery.ProjectPath, Bool, String)
   FileChange(WorkspaceFileAction, String, String, String)
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum WorkspaceFileAction {
   Create
   Rename
   Delete
-} derive(Eq)
+}
 
 ///|
 fn project_folder(model : Model, name : String) -> String {

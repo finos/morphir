@@ -1,11 +1,12 @@
 ///|
 /// Why a session ended before it closed normally.
+#derive(Eq, Debug)
 pub(all) enum Ending {
   Refused(code~ : RefusalCode, message~ : String)
   Failed(Fault)
   Deadline
   Cancelled
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Ending with Eq::{equal, not_equal}
@@ -26,12 +27,13 @@ pub fn[T] Ending::class(self : Ending) -> OutcomeClass[T] {
 
 ///|
 /// Something that happened to a session while it waited for a reply.
+#derive(Eq, Debug)
 pub(all) enum Event {
   Received(Message)
   ChannelFailed(ChannelError)
   DeadlinePassed
   StopRequested
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Event with Eq::{equal, not_equal}
@@ -42,10 +44,11 @@ pub extend Event with @debug.Debug::{to_repr}
 ///|
 /// How the driver ends the worker: `CloseAfterExit` waits for the worker to
 /// leave after `exit`; `Abort` stops it at once.
+#derive(Eq, Debug)
 pub(all) enum StopPlan {
   CloseAfterExit
   Abort(StopReason)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StopPlan with Eq::{equal, not_equal}
@@ -56,9 +59,10 @@ pub extend StopPlan with @debug.Debug::{to_repr}
 ///|
 /// What a describe probe returns: the claims of the extension. A description
 /// grants no execution authority, and the host does not keep it.
+#derive(Eq, Debug)
 pub struct Description {
   claims : Claims
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Description with Eq::{equal, not_equal}
@@ -68,10 +72,11 @@ pub extend Description with @debug.Debug::{to_repr}
 
 ///|
 /// The answer to one call, before it is typed as compiled or generated.
+#derive(Eq, Debug)
 pub struct Answer {
   class : OutcomeClass[Json]
   diagnostics : Array[Diagnostic]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Answer with Eq::{equal, not_equal}
@@ -81,11 +86,12 @@ pub extend Answer with @debug.Debug::{to_repr}
 
 ///|
 /// How a session ended its worker.
+#derive(Eq, Debug)
 pub(all) enum Conclusion {
   Described(Description)
   Closed
   EndedEarly(Ending)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Conclusion with Eq::{equal, not_equal}
@@ -98,12 +104,13 @@ pub extend Conclusion with @debug.Debug::{to_repr}
 /// `Exchange` waits for the reply to `awaiting`; `Activated` and `Answered`
 /// return to the caller with the worker still running; `Finished` ends the
 /// worker as `stop` says.
+#derive(Eq, Debug)
 pub(all) enum Step {
   Exchange(sends~ : Array[Message], awaiting~ : Int32)
   Activated(sends~ : Array[Message], Negotiated)
   Answered(sends~ : Array[Message], Answer)
   Finished(sends~ : Array[Message], stop~ : StopPlan, Conclusion)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Step with Eq::{equal, not_equal}
@@ -114,9 +121,10 @@ pub extend Step with @debug.Debug::{to_repr}
 ///|
 /// A caller used a session out of order: a second call, or a call after the
 /// session ended.
+#derive(Eq, Debug)
 pub(all) suberror SessionUnavailable {
   SessionUnavailable(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SessionUnavailable with Eq::{equal, not_equal}
@@ -125,6 +133,7 @@ pub extend SessionUnavailable with Eq::{equal, not_equal}
 pub extend SessionUnavailable with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 priv enum Phase {
   Describing
   Initializing(Offer, Claims)
@@ -134,7 +143,7 @@ priv enum Phase {
   Called
   ShuttingDown
   Over
-} derive(Eq, Debug)
+}
 
 ///|
 /// The pure state of one MEP session (SES-1). It takes events and returns
@@ -142,6 +151,7 @@ priv enum Phase {
 /// lines (SES-2). A probe is `describe` then `exit`. An operation session is
 /// `initialize`, `initialized`, the operation, `shutdown`, then `exit`, with
 /// one request at a time.
+#derive(Eq, Debug)
 pub struct Conversation {
   priv phase : Phase
   priv pending : Int32
@@ -150,7 +160,7 @@ pub struct Conversation {
   priv limits : Limits
   priv expected : Claims?
   priv negotiated : Negotiated?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Conversation with Eq::{equal, not_equal}

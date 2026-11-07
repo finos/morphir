@@ -23,10 +23,11 @@ type OriginalArchiveMetadataSink
 type OriginalArchiveSnapshotSink
 
 ///|
+#derive(Eq)
 enum OriginalsArchive {
   NoArchive
   PreparedArchive(@document.InventoryRevision, OriginalArchiveOperation)
-} derive(Eq)
+}
 
 ///|
 impl Eq for OriginalArchiveOperation with fn equal(self, other) {

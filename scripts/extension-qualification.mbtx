@@ -24,13 +24,14 @@ import {
 
 ///|
 /// One qualification suite of the driver.
+#derive(Eq)
 enum Suite {
   Elm
   Python
   MoonbitNative
   MoonbitPortable
   Conformance
-} derive(Eq)
+}
 
 ///|
 let all_suites : Array[Suite] = [

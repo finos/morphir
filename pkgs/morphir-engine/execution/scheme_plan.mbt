@@ -1,11 +1,12 @@
 ///|
 /// Capability validation scope and timing. Existing compiled plans always remain strict.
 /// AdmissionPolicy remains a source-compatible alias for existing consumers.
+#derive(Eq, Debug)
 #alias(AdmissionPolicy)
 pub(all) enum CapabilityPolicy {
   Strict
   Permissive
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CapabilityPolicy with Eq::{equal, not_equal}

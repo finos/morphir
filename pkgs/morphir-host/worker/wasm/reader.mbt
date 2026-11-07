@@ -1,9 +1,10 @@
 ///|
 /// A WASM module that the reader could not read: the byte offset and what is
 /// wrong there.
+#derive(Eq, Debug)
 pub(all) suberror ModuleError {
   Malformed(offset~ : Int32, reason~ : String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ModuleError with Eq::{equal, not_equal}
@@ -24,6 +25,7 @@ pub extend ModuleError with Show::{to_string, output}
 
 ///|
 /// A WASM value type.
+#derive(Eq, Debug)
 pub(all) enum ValueType {
   I32
   I64
@@ -35,7 +37,7 @@ pub(all) enum ValueType {
   /// A reference or other type that core WASM 2.0 does not have, by its
   /// type byte.
   Other(Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ValueType with Eq::{equal, not_equal}
@@ -64,10 +66,11 @@ pub extend ValueType with Show::{to_string, output}
 
 ///|
 /// The parameter and result types of a function.
+#derive(Eq, Debug)
 pub struct FunctionType {
   params : Array[ValueType]
   results : Array[ValueType]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FunctionType with Eq::{equal, not_equal}
@@ -98,12 +101,13 @@ pub extend FunctionType with Show::{to_string, output}
 
 ///|
 /// The limits of a memory, in 64 KiB pages.
+#derive(Eq, Debug)
 pub struct MemoryType {
   minimum : Int64
   maximum : Int64?
   shared : Bool
   memory64 : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MemoryType with Eq::{equal, not_equal}
@@ -113,13 +117,14 @@ pub extend MemoryType with @debug.Debug::{to_repr}
 
 ///|
 /// What an import or an export is.
+#derive(Eq, Debug)
 pub(all) enum ExternKind {
   Function(FunctionType)
   Table
   Memory(MemoryType)
   Global
   Tag
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ExternKind with Eq::{equal, not_equal}
@@ -129,10 +134,11 @@ pub extend ExternKind with @debug.Debug::{to_repr}
 
 ///|
 /// One import of a module: its module and field names, and its kind.
+#derive(Eq, Debug)
 pub struct Import {
   name : @worker.ImportName
   kind : ExternKind
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Import with Eq::{equal, not_equal}
@@ -143,10 +149,11 @@ pub extend Import with @debug.Debug::{to_repr}
 ///|
 /// One export of a module: its name and its kind. A function export has the
 /// type of the function it exports.
+#derive(Eq, Debug)
 pub struct Export {
   name : String
   kind : ExternKind
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Export with Eq::{equal, not_equal}

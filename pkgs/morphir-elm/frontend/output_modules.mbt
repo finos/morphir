@@ -1,5 +1,6 @@
 ///|
 /// Which modules the output of `compile_project` keeps.
+#derive(Eq, Debug)
 pub(all) enum OutputModules {
   /// The modules that `morphir-elm make` 2.100.0 keeps (README rule 2). A kept module can name a type of a module
   /// that the output drops.
@@ -8,7 +9,7 @@ pub(all) enum OutputModules {
   /// definitions, value signatures, value bodies, patterns and inferred types. Code generators use it, so that the
   /// generated code names no missing module.
   Referenced
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OutputModules with Eq::{equal, not_equal}

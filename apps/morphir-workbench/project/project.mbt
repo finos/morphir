@@ -1,17 +1,19 @@
 ///|
 /// One file of a project, with its path relative to the project root (for example `src/Shop/Orders/Api.elm`).
+#derive(Eq, Debug)
 pub(all) struct ProjectFile {
   path : @ids.SourcePath
   content : String
-} derive(Eq, Debug)
+}
 
 ///|
 /// How many files a language's project holds in the workbench. Per-file languages hold one
 /// (`morphir-ukvn.5.22.14`).
+#derive(Eq, Debug)
 pub(all) enum Layout {
   OneFile
   ManyFiles
-} derive(Eq, Debug)
+}
 
 ///|
 /// The file rules of a language, from the catalog: its extensions and its layout.
@@ -29,10 +31,11 @@ pub(all) suberror ProjectError {
 ///|
 /// What a project generates after a compile: nothing, or the files of one backend, such as `scheme` or `elm`. A
 /// compile request sends it as the pipeline backend.
+#derive(Eq, Debug)
 pub(all) enum Generation {
   NoGeneration
   Backend(@ids.BackendId)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Generation with Eq::{equal, not_equal}
@@ -64,6 +67,7 @@ pub fn Generation::parse(id : String) -> Generation? {
 ///|
 /// The open project of one language. `name` keeps the configuration spelling; `active` is the file in the editor.
 /// `target` is the project's generation setting; `None` leaves the Workbench default.
+#derive(Eq, Debug)
 pub(all) struct Project {
   name : @ids.SourcePackageName
   language : @ids.LanguageId
@@ -73,7 +77,7 @@ pub(all) struct Project {
   exposed : Array[@ids.SourceModuleName]
   active : @ids.SourcePath
   target : Generation?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Project::single(

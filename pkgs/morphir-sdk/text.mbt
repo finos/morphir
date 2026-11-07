@@ -1,9 +1,10 @@
 ///|
 /// Elm strings contain UTF-16 code units, including isolated surrogates.
 /// Copying at the boundary keeps Text immutable to callers.
+#derive(Eq, Debug)
 pub struct Text {
   priv units : Array[UInt16]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Text::from_units(units : Array[UInt16]) -> Text {
@@ -55,9 +56,10 @@ pub fn Text::to_string(self : Text) -> String raise SdkError {
 
 ///|
 /// Elm Char can contain a surrogate or a case conversion expansion.
+#derive(Eq, Debug)
 pub struct Character {
   priv text : Text
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Character::from_units(units : Array[UInt16]) -> Character {

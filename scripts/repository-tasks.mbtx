@@ -15,10 +15,11 @@ import {
 /// Portable build, test and repository housekeeping tasks.
 
 ///|
+#derive(Debug)
 suberror TaskError {
   Failed(Int32)
   InvalidTask(String)
-} derive(Debug)
+}
 
 ///|
 enum Invocation {

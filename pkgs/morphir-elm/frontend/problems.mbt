@@ -1,9 +1,10 @@
 ///|
 /// One `.elm` source. `path` is relative to the source directory and uses `/`.
+#derive(Eq, Debug)
 pub(all) struct ElmSource {
   path : String
   content : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ElmSource with Eq::{equal, not_equal}
@@ -14,12 +15,13 @@ pub extend ElmSource with @debug.Debug::{to_repr}
 ///|
 /// One frontend problem. `path` is the source path relative to the source directory; `location` is the range
 /// in that file when it is known.
+#derive(Eq, Debug)
 pub(all) struct ElmProblem {
   code : String
   message : String
   path : String
   location : @ir.SourceLocation?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ElmProblem with Eq::{equal, not_equal}
@@ -31,9 +33,10 @@ pub extend ElmProblem with @debug.Debug::{to_repr}
 /// The problems of the first pass that failed. The `elm.type` problems of the inference pass are in logical-path
 /// order (`value:<package>:<module>#<name>…`), because `@typing.infer` sorts them; problems at one path keep their
 /// order. The problems of every other pass are in source order.
+#derive(Eq, Debug)
 pub(all) suberror ElmFailed {
   ElmFailed(Array[ElmProblem])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ElmFailed with Eq::{equal, not_equal}

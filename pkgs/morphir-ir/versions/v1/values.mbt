@@ -4,6 +4,7 @@
 
 ///|
 /// Integer and decimal lexemes retain their precision and decimal scale.
+#derive(Eq, Debug)
 pub(all) enum Literal {
   BoolLiteral(Bool)
   CharLiteral(Char)
@@ -11,9 +12,10 @@ pub(all) enum Literal {
   WholeNumberLiteral(String)
   FloatLiteral(Double)
   DecimalLiteral(String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Pattern[A] {
   WildcardPattern(A)
   AsPattern(A, Pattern[A], Name)
@@ -23,9 +25,10 @@ pub(all) enum Pattern[A] {
   HeadTailPattern(A, Pattern[A], Pattern[A])
   LiteralPattern(A, Literal)
   UnitPattern(A)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Value[TA, VA] {
   Literal(VA, Literal)
   Constructor(VA, FQName)
@@ -45,7 +48,7 @@ pub(all) enum Value[TA, VA] {
   PatternMatch(VA, Value[TA, VA], Array[(Pattern[VA], Value[TA, VA])])
   UpdateRecord(VA, Value[TA, VA], Map[Name, Value[TA, VA]])
   Unit(VA)
-} derive(Eq, Debug)
+}
 
 ///|
 pub type RawValue = Value[Unit, Unit]
@@ -54,17 +57,19 @@ pub type RawValue = Value[Unit, Unit]
 pub type TypedValue = Value[Unit, Type[Unit]]
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ValueSpecification[TA] {
   inputs : Array[(Name, Type[TA])]
   output : Type[TA]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ValueDefinition[TA, VA] {
   input_types : Array[(Name, VA, Type[TA])]
   output_type : Type[TA]
   body : Value[TA, VA]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn[TA, VA] ValueDefinition::to_specification(

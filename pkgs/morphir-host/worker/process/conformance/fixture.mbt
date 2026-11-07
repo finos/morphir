@@ -1,5 +1,6 @@
 ///|
 /// A start option of the fixture worker.
+#derive(Eq, Debug)
 pub(all) enum FixtureFlag {
   /// The worker starts a grandchild that runs until it is killed.
   Grandchild
@@ -10,7 +11,7 @@ pub(all) enum FixtureFlag {
   /// At `exit` or the end of its stdin, the worker writes 1 MiB to stdout and
   /// exits after the write.
   FloodOnExit
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FixtureFlag with Eq::{equal, not_equal}
@@ -31,6 +32,7 @@ pub fn FixtureFlag::argument(self : FixtureFlag) -> String {
 
 ///|
 /// How a launcher owns a worker's process tree.
+#derive(Eq, Debug)
 pub(all) enum TreeOwnership {
   /// A process group that the host signals; it also stops descendants after
   /// the worker has exited.
@@ -41,7 +43,7 @@ pub(all) enum TreeOwnership {
   /// A tree that the host terminates from its root (`taskkill /T`). It reaches
   /// descendants only while the root runs.
   RootTree
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TreeOwnership with Eq::{equal, not_equal}

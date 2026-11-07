@@ -20,9 +20,10 @@ import {
 let json_mode : Ref[Bool] = Ref(false)
 
 ///|
+#derive(Debug)
 suberror ChildFailure {
   ChildFailure(Int32, String)
-} derive(Debug)
+}
 
 ///|
 fn succeeded(result : Json) -> Json {

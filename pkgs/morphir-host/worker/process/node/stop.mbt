@@ -29,6 +29,7 @@ fn Tree::stop_method(self : Tree) -> @worker.StopMethod {
 
 ///|
 /// What the host had to do to stop the tree.
+#derive(Eq)
 priv enum TreeAction {
   /// The worker had exited and nothing of its tree remained.
   NotNeeded
@@ -36,7 +37,7 @@ priv enum TreeAction {
   Stopped
   /// The host could not confirm within its bound that the tree is gone.
   Unconfirmed
-} derive(Eq)
+}
 
 ///|
 /// The status and method that a stop reports. `before` is the exit status

@@ -17,9 +17,10 @@ import {
 let json_mode : Ref[Bool] = Ref(false)
 
 ///|
+#derive(Debug)
 suberror ChildFailure {
   ChildFailure(Int32, String)
-} derive(Debug)
+}
 
 ///|
 fn succeeded(result : Json) -> Json {
@@ -247,11 +248,12 @@ async fn native_probe(checkout : String) -> Json {
 }
 
 ///|
+#derive(Eq, Debug)
 enum Action {
   Qualify
   Setup
   SelfTest
-} derive(Eq, Debug)
+}
 
 ///|
 fn command() -> @argparse.Command {
@@ -422,8 +424,8 @@ async fn qualify() -> Unit {
     @fs.remove(build + "/run.ion")
   }
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.18+6c83a7f62") else {
-    fail("MoonBit 0.10.18+6c83a7f62 required")
+  guard compiler.contains("0.10.20+65efd5b93") else {
+    fail("MoonBit 0.10.20+65efd5b93 required")
   }
   // These fixture sources are copied into generated modules outside moon.work.
   for fixture in ["guest", "resources", "callbacks", "wasmoon"] {

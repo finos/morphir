@@ -1,8 +1,9 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum DiagnosticFiles {
   Disabled
   Enabled(@rolling.FileFormat)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DiagnosticFiles with Eq::{equal, not_equal}
@@ -11,10 +12,11 @@ pub extend DiagnosticFiles with Eq::{equal, not_equal}
 pub extend DiagnosticFiles with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Settings {
   level : DiagnosticLevel
   files : DiagnosticFiles
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Settings with Eq::{equal, not_equal}
@@ -23,9 +25,10 @@ pub extend Settings with Eq::{equal, not_equal}
 pub extend Settings with @debug.Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub suberror InvalidFileFormat {
   InvalidFileFormat(String)
-} derive(Debug)
+}
 
 ///|
 pub extend InvalidFileFormat with @debug.Debug::{to_repr}

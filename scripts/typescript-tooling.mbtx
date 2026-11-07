@@ -16,11 +16,12 @@ import {
 /// Portable Bun setup, checked builds and Node compatibility gates.
 
 ///|
+#derive(Debug)
 suberror ToolingError {
   Failed(Int32)
   MissingTask
   InvalidTask(String)
-} derive(Debug)
+}
 
 ///|
 enum Invocation {

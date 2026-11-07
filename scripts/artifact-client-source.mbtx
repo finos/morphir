@@ -69,11 +69,12 @@ async fn failed(error : Error) -> Unit {
 }
 
 ///|
+#derive(Eq, Debug)
 priv enum Invocation {
   Check
   Sync(String)
   VerifyUpstream(String)
-} derive(Eq, Debug)
+}
 
 ///|
 fn source_command(json~ : Bool = false) -> @argparse.Command {

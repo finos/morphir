@@ -1,11 +1,12 @@
 ///|
 /// A file retains its version-specific model. No migration is implicit.
+#derive(Eq, Debug)
 pub(all) enum IRFile {
   V1(@v1.IRFile)
   V2(@v2.IRFile)
   V3(@v3.IRFile)
   V4(@v4.IRFile)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend IRFile with Eq::{equal, not_equal}

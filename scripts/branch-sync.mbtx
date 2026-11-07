@@ -17,25 +17,29 @@ import {
 // branches have diverged it pushes nothing and exits 1.
 
 ///|
-struct RepoSlug(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct RepoSlug(String)
 
 ///|
-struct BranchName(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct BranchName(String)
 
 ///|
 /// A branch in a repository.
+#derive(Eq, Debug)
 struct Endpoint {
   repo : RepoSlug
   branch : BranchName
-} derive(Eq, Debug)
+}
 
 ///|
 /// The branch that this run owns, and the branch in the other repository that
 /// it may fast-forward.
+#derive(Eq, Debug)
 struct Pairing {
   own : Endpoint
   other : Endpoint
-} derive(Eq, Debug)
+}
 
 ///|
 let moonbit_main : Endpoint = {
@@ -64,7 +68,8 @@ fn Pairing::for_repository(repository : String) -> Pairing raise {
 }
 
 ///|
-struct Sha(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct Sha(String)
 
 ///|
 fn Sha::parse(text : String) -> Sha raise {
@@ -77,12 +82,13 @@ fn Sha::parse(text : String) -> Sha raise {
 
 ///|
 /// How the own tip relates to the other tip.
+#derive(Eq, Debug)
 enum Relation {
   Same
   OwnAhead
   OtherAhead
   Diverged
-} derive(Eq, Debug)
+}
 
 ///|
 fn Relation::of(
@@ -103,12 +109,13 @@ fn Relation::of(
 
 ///|
 /// The `ci-ok` check on the own tip, in the repository where it landed.
+#derive(Eq, Debug)
 enum Gate {
   Passed
   Pending
   Failed
   Missing
-} derive(Eq, Debug)
+}
 
 ///|
 /// Reads `GET /repos/{repo}/commits/{sha}/check-runs?check_name=ci-ok`. Any
@@ -139,6 +146,7 @@ fn Gate::from_check_runs(json : Json) -> Gate raise {
 
 ///|
 /// What this run does.
+#derive(Eq, Debug)
 enum Action {
   InSync
   Push(Sha)
@@ -146,7 +154,7 @@ enum Action {
   Blocked(Sha, Gate)
   LeftToOtherSide
   Diverged
-} derive(Eq, Debug)
+}
 
 ///|
 fn plan(relation : Relation, own_tip : Sha, gate : Gate) -> Action {
@@ -166,12 +174,13 @@ fn plan(relation : Relation, own_tip : Sha, gate : Gate) -> Action {
 ///|
 /// Divergence keeps one open issue labelled `branch-sync`. A run that finds
 /// the branches together again closes it.
+#derive(Eq, Debug)
 enum IssueChange {
   Open
   Comment(Int32)
   Close(Int32)
   Unchanged
-} derive(Eq, Debug)
+}
 
 ///|
 fn issue_change(action : Action, open_issue : Int32?) -> IssueChange {
@@ -421,7 +430,7 @@ fn error_message(error : Error) -> String {
   match error {
     Failure(message) =>
       match message.find("FAILED: ") {
-        Some(at) => message.view(start_offset=at + 8).to_owned()
+        Some(at) => message.exact_view(start=at + 8).to_owned()
         None => message
       }
     _ => error.to_string()

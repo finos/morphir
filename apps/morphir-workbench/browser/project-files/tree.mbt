@@ -1,27 +1,31 @@
 ///|
 /// A row of the project tree: a folder or a file.
+#derive(Eq, Debug)
 pub(all) enum Item {
   Dir(@ids.SourcePath)
   File(@ids.SourcePath)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Where a new file goes: the project root or a folder.
+#derive(Eq, Debug)
 pub(all) enum Folder {
   Root
   In(@ids.SourcePath)
-} derive(Eq, Debug)
+}
 
 ///|
 /// The folders and files of a project. Folders come from the file paths; a `Branch` label holds more than one
 /// segment when a chain of single folders is compacted, as `src/Shop` for `src` holding only `Shop`.
+#derive(Eq, Debug)
 pub(all) enum Node {
   Branch(@ids.SourcePath, String, Array[Node])
   Leaf(@ids.SourcePath, String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// One visible row of the tree, in display order.
+#derive(Eq, Debug)
 pub(all) struct Row {
   item : Item
   label : String
@@ -36,7 +40,7 @@ pub(all) struct Row {
   position : Int32
   /// The problems of the file, or of all the files in the folder.
   problems : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Item::path(self : Item) -> @ids.SourcePath {
@@ -250,6 +254,7 @@ pub fn rows(
 
 ///|
 /// A key on a focused row.
+#derive(Eq, Debug)
 pub(all) enum Move {
   Up
   Down
@@ -262,17 +267,18 @@ pub(all) enum Move {
   /// Space: open a file and stay in the tree, or toggle a folder.
   Preview
   Typeahead(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// What a move does to the tree.
+#derive(Eq, Debug)
 pub(all) enum Step {
   FocusOn(Item)
   Expand(@ids.SourcePath)
   Collapse(@ids.SourcePath)
   OpenFile(@ids.SourcePath)
   Stay
-} derive(Eq, Debug)
+}
 
 ///|
 /// The tree pattern of WAI-ARIA: Up and Down move between visible rows, Right opens a folder or enters it, Left

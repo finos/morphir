@@ -4,6 +4,7 @@
 
 ///|
 /// One entry of a context menu.
+#derive(Eq, Debug)
 pub(all) struct Item {
   label : String
   /// The command whose shortcut the entry shows.
@@ -15,7 +16,7 @@ pub(all) struct Item {
   group_start : Bool
   /// The heading of the entry's section; a heading shows where the section starts.
   section : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub let width : Int32 = 240
@@ -117,12 +118,13 @@ pub fn first_enabled(items : Array[Item]) -> Int32 {
 
 ///|
 /// What a key in an open menu does.
+#derive(Eq, Debug)
 pub(all) enum KeyResult {
   MoveTo(Int32)
   Choose(Int32)
   Close
   Ignore
-} derive(Eq, Debug)
+}
 
 ///|
 /// The WAI-ARIA menu keys: arrows move and wrap, Home and End jump, Enter and Space choose, Escape and Tab close.

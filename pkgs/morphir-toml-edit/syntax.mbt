@@ -1,12 +1,14 @@
 ///|
 /// Locations use zero-based UTF-16 offsets and one-based lines and columns.
+#derive(Eq, Debug)
 pub(all) struct Position {
   offset : Int32
   line : Int32
   column : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum DiagnosticKind {
   InvalidToml
   UnsupportedDottedKey
@@ -14,12 +16,13 @@ pub(all) enum DiagnosticKind {
   MissingPath
   WrongKind
   InvalidIndex
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub(all) suberror Diagnostic {
   Diagnostic(DiagnosticKind, String, Position)
-} derive(Debug)
+}
 
 ///|
 priv struct Span {

@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub struct List[A] {
   items : @corelist.List[A]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend List with Eq::{equal, not_equal}

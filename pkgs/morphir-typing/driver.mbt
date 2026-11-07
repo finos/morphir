@@ -1,11 +1,12 @@
 ///|
 /// What `infer` does with the file.
+#derive(Eq, Debug)
 pub(all) enum Mode {
   /// Writes the solved types into the file.
   Fill
   /// Checks the file and returns it unchanged.
   Check
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Mode with Eq::{equal, not_equal}

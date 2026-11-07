@@ -1,5 +1,6 @@
 ///|
 /// Vocabulary of the existing morphir-kb service. This library has no transitions.
+#derive(Eq, Debug)
 pub(all) enum KbState {
   Backlog
   Refinement
@@ -7,7 +8,7 @@ pub(all) enum KbState {
   Released
   Cancelled
   Superseded
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend KbState with Eq::{equal, not_equal}
@@ -30,10 +31,11 @@ pub(all) struct Fragment {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Document {
   id : Id
   revision : Revision?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Document with Eq::{equal, not_equal}

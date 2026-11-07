@@ -80,9 +80,10 @@ fn allocate(
 
 ///|
 /// A store into the IR cache that would go over one of its limits.
+#derive(Debug)
 priv suberror CacheLimit {
   CacheLimit(String)
-} derive(Debug)
+}
 
 ///|
 /// The IR cache of one session, bounded by its bytes (the UTF-8 bytes of

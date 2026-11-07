@@ -1,11 +1,12 @@
 ///|
 /// What a guest gave for one message: a response, nothing for a notification,
 /// or the end of the guest after `exit`.
+#derive(Eq, Debug)
 pub(all) enum Reply {
   Response(Bytes)
   Notified
   Exit
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Reply with Eq::{equal, not_equal}
@@ -15,9 +16,10 @@ pub extend Reply with @debug.Debug::{to_repr}
 
 ///|
 /// A guest stopped serving for a fault. The guest takes no more messages.
+#derive(Eq, Debug)
 pub(all) suberror GuestError {
   Faulted(@worker.GuestFault)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GuestError with Eq::{equal, not_equal}
@@ -34,10 +36,11 @@ pub(open) trait Guest {
 ///|
 /// The bounds of one guest call: a deadline, and an instruction budget where
 /// the engine meters instructions.
+#derive(Eq, Debug)
 pub struct CallBounds {
   deadline_ms : Int32
   instructions : Int32?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CallBounds with Eq::{equal, not_equal}

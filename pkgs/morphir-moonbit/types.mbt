@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub(all) suberror GenerationError {
   Invalid(String, String, String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GenerationError with Eq::{equal, not_equal}
@@ -31,10 +32,11 @@ pub fn Input::new(unit_id : String, ir : @ir.IRFile) -> Input {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Content {
   Text(String)
   Binary(Bytes)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Content with Eq::{equal, not_equal}
@@ -43,12 +45,13 @@ pub extend Content with Eq::{equal, not_equal}
 pub extend Content with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ArtifactRole {
   Source
   ModuleManifest
   PackageManifest
   Metadata
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ArtifactRole with Eq::{equal, not_equal}
@@ -57,11 +60,12 @@ pub extend ArtifactRole with Eq::{equal, not_equal}
 pub extend ArtifactRole with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Artifact {
   path : String
   role : ArtifactRole
   content : Content
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Artifact with Eq::{equal, not_equal}
@@ -71,12 +75,13 @@ pub extend Artifact with @debug.Debug::{to_repr}
 
 ///|
 /// A semantic requirement, not evidence that a dependency has been resolved.
+#derive(Eq, Debug)
 pub(all) struct Dependency {
   module_name : String
   version : String
   api_profile : String
   semantic_pin : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Dependency with Eq::{equal, not_equal}
@@ -85,12 +90,13 @@ pub extend Dependency with Eq::{equal, not_equal}
 pub extend Dependency with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Project {
   module_name : String
   root : String
   members : Array[String]
   dependencies : Array[Dependency]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Project with Eq::{equal, not_equal}
@@ -99,6 +105,7 @@ pub extend Project with Eq::{equal, not_equal}
 pub extend Project with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Symbol {
   fqname : String
   generated_name : String
@@ -106,7 +113,7 @@ pub(all) struct Symbol {
   source_node : String
   generated_node : String
   origins : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Symbol with Eq::{equal, not_equal}
@@ -141,6 +148,7 @@ pub fn Limits::default() -> Limits {
 }
 
 ///|
+#derive(Eq)
 priv enum Scalar {
   SignedInt32
   BoundedInteger(String)
@@ -152,7 +160,7 @@ priv enum Scalar {
   Character
   Decimal
   Unit
-} derive(Eq)
+}
 
 ///|
 priv struct Declaration {
@@ -168,6 +176,7 @@ priv struct Declaration {
 }
 
 ///|
+#derive(Eq)
 priv enum Lowered {
   Atom(Scalar)
   Product(Array[Lowered])
@@ -177,7 +186,7 @@ priv enum Lowered {
   Optional(Lowered)
   Outcome(Lowered, Lowered)
   Nominal(@ir.FQName)
-} derive(Eq)
+}
 
 ///|
 priv struct TypeEntry {

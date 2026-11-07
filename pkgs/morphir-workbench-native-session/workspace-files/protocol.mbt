@@ -26,10 +26,12 @@ pub(all) suberror Invalid {
 }
 
 ///|
-pub struct SessionId(String) derive(Eq)
+#derive(Eq)
+pub struct SessionId(String)
 
 ///|
-pub struct GrantId(String) derive(Eq)
+#derive(Eq)
+pub struct GrantId(String)
 
 ///|
 pub extend SessionId with Eq::{equal, not_equal}

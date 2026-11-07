@@ -1,12 +1,14 @@
 ///|
 /// Exact IR format release, independent of the library's own release version.
+#derive(Eq, Compare, Hash, Debug)
 pub struct FormatVersion {
   major : UInt32
   minor : UInt32
   patch : UInt32
-} derive(Eq, Compare, Hash, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) suberror VersionError {
   InvalidSyntax(String)
   OutOfRange(String)
@@ -14,7 +16,7 @@ pub(all) suberror VersionError {
   UnsupportedMinor(UInt32, UInt32)
   FamilyMismatch(UInt32, UInt32)
   SpecsBefore3_1
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn FormatVersion::new(

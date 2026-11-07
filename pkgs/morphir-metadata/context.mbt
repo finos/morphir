@@ -1,10 +1,11 @@
 ///|
+#derive(Eq)
 priv struct Term {
   iri : String
   coercion : String?
   prefix : Bool
   is_protected : Bool
-} derive(Eq)
+}
 
 ///|
 priv struct Context {

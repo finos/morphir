@@ -53,7 +53,8 @@ fn[T] distrust(reason : String) -> T raise Distrust {
 
 ///|
 /// A full commit SHA: 40 or 64 lowercase hex digits, not all zero.
-struct Sha(String) derive(Eq)
+#derive(Eq)
+struct Sha(String)
 
 ///|
 fn Sha::parse(text : String) -> Sha raise Distrust {
@@ -67,18 +68,21 @@ fn Sha::parse(text : String) -> Sha raise Distrust {
 
 ///|
 fn Sha::short(self : Sha) -> String {
-  self.0.view(end_offset=7).to_owned()
+  self.0.exact_view(end=7).to_owned()
 }
 
 ///|
-struct RunId(String) derive(Eq)
+#derive(Eq)
+struct RunId(String)
 
 ///|
-struct PrNumber(Int32) derive(Eq)
+#derive(Eq)
+struct PrNumber(Int32)
 
 ///|
 /// `owner/name` of a GitHub repository.
-struct Repository(String) derive(Eq)
+#derive(Eq)
+struct Repository(String)
 
 ///|
 fn Repository::parse(text : String) -> Repository? {

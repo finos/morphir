@@ -219,7 +219,7 @@ async fn execute() -> Json {
         #|const {fileIdentity,treeIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/identity.mjs')));
         #|const {compilerIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/capabilities.mjs')));
         #|const {checkedCore}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/core.mjs')));
-        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(checkedCore(home,'0.10.18+6c83a7f62'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
+        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(checkedCore(home,'0.10.20+65efd5b93'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
       ),
       repo,
       home,

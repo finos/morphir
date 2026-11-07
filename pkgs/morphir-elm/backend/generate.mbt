@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum FileRole {
   Source
   ElmManifest
   MorphirManifest
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FileRole with Eq::{equal, not_equal}
@@ -12,11 +13,12 @@ pub extend FileRole with Eq::{equal, not_equal}
 pub extend FileRole with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct GeneratedFile {
   path : String
   role : FileRole
   content : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GeneratedFile with Eq::{equal, not_equal}
@@ -25,10 +27,11 @@ pub extend GeneratedFile with Eq::{equal, not_equal}
 pub extend GeneratedFile with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ElmDependency {
   name : String
   range : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ElmDependency with Eq::{equal, not_equal}

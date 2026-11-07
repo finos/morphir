@@ -3,43 +3,49 @@
 // SPDX-License-Identifier: Apache-2.0
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ModuleSpecification[TA] {
   types : Map[Name, Documented[TypeSpecification[TA]]]
   values : Map[Name, Documented[ValueSpecification[TA]]]
   doc : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ModuleDefinition[TA, VA] {
   types : Map[Name, AccessControlled[Documented[TypeDefinition[TA]]]]
   values : Map[Name, AccessControlled[Documented[ValueDefinition[TA, VA]]]]
   doc : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct PackageSpecification[TA] {
   modules : Map[ModuleName, ModuleSpecification[TA]]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct PackageDefinition[TA, VA] {
   modules : Map[ModuleName, AccessControlled[ModuleDefinition[TA, VA]]]
-} derive(Eq, Debug)
+}
 
 ///|
 pub type Dependencies = Map[PackageName, PackageSpecification[Unit]]
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Distribution {
   Library(PackageName, Dependencies, PackageDefinition[Unit, Type[Unit]])
-} derive(Eq, Debug)
+}
 
 ///|
 /// An envelope cannot be constructed with a mismatching format family.
+#derive(Eq, Debug)
 pub struct IRFile {
   format_version : @version.FormatVersion
   distribution : Distribution
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn IRFile::new(

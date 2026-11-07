@@ -17,17 +17,19 @@ import {
 // Enforce the synchronous engine boundary from ADR 0002 and ADR 0004.
 
 ///|
+#derive(Eq, Debug)
 enum Problem {
   HostImport(String)
   ManifestSyntax(String)
   MissingEngine
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 struct Finding {
   path : String
   problem : Problem
-} derive(Eq, Debug)
+}
 
 ///|
 struct Inspection {

@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Compare, Debug)
 pub struct Integer {
   value : @bigint.BigInt
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn from_bigint(value : @bigint.BigInt) -> Integer {

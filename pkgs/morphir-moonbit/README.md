@@ -205,7 +205,7 @@ MOON_HOME="$HOME/.moon" mise exec -- node \
   pkgs/morphir-moonbit/scripts/test-compiler.mts pkgs/morphir-sdk
 ```
 
-`MOON_HOME` must identify the compiler installation `0.10.18+6c83a7f62`.
+`MOON_HOME` must identify the compiler installation `0.10.20+65efd5b93`.
 The acceptance task uses that installation's own core; run `mise run setup:core`
 first to verify it.
 The core source identity is recorded in `tools/moonbit-core-pin.json`.

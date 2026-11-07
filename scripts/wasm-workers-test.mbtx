@@ -34,10 +34,11 @@ let python_releases : Array[(String, String)] = [
 
 ///|
 /// A target whose package tests include the end-to-end worker tests.
+#derive(Eq)
 enum Target {
   Native
   Js
-} derive(Eq)
+}
 
 ///|
 fn Target::parse(text : String) -> Target? {

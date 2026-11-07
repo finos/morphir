@@ -71,7 +71,7 @@ async fn with_host(
     identity~,
     call?,
   )
-  defer launcher.release()
+  defer @async.protect_from_cancel(() => launcher.release())
   let machine = @process.host_machine().unwrap()
   body(@worker.Host::new(launcher, Native(machine)))
 }

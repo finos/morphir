@@ -15,10 +15,11 @@ pub(all) enum Code {
 
 ///|
 /// An effect concerns this invocation only, not earlier requests.
+#derive(Eq)
 pub(all) enum Effect {
   NoEffect
   UnknownEffect
-} derive(Eq)
+}
 
 ///|
 pub extend Effect with Eq::{equal, not_equal}

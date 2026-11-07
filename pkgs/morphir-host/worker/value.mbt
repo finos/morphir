@@ -1,6 +1,7 @@
 ///|
 /// A value from outside the host that does not fit its domain type. Decoders
 /// at the boundary raise it; the CLI maps it to its own refusal codes.
+#derive(Eq, Debug)
 pub(all) suberror ValueError {
   InvalidSha256(String)
   InvalidArtifactPath(String)
@@ -19,7 +20,7 @@ pub(all) suberror ValueError {
   InvalidArtifact(String)
   InvalidDiagnostic(String)
   InvalidClaim(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ValueError with Eq::{equal, not_equal}

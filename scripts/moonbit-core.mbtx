@@ -72,11 +72,12 @@ async fn failed(error : Error) -> Unit {
 }
 
 ///|
+#derive(Eq, @debug.Debug)
 enum CoreMode {
   Setup
   Check
   SelfTest
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 fn core_command(json~ : Bool = false) -> @argparse.Command {

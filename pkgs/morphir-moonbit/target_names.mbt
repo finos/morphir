@@ -2,10 +2,11 @@
 pub const NAMING_POLICY : String = "moonbit-readable-targets-v1"
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum NamingStyle {
   Readable
   LegacyHex
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend NamingStyle with Eq::{equal, not_equal}
@@ -14,6 +15,7 @@ pub extend NamingStyle with Eq::{equal, not_equal}
 pub extend NamingStyle with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct NamingAllocation {
   owner : String
   role : String
@@ -22,7 +24,7 @@ pub(all) struct NamingAllocation {
   candidate : String
   allocated : String
   reason : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend NamingAllocation with Eq::{equal, not_equal}

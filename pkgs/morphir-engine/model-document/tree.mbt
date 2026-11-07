@@ -1,6 +1,7 @@
 ///|
 /// A portable path inside a captured original inventory, never a host path.
-pub struct OriginalPath(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct OriginalPath(String)
 
 ///|
 /// Connected originals use their own published path and inventory bounds.
@@ -54,10 +55,11 @@ pub fn OriginalPath::to_string(self : OriginalPath) -> String {
 ///|
 /// The captured inventory owns bytes and explicit directories. It makes no
 /// claim about filesystem entries that a picker or provider did not supply.
+#derive(Eq, Debug)
 pub struct OriginalTree {
   format_version : @version.FormatVersion
   priv storage : InventoryStorage
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OriginalTree with Eq::{equal, not_equal}

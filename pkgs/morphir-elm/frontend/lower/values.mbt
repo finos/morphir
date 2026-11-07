@@ -236,7 +236,7 @@ fn Lowering::expression(
       Field(a, self.expression(target), @mapping.elm_name(field.value))
     RecordAccessFunction(name) => {
       let field = if name.has_prefix(".") {
-        name.view(start_offset=1).to_owned()
+        name.exact_view(start=1).to_owned()
       } else {
         name
       }

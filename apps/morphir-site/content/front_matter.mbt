@@ -1,8 +1,9 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum FieldValue {
   Text(String)
   List(Array[String])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FieldValue with Eq::{equal, not_equal}

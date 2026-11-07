@@ -1,12 +1,13 @@
 ///|
 /// The level of an Extism log message.
+#derive(Eq, Debug)
 pub(all) enum LogLevel {
   Trace
   Debug
   Info
   Warn
   Error
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LogLevel with Eq::{equal, not_equal}
@@ -33,6 +34,7 @@ pub extend LogLevel with Show::{to_string, output}
 ///|
 /// What a guest gave the host besides its responses. The host keeps it as
 /// bounded diagnostics, never in the MEP response stream.
+#derive(Eq, Debug)
 pub(all) enum GuestOutput {
   /// Bytes that the guest wrote to WASI stdout.
   Stdout(Bytes)
@@ -44,7 +46,7 @@ pub(all) enum GuestOutput {
   MorphirLog(level~ : String, String)
   /// An `http_request` that the host refused: the guest has no network.
   RefusedHttp(verb~ : String, url~ : String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GuestOutput with Eq::{equal, not_equal}

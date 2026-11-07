@@ -2,10 +2,11 @@
 pub const MAX_FRAME_BYTES : Int32 = 16777216
 
 ///|
+#derive(Debug)
 pub(all) suberror FrameError {
   InvalidFrame(String)
   FrameTooLarge(declared~ : Int64, limit~ : Int32)
-} derive(Debug)
+}
 
 ///|
 pub extend FrameError with @debug.Debug::{to_repr}

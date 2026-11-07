@@ -19,12 +19,13 @@ extern "js" fn anchor(event : @dom.Event) -> FixedArray[Int32] =
 ///|
 /// What the preview shows for the selected file: its content or binary summary, its Ion text decoded by the worker,
 /// or its first bytes in hex.
+#derive(Eq, Debug)
 pub(all) enum Preview {
   Summary
   /// The path, the decoded text and the number of top-level values.
   IonText(String, String, Int32)
   Hex(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Preview with Eq::{equal, not_equal}
@@ -34,12 +35,13 @@ pub extend Preview with @debug.Debug::{to_repr}
 
 ///|
 /// An open context menu on a generated file: the file, the menu's top-left corner and the entry with the focus.
+#derive(Eq, Debug)
 pub(all) struct Menu {
   path : String
   left : Int32
   top : Int32
   index : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Menu with Eq::{equal, not_equal}
@@ -48,6 +50,7 @@ pub extend Menu with Eq::{equal, not_equal}
 pub extend Menu with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq)
 pub(all) struct State {
   selected : String
   collapsed : Array[String]
@@ -56,19 +59,20 @@ pub(all) struct State {
   expanded : Bool
   preview : Preview
   menu : Menu?
-} derive(Eq)
+}
 
 ///|
 pub extend State with Eq::{equal, not_equal}
 
 ///|
 /// An entry of a generated file's context menu.
+#derive(Eq, Debug)
 pub(all) enum FileCommand {
   ViewIonText
   ViewHex
   CopyPath
   Download
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FileCommand with Eq::{equal, not_equal}
@@ -97,6 +101,7 @@ pub(all) enum Action {
 
 ///|
 /// Work for the workbench after an action.
+#derive(Eq, Debug)
 pub(all) enum Effect {
   /// Decode this file's binary Ion to text, as a request.
   RequestIonText(String)
@@ -104,7 +109,7 @@ pub(all) enum Effect {
   DownloadFile(String)
   FocusMenu(Int32)
   FocusFile(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Effect with Eq::{equal, not_equal}

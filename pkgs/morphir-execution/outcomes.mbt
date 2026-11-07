@@ -1,11 +1,12 @@
 ///|
 /// Exact prerelease Workbench terminal evidence, separate from frozen driver v1.
+#derive(Eq, Debug)
 pub(all) enum TerminalOutcome {
   Returned(Value)
   ModelError(String)
   Failed(OutcomeFailure)
   Cancelled
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TerminalOutcome with Eq::{equal, not_equal}
@@ -14,6 +15,7 @@ pub extend TerminalOutcome with Eq::{equal, not_equal}
 pub extend TerminalOutcome with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum OutcomeStage {
   Acquire
   Build
@@ -21,7 +23,7 @@ pub(all) enum OutcomeStage {
   Evaluate
   Compare
   Cleanup
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OutcomeStage with Eq::{equal, not_equal}
@@ -30,11 +32,12 @@ pub extend OutcomeStage with Eq::{equal, not_equal}
 pub extend OutcomeStage with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct OutcomeFailure {
   stage : OutcomeStage
   code : String
   message : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OutcomeFailure with Eq::{equal, not_equal}
@@ -43,10 +46,11 @@ pub extend OutcomeFailure with Eq::{equal, not_equal}
 pub extend OutcomeFailure with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct CallOutcome {
   id : String
   outcome : TerminalOutcome
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CallOutcome with Eq::{equal, not_equal}
@@ -55,11 +59,12 @@ pub extend CallOutcome with Eq::{equal, not_equal}
 pub extend CallOutcome with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Outcomes {
   calls : Array[CallOutcome]
   cleanup : OutcomeFailure?
   extensions : Bytes?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Outcomes with Eq::{equal, not_equal}

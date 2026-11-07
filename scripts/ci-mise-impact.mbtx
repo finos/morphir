@@ -48,6 +48,7 @@ import {
 // Use --self-test to check the rules.
 
 ///|
+#derive(Eq, Hash, Compare, Debug)
 enum Check {
   Code
   Site
@@ -62,7 +63,7 @@ enum Check {
   Lifecycle
   Telemetry
   Workbench
-} derive(Eq, Hash, Compare, Debug)
+}
 
 ///|
 fn Check::output_name(self : Check) -> String {
@@ -106,41 +107,47 @@ fn Check::parse(name : String) -> Check? {
 }
 
 ///|
-struct TaskName(String) derive(Eq, Hash, Compare, Debug)
+#derive(Eq, Hash, Compare, Debug)
+struct TaskName(String)
 
 ///|
+#derive(Eq, Hash, Compare, Debug)
 struct SettingKey {
   section : String
   key : String
-} derive(Eq, Hash, Compare, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 enum Effect {
   Always
   Full
   Checks(Array[Check])
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 enum Subject {
   Setting(SettingKey)
   Task(TaskName)
   Config
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 struct Reason {
   subject : Subject
   effect : Effect
   detail : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 struct Impact {
   full : Bool
   checks : Array[Check]
   reasons : Array[Reason]
-} derive(Eq, Debug)
+}
 
 ///|
 fn Subject::describe(self : Subject) -> String {
@@ -295,6 +302,7 @@ fn impact_of(base : String, head : String) -> Impact raise {
 /// One task as `mise tasks ls --json` reports it, reduced to what decides a
 /// change: its names, where it comes from, the tasks it calls and the rest of
 /// its definition as `body`.
+#derive(Eq, Debug)
 struct TaskRecord {
   name : TaskName
   aliases : Array[TaskName]
@@ -303,7 +311,7 @@ struct TaskRecord {
   patterns : Array[String]
   unresolved : Array[String]
   body : Json
-} derive(Eq, Debug)
+}
 
 ///|
 struct TaskGraph {
@@ -874,18 +882,20 @@ fn classify_tasks(
 ///|
 /// One `mise run` task name that a workflow or action step calls. `task` is a
 /// prefix template (it ends in `-`) when the name holds a `${{ }}` expression.
+#derive(Eq, Debug)
 struct WorkflowCall {
   file : String
   job : String
   line : Int32
   task : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 suberror DriftError {
   Unmapped(WorkflowCall)
   Stale(String)
-} derive(Debug)
+}
 
 ///|
 fn DriftError::message(self : DriftError) -> String {
@@ -1725,9 +1735,10 @@ async fn load_revision(rev : String, cwd~ : String = ".") -> Revision {
 
 ///|
 /// A step of `load_revision` that failed, with what it was doing.
+#derive(Debug)
 suberror LoadError {
   LoadError(String)
-} derive(Debug)
+}
 
 ///|
 fn error_text(err : Error) -> String {
@@ -3275,10 +3286,11 @@ fn opt_in_test(
 }
 
 ///|
+#derive(Eq, Debug)
 enum Invocation {
   SelfTest
   Compare(String, String, Bool)
-} derive(Eq, Debug)
+}
 
 ///|
 fn impact_pair_command() -> @argparse.Command {

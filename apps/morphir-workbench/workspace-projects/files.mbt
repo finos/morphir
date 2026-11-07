@@ -1,12 +1,13 @@
 ///|
 /// Persistent workspace files. Project identity and effective settings are rediscovered from these files.
 /// `open_file` is workspace-relative; the innermost project owning it is current.
+#derive(Eq, Debug)
 pub struct Files {
   priv contents : Map[String, String]
   priv binary_files : Map[String, Bytes]
   priv open_file : String?
   priv selected_project : @discovery.ProjectPath?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Files with Eq::{equal, not_equal}

@@ -1,5 +1,6 @@
 ///|
 /// A command the palette lists. A command that exists but cannot run now is shown dimmed with its reason.
+#derive(Eq, Debug)
 pub(all) struct Command {
   id : @keys.CommandId
   title : String
@@ -7,26 +8,29 @@ pub(all) struct Command {
   category : String
   enabled : Bool
   reason : String
-} derive(Eq, Debug)
+}
 
 ///|
 /// An entry of a second list that a command opens, such as a language. `value` is the id the workbench uses.
+#derive(Eq, Debug)
 pub(all) struct Choice {
   value : String
   label : String
   detail : String
-} derive(Eq, Debug)
+}
 
 ///|
 /// What an entry stands for.
+#derive(Eq, Debug)
 pub(all) enum Value {
   OfFile(@ids.SourcePath)
   OfCommand(@keys.CommandId)
   OfChoice(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// One line of the palette list.
+#derive(Eq, Debug)
 pub(all) struct Entry {
   value : Value
   label : String
@@ -43,17 +47,19 @@ pub(all) struct Entry {
   recent : Bool
   /// The icon class.
   icon : String
-} derive(Eq, Debug)
+}
 
 ///|
 /// What the palette lists: project files, commands, or the second list of a command.
+#derive(Eq, Debug)
 pub(all) enum Mode {
   Files
   Commands
   Choose(@keys.CommandId)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct State {
   open : Bool
   /// The command whose second list is open, and that list's prompt.
@@ -63,7 +69,7 @@ pub(all) struct State {
   index : Int32
   /// Commands run from the palette, most recent first.
   recent : Array[@keys.CommandId]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn State::new() -> State {
@@ -102,13 +108,14 @@ pub(all) enum Action {
 
 ///|
 /// What an action asks the workbench to do.
+#derive(Eq, Debug)
 pub(all) enum Outcome {
   Stay
   Closed
   Opened(@ids.SourcePath)
   Run(@keys.CommandId)
   Chose(@keys.CommandId, String)
-} derive(Eq, Debug)
+}
 
 ///|
 let recent_limit = 8

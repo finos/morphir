@@ -2,10 +2,11 @@
 /// One step of a let chain: one declaration, or a group of declarations that
 /// refer to each other (or one that refers to itself). The ids are declaration
 /// indexes in source order.
+#derive(Eq, Debug)
 pub(all) enum LetGroup {
   Single(Int32)
   Recursive(Array[Int32])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LetGroup with Eq::{equal, not_equal}

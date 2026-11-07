@@ -2,11 +2,12 @@
 /// Numeric release metadata from the model-originals IR-header contract.
 /// This is not a SemVer parser or a semantic-format support claim. The external
 /// boundary validates the original spelling with its existing SemVer library.
+#derive(Eq, Debug)
 pub struct OriginalRelease {
   priv major : UInt32
   priv minor : UInt32
   priv patch : UInt32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OriginalRelease with Eq::{equal, not_equal}
@@ -29,10 +30,11 @@ pub fn OriginalRelease::to_release_string(self : OriginalRelease) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum OriginalSourceHeader {
   NotReported
   Reported(OriginalRelease)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OriginalSourceHeader with Eq::{equal, not_equal}
@@ -42,10 +44,11 @@ pub extend OriginalSourceHeader with @debug.Debug::{to_repr}
 
 ///|
 /// Sole private byte storage shared by local trees and connected inventories.
+#derive(Eq, Debug)
 priv struct InventoryStorage {
   files : Map[String, Bytes]
   directories : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 fn InventoryStorage::capture(
@@ -123,11 +126,12 @@ fn InventoryStorage::download(self : InventoryStorage) -> Json {
 /// Exact originals retained without semantic inspection or typed adoption.
 /// Construction checks storage shape and bounds, not protocol verification,
 /// source authority, accepted release or product opening currentness.
+#derive(Eq, Debug)
 pub struct OriginalInventory {
   source_header : OriginalSourceHeader
   priv storage : InventoryStorage
   priv entries : Array[OriginalInventoryEntry]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OriginalInventory with Eq::{equal, not_equal}
@@ -162,10 +166,11 @@ pub fn OriginalInventory::from_connected(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum OriginalInventoryEntry {
   File(OriginalPath)
   Directory(OriginalPath)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OriginalInventoryEntry with Eq::{equal, not_equal}

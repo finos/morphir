@@ -1,11 +1,12 @@
 ///|
 /// Physical model representation, independent of source language and backend.
+#derive(Eq, Debug)
 pub(all) enum ModelFormat {
   JSON
   YAML
   IonText
   IonBinary
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ModelFormat with Eq::{equal, not_equal}

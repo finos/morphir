@@ -11,12 +11,13 @@ priv enum SourceCompiler {
 ///|
 /// One problem of a project compiler. `path` is relative to the source directory; it is empty for a problem of the
 /// whole project.
+#derive(Debug)
 pub(all) struct SourceProblem {
   code : String
   detail : String
   path : String
   location : @ir.SourceLocation?
-} derive(Debug)
+}
 
 ///|
 pub extend SourceProblem with @debug.Debug::{to_repr}

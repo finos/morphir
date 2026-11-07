@@ -3,6 +3,7 @@
 
 ///|
 /// Integers and decimals retain their original lexemes, including arbitrary precision.
+#derive(Eq, Debug)
 pub(all) enum Literal {
   BoolLiteral(Bool)
   CharLiteral(Char)
@@ -11,10 +12,11 @@ pub(all) enum Literal {
   FloatLiteral(Double)
   DecimalLiteral(String)
   DocumentLiteral(Data)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Document literals cannot occur in a literal pattern.
+#derive(Eq, Debug)
 pub(all) enum PatternLiteral {
   BoolLiteral(Bool)
   CharLiteral(Char)
@@ -22,9 +24,10 @@ pub(all) enum PatternLiteral {
   IntegerLiteral(String)
   FloatLiteral(Double)
   DecimalLiteral(String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Pattern {
   WildcardPattern(ValueAttributes)
   AsPattern(ValueAttributes, Pattern, Name)
@@ -34,9 +37,10 @@ pub(all) enum Pattern {
   HeadTailPattern(ValueAttributes, Pattern, Pattern)
   LiteralPattern(ValueAttributes, PatternLiteral)
   UnitPattern(ValueAttributes)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Value {
   Literal(ValueAttributes, Literal)
   Constructor(ValueAttributes, FQName)
@@ -57,44 +61,49 @@ pub(all) enum Value {
   UpdateRecord(ValueAttributes, Value, Map[Name, Value])
   Unit(ValueAttributes)
   Hole(ValueAttributes, HoleReason, Type?)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ValueSpecification {
   annotations : Array[Annotation]
   inputs : Array[(Name, Type)]
   output : Type
-} derive(Eq, Debug)
+}
 
 ///|
 /// Ordered inputs preserve parameter order independently of any wire map spelling.
+#derive(Eq, Debug)
 pub(all) enum ValueDefinition {
   ExpressionBody(Array[(Name, Type)], Type, Value)
   NativeBody(Array[(Name, Type)], Type, NativeInfo)
   ExternalBody(Array[(Name, Type)], Type, Array[ExternalBinding], Value?)
   IncompleteBody(Array[(Name, Type)], Type?, Incompleteness, Value?)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ExternalBinding {
   target_platform : String
   external_name : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct NativeInfo {
   hint : NativeHint
   description : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum NativeHint {
   Arithmetic
   Comparison
   StringOp
   CollectionOp
   PlatformSpecific(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Incomplete definitions without an output type do not yet have a specification.

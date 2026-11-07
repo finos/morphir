@@ -17,11 +17,12 @@ pub using @intent {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Diagnostic {
   code : String
   path : String
   related_path : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Diagnostic with Eq::{equal, not_equal}
@@ -30,9 +31,10 @@ pub extend Diagnostic with Eq::{equal, not_equal}
 pub extend Diagnostic with @debug.Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub(all) suberror ModelError {
   Invalid(Diagnostic)
-} derive(Debug)
+}
 
 ///|
 pub extend ModelError with @debug.Debug::{to_repr}
@@ -56,6 +58,7 @@ pub fn Record::to_ion(self : Record) -> @ion.IonValue {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum EntityKind {
   Intent
   Requirement
@@ -69,7 +72,7 @@ pub(all) enum EntityKind {
   Claim
   Evidence
   Unknown(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EntityKind with Eq::{equal, not_equal}
@@ -78,10 +81,11 @@ pub extend EntityKind with Eq::{equal, not_equal}
 pub extend EntityKind with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Reference {
   Resolved(ResolvedRef)
   Unresolved(String, String, String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Reference with Eq::{equal, not_equal}
@@ -368,6 +372,7 @@ pub(all) enum Multiplicity {
 }
 
 ///|
+#derive(Eq)
 pub(all) enum TraitTargetKind {
   ConceptTarget
   TypeTarget
@@ -375,7 +380,7 @@ pub(all) enum TraitTargetKind {
   FunctionTarget
   OperationTarget
   ServiceBindingTarget
-} derive(Eq)
+}
 
 ///|
 pub extend TraitTargetKind with Eq::{equal, not_equal}

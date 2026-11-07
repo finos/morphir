@@ -1,9 +1,10 @@
 ///|
 /// How a profile compiles, without its callback: one unit for each file, or one unit for the whole project.
+#derive(Eq, Debug)
 pub(all) enum CompileKind {
   EachFile
   WholeProject
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CompileKind with Eq::{equal, not_equal}

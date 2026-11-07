@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub enum Event {
   /// Event generated at the very beginning of parsing.
   StreamStart
@@ -25,7 +26,7 @@ pub enum Event {
   MappingStart(id~ : Int32, tag~ : Tag?)
   /// The end of a YAML mapping (object, hash).
   MappingEnd
-} derive(Eq, Debug)
+}
 
 ///|
 fn Event::empty_scalar() -> Event {

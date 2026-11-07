@@ -109,9 +109,10 @@ pub fn worker_help() -> String {
 
 ///|
 /// A worker-mode argument that is not valid.
+#derive(Debug)
 pub(all) suberror UsageError {
   UsageError(String)
-} derive(Debug)
+}
 
 ///|
 pub extend UsageError with @debug.Debug::{to_repr}

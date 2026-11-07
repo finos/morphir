@@ -1,31 +1,35 @@
 ///|
 /// The inline edit in progress: nothing, a new file in a folder, a new name for a row, a delete waiting for its
 /// answer, or a new package name.
+#derive(Eq, Debug)
 pub(all) enum Edit {
   Idle
   Creating(Folder, String)
   Renaming(Item, String)
   Deleting(Item)
   Naming(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// What a context menu acts on: a row, or the project as a whole.
+#derive(Eq, Debug)
 pub(all) enum MenuTarget {
   OnItem(Item)
   OnRoot
-} derive(Eq, Debug)
+}
 
 ///|
 /// An open context menu: its target, its top-left corner in viewport pixels and the entry with the focus.
+#derive(Eq, Debug)
 pub(all) struct Menu {
   target : MenuTarget
   left : Int32
   top : Int32
   index : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct State {
   edit : Edit
   error : String
@@ -36,7 +40,7 @@ pub(all) struct State {
   menu : Menu?
   /// Text that a file path must contain to be shown; empty shows every file.
   filter : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn State::new() -> State {
@@ -66,6 +70,7 @@ pub(all) struct Env {
 
 ///|
 /// Work for the workbench after an action: move the keyboard focus, or act outside the project.
+#derive(Eq, Debug)
 pub(all) enum Effect {
   FocusRow(Item)
   /// Focus the inline input and select the characters from the first to the second index.
@@ -81,10 +86,11 @@ pub(all) enum Effect {
   ShowPalette
   /// Open the example or sample with this id.
   LoadSample(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// An entry of a context menu.
+#derive(Eq, Debug)
 pub(all) enum MenuCommand {
   OpenItem
   NewFile
@@ -101,9 +107,10 @@ pub(all) enum MenuCommand {
   ResetProject
   CommandPalette
   OpenSample(String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct MenuEntry {
   command : MenuCommand
   label : String
@@ -116,7 +123,7 @@ pub(all) struct MenuEntry {
   group_start : Bool
   /// The heading of the entry's section, such as `New from sample`; a heading shows where the section starts.
   section : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub(all) enum Action {

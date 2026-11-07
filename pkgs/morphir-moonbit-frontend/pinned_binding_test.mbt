@@ -68,7 +68,7 @@ test "pinned Basics not owns a canonical typed call and replayable source facts"
   let text = @ion_text.write_ion(receipts)
   assert_true(text.contains("@basics.not_"))
   assert_true(text.contains("retain-me"))
-  assert_true(@ion_text.read_ion(text.view()).equals(receipts))
+  assert_true(@ion_text.read_ion(text.exact_view()).equals(receipts))
   let binary = @ion_binary.write_binary_value(receipts)
   assert_true(@ion_binary.read_binary_value(binary[:]).equals(receipts))
 }

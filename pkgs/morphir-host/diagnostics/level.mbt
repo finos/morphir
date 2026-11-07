@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum DiagnosticLevel {
   Trace
   Debug
@@ -7,7 +8,7 @@ pub(all) enum DiagnosticLevel {
   Error
   Fatal
   Off
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DiagnosticLevel with Eq::{equal, not_equal}
@@ -16,9 +17,10 @@ pub extend DiagnosticLevel with Eq::{equal, not_equal}
 pub extend DiagnosticLevel with @debug.Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub suberror InvalidLevel {
   InvalidLevel(String)
-} derive(Debug)
+}
 
 ///|
 pub extend InvalidLevel with @debug.Debug::{to_repr}

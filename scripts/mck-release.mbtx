@@ -50,10 +50,11 @@ async fn failed(error : Error) -> Unit {
 }
 
 ///|
+#derive(Eq)
 enum ReleaseInvocation {
   Acquire(String, String)
   SelfTest
-} derive(Eq)
+}
 
 ///|
 fn release_invocation(argv : ArrayView[String]) -> ReleaseInvocation raise {

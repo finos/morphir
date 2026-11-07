@@ -9,23 +9,23 @@ export const checkedDecimalSourceTree='642fd13ea74bc46c3f5344844c9cca4ffbae368a'
 export const checkedDecimalRuntimeFiles: readonly (readonly [string,string])[]=[
   [
     "decimal/checked.mbt",
-    "8ead8650551067ec16f3fac1632dc0c6890c1b329c835e9205c895ed793b8fba"
+    "e9529b88708469991d3751d1fe60b63db32b308f12c5278468188197adaf0172"
   ],
   [
     "decimal/decimal.mbt",
-    "a6b3d1a5bf031f6a2e2cd48e210f791e4f066586d40c58efffce1c34ad350269"
+    "10705d91bbc1e7b4bf895402c0d8bd051d09621aa37cc67e375b6a63a1c1bd90"
   ],
   [
     "sdk.mbt",
-    "c91df29d89db2c277ed8ab860e6723780d1700838b3f9e2557410a99065aeaac"
+    "8f95eb1459047e4ebdce6084c9a8b0423d294962647e7ec072530c0754555ab8"
   ],
   [
     "text.mbt",
-    "35323ba617c8213af1f902e88df55952aea1d47cc1128efae8d20ebecc692236"
+    "cceaeab6b6e344cb05ec8cf6f0e506d3f1b88bf7c7c1f089eee36367f55a8308"
   ],
   [
     "integer/integer.mbt",
-    "43bea6f88b7c32192f9c92489e82bf84ddecd8c2822190d388a84aeba8f94f58"
+    "a64200c51e63a82d730df5cd33c5e1f3a9ba41f0e6e0c13ec381f7e0a53db3d5"
   ],
   [
     "decimal/moon.pkg",

@@ -4,8 +4,12 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {createInProcessToolchain, createNodeToolchain} from "../node.mts";
 import {createEmbeddedToolchain} from "../index.mts";
+import {preludeInterface} from "./prelude.mts";
+import type {Target} from "../api.mjs";
 
-const source = (value: number): CompileRequest => ({operation: "compile", files: [["main.mbt", `pub fn answer() -> Int32 { ${value} }`]], exports: ["answer"]});
+const source = (value: number, target: Target = "wasm"): CompileRequest => ({operation: "compile", target, files: [["main.mbt", `pub fn answer() -> Int32 { ${value} }`]],
+  standardInterfaces: [preludeInterface(target)], exports: ["answer"]});
+const prelude = {standardInterfaces: [preludeInterface()]};
 
 test("capability inspection cannot change embedded target validation", async () => {
   let called=false;
@@ -38,9 +42,9 @@ for (const [name, create] of [["in-process", createInProcessToolchain], ["Node w
     try {
       const info = await tools.request({operation: "info"});
       assert.equal(info.mode, "embedded");
-      assert.equal(info.compilerVersion, "0.10.18+6c83a7f62");
+      assert.equal(info.compilerVersion, "0.10.20+65efd5b93");
       for (const target of ["wasm", "wasm-gc"] as const) {
-        const result = await tools.request({...source(42), target});
+        const result = await tools.request(source(42, target));
         assert.equal(result.successful, true);
         assert.equal((await tools.request({operation: "run", artifact: result.artifact!, export: "answer"})).value, 42);
       }
@@ -48,7 +52,7 @@ for (const [name, create] of [["in-process", createInProcessToolchain], ["Node w
       const results = await Promise.all([11, 22, 33].map(n => tools.request(source(n))));
       const evaluated = await Promise.all(results.map(r => tools.request({operation: "run", artifact:r.artifact!, export:"answer"})));
       assert.deepEqual(evaluated.map(r => r.value), [11,22,33]);
-      const invalid = await tools.request({operation:"compile",files:[["bad.mbt",'pub fn answer() -> Int { "wrong" }']],exports:["answer"]});
+      const invalid = await tools.request({operation:"compile",files:[["bad.mbt",'pub fn answer() -> Int { "wrong" }']],...prelude,exports:["answer"]});
       assert.equal(invalid.successful, false);
       assert.ok(invalid.diagnostics.length);
       assert.equal(invalid.artifact, null);
@@ -61,10 +65,34 @@ for (const [name, create] of [["in-process", createInProcessToolchain], ["Node w
   });
 }
 
+for (const [name, create] of [["in-process", createInProcessToolchain], ["Node worker", createNodeToolchain]] as [string, () => Toolchain][]) {
+  test(`${name}: a compile without the pinned prelude interface names the missing prelude`, async () => {
+    const tools = create!();
+    try {
+      for (const target of ["wasm", "wasm-gc"] as const) {
+        const {standardInterfaces: _, ...bare} = source(42, target);
+        for (const request of [bare, {...bare, operation: "build" as const}]) {
+          await assert.rejects(tools.request(request), (error: Error) => {
+            assert.equal(error.name, "PreludeRequiredError");
+            assert.match(error.message, /^embedding\.prelude_required: /);
+            assert.match(error.message, /moonbitlang\/core\/prelude/);
+            assert.match(error.message, new RegExp(`_build/${target}/release/bundle/prelude/prelude\\.mi`));
+            return true;
+          });
+        }
+        // The same request with the pinned prelude compiles and runs.
+        const result = await tools.request(source(42, target));
+        assert.equal(result.successful, true);
+        assert.equal((await tools.request({operation: "run", artifact: result.artifact!, export: "answer"})).value, 42);
+      }
+    } finally { tools.dispose(); }
+  });
+}
+
 test("host runtime imports are injected for in-process embedding", async () => {
   const tools = createInProcessToolchain({imports: {host:{double:(n: number)=>n*2}}});
   try {
-    const result = await tools.request({operation:"compile",files:[["main.mbt", 'fn double(n : Int) -> Int = "host" "double"\npub fn answer() -> Int { double(21) }']],exports:["answer"]});
+    const result = await tools.request({operation:"compile",files:[["main.mbt", 'fn double(n : Int) -> Int = "host" "double"\npub fn answer() -> Int { double(21) }']],...prelude,exports:["answer"]});
     assert.equal(result.successful,true);
     assert.equal((await tools.request({operation:"run",artifact:result.artifact!,export:"answer"})).value,42);
   } finally { tools.dispose(); }
@@ -73,9 +101,9 @@ test("host runtime imports are injected for in-process embedding", async () => {
 test("hosts can supply compiled interfaces and linked core dependencies", async () => {
   const tools=createInProcessToolchain();
   try {
-    const dependency=await tools.request({operation:"compile",package:"morphir/dependency",files:[["dep.mbt","pub fn double(x : Int) -> Int { x * 2 }"]],exports:["double"]});
+    const dependency=await tools.request({operation:"compile",package:"morphir/dependency",files:[["dep.mbt","pub fn double(x : Int) -> Int { x * 2 }"]],...prelude,exports:["double"]});
     const main=await tools.request({operation:"compile",package:"morphir/main",files:[["main.mbt","pub fn answer() -> Int { @dependency.double(21) }"]],
-      interfaces:[["dependency",dependency.interface!]],cores:[dependency.core!],exports:["answer"]});
+      interfaces:[["dependency",dependency.interface!]],...prelude,cores:[dependency.core!],exports:["answer"]});
     assert.equal(main.successful,true);
     assert.equal((await tools.request({operation:"run",artifact:main.artifact!,export:"answer"})).value,42);
   } finally {tools.dispose();}
@@ -92,7 +120,7 @@ test("fresh compiler instances preserve host process exception handlers", async 
 
 test("worker cancellation terminates running evaluation and rejects queued requests", async () => {
   const tools = createNodeToolchain();
-  const result = await tools.request({operation:"compile",files:[["main.mbt", 'pub fn spin() -> Int { while true {}\n0 }']],exports:["spin"]});
+  const result = await tools.request({operation:"compile",files:[["main.mbt", 'pub fn spin() -> Int { while true {}\n0 }']],...prelude,exports:["spin"]});
   assert.equal(result.successful,true);
   const controller = new AbortController();
   const running = tools.request({operation:"run",artifact:result.artifact!,export:"spin"},{signal:controller.signal});

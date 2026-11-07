@@ -11,6 +11,7 @@
 /// - `attribute` is true inside the attributes of a node.
 /// - `marker` is true for a type variable or extensible record with the unknown marker.
 /// - `leaf` is the logical path and the value of a JSON scalar, as the expanded form places it.
+#derive(Eq, Debug)
 pub(all) struct LogicalNode {
   path : String
   id : String
@@ -18,7 +19,7 @@ pub(all) struct LogicalNode {
   attribute : Bool
   marker : Bool
   leaf : (String, Json)?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LogicalNode with Eq::{equal, not_equal}

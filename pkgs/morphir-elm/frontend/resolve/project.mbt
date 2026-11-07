@@ -1,11 +1,12 @@
 ///|
 /// What a module exports. `all` is true for `exposing (..)`: every declaration, types with constructors.
 /// Otherwise `types[name]` is true when the constructors are exported too (`T(..)`) and false for `T`.
+#derive(Eq, Debug)
 pub(all) struct Exports {
   all : Bool
   values : Map[String, Bool]
   types : Map[String, Bool]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Exports with Eq::{equal, not_equal}

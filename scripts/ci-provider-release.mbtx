@@ -24,10 +24,11 @@ let repository = "finos/morphir-rust"
 let workflow = "finos/morphir-rust/.github/workflows/release-provider-snapshot.yml"
 
 ///|
+#derive(Eq)
 enum ReleaseInvocation {
   Acquire
   SelfTest
-} derive(Eq)
+}
 
 ///|
 fn release_invocation(argv : ArrayView[String]) -> ReleaseInvocation raise {

@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub(all) suberror ExecutionError {
   Invalid(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ExecutionError with Eq::{equal, not_equal}
@@ -10,6 +11,7 @@ pub extend ExecutionError with Eq::{equal, not_equal}
 pub extend ExecutionError with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Value {
   Integer(@bigint.BigInt)
   Boolean(Bool)
@@ -25,7 +27,7 @@ pub(all) enum Value {
   Optional(Value?)
   Outcome(Result[Value, Value])
   ModelError(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Value with Eq::{equal, not_equal}
@@ -34,6 +36,7 @@ pub extend Value with Eq::{equal, not_equal}
 pub extend Value with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ValueType {
   Int
   Bool
@@ -49,7 +52,7 @@ pub(all) enum ValueType {
   Optional(ValueType)
   Outcome(ValueType, ValueType)
   Function
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ValueType with Eq::{equal, not_equal}
@@ -58,11 +61,12 @@ pub extend ValueType with Eq::{equal, not_equal}
 pub extend ValueType with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Call {
   id : String
   entry : String
   arguments : Array[Value]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Call with Eq::{equal, not_equal}
@@ -71,10 +75,11 @@ pub extend Call with Eq::{equal, not_equal}
 pub extend Call with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Suite {
   calls : Array[Call]
   extensions : Bytes?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Suite with Eq::{equal, not_equal}

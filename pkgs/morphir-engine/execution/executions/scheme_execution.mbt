@@ -1,8 +1,9 @@
 ///|
 /// The bounded Library Scheme evaluator with the portable shared SDK.
+#derive(Eq, Debug)
 pub(all) enum SchemeRuntime {
   Scheme
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SchemeRuntime with Eq::{equal, not_equal}

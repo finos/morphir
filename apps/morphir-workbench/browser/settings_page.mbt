@@ -4,11 +4,12 @@
 
 ///|
 /// The page in the main area: the current screen, or the settings page shown over it.
+#derive(Eq)
 enum Page {
   Current
   /// The settings page, and the id of the control that opened it.
   Settings(String?)
-} derive(Eq)
+}
 
 ///|
 /// The id of the settings page heading, which takes the focus when the page opens.

@@ -1,17 +1,19 @@
 ///|
+#derive(Eq)
 priv enum Index {
   NotLoaded
   Loading
   Ready(Array[@model.SearchEntry])
   Failed
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 priv struct SearchModel {
   index : Index
   query : String
   selected : Int32
-} derive(Eq)
+}
 
 ///|
 priv enum SearchMsg {
@@ -24,10 +26,11 @@ priv enum SearchMsg {
 /// Loads `search-index.json` with the browser's `fetch` and `JSON.parse`, and passes each
 /// entry as `[route, title, section, summary, text, ...headings]`. Entries with a field of
 /// the wrong type are dropped. The island does not use `rabbita/http` or `@json`: together
-/// they would triple the size of `islands.js`.
+/// they would triple the size of `islands.js`. The rows cross as `FixedArray`, the only array
+/// type that is a plain JS array: since MoonBit 0.10.20 a JS `Array` is a MoonBit struct.
 extern "js" fn fetch_search_index(
   url : String,
-  done : (Array[Array[String]]) -> Unit,
+  done : (FixedArray[FixedArray[String]]) -> Unit,
   failed : () -> Unit,
 ) -> Unit =
   #| (url, done, failed) => {
@@ -84,6 +87,9 @@ fn search_box(base : String) -> @rabbita.Val[@html.Html] {
                 fetch_search_index(
                   base + "search-index.json",
                   rows => {
+                    let rows = Array::from_fixed_array(rows).map(
+                      Array::from_fixed_array,
+                    )
                     scheduler.add(emit(Loaded(Some(rows.filter_map(entry_of)))))
                   },
                   () => scheduler.add(emit(Loaded(None))),

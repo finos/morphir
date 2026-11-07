@@ -199,7 +199,7 @@ fn LibraryLowerer::expression(
           "signedness",
           @ir.Data::Text(if scalar.is_signed() { "signed" } else { "unsigned" }),
         ),
-        ("compiler", @ir.Data::Text("0.10.18+6c83a7f62")),
+        ("compiler", @ir.Data::Text("0.10.20+65efd5b93")),
       ])
       if scalar.bits() == 0 {
         facts["precision"] = @ir.Data::Text("arbitrary")

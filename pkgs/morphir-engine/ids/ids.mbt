@@ -33,7 +33,8 @@ fn word(text : String, kind : String) -> String raise @config.Invalid {
 
 ///|
 /// A source language, for example `elm`.
-pub struct LanguageId(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct LanguageId(String)
 
 ///|
 pub fn LanguageId::parse(text : String) -> LanguageId raise @config.Invalid {
@@ -62,7 +63,8 @@ pub extend LanguageId with Show::{to_string, output}
 
 ///|
 /// A source provider, for example `finos/morphir-elm`. A frontend from `register_frontend` uses its language name.
-pub struct ProviderId(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct ProviderId(String)
 
 ///|
 pub fn ProviderId::parse(text : String) -> ProviderId raise @config.Invalid {
@@ -91,7 +93,8 @@ pub extend ProviderId with Show::{to_string, output}
 
 ///|
 /// A source profile, for example `library`.
-pub struct ProfileId(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct ProfileId(String)
 
 ///|
 pub fn ProfileId::parse(text : String) -> ProfileId raise @config.Invalid {
@@ -120,7 +123,8 @@ pub extend ProfileId with Show::{to_string, output}
 
 ///|
 /// A generation or output backend, for example `moonbit`.
-pub struct BackendId(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct BackendId(String)
 
 ///|
 pub fn BackendId::parse(text : String) -> BackendId raise @config.Invalid {
@@ -149,7 +153,8 @@ pub extend BackendId with Show::{to_string, output}
 
 ///|
 /// A file extension with its leading dot, for example `.elm`.
-pub struct FileExtension(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct FileExtension(String)
 
 ///|
 pub fn FileExtension::parse(
@@ -190,7 +195,8 @@ pub extend FileExtension with Show::{to_string, output}
 
 ///|
 /// A source file path relative to the source directory, with `/` separators, for example `My/Pkg/Api.elm`.
-pub struct SourcePath(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct SourcePath(String)
 
 ///|
 pub fn SourcePath::parse(text : String) -> SourcePath raise @config.Invalid {
@@ -228,7 +234,8 @@ pub extend SourcePath with Show::{to_string, output}
 
 ///|
 /// A module name in the source language's own syntax, as `morphir.json` writes it, for example `Sub.Util`.
-pub struct SourceModuleName(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct SourceModuleName(String)
 
 ///|
 pub fn SourceModuleName::parse(
@@ -264,10 +271,11 @@ pub extend SourceModuleName with Show::{to_string, output}
 ///|
 /// A package name as written in the project configuration, for example `Parity.Modules`. The source language
 /// matches module headers against this text; `to_path` gives the canonical Morphir path.
+#derive(Eq, Compare, Hash, Debug)
 pub struct SourcePackageName {
   priv text : String
   priv path : @ir.Path
-} derive(Eq, Compare, Hash, Debug)
+}
 
 ///|
 pub fn SourcePackageName::parse(

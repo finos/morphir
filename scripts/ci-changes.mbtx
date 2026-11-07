@@ -21,9 +21,10 @@ let suites : Array[String] = [
 ]
 
 ///|
+#derive(Debug)
 suberror AutomationPolicyError {
   LegacyAutomation(String)
-} derive(Debug)
+}
 
 ///|
 fn starts_with_any(path : String, prefixes : Array[String]) -> Bool {
@@ -206,12 +207,13 @@ let check_names : Array[String] = [
 /// The impact that `ci-mise-impact.mbtx BASE HEAD` prints. `checks` keeps the
 /// output names of the wire format; `parse` accepts only `check_names`.
 /// Each reason is one line: `subject: effect (detail)`.
+#derive(Eq, Debug)
 struct MiseImpact {
   full : Bool
   checks : Array[String]
   reasons : Array[String]
   mise : String
-} derive(Eq, Debug)
+}
 
 ///|
 /// A full impact for a failure to get or read the impact.
@@ -1245,9 +1247,10 @@ fn shadow_log_in_order(err : String, base : String, head : String) -> Bool {
 ///|
 /// `ci-mise-impact.mbtx` exited 1: a workflow calls a task at head that its
 /// `task_table` does not map. The message is the child's stderr.
+#derive(Debug)
 suberror MiseDrift {
   MiseDrift(String)
-} derive(Debug)
+}
 
 ///|
 /// Text that `ci-mise-impact.mbtx` prints on stderr for table drift. Exit 1
@@ -1385,7 +1388,8 @@ let reuse_enforced : Bool = true
 
 ///|
 /// A full commit SHA, as `valid_revision` accepts it.
-struct Sha(String) derive(Eq)
+#derive(Eq)
+struct Sha(String)
 
 ///|
 fn Sha::parse(text : String) -> Sha? {
@@ -1398,12 +1402,13 @@ fn Sha::parse(text : String) -> Sha? {
 
 ///|
 fn Sha::short(self : Sha) -> String {
-  self.0.view(end_offset=7).to_owned()
+  self.0.exact_view(end=7).to_owned()
 }
 
 ///|
 /// The commit whose tree the receipt's run actually tested.
-struct TestedCommit(Sha) derive(Eq)
+#derive(Eq)
+struct TestedCommit(Sha)
 
 ///|
 fn TestedCommit::parse(text : String) -> TestedCommit? {
@@ -1412,7 +1417,8 @@ fn TestedCommit::parse(text : String) -> TestedCommit? {
 
 ///|
 /// A Git tree identity, distinct from a tested commit even with the same hash.
-struct TreeSha(Sha) derive(Eq)
+#derive(Eq)
+struct TreeSha(Sha)
 
 ///|
 fn TreeSha::parse(text : String) -> TreeSha? {
@@ -1421,7 +1427,8 @@ fn TreeSha::parse(text : String) -> TreeSha? {
 
 ///|
 /// A positive decimal Actions run identity, kept as text without integer limits.
-struct RunId(String) derive(Eq)
+#derive(Eq)
+struct RunId(String)
 
 ///|
 fn RunId::parse(text : String) -> RunId? {
@@ -1819,11 +1826,12 @@ async fn event_selection() -> Map[String, Bool] {
 ///|
 /// What `ci-changes` runs: the self-test, the selection for the Actions event
 /// in EVENT, or the selection for the commits BASE and HEAD.
+#derive(Eq)
 priv enum Mode {
   SelfTest
   Event
   Range(String, String)
-} derive(Eq)
+}
 
 ///|
 priv struct Invocation {
@@ -2137,7 +2145,7 @@ async fn reuse_wiring_test(script : String) -> Unit {
       "\{log}trusted: PR #194 head 4046644 run 39549808921 attempt 2 (tested 7c1e5a0, tree 9ab3c4d)\n",
     ) &&
     run.2.contains(
-      "\{log}landed since receipt base \{receipt_base.view(end_offset=7)}: \{landed}\n",
+      "\{log}landed since receipt base \{receipt_base.exact_view(end=7)}: \{landed}\n",
     ) &&
     run.2.contains("\{log}re-run: site,typescript\n") &&
     run.2.contains(

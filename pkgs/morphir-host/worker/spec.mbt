@@ -1,8 +1,9 @@
 ///|
 /// A SHA-256 digest: 64 lowercase hexadecimal digits.
+#derive(Eq, Debug)
 pub struct Sha256 {
   priv hex : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Sha256 with Eq::{equal, not_equal}
@@ -35,10 +36,11 @@ pub extend Sha256 with Show::{to_string, output}
 
 ///|
 /// How a host platform writes absolute paths.
+#derive(Eq, Debug)
 pub(all) enum PathStyle {
   Posix
   Windows
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PathStyle with Eq::{equal, not_equal}
@@ -52,9 +54,10 @@ pub extend PathStyle with @debug.Debug::{to_repr}
 /// names a server (`\\server\share`). Relative paths are refused because a
 /// worker has no working directory of the caller; on Windows a root-relative
 /// path (`\x`) and `\\` without a server are relative to the current drive.
+#derive(Eq, Debug)
 pub struct ArtifactPath {
   priv text : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ArtifactPath with Eq::{equal, not_equal}
@@ -98,10 +101,11 @@ pub extend ArtifactPath with Show::{to_string, output}
 ///|
 /// Where the artifact bytes come from: a file, or bytes the caller already
 /// holds, as in a browser host that has no file system.
+#derive(Eq, Debug)
 pub(all) enum ArtifactSource {
   File(ArtifactPath)
   Memory(Bytes)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ArtifactSource with Eq::{equal, not_equal}
@@ -111,10 +115,11 @@ pub extend ArtifactSource with @debug.Debug::{to_repr}
 
 ///|
 /// An artifact and the digest its bytes must have when the host runs them.
+#derive(Eq, Debug)
 pub struct ArtifactRef {
   source : ArtifactSource
   sha256 : Sha256
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ArtifactRef with Eq::{equal, not_equal}
@@ -134,6 +139,7 @@ pub fn ArtifactRef::new(
 /// A host platform that a process artifact is built for, named by its Rust
 /// and LLVM target triple, as in release descriptors and
 /// `MORPHIR_MEP_PLATFORM`.
+#derive(Eq, Compare, Debug)
 pub(all) enum Platform {
   Aarch64AppleDarwin
   X86_64AppleDarwin
@@ -143,7 +149,7 @@ pub(all) enum Platform {
   X86_64UnknownLinuxMusl
   Aarch64PcWindowsMsvc
   X86_64PcWindowsMsvc
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend Platform with Eq::{equal, not_equal}
@@ -204,10 +210,11 @@ pub extend Platform with Show::{to_string, output}
 
 ///|
 /// The closed set of WASM guest ABIs the host can adapt.
+#derive(Eq, Debug)
 pub(all) enum WasmAbi {
   ExtismKernelV1
   MorphirBytesV1
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WasmAbi with Eq::{equal, not_equal}
@@ -241,10 +248,11 @@ pub extend WasmAbi with Show::{to_string, output}
 /// How the host runs an artifact. Process arguments are opaque and are passed
 /// to the worker unchanged. A WASM ABI, when declared, must agree with the
 /// ABI classified from the module.
+#derive(Eq, Debug)
 pub(all) enum WorkerRuntime {
   Process(platform~ : Platform, args~ : Array[String])
   Wasm(abi~ : WasmAbi?)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WorkerRuntime with Eq::{equal, not_equal}
@@ -263,10 +271,11 @@ pub fn WorkerRuntime::kind(self : WorkerRuntime) -> RuntimeKind {
 
 ///|
 /// The kinds of worker a host can start.
+#derive(Eq, Compare, Debug)
 pub(all) enum RuntimeKind {
   Process
   Wasm
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend RuntimeKind with Eq::{equal, not_equal}
@@ -293,10 +302,11 @@ pub extend RuntimeKind with Show::{to_string, output}
 ///|
 /// The only input from which the host starts a worker. Its parts are
 /// validated, so a specification always has a digest and exactly one runtime.
+#derive(Eq, Debug)
 pub struct WorkerSpec {
   artifact : ArtifactRef
   runtime : WorkerRuntime
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WorkerSpec with Eq::{equal, not_equal}

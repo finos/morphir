@@ -39,12 +39,13 @@ let gh_timeout_ms : Int32 = 30000
 ///|
 /// The result of the `qualification` call, as GitHub reports it in
 /// `needs.<job>.result`.
+#derive(Eq, Debug)
 enum CallResult {
   Success
   Failure
   Cancelled
   Skipped
-} derive(Eq, Debug)
+}
 
 ///|
 fn CallResult::parse(text : String) -> CallResult raise {
@@ -79,7 +80,8 @@ fn CallResult::is_breach(self : CallResult) -> Bool {
 
 ///|
 /// A full commit SHA: 40 or 64 lowercase hex digits.
-struct Sha(String) derive(Eq)
+#derive(Eq)
+struct Sha(String)
 
 ///|
 fn Sha::parse(text : String) -> Sha raise {
@@ -91,7 +93,8 @@ fn Sha::parse(text : String) -> Sha raise {
 }
 
 ///|
-struct RunUrl(String) derive(Eq)
+#derive(Eq)
+struct RunUrl(String)
 
 ///|
 fn RunUrl::parse(text : String) -> RunUrl raise {
@@ -105,12 +108,13 @@ fn RunUrl::parse(text : String) -> RunUrl raise {
 /// The macOS mode of the run. It is empty when the evidence job failed before
 /// it could choose, which is itself reported as a breach. A word that is no mode
 /// is kept as `Other`: the report must still go out, and it names the word.
+#derive(Eq, Debug)
 enum Mode {
   Run
   Reuse
   Unknown
   Other(String)
-} derive(Eq, Debug)
+}
 
 ///|
 fn Mode::parse(text : String) -> Mode {
@@ -141,12 +145,13 @@ struct Report {
 }
 
 ///|
+#derive(Eq, Debug)
 enum BreachAction {
   Open
   Comment(Int32)
   Close(Int32)
   Nothing
-} derive(Eq, Debug)
+}
 
 ///|
 fn BreachAction::name(self : BreachAction) -> String {
@@ -180,7 +185,8 @@ fn breach_action(result : CallResult, open_issue : Int32?) -> BreachAction {
 
 ///|
 /// A workflow run id, as in `github.run_id`.
-struct RunId(Int64) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct RunId(Int64)
 
 ///|
 fn RunId::parse(text : String) -> RunId raise {
@@ -195,11 +201,12 @@ fn RunId::parse(text : String) -> RunId raise {
 
 ///|
 /// A job of the run that finished without passing.
+#derive(Eq, Debug)
 struct FailedJob {
   name : String
   conclusion : String
   url : String
-} derive(Eq, Debug)
+}
 
 ///|
 /// The jobs of `gh run view <id> --json jobs` that finished without passing,
@@ -241,10 +248,11 @@ fn failed_jobs(json : Json) -> Array[FailedJob] raise {
 
 ///|
 /// What to do about the breach label before an issue opens.
+#derive(Eq, Debug)
 enum LabelAction {
   CreateLabel
   KeepLabel
-} derive(Eq, Debug)
+}
 
 ///|
 /// Create the label only when it is missing. Creating it again with `--force`
@@ -417,7 +425,7 @@ async fn read_failed_jobs(run_id : RunId?) -> JobList {
     Failure(message) =>
       Unread(
         match message.find("FAILED: ") {
-          Some(at) => message.view(start_offset=at + 8).to_owned()
+          Some(at) => message.exact_view(start=at + 8).to_owned()
           None => message
         },
       )

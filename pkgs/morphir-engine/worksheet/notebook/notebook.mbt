@@ -5,10 +5,11 @@ pub const PROFILE : String = "morphir/worksheet-notebook"
 pub const VERSION : String = "0.1.0"
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Format {
   Ipynb
   Dib
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Format::parse(name : String) -> Format raise {
@@ -28,12 +29,13 @@ pub fn Format::name(self : Format) -> String {
 }
 
 ///|
+#derive(Debug)
 pub suberror Invalid {
   UnsupportedFormat(String)
   OutputsRequireJupyter
   StaleObservations
   TooManyForms
-} derive(Debug)
+}
 
 ///|
 pub fn Invalid::code(self : Invalid) -> String {
@@ -63,18 +65,20 @@ pub struct Exported {
 }
 
 ///|
+#derive(Eq, Debug)
 pub enum SkipReason {
   OtherLanguage(String)
   Raw
   Unknown(String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct SkippedCell {
   priv index : Int32
   priv name : String
   priv reason : SkipReason
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn SkippedCell::to_json(self : SkippedCell) -> Json {

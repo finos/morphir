@@ -1,5 +1,6 @@
 ///|
 /// Why a host did not enforce a WASM bound.
+#derive(Eq, Debug)
 pub(all) enum BoundGap {
   /// The engine does not count instructions, as on js.
   NoInstructionMetering
@@ -8,7 +9,7 @@ pub(all) enum BoundGap {
   NoCallInterruption
   /// The engine cannot cap guest memory.
   NoMemoryCeiling
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend BoundGap with Eq::{equal, not_equal}
@@ -32,10 +33,11 @@ pub extend BoundGap with Show::{to_string, output}
 
 ///|
 /// Whether a host enforced one bound.
+#derive(Eq, Debug)
 pub(all) enum Enforcement {
   Enforced
   NotEnforced(BoundGap)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Enforcement with Eq::{equal, not_equal}
@@ -58,11 +60,12 @@ pub impl ToJson for Enforcement with fn to_json(self) {
 /// The WASM bounds that a worker's host enforced: the memory ceiling, the
 /// instruction budget and the per-call deadline. A WASM channel states them;
 /// a process channel has none.
+#derive(Eq, Debug)
 pub struct EnforcedBounds {
   memory_ceiling : Enforcement
   instruction_budget : Enforcement
   call_deadline : Enforcement
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EnforcedBounds with Eq::{equal, not_equal}

@@ -3,21 +3,23 @@ import {test} from 'node:test';
 import type {AssemblyRequest, PackageAsset} from '../assembly.mjs';
 import type {Request, Toolchain} from '../api.mjs';
 import {assemblyIdentity, executeAssembly, pinPackage} from '../assembly.mjs';
-import {compilerVersion} from '../index.mjs';
+import {compilerVersion, preludeInterfaceName} from '../index.mjs';
 import {createInProcessToolchain, createNodeToolchain} from '../node.mts';
+import {preludeInterface, preludePackage} from './prelude.mts';
 
-async function fixture(): Promise<AssemblyRequest> {
-  const leaf = await pinPackage({name:'sample/leaf',role:'library',dependencies:[],input:{kind:'source',files:[['leaf.mbt',
+async function fixture(target: 'wasm' | 'wasm-gc' = 'wasm'): Promise<AssemblyRequest> {
+  const prelude = await preludePackage(target);
+  const leaf = await pinPackage({name:'sample/leaf',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['leaf.mbt',
     'pub fn double(n : Int32) -> Int32 { n * 2 }']]}});
   const middle = await pinPackage({name:'sample/middle',role:'library',dependencies:[{name:'math',pin:leaf.pin}],input:{kind:'source',files:[['middle.mbt',
     'pub fn value() -> Int32 { @math.double(20) }']]}});
   const root = await pinPackage({name:'sample/root',role:'library',dependencies:[{name:'lib',pin:middle.pin}],input:{kind:'source',files:[
     ['answer.mbt','pub fn answer() -> Int32 { @lib.value() + 2 }'],
     ['more.mbt','pub fn retained() -> Int32 { 7 }\npub fn unused() -> Int32 { 123456 }']]}});
-  const unused = await pinPackage({name:'sample/unused',role:'library',dependencies:[],input:{kind:'source',files:[['unused.mbt',
+  const unused = await pinPackage({name:'sample/unused',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['unused.mbt',
     'pub fn unnecessary() -> Int32 { 19 }']]}});
-  const packages = [root,unused,middle,leaf];
-  return {root:root.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['answer','retained']};
+  const packages = [root,unused,middle,leaf,prelude];
+  return {root:root.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target,exports:['answer','retained']};
 }
 function traced(toolchain: Toolchain) {
   const calls: Request[] = [];
@@ -31,16 +33,17 @@ for (const [name,create] of [['in-process',createInProcessToolchain],['worker',c
     try {
       for (const target of ['wasm','wasm-gc'] as const) {
         calls.length = 0;
-        const request = {...await fixture(),target};
+        const request = await fixture(target);
         const result = await executeAssembly(wrapper,request);
-        assert.deepEqual(result.packages.map(p => p.pin.name),['sample/leaf','sample/middle','sample/root','sample/unused']);
+        assert.deepEqual(result.packages.map(p => p.pin.name),[preludeInterfaceName,'sample/leaf','sample/middle','sample/root','sample/unused']);
         assert.equal(calls.filter(r => r.operation === 'build').length,4);
         const links = calls.filter(r => r.operation === 'link');
-        assert.equal(links.length,1); assert.equal(links[0]!.cores.length,4);
+        assert.equal(links.length,1); assert.equal(links[0]!.cores.length,5);
         assert.equal((await tools.request({operation:'run',artifact:result.artifact,export:'answer'})).value,42);
         assert.equal((await tools.request({operation:'run',artifact:result.artifact,export:'retained'})).value,7);
         const middle = calls.find(r => r.operation === 'build' && r.package === 'sample/middle');
-        assert.ok(middle?.operation === 'build'); assert.equal(middle.interfaces![0]![0],'sample/leaf:math');
+        assert.ok(middle?.operation === 'build'); assert.deepEqual(middle.interfaces!.map(i => i[0]),['sample/leaf:math']);
+        assert.deepEqual(middle.standardInterfaces!.map(i => i[0]),[preludeInterfaceName]);
         const root = calls.find(r => r.operation === 'build' && r.package === 'sample/root');
         assert.ok(root?.operation === 'build'); assert.equal(root.indirectInterfaces![0]![0],'sample/leaf');
       }
@@ -58,8 +61,16 @@ test('graph, bytes, compiler and core/SDK compatibility refuse before any packag
     if (root.input.kind === 'source') (root.input.files as [string,string][])[0]![1] = 'pub fn changed() -> Int32 { 1 }';
     await assert.rejects(executeAssembly(wrapper,{...request,packages:damaged}),/content mismatch/);
     await assert.rejects(executeAssembly(wrapper,{...request,packages:request.packages.slice(0,-1)}),/MissingPackage/);
-    await assert.rejects(executeAssembly(wrapper,{...request,identity:{...request.identity,compilerVersion:'other'}}),/provider mismatch/);
-    await assert.rejects(executeAssembly(wrapper,{...request,identity:{...request.identity,coreSha256:'0'.repeat(64)}}),/Core\/SDK/);
+    // A prebuilt core carries the set identity, so a changed identity fails its context check.
+    await assert.rejects(executeAssembly(wrapper,{...request,identity:{...request.identity,compilerVersion:'other'}}),/Prebuilt context mismatch/);
+    const other: Toolchain = {...wrapper, async request(r, o) {
+      const result = await wrapper.request(r, o); return r.operation === 'info' ? {...result, compilerVersion:'other'} as typeof result : result;
+    }};
+    await assert.rejects(executeAssembly(other,request),/provider mismatch/);
+    const prelude = request.packages.find(p => p.name === preludeInterfaceName)!;
+    assert.ok(prelude.input.kind === 'prebuilt');
+    const extra = await pinPackage({...prelude,name:'moonbitlang/core/extra'});
+    await assert.rejects(executeAssembly(wrapper,{...request,packages:[...request.packages,extra]}),/Core\/SDK/);
     assert.equal(calls.filter(r => r.operation === 'build' || r.operation === 'link').length,0);
   } finally {tools.dispose();}
 });
@@ -68,7 +79,8 @@ test('invalid unused source diagnostics stop downstream linking; compiler recove
   const tools = createInProcessToolchain(); const {wrapper,calls} = traced(tools);
   try {
     const request = await fixture();
-    const bad = await pinPackage({name:'sample/unused',role:'library',dependencies:[],input:{kind:'source',files:[['bad.mbt',
+    const prelude = request.packages.find(p => p.name === preludeInterfaceName)!;
+    const bad = await pinPackage({name:'sample/unused',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['bad.mbt',
       'pub fn bad() -> Int32 { "wrong" }']]}});
     await assert.rejects(executeAssembly(wrapper,{...request,packages:[...request.packages.filter(p => p.name !== bad.name),bad]}),
       (error: unknown) => error instanceof Error && 'diagnostics' in error && Array.isArray(error.diagnostics) && error.diagnostics.length > 0);
@@ -83,12 +95,13 @@ test('verified prebuilt interface/core is reused, target/context mismatch is ref
     const request = await fixture();
     const leaf = request.packages.find(p => p.name === 'sample/leaf')!;
     assert.ok(leaf.input.kind === 'source');
-    const built = await tools.request({operation:'build',package:leaf.name,files:leaf.input.files.map(([p,s]) => [p,s])});
+    const built = await tools.request({operation:'build',package:leaf.name,files:leaf.input.files.map(([p,s]) => [p,s]),
+      interfaces:[[`${preludeInterfaceName}:prelude`,preludeInterface()[1]]]});
     assert.ok(built.successful && built.core && built.interface);
     const prebuilt = await pinPackage({...leaf,input:{kind:'prebuilt',interface:built.interface,core:built.core,
       identity:request.identity,target:'wasm',optimization:'optimized'}});
     const replace = async (packages: readonly PackageAsset[]) => {
-      const result: PackageAsset[] = [prebuilt]; const pins = new Map([[leaf.name,prebuilt.pin]]);
+      const result: PackageAsset[] = [prebuilt,packages.find(p => p.name === preludeInterfaceName)!]; const pins = new Map([[leaf.name,prebuilt.pin]]);
       for (const name of ['sample/middle','sample/root','sample/unused']) {
         const old = packages.find(p => p.name === name)!;
         const asset = await pinPackage({...old,dependencies:old.dependencies.map(d => ({...d,pin:pins.get(d.pin.name) ?? d.pin}))});

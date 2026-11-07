@@ -9,6 +9,7 @@ import type {ByteProfile} from '../byte-adapter.mjs';
 import {NdjsonFrames} from '../ndjson.mjs';
 import {parseMoonRecipe} from '../node-recipe.mjs';
 import {spawnSync} from 'node:child_process';
+import {preludePackage} from './prelude.mts';
 
 const input=new TextEncoder();
 const source=`
@@ -30,8 +31,9 @@ pub fn handle() -> Int32 {
 async function fixture(profile:ByteProfile) {
   const tools=createInProcessToolchain();
   try {
-    const pkg=await pinPackage({name:'test/byte-host',role:'library',dependencies:[],input:{kind:'source',files:[['main.mbt',source.replace('DIAGNOSTIC',profile === 'bytes-v1'?'':'diagnostic(n)')]]}});
-    const packages=[pkg];
+    const prelude=await preludePackage();
+    const pkg=await pinPackage({name:'test/byte-host',role:'library',dependencies:[{name:'prelude',pin:prelude.pin}],input:{kind:'source',files:[['main.mbt',source.replace('DIAGNOSTIC',profile === 'bytes-v1'?'':'diagnostic(n)')]]}});
+    const packages=[pkg,prelude];
     return await prepareArtifact(await executeAssembly(tools,{root:pkg.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['handle']}),await byteExecutionProfile(profile));
   } finally {tools.dispose();}
 }

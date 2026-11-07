@@ -2,19 +2,21 @@
 // Copyright 2026 FINOS. SPDX-License-Identifier: Apache-2.0
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SourceLocation {
   start_line : Int32
   start_column : Int32
   end_line : Int32
   end_column : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug, Default)
 pub(all) struct TypeAttributes {
   source : SourceLocation?
   constraints : Map[String, Data]
   extensions : Map[String, Data]
-} derive(Eq, Debug, Default)
+}
 
 ///|
 /// The extension key of the inference marker.
@@ -51,13 +53,15 @@ pub fn is_classic_placeholder_name(name : Name) -> Bool {
 }
 
 ///|
+#derive(Eq, Debug, Default)
 pub(all) struct ValueAttributes {
   source : SourceLocation?
   inferred_type : Type?
   extensions : Map[String, Data]
-} derive(Eq, Debug, Default)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Type {
   Variable(TypeAttributes, Name)
   Reference(TypeAttributes, FQName, Array[Type])
@@ -68,60 +72,68 @@ pub(all) enum Type {
   ExtensibleRecord(TypeAttributes, Name, Map[Name, Type])
   Function(TypeAttributes, Type, Type)
   Unit(TypeAttributes)
-} derive(Eq, Debug)
+}
 
 ///|
 pub type Constructors = Map[Name, Array[(Name, Type)]]
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Annotation {
   Compact(FQName, String?)
   Structured(FQName, Array[AnnotationArgument])
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum AnnotationArgument {
   Positional(Value)
   Named(Name, Value)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TypeSpecification {
   annotations : Array[Annotation]
   body : TypeSpecificationBody
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TypeSpecificationBody {
   TypeAliasSpecification(Array[Name], Type)
   OpaqueTypeSpecification(Array[Name])
   CustomTypeSpecification(Array[Name], Constructors)
   DerivedTypeSpecification(Array[Name], DerivedTypeDetails)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DerivedTypeDetails {
   base_type : Type
   from_base_type : FQName
   to_base_type : FQName
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TypeDefinition {
   TypeAliasDefinition(Array[Name], Type)
   CustomTypeDefinition(Array[Name], AccessControlled[Constructors])
   IncompleteTypeDefinition(Array[Name], Incompleteness, Type?)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum HoleReason {
   UnresolvedReference(FQName)
   DeletedDuringRefactor(String)
   TypeMismatch(String, String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Incompleteness {
   Hole(HoleReason, Type?)
   Draft
-} derive(Eq, Debug)
+}

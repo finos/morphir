@@ -4,10 +4,11 @@
 /// with the generate tuple of the document's format version. Every host wraps
 /// a plain IR document with this code, so one document gives one envelope on
 /// each host (SES-3).
+#derive(Eq, Debug)
 pub struct WrappedPlainIr {
   tuple : ModelTuple
   envelope : Json
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WrappedPlainIr with Eq::{equal, not_equal}

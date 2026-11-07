@@ -1,31 +1,35 @@
 ///|
+#derive(Eq)
 priv enum WorksheetStage {
   Read
   Evaluate
   Project
   Transport
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 priv struct WorksheetDiagnostic {
   stage : WorksheetStage
   range : Utf16Range?
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 pub struct Observation {
   priv form : WorksheetForm
   priv preview : String
   priv outcome : @execution.TerminalOutcome
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 pub struct WorksheetReport {
   priv source : CapturedWorksheetSource
   priv observations : Array[Observation]
   priv completion : @execution.TerminalOutcome
   priv diagnostic : WorksheetDiagnostic?
-} derive(Eq)
+}
 
 ///|
 pub extend WorksheetReport with Eq::{equal, not_equal}

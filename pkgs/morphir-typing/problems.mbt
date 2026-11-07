@@ -3,6 +3,7 @@
 ///
 /// `code` is a stable diagnostic code such as `type_mismatch`. `node` is the logical path of the IR node.
 /// `expected` and `found` are the two types, when the problem has them.
+#derive(Eq, Debug)
 pub(all) struct InferenceProblem {
   code : String
   node : String
@@ -10,7 +11,7 @@ pub(all) struct InferenceProblem {
   expected : @ir.Type?
   found : @ir.Type?
   source : @ir.SourceLocation?
-} derive(Eq, Debug)
+}
 
 ///|
 /// The problem as one line: `<code> at <node>: <message>`, and the source span when it is known.
@@ -31,9 +32,10 @@ pub extend InferenceProblem with @debug.Debug::{to_repr}
 
 ///|
 /// Raised when inference finds one or more problems.
+#derive(Eq, Debug)
 pub(all) suberror InferenceFailed {
   InferenceFailed(Array[InferenceProblem])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend InferenceFailed with Eq::{equal, not_equal}

@@ -1,5 +1,6 @@
 ///|
 /// Structural failures found before invoking a compiler or acquiring assets.
+#derive(Debug)
 pub(all) suberror AssemblyError {
   InvalidPackageName(String)
   InvalidDigest(String)
@@ -9,21 +10,23 @@ pub(all) suberror AssemblyError {
   MissingPackage(Referrer, PackagePin)
   RevisionMismatch(Referrer, PackagePin, PackagePin)
   DependencyCycle(Array[PackagePin])
-} derive(Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Referrer {
   SelectedRoot
   SuppliedAssembly
   DependencyOf(PackagePin)
-} derive(Eq, Debug)
+}
 
 ///|
 /// An exact package identity. The provider must still verify the actual bytes.
+#derive(Eq, Compare, Debug)
 pub struct PackagePin {
   priv name : String
   priv digest : String
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 fn letter(c : Char) -> Bool {
@@ -73,10 +76,11 @@ pub fn PackagePin::sha256(self : PackagePin) -> String {
 
 ///|
 /// Aliases are local to the referring package, not part of dependency identity.
+#derive(Eq, Compare, Debug)
 pub struct Dependency {
   priv import_name : String
   priv target : PackagePin
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub fn Dependency::new(
@@ -105,10 +109,11 @@ pub fn Dependency::target(self : Dependency) -> PackagePin {
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct Package {
   priv pin : PackagePin
   priv dependencies : Array[Dependency]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Package::new(
@@ -139,10 +144,11 @@ pub fn Package::dependencies(self : Package) -> Array[Dependency] {
 
 ///|
 /// A validated snapshot. It establishes structure, not asset or model validity.
+#derive(Eq, Debug)
 pub struct Plan {
   priv root : PackagePin
   priv packages : Array[Package]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Plan::root(self : Plan) -> PackagePin {

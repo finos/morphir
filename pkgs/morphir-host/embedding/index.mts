@@ -5,9 +5,28 @@ export * from './artifacts.mjs';
 export * from './byte-adapter.mjs';
 export * from './ndjson.mjs';
 export * from './mep-adapter.mjs';
-export const compilerVersion = "0.10.18+6c83a7f62";
+export const compilerVersion = "0.10.20+65efd5b93";
 export const capabilities = Object.freeze({protocolVersion: 1, mode: "embedded",
   operations: Object.freeze(["info", "compile", "build", "link", "run"]), targets: Object.freeze(["wasm", "wasm-gc"])});
+
+/** Package name of the core prelude. Since MoonBit 0.10.20 the compiler knows no type without it. */
+export const preludeInterfaceName = "moonbitlang/core/prelude";
+/**
+ * A compile or build request did not supply the pinned core prelude interface. The package ships no
+ * core assets: the host supplies the prelude of the same toolchain. Its message starts with the
+ * stable code, because worker boundaries transfer only the error name and message.
+ */
+export class PreludeRequiredError extends Error {
+  readonly code = "embedding.prelude_required";
+  constructor(target: string) {
+    super(`embedding.prelude_required: MoonBit ${compilerVersion} needs the pinned core prelude interface. ` +
+      `Supply ["${preludeInterfaceName}", bytes] in standardInterfaces, or "${preludeInterfaceName}:<alias>" in interfaces, ` +
+      `with the bytes of $MOON_HOME/lib/core/_build/${target}/release/bundle/prelude/prelude.mi from the same toolchain.`);
+    this.name = "PreludeRequiredError";
+  }
+}
+const isPrelude = (entry: unknown) => Array.isArray(entry) && typeof entry[0] === "string" &&
+  (entry[0] === preludeInterfaceName || entry[0].startsWith(preludeInterfaceName + ":"));
 
 const aborted = () => new DOMException("Cancelled", "AbortError");
 const check = (signal?: AbortSignal) => { if (signal?.aborted) throw aborted(); };
@@ -39,7 +58,10 @@ export function createEmbeddedToolchain(createCompiler: CompilerFactory, {import
           throw new TypeError("files must be nonempty [path, source] pairs");
         if (typeof pkg !== "string" || !pkg || !Array.isArray(exports) || exports.some(e => typeof e !== "string"))
           throw new TypeError("Invalid package or exports");
-        const mi = (entries: Interface[]): Interface[] => entries.map(([name, data]) => [name, bytes(data)]);
+        // Refuse before compilation: without the prelude the compiler reports only undefined types.
+        if (![interfaces, indirectInterfaces, standardInterfaces].some(group => Array.isArray(group) && group.some(isPrelude)))
+          throw new PreludeRequiredError(target);
+        const mi =(entries: Interface[]): Interface[] => entries.map(([name, data]) => [name, bytes(data)]);
         const built = await compiler.buildPackage({mbtFiles: files, miFiles: mi(interfaces),
           indirectImportMiFiles: mi(indirectInterfaces), stdMiFiles: mi(standardInterfaces),
           target, pkg, pkgSources: [], isMain, errorFormat: "json", enableValueTracing: false, noOpt: optimization === "unoptimized"});

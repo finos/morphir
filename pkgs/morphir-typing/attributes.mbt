@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub suberror TypeSubstitutionError {
   AttributeConflict
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TypeSubstitutionError with Eq::{equal, not_equal}

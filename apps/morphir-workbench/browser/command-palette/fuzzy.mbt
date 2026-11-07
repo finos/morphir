@@ -1,9 +1,10 @@
 ///|
 /// A fuzzy match: its score and the indexes of the matched characters in the text.
+#derive(Eq, Debug)
 pub(all) struct Match {
   score : Int32
   positions : Array[Int32]
-} derive(Eq, Debug)
+}
 
 ///|
 let match_points = 16

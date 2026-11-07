@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct Located {
   datum : Datum
   start : Int32
   children : Array[Located]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Located with Eq::{equal, not_equal}
@@ -14,11 +15,12 @@ pub extend Located with @debug.Debug::{to_repr}
 ///|
 /// An exact top-level form span in Unicode scalar coordinates. Only the reader
 /// constructs spans; consumers convert coordinates against the original source.
+#derive(Eq, Debug)
 pub struct RangedForm {
   priv form : Datum
   priv start : Int32
   priv end : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RangedForm with Eq::{equal, not_equal}
@@ -44,10 +46,11 @@ pub fn RangedForm::scalar_end(self : RangedForm) -> Int32 {
 ///|
 /// A whole-line double-semicolon comment outside all forms. The reader owns
 /// construction and reports the same scalar coordinates as RangedForm.
+#derive(Eq, Debug)
 pub struct RangedComment {
   priv start : Int32
   priv end : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RangedComment with Eq::{equal, not_equal}

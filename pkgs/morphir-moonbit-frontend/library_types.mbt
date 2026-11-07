@@ -6,10 +6,11 @@ pub const EXPERIMENTAL_PROFILE : String = "moonbit-model-experimental-v1"
 
 ///|
 /// Channels advance by promotion, never by adding another historical profile.
+#derive(Eq, Debug)
 pub(all) enum SourceChannel {
   Stable
   Experimental
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn SourceChannel::profile(self : SourceChannel) -> String {
@@ -40,6 +41,7 @@ fn SourceChannel::require_scalar(
 
 ///|
 /// Caller budgets may tighten, but cannot exceed, the profile's hard bounds.
+#derive(Eq, Debug)
 pub(all) struct LibraryLimits {
   max_bytes : Int32
   max_functions : Int32
@@ -49,7 +51,7 @@ pub(all) struct LibraryLimits {
   max_calls : Int32
   max_depth : Int32
   max_call_depth : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn LibraryLimits::default() -> LibraryLimits {
@@ -197,11 +199,12 @@ pub extend LibraryLimits with @debug.Debug::{to_repr}
 
 ///|
 /// Only the named SDK model errors are admitted; this grants no host effects.
+#derive(Eq)
 priv enum LibraryEffect {
   Pure
   SdkError
   DecimalError
-} derive(Eq)
+}
 
 ///|
 fn LibraryEffect::identifier(self : LibraryEffect) -> String {
@@ -366,11 +369,12 @@ pub struct PinnedSourceBindings {
 }
 
 ///|
+#derive(Eq)
 priv enum SourceSdkType {
   Integer
   Error
   Decimal
-} derive(Eq)
+}
 
 ///|
 pub fn PinnedSourceBindings::empty() -> PinnedSourceBindings {
@@ -577,10 +581,10 @@ pub fn PinnedSourceBindings::sdk_numeric_conversions(
 pub const MOONBIT_CORE_PACKAGE : String = "moonbitlang/core/builtin"
 
 ///|
-pub const MOONBIT_CORE_VERSION : String = "0.10.18+6c83a7f62"
+pub const MOONBIT_CORE_VERSION : String = "0.10.20+65efd5b93"
 
 ///|
-pub const MOONBIT_CORE_TREE : String = "417988f6e19738a7f683ce19a6cf5aaf52c96965"
+pub const MOONBIT_CORE_TREE : String = "156637b5d9149a4d2980bf9522c060f829667e1b"
 
 ///|
 /// The four pinned String predicates admitted by the reviewed specification.
@@ -680,6 +684,7 @@ fn is_string_predicate(name : String) -> Bool {
 }
 
 ///|
+#derive(Eq)
 priv enum LibraryScalar {
   Boolean
   SignedInt32
@@ -697,7 +702,7 @@ priv enum LibraryScalar {
   Floating32
   Floating64
   Text
-} derive(Eq)
+}
 
 ///|
 fn LibraryScalar::source_name(self : LibraryScalar) -> String {
@@ -870,7 +875,7 @@ fn LibraryTypeUse::to_ir(
             },
           ),
         ),
-        ("compiler", @ir.Data::Text("0.10.18+6c83a7f62")),
+        ("compiler", @ir.Data::Text("0.10.20+65efd5b93")),
         ("profile", @ir.Data::Text(self.profile)),
       ])
       if self.scalar.is_floating() {

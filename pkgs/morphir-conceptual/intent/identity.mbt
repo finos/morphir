@@ -1,14 +1,16 @@
 ///|
+#derive(Debug)
 pub(all) suberror InvalidInput {
   InvalidInput(String)
-} derive(Debug)
+}
 
 ///|
 pub extend InvalidInput with @debug.Debug::{to_repr}
 
 ///|
 /// M1 identities are opaque nonempty strings, not necessarily URIs.
-pub struct Id(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct Id(String)
 
 ///|
 pub fn Id::parse(value : String) -> Id raise InvalidInput {
@@ -25,7 +27,8 @@ pub fn Id::value(self : Id) -> String {
 
 ///|
 /// Required descriptive text has no identity semantics.
-pub struct NonemptyText(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct NonemptyText(String)
 
 ///|
 pub fn NonemptyText::parse(value : String) -> NonemptyText raise InvalidInput {
@@ -53,7 +56,8 @@ pub extend Id with Eq::{equal, not_equal}
 pub extend Id with @debug.Debug::{to_repr}
 
 ///|
-pub struct Revision(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct Revision(String)
 
 ///|
 pub fn Revision::parse(value : String) -> Revision raise InvalidInput {
@@ -76,7 +80,8 @@ pub extend Revision with @debug.Debug::{to_repr}
 
 ///|
 /// Category IDs have a namespace and a nonempty local part. Notation is separate.
-pub struct Category(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct Category(String)
 
 ///|
 pub fn Category::parse(value : String) -> Category raise InvalidInput {
@@ -99,10 +104,11 @@ pub extend Category with Eq::{equal, not_equal}
 pub extend Category with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Snapshot {
   id : Id
   revision : Revision
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Snapshot with Eq::{equal, not_equal}
@@ -111,10 +117,11 @@ pub extend Snapshot with Eq::{equal, not_equal}
 pub extend Snapshot with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ResolvedRef {
   model : Snapshot
   entity : Snapshot
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ResolvedRef with Eq::{equal, not_equal}
@@ -123,10 +130,11 @@ pub extend ResolvedRef with Eq::{equal, not_equal}
 pub extend ResolvedRef with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SourceRef {
   source_id : Id
   anchor : Id
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SourceRef with Eq::{equal, not_equal}

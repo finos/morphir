@@ -1,9 +1,10 @@
 ///|
+#derive(Eq)
 enum SdkCommand {
   Bootstrap(String, String)
   Generate
   Check
-} derive(Eq)
+}
 
 ///|
 fn sdk_command(json_mode~ : Bool = false) -> @argparse.Command {

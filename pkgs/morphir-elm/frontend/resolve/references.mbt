@@ -14,6 +14,7 @@ priv struct Walker {
 
 ///|
 /// The names that one module uses.
+#derive(Eq, Debug)
 pub(all) struct ModuleReferences {
   /// The project modules that the module references by any name, each once in first-use order.
   modules : Array[Array[String]]
@@ -23,7 +24,7 @@ pub(all) struct ModuleReferences {
   values : Array[@ir.FQName]
   /// The names that do not resolve.
   problems : Array[ResolveProblem]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ModuleReferences with Eq::{equal, not_equal}

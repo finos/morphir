@@ -1,4 +1,5 @@
 ///|
+#derive(Eq)
 priv enum State {
   /// We await the start of the stream.
   StreamStart
@@ -25,7 +26,7 @@ priv enum State {
   FlowMappingValue
   FlowMappingEmptyValue
   End
-} derive(Eq)
+}
 
 ///|
 struct Parser {

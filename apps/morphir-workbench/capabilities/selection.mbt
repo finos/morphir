@@ -9,9 +9,10 @@ pub(all) suberror Invalid {
 
 ///|
 /// A recognized evaluator identity, decoded from the actual worker catalog.
+#derive(Eq)
 pub(all) enum Evaluator {
   SchemePortable
-} derive(Eq)
+}
 
 ///|
 pub extend Evaluator with Eq::{equal, not_equal}

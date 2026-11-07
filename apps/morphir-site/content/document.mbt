@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct Heading {
   level : Int32
   id : String
   text : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Heading with Eq::{equal, not_equal}

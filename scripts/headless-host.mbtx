@@ -68,10 +68,11 @@ async fn failed(error : Error) -> Unit {
 }
 
 ///|
+#derive(Eq, Debug)
 priv enum Invocation {
   Build(String)
   SelfTest
-} derive(Eq, Debug)
+}
 
 ///|
 fn host_command() -> @argparse.Command {
@@ -298,7 +299,7 @@ async fn source_self_test() -> Unit {
   // Commits and staging below exist only in this disposable fixture repository.
   // No Rust build, network checkout or caller-owned source is modified.
   let temporary = @fs.tmpdir(prefix="morphir-headless-host-")
-  defer remove_fixture(temporary)
+  defer @async.protect_from_cancel(() => remove_fixture(temporary))
   let origin = temporary + "/origin"
   let source = temporary + "/源 source"
   @fs.mkdir(origin)

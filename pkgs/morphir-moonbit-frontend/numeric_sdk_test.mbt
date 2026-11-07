@@ -52,7 +52,7 @@ test "numeric SDK type call and effect facts survive checkpoints and generated r
     ] {
     assert_true(text.contains(fact), msg=fact)
   }
-  assert_true(@ion_text.read_ion(text.view()).equals(receipt))
+  assert_true(@ion_text.read_ion(text.exact_view()).equals(receipt))
 }
 
 ///|

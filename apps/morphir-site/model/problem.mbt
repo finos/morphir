@@ -1,10 +1,11 @@
 ///|
 /// One build problem. `line` is 0 when the line is not known.
+#derive(Eq, Debug)
 pub(all) struct Problem {
   file : String
   line : Int32
   message : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Problem with Eq::{equal, not_equal}
@@ -14,9 +15,10 @@ pub extend Problem with @debug.Debug::{to_repr}
 
 ///|
 /// All the problems found in one step. The generator reports them together.
+#derive(Eq, Debug)
 pub(all) suberror Invalid {
   Invalid(Array[Problem])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Invalid with Eq::{equal, not_equal}

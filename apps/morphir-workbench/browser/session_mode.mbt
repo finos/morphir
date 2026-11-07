@@ -1,10 +1,11 @@
 ///|
 /// The selected page experience. It is presentation, never source authority.
+#derive(Eq)
 enum SessionMode {
   LocalRuntime
   ConnectedRuntime
   ConnectedOriginals
-} derive(Eq)
+}
 
 ///|
 extern "js" fn session_mode_text() -> String =

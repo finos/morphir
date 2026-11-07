@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum MetadataAuditPhase {
   Acquire
   Probe
@@ -7,7 +8,7 @@ pub(all) enum MetadataAuditPhase {
   Context
   Admission
   Cleanup
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MetadataAuditPhase with Eq::{equal, not_equal}

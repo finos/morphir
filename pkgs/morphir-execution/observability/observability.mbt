@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum Stage {
   Plan
   Decode
@@ -16,7 +17,7 @@ pub(all) enum Stage {
   Cleanup
   Execute
   Legacy
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Stage::name(self : Stage) -> String {
@@ -41,21 +42,23 @@ pub fn Stage::name(self : Stage) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Signal {
   Started
   Succeeded
   Failed
   Cancelled
   Notice
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Delivery {
   Accepted
   Filtered
   Dropped
   Unavailable
-} derive(Eq, Debug)
+}
 
 ///|
 pub(all) struct ObservationContext {
@@ -320,11 +323,12 @@ pub fn Correlation::to_ion(self : Correlation) -> @ion.IonValue {
 
 ///|
 /// W3C version 00 only. Baggage and tracestate are deliberately unsupported.
+#derive(Eq)
 pub(all) struct TraceContext {
   trace_id : String
   parent_id : String
   flags : String
-} derive(Eq)
+}
 
 ///|
 fn hex_id(s : String, size : Int32) -> Bool {

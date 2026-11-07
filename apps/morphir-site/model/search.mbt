@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct SearchEntry {
   route : String
   title : String
@@ -6,7 +7,7 @@ pub(all) struct SearchEntry {
   summary : String
   headings : Array[String]
   text : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SearchEntry with Eq::{equal, not_equal}
@@ -17,12 +18,12 @@ pub extend SearchEntry with @debug.Debug::{to_repr}
 ///|
 pub fn SearchEntry::to_json(self : SearchEntry) -> Json {
   {
-    "route": self.route.to_json(),
-    "title": self.title.to_json(),
-    "section": self.section.to_json(),
-    "summary": self.summary.to_json(),
-    "headings": self.headings.to_json(),
-    "text": self.text.to_json(),
+    "route": Json::string(self.route),
+    "title": Json::string(self.title),
+    "section": Json::string(self.section),
+    "summary": Json::string(self.summary),
+    "headings": Json::array(self.headings.map(Json::string)),
+    "text": Json::string(self.text),
   }
 }
 

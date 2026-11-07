@@ -1,12 +1,13 @@
 ///|
 /// Frozen project identity and selections. Paths remain selections with their
 /// configuration origins; the host must resolve them against its own grants.
+#derive(Eq, Debug)
 pub(all) struct ProjectMetadataScope {
   workspace_root : String
   project_root : String
   project_name : String
   request : @configuration.MetadataProviderRequest
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ProjectMetadataScope with Eq::{equal, not_equal}

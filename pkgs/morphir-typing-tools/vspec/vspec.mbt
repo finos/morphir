@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub(all) suberror VSpecError {
   VSpecError(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend VSpecError with Eq::{equal, not_equal}

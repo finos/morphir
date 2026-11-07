@@ -1,9 +1,10 @@
 ///|
 /// The absolute URL of the Web Worker entry module that
 /// `worker/browser/entry` builds.
+#derive(Eq)
 pub struct EntryUrl {
   priv href : String
-} derive(Eq)
+}
 
 ///|
 pub extend EntryUrl with Eq::{equal, not_equal}

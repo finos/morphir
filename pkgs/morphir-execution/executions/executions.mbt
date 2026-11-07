@@ -6,7 +6,8 @@ pub(all) suberror Invalid {
 
 ///|
 /// The bounded opaque identity of one accepted execution, not a request counter.
-pub struct ExecutionId(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct ExecutionId(String)
 
 ///|
 pub extend ExecutionId with Eq::{equal, not_equal}
@@ -25,13 +26,14 @@ pub fn ExecutionId::to_string(self : ExecutionId) -> String {
 }
 
 ///|
+#derive(Eq)
 pub struct Identity {
   priv host : String
   priv session : String
   priv provider : String
   priv execution : ExecutionId
   priv snapshot : String
-} derive(Eq)
+}
 
 ///|
 pub struct Offer {
@@ -49,11 +51,12 @@ pub enum State {
 }
 
 ///|
+#derive(Eq)
 priv enum Phase {
   Submitted
   Running
   Terminal
-} derive(Eq)
+}
 
 ///|
 fn phase(state : State) -> Phase {
@@ -73,20 +76,22 @@ pub struct Receipt {
 }
 
 ///|
+#derive(Debug)
 pub enum Disposition {
   Advanced
   Replay
   Stale
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub enum CancelAction {
   Send
   Pending
   AlreadyTerminal
   Unavailable
   Disconnected
-} derive(Debug)
+}
 
 ///|
 /// Private canonical evidence prevents caller-owned arrays from changing history.

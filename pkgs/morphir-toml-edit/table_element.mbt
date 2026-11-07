@@ -1,8 +1,9 @@
 ///|
+#derive(Eq)
 priv enum ElementStep {
   Key(String)
   Index(Int32)
-} derive(Eq)
+}
 
 ///|
 priv struct EditFocus {

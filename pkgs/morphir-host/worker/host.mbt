@@ -2,11 +2,12 @@
 /// Where the host runs. Native and Node hosts start process and WASM
 /// workers on the machine they find at run time; a browser host starts WASM
 /// workers only.
+#derive(Eq, Debug)
 pub(all) enum HostPlatform {
   Native(Machine)
   Node(Machine)
   Browser
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend HostPlatform with Eq::{equal, not_equal}
@@ -97,6 +98,7 @@ pub fn StopSignal::requested(self : StopSignal) -> Bool {
 /// limits that the host enforces, and under `limits.negotiated` the depth and
 /// node limits that were negotiated. The party that decodes the model
 /// enforces those two, not the host.
+#derive(Eq, Debug)
 pub struct SessionReport {
   negotiated : Negotiated?
   limits : Limits
@@ -104,7 +106,7 @@ pub struct SessionReport {
   bounds : EnforcedBounds?
   stop : WorkerStop?
   ending : Ending?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SessionReport with Eq::{equal, not_equal}
@@ -223,9 +225,10 @@ pub impl ToJson for SessionReport with fn to_json(self) {
 ///|
 /// Why a probe or an activation did not give a result. The report says how
 /// far the session went and how the worker stopped.
+#derive(Eq, Debug)
 pub(all) suberror HostError {
   Ended(Ending, report~ : SessionReport)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend HostError with Eq::{equal, not_equal}

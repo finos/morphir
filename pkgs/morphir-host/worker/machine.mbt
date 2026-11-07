@@ -1,10 +1,11 @@
 ///|
 /// An operating system that a host runs and a process artifact targets.
+#derive(Eq, Debug)
 pub(all) enum Os {
   MacOs
   Linux
   Windows
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Os with Eq::{equal, not_equal}
@@ -28,10 +29,11 @@ pub extend Os with Show::{to_string, output}
 
 ///|
 /// A CPU architecture that a host runs and a process artifact targets.
+#derive(Eq, Debug)
 pub(all) enum Arch {
   Aarch64
   X86_64
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Arch with Eq::{equal, not_equal}
@@ -55,10 +57,11 @@ pub extend Arch with Show::{to_string, output}
 ///|
 /// A C library environment of Linux. A dynamically linked executable for it
 /// starts only where its dynamic loader is present.
+#derive(Eq, Compare, Debug)
 pub(all) enum Libc {
   Glibc
   Musl
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend Libc with Eq::{equal, not_equal}
@@ -144,11 +147,12 @@ pub fn Platform::libc(self : Platform) -> Libc? {
 /// present. A host decides it at run time; the target that its own executable
 /// was built for does not matter, so a static musl host on a glibc machine
 /// runs gnu artifacts.
+#derive(Eq, Debug)
 pub struct Machine {
   priv os : Os
   priv arch : Arch
   priv libcs : Array[Libc]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Machine with Eq::{equal, not_equal}

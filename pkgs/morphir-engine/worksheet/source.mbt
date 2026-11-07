@@ -1,29 +1,34 @@
 ///|
+#derive(Eq, Debug)
 pub struct WorksheetId {
   priv text : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct SourceRevision {
   priv number : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct CapturedWorksheetSource {
   priv snapshot : @data.SourceSnapshot
   priv revision : SourceRevision
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct Utf16Offset {
   priv units : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct Utf16Range {
   priv start : Utf16Offset
   priv end : Utf16Offset
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CapturedWorksheetSource with Eq::{equal, not_equal}

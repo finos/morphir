@@ -1,5 +1,6 @@
 ///|
 /// Internal types. `Con` names are canonical FQName text.
+#derive(Eq, Debug)
 priv enum Ty {
   Meta(Int32)
   /// A declared variable, by key: `<owner>|<canonical name>`, where the owner is the canonical FQName of the
@@ -16,7 +17,7 @@ priv enum Ty {
   /// Fields by canonical name. The tail is a `Meta` or a `Rigid`; `None` is a closed record.
   Rec(Map[String, Ty], Ty?)
   UnitTy
-} derive(Eq, Debug)
+}
 
 ///|
 /// The state of a meta variable. An unbound meta has a binding level and a class set of at most one class.

@@ -2,10 +2,11 @@
 /// One whole MEP message and its size in bytes, as encoded or as read.
 /// Framing belongs to the transport; the session core checks the size again.
 /// A message is always a JSON object.
+#derive(Eq, Debug)
 pub struct Message {
   priv body : Json
   priv bytes : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Message with Eq::{equal, not_equal}
@@ -52,10 +53,11 @@ pub fn Message::to_bytes(self : Message) -> Bytes {
 ///|
 /// The direction of a frame: a request from the host to the worker, or a
 /// response or notification from the worker to the host.
+#derive(Eq, Debug)
 pub(all) enum FrameDirection {
   Request
   Response
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FrameDirection with Eq::{equal, not_equal}
@@ -70,6 +72,7 @@ pub extend FrameDirection with @debug.Debug::{to_repr}
 /// of its direction, found before its body was read or written.
 /// `TransportFailed` is an error of the transport itself, such as a failed
 /// pipe; its text says which stream failed and why.
+#derive(Eq, Debug)
 pub(all) suberror ChannelError {
   WorkerClosed
   FrameInvalid(String)
@@ -78,7 +81,7 @@ pub(all) suberror ChannelError {
   TransportFailed(String)
   GuestFailed(GuestFault)
   Refused(code~ : RefusalCode, message~ : String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ChannelError with Eq::{equal, not_equal}
@@ -88,12 +91,13 @@ pub extend ChannelError with @debug.Debug::{to_repr}
 
 ///|
 /// Why the host stops a worker without waiting for it.
+#derive(Eq, Debug)
 pub(all) enum StopReason {
   GraceExpired
   Deadline
   Cancelled
   Fault
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StopReason with Eq::{equal, not_equal}
@@ -105,12 +109,13 @@ pub extend StopReason with @debug.Debug::{to_repr}
 /// How a worker ended. `Exited` and `Signalled` are ends the worker reached
 /// itself; `Terminated` is a stop by the host; `Unconfirmed` means the host
 /// could not confirm that the worker's process tree stopped.
+#derive(Eq, Debug)
 pub(all) enum StopStatus {
   Exited(code~ : Int32)
   Signalled(signal~ : Int32)
   Terminated(StopReason)
   Unconfirmed(StopReason)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StopStatus with Eq::{equal, not_equal}
@@ -121,13 +126,14 @@ pub extend StopStatus with @debug.Debug::{to_repr}
 ///|
 /// How the host ended a worker. `ExitedAfterExit` means the worker ended on
 /// its own and the host terminated nothing.
+#derive(Eq, Debug)
 pub(all) enum StopMethod {
   ExitedAfterExit
   GroupSignal
   JobTermination
   TreeTermination
   ThreadTermination
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StopMethod with Eq::{equal, not_equal}
@@ -138,11 +144,12 @@ pub extend StopMethod with @debug.Debug::{to_repr}
 ///|
 /// How a worker stopped, how the host stopped it and the final tail of its
 /// stderr. Every session ends with one of these.
+#derive(Eq, Debug)
 pub struct WorkerStop {
   status : StopStatus
   stop_method : StopMethod
   stderr : StderrTail
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WorkerStop with Eq::{equal, not_equal}
@@ -164,13 +171,14 @@ pub fn WorkerStop::new(
 /// when its stream ends: the guest trapped, grew its memory past the
 /// ceiling, ran past its per-call deadline or instruction budget, or the
 /// adapter reported a failure, with its message kept.
+#derive(Eq, Debug)
 pub(all) enum GuestFault {
   Trap(String)
   MemoryLimit(String)
   CallDeadline
   BudgetExhausted
   Failure(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GuestFault with Eq::{equal, not_equal}
@@ -180,10 +188,11 @@ pub extend GuestFault with @debug.Debug::{to_repr}
 
 ///|
 /// The name of a WASM import, as a module reads it.
+#derive(Eq, Debug)
 pub struct ImportName {
   module_name : String
   name : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ImportName with Eq::{equal, not_equal}
@@ -209,12 +218,13 @@ pub extend ImportName with Show::{to_string, output}
 ///|
 /// Why the host could not read an artifact. `Unreadable` may carry an
 /// operating-system message, for diagnostics only.
+#derive(Eq, Debug)
 pub(all) enum ArtifactProblem {
   SymbolicLink
   NotRegularFile
   TooLarge
   Unreadable(detail~ : String?)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ArtifactProblem with Eq::{equal, not_equal}
@@ -224,6 +234,7 @@ pub extend ArtifactProblem with @debug.Debug::{to_repr}
 
 ///|
 /// A launcher could not start a worker.
+#derive(Eq, Debug)
 pub(all) suberror LaunchError {
   PlatformMismatch(Platform)
   RuntimeUnavailable(supported~ : Array[RuntimeKind])
@@ -239,7 +250,7 @@ pub(all) suberror LaunchError {
   MemoryAboveCeiling(initial~ : Int64, ceiling~ : Int32)
   WorkerRuntimeMismatch(host~ : String, worker~ : String)
   LaunchFailed(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LaunchError with Eq::{equal, not_equal}

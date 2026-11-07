@@ -1,9 +1,10 @@
 ///|
 /// This is field projection, not an exporter. No network or host imports.
+#derive(Eq, Show)
 pub(all) enum Destination {
   JSON
   OTLP
-} derive(Eq, Show)
+}
 
 ///|
 pub extend Destination with Eq::{equal, not_equal}
@@ -14,11 +15,12 @@ pub extend Destination with Show::{to_string, output}
 ///|
 /// Reject is the default. Drop deliberately omits the entire field; Envelope
 /// retains the complete native Ion value in a versioned binary wrapper.
+#derive(Eq, Show)
 pub(all) enum Policy {
   Reject
   Drop
   Envelope
-} derive(Eq, Show)
+}
 
 ///|
 pub extend Policy with Eq::{equal, not_equal}
@@ -32,10 +34,11 @@ pub(all) suberror ProjectionError {
 }
 
 ///|
+#derive(Eq, Show)
 pub(all) struct Issue {
   path : String
   reason : String
-} derive(Eq, Show)
+}
 
 ///|
 pub extend Issue with Eq::{equal, not_equal}

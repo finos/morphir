@@ -4,9 +4,10 @@
 
 ///|
 /// The identity of a workbench workspace, stable for its whole life in this browser.
+#derive(Eq, Hash, Debug)
 pub struct WorkspaceId {
   priv value : Int32
-} derive(Eq, Hash, Debug)
+}
 
 ///|
 pub extend WorkspaceId with Eq::{equal, not_equal}
@@ -48,9 +49,10 @@ pub fn WorkspaceId::parse(text : String) -> WorkspaceId? {
 
 ///|
 /// A workspace name a person can read: trimmed, between 1 and 80 characters, without control characters.
+#derive(Eq, Debug)
 pub struct WorkspaceName {
   priv text : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WorkspaceName with Eq::{equal, not_equal}
@@ -86,12 +88,13 @@ pub fn WorkspaceName::parse(text : String) -> Result[WorkspaceName, String] {
 
 ///|
 /// How a workspace starts. A preset is a starting point, not a kind: any workspace can later hold any content.
+#derive(Eq, Debug)
 pub(all) enum Preset {
   Empty
   SourceProject
   ModelExploration
   Sandbox
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Preset with Eq::{equal, not_equal}
@@ -146,13 +149,14 @@ pub fn Preset::base_name(self : Preset) -> String {
 ///|
 /// A kind of content a workspace holds. Intent and conceptual models are the person's own drafts; they are not
 /// executable Morphir IR and are not compiled or inferred.
+#derive(Eq, Debug)
 pub(all) enum Content {
   Intent
   ConceptualModel
   SourceProject
   ModelDocument
   Worksheet
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Content with Eq::{equal, not_equal}
@@ -199,12 +203,13 @@ pub fn Content::label(self : Content) -> String {
 ///|
 /// The document in the central area: the source editor (also the worksheet), the model inspector, the intent draft
 /// or the conceptual model draft. Selecting a document never changes the workspace.
+#derive(Eq, Debug)
 pub(all) enum Document {
   Source
   Model
   IntentDraft
   ConceptDraft
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Document with Eq::{equal, not_equal}
@@ -256,10 +261,11 @@ pub fn views(held : Array[Content], connected~ : Bool) -> Array[@shell.View] {
 
 ///|
 /// Where a workspace keeps its source projects. Projects saved before workspaces existed keep their earlier keys.
+#derive(Eq, Debug)
 pub(all) enum Storage {
   Legacy
   Scoped
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Storage with Eq::{equal, not_equal}
@@ -270,13 +276,14 @@ pub extend Storage with @debug.Debug::{to_repr}
 ///|
 /// Where a workspace's files live, as a path people can read. The Workbench keeps in-memory and browser-stored
 /// workspaces at a virtual path, `memory://workspaces/<slug>`; a connected host's workspace is at the host.
+#derive(Eq, Debug)
 pub(all) enum WorkspaceLocation {
   /// A virtual path under `memory://workspaces/`. The slug is chosen once, from the name, and stays when the
   /// workspace is renamed.
   Memory(String)
   /// The origin of the connected host that provides the workspace.
   Connected(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WorkspaceLocation with Eq::{equal, not_equal}
@@ -336,6 +343,7 @@ pub fn slug_of(name : String) -> String {
 /// One workspace: its identity, name, starting preset, contents, project storage, layout and when it was last
 /// opened. `saved` is false for a provisional workspace whose folder or model has not arrived yet, and for a
 /// connected host's workspace, which this browser does not keep.
+#derive(Eq, Debug)
 pub(all) struct Entry {
   id : WorkspaceId
   name : WorkspaceName
@@ -348,7 +356,7 @@ pub(all) struct Entry {
   /// The source language the workspace had selected, so a reopened workspace shows the same project.
   language : @ids.LanguageId?
   location : WorkspaceLocation
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Entry with Eq::{equal, not_equal}
@@ -402,11 +410,12 @@ pub fn Entry::holds(self : Entry, content : Content) -> Bool {
 
 ///|
 /// The workspaces of this page: saved ones, provisional ones and the connected host's.
+#derive(Eq, Debug)
 pub struct Registry {
   entries : Array[Entry]
   priv next : Int32
   priv clock : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Registry with Eq::{equal, not_equal}

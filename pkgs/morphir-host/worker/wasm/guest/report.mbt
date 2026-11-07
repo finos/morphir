@@ -64,6 +64,7 @@ pub fn cut_message(text : String) -> String {
 /// One event of the worker mode's report on stderr. With `--json` each event
 /// is one `morphir/command-event` line; the host reads the last `fault` or
 /// `refused` event when the worker's stdout ends.
+#derive(Eq, Debug)
 pub(all) enum WorkerEvent {
   /// The worker loaded the module and serves frames.
   Started(
@@ -83,7 +84,7 @@ pub(all) enum WorkerEvent {
   Refused(code~ : @worker.RefusalCode, message~ : String)
   /// The worker exits with this status.
   Exited(code~ : Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WorkerEvent with Eq::{equal, not_equal}

@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum DiagnosticCode {
   DuplicateIdentity
   RelationshipKind
@@ -15,7 +16,7 @@ pub(all) enum DiagnosticCode {
   InconclusiveEvidence
   ImplementationUnbound
   UnsupportedSemantics
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DiagnosticCode with Eq::{equal, not_equal}

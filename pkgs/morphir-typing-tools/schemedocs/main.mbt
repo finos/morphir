@@ -1,8 +1,9 @@
 ///|
+#derive(Eq)
 enum DocCommand {
   Generate
   Check
-} derive(Eq)
+}
 
 ///|
 fn docs_command(json_mode~ : Bool = false) -> @argparse.Command {

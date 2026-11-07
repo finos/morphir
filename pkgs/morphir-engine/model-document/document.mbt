@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) suberror DocumentError {
   InvalidFilename
   InvalidCodec
@@ -7,7 +8,7 @@ pub(all) suberror DocumentError {
   TooLarge
   InvalidReply
   RevisionLimit
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DocumentError with @debug.Debug::{to_repr}
@@ -89,12 +90,13 @@ pub extend HostRetention with Eq::{equal, not_equal}
 pub extend HostRetention with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum SourceCodec {
   MorphirJson
   MorphirYaml
   IonText
   IonBinary
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn SourceCodec::parse(text : String) -> SourceCodec raise DocumentError {
@@ -130,7 +132,8 @@ pub fn SourceCodec::to_string(self : SourceCodec) -> String {
 }
 
 ///|
-pub struct OriginalFilename(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct OriginalFilename(String)
 
 ///|
 pub fn OriginalFilename::to_string(self : OriginalFilename) -> String {
@@ -159,12 +162,13 @@ pub fn OriginalFilename::parse(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct OriginalFile {
   filename : OriginalFilename
   codec : SourceCodec
   format_version : @version.FormatVersion
   priv bytes : Bytes
-} derive(Eq, Debug)
+}
 
 ///|
 fn copy_bytes(bytes : Bytes) -> Bytes {
@@ -211,25 +215,28 @@ pub fn OriginalFile::download(self : OriginalFile) -> Json {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ProjectionReason {
   OriginalsNotProvided
   GeneratedModel
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Source {
   Original(OriginalFile)
   Tree(OriginalTree)
   Projection(ProjectionReason)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Semantic inspection remains the existing private JSON projection. Source
 /// bytes have separate ownership; this is not a deep immutable IR snapshot.
+#derive(Eq, Debug)
 pub struct Document {
   inspection : Json
   source : Source
-} derive(Eq, Debug)
+}
 
 ///|
 fn field(value : Json, name : String) -> Json {
@@ -329,14 +336,17 @@ pub fn Document::from_reply(reply : Json) -> Document raise DocumentError {
 }
 
 ///|
-pub struct OpenAttempt(Int32) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct OpenAttempt(Int32)
 
 ///|
-pub struct DocumentRevision(Int32) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct DocumentRevision(Int32)
 
 ///|
 /// Standalone original-download controls never use a semantic revision.
-pub struct InventoryRevision(Int32) derive(Eq, Debug)
+#derive(Eq, Debug)
+pub struct InventoryRevision(Int32)
 
 ///|
 pub extend InventoryRevision with Eq::{equal, not_equal}
@@ -358,39 +368,44 @@ pub fn OpenAttempt::to_string(self : OpenAttempt) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 priv struct SemanticOwner {
   document : Document
   revision : DocumentRevision
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 priv struct OriginalsOwner {
   inventory : OriginalInventory
   revision : InventoryRevision
-} derive(Eq, Debug)
+}
 
 ///|
 /// A received inventory never changes which bytes belong to prior semantics.
+#derive(Eq, Debug)
 priv enum RetainedOwners {
   Semantic(SemanticOwner)
   Originals(OriginalsOwner)
   Both(SemanticOwner, OriginalsOwner)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 priv enum Phase {
   Empty
   Retained(RetainedOwners)
   Opening(OpenAttempt, RetainedOwners?)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct State {
   priv sequence : Int32
   priv revision : Int32
   priv inventory_sequence : Int32
   priv phase : Phase
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn State::new() -> State {
@@ -527,13 +542,14 @@ pub fn State::is_current(self : State, attempt : OpenAttempt) -> Bool {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum HostRetention {
   Idle
   Submitting
   Running
   Disconnected
   UnknownSubmission
-} derive(Eq, Debug)
+}
 
 ///|
 pub(all) enum BeginDecision {

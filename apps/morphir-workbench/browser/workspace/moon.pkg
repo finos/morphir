@@ -10,5 +10,6 @@ import {
   "finos/morphir-workbench/browser/workspace",
   "finos/morphir-workbench/browser/shell",
   "finos/morphir-engine/ids",
+  "moonbitlang/core/json",
   "moonrockz/expect",
 } for "test"

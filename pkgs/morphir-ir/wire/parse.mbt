@@ -1,8 +1,9 @@
 ///|
 /// Stable diagnostic code and detail. Callers need not parse error prose.
+#derive(Eq, Debug)
 pub(all) suberror CodecError {
   Invalid(String, String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CodecError with Eq::{equal, not_equal}

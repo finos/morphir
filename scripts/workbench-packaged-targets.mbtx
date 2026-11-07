@@ -19,9 +19,10 @@ import {
 let json_mode : Ref[Bool] = Ref(false)
 
 ///|
+#derive(Debug)
 suberror ChildFailure {
   ChildFailure(Int32, String)
-} derive(Debug)
+}
 
 ///|
 fn succeeded(result : Json) -> Json {
@@ -71,19 +72,21 @@ async fn print_progress(message : String) -> Unit {
 }
 
 ///|
+#derive(Eq)
 enum PackageTarget {
   LinuxX64
   WindowsX64
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum PackageCommand {
   Build(PackageTarget)
   Accept(PackageTarget)
   Aggregate(String)
   ProbeArchive
   SelfTest
-} derive(Eq)
+}
 
 ///|
 fn package_command() -> @argparse.Command {

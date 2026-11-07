@@ -215,30 +215,34 @@ let worksheet_example : String =
   #|(+ 1/3 2/3)
 
 ///|
+#derive(Eq)
 struct Location {
   doc : @workspace.Document
   worksheet : Bool
   selected : String
   query : String
   explorer_raw : Bool
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 struct EvaluationDraft {
   arguments : String
   mode : @evaluation.InputMode
   revision : Int32
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum CapabilityRuntime {
   Unavailable
   Standalone(@capabilities.Evaluator)
   Native(@capabilities.Evaluator)
   Connected(@capabilities.Evaluator)
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 struct Model {
   mode : SessionMode
   /// Getting started, or the active workspace.
@@ -361,7 +365,7 @@ struct Model {
   system_appearance : @settings.Appearance
   /// The settings page, when it shows over the current screen.
   page : Page
-} derive(Eq)
+}
 
 ///|
 enum Msg {
@@ -4224,11 +4228,12 @@ fn output_pane(model : Model) -> EditorPane {
 ///|
 /// Which panes of a source document show. Side by side, either pane can take the full width; as tabs, the source or
 /// the output shows, and `Both` shows the source.
+#derive(Eq, Debug)
 enum EditorPane {
   Both
   SourceOnly
   OutputOnly
-} derive(Eq, Debug)
+}
 
 ///|
 fn action_icon(name : String) -> @html.Html {

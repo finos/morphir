@@ -20,6 +20,7 @@ import {
 let profile = "morphir_ci_artifact_v1"
 
 ///|
+#derive(Eq)
 enum Invocation {
   Pack(String, String)
   PackRelease(String, String)
@@ -27,7 +28,7 @@ enum Invocation {
   PackCross(String, String, String)
   SelfTest
   UnknownOperation(String)
-} derive(Eq)
+}
 
 ///|
 fn artifact_command() -> @argparse.Command {

@@ -1,17 +1,20 @@
 ///|
+#derive(Eq)
 enum FileSaveState {
   Idle
   Saving(Int32)
   Blocked(String)
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum FileLocation {
   DesktopFolder
   ConnectedRoot
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 struct FileAuthority {
   location : FileLocation
   grant : @filewire.GrantId
@@ -19,15 +22,16 @@ struct FileAuthority {
   saved_revision : Int32
   name : String
   state : FileSaveState
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum FileAccess {
   Memory
   Detached(String)
   ReadOnly(String)
   Writable(FileAuthority)
-} derive(Eq)
+}
 
 ///|
 fn workspace_writable(model : Model) -> Bool {

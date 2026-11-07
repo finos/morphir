@@ -4,9 +4,10 @@ pub const PAGE_BYTES : Int32 = 65536
 
 ///|
 /// The largest guest memory, in 64 KiB pages.
+#derive(Eq, Debug)
 pub struct MemoryCeiling {
   priv pages : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MemoryCeiling with Eq::{equal, not_equal}
@@ -40,13 +41,14 @@ pub fn MemoryCeiling::pages(self : MemoryCeiling) -> Int32 {
 
 ///|
 /// Why the host cannot cap a module's memory.
+#derive(Eq, Debug)
 pub(all) suberror MemoryRefusal {
   /// The module needs a WASM feature for its memory: `threads` for a shared
   /// memory, `memory64` for a 64-bit one, `multi-memory` for more than one.
   MemoryFeature(String)
   /// The module's initial memory is already above the ceiling.
   InitialAboveCeiling(initial~ : Int64, ceiling~ : Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MemoryRefusal with Eq::{equal, not_equal}

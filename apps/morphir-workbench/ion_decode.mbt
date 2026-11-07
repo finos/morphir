@@ -208,11 +208,12 @@ fn ion_shape_refusal(bytes : BytesView) -> Json? raise @ion.IonError {
 
 ///|
 /// Pretty Ion text, or how much of it fitted before the budget ran out.
+#derive(Eq)
 pub(all) enum IonText {
   Written(String)
   /// The characters written before the next piece would pass the budget; never more than the budget.
   OverBudget(Int32)
-} derive(Eq)
+}
 
 ///|
 pub extend IonText with Eq::{equal, not_equal}

@@ -58,7 +58,7 @@ test "checked Decimal calls execute and preserve owned source scale and concrete
     ] {
     assert_true(receipt_text.contains(fact), msg=fact)
   }
-  assert_true(@ion_text.read_ion(receipt_text.view()).equals(receipt))
+  assert_true(@ion_text.read_ion(receipt_text.exact_view()).equals(receipt))
 }
 
 ///|

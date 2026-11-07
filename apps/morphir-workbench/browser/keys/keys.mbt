@@ -1,5 +1,6 @@
 ///|
 /// A command that a shortcut, a menu or the command palette runs.
+#derive(Eq, Debug)
 pub(all) enum CommandId {
   Compile
   Run
@@ -68,18 +69,19 @@ pub(all) enum CommandId {
   UseTabs
   /// Gives the source pane the full width, or restores both panes.
   ToggleSourceWidth
-} derive(Eq, Debug)
+}
 
 ///|
 /// A key with its modifiers. `primary` is Command on macOS and Control elsewhere; `other` is a modifier that no
 /// shortcut uses (Control on macOS, Meta elsewhere), so a chord with it matches nothing.
+#derive(Eq, Debug)
 pub(all) struct Chord {
   key : String
   primary : Bool
   shift : Bool
   alt : Bool
   other : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 /// The spelling of `KeyboardEvent.key` that chords use: one letter in upper case, `Space` for the space bar, and the
@@ -209,36 +211,40 @@ pub fn Chord::aria(self : Chord, mac~ : Bool) -> String {
 ///|
 /// Where a shortcut works. `Anywhere` shortcuts also work while a person types in the editor or a text field, as
 /// editors allow for the palette and quick open. `Tree` shortcuts work only on a focused row of the project tree.
+#derive(Eq, Debug)
 pub(all) enum Scope {
   Anywhere
   Tree
-} derive(Eq, Debug)
+}
 
 ///|
 /// On which systems menus and the palette show a binding. Every binding works everywhere; this only picks the
 /// chord people on that system expect to see, such as ⌘⌫ rather than ⌦ on a Mac keyboard.
+#derive(Eq, Debug)
 pub(all) enum Shown {
   Everywhere
   OnMac
   OffMac
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Binding {
   chord : Chord
   command : CommandId
   scope : Scope
   shown : Shown
-} derive(Eq, Debug)
+}
 
 ///|
 /// Where the keyboard focus is when a key goes down.
+#derive(Eq, Debug)
 pub(all) struct Context {
   /// Focus is in a text field or the code editor.
   editing : Bool
   /// Focus is on a row of the project tree.
   in_tree : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 fn bind(

@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub(all) suberror SpecError {
   SpecError(line~ : Int32, column~ : Int32, message~ : String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SpecError with Eq::{equal, not_equal}

@@ -1,10 +1,11 @@
 ///|
 /// A path selection, not a filesystem grant. The host resolves it from its
 /// configuration origin and enforces its own accepted roots.
+#derive(Eq, Debug)
 pub(all) struct MetadataPath {
   path : String
   origin : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MetadataPath with Eq::{equal, not_equal}
@@ -13,6 +14,7 @@ pub extend MetadataPath with Eq::{equal, not_equal}
 pub extend MetadataPath with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct MetadataRestoreConfig {
   service : MetadataPath
   policy : MetadataPath
@@ -21,7 +23,7 @@ pub(all) struct MetadataRestoreConfig {
   state : MetadataPath
   release : String
   assurance : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MetadataRestoreConfig with Eq::{equal, not_equal}
@@ -34,10 +36,11 @@ pub extend MetadataRestoreConfig with @debug.Debug::{to_repr}
 /// service; it does not revoke capabilities explicitly granted by an embedding.
 /// Parsing performs no restoration,
 /// trust initialization or capability acquisition.
+#derive(Eq, Debug)
 pub(all) enum MetadataProviderRequest {
   Disabled
   SharedLocalRestore(MetadataRestoreConfig)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MetadataProviderRequest with Eq::{equal, not_equal}

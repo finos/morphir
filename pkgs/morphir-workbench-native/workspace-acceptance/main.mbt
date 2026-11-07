@@ -1,9 +1,10 @@
 ///|
+#derive(Eq)
 enum Invocation {
   Checks
   Fixture(String)
   Race(String)
-} derive(Eq)
+}
 
 ///|
 fn invocation(arguments : ArrayView[String]) -> Invocation {

@@ -1,5 +1,6 @@
 ///|
 /// The host's failure and refusal codes.
+#derive(Eq, Debug)
 pub(all) enum FailureCode {
   IncompleteSession
   FrameInvalid
@@ -23,7 +24,7 @@ pub(all) enum FailureCode {
   TreeTerminationFailed
   BudgetExhausted
   WorkerRuntimeMismatch
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FailureCode with Eq::{equal, not_equal}
@@ -66,6 +67,7 @@ pub extend FailureCode with Show::{to_string, output}
 
 ///|
 /// A code for a check that failed before any operation was sent.
+#derive(Eq, Debug)
 pub(all) enum RefusalCode {
   RequestLimit
   ProtocolUnavailable
@@ -80,7 +82,7 @@ pub(all) enum RefusalCode {
   AbiMismatch
   WasmFeatureUnsupported
   WorkerRuntimeMismatch
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RefusalCode with Eq::{equal, not_equal}
@@ -117,6 +119,7 @@ pub extend RefusalCode with Show::{to_string, output}
 
 ///|
 /// A code for a protocol, transport or worker fault.
+#derive(Eq, Debug)
 pub(all) enum FaultCode {
   IncompleteSession
   FrameInvalid
@@ -127,7 +130,7 @@ pub(all) enum FaultCode {
   GuestTrap
   TreeTerminationFailed
   BudgetExhausted
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FaultCode with Eq::{equal, not_equal}
@@ -161,10 +164,11 @@ pub extend FaultCode with Show::{to_string, output}
 ///|
 /// Why a session failed: a host check found a fault, or the guest returned a
 /// JSON-RPC error, with its optional `data` member kept as sent.
+#derive(Eq, Debug)
 pub(all) enum Fault {
   Host(code~ : FaultCode, message~ : String)
   Guest(code~ : Int32, message~ : String, data~ : Json?)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Fault with Eq::{equal, not_equal}
@@ -178,10 +182,11 @@ let stderr_tail_bytes : Int32 = 65536
 ///|
 /// The last 64 KiB of a worker's stderr, kept as diagnostics. `truncated`
 /// reports that earlier bytes were dropped.
+#derive(Eq, Debug)
 pub struct StderrTail {
   priv data : Bytes
   priv dropped : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StderrTail with Eq::{equal, not_equal}
@@ -214,6 +219,7 @@ pub fn StderrTail::truncated(self : StderrTail) -> Bool {
 /// The class of a finished session. `Unsuccessful` is a guest answer with
 /// `success: false`; `Refused` is a check that failed before any operation;
 /// `Failed` is a protocol, transport or worker fault.
+#derive(Eq, Debug)
 pub(all) enum OutcomeClass[T] {
   Completed(T)
   Unsuccessful
@@ -221,7 +227,7 @@ pub(all) enum OutcomeClass[T] {
   Refused(code~ : RefusalCode, message~ : String)
   Deadline
   Cancelled
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend OutcomeClass with Eq::{equal, not_equal}
@@ -231,11 +237,12 @@ pub extend OutcomeClass with @debug.Debug::{to_repr}
 
 ///|
 /// A session result. Every class keeps the guest's diagnostics and stderr tail.
+#derive(Eq, Debug)
 pub struct Outcome[T] {
   class : OutcomeClass[T]
   diagnostics : Array[Diagnostic]
   stderr : StderrTail
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Outcome with Eq::{equal, not_equal}

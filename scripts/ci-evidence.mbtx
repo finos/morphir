@@ -76,7 +76,8 @@ let qualification_path : String = ".github/workflows/qualification.yml"
 
 ///|
 /// A SHA-256 of the input text: 64 lowercase hex digits.
-struct Fingerprint(String) derive(Eq)
+#derive(Eq)
+struct Fingerprint(String)
 
 ///|
 fn Fingerprint::parse(text : String) -> Fingerprint raise {
@@ -100,23 +101,27 @@ fn Fingerprint::to_json(self : Fingerprint) -> Json {
 
 ///|
 /// A path in the repository, as `git ls-tree` prints it.
-struct RepoPath(String) derive(Eq)
+#derive(Eq)
+struct RepoPath(String)
 
 ///|
 /// A Git file mode, such as `100644` or `100755`.
-struct FileMode(String) derive(Eq)
+#derive(Eq)
+struct FileMode(String)
 
 ///|
 /// A Git object id.
-struct ObjectId(String) derive(Eq)
+#derive(Eq)
+struct ObjectId(String)
 
 ///|
 /// One entry of `git ls-tree -r`.
+#derive(Eq)
 struct TreeEntry {
   mode : FileMode
   object : ObjectId
   path : RepoPath
-} derive(Eq)
+}
 
 ///|
 /// The entries of `git ls-tree -r -z` output: `<mode> <type> <object>\t<path>`,
@@ -131,14 +136,14 @@ fn parse_tree(listing : String) -> Array[TreeEntry] raise {
     guard record.find("\t") is Some(tab) else {
       fail("git ls-tree: malformed record without a tab: \{record}")
     }
-    let meta = record.view(end_offset=tab).split(" ").collect()
+    let meta = record.exact_view(end=tab).split(" ").collect()
     guard meta.length() == 3 else {
       fail("git ls-tree: malformed record: \{record}")
     }
     entries.push({
       mode: FileMode(meta[0].to_owned()),
       object: ObjectId(meta[2].to_owned()),
-      path: RepoPath(record.view(start_offset=tab + 1).to_owned()),
+      path: RepoPath(record.exact_view(start=tab + 1).to_owned()),
     })
   }
   entries
@@ -185,7 +190,8 @@ fn LaneSet::covers(self : LaneSet, path : RepoPath) -> Bool {
 ///|
 /// A workflow file of `.github/workflows/`, by its file name, such as
 /// `ci-native.yml`.
-struct WorkflowFile(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct WorkflowFile(String)
 
 ///|
 fn WorkflowFile::repo_path(self : WorkflowFile) -> RepoPath {
@@ -541,7 +547,8 @@ fn is_lower_hex(text : String, length : Int32) -> Bool {
 
 ///|
 /// Seconds since the Unix epoch, in UTC.
-struct Timestamp(Int64) derive(Eq)
+#derive(Eq)
+struct Timestamp(Int64)
 
 ///|
 /// The time from `@env.now()`, in milliseconds since the epoch.
@@ -612,7 +619,8 @@ fn Timestamp::parse(text : String) -> Timestamp raise {
 
 ///|
 /// A repository as `owner/name`, such as `finos/morphir-moonbit`.
-struct RepoName(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct RepoName(String)
 
 ///|
 fn RepoName::parse(text : String) -> RepoName raise {
@@ -626,7 +634,8 @@ fn RepoName::parse(text : String) -> RepoName raise {
 
 ///|
 /// A full commit SHA: 40 lowercase hex digits.
-struct CommitSha(String) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct CommitSha(String)
 
 ///|
 fn CommitSha::parse(text : String) -> CommitSha raise {
@@ -638,7 +647,8 @@ fn CommitSha::parse(text : String) -> CommitSha raise {
 
 ///|
 /// A workflow run id.
-struct RunId(Int64) derive(Eq, Debug)
+#derive(Eq, Debug)
+struct RunId(Int64)
 
 ///|
 fn RunId::parse(text : String) -> RunId raise {
@@ -671,13 +681,14 @@ fn field(json : Json, name : String) -> Json? {
 
 ///|
 /// One item of `GET /repos/{owner}/{repo}/actions/artifacts`.
+#derive(Eq)
 struct Artifact {
   id : Int64
   name : String
   expired : Bool
   /// The id of the run that uploaded it.
   run : Int64
-} derive(Eq)
+}
 
 ///|
 /// The artifacts of the pages that `gh api --paginate --slurp` prints: an
@@ -739,6 +750,7 @@ struct ArtifactRun {
 ///|
 /// The answer of `GET /repos/{owner}/{repo}/compare/{head_sha}...refs/heads/main`
 /// for the commit of a run.
+#derive(Eq, Debug)
 enum MainAncestry {
   /// `main` is the commit or is ahead of it.
   OnMain
@@ -746,7 +758,7 @@ enum MainAncestry {
   NotOnMain
   /// Not asked, not read or not understood. It counts as not on `main`.
   Unknown
-} derive(Eq, Debug)
+}
 
 ///|
 /// The commit is on `main` when `main` is `identical` to it or `ahead` of it.
@@ -848,13 +860,14 @@ fn ArtifactRun::accept_evidence(
 ///|
 /// The evidence reference that the qualification gate reads from
 /// `CI_MACOS_EVIDENCE`. The keys are those that `ci-gate.mbtx` parses.
+#derive(Eq)
 struct EvidenceRef {
   run : Int64
   artifact : Int64
   fingerprint : Fingerprint
   /// The commit of the run that recorded the evidence.
   sha : String
-} derive(Eq)
+}
 
 ///|
 fn EvidenceRef::to_json(self : EvidenceRef) -> Json {
@@ -1381,13 +1394,14 @@ fn lookup_self_test() -> Unit raise {
 }
 
 ///|
+#derive(Eq)
 priv enum Request {
   SelfTest
   Fingerprint(json~ : Bool)
   Lookup(Fingerprint, repo~ : RepoName, json~ : Bool)
   Mode(RequestedMode, repo~ : RepoName?, json~ : Bool, github_output~ : Bool)
   Record(Fingerprint, sha~ : CommitSha, run~ : RunId, out~ : String)
-} derive(Eq)
+}
 
 ///|
 fn evidence_subcommands(
@@ -1744,10 +1758,11 @@ async fn gh_json(args : Array[String]) -> Json {
 /// The result of the lookup. When the API cannot be read, the lookup does not
 /// fail the night: the macOS lanes run, which costs time but never trusts
 /// evidence it could not check.
+#derive(Eq)
 enum LookupAnswer {
   Answered(EvidenceRef?)
   Unanswered(String)
-} derive(Eq)
+}
 
 ///|
 fn LookupAnswer::evidence(self : LookupAnswer) -> EvidenceRef? {
@@ -1812,13 +1827,14 @@ let breach_label : String = "macos-breach"
 /// Whether a `macos-breach` issue is open. While one is, the nightly does not
 /// reuse evidence: a failed `run` may be newer than the evidence on the same
 /// inputs, as after a dispatch with `macos=run` or a lookup that fell back.
+#derive(Eq, Debug)
 enum BreachState {
   NoBreach
   /// The lowest open issue number.
   OpenBreach(Int32)
   /// The issue list could not be read; it counts as open.
   BreachUnread(String)
-} derive(Eq, Debug)
+}
 
 ///|
 fn BreachState::allows_reuse(self : BreachState) -> Bool {
@@ -1851,10 +1867,11 @@ fn open_breach_from(json : Json) -> BreachState raise {
 ///|
 /// The macOS mode that `lookup` prints, and the workflow command that says why
 /// the lanes run when they could have reused evidence.
+#derive(Eq)
 struct ModeDecision {
   evidence : EvidenceRef?
   message : String?
-} derive(Eq)
+}
 
 ///|
 /// An open or unread breach makes the lanes run, whatever the lookup found.
@@ -1887,12 +1904,13 @@ fn decide_mode(breach : BreachState, answer : LookupAnswer) -> ModeDecision {
 ///|
 /// The `macos` input of a nightly dispatch. The schedule has no inputs and
 /// asks for evidence.
+#derive(Eq, Debug)
 enum RequestedMode {
   /// Reuse trusted evidence when there is some.
   Evidence
   /// Always run the macOS lanes.
   Run
-} derive(Eq, Debug)
+}
 
 ///|
 fn RequestedMode::parse(text : String) -> RequestedMode raise {
@@ -1962,7 +1980,7 @@ fn error_reason(error : Error) -> String {
   match error {
     Failure(message) =>
       match message.find("FAILED: ") {
-        Some(at) => message.view(start_offset=at + 8).to_owned()
+        Some(at) => message.exact_view(start=at + 8).to_owned()
         None => message
       }
     error => "\{error}"

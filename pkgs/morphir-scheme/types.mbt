@@ -1,5 +1,6 @@
 ///|
 /// Errors are values at every embedding boundary; no language error aborts the host.
+#derive(Eq, Debug)
 pub(all) suberror SchemeError {
   Syntax(String, Int32)
   Unbound(String)
@@ -8,7 +9,7 @@ pub(all) suberror SchemeError {
   Unsupported(String)
   Limit(String)
   Stage(String, String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SchemeError with Eq::{equal, not_equal}
@@ -18,11 +19,12 @@ pub extend SchemeError with @debug.Debug::{to_repr}
 
 ///|
 /// Exact integers and normalized rational numbers, or finite inexact reals.
+#derive(Eq, Debug)
 pub(all) enum Number {
   Integer(@bigint.BigInt)
   Rational(@bigint.BigInt, @bigint.BigInt)
   Real(Double)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Number with Eq::{equal, not_equal}
@@ -32,6 +34,7 @@ pub extend Number with @debug.Debug::{to_repr}
 
 ///|
 /// Reader data is separate from runtime values and Morphir IR.
+#derive(Eq, Debug)
 pub(all) enum Datum {
   Number(Number)
   Boolean(Bool)
@@ -40,7 +43,7 @@ pub(all) enum Datum {
   Symbol(String)
   Sequence(Array[Datum], Datum?)
   Vector(Array[Datum])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Datum with Eq::{equal, not_equal}
@@ -89,11 +92,12 @@ struct Frame {
 
 ///|
 /// Limits apply to one public evaluation or call, including nested host callbacks.
+#derive(Eq, Debug)
 pub(all) struct Limits {
   steps : Int32
   depth : Int32
   frames : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Limits::default() -> Limits {

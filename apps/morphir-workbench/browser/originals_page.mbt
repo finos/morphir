@@ -1,8 +1,9 @@
 ///|
 /// A presentation cursor, independent of original-byte ownership and authority.
+#derive(Eq, Debug)
 struct OriginalsPage {
   number : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 let originals_page_size : Int32 = 100

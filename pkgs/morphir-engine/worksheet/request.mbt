@@ -5,17 +5,19 @@ pub const PROFILE : String = "morphir/workbench/worksheet"
 pub const CONTRACT_VERSION : String = "0.1.0-draft.1"
 
 ///|
+#derive(Eq)
 pub struct WorksheetRequest {
   priv source : CapturedWorksheetSource
-} derive(Eq)
+}
 
 ///|
 pub extend WorksheetRequest with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq, Debug)
 pub struct FormId {
   priv index : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FormId with Eq::{equal, not_equal}
@@ -24,12 +26,13 @@ pub extend FormId with Eq::{equal, not_equal}
 pub extend FormId with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq)
 priv struct WorksheetForm {
   id : FormId
   range : Utf16Range
   expression : String
   datum : @scheme.Datum
-} derive(Eq)
+}
 
 ///|
 priv enum DocumentKind {

@@ -76,7 +76,7 @@ fn LibraryAdapter::floating(
   } else {
     raw
   }
-  let parsed = @parse.parse_double(spelling.view()) catch {
+  let parsed = @parse.parse_double(spelling.exact_view()) catch {
     _ => {
       reject("invalid_literal", "Invalid floating literal", loc)
       0.0

@@ -58,11 +58,12 @@ pub(all) struct Artifact {
 
 ///|
 /// A generation problem at one IR node: its code, the node path and a detail.
+#derive(Debug)
 pub(all) struct GenerationProblem {
   code : String
   node_path : String
   detail : String
-} derive(Debug)
+}
 
 ///|
 pub extend GenerationProblem with @debug.Debug::{to_repr}
@@ -70,22 +71,24 @@ pub extend GenerationProblem with @debug.Debug::{to_repr}
 ///|
 /// The structured cause of a diagnostic, when the engine knows it. `Source` comes from a frontend and has the
 /// source path (relative to the source directory) and range; `Generation` comes from a generation backend.
+#derive(Debug)
 pub(all) enum Problem {
   Source(SourceProblem)
   Generation(GenerationProblem)
-} derive(Debug)
+}
 
 ///|
 pub extend Problem with @debug.Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub(all) struct Diagnostic {
   path : String
   stage : String
   message : String
   details : @diagnostics.Warning?
   problem : Problem?
-} derive(Debug)
+}
 
 ///|
 pub extend Diagnostic with @debug.Debug::{to_repr}
@@ -111,10 +114,11 @@ pub fn Diagnostic::location(self : Diagnostic) -> @ir.SourceLocation? {
 
 ///|
 /// A unit that reached the backend stage of `execute_content`, and the report path of its source.
+#derive(Debug)
 pub(all) struct CompiledUnit {
   source : String
   unit : @data.IRUnit
-} derive(Debug)
+}
 
 ///|
 pub extend CompiledUnit with @debug.Debug::{to_repr}

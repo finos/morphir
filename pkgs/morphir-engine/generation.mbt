@@ -1,8 +1,9 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum BuildPolicy {
   SourceOnly
   Required(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend BuildPolicy with Eq::{equal, not_equal}

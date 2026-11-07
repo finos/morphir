@@ -4,13 +4,15 @@
 // saves a workspace and drops its state from the page; a reply for the closed opening is ignored.
 
 ///|
+#derive(Eq)
 enum Screen {
   GettingStarted
   Workspace
-} derive(Eq)
+}
 
 ///|
 /// What a provisional workspace waits for.
+#derive(Eq)
 enum Acquire {
   /// A model file, or a YAML tree when true.
   ModelFile(Bool)
@@ -18,29 +20,32 @@ enum Acquire {
   SourceFolder
   /// A folder opened with the desktop host's read-only grant.
   HostFolder
-} derive(Eq)
+}
 
 ///|
 /// A provisional workspace and the workspace that was active before it, which returns if the acquisition fails.
+#derive(Eq)
 struct Acquisition {
   workspace : @workspace.WorkspaceId
   kind : Acquire
   previous : @workspace.WorkspaceId?
-} derive(Eq)
+}
 
 ///|
 /// The getting-started choice the person opened.
+#derive(Eq)
 enum StartPanel {
   Closed
   Idea
   OpenChoices
   CreateChoices
   ExploreChoices
-} derive(Eq)
+}
 
 ///|
 /// The getting-started page's own state: the open choice, the create form, a pending removal and the result of the
 /// last entry that did not open.
+#derive(Eq)
 struct Start {
   panel : StartPanel
   name : String
@@ -48,25 +53,28 @@ struct Start {
   name_error : String
   removing : @workspace.WorkspaceId?
   message : String
-} derive(Eq)
+}
 
 ///|
 /// The generation completion notification. It shows how many files arrived and never takes the focus.
+#derive(Eq)
 struct Notice {
   files : Int32
   target : String
-} derive(Eq)
+}
 
 ///|
 /// One opening of a workspace in this page. Work started in it reports back to this opening; after the workspace
 /// closes, a reply for it is ignored, also when the workspace opens again.
+#derive(Eq, Debug)
 struct Visit {
   workspace : @workspace.WorkspaceId
   opening : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 /// One workspace's state while another is active: the same fields as the workspace part of `Model`.
+#derive(Eq)
 struct Slice {
   opening : Int32
   history : Array[Location]
@@ -138,7 +146,7 @@ struct Slice {
   target : String
   projects : Array[Json]
   panel : @bottom_panel.State
-} derive(Eq)
+}
 
 ///|
 fn park(m : Model) -> Slice {
@@ -1782,6 +1790,7 @@ extern "js" fn focus_first(selector : String) =
 
 ///|
 /// What a workspace card says about one open workspace. `workspace_cards` lists them most urgent first.
+#derive(Eq, Debug)
 enum WorkspaceActivity {
   /// An operation that the workspace started is running.
   Working
@@ -1793,7 +1802,7 @@ enum WorkspaceActivity {
   Problems(Int32)
   /// The number of files that a generation made and the person has not looked at yet.
   Generated(Int32)
-} derive(Eq, Debug)
+}
 
 ///|
 /// The words a card shows for an activity, such as `2 problems`.
@@ -1822,6 +1831,7 @@ fn WorkspaceActivity::tone(self : WorkspaceActivity) -> String {
 
 ///|
 /// One open workspace in the workspace sidebar.
+#derive(Eq, Debug)
 struct WorkspaceCard {
   id : @workspace.WorkspaceId
   name : @workspace.WorkspaceName
@@ -1829,7 +1839,7 @@ struct WorkspaceCard {
   location : @workspace.WorkspaceLocation
   current : Bool
   activity : Array[WorkspaceActivity]
-} derive(Eq, Debug)
+}
 
 ///|
 /// The cards of the open workspaces, the active one and the parked ones, in registry order. Each card's state comes

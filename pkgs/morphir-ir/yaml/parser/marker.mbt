@@ -1,4 +1,5 @@
 ///|
+#derive(Debug, Eq)
 pub struct Marker {
   /// The index (in chars) in the input string.
   index : Int32
@@ -6,7 +7,7 @@ pub struct Marker {
   line : Int32
   /// The column (1-indexed).
   col : Int32
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend Marker with @moonbitlang/core/debug.Debug::{to_repr}

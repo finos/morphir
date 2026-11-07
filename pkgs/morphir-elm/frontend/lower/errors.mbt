@@ -1,8 +1,9 @@
 ///|
 /// One lowering problem: (code, message, range).
+#derive(Eq, Debug)
 pub(all) suberror LowerError {
   LowerError(String, String, @ast.Range?)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LowerError with Eq::{equal, not_equal}

@@ -1,9 +1,10 @@
 ///|
 /// The selected evaluation semantics, captured before dispatching work.
+#derive(Eq)
 pub(all) enum Runtime {
   LocalScheme
   TypedInvocation
-} derive(Eq)
+}
 
 ///|
 pub extend Runtime with Eq::{equal, not_equal}
@@ -17,11 +18,12 @@ pub fn Runtime::is_typed(self : Runtime) -> Bool {
 }
 
 ///|
+#derive(Eq)
 pub(all) enum InputMode {
   Fields
   Json
   Ion
-} derive(Eq)
+}
 
 ///|
 pub extend InputMode with Eq::{equal, not_equal}

@@ -50,10 +50,11 @@ async fn api(
 }
 
 ///|
+#derive(Eq)
 enum Invocation {
   Measure(String, Bool)
   SelfTest
-} derive(Eq)
+}
 
 ///|
 fn singleton_flag(argv : Array[String], name : String) -> Unit raise {

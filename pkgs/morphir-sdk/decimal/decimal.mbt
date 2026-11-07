@@ -2,10 +2,11 @@
 /// A numerical Decimal, distinct from an IR decimal literal's original lexeme.
 /// The coefficient is exact; normalization follows elm-bignum 1.0.1's -32
 /// minimum exponent for public arithmetic and parsing.
+#derive(Eq, Debug)
 pub struct Decimal {
   coefficient : @bigint.BigInt
   exponent : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Decimal with Eq::{equal, not_equal}

@@ -1,25 +1,28 @@
 ///|
+#derive(Eq)
 pub(all) enum Kind {
   Returned
   ModelError
   Failed
   Cancelled
-} derive(Eq)
+}
 
 ///|
 pub extend Kind with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) enum Level {
   Info
   Warning
   Error
-} derive(Eq)
+}
 
 ///|
 pub extend Level with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) struct Call {
   id : String
   kind : Kind
@@ -27,37 +30,40 @@ pub(all) struct Call {
   stage : String
   code : String
   message : String
-} derive(Eq)
+}
 
 ///|
 pub extend Call with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) struct Cleanup {
   code : String
   message : String
-} derive(Eq)
+}
 
 ///|
 pub extend Cleanup with Eq::{equal, not_equal}
 
 ///|
 /// History retains previews, never the full canonical value tree.
+#derive(Eq)
 pub(all) struct Summary {
   calls : Array[Call]
   omitted : Int32
   cleanup : Cleanup?
-} derive(Eq)
+}
 
 ///|
 pub extend Summary with Eq::{equal, not_equal}
 
 ///|
+#derive(Eq)
 pub(all) enum Projection {
   Absent
   Valid(Summary)
   Invalid(String)
-} derive(Eq)
+}
 
 ///|
 pub extend Projection with Eq::{equal, not_equal}

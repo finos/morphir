@@ -1,11 +1,12 @@
 ///|
 /// Declaration admission events carry no provider payload or authority.
+#derive(Eq, Debug)
 pub(all) enum ProviderSignal {
   Started
   Succeeded
   Refused(String)
   Cancelled
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ProviderSignal with Eq::{equal, not_equal}

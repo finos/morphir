@@ -1,6 +1,7 @@
 ///|
 /// Where a value declaration of the output comes from: the Elm spelling, the source path (as given in
 /// `ElmSource.path`), the range of the declaration's name and the lifted parameters with their ranges.
+#derive(Eq, Debug)
 pub(all) struct DeclarationOrigin {
   module_name : @ir.Path
   name : @ir.Name
@@ -8,7 +9,7 @@ pub(all) struct DeclarationOrigin {
   path : String
   span : @ir.SourceLocation
   parameters : Array[(String, @ir.SourceLocation)]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DeclarationOrigin with Eq::{equal, not_equal}

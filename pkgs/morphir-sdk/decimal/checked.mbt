@@ -1,11 +1,12 @@
 ///|
 /// Errors of the versioned checked Decimal contract. Classic div remains Maybe.
+#derive(Eq, Debug)
 pub(all) suberror DecimalError {
   DivisionByZero
   Underflow
   PrecisionLoss
   InvalidLiteral
-} derive(Eq, Debug)
+}
 
 ///|
 /// Construct exactly using the classic lexical grammar, refusing truncation.

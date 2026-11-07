@@ -1,6 +1,7 @@
 ///|
 /// A canonical project root relative to the workspace. The empty path identifies the root project.
-pub struct ProjectPath(String) derive(Eq, Compare, Hash, Debug)
+#derive(Eq, Compare, Hash, Debug)
+pub struct ProjectPath(String)
 
 ///|
 pub extend ProjectPath with Eq::{equal, not_equal}

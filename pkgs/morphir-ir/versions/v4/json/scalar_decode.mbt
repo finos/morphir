@@ -1,25 +1,28 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum ScalarProfile {
   StrictJsonScalars
   IntegerTokenAsInt
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ScalarDecodeReason {
   UnsupportedType
   UnsupportedRefinement
   NumericLimit
   WorkLimit
   CyclicAlias
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ScalarDecode {
   Decoded(@model.Literal)
   Ambiguous(Array[@model.Literal])
   Rejected
   Unsupported(ScalarDecodeReason)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ScalarProfile with Eq::{equal, not_equal}

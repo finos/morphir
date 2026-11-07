@@ -66,7 +66,11 @@ async fn cached_script(
   // Fetch completely before publishing: failure cannot poison the cache.
   let content = fetch()
   let temporary = script + "." + @env.now().to_string() + ".tmp"
-  defer (if @fs.exists(temporary) { @fs.remove(temporary) })
+  defer @async.protect_from_cancel(() => {
+    if @fs.exists(temporary) {
+      @fs.remove(temporary)
+    }
+  })
   @fs.write_file(temporary, content, create_mode=@fs.CreateNew)
   @fs.rename(temporary, script, replace=true)
   script

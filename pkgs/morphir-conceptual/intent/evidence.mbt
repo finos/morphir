@@ -96,10 +96,11 @@ pub(all) struct Evidence {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Polarity {
   Supporting
   Contradicting
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Polarity with Eq::{equal, not_equal}
@@ -108,11 +109,12 @@ pub extend Polarity with Eq::{equal, not_equal}
 pub extend Polarity with @debug.Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum EvidenceAvailability {
   Unknown
   Present
   InvalidClaim
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EvidenceAvailability with Eq::{equal, not_equal}

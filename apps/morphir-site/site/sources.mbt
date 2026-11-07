@@ -5,6 +5,7 @@ pub(all) struct SourceFile {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Kind {
   /// A file below `docs/`; the payload is the path below `docs/`.
   Doc(String)
@@ -17,7 +18,7 @@ pub(all) enum Kind {
   PackagePart(String, String)
   Forbidden
   Other
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Kind with Eq::{equal, not_equal}

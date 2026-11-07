@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Type[A] {
   Variable(A, Name)
   Reference(A, FQName, Array[Type[A]])
@@ -11,37 +12,41 @@ pub(all) enum Type[A] {
   ExtensibleRecord(A, Name, Array[Field[A]])
   Function(A, Type[A], Type[A])
   Unit(A)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Field[A] {
   name : Name
   tpe : Type[A]
-} derive(Eq, Debug)
+}
 
 ///|
 pub type Constructors[A] = Map[Name, Array[(Name, Type[A])]]
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TypeSpecification[A] {
   TypeAliasSpecification(Array[Name], Type[A])
   OpaqueTypeSpecification(Array[Name])
   CustomTypeSpecification(Array[Name], Constructors[A])
   DerivedTypeSpecification(Array[Name], DerivedTypeDetails[A])
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DerivedTypeDetails[A] {
   base_type : Type[A]
   from_base_type : FQName
   to_base_type : FQName
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TypeDefinition[A] {
   TypeAliasDefinition(Array[Name], Type[A])
   CustomTypeDefinition(Array[Name], AccessControlled[Constructors[A]])
-} derive(Eq, Debug)
+}
 
 ///|
 /// Public constructors appear in the specification; private ones become opaque.

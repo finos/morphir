@@ -1,35 +1,39 @@
 ///|
 /// Parser coordinates, interpreted according to the warning's producer.
+#derive(Eq, Debug)
 pub(all) struct Span {
   start_line : Int32
   start_column : Int32
   end_line : Int32
   end_column : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 /// Authored spelling and final allocation stay separate in each related location.
+#derive(Eq, Debug)
 pub(all) struct Location {
   owner : String
   original : String
   allocated : String
   source : Span?
-} derive(Eq, Debug)
+}
 
 ///|
 /// A recoverable diagnostic independent of optional observation sinks.
+#derive(Eq, Debug)
 pub(all) struct Warning {
   code : String
   stage : String
   message : String
   locations : Array[Location]
   fix : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub(all) suberror DiagnosticError {
   InvalidDiagnostic(String)
-} derive(Debug)
+}
 
 ///|
 pub extend Span with Eq::{equal, not_equal}

@@ -23,12 +23,14 @@ type OriginalsHasher
 type PendingConnectedInspection
 
 ///|
+#derive(Eq)
 enum ConnectedInspectionPresentation {
   ProjectionInspected
   OriginalsOnly(String)
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum OriginalsPanel {
   NoOriginalOpening
   OriginalOpening(@document.OpenAttempt, ConnectedOpening)
@@ -39,9 +41,10 @@ enum OriginalsPanel {
     @document.OriginalInventory
   )
   OriginalsReady(ConnectedInspectionPresentation)
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum OriginalsPhase {
   Discovering
   SourceChoices
@@ -52,7 +55,7 @@ enum OriginalsPhase {
   InspectingFiles
   OpeningFailed
   OpeningRetired
-} derive(Eq)
+}
 
 ///|
 impl Eq for ConnectedOpening with fn equal(self, other) {

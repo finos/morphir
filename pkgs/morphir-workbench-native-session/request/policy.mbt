@@ -1,9 +1,10 @@
 ///|
 /// Exact native mappings. The selected mapping is retained by the page session.
+#derive(Eq)
 pub(all) enum Contract {
   Executions
   CapabilityChecks
-} derive(Eq)
+}
 
 ///|
 pub extend Contract with Eq::{equal, not_equal}

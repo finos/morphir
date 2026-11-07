@@ -200,6 +200,44 @@ pairs, and linked dependencies through `cores`. The compiler and these assets
 must match the pinned revision. This package does not implement `moon`'s package
 resolver or build graph; callers compile and link their dependency graph explicitly.
 
+### The host supplies the core prelude
+
+Since MoonBit 0.10.20 the compiler knows no type, not even `Int32`, unless it gets
+the core prelude interface. `moon` itself passes
+`-i <bundle>/prelude/prelude.mi:prelude` to every package build. This package ships
+no core assets, so every `compile` and `build` request must include the prelude of
+the pinned toolchain. Before 0.10.20, a host could compile core-free source with no
+interfaces; that is no longer possible.
+
+Read the bytes from `$MOON_HOME/lib/core/_build/<target>/release/bundle/prelude/prelude.mi`
+of the same toolchain, for the request's target (`wasm` or `wasm-gc`), and pass them
+in one of these forms:
+
+- `standardInterfaces: [["moonbitlang/core/prelude", bytes]]`, or
+- `interfaces: [["moonbitlang/core/prelude:prelude", bytes]]` (the package name and an alias).
+
+```ts
+import {readFileSync} from "node:fs";
+import {preludeInterfaceName} from "@morphir/moonbit-toolchain";
+
+const prelude = new Uint8Array(readFileSync(
+  `${process.env.MOON_HOME}/lib/core/_build/wasm/release/bundle/prelude/prelude.mi`));
+const result = await toolchain.request({operation: "compile", target: "wasm",
+  files: [["main.mbt", "pub fn answer() -> Int32 { 40 + 2 }"]],
+  standardInterfaces: [[preludeInterfaceName, prelude]], exports: ["answer"]});
+```
+
+Code that uses only primitive values links without other core packages. Code that
+calls other core packages (for example `Array` methods) needs their interfaces and
+cores too, as in `moon`'s own build plan. In an assembly, give the prelude as a
+prebuilt `core` package named `moonbitlang/core/prelude` (its `prelude.mi` and
+`prelude.core`), and import it from each library as `prelude`.
+
+A request without a prelude interface fails before compilation with
+`PreludeRequiredError`. Its message starts with the stable code
+`embedding.prelude_required:`, names the interface and says where to read it. Worker
+toolchains transfer the error name and message.
+
 For execution imports, use `createInProcessToolchain({imports})` from `./node`,
 or inject a compiler factory with `createEmbeddedToolchain(factory, {imports})`
 from the root export. The root module has no Node imports or asset downloads.
@@ -217,8 +255,8 @@ with the host's limits and import policy.
 
 ## Pin and tests
 
-The adapter pins `@moonbit/moonc-worker@0.1.202610291`, compiler revision
-`0.10.18+6c83a7f62`. Compiler APIs are defined by the
+The adapter pins `@moonbit/moonc-worker@0.1.202611052`, compiler revision
+`0.10.20+65efd5b93`. Compiler APIs are defined by the
 [MoonBit worker package](https://www.npmjs.com/package/@moonbit/moonc-worker).
 The [upstream toolchain documentation](https://www.moonbitlang.com/blog/moonbit-wasm-toolchain)
 also describes matching compiler/core versions.

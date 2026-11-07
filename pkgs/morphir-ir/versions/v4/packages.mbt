@@ -2,29 +2,33 @@
 // Copyright 2026 FINOS. SPDX-License-Identifier: Apache-2.0
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ModuleSpecification {
   annotations : Array[Annotation]
   types : Map[Name, Documented[TypeSpecification]]
   values : Map[Name, Documented[ValueSpecification]]
   doc : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ModuleDefinition {
   types : Map[Name, AccessControlled[Documented[TypeDefinition]]]
   values : Map[Name, AccessControlled[Documented[ValueDefinition]]]
   doc : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct PackageSpecification {
   modules : Map[ModuleName, ModuleSpecification]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct PackageDefinition {
   modules : Map[ModuleName, AccessControlled[ModuleDefinition]]
-} derive(Eq, Debug)
+}
 
 ///|
 pub type Dependencies = Map[PackageName, PackageSpecification]
@@ -34,22 +38,25 @@ pub type Dependencies = Map[PackageName, PackageSpecification]
 pub type ApplicationDependencies = Map[PackageName, PackageDefinition]
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum EntryPointKind {
   Main
   Command
   Handler
   Job
   Policy
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct EntryPoint {
   target : FQName
   kind : EntryPointKind
   doc : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Distribution {
   Library(PackageName, Dependencies, PackageDefinition)
   Specs(PackageName, Dependencies, PackageSpecification)
@@ -59,13 +66,14 @@ pub(all) enum Distribution {
     PackageDefinition,
     Map[String, EntryPoint]
   )
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct IRFile {
   format_version : @version.FormatVersion
   distribution : Distribution
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn IRFile::new(

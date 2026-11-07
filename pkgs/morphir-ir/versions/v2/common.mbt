@@ -13,10 +13,11 @@ pub using @common {
 
 ///|
 /// Elm documentation defaults to the empty string when its wrapper is absent.
+#derive(Eq, Debug)
 pub(all) struct Documented[A] {
   doc : String
   value : A
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Documented with Eq::{equal, not_equal}
