@@ -117,7 +117,7 @@ async fn main {
       )
     }
     let shared = @fs.realpath(shared_path)
-    let revision = "fc9f723a2cf0adae1299892c6cc4bee5ebcf4560"
+    let revision = "64eb9b3315322b396ae4b2cbbc41eab2808277f5"
     guard output(["-C", shared, "rev-parse", "HEAD"]) == revision else {
       fail("Expected shared Morphir revision " + revision)
     }

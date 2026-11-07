@@ -21,7 +21,7 @@ mod extism;
 mod extism_tests;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
-const REVISION: &str = "fc9f723a2cf0adae1299892c6cc4bee5ebcf4560";
+const REVISION: &str = "64eb9b3315322b396ae4b2cbbc41eab2808277f5";
 
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]

@@ -6,7 +6,7 @@ import { pinnedFileHash } from './identity.mjs';
 import { supervisedBytes } from './supervision.mjs';
 
 const profile = 'morphir/cli/native-services', contractVersion = '0.1.0';
-export const sharedRevision = 'fc9f723a2cf0adae1299892c6cc4bee5ebcf4560';
+export const sharedRevision = '64eb9b3315322b396ae4b2cbbc41eab2808277f5';
 const record = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v);
 const check = (v: unknown, message: string): void => { if (!v) throw Error(message); };
 const digest = (v: unknown) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);

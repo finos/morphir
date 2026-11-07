@@ -458,7 +458,7 @@ because the CLI runs the worker itself.
 {
   "contractVersion": "0.1.0",
   "binding": "native-process",
-  "host": { "executable": "/work/adapter", "sha256": "<adapter SHA-256>", "sourceRevision": "fc9f723a…" },
+  "host": { "executable": "/work/adapter", "sha256": "<adapter SHA-256>", "sourceRevision": "64eb9b33…" },
   "artifact": {
     "executable": "/work/morphir-moonbit",
     "sha256": "<guest SHA-256>",

@@ -17,7 +17,7 @@ const root = mkdtempSync(join(tmpdir(), 'morphir-native-prerequisites-'));
 mkdirSync(join(root, 'temporary'));
 const environment = { ...process.env, TMPDIR: join(root, 'temporary') };
 const pin = { binding: 'native-process', contractVersion: '0.1.0',
-  host: { executable: adapter, sha256: sha256(adapter), sourceRevision: 'fc9f723a2cf0adae1299892c6cc4bee5ebcf4560' },
+  host: { executable: adapter, sha256: sha256(adapter), sourceRevision: '64eb9b3315322b396ae4b2cbbc41eab2808277f5' },
   artifact: { executable: guest, sha256: sha256(guest), extensionId: 'morphir-moonbit', version: '0.1.0' },
   origin: 'independently built native MoonBit MEP fixture' };
 const invoke = (args: string[], status = 0) => {
