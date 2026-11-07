@@ -35,10 +35,10 @@
   "linuxTools": {
     "appimagetool": {
       "url": "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage",
-      "sha256": "ac7fd56feade6002c2f57db39587113275d351fce911a5fbb29ea84cd0666cab",
-      "sourceRevision": "9bab981acfc860633f08cd1b2e54149081a11972",
-      "releaseId": 429842048,
-      "assetId": 694958211
+      "sha256": "e8c1169c4af66c3184d7ee110713d4be04befe671fa358e2c1591ee840553b03",
+      "sourceRevision": "11d54c9acc7f246df1398050a4b880314ac76862",
+      "releaseId": 435944148,
+      "assetId": 715388534
     },
     "runtime": {
       "url": "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64",

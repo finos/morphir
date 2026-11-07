@@ -180,7 +180,9 @@ fn requires_full(path : String) -> Bool {
       ".github/workflows/", ".github/actions/", "scripts/ci-",
     ]) ||
     path == ".config/mise/config.toml" ||
-    path == "moon.work"
+    path == "moon.work" ||
+    // Only the packaged lane of the full qualification uses these tools.
+    path == "tools/packaged-targets-pin.json"
   )
 }
 
@@ -598,6 +600,8 @@ async fn self_test() -> Unit {
       (".github/workflows/site.yml", false),
       ("scripts/ci-changes.mbtx", true),
       (".config/mise/config.toml", true),
+      ("tools/packaged-targets-pin.json", true),
+      ("tools/build.ts", false),
       ("new-package/file.mbt", false),
     ] {
     guard requires_full(path) == expected else {
