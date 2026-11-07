@@ -7,7 +7,7 @@ This product includes software developed at Morgan Stanley.
 Shared OpenSpec html-design workflow
 Copyright 2026 FINOS
 
-Vendored without local edits from moonrockz/mission-control openspec-ext 0.1.0.
+Installed without local edits by moonrockz/mission-control mission-control-tools 0.1.0.
 The Apache-2.0 license is in openspec/schemas/html-design/LICENSE.
 
 html-design OpenSpec extension

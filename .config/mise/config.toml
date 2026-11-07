@@ -31,7 +31,7 @@ usage = "6.11.1"
 # Match finos/morphir-moonbit's pinned toolchain. When upgrading, update the
 # version, platform URLs (encode "+" as "%2B") and Windows core checksum together.
 [tools."http:moonbit"]
-version = "0.10.18+6c83a7f62"
+version = "0.10.20+65efd5b93"
 bin_path = "bin"
 # The Windows bootstrap is TypeScript; install Bun before running it.
 depends = ["bun"]
@@ -43,17 +43,32 @@ postinstall = """
 {%- if os() != "windows" -%}
 bash -c 'set -euo pipefail; export PATH="$MISE_TOOL_INSTALL_PATH/bin:$PATH"; curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME="$MISE_TOOL_INSTALL_PATH" bash -s -- "$MISE_TOOL_VERSION"'
 {%- else -%}
-bun "{{config_root}}/tools/bootstrap-moonbit-windows.ts" --core-sha256 af149c0e8bf9ad9144fcec9e41aa2e34005c0043b5d5d8ff96be11ddef3bfb58
+bun "{{config_root}}/tools/bootstrap-moonbit-windows.ts" --core-sha256 d7982eed233e0c4f933f566274cc9777466447e0d5b633006e8bf18975c7c833
 {%- endif -%}
 """
 
 [tools."http:moonbit".platforms]
-linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-linux-x86_64.tar.gz" }
-linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-linux-aarch64.tar.gz" }
-macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-darwin-aarch64.tar.gz" }
-windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-windows-x86_64.zip", format = "zip" }
+linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.20%2B65efd5b93/moonbit-linux-x86_64.tar.gz" }
+linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.20%2B65efd5b93/moonbit-linux-aarch64.tar.gz" }
+macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.20%2B65efd5b93/moonbit-darwin-aarch64.tar.gz" }
+windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.20%2B65efd5b93/moonbit-windows-x86_64.zip", format = "zip" }
 # No Windows arm64 build is published; Windows on Arm runs the x64 build under emulation.
-windows-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-windows-x86_64.zip", format = "zip" }
+windows-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.20%2B65efd5b93/moonbit-windows-x86_64.zip", format = "zip" }
+
+# The shared OpenSpec html-design bundle and its checker. This pinned binary
+# replaces scripts/openspec-ext.mbtx; see docs/developers/openspec.md.
+[tools."github:moonrockz/mission-control"]
+version = "0.1.0"
+version_prefix = "tools-v"
+
+[tools."github:moonrockz/mission-control".platforms]
+linux-x64 = { asset_pattern = "mission-control-tools-linux-x64.tar.gz" }
+linux-arm64 = { asset_pattern = "mission-control-tools-linux-arm64.tar.gz" }
+macos-arm64 = { asset_pattern = "mission-control-tools-darwin-arm64.tar.gz" }
+macos-x64 = { asset_pattern = "mission-control-tools-darwin-x64.tar.gz" }
+windows-x64 = { asset_pattern = "mission-control-tools-windows-x64.zip" }
+# No Windows arm64 build; Windows on Arm runs the x64 build under emulation.
+windows-arm64 = { asset_pattern = "mission-control-tools-windows-x64.zip" }
 
 [env]
 MOON_HOME = { value = "{{ tools['http:moonbit'].path }}", tools = true }
@@ -808,20 +823,19 @@ run = "python .config/mise/tasks/ci/validate_tool_release_metadata.py"
 
 [tasks."openspec:check"]
 description = "Check the shared OpenSpec workflow"
-run = "mise exec -- moon run -q --target wasm scripts/openspec-ext.mbtx -- check"
+# The pinned mission-control-tools binary checks the managed html-design files
+# against the lock and against its own bundle. A MoonBit toolchain change in
+# this repository cannot break it.
+run = "mission-control-tools openspec check --bundle"
 
 [tasks."openspec:setup"]
-description = "Setup the shared OpenSpec workflow"
-run = "mise exec -- moon run -q --target wasm scripts/openspec-ext.mbtx -- setup"
+description = "Set up the shared OpenSpec workflow"
+run = "mission-control-tools openspec setup"
 
 [tasks."openspec:validate"]
 description = "Validate the shared OpenSpec workflow"
-run = ["mise exec -- openspec schema validate html-design", "mise exec -- openspec validate --all --strict"]
-
-[tasks."openspec:test"]
-description = "Test the shared OpenSpec workflow"
-run = "mise exec -- moon test --deny-warn --target wasm scripts/openspec-ext.mbtx"
+run = ["openspec schema validate html-design", "openspec validate --all --strict"]
 
 [tasks."openspec:verify"]
 description = "Verify the shared OpenSpec workflow"
-run = ["mise exec -- moon update", "mise run openspec:check", "mise run openspec:validate", "mise run openspec:test"]
+run = ["mise run openspec:check", "mise run openspec:validate"]
