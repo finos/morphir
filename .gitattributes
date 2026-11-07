@@ -20,3 +20,6 @@ crates/morphir/tests/support/model_originals_host/model-primary.ionb -text
 
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads
+
+# The pinned mission-control-tools binary compares the managed OpenSpec files byte for byte.
+openspec/schemas/html-design/** text eol=lf

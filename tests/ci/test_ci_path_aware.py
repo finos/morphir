@@ -101,13 +101,13 @@ class PathAwareCiTests(unittest.TestCase):
             "openspec/extensions.lock.json",
             "openspec/schemas/html-design/schema.yaml",
             "openspec/changes/example/design.html",
-            "scripts/openspec-ext.mbtx",
-            "scripts/features/openspec_ext.feature",
         ):
             with self.subTest(path=path):
                 self.assertTrue(any(fnmatch.fnmatchcase(path, p) for p in docs_patterns))
                 self.assertFalse(any(fnmatch.fnmatchcase(path, p) for p in rust_patterns))
-        self.assertIn("mise run openspec:verify", job_body(self.ci, "docs"))
+        docs_job = job_body(self.ci, "docs")
+        self.assertIn("mission-control-tools openspec check --bundle", docs_job)
+        self.assertIn("mise run openspec:validate", docs_job)
         self.assertIn("openspec:verify", self.tasks["check"]["depends"])
 
     def test_native_mck_changes_run_the_typescript_binding_gate(self) -> None:

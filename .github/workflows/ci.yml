@@ -119,8 +119,6 @@ jobs:
               - 'website/package-lock.json'
             docs:
               - 'openspec/**'
-              - 'scripts/openspec-ext.mbtx'
-              - 'scripts/features/openspec_ext.feature'
               - 'website/**'
               - 'docs/**'
               - '**/*.md'
@@ -463,8 +461,13 @@ jobs:
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
 
-      - name: Verify the shared OpenSpec workflow
-        run: mise run openspec:verify
+      # The pinned mission-control-tools binary checks the managed html-design
+      # files against the lock and against its own bundle.
+      - name: Check the shared OpenSpec bundle
+        run: mission-control-tools openspec check --bundle
+
+      - name: Validate the shared OpenSpec workflow
+        run: mise run openspec:validate
 
       - name: Validate schemas against the metaschema
         run: mise run schema:validate

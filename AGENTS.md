@@ -643,7 +643,8 @@ exploring, applying, updating, syncing and archiving changes. Beads remains the
 task tracker; record the OpenSpec change path in its owning bead and link the
 GitHub issue. Existing review and approval rules still apply.
 
-The canonical bundle is managed by Mission Control openspec-ext. Do not edit
-its schema, templates, checker or feature file locally. Keep repository policy
+The canonical bundle is managed by the pinned Mission Control
+`mission-control-tools` binary. Do not edit its schema, templates or licenses
+locally. Keep repository policy
 in `openspec/config.yaml` and run `mise run openspec:verify` before submission.
 See [the OpenSpec guide](docs/developers/openspec.md) for setup and updates.

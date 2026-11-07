@@ -4,7 +4,7 @@ title: OpenSpec change proposals
 ---
 
 The umbrella repository uses the shared `html-design` bundle from
-[Mission Control](https://github.com/moonrockz/mission-control/tree/main/apps/openspec-ext).
+[Mission Control](https://github.com/moonrockz/mission-control/tree/main/apps/tools).
 A new change produces a proposal, capability specs, a standalone `design.html`
 with inline CSS and SVG, and implementation tasks. Existing changes retain
 their recorded schema. Beads remains the task tracker, and the repository's
@@ -14,20 +14,23 @@ contribution and approval rules apply.
 
 Review and trust `.config/mise/config.toml`, then follow the checkout setup in
 [CONTRIBUTING.md](https://github.com/finos/morphir/blob/main/CONTRIBUTING.md).
-The repository already pins Node and MoonBit. Install the OpenSpec dependencies:
+The repository already pins Node and the `mission-control-tools` binary. Install
+the OpenSpec dependencies:
 
 ```sh
-mise install node bun http:moonbit npm:@fission-ai/openspec
+mise install node bun github:moonrockz/mission-control npm:@fission-ai/openspec
 mise run openspec:verify
 ```
 
-OpenSpec is pinned to 1.14.3. The existing MoonBit 0.10.18+6c83a7f62 toolchain
-runs the shared checker. Mise's existing postinstall completes that SDK on
-Linux, macOS Apple Silicon and Windows x64. Verification initializes its
-package registry with `moon update`, then checks the ownership lock, validates
-the schema and changes, and runs the checker's Gherkin and setup-isolation tests.
-An empty spec/change tree reports no items to validate. The same task runs in
-`mise run check` and the docs CI job.
+OpenSpec is pinned to 1.14.3. The pinned
+[`mission-control-tools`](https://github.com/moonrockz/mission-control/tree/main/apps/tools)
+0.1.0 binary checks the shared bundle. It is a released binary, so a MoonBit
+toolchain change in this repository cannot break the OpenSpec commands.
+Verification runs `mission-control-tools openspec check --bundle`, which checks
+the ownership lock and compares each managed file with the file in the binary,
+then validates the schema and changes. An empty spec/change tree reports no
+items to validate. The same task runs in `mise run check`, and the docs CI job
+runs the same check and validation.
 
 ## Start a change
 
@@ -53,22 +56,25 @@ their owning repositories; adoption does not update ecosystem submodule pins.
 
 ## Update the shared bundle
 
-`openspec/extensions.lock.json` records openspec-ext 0.1.0 and the SHA-256 of
-nine managed files. Keep the schema, templates, licenses, checker and its
-feature file identical to Mission Control. Git's existing LF attributes keep
-those hashes stable on Windows. Do not patch the managed files locally.
+`openspec/extensions.lock.json` (format 2) records `mission-control-tools`
+0.1.0 and the SHA-256 of the seven managed files: the schema, the templates,
+`LICENSE` and `NOTICE`. Keep them identical to the bundle in the binary.
+`.gitattributes` keeps LF line endings for `openspec/schemas/html-design/**`,
+so the hashes stay stable on Windows. Do not patch the managed files locally.
 
-The module is not published yet. From a reviewed Mission Control checkout, run:
+To update the bundle, change the `github:moonrockz/mission-control` version in
+`.config/mise/config.toml`, then run:
 
 ```sh
-mise exec -- moon run apps/openspec-ext/cmd -- install /absolute/path/to/morphir
-mise exec -- moon run apps/openspec-ext/cmd -- check /absolute/path/to/morphir
+mise install github:moonrockz/mission-control
+mise exec -- mission-control-tools openspec install
+mise run openspec:verify
 ```
 
-Review the source revision and diff, then run `mise run openspec:verify` here.
-The installer refuses unmanaged conflicts and local changes to owned files,
-and writes the lock last. Fresh clones use the checked-in bundle without a
-sibling checkout or an unpublished registry package.
+Review the diff before you commit it. The installer refuses local changes to
+the managed files before it writes anything, and it writes the lock. After a
+version change without `install`, `openspec:check` fails. See the
+[mission-control-tools README](https://github.com/moonrockz/mission-control/blob/tools-v0.1.0/apps/tools/README.md).
 
 The Apache-2.0 schema license and upstream OpenSpec MIT notice are retained in
 `openspec/schemas/html-design/LICENSE` and `NOTICE`.
