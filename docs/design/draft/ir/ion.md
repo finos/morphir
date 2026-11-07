@@ -34,6 +34,23 @@ morphir::{
 morphir_footer::{}
 ```
 
+A record holds the header members and two optional lists, `dependencies` and `modules`. Their items are the elements a datagram writes between the header and the footer: each dependency in `dependencies`, and each of the distribution's own modules, with its types and values inline, in `modules`. Expand moves those items to the top level in that order and adds the footer. A list may be omitted when empty.
+
+```ion
+morphir::{
+  ionVersion: "0.1.0-draft.1",
+  formatVersion: "4.0.0",
+  kind: library,
+  packageName: "example/finance",
+  dependencies: [
+    package::spec::{ name: "morphir/SDK" },
+  ],
+  modules: [
+    public::def::module::{ name: "eligibility" },
+  ],
+}
+```
+
 A missing `ionVersion` means the latest version that reader implements. Today that is `0.1.0-draft.1`. Writers still emit the field. `formatVersion` is required. A reader ignores a header member it does not understand unless `critical` names it. `ionVersion` follows SemVer. On `0.y.z` the minor acts as the major.
 
 ### Canonical text
@@ -143,7 +160,7 @@ The body is an S-expression. The first symbol is the node. Apply is binary. A ba
 | If | `(if cond then else)` |
 | Let | `(let score { outputType: "...", body: 70 } score)` |
 | Letrec | `(letrec ((f { outputType: "...", body: ... })) f)` |
-| Match | `(match scrutinee [pattern body] [pattern body])` |
+| Match | `(match scrutinee [pattern, body] [pattern, body])` |
 | Destructure | `(destructure pattern value body)` |
 | Field | `(field record fieldName)` |
 | Field function | `(fieldFunction fieldName)` |
