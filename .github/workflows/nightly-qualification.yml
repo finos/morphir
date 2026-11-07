@@ -13,6 +13,14 @@ name: Nightly qualification
 #
 # The `report` job keeps one `macos-breach` issue: a run that does not pass opens
 # it or comments on it, and only a passing `run` closes it.
+#
+# The `native-services` job runs `scripts/native-services.mbtx --acceptance`:
+# the Rust adapter over the pinned shared finos/morphir libraries, the native
+# CLI's extension commands with the native guest and the Rust fault peer, and the
+# local repository lifecycle. It runs on Linux x64 and arm64 every night, and on
+# macos-15 only when the evidence job chooses `run`. Windows is not supported:
+# process workers are not qualified there. A dispatch with
+# `lanes=native-services` runs only this job and the macOS mode choice.
 on:
   schedule:
     - cron: '23 3 * * *'
@@ -23,6 +31,11 @@ on:
         type: choice
         options: [evidence, run]
         default: evidence
+      lanes:
+        description: 'Lanes: all, or native-services for that acceptance alone'
+        type: choice
+        options: [all, native-services]
+        default: all
 
 permissions:
   contents: read
@@ -66,6 +79,7 @@ jobs:
   qualification:
     name: Full qualification
     needs: evidence
+    if: inputs.lanes != 'native-services'
     uses: ./.github/workflows/qualification.yml
     with:
       macos: ${{ needs.evidence.outputs.macos }}
@@ -74,15 +88,78 @@ jobs:
       contents: read
       attestations: read
 
+  native-services:
+    name: Native services acceptance (${{ matrix.os }})
+    needs: evidence
+    strategy:
+      fail-fast: false
+      matrix:
+        # yamllint disable-line rule:line-length
+        os: ${{ fromJSON(needs.evidence.outputs.macos == 'run' && '["ubuntu-24.04","ubuntu-24.04-arm","macos-15"]' || '["ubuntu-24.04","ubuntu-24.04-arm"]') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-moonbit
+        with:
+          tools: http:moonbit bun
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.1'
+      - name: Resolve pinned MoonBit packages
+        run: moon update
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install 1.98.0 --profile minimal
+      # The script names the revision it requires.
+      - name: Read the shared Morphir revision
+        id: shared
+        run: moon run scripts/native-services.mbtx -- --revision --github-output
+      - name: Check out the pinned shared Morphir libraries
+        uses: actions/checkout@v7
+        with:
+          repository: finos/morphir
+          ref: ${{ steps.shared.outputs.revision }}
+          path: .dev/shared-morphir
+      - name: Populate the shared Rust submodule
+        run: git -C .dev/shared-morphir submodule update --init ecosystem/morphir-rust
+      # stdout is the morphir/command-result document, with the SHA-256 and
+      # size of each artifact; build and test output go to stderr. mise exec
+      # puts bun on PATH.
+      - name: Run the native-services acceptance
+        shell: bash
+        run: >-
+          mise exec -- moon run scripts/native-services.mbtx --
+          --acceptance --shared .dev/shared-morphir --json
+          > .dev/native-services-result.json
+      - name: Show the acceptance result
+        if: always()
+        shell: bash
+        run: cat .dev/native-services-result.json || true
+      - name: Retain the acceptance result and evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          # yamllint disable-line rule:line-length
+          name: native-services-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .dev/native-services-result.json
+            .dev/native-services/*.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30
+
   # Records evidence only after the macOS lanes ran and the whole call passed on
   # main. It uploads the fingerprint that the evidence job chose and fails if
   # HEAD has another one. A reuse run records nothing, so evidence never
   # renews itself.
   record:
     name: Record the macOS evidence
-    needs: [evidence, qualification]
+    needs: [evidence, qualification, native-services]
     if: >-
       needs.qualification.result == 'success' &&
+      needs.native-services.result == 'success' &&
       needs.evidence.outputs.macos == 'run' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -113,10 +190,12 @@ jobs:
 
   report:
     name: Report the breach issue
-    needs: [evidence, qualification, record]
+    needs: [evidence, qualification, native-services, record]
     # Fires on every outcome of the jobs above, so that a failure cannot stay
     # silent. Only runs on main: a dispatch on another ref must not touch the issue.
-    if: always() && github.ref == 'refs/heads/main'
+    # A native-services-only dispatch skips the qualification, so it reports
+    # nothing; its own job result is the signal.
+    if: always() && github.ref == 'refs/heads/main' && inputs.lanes != 'native-services'
     # Housekeeping must not turn a passing night red, so a failure of this job
     # (checkout, setup-moonbit, moon update, the close step) is non-fatal when the
     # night passed. The expression is true only when the night passed: it is the
@@ -127,6 +206,7 @@ jobs:
     # (env is not available here, so RESULT cannot be reused.)
     continue-on-error: >-
       ${{ !(needs.evidence.result != 'success' ||
+      needs.native-services.result != 'success' ||
       needs.record.result == 'failure' ||
       needs.record.result == 'cancelled' ||
       needs.qualification.result != 'success') }}
@@ -139,10 +219,12 @@ jobs:
       issues: write
     env:
       # An evidence job that did not succeed is a failure, even though the call
-      # was then skipped. `record` skips in reuse mode and after a failed call;
-      # only its failure or cancellation is a breach of its own.
+      # was then skipped. So is a native-services job that did not succeed.
+      # `record` skips in reuse mode and after a failed call; only its failure
+      # or cancellation is a breach of its own.
       RESULT: >-
         ${{ (needs.evidence.result != 'success' ||
+        needs.native-services.result != 'success' ||
         needs.record.result == 'failure' ||
         needs.record.result == 'cancelled') && 'failure' ||
         needs.qualification.result }}

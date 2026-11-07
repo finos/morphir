@@ -2,7 +2,17 @@
 //! It deliberately corrupts selected boundaries; it is never a production host.
 use morphir_host_native::process::{read_frame, write_frame};
 use serde_json::Value;
-use std::{io::Write, process::Stdio, time::Duration};
+use std::{
+    io::{Read, Write},
+    process::Stdio,
+    time::Duration,
+};
+
+/// The frozen guest, gzip-compressed, in one static so that the binary holds
+/// one copy: `extension bundle` refuses artifacts above 11 MiB, and the Linux
+/// release guest alone is about 9 MB. An inline `include_bytes!` is a
+/// constant that codegen units may each copy.
+static GUEST_GZIP: &[u8] = include_bytes!(env!("MORPHIR_TEST_GUEST_GZIP"));
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,8 +24,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::fs::write(pidfile, std::process::id().to_string())?;
     }
     match mode {
-        "crash" => std::process::exit(7),
-        "malformed" => {
+        // Both read the first request, so the host's write never races the
+        // exit and the host sees the fault, not a closed pipe.
+        "crash" | "malformed" => {
+            read_frame(&mut tokio::io::BufReader::new(tokio::io::stdin())).await?;
+            if mode == "crash" {
+                std::process::exit(7);
+            }
             print!("Content-Length: 3\r\n\r\n???");
             return Ok(());
         }
@@ -33,7 +48,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let directory = tempfile::tempdir_in(std::env::current_exe()?.parent().unwrap())?;
     let guest = directory.path().join("guest");
-    std::fs::write(&guest, include_bytes!(env!("MORPHIR_TEST_GUEST")))?;
+    let mut bytes = Vec::new();
+    flate2::read::GzDecoder::new(GUEST_GZIP).read_to_end(&mut bytes)?;
+    std::fs::write(&guest, bytes)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -91,6 +108,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 response["result"]["model"]["payload"]["sha256"] = Value::String("0".repeat(64))
             }
             ("shutdown-hang", "morphir.shutdown") => {
+                if let Some(pidfile) = args.get(1) {
+                    std::fs::write(format!("{pidfile}.shutdown"), "")?;
+                }
                 tokio::time::sleep(Duration::from_secs(60)).await;
                 return Ok(());
             }

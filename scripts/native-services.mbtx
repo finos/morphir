@@ -71,12 +71,16 @@ async fn digest(path : String) -> String {
 }
 
 ///|
+/// The finos/morphir revision whose shared Rust libraries the adapter builds.
+let shared_revision : String = "64eb9b3315322b396ae4b2cbbc41eab2808277f5"
+
+///|
 async fn main {
   let mut json_mode = @env.args().contains("--json")
   try {
     let schema = @argparse.Command(
       "native-services",
-      about="Build a pinned shared-library adapter; --acceptance also builds and tests the native source CLI. JSON uses morphir/command-result 0.1.0; progress and child logs use stderr. This does not qualify installed .64.30 or change defaults.",
+      about="Build a pinned shared-library adapter; --acceptance also builds and tests the native source CLI. JSON uses morphir/command-result 0.1.0; progress and child logs use stderr. This does not qualify installed .64.30 or change defaults. --revision prints the pinned finos/morphir revision and builds nothing: JSON result.revision; --github-output also appends revision=<sha> to the GITHUB_OUTPUT file.",
       disable_help_flag=true,
       disable_help_subcommand=true,
       options=[@argparse.OptionArg("shared")],
@@ -84,6 +88,8 @@ async fn main {
         @argparse.FlagArg("json"),
         @argparse.FlagArg("help", short='h'),
         @argparse.FlagArg("acceptance"),
+        @argparse.FlagArg("revision"),
+        @argparse.FlagArg("github-output"),
       ],
     )
     let cli = schema.parse(argv=@env.args()[1:])
@@ -107,6 +113,39 @@ async fn main {
       }
       return
     }
+    let github_output = cli.flags.get("github-output").unwrap_or(false)
+    if cli.flags.get("revision").unwrap_or(false) {
+      if github_output {
+        let path = @env.get_env_var("GITHUB_OUTPUT").unwrap_or("")
+        guard path != "" else {
+          fail("--github-output needs the GITHUB_OUTPUT environment variable")
+        }
+        @fs.write_file(
+          path,
+          "revision=\{shared_revision}\n",
+          create_mode=OpenOrCreate,
+          append=true,
+        )
+      }
+      if json_mode {
+        println(
+          (
+            {
+              "profile": "morphir/command-result",
+              "contractVersion": "0.1.0",
+              "command": "native-services",
+              "state": "succeeded",
+              "exitCode": 0,
+              "diagnostics": [],
+              "result": { "revision": shared_revision },
+            } : Json).stringify(),
+        )
+      } else {
+        println(shared_revision)
+      }
+      return
+    }
+    guard !github_output else { fail("--github-output needs --revision") }
     let shared_path = match cli.values.get("shared") {
       Some([path]) => path
       _ => @env.get_env_var("MORPHIR_SHARED_SOURCE").unwrap_or("")
@@ -117,7 +156,7 @@ async fn main {
       )
     }
     let shared = @fs.realpath(shared_path)
-    let revision = "64eb9b3315322b396ae4b2cbbc41eab2808277f5"
+    let revision = shared_revision
     guard output(["-C", shared, "rev-parse", "HEAD"]) == revision else {
       fail("Expected shared Morphir revision " + revision)
     }
@@ -155,7 +194,7 @@ async fn main {
         Json::string(shared + "/ecosystem/morphir-rust/crates/" + name).stringify() +
         "}\n"
     }
-    manifest += "serde_json='1.0'\nserde={version='1.0',features=['derive']}\ntokio={version='1',features=['rt','macros','time','io-util','io-std','process']}\ntempfile='3'\nsemver='1'\nasync-trait='0.1'\nbase64='0.23'\n[dev-dependencies]\nwat='1'\n"
+    manifest += "serde_json='1.0'\nflate2='1.0'\nserde={version='1.0',features=['derive']}\ntokio={version='1',features=['rt','macros','time','io-util','io-std','process']}\ntempfile='3'\nsemver='1'\nasync-trait='0.1'\nbase64='0.23'\n[dev-dependencies]\nwat='1'\n"
     manifest += "[[test]]\nname='shared-restricted-extism'\npath=" +
       Json::string(
         shared +
@@ -164,19 +203,25 @@ async fn main {
       "\n"
     let guest = root +
       "/_build/native/release/build/finos/morphir-extension/morphir-extension.exe"
-    if @fs.exists(guest) {
-      for
-        name in [
-          "native-fault-fixture", "native-catalog-v1", "native-catalog-v2",
-        ] {
-        manifest += "[[bin]]\nname=" +
-          Json::string(name).stringify() +
-          "\npath=" +
-          Json::string(root + "/apps/morphir/native-services/fault-fixture.rs").stringify() +
-          "\n"
-      }
+    // The fixtures embed the release guest. native-catalog-v2 goes through
+    // `extension bundle`, whose base64 reply must fit the CLI's 16 MiB
+    // response read, so bundle refuses artifacts above 11 MiB. The fixtures
+    // therefore use their own optimized, stripped profile and a compressed
+    // guest.
+    let fixtures : Array[String] = if @fs.exists(guest) {
+      ["native-fault-fixture", "native-catalog-v1", "native-catalog-v2"]
+    } else {
+      []
+    }
+    for name in fixtures {
+      manifest += "[[bin]]\nname=" +
+        Json::string(name).stringify() +
+        "\npath=" +
+        Json::string(root + "/apps/morphir/native-services/fault-fixture.rs").stringify() +
+        "\n"
     }
     manifest += "[profile.dev]\ndebug=0\n"
+    manifest += "[profile.fixture]\ninherits='release'\nopt-level='s'\nstrip=true\n"
     @fs.write_file(directory + "/Cargo.toml", manifest)
     @fs.write_file(
       directory + "/Cargo.lock",
@@ -193,6 +238,10 @@ async fn main {
       }
     }
     guard target != "" else { fail("Rust host target is missing") }
+    let cargo_environment : Map[String, String] = {
+      "MORPHIR_NATIVE_TARGET": target,
+      "MORPHIR_TEST_GUEST_GZIP": directory + "/fixture-guest.gz",
+    }
     let code = @process.run(
       "cargo",
       [
@@ -201,8 +250,10 @@ async fn main {
         "--locked",
         "--manifest-path",
         directory + "/Cargo.toml",
+        "--bin",
+        "morphir-moonbit-native-services",
       ],
-      extra_env={ "MORPHIR_NATIVE_TARGET": target, "MORPHIR_TEST_GUEST": guest },
+      extra_env=cargo_environment,
       stdout=@stdio.stderr,
       stderr=@stdio.stderr,
     )
@@ -215,6 +266,24 @@ async fn main {
         },
         "Native adapter build failed",
       )
+    }
+    // The fixture profile builds the dependencies again, optimized; the adapter
+    // keeps the dev profile.
+    if !fixtures.is_empty() {
+      // The fixtures embed the guest compressed: the Linux release guest alone
+      // is about 9 MB. gzip -n keeps the bytes the same for the same guest.
+      let packed = directory + "/fixture-guest"
+      @fs.write_file(packed, @fs.read_file(guest))
+      checked("gzip", ["-9", "-n", "-f", packed])
+      let fixture_build = ["+1.98.0", "build", "--locked", "--manifest-path"]
+      fixture_build.push(directory + "/Cargo.toml")
+      fixture_build.push("--profile")
+      fixture_build.push("fixture")
+      for name in fixtures {
+        fixture_build.push("--bin")
+        fixture_build.push(name)
+      }
+      checked("cargo", fixture_build, environment=cargo_environment)
     }
     let executable = directory + "/target/debug/morphir-moonbit-native-services"
     let host_pin : Json = {
@@ -232,6 +301,7 @@ async fn main {
         ),
         ("MORPHIR_NATIVE_SERVICES", executable),
         ("MORPHIR_NATIVE_GUEST", guest),
+        ("MORPHIR_NATIVE_FIXTURES", directory + "/target/fixture"),
       ])
       for
         test_file in [
@@ -240,12 +310,21 @@ async fn main {
         checked("node", ["apps/morphir/scripts/" + test_file], environment~)
         tests.push({ "test": test_file, "exitCode": 0 })
       }
+      // The worker host's native process launcher replaced the extension
+      // helper that test-extension-provider.ts tested: artifact digests before
+      // launch, verified private copies, stderr and frame bounds, and stopping
+      // the process tree on a deadline or a cancellation.
       checked(
-        "node",
-        ["--test", "apps/morphir/scripts/test-extension-provider.ts"],
+        "moon",
+        [
+          "test", "pkgs/morphir-host/worker/process/native", "--target", "native",
+        ],
         environment~,
       )
-      tests.push({ "test": "test-extension-provider.ts", "exitCode": 0 })
+      tests.push({
+        "test": "MoonBit native process launcher suite",
+        "exitCode": 0,
+      })
       checked(
         "moon",
         ["test", "apps/morphir/cli", "--target", "native"],
@@ -259,11 +338,14 @@ async fn main {
         executable,
         guest,
         root + "/_build/native/debug/build/morphir/morphir/morphir.exe",
-        directory + "/target/debug/native-fault-fixture",
-        directory + "/target/debug/native-catalog-v2",
+        directory + "/target/fixture/native-fault-fixture",
+        directory + "/target/fixture/native-catalog-v2",
       ] {
       if @fs.exists(path) {
-        artifacts[path] = { "sha256": digest(path) }
+        artifacts[path] = {
+          "sha256": digest(path),
+          "bytes": Json::number(@fs.file_size(path).to_double()),
+        }
       }
     }
     let moon_home = @env.get_env_var("MOON_HOME").unwrap_or("")
