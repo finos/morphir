@@ -181,10 +181,13 @@ fn target(platform : String, arch : String) -> String raise {
 
 ///|
 fn selected(pin : Json, target : String) -> Json raise {
+  // The repository manifest selects beta.12. A manifest saved for beta.10 still
+  // acquires that release.
+  let version = text(pin, "runnerVersion")
   guard text(pin, "contractVersion") == "0.1.0-draft.1" &&
     text(pin, "repository") == "finos/morphir" &&
-    text(pin, "runnerVersion") == "0.4.0-beta.10" &&
-    text(pin, "tag") == "v0.4.0-beta.10" &&
+    version is ("0.4.0-beta.10" | "0.4.0-beta.12") &&
+    text(pin, "tag") == "v" + version &&
     hex(text(pin, "sourceRevision"), 40) &&
     hex(text(pin, "fixtureRevision"), 40) &&
     pin is { "assets": Object(assets), .. } &&
@@ -192,7 +195,9 @@ fn selected(pin : Json, target : String) -> Json raise {
     fail("Unsupported MCK release or missing host asset")
   }
   let windows = target.has_suffix("-windows-msvc")
-  let name = "morphir-0.4.0-beta.10-" +
+  let name = "morphir-" +
+    version +
+    "-" +
     target +
     (if windows { ".zip" } else { ".tgz" })
   guard text(asset, "filename") == name && hex(text(asset, "sha256"), 64) else {
@@ -233,29 +238,40 @@ fn archive_inventory(
 ///|
 fn self_test() -> Unit raise {
   cli_self_test()
-  let asset : Json = {
-    "filename": "morphir-0.4.0-beta.10-aarch64-apple-darwin.tgz",
-    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  let manifest = fn(version : String) -> (Json, Json) {
+    let asset : Json = {
+      "filename": "morphir-" + version + "-aarch64-apple-darwin.tgz",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    }
+    let pin : Json = {
+      "contractVersion": "0.1.0-draft.1",
+      "repository": "finos/morphir",
+      "tag": "v" + version,
+      "runnerVersion": version,
+      "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+      "fixtureRevision": "abcdef0123456789abcdef0123456789abcdef01",
+      "assets": { "aarch64-apple-darwin": asset },
+    }
+    (pin, asset)
   }
-  let pin : Json = {
-    "contractVersion": "0.1.0-draft.1",
-    "repository": "finos/morphir",
-    "tag": "v0.4.0-beta.10",
-    "runnerVersion": "0.4.0-beta.10",
-    "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
-    "fixtureRevision": "abcdef0123456789abcdef0123456789abcdef01",
-    "assets": { "aarch64-apple-darwin": asset },
+  // A manifest saved for beta.10 stays selectable next to the current beta.12.
+  for version in ["0.4.0-beta.10", "0.4.0-beta.12"] {
+    let (pin, asset) = manifest(version)
+    guard selected(pin, target("darwin", "arm64")) == asset else {
+      fail("Exact release selection failed: " + version)
+    }
   }
-  guard selected(pin, target("darwin", "arm64")) == asset else {
-    fail("Exact release selection failed")
-  }
+  let (pin, _) = manifest("0.4.0-beta.12")
   for
     (key, replacement) in [
       ("runnerVersion", "0.4.0-beta.9"),
+      ("runnerVersion", "0.4.0-beta.10"),
+      ("runnerVersion", "0.4.0-beta.11"),
       ("sourceRevision", "main"),
       ("fixtureRevision", "HEAD"),
       ("repository", "other/morphir"),
       ("tag", "latest"),
+      ("tag", "v0.4.0-beta.10"),
     ] {
     guard @json.parse(pin.stringify()) is Object(fields) else {
       fail("fixture")

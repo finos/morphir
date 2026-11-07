@@ -7,12 +7,12 @@ import { test } from 'node:test';
 import { mckCommand } from '../build-provider/mck.mjs';
 
 const supported = process.platform !== 'win32';
-function fixture(body: string) {
+function fixture(body: string, runnerVersion = '0.4.0-beta.12') {
   const root = mkdtempSync(join(tmpdir(), 'morphir-mck-provider-'));
   const executable = join(root, 'morphir backend');
-  writeFileSync(executable, `#!${process.execPath}\nif(process.argv.includes('--version')){console.log('morphir 0.4.0-beta.10');process.exit(0);}\nif(process.argv.slice(2).join(' ')==='--no-banner mck kit status --json'){console.log(JSON.stringify({revision:'${'a'.repeat(40)}',corpusHash:'sha256-${'b'.repeat(64)}',driverContract:2,algorithm:'mck-file-map-sha256/1'}));process.exit(0);}\n${body}\n`, { mode: 0o700 });
+  writeFileSync(executable, `#!${process.execPath}\nif(process.argv.includes('--version')){console.log('morphir ${runnerVersion}');process.exit(0);}\nif(process.argv.slice(2).join(' ')==='--no-banner mck kit status --json'){console.log(JSON.stringify({revision:'${'a'.repeat(40)}',corpusHash:'sha256-${'b'.repeat(64)}',driverContract:2,algorithm:'mck-file-map-sha256/1'}));process.exit(0);}\n${body}\n`, { mode: 0o700 });
   const config = { profile: 'morphir/cli/mck-command', contractVersion: '0.1.0-draft.1',
-    pin: { contractVersion: '0.1.0-draft.1', runnerVersion: '0.4.0-beta.10', executable,
+    pin: { contractVersion: '0.1.0-draft.1', runnerVersion, executable,
       sha256: createHash('sha256').update(readFileSync(executable)).digest('hex'),
       sourceRevision: 'a'.repeat(40), origin: 'controlled process fixture' },
     arguments: ['check', 'kit path', '--json'], cwd: root, timeout: 10000, cancelFile: '' };
@@ -35,6 +35,21 @@ test('MCK validates the selected version and pin before launching canonical oper
     assert.equal(source.error, 'mck.runner_contract_mismatch'); assert.equal(source.exitCode, 2);
     assert.equal(existsSync(join(f.root, 'started')), false);
   } finally { f.dispose(); }
+});
+
+test('MCK still runs a pin saved for beta.10 and checks it against its own version', { skip: !supported }, async () => {
+  const saved = fixture(`process.stdout.write('saved pin ran');`, '0.4.0-beta.10');
+  try {
+    const result = await mckCommand(saved.config);
+    assert.equal(result.state, 'completed'); assert.equal(result.exitCode, 0);
+    assert.equal(result.stdout, 'saved pin ran');
+    assert.equal(result.runner?.runnerVersion, '0.4.0-beta.10');
+    // The pin selects the version: a beta.12 pin does not admit this executable.
+    const other = await mckCommand({ ...saved.config, pin: { ...saved.config.pin, runnerVersion: '0.4.0-beta.12' } });
+    assert.equal(other.error, 'mck.runner_version_mismatch'); assert.equal(other.exitCode, 2);
+    const unlisted = await mckCommand({ ...saved.config, pin: { ...saved.config.pin, runnerVersion: '0.4.0-beta.11' } });
+    assert.equal(unlisted.error, 'mck.unsupported_runner_version'); assert.equal(unlisted.exitCode, 2);
+  } finally { saved.dispose(); }
 });
 
 test('MCK preserves canonical argv, stdout, stderr and failed verdict exit status', { skip: !supported }, async () => {

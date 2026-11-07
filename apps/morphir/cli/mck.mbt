@@ -1,7 +1,10 @@
 ///|
 /// A qualified backend version, independent of the suites' contract versions.
+/// Beta12 is the version the release manifest acquires. Beta10 stays accepted
+/// so that a pin saved for that release keeps working.
 priv enum MckRunnerVersion {
   Beta10
+  Beta12
 }
 
 ///|
@@ -45,6 +48,7 @@ fn mck_pin(value : Json) -> MckRunnerPin raise {
   }
   let version = match version {
     "0.4.0-beta.10" => Beta10
+    "0.4.0-beta.12" => Beta12
     _ => raise @config.Invalid("mck.unsupported_runner_version")
   }
   guard mck_absolute(executable) &&
@@ -66,6 +70,7 @@ fn MckRunnerPin::to_json(self : MckRunnerPin) -> Json {
     "contractVersion": "0.1.0-draft.1",
     "runnerVersion": match self.version {
       Beta10 => "0.4.0-beta.10"
+      Beta12 => "0.4.0-beta.12"
     },
     "executable": self.executable,
     "sha256": self.sha256,

@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { supervised } from './supervision.mjs';
 import { pinnedFileHash } from './identity.mjs';
 
+// A pin saved for beta.10 stays accepted; the release manifest acquires beta.12.
+const runnerVersions = ['0.4.0-beta.10', '0.4.0-beta.12'] as const;
 interface RunnerPin {
-  contractVersion: '0.1.0-draft.1'; runnerVersion: '0.4.0-beta.10';
+  contractVersion: '0.1.0-draft.1'; runnerVersion: typeof runnerVersions[number];
   executable: string; sha256: string; sourceRevision: string; origin: string;
 }
 interface MckRequest {
@@ -33,7 +35,7 @@ function request(value: unknown): MckRequest {
   const pin = value.pin;
   check(record(pin) && exact(pin, ['contractVersion','runnerVersion','executable','sha256','sourceRevision','origin']) &&
     pin.contractVersion === contractVersion, 'mck.invalid_runner_pin');
-  check(pin.runnerVersion === '0.4.0-beta.10', 'mck.unsupported_runner_version');
+  check(runnerVersions.some(version => version === pin.runnerVersion), 'mck.unsupported_runner_version');
   check(typeof pin.executable === 'string' && isAbsolute(pin.executable) && pin.executable.length <= 4096 && !pin.executable.includes('\0') &&
     typeof pin.sha256 === 'string' && /^[a-f0-9]{64}$/.test(pin.sha256) &&
     typeof pin.sourceRevision === 'string' && /^[a-f0-9]{40}$/.test(pin.sourceRevision) &&

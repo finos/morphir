@@ -32,18 +32,20 @@ test "MCK keeps runner controls separate from opaque canonical arguments" {
 test "MCK pins refuse unsupported contracts versions and malformed identities" {
   let pin : Json = {
     "contractVersion": "0.1.0-draft.1",
-    "runnerVersion": "0.4.0-beta.10",
+    "runnerVersion": "0.4.0-beta.12",
     "executable": "/private/backend/morphir",
     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "sourceRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "origin": "https://github.com/finos/morphir/releases/tag/v0.4.0-beta.10",
+    "origin": "https://github.com/finos/morphir/releases/tag/v0.4.0-beta.12",
   }
   let admitted = mck_pin(pin)
   assert_eq(admitted.executable, "/private/backend/morphir")
+  assert_eq(admitted.to_json(), pin)
   for
     (key, replacement) in [
       ("contractVersion", "2.0.0"),
       ("runnerVersion", "0.4.0-beta.9"),
+      ("runnerVersion", "0.4.0-beta.11"),
       ("sha256", "abc"),
       ("executable", "morphir"),
       ("sourceRevision", "main"),
@@ -61,6 +63,20 @@ test "MCK pins refuse unsupported contracts versions and malformed identities" {
       },
     )
   }
+}
+
+///|
+test "MCK still accepts a runner pin saved for beta.10" {
+  let saved : Json = {
+    "contractVersion": "0.1.0-draft.1",
+    "runnerVersion": "0.4.0-beta.10",
+    "executable": "/private/backend/morphir",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sourceRevision": "477e3ce7d86ad447c85fc2bfcb64832b387a4be7",
+    "origin": "https://github.com/finos/morphir/releases/tag/v0.4.0-beta.10",
+  }
+  // The helper receives the same version, so it verifies the saved executable.
+  assert_eq(mck_pin(saved).to_json(), saved)
 }
 
 ///|

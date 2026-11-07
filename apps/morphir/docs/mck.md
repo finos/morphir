@@ -18,7 +18,7 @@ accepted SHA-256 pin, and save a runner pin such as:
 ```json
 {
   "contractVersion": "0.1.0-draft.1",
-  "runnerVersion": "0.4.0-beta.10",
+  "runnerVersion": "0.4.0-beta.12",
   "executable": "/tools/morphir-backend/morphir",
   "sha256": "<64 lowercase hexadecimal characters for the executable bytes>",
   "sourceRevision": "<40 lowercase hexadecimal characters from the embedded kit>",
@@ -31,8 +31,11 @@ provenance supplied by the caller; it does not authenticate a download. Store
 the executable in a location other than the MoonBit launcher. The CLI never
 searches PATH for the backend, downloads it, or installs an interpreter.
 
-Only beta.10 is qualified by this bridge. Each invocation verifies the
-executable hash, exact version and embedded kit source revision before running
+This bridge qualifies beta.12, and new pins should select it. A pin saved for
+beta.10 stays accepted, so an existing setup keeps working. No other version is
+accepted. The gate runs the real backend for beta.12 only; the beta.10 path has
+controlled process tests. Each invocation verifies the executable hash, the exact
+version that the pin selects and the embedded kit source revision before running
 the canonical command, then verifies the hash again. The embedded corpus hash
 and driver contract appear in structured receipts. A selected external kit has
 its own revision and corpus hash, available through `kit status --kit`.
@@ -120,14 +123,19 @@ written by the canonical runner retain that runner's limits.
 
 ## Qualification
 
-`apps/morphir/fixtures/mck/release.json` pins the published `v0.4.0-beta.10`
+`apps/morphir/fixtures/mck/release.json` pins the published `v0.4.0-beta.12`
 archives by SHA-256 for each host, with the source and fixture revision
-`477e3ce7d86ad447c85fc2bfcb64832b387a4be7`. Before the gate runs,
+`d3154e9b9a54162a1409593972ac31c4a369f0ec`. Before the gate runs,
 `moonx scripts/mck-release.mbtx apps/morphir/fixtures/mck/release.json DESTINATION`
 downloads the archive for this host into a new destination and verifies its digest.
 It also checks the executable version and the embedded kit revision, then fetches
 only `spec/` at the fixture revision. It writes `runner.json` and `receipt.json`
-and compiles no source. The CLI commands themselves never call it.
+and compiles no source. The CLI commands themselves never call it. The same
+command also accepts a manifest saved for `v0.4.0-beta.10`.
+
+The frozen IR and package transcripts are not stored in this repository. They are
+the `spec/mck/baseline/` files of finos/morphir, and the fixture revision selects
+them. To move them, change that revision and run the acquisition command again.
 
 The headless CLI gate runs the shared backend with PATH empty through release
 JS, native POSIX and an installed npm package. It compares inspection outputs

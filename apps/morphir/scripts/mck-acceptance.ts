@@ -19,11 +19,11 @@ export function exerciseMckTransport(invocation: Invocation, directory: string, 
   mkdirSync(directory, { recursive: true });
   const executable = join(directory, 'backend');
   const revision = 'a'.repeat(40);
-  writeFileSync(executable, `#!${process.execPath}\nif(process.argv.includes('--version'))console.log('morphir 0.4.0-beta.10');
+  writeFileSync(executable, `#!${process.execPath}\nif(process.argv.includes('--version'))console.log('morphir 0.4.0-beta.12');
 else if(process.argv.slice(2).join(' ')==='--no-banner mck kit status --json')console.log(JSON.stringify({revision:'${revision}',corpusHash:'sha256-${'b'.repeat(64)}',driverContract:2,algorithm:'mck-file-map-sha256/1'}));
 else{process.stdout.write('out\\0λ');process.stderr.write('err\\0雪');process.exitCode=1;}\n`, { mode: 0o700 });
   const pin = join(directory, 'runner.json');
-  writeFileSync(pin, JSON.stringify({ contractVersion: '0.1.0-draft.1', runnerVersion: '0.4.0-beta.10',
+  writeFileSync(pin, JSON.stringify({ contractVersion: '0.1.0-draft.1', runnerVersion: '0.4.0-beta.12',
     executable, sha256: hash(executable), sourceRevision: revision, origin: 'controlled transport fixture' }));
   const result = spawnSync(invocation.command, [...invocation.prefix, 'mck', '--runner-pin', pin,
     '--mck-helper', helper, '--node', process.execPath, 'check', 'fixture'], {
