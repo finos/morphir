@@ -187,7 +187,87 @@
             "sha256": "f920e457b171dc00dcaae724beb68d0fb3aa1aef0c2d372b27c5a9c15f4467e1"
           }
         }
+      },
+      "0.6.0": {
+        "tag": "extension/python/v0.6.0",
+        "sourceRevision": "560a6503b8ffcab87ea667391579b747757bec0d",
+        "module": {
+          "filename": "morphir-python-binding-0.6.0.wasm",
+          "sha256": "ce0cba07f0395ff8179b42eb021ade05c68197f69b8e9c0c8bc369d2a035727c"
+        },
+        "descriptor": {
+          "filename": "morphir-python-binding-0.6.0.release.json",
+          "sha256": "83db8a9203844585d00601457a8e1e348bd2b517f0c4dc4524faaadd8c43479f"
+        },
+        "processDescriptor": {
+          "filename": "morphir-python-extension-0.6.0.release.json",
+          "sha256": "3c6477d45cb67407b93485911428b2c280ab733d6af241e7797aeb6bdb967cd5"
+        },
+        "executables": {
+          "aarch64-apple-darwin": {
+            "filename": "morphir-python-extension-0.6.0-aarch64-apple-darwin",
+            "sha256": "ec6de14954c03711c0f561c03ce6c3e81a29c6ebbc0c1baff2fcad48f1660a1a"
+          },
+          "x86_64-apple-darwin": {
+            "filename": "morphir-python-extension-0.6.0-x86_64-apple-darwin",
+            "sha256": "31b447cc3b3de807586457685fa62a998f7171ab34e3339ce7387493cf66c33b"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "filename": "morphir-python-extension-0.6.0-aarch64-unknown-linux-gnu",
+            "sha256": "35d832de40ea826533379145dad179131371a5ee74ba6c8ebe5d1024bef29aa4"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "filename": "morphir-python-extension-0.6.0-x86_64-unknown-linux-gnu",
+            "sha256": "a88bf5a103e5c387409319fc36481d48904c6eee6472ac21bc35224a10eeb40b"
+          },
+          "x86_64-pc-windows-msvc": {
+            "filename": "morphir-python-extension-0.6.0-x86_64-pc-windows-msvc.exe",
+            "sha256": "fffc914088e7fe6bd4b2321955d273749e2a935a6730bcbaf7f4e4a1bfec91c6"
+          }
+        }
       }
+    }
+  },
+  "avro": {
+    "repository": "finos/morphir-extensions",
+    "tag": "extension/avro/v0.4.0",
+    "version": "0.4.0",
+    "sourceRevision": "a73cda0d57a82e047b68483e142a7d21eb66abf3",
+    "module": {
+      "filename": "morphir-avro-0.4.0.wasm",
+      "sha256": "7f86a1983028d1e7d6b03de4d553417b05f8fc8eb47e20ab922830b0daecdd5f"
+    },
+    "descriptor": {
+      "filename": "morphir-avro-0.4.0.release.json",
+      "sha256": "926647e8ca0df3d76206fe8d1744c377cf9e1dbdea5c8494d5fadc2dcb991447"
+    }
+  },
+  "openapi": {
+    "repository": "finos/morphir-extensions",
+    "tag": "extension/openapi/v0.5.0",
+    "version": "0.5.0",
+    "sourceRevision": "a73cda0d57a82e047b68483e142a7d21eb66abf3",
+    "module": {
+      "filename": "morphir-openapi-0.5.0.wasm",
+      "sha256": "691bb4892c1eaba11b5dbddb06a3217b7430e5c31c0239e8440ad4081c78da4d"
+    },
+    "descriptor": {
+      "filename": "morphir-openapi-0.5.0.release.json",
+      "sha256": "5385f37f1de928f3c48b19ee561a8ac39840cfcef1cf6fe6b49a7571ec3d4bff"
+    }
+  },
+  "rust": {
+    "repository": "finos/morphir-rust",
+    "tag": "extension/rust/v0.4.0",
+    "version": "0.4.0",
+    "sourceRevision": "0716e22a04728ddf883fc144bffb6cb52fce3102",
+    "module": {
+      "filename": "morphir-rust-binding-0.4.0.wasm",
+      "sha256": "3b3ce74b09cbd9d2789fbd8a4882ddd479d58c622f9a750d2fa32972a0b1378c"
+    },
+    "descriptor": {
+      "filename": "morphir-rust-binding-0.4.0.release.json",
+      "sha256": "9b1ef84037c6790ddcb9c712bc4b4db84507b27b834caf22824264e421a91273"
     }
   },
   "mck": {

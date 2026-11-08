@@ -306,19 +306,23 @@ description = "Run the package tests of one target with the end-to-end WASM work
 run = "moonx scripts/wasm-workers-test.mbtx"
 
 [tasks."test:cli-extism-python"]
-description = "Qualify the pinned Python extension 0.4.1 and 0.4.2 releases on the worker host from the native and npm CLIs; [--python PATH] [--json]"
+description = "Qualify the pinned Python extension 0.4.1, 0.4.2, 0.5.0 and 0.6.0 releases on the worker host from the native and npm CLIs; [--python PATH] [--json]"
 run = "moonx scripts/extension-qualification.mbtx python"
 
 [tasks."test:cli-extension-elm"]
 description = "Qualify the pinned Elm extension executables (v0.4.1, elm-classic v0.5.1 and v0.6.0) and the Elm WASM module on the worker host from the native and npm CLIs; [--json]"
 run = "moonx scripts/extension-qualification.mbtx elm"
 
+[tasks."test:cli-extension-model-line"]
+description = "Qualify the pinned avro 0.4.0, openapi 0.5.0 and rust 0.4.0 WASM modules on MEP 0.2.0-draft.1 on the worker host from the native and npm CLIs; [--json]"
+run = "moonx scripts/extension-qualification.mbtx model-line"
+
 [tasks."test:extension-conformance"]
 description = "Run the morphir-extension-sdk conformance fixture guest on the worker host from the native and npm CLIs; [--json]"
 run = "moonx scripts/extension-qualification.mbtx conformance"
 
 [tasks."test:extension-qualification"]
-description = "Run every worker host qualification suite (Elm, Python, MoonBit native and portable, SDK fixture); [--python PATH] [--json]"
+description = "Run every worker host qualification suite (Elm, Python, MoonBit native and portable, SDK fixture, model line); [--python PATH] [--json]"
 run = "moonx scripts/extension-qualification.mbtx all"
 
 [tasks."sdk-spec:generate"]

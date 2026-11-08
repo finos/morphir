@@ -1,0 +1,35 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "examples/customer",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "domain": {
+            "Public": {
+              "types": {
+                "customer": {
+                  "Public": {
+                    "TypeAliasDefinition": {
+                      "typeParams": [],
+                      "typeExp": {
+                        "Record": {
+                          "fields": {
+                            "name": { "Reference": { "fqname": "morphir/SDK:string#string" } },
+                            "age": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

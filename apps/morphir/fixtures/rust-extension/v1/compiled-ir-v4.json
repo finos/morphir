@@ -1,0 +1,508 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "acme/example",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "models": {
+            "Public": {
+              "types": {
+                "person": {
+                  "Public": {
+                    "doc": "A person in the domain.",
+                    "TypeAliasDefinition": {
+                      "typeParams": [],
+                      "typeExp": {
+                        "Record": {
+                          "fields": {
+                            "name": {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            },
+                            "age": {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "decision": {
+                  "Public": {
+                    "doc": "The state of a decision.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "pending": [],
+                        "accepted": [
+                          [
+                            "field-0",
+                            {
+                              "Reference": {
+                                "fqname": "acme/example:models#person"
+                              }
+                            }
+                          ]
+                        ],
+                        "rejected": [
+                          [
+                            "reason",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "score": {
+                  "Public": {
+                    "doc": "",
+                    "TypeAliasDefinition": {
+                      "typeParams": [],
+                      "typeExp": {
+                        "Tuple": {
+                          "elements": [
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            },
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {
+                "select": {
+                  "Public": {
+                    "doc": "The larger of two values, or zero when they are equal.",
+                    "ExpressionBody": {
+                      "inputTypes": {
+                        "a": {
+                          "Reference": {
+                            "fqname": "morphir/SDK:basics#int"
+                          }
+                        },
+                        "b": {
+                          "Reference": {
+                            "fqname": "morphir/SDK:basics#int"
+                          }
+                        }
+                      },
+                      "outputType": {
+                        "Reference": {
+                          "fqname": "morphir/SDK:basics#int"
+                        }
+                      },
+                      "body": {
+                        "IfThenElse": {
+                          "attributes": {
+                            "inferredType": {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          },
+                          "condition": {
+                            "Apply": {
+                              "attributes": {
+                                "inferredType": {
+                                  "Reference": {
+                                    "fqname": "morphir/SDK:basics#bool"
+                                  }
+                                }
+                              },
+                              "function": {
+                                "Apply": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Function": {
+                                        "parameterType": {
+                                          "Reference": {
+                                            "fqname": "morphir/SDK:basics#int"
+                                          }
+                                        },
+                                        "returnType": {
+                                          "Reference": {
+                                            "fqname": "morphir/SDK:basics#bool"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "function": {
+                                    "Reference": {
+                                      "attributes": {
+                                        "inferredType": {
+                                          "Function": {
+                                            "parameterType": {
+                                              "Reference": {
+                                                "fqname": "morphir/SDK:basics#int"
+                                              }
+                                            },
+                                            "returnType": {
+                                              "Function": {
+                                                "parameterType": {
+                                                  "Reference": {
+                                                    "fqname": "morphir/SDK:basics#int"
+                                                  }
+                                                },
+                                                "returnType": {
+                                                  "Reference": {
+                                                    "fqname": "morphir/SDK:basics#bool"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "fqname": "morphir/SDK:basics#equal"
+                                    }
+                                  },
+                                  "argument": {
+                                    "Variable": {
+                                      "attributes": {
+                                        "inferredType": {
+                                          "Reference": {
+                                            "fqname": "morphir/SDK:basics#int"
+                                          }
+                                        }
+                                      },
+                                      "name": "a"
+                                    }
+                                  }
+                                }
+                              },
+                              "argument": {
+                                "Variable": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:basics#int"
+                                      }
+                                    }
+                                  },
+                                  "name": "b"
+                                }
+                              }
+                            }
+                          },
+                          "then": {
+                            "Literal": {
+                              "attributes": {
+                                "inferredType": {
+                                  "Reference": {
+                                    "fqname": "morphir/SDK:basics#int"
+                                  }
+                                }
+                              },
+                              "literal": {
+                                "IntegerLiteral": 0
+                              }
+                            }
+                          },
+                          "else": {
+                            "IfThenElse": {
+                              "attributes": {
+                                "inferredType": {
+                                  "Reference": {
+                                    "fqname": "morphir/SDK:basics#int"
+                                  }
+                                }
+                              },
+                              "condition": {
+                                "Apply": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:basics#bool"
+                                      }
+                                    }
+                                  },
+                                  "function": {
+                                    "Apply": {
+                                      "attributes": {
+                                        "inferredType": {
+                                          "Function": {
+                                            "parameterType": {
+                                              "Reference": {
+                                                "fqname": "morphir/SDK:basics#int"
+                                              }
+                                            },
+                                            "returnType": {
+                                              "Reference": {
+                                                "fqname": "morphir/SDK:basics#bool"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "function": {
+                                        "Reference": {
+                                          "attributes": {
+                                            "inferredType": {
+                                              "Function": {
+                                                "parameterType": {
+                                                  "Reference": {
+                                                    "fqname": "morphir/SDK:basics#int"
+                                                  }
+                                                },
+                                                "returnType": {
+                                                  "Function": {
+                                                    "parameterType": {
+                                                      "Reference": {
+                                                        "fqname": "morphir/SDK:basics#int"
+                                                      }
+                                                    },
+                                                    "returnType": {
+                                                      "Reference": {
+                                                        "fqname": "morphir/SDK:basics#bool"
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          },
+                                          "fqname": "morphir/SDK:basics#greater-than"
+                                        }
+                                      },
+                                      "argument": {
+                                        "Variable": {
+                                          "attributes": {
+                                            "inferredType": {
+                                              "Reference": {
+                                                "fqname": "morphir/SDK:basics#int"
+                                              }
+                                            }
+                                          },
+                                          "name": "a"
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "argument": {
+                                    "Variable": {
+                                      "attributes": {
+                                        "inferredType": {
+                                          "Reference": {
+                                            "fqname": "morphir/SDK:basics#int"
+                                          }
+                                        }
+                                      },
+                                      "name": "b"
+                                    }
+                                  }
+                                }
+                              },
+                              "then": {
+                                "Variable": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:basics#int"
+                                      }
+                                    }
+                                  },
+                                  "name": "a"
+                                }
+                              },
+                              "else": {
+                                "Variable": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:basics#int"
+                                      }
+                                    }
+                                  },
+                                  "name": "b"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "amount": {
+                  "Public": {
+                    "doc": "",
+                    "ExpressionBody": {
+                      "inputTypes": {
+                        "value": {
+                          "Reference": {
+                            "fqname": "morphir/SDK:maybe#maybe",
+                            "args": [
+                              {
+                                "Reference": {
+                                  "fqname": "morphir/SDK:basics#int"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "outputType": {
+                        "Reference": {
+                          "fqname": "morphir/SDK:basics#int"
+                        }
+                      },
+                      "body": {
+                        "PatternMatch": {
+                          "attributes": {
+                            "inferredType": {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          },
+                          "value": {
+                            "Variable": {
+                              "attributes": {
+                                "inferredType": {
+                                  "Reference": {
+                                    "fqname": "morphir/SDK:maybe#maybe",
+                                    "args": [
+                                      {
+                                        "Reference": {
+                                          "fqname": "morphir/SDK:basics#int"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "name": "value"
+                            }
+                          },
+                          "cases": [
+                            {
+                              "pattern": {
+                                "ConstructorPattern": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:maybe#maybe",
+                                        "args": [
+                                          {
+                                            "Reference": {
+                                              "fqname": "morphir/SDK:basics#int"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "fqname": "morphir/SDK:maybe#just",
+                                  "patterns": [
+                                    {
+                                      "AsPattern": {
+                                        "attributes": {
+                                          "inferredType": {
+                                            "Reference": {
+                                              "fqname": "morphir/SDK:basics#int"
+                                            }
+                                          }
+                                        },
+                                        "pattern": {
+                                          "WildcardPattern": {
+                                            "attributes": {
+                                              "inferredType": {
+                                                "Reference": {
+                                                  "fqname": "morphir/SDK:basics#int"
+                                                }
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "name": "morphir-local-0"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "body": {
+                                "Variable": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:basics#int"
+                                      }
+                                    }
+                                  },
+                                  "name": "morphir-local-0"
+                                }
+                              }
+                            },
+                            {
+                              "pattern": {
+                                "ConstructorPattern": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:maybe#maybe",
+                                        "args": [
+                                          {
+                                            "Reference": {
+                                              "fqname": "morphir/SDK:basics#int"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "fqname": "morphir/SDK:maybe#nothing",
+                                  "patterns": []
+                                }
+                              },
+                              "body": {
+                                "Literal": {
+                                  "attributes": {
+                                    "inferredType": {
+                                      "Reference": {
+                                        "fqname": "morphir/SDK:basics#int"
+                                      }
+                                    }
+                                  },
+                                  "literal": {
+                                    "IntegerLiteral": 0
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "doc": "Golden source for the MEP 0.2.0-draft.1 model operation tests."
+            }
+          }
+        }
+      }
+    }
+  }
+}

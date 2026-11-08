@@ -31,6 +31,7 @@ enum Suite {
   MoonbitNative
   MoonbitPortable
   Conformance
+  ModelLine
 }
 
 ///|
@@ -40,6 +41,7 @@ let all_suites : Array[Suite] = [
   MoonbitNative,
   MoonbitPortable,
   Conformance,
+  ModelLine,
 ]
 
 ///|
@@ -53,6 +55,7 @@ fn Suite::select(text : String) -> Array[Suite]? {
     "moonbit-native" => Some([MoonbitNative])
     "moonbit-portable" => Some([MoonbitPortable])
     "conformance" => Some([Conformance])
+    "model-line" => Some([ModelLine])
     _ => None
   }
 }
@@ -65,14 +68,15 @@ fn Suite::name(self : Suite) -> String {
     MoonbitNative => "moonbit-native"
     MoonbitPortable => "moonbit-portable"
     Conformance => "conformance"
+    ModelLine => "model-line"
   }
 }
 
 ///|
 let about : String =
-  #|Qualify the published extensions and the SDK conformance fixture guest on the CLI's worker host, from the native CLI and the npm CLI (an unpacked npm pack of apps/morphir). SUITE is elm (Elm extension executables v0.4.1, elm-classic v0.5.1 on MEP 0.1 and elm-classic v0.6.0 on MEP 0.2.0-draft.1, and the Elm v0.5.0-preview.2 WASM module), python (Python extension 0.4.1 and 0.4.2), moonbit-native and moonbit-portable (the MoonBit guest as a process worker or a morphir-bytes-v1 WASM worker, with the shared MEP kit), conformance (the morphir-extension-sdk fixture guest in apps/morphir/fixtures/sdk-guest, with the shared generic MEP kit) or all.
+  #|Qualify the published extensions and the SDK conformance fixture guest on the CLI's worker host, from the native CLI and the npm CLI (an unpacked npm pack of apps/morphir). SUITE is elm (Elm extension executables v0.4.1, elm-classic v0.5.1 on MEP 0.1 and elm-classic v0.6.0 on MEP 0.2.0-draft.1, and the Elm v0.5.0-preview.2 WASM module), python (Python extension 0.4.1 and 0.4.2 on MEP 0.1, and 0.5.0 and 0.6.0 on MEP 0.2.0-draft.1), moonbit-native and moonbit-portable (the MoonBit guest as a process worker or a morphir-bytes-v1 WASM worker, with the shared MEP kit), conformance (the morphir-extension-sdk fixture guest in apps/morphir/fixtures/sdk-guest, with the shared generic MEP kit), model-line (avro 0.4.0, openapi 0.5.0 and rust 0.4.0 on MEP 0.2.0-draft.1) or all.
   #|
-  #|The script builds the inputs (moon build of apps/morphir and apps/morphir-extension, bun run build, npm pack, and scripts/package-mep-extension.mbtx for moonbit-portable), then runs apps/morphir/scripts/extension-qualification.ts for each suite. The driver downloads each pinned artifact of apps/morphir/fixtures/qualification/published.json into a new, empty directory and uses it only when its SHA-256 equals the pin. It writes <evidence>/<suite>.json, one receipt with one row for each operation: extension, version, cli (native, npm or mck), platform, operation, result (passed, failed or known-failure, with the finding and its follow-up bead), guest SHA-256 and output digests. A known failure is an operation that fails for a recorded cause outside the host; it does not fail the suite, and it fails the suite when it passes.
+  #|The script builds the inputs (moon build of apps/morphir and apps/morphir-extension, bun run build, npm pack, and scripts/package-mep-extension.mbtx for moonbit-portable), then runs apps/morphir/scripts/extension-qualification.ts for each suite. The driver downloads each pinned artifact of apps/morphir/fixtures/qualification/published.json into a new, empty directory and uses it only when its SHA-256 equals the pin. It writes <evidence>/<suite>.json, one receipt with one row for each operation: extension, version, cli (native, npm, mck or worker), platform, operation, result (passed, failed or known-failure, with the finding and its follow-up bead), guest SHA-256 and output digests. A known failure is an operation that fails for a recorded cause outside the host; it does not fail the suite, and it fails the suite when it passes.
   #|
   #|Build, download and driver output goes to stderr. Without --json, stdout has one summary line for each suite. With --json, stdout is one morphir/command-result 0.1.0 value written after every receipt: result {evidence, suites: [{suite, state, receiptPath, receiptSha256, passed, knownFailures, failed}], receipts: [<receipt>]}. A suite whose inputs could not be built (for example the portable guest's packaging) has state failed and error instead of a receipt, and the other suites still run. A failure has error {code, message} instead of result: qualification_failed (exit 1) when a suite failed, step_failed with the exit status of a failed build step, invalid_arguments (exit 2) for invalid arguments. --help prints this help and runs nothing; --help --json returns it as result.help.
 
@@ -86,7 +90,7 @@ fn command() -> @argparse.Command {
     positionals=[
       @argparse.PositionArg(
         "SUITE",
-        about="elm, python, moonbit-native, moonbit-portable, conformance or all",
+        about="elm, python, moonbit-native, moonbit-portable, conformance, model-line or all",
       ),
     ],
     flags=[
@@ -447,7 +451,7 @@ async fn main {
   }
   guard suites is Some(suites) else {
     refuse(
-      json, 2, "invalid_arguments", "SUITE must be elm, python, moonbit-native, moonbit-portable, conformance or all",
+      json, 2, "invalid_arguments", "SUITE must be elm, python, moonbit-native, moonbit-portable, conformance, model-line or all",
     )
     return
   }
@@ -493,12 +497,13 @@ async fn main {
 
 ///|
 test "a SUITE argument selects suites" {
-  assert_eq(Suite::select("all").map(suites => suites.length()), Some(5))
+  assert_eq(Suite::select("all").map(suites => suites.length()), Some(6))
   assert_true(Suite::select("python") is Some([Python]))
   assert_true(Suite::select("moonbit-portable") is Some([MoonbitPortable]))
+  assert_true(Suite::select("model-line") is Some([ModelLine]))
   assert_true(Suite::select("rust") is None)
   assert_eq(all_suites.map(Suite::name), [
-    "elm", "python", "moonbit-native", "moonbit-portable", "conformance",
+    "elm", "python", "moonbit-native", "moonbit-portable", "conformance", "model-line",
   ])
 }
 

@@ -17,4 +17,6 @@ apps/morphir/fixtures/sdk-guest/** text eol=lf
 apps/morphir/fixtures/sdk-guest/*.wasm binary
 apps/morphir/fixtures/elm-extension/** text eol=lf
 apps/morphir/fixtures/extism-python/** text eol=lf
+apps/morphir/fixtures/rust-extension/** text eol=lf
+apps/morphir/fixtures/morphir-extensions/** text eol=lf
 apps/morphir/fixtures/qualification/** text eol=lf

@@ -1,0 +1,22 @@
+{
+  "$id": "Quote.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "price": {
+      "format": "decimal",
+      "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+      "type": "string"
+    },
+    "quantity": {
+      "format": "int64",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "price",
+    "quantity"
+  ],
+  "title": "Quote",
+  "type": "object",
+  "x-morphir-fqname": "pricing:quotes#quote"
+}

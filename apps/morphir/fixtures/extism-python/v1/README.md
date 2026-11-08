@@ -17,5 +17,6 @@ request. The two-module `acme` directory is its multi-document refusal.
 `mise run test:cli-extism-python` compiles `acme` with the published `0.4.2`
 module for IR 3 and 4 from the native and npm CLIs, generates Python, runs
 `apps/morphir/scripts/extension-qualification-consumer.py` on the generated
-files, and recompiles them without a change to the IR. This proves only this
-bounded subset and the exact host and CLI cells in the resulting receipt.
+files, and recompiles them without a change to the IR. It does the same on the
+model line with the published `0.5.0` and `0.6.0` releases, as WASM and as process
+workers. This proves only this bounded subset and the exact host and CLI cells in the resulting receipt.

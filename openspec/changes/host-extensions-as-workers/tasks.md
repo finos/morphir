@@ -165,6 +165,20 @@
   as a process worker, from both CLIs: compile and generate at `--ir-version` 3 and 4 with `formatVersion` checked, plain
   IR through `generateModel`, and the refusals; verify that Python `0.4.1` and `0.4.2` keep MEP `0.1` and that the MoonBit guest still agrees on Ion at
   IR `4.0.0`. Windows follows task 7.5
+- [x] 7.8 Qualify the newly released MEP `0.2.0-draft.1` extensions (bead `morphir-ukvn.5.64.36.28`) from both CLIs as a
+  manual lane, with no PR or merge-queue job. Add Python `0.6.0` to the `python` suite, as a WASM worker and as a
+  process worker, keeping Python `0.5.0`, `0.4.2` and `0.4.1`, because the suite keeps every qualified release. Add the
+  `model-line` suite for avro `0.4.0`, openapi `0.5.0` and json-schema, and rust `0.4.0`, which `all` includes: describe,
+  generate at IR 4 from plain IR and from a model envelope to the owners' goldens, rust compile, `formatVersion`, the
+  refusal of a wrong envelope, same output as native and exit within a bound. Through the CLI, IR 3 runs on the legacy MEP `0.1`
+  fallback with its warning, because these three claim IR `4.0.0` tuples only (bead `morphir-ukvn.5.64.36.31`, task
+  6.8), and MEP `0.1` at IR 3 and 4 also runs in a direct session with the guest; rust generate of
+  `typed-pricing.json` is a known failure, `RS_NAME` (bead `morphir-ukvn.5.64.36.30`); no host change. Gleam stays out until finos/morphir-gleam#34 is fixed (bead
+  `morphir-ukvn.5.64.36.32`). Verify from one `workflow_dispatch` run on each runner that the workflow offers:
+  `windows-latest`, `ubuntu-24.04`, `ubuntu-24.04-arm` and `macos-15`. Runs 42433725633, 42433731535, 42433737773 and
+  42433743403 (suite `all`, head `b1cf38b2`) pass `model-line` (111 passed, 2 known) and `python` (172 passed) on all
+  four, with the same output digests; the Windows run fails only in `moonbit-portable`, which is not packaged on Windows
+  (bead `morphir-ukvn.5.64.36.18`). Windows x64 proves the guests' results, not the job-object stop (task 7.5)
 
 ## 8. Browser Web Worker feasibility (morphir-ukvn.5.64.36.8)
 

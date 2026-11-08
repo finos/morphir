@@ -1,0 +1,36 @@
+{
+  "$id": "Status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "amount": {
+          "format": "decimal",
+          "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "Approved"
+        }
+      },
+      "required": [
+        "amount",
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "Rejected"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "Status",
+  "x-morphir-fqname": "pricing:quotes#status"
+}

@@ -1,0 +1,16 @@
+{
+  "fields": [
+    {
+      "name": "age",
+      "type": "long"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    }
+  ],
+  "morphir.fqname": "examples/customer:domain#customer",
+  "name": "Customer",
+  "namespace": "examples.customer.domain",
+  "type": "record"
+}

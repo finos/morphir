@@ -19,7 +19,7 @@ on:
       suite:
         description: Qualification suite
         type: choice
-        options: [all, elm, python, moonbit-native, moonbit-portable, conformance]
+        options: [all, elm, python, moonbit-native, moonbit-portable, conformance, model-line]
         default: all
 
 permissions:
