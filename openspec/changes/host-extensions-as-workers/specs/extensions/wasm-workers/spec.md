@@ -115,8 +115,9 @@ one. A growth beyond the ceiling SHALL fail the call; it SHALL NOT be granted.
 
 ### Requirement: Per-call budget
 Each guest call SHALL have a deadline of 30 seconds for `extism-kernel-v1` and 10 seconds for `morphir-bytes-v1`,
-inside the session deadline. Where the engine meters instructions, the host SHALL also apply a budget of
-1,000,000,000 per call. The report SHALL state which bounds the host enforced.
+inside the session deadline. Where the engine meters instructions, the host SHALL also apply a budget per call of
+2,147,483,647 on the model line and 1,000,000,000 on MEP `0.1` and for a probe (bead: morphir-ukvn.5.64.36.26). The
+report SHALL state which bounds the host enforced.
 
 #### Scenario: Runaway guest
 - **WHEN** a guest loops forever inside `handle`

@@ -79,7 +79,7 @@ The native CLI on Windows passes only `SystemRoot`. The conformance case
 
 - `send` encodes one frame with `FrameWriter` and writes it to stdin with a
   promise-based write through `@js_async.run_promise`. The request limit
-  (4 MiB by default) counts the framed bytes, header included: a larger frame
+  (6 MiB in the host limits, 4 MiB for a session on MEP `0.1`) counts the framed bytes, header included: a larger frame
   gives `FrameLimit(direction=Request)`, and nothing is written.
 - `receive` reads stdout through `@js_async.ReadableStream` (`Readable.toWeb`)
   and decodes frames with `FrameReader`. The response limit (16 MiB by

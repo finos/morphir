@@ -291,22 +291,42 @@ pub impl @worker.Launcher for WasmProcessLauncher with fn launch(
     raise @worker.LaunchError::WasmFeatureUnsupported(feature=Some(feature))
   }
   let (staged, module_path) = self.stage(bytes)
-  let options : WorkerOptions = {
-    abi: prepared.abi,
+  let options = worker_options(
+    prepared.abi,
     module_path,
-    build_identity: self.identity,
-    request_bytes: limits.request_bytes,
-    response_bytes: limits.response_bytes,
-    call: self.call,
-    memory_pages: None,
-    json: true,
-  }
+    self.identity,
+    self.call,
+    limits,
+  )
   let channel = self.process.start(
     staged,
     ["extension", "worker", ..options.to_args()],
     limits~,
   )
   WasmProcessChannel::{ inner: channel, }
+}
+
+///|
+/// The options of a worker for one session. The call bounds come from the
+/// session limits unless the launcher has its own, so the worker has the
+/// instruction budget of the session's protocol line.
+fn worker_options(
+  abi : @worker.WasmAbi,
+  module_path : String,
+  build_identity : BuildIdentity,
+  call : @guest.CallBounds?,
+  limits : @worker.Limits,
+) -> WorkerOptions {
+  {
+    abi,
+    module_path,
+    build_identity,
+    request_bytes: limits.request_bytes,
+    response_bytes: limits.response_bytes,
+    call: Some(call.unwrap_or(@guest.CallBounds::for_abi(abi, limits~))),
+    memory_pages: None,
+    json: true,
+  }
 }
 
 ///|

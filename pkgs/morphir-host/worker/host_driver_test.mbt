@@ -330,7 +330,11 @@ async test "specification from an installed catalog: the host starts it with the
     fail("not a process")
   }
   assert_eq(args, ["mep", "--", "", "--stdio"])
-  assert_eq(launcher.limits, [@worker.Limits::host()])
+  // A MEP 0.1 process guest keeps the 4 MiB request frame.
+  assert_eq(launcher.limits, [
+    @worker.Limits::host().for_session(Legacy, spec.runtime),
+  ])
+  assert_eq(launcher.limits[0].request_bytes, 4194304)
 }
 
 ///|

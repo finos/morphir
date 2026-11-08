@@ -179,7 +179,7 @@ many processes start at the same time. The 2 second grace period begins at
 | --- | --- |
 | Artifact size | 512 MiB |
 | Frame header | 8 KiB |
-| Request frame (host to worker) | `request_bytes` of the limits that the session passes to `launch`; 4 MiB in the host limits |
+| Request frame (host to worker) | `request_bytes` of the limits that the session passes to `launch`; 6 MiB in the host limits, 4 MiB for a session on MEP `0.1` |
 | Response body (worker to host) | `response_bytes` of the same limits, checked against the declared length before the body is read; 16 MiB in the host limits |
 | Stderr kept | The last 64 KiB; the tail says when bytes were dropped |
 | Grace period after `exit` | 2 seconds |
@@ -200,7 +200,7 @@ test "the documented bounds are the bounds in the code" {
   assert_eq(@native.EXITED_READ_MS, 200)
   assert_eq(@native.TEXT_BUSY_RETRY_MS, 1000)
   let limits = @worker.Limits::host()
-  assert_eq(limits.request_bytes, 4 * 1024 * 1024)
+  assert_eq(limits.request_bytes, 6 * 1024 * 1024)
   assert_eq(limits.response_bytes, 16 * 1024 * 1024)
 }
 

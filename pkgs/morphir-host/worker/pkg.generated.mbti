@@ -602,11 +602,13 @@ pub struct Limits {
   request_bytes : Int32
   response_bytes : Int32
   model : ModelLimits
+  call_instructions : Int32
 } derive(Eq, @debug.Debug)
 pub fn Limits::equal(Self, Self) -> Bool
+pub fn Limits::for_probe(Self) -> Self
 pub fn Limits::for_session(Self, Offer, WorkerRuntime) -> Self
 pub fn Limits::host() -> Self
-pub fn Limits::new(request_bytes~ : Int32, response_bytes~ : Int32, model~ : ModelLimits) -> Self raise ValueError
+pub fn Limits::new(request_bytes~ : Int32, response_bytes~ : Int32, model~ : ModelLimits, call_instructions? : Int32) -> Self raise ValueError
 pub fn Limits::not_equal(Self, Self) -> Bool
 pub fn Limits::to_json(Self) -> Json
 pub fn Limits::to_repr(Self) -> @debug.Repr

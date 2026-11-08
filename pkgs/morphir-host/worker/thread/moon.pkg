@@ -21,4 +21,5 @@ import {
   "finos/morphir-host/worker/process/node" @node_process,
   "moonbitlang/core/debug",
   "moonbitlang/core/env",
+  "moonbitlang/core/json",
 } for "wbtest"

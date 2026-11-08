@@ -293,6 +293,15 @@ pub fn ExtismProfile::restricted() -> ExtismProfile {
 }
 
 ///|
+/// The smaller of this profile's instruction budget and the budget of `limits`.
+fn ExtismProfile::call_instructions(
+  self : ExtismProfile,
+  limits : Limits,
+) -> Int32 {
+  @cmp.minimum(limits.call_instructions.to_int64(), self.instructions).to_int()
+}
+
+///|
 pub extend ExtismProfile with ToJson::{to_json}
 
 ///|
@@ -307,8 +316,9 @@ pub impl ToJson for ExtismProfile with fn to_json(self) {
 }
 
 ///|
-/// The limits for one session: the host limits, and for a MEP 0.1 WASM guest
-/// the request and response bounds of the restricted Extism profile.
+/// The limits for one session: the host limits. A MEP 0.1 guest keeps the 4 MiB
+/// request frame, and a MEP 0.1 WASM guest also has the request, response and
+/// instruction bounds of the restricted Extism profile.
 pub fn Limits::for_session(
   self : Limits,
   offer : Offer,
@@ -321,9 +331,25 @@ pub fn Limits::for_session(
         ..self,
         request_bytes: @cmp.minimum(self.request_bytes, profile.input_bytes),
         response_bytes: @cmp.minimum(self.response_bytes, profile.output_bytes),
+        call_instructions: profile.call_instructions(self),
       }
     }
+    (Legacy, _) =>
+      {
+        ..self,
+        request_bytes: @cmp.minimum(self.request_bytes, call_frame_bytes),
+      }
     _ => self
+  }
+}
+
+///|
+/// The limits of a probe. It runs an artifact that nothing has checked yet, with
+/// no model to read, so it keeps the instruction budget of the profile.
+pub fn Limits::for_probe(self : Limits) -> Limits {
+  {
+    ..self,
+    call_instructions: ExtismProfile::restricted().call_instructions(self),
   }
 }
 
@@ -391,8 +417,10 @@ let placeholder_tuple : ModelTuple = {
 }
 
 ///|
-/// Checks a call against the host's 4 MiB framed request limit when it is
-/// made, so that an oversized request is refused before any worker starts.
+/// Checks a call against its framed request limit when it is made, so that an
+/// oversized request is refused before any worker starts. A generate call with a
+/// `model` goes on the model line and has the host's frame. Any other call has
+/// `call_frame_bytes`.
 fn Call::make(
   kind : CallKind,
   params : Map[String, Json],
@@ -404,7 +432,10 @@ fn Call::make(
     .message(first_operation_id, kind.operation(Model([placeholder_tuple])))
     .size(),
   )
-  let limit = Limits::host().request_bytes
+  let limit = match kind {
+    GenerateCall if params.contains("model") => Limits::host().request_bytes
+    _ => call_frame_bytes
+  }
   guard size <= limit else {
     raise Refusal(
       code=RequestLimit,

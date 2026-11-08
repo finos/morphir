@@ -23,13 +23,22 @@ pub extend WrappedPlainIr with @debug.Debug::{to_repr}
 /// the same envelope, and other bytes give another revision. The payload holds
 /// the bytes as they are: no conversion happens.
 ///
-/// A document whose `formatVersion` names no IR version of a model tuple is
-/// `TupleUnavailable`, because the host offers no tuple for it.
+/// A document over the host's decoded model limit is `RequestLimit`, and the
+/// refusal names the limit. A guest's smaller limit applies when the session
+/// sends the envelope. A document whose `formatVersion` names no IR version of a
+/// model tuple is `TupleUnavailable`, because the host offers no tuple for it.
 /// `GenerateChoice::of_plain_ir` decides whether MEP 0.1 serves such a document.
 pub fn WrappedPlainIr::of(
   document : Bytes,
   ir : Json,
 ) -> WrappedPlainIr raise Refusal {
+  let limit = Limits::host().model.decoded_bytes
+  guard document.length() <= limit else {
+    raise Refusal(
+      code=RequestLimit,
+      message="the plain IR document has \{document.length()} bytes; the limit is \{limit}",
+    )
+  }
   let format = field_at(ir, ["formatVersion"])
   guard format.bind(IrVersion::of_format_version) is Some(ir_version) else {
     let named = format.map(value => value.stringify()).unwrap_or("nothing")

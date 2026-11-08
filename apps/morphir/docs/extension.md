@@ -388,10 +388,15 @@ and a file with no `formatVersion` is `extension.input_invalid`. The envelope ho
 the exact bytes of the file. Its `modelId` is
 `urn:morphir:plain-ir:sha256:<digest>` and its `revision` is `sha256:<digest>`,
 from the SHA-256 of those bytes, so the same file gives the same envelope. The
-model byte limits apply on this line, so a plain IR file of more than 2 MiB is
-refused with `extension.request_limit`, as a model envelope is. A guest on the
-model line receives plain IR on MEP `0.1` only by the
-[legacy fallback](#legacy-mep-01-fallback).
+model byte limits apply on this line, so a plain IR file of more than 4 MiB, or
+more than the smaller limit of the guest, is refused with
+`extension.request_limit`, and the message names the limit. A file within the
+byte limits can still stop a WASM guest on the native host with
+`extension.budget_exhausted`, because the instruction budget follows the guest's
+work and not the file's size (see [Limits](#limits)). A guest on the model line
+receives plain IR on MEP `0.1` only by the
+[legacy fallback](#legacy-mep-01-fallback), and the fallback keeps the limits of
+MEP `0.1`.
 Generate writes the returned artifacts at their relative paths; an absolute,
 traversing or repeated path, or a path that is also a directory, is refused with
 `extension.result_invalid`. Paths are compared by a key that is
@@ -453,16 +458,43 @@ process tree. A failure leaves no output directory and no
 | Pin file | 64 KiB |
 | Descriptor file | 1 MiB |
 | Artifact | 512 MiB |
-| Request frame, host to worker | 4 MiB |
+| Request frame, host to worker | 6 MiB for generate on the model line; 4 MiB for compile and for every call on MEP `0.1` |
 | Response body, worker to host | 16 MiB |
 | Frame header | 8 KiB |
-| Offered model limits | 2,796,204 encoded bytes, 2 MiB decoded, depth 128, 100,000 nodes; the worker's smaller values apply |
-| Generate input | 4 MiB, depth 128, 100,000 nodes |
+| Offered model limits | 5,592,408 encoded bytes, 4 MiB decoded, depth 128, 100,000 nodes; the worker's smaller values apply |
+| Generate input | A 6 MiB file, depth 128, 100,000 nodes; a plain IR file on the model line has the 4 MiB decoded limit |
+| Instructions for one WASM guest call, where the engine meters them | 2,147,483,647 on the model line; 1,000,000,000 on MEP `0.1` and for a probe |
 | Compile sources | 1,024 files, 1 MiB for one file, 2 MiB in total, 16,384 directory entries, depth 32 |
 | Guest stderr kept | The last 64 KiB |
 | Deadline | 60,000 ms by default, at most 594,000 ms, for the probe and the session together |
 | Grace after `exit` | 2 seconds, then the host stops the tree |
 | Confirmation that the tree stopped | 5 seconds |
+
+### What a plain IR file can reach
+
+The byte limits let a plain IR file of 4 MiB reach a guest on the model line. On
+the native host, a WASM guest can stop sooner, because the instruction budget
+measures the guest's work and not the file's size. The engine accepts no budget
+above 2,147,483,647, because WAMR holds the count in a C `int`; bead
+`morphir-ukvn.5.64.36.33` tracks a wider counter. The Node and browser hosts
+meter no instructions, so there only the call deadline applies.
+
+These values were measured on the native host with `generateModel`. A padded
+file is a small IR document followed by JSON white space, and a dense file is a
+synthetic library of literal values. Real models fall between the two.
+
+| Guest | Runtime on the native host | Padded plain IR | Dense plain IR |
+| --- | --- | --- | --- |
+| Portable MoonBit guest (`morphir-bytes-v1`) | WASM, 10 s call deadline | Completes 2,555,904 bytes in about 4 s; 2,560,000 bytes ends with `extension.budget_exhausted` | Completes 293 values (42,236 bytes); 354 values (51,020 bytes) ends with `extension.budget_exhausted` |
+| Python extension `0.5.0` (`extism-kernel-v1`) | WASM, 30 s call deadline | Completes 4 MiB in about 1.5 s | Completes 5,818 values (842,654 bytes); 6,000 values (869,044 bytes) ends with `extension.budget_exhausted` |
+| Native MoonBit guest | Process worker | Completes 4 MiB | Not measured |
+
+Other guests:
+
+- **elm-classic `0.6.0`** compiles only, and it declares a decoded limit of 2 MiB,
+  which still applies to its results.
+- **The Elm `v0.5.0-preview.2` WASM module and the SDK fixture guest** use MEP
+  `0.1` only, so they keep the 4 MiB frame and 1,000,000,000 instructions.
 
 Each process worker runs a private copy of its artifact in a new process group
 (Unix), with an empty environment and an empty private working directory, and it

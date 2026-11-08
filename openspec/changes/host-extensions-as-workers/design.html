@@ -441,8 +441,8 @@ its own, so the host gives it one. For a guest on the model line, <code>WrappedP
 SHA-256 of those bytes. For example, a <code>morphir-ir.json</code> with <code>"formatVersion": 3</code> goes to the
 Python extension <code>0.5.0</code> with <code>morphir.backend.generateModel</code> and the JSON tuple of IR
 <code>3.0.0</code>. The wrapping is shared host code and not CLI code, so the native, Node and browser hosts make one
-envelope from one file, and a host only passes the input. A plain IR file therefore meets the model byte limits, which
-are smaller than the MEP <code>0.1</code> request limit. The file's <code>formatVersion</code> decides the tuple, so
+envelope from one file, and a host only passes the input. A plain IR file therefore meets the model byte limits. The
+file's <code>formatVersion</code> decides the tuple, so
 <code>--ir-version</code> stays a check of it, as for an envelope, and a difference is
 <code>extension.ir_version_mismatch</code>.</p>
 <p><em>Alternatives.</em> (a) Fall back to MEP <code>0.1</code> for IR 3: rejected by the decision above, then taken
@@ -531,6 +531,39 @@ command ran on the legacy line or how to leave it. (c) Refuse every envelope: si
 file succeeds. (d) Put the decision in the CLI: rejected, because shared behavior belongs in host code, as for
 <code>WrappedPlainIr</code>. (e) Add a command-line option to allow the fall back: rejected, because the warning already
 reports it and a user would have to learn the option only to get what the guest can do.</p>
+
+<h3 id="ses-5">SES-5. The model limits and the generate frame rise to hold a 4 MiB plain IR file</h3>
+<p>Wrapping moved plain IR from the 4 MiB generate input of MEP <code>0.1</code> to the 2 MiB model limit, so a file
+between 2 and 4 MiB that worked before was refused. Damian Reeves decided on 2026-11-01 to raise the limit and not to
+define a new transport (bead <code>morphir-ukvn.5.64.36.26</code>). The MEP draft allows this: a limit is a positive
+integer of at most 2147483647, and the outer frame limit is configured independently of the model limits.</p>
+<p>The values follow from the file. A decoded limit of 4,194,304 bytes gives an encoded limit of
+4 &times; &lceil;4194304 / 3&rceil; = 5,592,408 bytes, the same values that the MoonBit guest declares. A 4 MiB file on
+<code>generateModel</code> needs about 1 KiB more for the envelope, the JSON-RPC message and the frame header, so
+5,592,408 bytes do not fit in the 4 MiB frame. The generate frame on the model line becomes 6,291,456 bytes, which
+leaves 699,048 bytes for those members. Depth 128, 100,000 nodes and the 16 MiB response stay.</p>
+<p>Only that call changes. A compile call and every call of a MEP <code>0.1</code> session keep the 4 MiB frame, because
+they carry no model payload and a guest on MEP <code>0.1</code> has never seen a larger frame. The limits live in
+<code>Limits::host</code> and <code>Limits::for_session</code>, so the native, Node and browser hosts apply one set of
+values. The CLI reads a generate input of up to 6 MiB, so a model envelope can reach the model limits, and the shared
+wrapper refuses a plain IR document over 4 MiB. A plain IR file that falls back to MEP <code>0.1</code> by <a href="#ses-4">SES-4</a>
+keeps the limits of that line: the 4 MiB generate input and frame, and 1,000,000,000 instructions for a WASM guest. Effective limits stay the smaller of the host's and the guest's, so
+a guest such as elm-classic <code>0.6.0</code>, which declares 2 MiB, keeps its own limit.</p>
+<p>Byte limits alone do not make a large file work on the native host, because WAMR meters each guest call. The budget
+on the model line rises from 1,000,000,000 to 2,147,483,647, the largest that the engine accepts: <code>Budget::parse</code>
+in <code>moonrockz/extism</code> stops there because WAMR holds the count in a C <code>int</code>. MEP <code>0.1</code>
+and a probe keep 1,000,000,000, and the call deadlines of 10 and 30 seconds do not change. A runaway guest on the model
+line still stops at the budget or at the deadline, whichever comes first. Damian Reeves first chose 5,000,000,000
+instructions. On 2026-11-07 he chose the engine maximum, because the engine refuses the larger value; bead
+<code>morphir-ukvn.5.64.36.33</code> tracks a 64-bit counter.</p>
+<p>The budget, not the byte limit, sets how far a WASM guest gets on the native host. At 2,147,483,647 instructions,
+Python <code>0.5.0</code> completes a 4 MiB file of IR padded with white space. The portable MoonBit guest stops between
+2,555,904 and 2,560,000 bytes of the same kind of file. A file dense with values stops both guests sooner: the portable
+guest between 42,236 and 51,020 bytes, and Python between 842,654 and 869,044 bytes. The extension guide lists these
+measurements, and the Node and browser hosts, which meter no instructions, apply only the call deadline.</p>
+<p><em>Alternatives.</em> (a) A new MEP transport for large models: rejected by the decision above. (b) Raise the frame
+for every call: rejected, because it changes what a guest on MEP <code>0.1</code> receives and gives compile nothing.
+(c) Skip the envelope for a large file and keep plain IR on MEP <code>0.1</code>: rejected by SES-3.</p>
 
 <h3 id="chan-1">CHAN-1. A channel carries whole messages; framing belongs to the stdio transport</h3>
 <p>The channel API is <code>send</code>, <code>receive</code>, <code>close</code> and <code>abort</code>, like

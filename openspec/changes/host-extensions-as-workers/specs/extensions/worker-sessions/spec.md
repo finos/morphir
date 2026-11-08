@@ -80,7 +80,7 @@ default. The session SHALL use the first agreed tuple. Only an empty agreement S
 - **THEN** the session is refused with `extension.tuple_unavailable` and no operation is sent
 
 #### Scenario: Smaller worker limit
-- **WHEN** the worker declares a smaller decoded-byte limit than the host's 2 MiB
+- **WHEN** the worker declares a smaller decoded-byte limit than the host's 4 MiB
 - **THEN** the request is checked against the worker's limit before it is sent
 
 ### Requirement: Host tuple order
@@ -252,6 +252,24 @@ send it with `morphir.backend.generateModel` at the tuple of its `formatVersion`
 - **WHEN** a guest claims only MEP `0.1`
 - **THEN** the host sends the plain IR to `morphir.backend.generate`, as it is
 
+### Requirement: Plain IR size on the model line
+A plain IR file on the model line SHALL fit the model limits of the session: the host's 4 MiB decoded limit and the
+guest's smaller limit. A larger file SHALL be refused with `extension.request_limit` in a message that names the limit
+(bead: morphir-ukvn.5.64.36.26).
+
+#### Scenario: Plain IR at the host limit
+- **WHEN** a guest on the model line declares 4 MiB or more, and the user generates from a plain IR file of exactly 4 MiB
+- **THEN** the file's envelope fits the request frame and the host sends it with `morphir.backend.generateModel`
+
+#### Scenario: Plain IR over the host limit
+- **WHEN** a plain IR file for a guest on the model line has one byte more than 4 MiB
+- **THEN** the command is refused with `extension.request_limit`, the message names 4194304, and no operation is sent
+
+#### Scenario: Plain IR over a smaller guest limit
+- **WHEN** a guest declares a decoded limit below 4 MiB and the plain IR file has one byte more than that limit
+- **THEN** the request is refused with `extension.request_limit` before it is sent, and the message names the guest's
+  limit
+
 ### Requirement: Plain IR on the legacy fallback
 When a guest on the model line does not claim the tuple of a plain IR file, the legacy fallback SHALL apply when the guest
 claims the file's format version for the backend on MEP `0.1`, and the host SHALL send the document as it is. Otherwise
@@ -267,6 +285,11 @@ the command SHALL be `extension.tuple_unavailable` (bead: morphir-ukvn.5.64.36.3
 - **WHEN** a guest on both lines has no generate tuple of the file's format version and does not claim that version for
   the backend on MEP `0.1`
 - **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: Limits on the fallback
+- **WHEN** a plain IR file goes on the fallback
+- **THEN** the session has the limits of MEP `0.1`: the 4 MiB request frame and, for a WASM guest, 1,000,000,000
+  instructions for one call
 
 #### Scenario: Version check on the fallback
 - **WHEN** a plain IR file of format version `3` goes on the fallback, and the user gives `--ir-version 3` or `3.0.0`, or
@@ -317,13 +340,23 @@ holds a tuple that the host did not offer, or that does not keep the host's orde
 - **THEN** activation fails with `extension.agreement_mismatch` and sends no operation
 
 ### Requirement: Limits
-The host SHALL enforce a 4 MiB framed request, a 16 MiB response, model payloads of 2 MiB decoded and 2,796,204
-encoded bytes, and the Extism profile limits for MEP `0.1` WASM guests. It SHALL negotiate depth 128 and 100,000
-nodes, which the party that decodes a model enforces. The report SHALL state the limits that applied.
+The host SHALL enforce a 6 MiB framed request for generate on the model line and a 4 MiB framed request for compile and
+for every call of a MEP `0.1` session, a 16 MiB response, model payloads of 4 MiB decoded and 5,592,408 encoded bytes,
+and the Extism profile limits for MEP `0.1` WASM guests (bead: morphir-ukvn.5.64.36.26). It SHALL negotiate depth 128
+and 100,000 nodes, which the party that decodes a model enforces. The report SHALL state the limits that applied.
 
 #### Scenario: Request too large
 - **WHEN** a compile request encodes to more than 4 MiB
 - **THEN** the command is refused with `extension.request_limit` and no worker starts
+
+#### Scenario: MEP 0.1 frame
+- **WHEN** a session on MEP `0.1` starts on a process or a WASM runtime
+- **THEN** its request frame limit is 4 MiB, and a larger request is refused with `extension.request_limit`
+
+#### Scenario: Generate frame on the model line
+- **WHEN** a generate request with a model makes a frame of exactly 6 MiB, or of one byte more
+- **THEN** the frame of 6 MiB is accepted, and the larger frame is refused with `extension.request_limit` and no worker
+  starts
 
 #### Scenario: Declared size does not match the payload
 - **WHEN** a model payload declares a decoded length that differs from the length of its decoded content

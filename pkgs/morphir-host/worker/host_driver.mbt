@@ -342,14 +342,15 @@ pub async fn Host::probe(
   deadline~ : Deadline = Deadline::default(),
   stop~ : StopSignal = StopSignal::never(),
 ) -> Description {
-  let link = self.start(spec, deadline, stop, self.limits, None)
-  let (conversation, step) = Conversation::probe(limits=self.limits)
+  let limits = self.limits.for_probe()
+  let link = self.start(spec, deadline, stop, limits, None)
+  let (conversation, step) = Conversation::probe(limits~)
   let (_, settled) = link.drive(conversation, step)
   let ended = (ending : Ending, worker : WorkerStop) => {
     Ended(
       ending,
       report=SessionReport::new(
-        self.limits,
+        limits,
         bounds?=link.channel.bounds(),
         stop=worker,
         ending~,

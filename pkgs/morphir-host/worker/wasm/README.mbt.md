@@ -92,7 +92,7 @@ notification, and `exit` ends the instance. The host functions follow WASM-4:
 | Bound | Native worker mode | Node worker thread | Browser Web Worker |
 | --- | --- | --- | --- |
 | Memory ceiling, 256 MiB | Enforced by the engine | Enforced: the rewritten maximum | Enforced: the rewritten maximum |
-| Instruction budget, 1,000,000,000 per call | Enforced by WAMR metering | Not enforced: the js engine has no metering | Not enforced: the js engine has no metering |
+| Instruction budget per call: 2,147,483,647 on the model line, 1,000,000,000 on MEP `0.1` and for a probe | Enforced by WAMR metering | Not enforced: the js engine has no metering | Not enforced: the js engine has no metering |
 | Call deadline, 30 s Extism and 10 s bytes | Enforced: the engine interrupts the call | Enforced: the channel terminates the thread | Enforced: the channel terminates the Web Worker |
 | Session deadline and cancellation | The process group is stopped | The thread is terminated, and the host waits until it has terminated | The Web Worker is terminated, which is final at once |
 

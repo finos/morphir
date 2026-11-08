@@ -1,10 +1,10 @@
 ///|
 test "host limits default to the specified bounds" {
   let limits = @worker.Limits::host()
-  assert_eq(limits.request_bytes, 4 * 1024 * 1024)
+  assert_eq(limits.request_bytes, 6 * 1024 * 1024)
   assert_eq(limits.response_bytes, 16 * 1024 * 1024)
-  assert_eq(limits.model.decoded_bytes, 2 * 1024 * 1024)
-  assert_eq(limits.model.encoded_bytes, 2796204)
+  assert_eq(limits.model.decoded_bytes, 4 * 1024 * 1024)
+  assert_eq(limits.model.encoded_bytes, 5592408)
   assert_eq(limits.model.depth, 128)
   assert_eq(limits.model.nodes, 100000)
 }
@@ -166,9 +166,9 @@ test "session report: the host enforces the byte limits; depth and nodes are neg
   let report = @worker.SessionReport::new(@worker.Limits::host())
   json_inspect(report.to_json(), content={
     "limits": {
-      "requestBytes": 4194304,
+      "requestBytes": 6291456,
       "responseBytes": 16777216,
-      "model": { "maxEncodedBytes": 2796204, "maxDecodedBytes": 2097152 },
+      "model": { "maxEncodedBytes": 5592408, "maxDecodedBytes": 4194304 },
       "negotiated": { "maxDepth": 128, "maxNodes": 100000 },
     },
     "wireCancellation": false,

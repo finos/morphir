@@ -196,3 +196,24 @@ test "byte callback adapter: -2 for a request is a failure, not a wait" {
     "notified",
   )
 }
+
+///|
+test "call bounds: the budget follows the session limits, and the deadlines stay" {
+  let host = @worker.Limits::host()
+  let legacy = host.for_session(Legacy, Wasm(abi=None))
+  assert_eq(
+    @guest.CallBounds::for_abi(MorphirBytesV1),
+    @guest.CallBounds::new(
+      deadline_ms=10000,
+      instructions=Some(host.call_instructions),
+    ),
+  )
+  assert_eq(
+    @guest.CallBounds::for_abi(ExtismKernelV1, limits=legacy),
+    @guest.CallBounds::new(deadline_ms=30000, instructions=Some(1000000000)),
+  )
+  assert_eq(
+    @guest.CallBounds::for_abi(MorphirBytesV1, limits=legacy),
+    @guest.CallBounds::new(deadline_ms=10000, instructions=Some(1000000000)),
+  )
+}

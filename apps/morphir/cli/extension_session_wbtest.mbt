@@ -2225,6 +2225,172 @@ async test "plain IR on a guest of both lines with no way to serve it is refused
 }
 
 ///|
+/// A plain IR document of exactly `size` bytes: the padding is JSON white space.
+fn fake_plain_of_size(size : Int32) -> String {
+  let document = "{\"formatVersion\":4}"
+  document + " ".repeat(size - document.length())
+}
+
+///|
+/// The generate claims of both lines with a smaller decoded limit.
+fn fake_generate_describe_limited(decoded : Int32) -> Json {
+  let claims = fake_generate_describe(["4.0.0"])
+  guard claims is Object({ "capabilities": capabilities, .. }) &&
+    capabilities is Object({ "modelTransport": transport, .. }) &&
+    transport is Object(members) else {
+    abort("no model transport")
+  }
+  members["limits"] = {
+    "maxEncodedBytes": 5592408,
+    "maxDecodedBytes": decoded,
+    "maxDepth": 128,
+    "maxNodes": 100000,
+  }
+  claims
+}
+
+///|
+async test "plain IR limit: a file of exactly 4 MiB goes with generateModel, and one byte more is request_limit by name" {
+  let workspace = fake_workspace()
+  let guest = fake_guest(describe=fake_generate_describe(["4.0.0"]), reply=(
+    _,
+    _,
+  ) => Some(Ok(fake_artifacts())))
+  let at_limit = fake_run(
+    fake_plain_generate(workspace, fake_plain_of_size(4194304), "at-limit"),
+    guest,
+  )
+  assert_eq(at_limit.report.exit_code(), 0)
+  assert_true(at_limit.methods.contains("morphir.backend.generateModel"))
+  assert_eq(
+    fake_field(at_limit.calls[0], ["model", "payload", "decodedByteLength"]),
+    Json::number(4194304.0),
+  )
+  let over = fake_run(
+    fake_plain_generate(workspace, fake_plain_of_size(4194305), "over-limit"),
+    guest,
+  )
+  assert_eq(over.report.exit_code(), 2)
+  assert_eq(fake_error(over), "extension.request_limit")
+  assert_true(over.json.stringify().contains("the limit is 4194304"))
+  assert_eq(over.methods, ["morphir.extension.describe", "morphir.exit"])
+  assert_false(fake_exists(workspace.root + "/over-limit"))
+}
+
+///|
+async test "plain IR limit: a guest's smaller limit applies at the limit and one byte over" {
+  let workspace = fake_workspace()
+  let decoded = 3 * 1024 * 1024
+  let guest = fake_guest(describe=fake_generate_describe_limited(decoded), reply=(
+    _,
+    _,
+  ) => Some(Ok(fake_artifacts())))
+  let at_limit = fake_run(
+    fake_plain_generate(workspace, fake_plain_of_size(decoded), "guest-at"),
+    guest,
+  )
+  assert_eq(at_limit.report.exit_code(), 0, msg=fake_error(at_limit))
+  let over = fake_run(
+    fake_plain_generate(
+      workspace,
+      fake_plain_of_size(decoded + 1),
+      "guest-over",
+    ),
+    guest,
+  )
+  assert_eq(over.report.exit_code(), 2)
+  assert_eq(fake_error(over), "extension.request_limit")
+  assert_true(over.json.stringify().contains("\{decoded}"))
+  assert_false(over.methods.contains("morphir.backend.generateModel"))
+}
+
+///|
+async test "generate input: an envelope file of 4 MiB decoded is read and sent" {
+  let workspace = fake_workspace()
+  let guest = fake_guest(describe=fake_generate_describe(["4.0.0"]), reply=(
+    _,
+    _,
+  ) => Some(Ok(fake_artifacts())))
+  let document = fake_plain_of_size(4194304)
+  let wrapped = @worker.WrappedPlainIr::of(
+    @utf8.encode(document),
+    @json.parse(document),
+  )
+  let text = wrapped.envelope.stringify()
+  assert_true(text.length() > 4194304)
+  let run = fake_run(fake_plain_generate(workspace, text, "envelope"), guest)
+  assert_eq(run.report.exit_code(), 0, msg=fake_error(run))
+  assert_eq(fake_field(run.calls[0], ["model"]), wrapped.envelope)
+}
+
+///|
+async test "generate input: a file over the 6 MiB frame is request_limit by name, and no worker starts" {
+  let workspace = fake_workspace()
+  let guest = fake_guest(describe=fake_generate_describe(["4.0.0"]))
+  let run = fake_run(
+    fake_plain_generate(workspace, fake_plain_of_size(6291457), "over-frame"),
+    guest,
+  )
+  assert_eq(run.report.exit_code(), 2)
+  assert_eq(fake_error(run), "extension.request_limit")
+  assert_true(run.json.stringify().contains("6291456"))
+  assert_false(run.methods.contains("morphir.backend.generateModel"))
+}
+
+///|
+async test "generate input: a plain IR file over 4 MiB on MEP 0.1 keeps the 4 MiB frame by name" {
+  let workspace = fake_workspace()
+  let guest = fake_guest(
+    describe=fake_legacy_backend_describe(versions=["4"]),
+    reply=(_, _) => Some(Ok(fake_artifacts())),
+  )
+  // MEP 0.1 sends the parsed IR, so white space does not count: the padding here
+  // is a string, which the frame must hold.
+  let document = "{\"formatVersion\":4,\"note\":\"\{"x".repeat(4194304)}\"}"
+  let run = fake_run(
+    fake_plain_generate(workspace, document, "legacy-over"),
+    guest,
+  )
+  assert_eq(run.report.exit_code(), 2)
+  assert_eq(fake_error(run), "extension.request_limit")
+  assert_true(run.json.stringify().contains("the limit is 4194304"))
+  assert_false(run.methods.contains("morphir.backend.generate"))
+}
+
+///|
+async test "generate input: a plain IR file on the legacy fallback keeps the 4 MiB frame of MEP 0.1" {
+  let workspace = fake_workspace()
+  // Both lines, IR 3 and 4 on MEP 0.1, a tuple of IR 4.0.0 only.
+  let guest = fake_guest(describe=fake_generate_describe(["4.0.0"]), reply=(
+    _,
+    _,
+  ) => Some(Ok(fake_artifacts())))
+  // A dense file of exactly 4 MiB: within the decoded model limit, but the
+  // MEP 0.1 frame must hold it and the message.
+  let dense = (format : String) => {
+    let start = "{\"formatVersion\":\{format},\"note\":\""
+    start + "x".repeat(4194304 - start.length() - 2) + "\"}"
+  }
+  // At IR 4 the guest claims the tuple, so the file goes on the model line.
+  let model = fake_run(
+    fake_plain_generate(workspace, dense("4"), "fallback-model"),
+    guest,
+  )
+  assert_eq(model.report.exit_code(), 0, msg=fake_error(model))
+  assert_true(model.methods.contains("morphir.backend.generateModel"))
+  // At IR 3 the file falls back, and the MEP 0.1 frame refuses it by name.
+  let legacy = fake_run(
+    fake_plain_generate(workspace, dense("3"), "fallback-over"),
+    guest,
+  )
+  assert_eq(legacy.report.exit_code(), 2, msg=legacy.json.stringify())
+  assert_eq(fake_error(legacy), "extension.request_limit")
+  assert_true(legacy.json.stringify().contains("the limit is 4194304"))
+  assert_eq(legacy.methods, ["morphir.extension.describe", "morphir.exit"])
+  assert_false(fake_exists(workspace.root + "/fallback-over"))
+}
+
+///|
 /// The one host warning of a fallback in a run's JSON report.
 fn fake_fallback_warning(run : FakeRun) -> Json {
   guard fake_field(run.json, ["diagnostics"]) is Array(items) else {

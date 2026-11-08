@@ -482,8 +482,8 @@ test "model tuple negotiation: the host offers every tuple that it supports, in 
       json_tuple_ir3.to_json(),
     ],
     "limits": {
-      "maxEncodedBytes": 2796204,
-      "maxDecodedBytes": 2097152,
+      "maxEncodedBytes": 5592408,
+      "maxDecodedBytes": 4194304,
       "maxDepth": 128,
       "maxNodes": 100000,
     },
@@ -715,7 +715,7 @@ test "smaller worker limit: a model request is checked against the worker's limi
     }
     generate_request(params)
   }
-  // 1,500 bytes is below the host's 2 MiB, but above the worker's limit.
+  // 1,500 bytes is below the host's 4 MiB, but above the worker's limit.
   let (_, refused) = conversation.generate(model(1500))
   assert_eq(refused_code(refused), Some(RequestLimit))
   assert_eq(sends(refused).length(), 0)
@@ -746,7 +746,7 @@ test "request too large: a compile request over 4 MiB is refused when it is made
 test "limits: a MEP 0.1 WASM guest also has the restricted Extism profile" {
   let host = @worker.Limits::host()
   let process = @worker.WorkerRuntime::Process(platform=X86_64UnknownLinuxGnu, args=[])
-  assert_eq(host.for_session(Legacy, process), host)
+  assert_eq(host.for_session(Legacy, process).model, host.model)
   assert_eq(host.for_session(Model([ion_tuple]), Wasm(abi=None)), host)
   let profile = @worker.ExtismProfile::restricted()
   assert_eq(profile.memory_bytes, 256 * 1024 * 1024)

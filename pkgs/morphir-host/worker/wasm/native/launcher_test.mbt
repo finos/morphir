@@ -292,3 +292,93 @@ async test "build identity: the launcher stages the CLI once and removes the cop
   launcher.release()
   assert_eq(@fs.readdir(root).length(), 0)
 }
+
+///|
+/// How a session on the model line ended during its activation, when the guest
+/// runs away at the first request.
+async fn model_line_ending(
+  host : @worker.Host,
+  spec : @worker.WorkerSpec,
+) -> (@worker.Ending, @worker.SessionReport)? {
+  let tuple = @worker.ModelTuple::new(
+    GenerateModel,
+    MorphirIr,
+    MorphirJson,
+    V0_1_0Draft1,
+    V4_0_0,
+  )
+  let claims = @worker.Claims::from_describe({
+    "extension": {
+      "id": "runaway",
+      "name": "Runaway",
+      "version": "0.1.0",
+      "types": ["backend"],
+    },
+    "capabilities": {
+      "backend": { "targets": ["x"], "irVersions": ["4"], "generate": true },
+      "modelTransport": {
+        "tuples": [tuple.to_json()],
+        "limits": {
+          "maxEncodedBytes": 5592408,
+          "maxDecodedBytes": 4194304,
+          "maxDepth": 128,
+          "maxNodes": 100000,
+        },
+        "guarantees": [],
+      },
+    },
+    "protocolVersions": ["0.2.0-draft.1", "0.1"],
+  })
+  try
+    host.with_session(
+      spec,
+      expected=claims,
+      offer=Model([tuple]),
+      deadline=@worker.Deadline::of_ms(60000),
+      _ => (),
+    )
+  catch {
+    @worker.Ended(ending, report~) => Some((ending, report))
+    error => abort("not a host error: \{@debug.to_string(error)}")
+  } noraise {
+    _ => None
+  }
+}
+
+///|
+async test "runaway guest on the model line: the instruction budget stops a call of each ABI" {
+  guard cli() is Some(path) else { return }
+  with_host(path, host => {
+    for
+      spec in [
+        wasm_spec(@fixtures.runaway_guest()),
+        wasm_spec(@fixtures.extism_runaway_guest()),
+      ] {
+      guard model_line_ending(host, spec)
+        is Some((Failed(Host(code=BudgetExhausted, ..)), report)) else {
+        fail("a runaway guest did not end at its budget")
+      }
+      assert_eq(report.limits.call_instructions, 2147483647)
+    }
+  })
+}
+
+///|
+async test "runaway guest on the model line: the call deadline stops a call of each ABI" {
+  guard cli() is Some(path) else { return }
+  let call = @guest.CallBounds::new(
+    deadline_ms=300,
+    instructions=Some(2147483647),
+  )
+  with_host(path, call~, host => {
+    for
+      spec in [
+        wasm_spec(@fixtures.runaway_guest()),
+        wasm_spec(@fixtures.extism_runaway_guest()),
+      ] {
+      guard model_line_ending(host, spec) is Some((Deadline, _)) else {
+        fail("a runaway guest did not end at its call deadline")
+      }
+    }
+  })
+}

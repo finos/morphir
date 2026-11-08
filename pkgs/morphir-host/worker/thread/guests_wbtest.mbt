@@ -105,6 +105,75 @@ async fn describe_compile_generate(
 }
 
 ///|
+/// A valid plain IR file of exactly `size` bytes, generated here: a small
+/// library, and JSON white space that fills the rest.
+fn plain_ir_of_size(size : Int32) -> Bytes {
+  let ir = "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"generated\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}"
+  @utf8.encode(ir + " ".repeat(size - ir.length()))
+}
+
+///|
+/// Wraps a plain IR file of `size` bytes as the CLI does, and sends it to the
+/// guest with `generateModel`. Returns the generate result.
+async fn generate_plain_ir(
+  host : @worker.Host,
+  spec : @worker.WorkerSpec,
+  size : Int32,
+) -> Json {
+  let claims = host.probe(spec).claims
+  let bytes = plain_ir_of_size(size)
+  let wrapped = @worker.WrappedPlainIr::of(
+    bytes,
+    @json.parse(@utf8.decode(bytes[:])),
+  )
+  let generated = host.with_session(
+    spec,
+    expected=claims,
+    offer=@worker.Offer::of_model(claims, wrapped.tuple),
+    session => {
+      session.generate(
+        @worker.GenerateRequest::new(
+          generate_params(wrapped.envelope, wrapped.tuple),
+        ),
+      )
+    },
+  )
+  guard generated.class is Completed(generated) else {
+    fail("the generate did not complete: \{@debug.to_string(generated)}")
+  }
+  generated.result
+}
+
+///|
+async test "Node worker threads: a plain IR file of exactly 4 MiB generates on both guests" {
+  guard entry() is Some(path) &&
+    prerequisite("MORPHIR_PORTABLE_GUEST") is Some(portable) &&
+    prerequisite("MORPHIR_NATIVE_GUEST") is Some(native) &&
+    @node_process.host_machine() is Some(machine) else {
+    return
+  }
+  let size = 4 * 1024 * 1024
+  let wasm_generated = generate_plain_ir(
+    host(path),
+    wasm_spec(read_file(portable), abi=MorphirBytesV1),
+    size,
+  )
+  let native_generated = generate_plain_ir(
+    @worker.Host::new(@node_process.NodeProcessLauncher::new(), Node(machine)),
+    @worker.WorkerSpec::new(
+      @worker.ArtifactRef::new(
+        File(@worker.ArtifactPath::parse(native, Posix)),
+        @worker.Sha256::of(read_file(native)),
+      ),
+      Process(platform=machine.platforms()[0], args=[]),
+    ),
+    size,
+  )
+  assert_eq(wasm_generated, native_generated)
+  assert_true(wasm_generated.stringify().contains("answer"))
+}
+
+///|
 async test "Node worker threads: the portable guest returns the same envelopes as the native guest" {
   guard entry() is Some(path) &&
     prerequisite("MORPHIR_PORTABLE_GUEST") is Some(portable) &&
