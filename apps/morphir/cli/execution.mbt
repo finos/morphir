@@ -462,7 +462,7 @@ fn execution_pin_targets(pin : Json) -> Array[String] raise {
   if targets.contains("llvm") &&
     (
       targets.length() != 1 ||
-      text("compilerVersion") != "0.10.15+1e9f6672d-nightly" ||
+      text("compilerVersion") != "0.10.20+7995af196-nightly" ||
       text("platform") != "darwin" ||
       text("arch") != "arm64"
     ) {

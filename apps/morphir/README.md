@@ -905,7 +905,7 @@ Scheme comparison has finite evaluation limits and disables runtime accelerators
 It shares SDK implementations with generated code, so it does not establish
 independent SDK conformance. The tests also assert independently chosen expected
 values. LLVM scalar execution is verified separately on macOS arm64 with
-`0.10.15+1e9f6672d-nightly` and its matching LLVM core bundle. Other LLVM hosts
+`0.10.20+7995af196-nightly` and its matching LLVM core bundle. Other LLVM hosts
 are explicitly unavailable until verified. Upstream Rust evaluator coverage, full failure supervision, verification publication
 and native OpenTelemetry collector integration remain open E2 gates. Rich values
 are supported by the pricing slice described below.
@@ -1118,7 +1118,7 @@ mise run test:installed-lifecycle
 A required target fails when its capability is missing; it is never silently
 skipped. CI requires JS, Wasm GC and native C on Linux/x64 and macOS/arm64. The
 macOS job also requires LLVM debug/release using separate compiler/core archives
-pinned to `0.10.15+1e9f6672d-nightly`. `mise run setup:llvm` explicitly acquires
+pinned to `0.10.20+7995af196-nightly`. `mise run setup:llvm` explicitly acquires
 those hash-checked, versioned archives into a **new isolated directory**, bundles
 LLVM core and writes a pin. Use `MORPHIR_LLVM_HOME` and `MORPHIR_LLVM_PIN` for both
 setup and acceptance, and include `llvm` in `MORPHIR_REQUIRED_TARGETS`. This

@@ -27,9 +27,10 @@ fn target_info(target : String) -> (String, String, String) raise {
 }
 
 ///|
-/// Zig's libc headers lack what MoonBit 0.10.16's C runtime expects from the
-/// native SDKs: musl's <dirent.h> does not declare NAME_MAX, and the bundled
-/// macOS headers have no <sys/vnode.h>. The shim follows system headers.
+/// Zig's libc headers lack what the native code expects from the native SDKs:
+/// musl's <dirent.h> does not declare NAME_MAX, and the bundled macOS headers
+/// have no <sys/vnode.h> (MoonBit's C runtime) or <sys/timeb.h> (WAMR). The shims
+/// follow system headers.
 fn target_flags(triple : String) -> String {
   match triple {
     "x86_64-linux-musl" => " -include limits.h"
@@ -46,6 +47,28 @@ let vnode_shim : String =
   #|enum vtype { VNON, VREG, VDIR, VBLK, VCHR, VLNK, VSOCK, VFIFO, VBAD, VSTR, VCPLX };
   #|#endif
   #|
+
+///|
+/// WAMR's darwin platform_internal.h includes this header, but neither WAMR nor
+/// the Extism engine uses `ftime` or `struct timeb`. An empty header makes any
+/// future use fail at compile time instead of relying on a guessed declaration.
+let timeb_shim : String =
+  #|#ifndef MORPHIR_ZIG_SYS_TIMEB_H
+  #|#define MORPHIR_ZIG_SYS_TIMEB_H
+  #|#endif
+  #|
+
+///|
+/// Write the shims into the directory that the darwin wrapper's `-idirafter` names.
+async fn write_header_shims(include_directory : String) -> Unit {
+  let directory = include_directory + "/sys"
+  if !@fs.exists(directory) {
+    @fs.mkdir(directory, recursive=true)
+  }
+  for (name, content) in [("vnode.h", vnode_shim), ("timeb.h", timeb_shim)] {
+    @fs.write_file(directory + "/" + name, content)
+  }
+}
 
 ///|
 fn cc_wrapper(triple : String) -> String {
@@ -154,10 +177,7 @@ async fn execute(argv : Array[String]) -> Unit {
     @fs.write_file(root + "/zig/" + name, content)
     @fs.chmod(root + "/zig/" + name, 0o755)
   }
-  if !@fs.exists(root + "/zig/include/sys") {
-    @fs.mkdir(root + "/zig/include/sys", recursive=true)
-  }
-  @fs.write_file(root + "/zig/include/sys/vnode.h", vnode_shim)
+  write_header_shims(root + "/zig/include")
   let started = @async.now()
   let status = @process.run(
     "moon",
@@ -251,6 +271,11 @@ async fn self_test() -> Unit {
       fail("Compiler wrapper changed arguments or retained host objects")
     }
   }
+  write_header_shims(dir + "/include")
+  guard @fs.read_file(dir + "/include/sys/vnode.h").text() == vnode_shim &&
+    @fs.read_file(dir + "/include/sys/timeb.h").text() == timeb_shim else {
+    fail("Header shims are not where the darwin compiler wrapper looks")
+  }
   @fs.write_file(dir + "/ar", ar_wrapper(), permission=0o755)
   let (code, _, err) = @process.collect_output(
     dir + "/ar",
@@ -271,7 +296,7 @@ async fn self_test() -> Unit {
     _ => fail("Windows cross-builds must stay disabled")
   }
   test_note(
-    "CI Zig wrappers: targets, host-object filtering, argument quoting and Windows rejection passed",
+    "CI Zig wrappers: targets, host-object filtering, argument quoting, header shims and Windows rejection passed",
   )
 }
 

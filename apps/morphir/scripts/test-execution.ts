@@ -93,7 +93,7 @@ try {
   }
   const unverifiedPin=join(root,'unverified-pin.json');
   for(const targets of [['js'],['js','llvm']]) {
-    writeFileSync(unverifiedPin,JSON.stringify({profile:'morphir-toolchain-pin-v1',compilerVersion:'0.10.15+1e9f6672d-nightly',compilerIdentity:'a'.repeat(64),coreIdentity:'b'.repeat(64),platform:'darwin',arch:'arm64',targets}));
+    writeFileSync(unverifiedPin,JSON.stringify({profile:'morphir-toolchain-pin-v1',compilerVersion:'0.10.20+7995af196-nightly',compilerIdentity:'a'.repeat(64),coreIdentity:'b'.repeat(64),platform:'darwin',arch:'arm64',targets}));
     assert.match(run(process.execPath,[js,'verify',model,'--suite',suite,'--target','js','--toolchain-pin',unverifiedPin,'--dry-run','--json'],2).stderr,/unverified_(stable|llvm)_pin/);
   }
   // Corrupt one real driver's typed result to prove the CLI mismatch exit status.

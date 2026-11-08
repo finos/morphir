@@ -34,8 +34,8 @@ try {
     assert.throws(()=>checkedCore(join(root,'home'),stableVersion),/core_source_identity/);
   }
   delete process.env.MOON_CORE_OVERRIDE;
-  writeFileSync(join(base,'moon.mod'),'version="0.10.15+1e9f6672d-nightly"\n');
-  assert.equal(checkedCore(join(root,'home'),'0.10.15+1e9f6672d-nightly','llvm-nightly'),realpathSync(base),'the LLVM nightly carries its own core');
+  writeFileSync(join(base,'moon.mod'),'version="0.10.20+7995af196-nightly"\n');
+  assert.equal(checkedCore(join(root,'home'),'0.10.20+7995af196-nightly','llvm-nightly'),realpathSync(base),'the LLVM nightly carries its own core');
   const home=process.env.MOON_HOME;
   if(home)assert.equal(checkedCore(home,stableVersion),realpathSync(join(home,'lib/core')),'the installed toolchain core is the pinned stock core');
   console.log('Stock core version, source identity, link and override checks pass');

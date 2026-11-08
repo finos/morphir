@@ -8,7 +8,7 @@ export const coreSourceSha256='e801a28a1e362b13c58ebaf432938bccec56e1de06c8667d9
 export type CoreSelection='stable'|'llvm-nightly';
 export function checkedCore(home: string,compilerVersion: string,selection: CoreSelection='stable',check: ()=>void=()=>{}) {
   check();
-  if(selection==='llvm-nightly')assert.equal(compilerVersion,'0.10.15+1e9f6672d-nightly','execution.unverified_llvm_pin');
+  if(selection==='llvm-nightly')assert.equal(compilerVersion,'0.10.20+7995af196-nightly','execution.unverified_llvm_pin');
   // Every lane compiles with the toolchain's own core, as consumers do.
   assert.ok(!process.env.MOON_CORE_OVERRIDE?.trim(),'execution.core_override_forbidden: Unset MOON_CORE_OVERRIDE');
   const core=realpathSync(join(home,'lib/core'));
