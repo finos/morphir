@@ -127,16 +127,17 @@ Consider `extension compile main.mbt --package acme/rules --output model`:
    compiles with JSON, and one that supports only IR `3.0.0` compiles at that
    version, with no error. `--model-format` narrows the offer to the tuples of
    that format, and `--ir-version` to the tuples of that IR version. Together
-   they intersect. When no tuple remains, the CLI refuses with
-   `extension.tuple_unavailable`: at this step, with no operation session, when
-   the claims show it, and otherwise after `morphir.initialize`, when the
-   agreement is empty. The CLI does not fall back to MEP `0.1` from the model
-   line. An agreement that holds a tuple that the CLI did not offer, or that does
-   not keep the CLI's order, is refused with `extension.agreement_mismatch`.
-   Both refusals send no operation and exit with status 2. Only a frontend that
-   claims nothing but MEP `0.1` compiles on MEP `0.1`. An operation that the
-   extension does not claim is refused with `extension.capability_unavailable`
-   and exit status 2.
+   they intersect. When the claims show no tuple that remains, and the frontend
+   also claims MEP `0.1`, legacy compile and any requested IR version, the
+   command runs on MEP `0.1` with a warning ([legacy fallback](#legacy-mep-01-fallback)).
+   Otherwise the CLI refuses with `extension.tuple_unavailable`: at this step,
+   with no operation session, when the claims show it, and otherwise after
+   `morphir.initialize`, when the agreement is empty. An agreement that holds a
+   tuple that the CLI did not offer, or that does not keep the CLI's order, is
+   refused with `extension.agreement_mismatch`. Both refusals send no operation
+   and exit with status 2. A frontend that claims nothing but MEP `0.1` compiles
+   on MEP `0.1`. An operation that the extension does not claim is refused with
+   `extension.capability_unavailable` and exit status 2.
 4. **Sources.** The CLI selects the language from the claims. When the
    extension claims one language, the CLI uses it. When it claims several,
    `--language` must name one of them. Without `--language`, the command is
@@ -169,9 +170,60 @@ Consider `extension compile main.mbt --package acme/rules --output model`:
 way. A model envelope (with `envelopeVersion`) is sent on MEP `0.2.0-draft.1`
 with the envelope's tuple. For a guest on the model line, the host wraps plain
 Morphir IR JSON in a `morphir-ir` and `morphir-json` envelope at the tuple of the
-file's `formatVersion` and sends it with `morphir.backend.generateModel`. Only for
-a guest that claims nothing but MEP `0.1` is plain IR sent to
-`morphir.backend.generate`.
+file's `formatVersion` and sends it with `morphir.backend.generateModel`, when the
+guest claims that tuple. For a guest that claims nothing but MEP `0.1`, plain IR
+goes as it is to `morphir.backend.generate`, and so it does for a guest on both
+lines when the [legacy fallback](#legacy-mep-01-fallback) applies.
+
+### Legacy MEP 0.1 fallback
+
+Some releases claim both protocol lines, and serve more IR versions on MEP `0.1`
+than their model tuples name. For example, avro `0.4.0` claims
+`capabilities.backend.irVersions` `["3", "4"]`, but its generate tuple is of IR
+`4.0.0`. The command below succeeds on MEP `0.1`:
+
+```bash
+morphir extension generate ir3.json --ir-version 3 --output out --extension-pin avro.json
+```
+
+The command exits 0 and writes this warning to stderr. Stdout has only the summary:
+
+```text
+warning extension.legacy_mep_fallback: morphir-avro 0.4.0 claims no model tuple for morphir.backend.generateModel at IR 3.0.0, so this operation runs on legacy MEP 0.1 with morphir.backend.generate. Update the extension to a release that claims the IR 3.0.0 model tuple, or move to IR 4.0.0.
+```
+
+With `--json`, stdout is one `morphir/command-result` object with
+`result.protocolVersion` `"0.1"`, no `result.negotiated.tuple`, and the warning in
+`diagnostics`. The `code` `extension.legacy_mep_fallback` is stable. Its `data` has
+`extension` (`id` and `version`), `operation`, `protocolVersion`, `input`
+(`sources`, `plain-ir` or `model-envelope`), `modelIrVersions`, and, when they
+apply, `requestedIrVersion`, `irVersion` (the claimed name on MEP `0.1`) and
+`codec`. To clear the warning, use an extension release that claims the model tuple,
+or move your model to an IR version in `modelIrVersions`.
+
+The fallback applies when the guest claims both lines, no claimed model tuple
+matches the request, and its claims hold the legacy method and any requested IR
+version for that role (frontend for compile, backend for generate). A full name
+of a tuple version matches a claim of its major: `3.0.0` matches a claim of `3`,
+and the session uses `3`. A request with no IR version follows the MEP `0.1` rule:
+a frontend that claims several versions needs `--ir-version` (`extension.input_invalid`).
+MEP `0.1` writes that line's output layout: compile writes `morphir-ir.json`, not
+`model-envelope.json` and `model.json`.
+
+| Request with no matching tuple | Result |
+| --- | --- |
+| `--ir-version` and a plain IR file at a version that the role claims | MEP `0.1`, warning |
+| `--model-format json` | MEP `0.1`, warning: the line returns Morphir JSON |
+| `--model-format ion`, or `--frontend-profile` | `extension.tuple_unavailable`: MEP `0.1` cannot carry it |
+| An IR version outside the claims of the role | `extension.tuple_unavailable` |
+| A guest with no MEP `0.1` claim or no legacy method | `extension.tuple_unavailable` |
+| A `morphir-ir` and `morphir-json` envelope at a version that the backend claims | MEP `0.1`, warning: the guest receives the document of the exact payload bytes |
+| An Ion or `morphir-model` envelope | `extension.tuple_unavailable`: the host does not convert a model |
+| An envelope with another payload layout, or with `evidence` or `critical` entries | `extension.tuple_unavailable`: a plain document cannot carry them |
+| An envelope whose payload differs from its `decodedByteLength`, `sha256` or IR version | `extension.input_invalid` |
+
+The host never changes the model data for a fallback. For an envelope, the warning
+also says that its `modelId` and `revision` do not go with the document.
 
 ### Source trees and document URIs
 
@@ -294,7 +346,7 @@ sources; a larger request is refused with `extension.request_limit`.
 | `--package NAME` | compile | The package name; required |
 | `--model-format ion\|json` | compile | Narrows the offer on the model line to the tuples of that format. Without it, the CLI offers Ion and JSON tuples and uses the first tuple that the extension agrees on. MEP `0.1` compiles return Morphir JSON and refuse `ion` |
 | `--frontend-profile ID` | compile | The frontend profile option on the model line |
-| `--ir-version V` | compile, generate | Compile on the model line: narrows the offer to the tuples of that IR version. `3.0.0` selects that version. A major-only name such as `3` selects the highest version with that major that the extension claims in the matching tuples. No matching tuple is `extension.tuple_unavailable`. Compile on MEP `0.1`: one of the claimed frontend IR versions; required when the extension claims more than one. An exact claimed name comes first. A major-only name such as `4` selects the highest claimed version with that major (`4.1.0` before `4.0.0`, by number). A full name that is not claimed, such as `4.2.0` or `4.0.0` for a claim of `4`, is refused with `extension.capability_unavailable`. Generate: optional, a check of the model's IR version by the same rule: the model's version equals `V`, or `V` names only its major. For a model envelope it checks the IR version of the envelope's tuple, for example `3` or `3.0.0` for `3.0.0` |
+| `--ir-version V` | compile, generate | Compile on the model line: narrows the offer to the tuples of that IR version. `3.0.0` selects that version. A major-only name such as `3` selects the highest version with that major that the extension claims in the matching tuples. No matching tuple runs on MEP `0.1` with a warning when the [legacy fallback](#legacy-mep-01-fallback) applies, and is `extension.tuple_unavailable` otherwise. Compile on MEP `0.1`: one of the claimed frontend IR versions; required when the extension claims more than one. An exact claimed name comes first. A major-only name such as `4` selects the highest claimed version with that major (`4.1.0` before `4.0.0`, by number). A full name that is not claimed, such as `4.2.0` or `4.0.0` for a claim of `4`, is refused with `extension.capability_unavailable`. Generate: optional, a check of the model's IR version by the same rule: the model's version equals `V`, or `V` names only its major. For a model envelope it checks the IR version of the envelope's tuple, for example `3` or `3.0.0` for `3.0.0` |
 | `--target ID` | generate | One of the claimed targets; required when the extension claims more than one |
 | `--output DIR` | compile, generate | A new output directory; required |
 | `--timeout MS` | all | The deadline for the whole command, from 1 to 594000 ms; 60000 ms by default |
@@ -326,7 +378,8 @@ check: when it is not the model's `formatVersion` or its major only, the CLI
 refuses the model with `extension.ir_version_mismatch`. Both refusals exit with
 status 2.
 Generate on the model line offers and sends the model's own tuple, which the
-extension must claim (`extension.tuple_unavailable`), and refuses an
+extension must claim, or the [legacy fallback](#legacy-mep-01-fallback) decides
+(`extension.tuple_unavailable` when it does not apply), and refuses an
 `--ir-version` that differs from the model's `irVersion` with
 `extension.ir_version_mismatch`. The tuple of a plain IR file comes from its
 `formatVersion`: `3` or `"3.0.0"` gives IR `3.0.0`, and `4` or `"4.0.0"` gives IR
@@ -337,7 +390,8 @@ the exact bytes of the file. Its `modelId` is
 from the SHA-256 of those bytes, so the same file gives the same envelope. The
 model byte limits apply on this line, so a plain IR file of more than 2 MiB is
 refused with `extension.request_limit`, as a model envelope is. A guest on the
-model line never receives plain IR on MEP `0.1`.
+model line receives plain IR on MEP `0.1` only by the
+[legacy fallback](#legacy-mep-01-fallback).
 Generate writes the returned artifacts at their relative paths; an absolute,
 traversing or repeated path, or a path that is also a directory, is refused with
 `extension.result_invalid`. Paths are compared by a key that is

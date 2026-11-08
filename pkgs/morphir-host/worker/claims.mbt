@@ -275,17 +275,16 @@ pub fn Claims::offers(self : Claims, operation : Operation) -> Bool {
 }
 
 ///|
-/// Whether this extension works on the model line. A guest that claims MEP
-/// 0.2.0-draft.1 does, also when it claims MEP 0.1; only a guest that claims
-/// nothing but the legacy line works on MEP 0.1. The line follows from the
-/// claims and never from the requested IR version or the input's format, so a
-/// guest with no matching tuple is refused and does not fall back (SES-3).
+/// Whether this extension prefers the model line. A guest that claims MEP
+/// 0.2.0-draft.1 does, also when it claims MEP 0.1; a guest that claims nothing
+/// but the legacy line works on MEP 0.1. `LineChoice` and `GenerateChoice` choose
+/// the line of a request from this and from the tuples (SES-3, SES-9).
 pub fn Claims::on_model_line(self : Claims) -> Bool {
   self.protocol_lines.contains(Mep0_2Draft1)
 }
 
 ///|
-/// The operation that compiles with this extension, by its line.
+/// The operation that compiles with this extension on its preferred line.
 pub fn Claims::compile_operation(self : Claims) -> Operation {
   if self.on_model_line() {
     CompileModel

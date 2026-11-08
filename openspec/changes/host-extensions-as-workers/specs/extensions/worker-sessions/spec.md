@@ -102,7 +102,7 @@ agreement, which is `extension.tuple_unavailable`.
 
 #### Scenario: Required tuple not supported
 - **WHEN** the user gives `--model-format json`, so the host offers only `morphir-ir` with `morphir-json`, at IR
-  `4.0.0` and `3.0.0`, and the worker supports only Ion
+  `4.0.0` and `3.0.0`, and the worker supports only Ion and claims no legacy compile
 - **THEN** the session is refused with `extension.tuple_unavailable` and no operation is sent
 
 ### Requirement: Required IR version
@@ -127,12 +127,13 @@ that the extension claims. A requirement of IR version and a requirement of form
 - **THEN** the command is refused with `extension.tuple_unavailable`, because no tuple meets both requirements
 
 ### Requirement: No tuple at the required IR version
-When the claims show no tuple that meets the requirements, the host SHALL refuse with `extension.tuple_unavailable`
-before an operation session starts. When the claims show one but the live worker agrees on none, the host SHALL refuse
+When the claims show no tuple that meets the requirements and the legacy fallback does not apply, the host SHALL refuse
+with `extension.tuple_unavailable` before an operation session starts. When the claims show one but the live worker agrees on none, the host SHALL refuse
 with `extension.tuple_unavailable` after negotiation and SHALL send no operation (bead: morphir-ukvn.5.64.36.23).
 
 #### Scenario: No tuple at the selected IR version in the claims
-- **WHEN** the user gives `--ir-version 3` and the worker claims tuples of IR `4.0.0` only
+- **WHEN** the user gives `--ir-version 3`, the worker claims tuples of IR `4.0.0` only, and it does not claim IR `3` on
+  MEP `0.1` for the role of the operation
 - **THEN** the command is refused with `extension.tuple_unavailable` and starts no operation session
 
 #### Scenario: No agreement at the selected IR version
@@ -155,30 +156,86 @@ without being sent.
 - **THEN** the command fails with `extension.result_invalid` and publishes nothing
 
 ### Requirement: Compile protocol line
-A guest that claims MEP `0.2.0-draft.1` SHALL compile on the model line, also when it claims MEP `0.1` too. Only a
-guest that claims MEP `0.1` and no other offered line SHALL compile on MEP `0.1`. The host SHALL NOT choose MEP `0.1`
-because no tuple matches a requirement, because that hides from the user that the requested combination is not
-available (bead: morphir-ukvn.5.64.36.23).
+A guest that claims MEP `0.2.0-draft.1` SHALL compile on the model line when a claimed tuple matches the request, also
+when it claims MEP `0.1` too. Only a guest that claims MEP `0.1` and no other offered line, or a guest that the legacy
+fallback applies to, SHALL compile on MEP `0.1` (bead: morphir-ukvn.5.64.36.23, morphir-ukvn.5.64.36.31).
 
-#### Scenario: Guest on both lines with no matching tuple
-- **WHEN** a guest claims both lines and legacy compile, has no model tuple for the requested IR version, and the
-  user gives `--ir-version 3`
-- **THEN** the command is refused with `extension.tuple_unavailable`, and no MEP `0.1` session starts
-
-#### Scenario: Guest on both lines with no compile tuple
-- **WHEN** a guest claims both lines and legacy compile, and its model tuples are only for `generateModel`
-- **THEN** the command is refused with `extension.tuple_unavailable`, and no MEP `0.1` session starts
+#### Scenario: Guest on both lines with a matching tuple
+- **WHEN** a guest claims both lines and legacy compile, has a model tuple of IR `3.0.0`, and the user gives
+  `--ir-version 3`
+- **THEN** the command compiles on the model line with no fallback warning
 
 #### Scenario: Guest on the legacy line only
 - **WHEN** a guest claims only MEP `0.1`, also with a model transport in its claims
 - **THEN** it compiles with `morphir.frontend.compile` on MEP `0.1`, and `--ir-version` selects from its claimed
   frontend IR versions
 
+### Requirement: Legacy fallback
+When a guest claims both MEP `0.2.0-draft.1` and MEP `0.1`, no claimed model tuple matches the request, and the claims
+show that the guest serves the request on MEP `0.1`, the host SHALL run the operation on MEP `0.1`. The claims show this
+when they hold the legacy method and, for a requested IR version, that version for the role of the method. The decision
+SHALL be shared code of the host package, so that every host makes the same choice from the same claims
+(bead: morphir-ukvn.5.64.36.31).
+
+#### Scenario: Frontend at an IR version with no tuple
+- **WHEN** a guest claims both lines, legacy compile and frontend `irVersions` `3` and `4`, has compile tuples of IR
+  `4.0.0` only, and the user gives `--ir-version 3`
+- **THEN** the host starts a MEP `0.1` session with no `modelTransport`, sends `morphir.frontend.compile` with
+  `options.irVersion` `3`, and the command succeeds with the fallback warning
+
+#### Scenario: Full name of a tuple version
+- **WHEN** the same guest compiles with `--ir-version 3.0.0`
+- **THEN** the host sends the claimed name `3`, and the session is the same as for `--ir-version 3`
+
+#### Scenario: JSON requirement
+- **WHEN** the same guest compiles with `--ir-version 3` and `--model-format json`
+- **THEN** the command succeeds on MEP `0.1` with the fallback warning, because that line returns Morphir JSON
+
+#### Scenario: Requirement that MEP 0.1 cannot carry
+- **WHEN** the same guest compiles with `--ir-version 3` and `--model-format ion`, or with `--ir-version 3` and
+  `--frontend-profile`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: IR version outside the claims
+- **WHEN** the same guest compiles with `--ir-version 5` or `--ir-version 3.1.0`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: Guest with no claim on MEP 0.1
+- **WHEN** a guest claims only MEP `0.2.0-draft.1` and has no tuple for the requested IR version
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: Guest with no legacy method
+- **WHEN** a guest claims both lines and IR `4.0.0` only, like the MoonBit guest, and the user gives `--ir-version 3`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: Guest with a claimed tuple
+- **WHEN** the Python extension `0.5.0` or `0.6.0`, which claims the tuples of IR `3.0.0`, compiles or generates at IR 3
+- **THEN** the operation runs on the model line with no fallback warning
+
+### Requirement: Legacy fallback warning
+A fallback SHALL give one diagnostic of severity `warning` with the stable code `extension.legacy_mep_fallback`. It
+SHALL name the extension, its version, the requested IR version, MEP `0.1`, and the next step: update the extension, or
+move to an IR version of a claimed tuple. It SHALL go to stderr and to the `diagnostics` of a JSON report, and SHALL NOT go
+to the guest (bead: morphir-ukvn.5.64.36.31).
+
+#### Scenario: JSON report
+- **WHEN** a fallback operation succeeds with `--json`
+- **THEN** stdout is one `morphir/command-result` object with `state` `succeeded`, `result.protocolVersion` `0.1`, and
+  the warning in `diagnostics`
+
+#### Scenario: Default output
+- **WHEN** a fallback operation succeeds without `--json`
+- **THEN** stderr has the warning, stdout has only the summary, and the exit status is 0
+
+#### Scenario: Guest with no tuple to move to
+- **WHEN** a guest claims no model tuple for the operation
+- **THEN** the warning names the update, and no IR version to move to
+
 ### Requirement: Plain IR on the model line
 For a guest on the model line, shared code of the host package SHALL wrap plain Morphir IR JSON in a `morphir-ir` and
 `morphir-json` envelope around the exact bytes, with a model ID and a revision from their SHA-256, and the host SHALL
-send it with `morphir.backend.generateModel` at the tuple of its `formatVersion`. No matching tuple SHALL be
-`extension.tuple_unavailable` (bead: morphir-ukvn.5.64.36.23).
+send it with `morphir.backend.generateModel` at the tuple of its `formatVersion`, when the guest claims that tuple
+(bead: morphir-ukvn.5.64.36.23).
 
 #### Scenario: Plain IR at each format version
 - **WHEN** a guest on both lines claims the JSON generate tuples of IR `3.0.0` and `4.0.0`, and the user generates from
@@ -191,13 +248,55 @@ send it with `morphir.backend.generateModel` at the tuple of its `formatVersion`
 - **THEN** the envelopes are equal, with `modelId` `urn:morphir:plain-ir:sha256:<digest>` and `revision`
   `sha256:<digest>`, and other bytes give another revision
 
-#### Scenario: Plain IR with no matching tuple
-- **WHEN** a guest on both lines claims legacy generate and no generate tuple of the file's format version
-- **THEN** the command is refused with `extension.tuple_unavailable`, and no MEP `0.1` session starts
-
 #### Scenario: Plain IR on the legacy line
 - **WHEN** a guest claims only MEP `0.1`
 - **THEN** the host sends the plain IR to `morphir.backend.generate`, as it is
+
+### Requirement: Plain IR on the legacy fallback
+When a guest on the model line does not claim the tuple of a plain IR file, the legacy fallback SHALL apply when the guest
+claims the file's format version for the backend on MEP `0.1`, and the host SHALL send the document as it is. Otherwise
+the command SHALL be `extension.tuple_unavailable` (bead: morphir-ukvn.5.64.36.31).
+
+#### Scenario: Plain IR on the fallback
+- **WHEN** a guest on both lines claims legacy generate and backend `irVersions` `3` and `4`, its generate tuples are of
+  IR `4.0.0` only, and the user generates from a plain IR file whose `formatVersion` is `3`
+- **THEN** the host sends the document as it is with `morphir.backend.generate`, and the command succeeds with the
+  fallback warning
+
+#### Scenario: Plain IR with no line to serve it
+- **WHEN** a guest on both lines has no generate tuple of the file's format version and does not claim that version for
+  the backend on MEP `0.1`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: Version check on the fallback
+- **WHEN** a plain IR file of format version `3` goes on the fallback, and the user gives `--ir-version 3` or `3.0.0`, or
+  `--ir-version 4`
+- **THEN** the first two commands succeed, and the third is refused with `extension.ir_version_mismatch`
+
+### Requirement: Model envelope on the fallback
+When a guest on both lines does not claim a model envelope's tuple, and the legacy fallback applies to the envelope's IR
+version, a `morphir-ir` and `morphir-json` envelope SHALL go on MEP `0.1` as the plain document of its exact payload
+bytes, with the fallback warning, which SHALL say that its `modelId` and `revision` stay behind. The host SHALL NOT
+convert a model for this path (bead: morphir-ukvn.5.64.36.31).
+
+#### Scenario: JSON envelope
+- **WHEN** a guest on both lines claims backend IR `3` on MEP `0.1` and no generate tuple of IR `3.0.0`, and the user
+  generates from an IR `3.0.0` `morphir-ir` envelope
+- **THEN** the guest receives the same document as from the plain file, with `morphir.backend.generate`, and the command
+  succeeds with the fallback warning
+
+#### Scenario: Ion envelope
+- **WHEN** the same guest receives a `morphir-model` envelope with `ion-binary`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: Envelope content that a plain document cannot carry
+- **WHEN** the envelope's payload is not one document, or it has entries in `evidence` or `critical`
+- **THEN** the command is refused with `extension.tuple_unavailable`, and no operation session starts
+
+#### Scenario: Payload that does not match its declarations
+- **WHEN** the payload differs from its `decodedByteLength` or `sha256`, is not a bounded JSON document, or has another
+  `formatVersion` than the envelope's IR version
+- **THEN** the command is refused with `extension.input_invalid`, and no operation session starts
 
 ### Requirement: Agreement follows the offer
 The worker SHALL return the intersection of its own support with the offer, in the host's order. An answer that

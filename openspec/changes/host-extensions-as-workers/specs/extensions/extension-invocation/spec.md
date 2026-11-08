@@ -57,6 +57,12 @@ options and meanings, and SHALL derive the protocol line from the guest's descri
 - **THEN** the CLI passes the file to the host's shared code and sends `morphir.backend.generateModel` with the tuple of
   that IR version
 
+#### Scenario: Plain IR with a release that has no IR 3 tuple
+- **WHEN** a user generates from a plain IR file of IR 3 with avro `0.4.0`, which claims both lines and IR `3` on MEP
+  `0.1` but tuples of IR `4.0.0` only
+- **THEN** the CLI sends `morphir.backend.generate` on MEP `0.1` and reports the warning
+  `extension.legacy_mep_fallback`
+
 #### Scenario: Model generate of an IR 3 envelope
 - **WHEN** a user generates from a model envelope of IR `3.0.0` with `--ir-version 3` through a guest that claims its
   tuple

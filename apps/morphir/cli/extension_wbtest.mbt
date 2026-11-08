@@ -709,16 +709,15 @@ async test "a symbolic link in the sources is refused with its relative path" {
 test "an operation that the extension does not claim is refused before any call" {
   let claims = @worker.Claims::from_describe(extension_test_claims())
   let refusal = try {
-    ignore(extension_generate_offer(claims, None))
+    ignore(@worker.GenerateChoice::of_plain_ir(claims, b"{}", {}))
     None
   } catch {
-    ExtensionError(status~, code~, ..) =>
-      Some((status.exit_code(), code.name()))
+    Refusal(code~, ..) => Some(code.to_string())
   }
-  assert_eq(refusal, Some((2, "extension.capability_unavailable")))
+  assert_eq(refusal, Some("extension.capability_unavailable"))
   // A frontend with model tuples compiles on the model line; one without
   // compiles on MEP 0.1.
-  assert_eq(extension_compile_offer(claims, None, None), Legacy)
+  assert_eq(extension_compile_offer(claims, None, None).offer, Legacy)
   let model = @worker.Claims::from_describe(
     extension_test_claims(
       frontend={
@@ -733,7 +732,7 @@ test "an operation that the extension does not claim is refused before any call"
   )
   // Without a flag the host offers all of its tuples, IR 4.0.0 first and Ion
   // first in each version, though the extension declares JSON first.
-  guard extension_compile_offer(model, None, None) is Model(tuples) else {
+  guard extension_compile_offer(model, None, None).offer is Model(tuples) else {
     fail("no model offer")
   }
   assert_eq(tuples.map(tuple => (tuple.ir_version, tuple.codec)), [
@@ -743,14 +742,16 @@ test "an operation that the extension does not claim is refused before any call"
     (V3_0_0, MorphirJson),
   ])
   // --model-format narrows the offer to the tuples of that format.
-  guard extension_compile_offer(model, Some(MorphirJson), None) is Model(tuples) else {
+  guard extension_compile_offer(model, Some(MorphirJson), None).offer
+    is Model(tuples) else {
     fail("no model offer")
   }
   assert_eq(tuples.map(tuple => (tuple.profile, tuple.ir_version)), [
     (MorphirIr, V4_0_0),
     (MorphirIr, V3_0_0),
   ])
-  guard extension_compile_offer(model, Some(IonBinary), None) is Model(tuples) else {
+  guard extension_compile_offer(model, Some(IonBinary), None).offer
+    is Model(tuples) else {
     fail("no model offer")
   }
   assert_eq(tuples.map(tuple => (tuple.profile, tuple.ir_version)), [
@@ -759,19 +760,20 @@ test "an operation that the extension does not claim is refused before any call"
   ])
   // --ir-version narrows it to that version, and the flags intersect.
   let ir4 = Some(@worker.IrVersionName::parse("4"))
-  guard extension_compile_offer(model, None, ir4) is Model(tuples) else {
+  guard extension_compile_offer(model, None, ir4).offer is Model(tuples) else {
     fail("no model offer")
   }
   assert_eq(tuples.map(tuple => tuple.codec), [IonBinary, MorphirJson])
   assert_true(tuples.iter().all(tuple => tuple.ir_version is V4_0_0))
-  guard extension_compile_offer(model, Some(MorphirJson), ir4) is Model(tuples) else {
+  guard extension_compile_offer(model, Some(MorphirJson), ir4).offer
+    is Model(tuples) else {
     fail("no model offer")
   }
   assert_eq(tuples.map(tuple => (tuple.codec, tuple.ir_version)), [
     (MorphirJson, V4_0_0),
   ])
-  // This extension claims IR 4.0.0 only: IR 3 is not available, and a guest on
-  // the model line does not fall back to MEP 0.1.
+  // This extension claims IR 4.0.0 only, and no legacy compile: no line serves
+  // IR 3.
   let refusal = try {
     ignore(
       extension_compile_offer(

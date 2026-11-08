@@ -1,6 +1,7 @@
 import {
   "finos/morphir-engine/ids",
   "finos/morphir-host/identity",
+  "finos/morphir-ir/wire" @model_wire,
   "moonbitlang/async",
   "moonbitlang/async/aqueue",
   "moonbitlang/core/cmp",
@@ -8,6 +9,7 @@ import {
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
   "moonrockz/moon-lander-hosting" @hosting,
 }
 

@@ -66,7 +66,8 @@ pub fn Offer::default_tuple(self : Offer) -> ModelTuple? {
 ///|
 /// Refuses an operation that the claims do not serve on its protocol line. A
 /// guest that claims both lines and the legacy method, but no tuple for the
-/// model method, is `TupleUnavailable`, because the host does not fall back.
+/// model method, is `TupleUnavailable`: no tuple serves it on this line, and
+/// `LineChoice` decides whether MEP 0.1 does.
 fn check_operation(
   claims : Claims,
   operation : Operation,
@@ -136,7 +137,8 @@ pub fn ModelOperation::host_tuples(self : ModelOperation) -> Array[ModelTuple] {
 /// matching tuples that the extension claims. It raises `Refusal` when the
 /// claims cannot serve the operation, or claim none of the tuples that it
 /// would offer. A guest that claims MEP 0.1 and 0.2.0-draft.1 but no tuple for
-/// a model method is `TupleUnavailable`: the host does not fall back to MEP 0.1.
+/// a model method is `TupleUnavailable`. This makes the offer of one line:
+/// `LineChoice::compile` also decides whether MEP 0.1 serves such a request.
 pub fn Offer::select(
   claims : Claims,
   operation : Operation,

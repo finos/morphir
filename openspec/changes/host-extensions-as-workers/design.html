@@ -344,8 +344,9 @@ entry.</li>
 <li><strong>Activation.</strong> <code>activate</code> takes the stored artifact, its recorded runtime, the
 recorded claims and an <code>Offer</code>. <code>initialize</code> must carry the protocol offer and, for model
 methods, the offered tuples in the host's order, so the caller chooses the offer before the worker starts.
-<code>Offer::select</code> derives it from the claims and the requested operation, so the CLI and acquisition share
-one selection rule. The session uses the first tuple that the worker agrees on (<a href="#ses-3">SES-3</a>). A
+<code>LineChoice</code> and <code>GenerateChoice</code> derive it from the claims and the request, so the CLI and
+acquisition share one selection rule (<a href="#ses-4">SES-4</a>). The session uses the first tuple that the worker
+agrees on (<a href="#ses-3">SES-3</a>). A
 <code>StopSignal</code> wraps a Moon-Lander stop token; a stop interrupts a pending receive. Acquisition rehashes the stored artifact first (its own requirement); the host hashes the bytes
 it copies again, so the check covers the bytes that run.</li>
 <li><strong>Calls.</strong> <code>compile</code> and <code>generate</code> pick the method from the protocol line
@@ -372,7 +373,8 @@ repository's rules ask for a functional core.</p>
 <code>0.1</code> for legacy compile and generate, which the Elm and Python guests use, and
 <code>0.2.0-draft.1</code> for model methods, which the MoonBit guest and the Python guest from <code>0.5.0</code> use.
 The CLI picks the operation from the guest's describe answer, so a user does not choose a protocol. A guest that claims
-both lines compiles on the model line; see the amendment of <a href="#ses-3">SES-3</a>.</p>
+both lines works on the model line when a claimed tuple matches the request, and on MEP <code>0.1</code> with a warning
+when none does and its claims serve the request there (<a href="#ses-4">SES-4</a>).</p>
 <p><em>Alternative.</em> Separate session types per line. They would duplicate lifecycle and response checks, which
 are identical.</p>
 
@@ -424,8 +426,9 @@ final request from the negotiated tuple.</p>
 text says the host then "offers only that tuple", because every tuple had the same IR version when it was written. A
 worker can still refuse by an empty agreement, so the rule keeps its meaning, but the wording needs a follow-up in
 finos/morphir.</p>
-<p>The MEP <code>0.1</code> path stays only for guests that claim nothing but that line. A guest that claims both lines
-compiles on the model line. When it has no tuple for the request, the host reports
+<p><em>The rest of this paragraph and the fall back in the next one were replaced on 2026-11-02 by
+<a href="#ses-4">SES-4</a>; they stay as the record of the first decision.</em> The MEP <code>0.1</code> path stays only
+for guests that claim nothing but that line. A guest that claims both lines compiles on the model line. When it has no tuple for the request, the host reports
 <code>extension.tuple_unavailable</code>. It does not start a MEP <code>0.1</code> session, even though the guest claims
 legacy compile. A silent fall back would give the user a model of another line and another output layout, without any
 sign, from a command that asked for one exact thing. It would also tie the protocol line to an IR version, which the
@@ -442,14 +445,92 @@ envelope from one file, and a host only passes the input. A plain IR file theref
 are smaller than the MEP <code>0.1</code> request limit. The file's <code>formatVersion</code> decides the tuple, so
 <code>--ir-version</code> stays a check of it, as for an envelope, and a difference is
 <code>extension.ir_version_mismatch</code>.</p>
-<p><em>Alternatives.</em> (a) Fall back to MEP <code>0.1</code> for IR 3: rejected by the decision above. (b) Offer only
+<p><em>Alternatives.</em> (a) Fall back to MEP <code>0.1</code> for IR 3: rejected by the decision above, then taken
+with a warning by <a href="#ses-4">SES-4</a>. (b) Offer only
 the tuples that the claims hold: it hides the host's preference, which is the reason for this decision. (c) Fill
 <code>options.irVersion</code> inside the session: the context digest covers the options, and the digest belongs to the
 CLI, so the CLI builds the request from the tuple. The session still refuses a request whose
 <code>options.irVersion</code> differs from the tuple, as the kit's case <code>model-0031</code> requires of a peer.
 (d) For generate, let the input select the method, so plain IR stays on MEP <code>0.1</code> for a guest that claims it:
-rejected, because it keeps a second line for guests on the model line. (e) Refuse plain IR for a guest on the model
+rejected, because it keeps a second line for guests on the model line; <a href="#ses-4">SES-4</a> keeps that line only
+when no claimed tuple matches. (e) Refuse plain IR for a guest on the model
 line: rejected, because it removes a documented input.</p>
+
+<h3 id="ses-4">SES-4. A guest on both lines falls back to MEP 0.1, with a warning, when no tuple matches and its claims serve the request</h3>
+<p><em>Decided by Damian Reeves, 2026-11-02 (bead <code>morphir-ukvn.5.64.36.31</code>). This replaces the "no fall back"
+rule of <a href="#ses-3">SES-3</a>.</em> In his words: "I don't think refuse in the correct option when we can support
+it, though we probably want a diagnostic warning guiding towards using the updated protocol."</p>
+<p>The first rule refused too much. The releases avro <code>0.4.0</code> and openapi <code>0.5.0</code> claim
+<code>capabilities.backend.irVersions</code> <code>["3", "4"]</code> and both protocol lines, but their model tuples are
+IR <code>4.0.0</code> only. Rust <code>0.4.0</code> claims the same for its frontend. A user who generated from an IR 3
+file with an earlier release of these extensions got <code>extension.tuple_unavailable</code> from the new one, although
+the guest still serves that file on MEP <code>0.1</code>. The first rule had one good reason: a <em>silent</em> fall back
+hides from the user that the command ran on another line. A warning removes that objection, and it tells the user what
+to do. The output layout of MEP <code>0.1</code> stays visible in the report.</p>
+<p>For example, take this command with avro <code>0.4.0</code>, a plain IR file of <code>"formatVersion": 3</code>:</p>
+<pre><code class="language-bash">morphir extension generate ir3.json --ir-version 3 --output out --extension-pin avro.json</code></pre>
+<p>The host finds no generate tuple of IR <code>3.0.0</code> in the claims. The guest claims MEP <code>0.1</code>, legacy
+generate and IR <code>3</code> for the backend, so the host starts a MEP <code>0.1</code> session and sends the document
+as it is with <code>morphir.backend.generate</code>. The command exits 0, and stderr has this line:</p>
+<pre><code>warning extension.legacy_mep_fallback: morphir-avro 0.4.0 claims no model tuple for morphir.backend.generateModel at IR 3.0.0, so this operation runs on legacy MEP 0.1 with morphir.backend.generate. Update the extension to a release that claims the IR 3.0.0 model tuple, or move to IR 4.0.0.</code></pre>
+<p>With <code>--json</code>, stdout is one <code>morphir/command-result</code> object with
+<code>state: "succeeded"</code>, <code>result.protocolVersion: "0.1"</code> and the same warning in
+<code>diagnostics</code>. Its <code>data</code> member holds the facts for a program: the extension, the method, the
+requested IR version, the claimed name on MEP <code>0.1</code>, the input and the IR versions of the claimed tuples. The
+next step comes from the claims, so the warning names IR <code>4.0.0</code> only when the guest has a tuple of it.</p>
+<p>The decision is one set of pure functions in <code>pkgs/morphir-host/worker/line_choice.mbt</code>:
+<code>LineChoice::compile</code>, <code>GenerateChoice::of_plain_ir</code> and <code>GenerateChoice::of_envelope</code>.
+They read only the claims and the request, so the native, Node and browser hosts make the same choice, and a host only
+passes the input. The plain IR path uses the same decision: <code>of_plain_ir</code> wraps the file with
+<code>WrappedPlainIr</code> when the guest claims the tuple, and sends it as it is when the fall back applies. The table
+gives the result for a guest on both lines. A guest that claims only one line has no choice to make.</p>
+<table>
+<thead><tr><th>Request</th><th>Claims</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Any</td><td>A claimed tuple matches</td><td>Model line, no warning. Python <code>0.5.0</code> and
+<code>0.6.0</code> at IR 3 stay here.</td></tr>
+<tr><td><code>compile</code>, or plain IR on <code>generate</code>, at an IR version</td><td>No tuple; MEP <code>0.1</code>,
+the legacy method and that IR version for the role</td><td>MEP <code>0.1</code>, warning</td></tr>
+<tr><td><code>compile</code> with <code>--model-format json</code></td><td>No JSON tuple; legacy compile</td><td>MEP
+<code>0.1</code>, warning: that line returns Morphir JSON</td></tr>
+<tr><td><code>compile</code> with <code>--model-format ion</code> or <code>--frontend-profile</code></td><td>No tuple</td>
+<td><code>extension.tuple_unavailable</code>: MEP <code>0.1</code> cannot carry it</td></tr>
+<tr><td>An IR version that the claims do not include</td><td>No tuple and no claim for the role</td>
+<td><code>extension.tuple_unavailable</code>. The MoonBit guest at IR 3 is this row.</td></tr>
+<tr><td>Any model request</td><td>No tuple, no MEP <code>0.1</code> claim or no legacy method</td>
+<td><code>extension.tuple_unavailable</code></td></tr>
+</tbody>
+</table>
+<p>A full IR name of a tuple version matches a claim of its major. <code>--ir-version 3.0.0</code> with a claim of
+<code>3</code> falls back, and sends the claimed name <code>3</code>, because an integer format version <code>3</code>
+denotes exactly <code>3.0.0</code> (<code>IrVersion::of_format_version</code>). On the model line <code>3</code> and
+<code>3.0.0</code> make the same request, so the two names must not split on this line. <code>3.1.0</code> names no tuple
+version, so a claim of <code>3</code> does not serve it. A guest that claims only MEP <code>0.1</code> keeps its exact
+rule, because no behavior of that path changes here.</p>
+<p><em>The envelope input.</em> A model envelope already has a tuple, and MEP <code>0.1</code> carries plain IR, so here
+the host must decide about the data. A <code>morphir-ir</code> and <code>morphir-json</code> envelope holds exact bytes of
+a plain IR document, the same form that <code>WrappedPlainIr</code> makes. The host therefore checks the payload against
+its declared length and digest, parses it under the same bounds as a file, checks that its <code>formatVersion</code> is
+the envelope's IR version, and sends that document with a warning that says the <code>modelId</code> and
+<code>revision</code> stay behind. The model data does not change: the guest receives the document that the same plain
+file gives it. A payload that does not match its declarations is <code>extension.input_invalid</code>.</p>
+<p>Everything else stays <code>extension.tuple_unavailable</code>. An Ion or <code>morphir-model</code> envelope has no
+plain form without a conversion, and this decision adds no conversion; SEL-4 of
+<code>run-core-wasm-guests-from-any-language</code> owns that, with its loss rules. An envelope with another payload
+layout, or with entries in <code>evidence</code> or <code>critical</code>, holds content that a plain document cannot
+carry, so sending its payload would silently drop it.</p>
+<p>The MEP wire does not change. A fall back is an ordinary MEP <code>0.1</code> session: <code>initialize</code> offers
+only that line with no <code>modelTransport</code>, and the legacy method carries its legacy parameters. The warning is
+a host diagnostic in the command's report and never goes to the guest. A worker that claims a tuple and then agrees on
+none is still refused after negotiation, because the claims were wrong and the host cannot trust them for another line.
+Extension releases that claim IR <code>3.0.0</code> tuples stay useful, because they end the warning; the follow-up stays
+open on bead <code>morphir-ukvn.5.64.36.31</code>.</p>
+<p><em>Alternatives.</em> (a) Keep the refusal and wait for new extension releases: rejected by the decision, because
+the guest can serve the request today. (b) Fall back with no warning: rejected, because the user would not know that the
+command ran on the legacy line or how to leave it. (c) Refuse every envelope: simple, but it refuses a model whose plain
+file succeeds. (d) Put the decision in the CLI: rejected, because shared behavior belongs in host code, as for
+<code>WrappedPlainIr</code>. (e) Add a command-line option to allow the fall back: rejected, because the warning already
+reports it and a user would have to learn the option only to get what the guest can do.</p>
 
 <h3 id="chan-1">CHAN-1. A channel carries whole messages; framing belongs to the stdio transport</h3>
 <p>The channel API is <code>send</code>, <code>receive</code>, <code>close</code> and <code>abort</code>, like

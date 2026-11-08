@@ -208,16 +208,16 @@ async fn describe_compile_generate(
   let started = @async.now()
   let claims = host.probe(spec).claims
   let probe_ms = @async.now() - started
+  // The line comes from the same shared decision as on every other host.
   let compile_offer = if model {
-    @worker.Offer::select(
+    @worker.LineChoice::compile(
       claims,
-      CompileModel,
       profile=MorphirModel,
       codec=IonBinary,
       ir_version=@worker.IrVersionName::parse("4.0.0"),
-    )
+    ).offer
   } else {
-    @worker.Offer::select(claims, Compile)
+    @worker.LineChoice::compile(claims).offer
   }
   let compile_request = match compile_offer {
     Model([tuple]) => moonbit_compile(tuple)

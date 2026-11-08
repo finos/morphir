@@ -96,12 +96,14 @@ A session must be closed: until then its worker runs. Use `with_session`
 unless you need the session outside one function. The function can close the
 session itself to read its report; a second close returns the same report.
 
-`Offer::select(claims, operation, profile?, codec?, ir_version?)` makes what
-activation offers from the probed claims: MEP `0.1` for the legacy `compile` and
+`LineChoice::compile`, `GenerateChoice::of_plain_ir` and
+`GenerateChoice::of_envelope` choose the line of a request; see "The line of a
+request" below. `Offer::select(claims, operation, profile?, codec?, ir_version?)`
+makes the offer of one line from the probed claims: MEP `0.1` for the legacy `compile` and
 `generate` methods, or MEP `0.2.0-draft.1` for `compileModel` and
-`generateModel`. `Claims::compile_operation` gives the compile method: the model
-method for a guest that claims MEP `0.2.0-draft.1`, and legacy `compile` only for
-a guest that claims nothing but MEP `0.1`. On the model line the host offers
+`generateModel`. `Claims::compile_operation` gives the compile method on the guest's preferred line:
+the model method for a guest that claims MEP `0.2.0-draft.1`, and legacy `compile`
+for a guest that claims nothing but MEP `0.1`. On the model line the host offers
 every tuple that it supports for the operation
 (`ModelOperation::host_tuples`), in its order of preference: IR `4.0.0`, then IR
 `3.0.0`, each with `morphir-model` and `ion-binary`, then with `morphir-ir` and
@@ -112,7 +114,7 @@ one version exactly, or a major version, which selects the highest version of
 that major in the matching tuples that the extension claims. `select` raises
 `Refusal` when the claims cannot serve the operation or claim none of the tuples
 that it would offer. A guest that claims both protocol lines but no tuple for a
-model method is `TupleUnavailable`: the host does not fall back to MEP `0.1`.
+model method is `TupleUnavailable` from `select`, which is about one line.
 
 The worker returns the offered tuples that it supports, in the host's order,
 and the session uses the first one (the `tuple` of `Negotiated`). A worker that does
@@ -128,8 +130,41 @@ already has, for example a model envelope on generate; the extension must claim
 it. `WrappedPlainIr::of(bytes, ir)` makes such a model from a plain Morphir IR
 document: a `morphir-ir` and `morphir-json` envelope around the exact bytes, at
 the tuple of the document's `formatVersion`, with a model ID and a revision from
-the SHA-256 of the bytes. Every host uses it for a guest with
-`Claims::on_model_line`, so the same file gives the same envelope on each host.
+the SHA-256 of the bytes. `GenerateChoice::of_plain_ir` uses it when a guest on
+the model line claims the tuple, so the same file gives the same envelope on each
+host.
+
+### The line of a request
+
+Every host takes the line from these pure functions, so one request gives one line
+on each host. A guest that claims only MEP `0.1` works on it. A guest on the model
+line works on it when a claimed tuple matches the request. With no match, the
+guest works on MEP `0.1` when its claims hold that line, the legacy method and any
+requested IR version for the role of the method. Otherwise the choice raises
+`TupleUnavailable`.
+
+- `LineChoice::compile(claims, profile?, codec?, ir_version?, model_only~)` gives
+  the offer and, when it falls back, a `LegacyFallback`. Ion, the `morphir-model`
+  profile and `model_only` (an option that only the model line has) need a tuple,
+  because MEP `0.1` cannot carry them.
+- `GenerateChoice::of_plain_ir(claims, bytes, ir)` also gives the tuple and the
+  model to send: the wrapped envelope on the model line, and the document as it is
+  on MEP `0.1`.
+- `GenerateChoice::of_envelope(claims, envelope, tuple)` gives the envelope as it is
+  when the guest claims its tuple. Otherwise a `morphir-ir` and `morphir-json`
+  envelope falls back as the document of its exact payload bytes. An Ion or
+  `morphir-model` envelope, another payload layout, and entries in `evidence` or
+  `critical` stay `TupleUnavailable`, because the host does not change model data.
+  A payload that does not match its declared length, digest or IR version raises
+  `InvalidModelEnvelope`.
+
+A host reports a fallback with `LegacyFallback::diagnostic`, a warning with the
+stable code `extension.legacy_mep_fallback` (`legacy_fallback_code`) that names the
+extension, the IR version, the line and the next step. `LegacyFallback::ir_version`
+is the claimed name to send, and `LegacyFallback::serves` checks a user's IR version
+against the model. The diagnostic never goes to the guest: the session is an
+ordinary MEP `0.1` session. `parse_model_document` decodes a model file under the
+same bounds on each host.
 
 Activation compares the claims only within the offered protocol line. The
 extension ID and version always count. On MEP `0.1` the legacy operations,

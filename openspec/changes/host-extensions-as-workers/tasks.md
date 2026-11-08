@@ -116,6 +116,11 @@
   a guest that claims nothing but that line; wrap plain IR for a guest on the model line in shared host code; verify the
   "Required IR version", "Compile protocol line" and "Plain IR on the model line" scenarios as tests on the worker
   package and the CLI
+- [x] 6.8 Fall back to MEP `0.1` with a warning (bead `morphir-ukvn.5.64.36.31`, SES-4): add the shared decision
+  `LineChoice` and `GenerateChoice` to `pkgs/morphir-host/worker`, use it in the CLI and the browser proof, and report
+  `extension.legacy_mep_fallback` in the default and JSON output; verify the "Legacy fallback", "Legacy fallback warning",
+  "Plain IR on the model line" and "Model envelope on the fallback" scenarios as tests on the worker package and the CLI,
+  and with avro `0.4.0` at IR 3 from the native and npm CLI
 
 ## 7. Qualify the published extensions on the worker host (morphir-ukvn.5.64.36.7)
 

@@ -8,6 +8,9 @@ import {
 }
 
 // Values
+pub let legacy_fallback_code : String
+
+pub fn parse_model_document(Bytes) -> Json raise
 
 // Errors
 pub(all) suberror ChannelError {
@@ -79,6 +82,7 @@ pub(all) suberror ValueError {
   InvalidArtifact(String)
   InvalidDiagnostic(String)
   InvalidClaim(String)
+  InvalidModelEnvelope(String)
 } derive(Eq, @debug.Debug)
 pub fn ValueError::equal(Self, Self) -> Bool
 pub fn ValueError::not_equal(Self, Self) -> Bool
@@ -376,6 +380,18 @@ pub fn FailureCode::to_repr(Self) -> @debug.Repr
 pub fn FailureCode::to_string(Self) -> String
 pub impl Show for FailureCode
 
+pub(all) enum FallbackInput {
+  Sources
+  PlainIr
+  ModelEnvelope
+} derive(Eq, @debug.Debug)
+pub fn FallbackInput::equal(Self, Self) -> Bool
+pub fn FallbackInput::not_equal(Self, Self) -> Bool
+pub fn FallbackInput::output(Self, &Logger) -> Unit
+pub fn FallbackInput::to_repr(Self) -> @debug.Repr
+pub fn FallbackInput::to_string(Self) -> String
+pub impl Show for FallbackInput
+
 pub(all) enum Fault {
   Host(code~ : FaultCode, message~ : String)
   Guest(code~ : Int32, message~ : String, data~ : Json?)
@@ -425,6 +441,17 @@ pub fn FrontendFlags::op_gt(Self, Self) -> Bool
 pub fn FrontendFlags::op_le(Self, Self) -> Bool
 pub fn FrontendFlags::op_lt(Self, Self) -> Bool
 pub fn FrontendFlags::to_repr(Self) -> @debug.Repr
+
+pub struct GenerateChoice {
+  line : LineChoice
+  tuple : ModelTuple?
+  model : Json
+} derive(Eq, @debug.Debug)
+pub fn GenerateChoice::equal(Self, Self) -> Bool
+pub fn GenerateChoice::not_equal(Self, Self) -> Bool
+pub fn GenerateChoice::of_envelope(Claims, Json, ModelTuple) -> Self raise
+pub fn GenerateChoice::of_plain_ir(Claims, Bytes, Json) -> Self raise Refusal
+pub fn GenerateChoice::to_repr(Self) -> @debug.Repr
 
 pub struct GenerateRequest {
   // private fields
@@ -510,6 +537,7 @@ pub struct IrVersionName {
 } derive(Compare, Eq, @debug.Debug)
 pub fn IrVersionName::compare(Self, Self) -> Int32
 pub fn IrVersionName::equal(Self, Self) -> Bool
+pub fn IrVersionName::highest(ArrayView[Self]) -> Self?
 pub fn IrVersionName::not_equal(Self, Self) -> Bool
 pub fn IrVersionName::op_ge(Self, Self) -> Bool
 pub fn IrVersionName::op_gt(Self, Self) -> Bool
@@ -535,6 +563,23 @@ pub fn LanguageClaim::op_gt(Self, Self) -> Bool
 pub fn LanguageClaim::op_le(Self, Self) -> Bool
 pub fn LanguageClaim::op_lt(Self, Self) -> Bool
 pub fn LanguageClaim::to_repr(Self) -> @debug.Repr
+
+pub struct LegacyFallback {
+  extension_id : ExtensionId
+  version : ExtensionVersion
+  operation : Operation
+  model_operation : ModelOperation
+  requested : IrVersionName?
+  codec : ModelCodec?
+  ir_version : IrVersionName?
+  input : FallbackInput
+  model_ir_versions : Array[IrVersion]
+} derive(Eq, @debug.Debug)
+pub fn LegacyFallback::diagnostic(Self) -> Diagnostic
+pub fn LegacyFallback::equal(Self, Self) -> Bool
+pub fn LegacyFallback::not_equal(Self, Self) -> Bool
+pub fn LegacyFallback::serves(Self, IrVersionName) -> Bool
+pub fn LegacyFallback::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Libc {
   Glibc
@@ -566,6 +611,15 @@ pub fn Limits::not_equal(Self, Self) -> Bool
 pub fn Limits::to_json(Self) -> Json
 pub fn Limits::to_repr(Self) -> @debug.Repr
 pub impl ToJson for Limits
+
+pub struct LineChoice {
+  offer : Offer
+  fallback : LegacyFallback?
+} derive(Eq, @debug.Debug)
+pub fn LineChoice::compile(Claims, profile? : ModelProfile, codec? : ModelCodec, ir_version? : IrVersionName, model_only? : Bool) -> Self raise Refusal
+pub fn LineChoice::equal(Self, Self) -> Bool
+pub fn LineChoice::not_equal(Self, Self) -> Bool
+pub fn LineChoice::to_repr(Self) -> @debug.Repr
 
 pub struct Machine {
   // private fields

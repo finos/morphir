@@ -114,7 +114,7 @@ async test "record native MEP host and guest sessions" {
     fail("the guest did not describe itself")
   }
   let claims = description.claims
-  let offer = extension_compile_offer(claims, inputs.codec, inputs.ir_version)
+  let offer = extension_compile_offer(claims, inputs.codec, inputs.ir_version).offer
   let language = extension_language(claims, inputs.language)
   let documents = extension_sources(
     inputs.path,

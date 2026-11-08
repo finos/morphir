@@ -798,73 +798,60 @@ fn extension_sources(
 }
 
 ///|
-/// The compile offer: the model line when the extension claims it, and MEP 0.1
-/// `compile` only when the extension claims nothing but the legacy line. On
-/// the model line the host offers every tuple that it supports, IR 4.0.0
-/// first, and the session uses the first tuple that the extension agrees on.
-/// `--model-format` and `--ir-version` each narrow the offer, and together
-/// they intersect. No matching tuple is `extension.tuple_unavailable`, never a
-/// fall back to MEP 0.1. On MEP 0.1 `--ir-version` selects from the claimed
+/// The line of a compile, from the shared decision of the host package
+/// (`LineChoice::compile`). `--model-format` and `--ir-version` each narrow the
+/// offer of the model line, and together they intersect. No matching tuple runs
+/// on MEP 0.1 with a warning when the claims show that the extension serves the
+/// request there, and is `extension.tuple_unavailable` otherwise.
+/// `--frontend-profile` has no meaning on MEP 0.1, so it needs a tuple. For an
+/// extension that claims only MEP 0.1, `--ir-version` selects from the claimed
 /// frontend IR versions (`extension_ir_version`).
 fn extension_compile_offer(
   claims : @worker.Claims,
   codec : @worker.ModelCodec?,
   ir_version : @worker.IrVersionName?,
-) -> @worker.Offer raise ExtensionError {
-  let operation = claims.compile_operation()
-  if operation is Compile && codec is Some(IonBinary) {
+  model_only~ : Bool = false,
+) -> @worker.LineChoice raise ExtensionError {
+  if claims.compile_operation() is Compile && codec is Some(IonBinary) {
     raise input_invalid(
       "\{claims.extension_id} compiles on MEP 0.1, which returns Morphir JSON",
     )
   }
-  @worker.Offer::select(claims, operation, codec?, ir_version?) catch {
+  @worker.LineChoice::compile(claims, codec?, ir_version?, model_only~) catch {
     refusal => raise refusal_error(refusal)
   }
 }
 
 ///|
-/// The generate offer. A model on the model line offers only its own tuple,
-/// which the extension must claim: the host does not convert a model to
-/// another tuple. Plain Morphir IR JSON stays plain only for a guest that claims
-/// nothing but MEP 0.1 (`extension_generate_input`).
-fn extension_generate_offer(
-  claims : @worker.Claims,
-  tuple : @worker.ModelTuple?,
-) -> @worker.Offer raise ExtensionError {
-  match tuple {
-    Some(tuple) =>
-      @worker.Offer::of_model(claims, tuple) catch {
-        refusal => raise refusal_error(refusal)
-      }
-    None =>
-      @worker.Offer::select(claims, Generate) catch {
-        refusal => raise refusal_error(refusal)
-      }
-  }
-}
-
-///|
-/// The model that a generate call sends, with its tuple on the model line. A
-/// model envelope goes as it is. For a guest on the model line the host's shared
-/// code wraps plain Morphir IR JSON in an envelope of the file's format version.
-/// For a guest that claims only MEP 0.1, plain IR stays plain, with no tuple.
+/// The line of a generate and what it sends, from the shared decision of the
+/// host package (`GenerateChoice`). A model envelope and plain Morphir IR JSON
+/// each go on the model line when the extension claims their tuple. Otherwise
+/// they go on MEP 0.1 with a warning when the claims show that it serves their
+/// IR version there, and are `extension.tuple_unavailable` when not.
 fn extension_generate_input(
   inputs : ExtensionInputs,
   claims : @worker.Claims,
   bytes : Bytes,
   model : Json,
-) -> (@worker.ModelTuple?, Json) raise ExtensionError {
-  let envelope = extension_envelope_tuple(model)
-  guard envelope is None && claims.on_model_line() else {
-    return (envelope, model)
+) -> @worker.GenerateChoice raise ExtensionError {
+  match extension_envelope_tuple(model) {
+    Some(tuple) =>
+      @worker.GenerateChoice::of_envelope(claims, model, tuple) catch {
+        @worker.Refusal(..) as refusal => raise refusal_error(refusal)
+        @worker.InvalidModelEnvelope(_) as error =>
+          raise input_invalid("\{inputs.path}: \{error}")
+        error => raise failed(HostFailed, @host.error_message(error))
+      }
+    None => {
+      guard !claims.on_model_line() ||
+        extension_format_version(model) is Some(_) else {
+        raise input_invalid("\{inputs.path} has no formatVersion")
+      }
+      @worker.GenerateChoice::of_plain_ir(claims, bytes, model) catch {
+        refusal => raise refusal_error(refusal)
+      }
+    }
   }
-  guard extension_format_version(model) is Some(_) else {
-    raise input_invalid("\{inputs.path} has no formatVersion")
-  }
-  let wrapped = @worker.WrappedPlainIr::of(bytes, model) catch {
-    refusal => raise refusal_error(refusal)
-  }
-  (Some(wrapped.tuple), wrapped.envelope)
 }
 
 ///|
@@ -886,47 +873,6 @@ fn extension_ir_agrees(left : String, right : String) -> Bool {
     (!left.contains(".") || !right.contains(".")) &&
     extension_ir_major(left) == extension_ir_major(right)
   )
-}
-
-///|
-/// The numeric parts of an IR version name: `[4, 10, 0]` for `4.10.0`. A
-/// part that is not a number is -1, so it orders first.
-fn extension_ir_parts(name : String) -> Array[Int32] {
-  name
-  .split(".")
-  .map(part => @string.parse_int(part) catch { _ => -1 })
-  .collect()
-}
-
-///|
-/// Orders two IR version names part by part, with a missing part as 0:
-/// `4.10.0` after `4.9.0`, `4.1` after `4.0.0`.
-fn extension_ir_order(left : String, right : String) -> Int32 {
-  let left = extension_ir_parts(left)
-  let right = extension_ir_parts(right)
-  let count = if left.length() > right.length() {
-    left.length()
-  } else {
-    right.length()
-  }
-  for i in 0..<count {
-    let order = left.get(i).unwrap_or(0).compare(right.get(i).unwrap_or(0))
-    if order != 0 {
-      return order
-    }
-  }
-  0
-}
-
-///|
-/// The highest of the IR version names by `extension_ir_order`.
-fn extension_ir_highest(names : Array[String]) -> String? {
-  names.fold(init=None, (highest, name) => {
-    match highest {
-      Some(other) if extension_ir_order(other, name) >= 0 => highest
-      _ => Some(name)
-    }
-  })
 }
 
 ///|
@@ -968,12 +914,10 @@ fn extension_ir_version(
     return Some(selected.to_string())
   }
   match
-    extension_ir_highest(
-      claimed
-      .filter(name => name.serves(selected))
-      .map(name => name.to_string()),
+    @worker.IrVersionName::highest(
+      claimed.filter(name => name.serves(selected)),
     ) {
-    Some(version) => Some(version)
+    Some(version) => Some(version.to_string())
     None =>
       raise refused(
         Worker(CapabilityUnavailable),
@@ -1106,11 +1050,14 @@ fn extension_envelope_tuple(
 }
 
 ///|
-/// The parameters of a generate call on the negotiated line.
+/// The parameters of a generate call on the negotiated line. A fallback has
+/// checked the claimed version already, and `--ir-version` checks the model's
+/// version as it does on the model line.
 fn extension_generate_params(
   inputs : ExtensionInputs,
   claims : @worker.Claims,
   envelope : @worker.ModelTuple?,
+  fallback : @worker.LegacyFallback?,
   model : Json,
 ) -> Map[String, Json] raise ExtensionError {
   let target = extension_target(claims, inputs.target)
@@ -1138,6 +1085,15 @@ fn extension_generate_params(
         "target": target,
         "contextDigest": extension_sha256(@utf8.encode(identity.stringify())),
       }
+    }
+    None if fallback is Some(fallback) => {
+      if inputs.ir_version is Some(selected) && !fallback.serves(selected) {
+        raise refused(
+          IrVersionMismatch,
+          "--ir-version \{selected} differs from the IR version of \{inputs.path}",
+        )
+      }
+      { "ir": model, "target": target, "options": {} }
     }
     None => {
       // On MEP 0.1, irVersion is a frontend compile option: a backend reads
@@ -1685,21 +1641,24 @@ async fn extension_execute(
     )
   }
   // Inputs that need the claims are read after the probe, before any call.
-  let (offer, call, ir_version) = match command {
+  let (line, call, ir_version) = match command {
     Compile => {
-      let offer = extension_compile_offer(
+      let line = extension_compile_offer(
         claims,
         inputs.codec,
         inputs.ir_version,
+        model_only=inputs.profile != "",
       )
-      let ir_version = match offer {
-        Legacy =>
+      let ir_version = match (line.offer, line.fallback) {
+        // The decision has found the claimed name of the requested version.
+        (Legacy, Some({ ir_version: Some(name), .. })) => Some(name.to_string())
+        (Legacy, _) =>
           extension_ir_version(
             claims,
             claims.frontend_ir_versions,
             inputs.ir_version,
           )
-        Model(_) => None
+        (Model(_), _) => None
       }
       let language = extension_language(claims, inputs.language)
       let documents = extension_sources(
@@ -1726,8 +1685,8 @@ async fn extension_execute(
       // An oversized request is refused before any worker starts. Every
       // offered tuple gives a request of about this size; the session checks
       // the one that it sends.
-      ignore(request(offer.default_tuple()))
-      (offer, Ok(request), ir_version)
+      ignore(request(line.offer.default_tuple()))
+      (line, Ok(request), ir_version)
     }
     _ => {
       let bytes = @platform.read_input(inputs.path, 4194304) catch {
@@ -1736,26 +1695,29 @@ async fn extension_execute(
             "cannot read \{inputs.path}: \{@host.error_message(error)}",
           )
       }
-      let model = @model_wire.parse_bounded(
-        @utf8.decode(bytes[:]),
-        max_depth=128,
-        max_nodes=100000,
-        max_string_units=4194304,
-      ) catch {
+      let model = @worker.parse_model_document(bytes) catch {
         _ => raise input_invalid("\{inputs.path} is not a bounded JSON model")
       }
-      let (tuple, model) = extension_generate_input(
-        inputs, claims, bytes, model,
+      let input = extension_generate_input(inputs, claims, bytes, model)
+      let params = extension_generate_params(
+        inputs,
+        claims,
+        input.tuple,
+        input.line.fallback,
+        input.model,
       )
-      let offer = extension_generate_offer(claims, tuple)
-      let params = extension_generate_params(inputs, claims, tuple, model)
       let request = @worker.GenerateRequest::new(params) catch {
         refusal => raise refusal_error(refusal)
       }
-      (offer, Err(request), None)
+      (input.line, Err(request), None)
     }
   }
   check()
+  let offer = line.offer
+  // The warning stays in the report also when the session then fails.
+  if line.fallback is Some(fallback) {
+    diagnostics.push(fallback.diagnostic())
+  }
   let (outcome, report) = host.with_session(
     pin.spec,
     expected=claims,

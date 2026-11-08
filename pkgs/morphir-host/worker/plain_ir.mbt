@@ -25,6 +25,7 @@ pub extend WrappedPlainIr with @debug.Debug::{to_repr}
 ///
 /// A document whose `formatVersion` names no IR version of a model tuple is
 /// `TupleUnavailable`, because the host offers no tuple for it.
+/// `GenerateChoice::of_plain_ir` decides whether MEP 0.1 serves such a document.
 pub fn WrappedPlainIr::of(
   document : Bytes,
   ir : Json,
