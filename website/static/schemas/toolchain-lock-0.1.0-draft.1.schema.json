@@ -1,0 +1,363 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/toolchain-lock-0.1.0-draft.1.schema.json",
+  "title": "Morphir portable toolchain lock 0.1.0-draft.1",
+  "description": "The exact resolution of a project toolchain request, .morphir/toolchain.lock.json. It holds no absolute path and no credential. Unknown members are ignored unless critical names them",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "requestSha256",
+    "recipe",
+    "host",
+    "platforms"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "schemaVersion",
+          "critical",
+          "requestSha256",
+          "recipe",
+          "recipe.repositoryId",
+          "recipe.target",
+          "recipe.sha256",
+          "host",
+          "host.implementation",
+          "host.version",
+          "host.deployment",
+          "platforms"
+        ]
+      }
+    },
+    "requestSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "recipe": {
+      "$ref": "#/$defs/recipeRef"
+    },
+    "host": {
+      "type": "object",
+      "required": [ "implementation", "version", "deployment" ],
+      "properties": {
+        "implementation": {
+          "$ref": "#/$defs/token"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "deployment": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "platforms": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/platformId"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/platformClosure"
+      }
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "extensionIdentity": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "packageId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)*$",
+      "maxLength": 100
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "targetPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 512,
+      "minLength": 1
+    },
+    "platformId": {
+      "enum": [
+        "win-x64",
+        "win-arm64",
+        "osx-x64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64",
+        "linux-musl-x64",
+        "linux-musl-arm64"
+      ]
+    },
+    "recipeRef": {
+      "type": "object",
+      "required": [ "repositoryId", "target", "sha256" ],
+      "properties": {
+        "repositoryId": {
+          "$ref": "#/$defs/sha256"
+        },
+        "target": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "modelInput": {
+      "type": "object",
+      "required": [ "profile", "codec", "irVersion" ],
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "modelTuple": {
+      "type": "object",
+      "required": [
+        "operation",
+        "profile",
+        "codec",
+        "envelopeVersion",
+        "irVersion"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "morphir.frontend.compileModel",
+            "morphir.backend.generateModel"
+          ]
+        },
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "envelopeVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "lockedProvider": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "compile"
+              }
+            }
+          },
+          "then": {
+            "required": [ "language" ]
+          },
+          "else": {
+            "required": [ "target" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "built-in"
+              }
+            }
+          },
+          "then": {
+            "required": [ "modelInput" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "enum": [ "process", "wasm" ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "repositoryId",
+              "descriptorTarget",
+              "descriptorSha256",
+              "artifactTarget",
+              "artifactSha256",
+              "protocolVersion"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "wasm"
+              }
+            }
+          },
+          "then": {
+            "required": [ "abi" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "repositoryId",
+              "packageId",
+              "command",
+              "packageTarget",
+              "packageSha256",
+              "protocolVersion"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [ "protocolVersion" ],
+            "properties": {
+              "protocolVersion": {
+                "const": "0.1"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [ "modelTuple" ]
+            },
+            "required": [ "modelInput" ]
+          }
+        },
+        {
+          "if": {
+            "required": [ "protocolVersion" ],
+            "properties": {
+              "protocolVersion": {
+                "const": "0.2.0-draft.1"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [ "modelInput" ]
+            },
+            "required": [ "modelTuple" ]
+          }
+        }
+      ],
+      "required": [ "operation", "delivery", "extensionId", "version" ],
+      "properties": {
+        "operation": {
+          "enum": [ "compile", "generate" ]
+        },
+        "language": {
+          "$ref": "#/$defs/token"
+        },
+        "target": {
+          "$ref": "#/$defs/token"
+        },
+        "delivery": {
+          "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
+        },
+        "extensionId": {
+          "$ref": "#/$defs/extensionIdentity"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "abi": {
+          "$ref": "#/$defs/token"
+        },
+        "repositoryId": {
+          "$ref": "#/$defs/sha256"
+        },
+        "descriptorTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "descriptorSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "artifactTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "packageId": {
+          "$ref": "#/$defs/packageId"
+        },
+        "command": {
+          "$ref": "#/$defs/token"
+        },
+        "packageTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "packageSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "protocolVersion": {
+          "enum": [ "0.1", "0.2.0-draft.1" ]
+        },
+        "modelTuple": {
+          "$ref": "#/$defs/modelTuple"
+        },
+        "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        }
+      }
+    },
+    "platformClosure": {
+      "type": "object",
+      "required": [ "hostTarget", "hostSha256", "providers" ],
+      "properties": {
+        "hostTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "hostSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/lockedProvider"
+          }
+        }
+      }
+    }
+  }
+}

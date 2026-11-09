@@ -1,0 +1,656 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/toolchain-receipt-0.1.0-draft.1.schema.json",
+  "title": "Morphir toolchain installation receipt 0.1.0-draft.1",
+  "description": "The local receipt of one installed toolchain generation. It binds the SHA-256 of the exact lock bytes, the platform and every installed object identity. Unknown members are ignored unless critical names them",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "platform",
+    "lockSha256",
+    "recipe",
+    "host",
+    "providers",
+    "readiness",
+    "checks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "schemaVersion",
+          "critical",
+          "generationId",
+          "platform",
+          "lockSha256",
+          "recipe",
+          "host",
+          "host.identity",
+          "host.execution",
+          "host.installation",
+          "host.readiness",
+          "host.checks",
+          "providers",
+          "providers.identity",
+          "providers.installation",
+          "providers.readiness",
+          "providers.checks",
+          "readiness",
+          "checks"
+        ]
+      }
+    },
+    "generationId": {
+      "$ref": "#/$defs/token"
+    },
+    "platform": {
+      "$ref": "#/$defs/platformId"
+    },
+    "lockSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "recipe": {
+      "$ref": "#/$defs/recipeRef"
+    },
+    "host": {
+      "type": "object",
+      "required": [
+        "identity",
+        "execution",
+        "installation",
+        "readiness",
+        "checks"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "required": [
+            "implementation",
+            "version",
+            "deployment",
+            "target",
+            "sha256"
+          ],
+          "properties": {
+            "implementation": {
+              "$ref": "#/$defs/token"
+            },
+            "version": {
+              "$ref": "#/$defs/semanticVersion"
+            },
+            "deployment": {
+              "$ref": "#/$defs/token"
+            },
+            "target": {
+              "$ref": "#/$defs/targetPath"
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "execution": {
+          "type": "object",
+          "required": [ "mode", "runtime" ],
+          "properties": {
+            "mode": {
+              "enum": [ "native-aot", "jit" ]
+            },
+            "runtime": {
+              "type": "object",
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [ "bundled", "system" ]
+                  }
+                }
+              },
+              "then": {
+                "required": [ "version" ]
+              },
+              "required": [ "kind" ],
+              "properties": {
+                "kind": {
+                  "enum": [ "none", "bundled", "system" ]
+                },
+                "version": {
+                  "$ref": "#/$defs/semanticVersion"
+                }
+              }
+            }
+          }
+        },
+        "installation": {
+          "$ref": "#/$defs/installation"
+        },
+        "readiness": {
+          "$ref": "#/$defs/componentReadiness"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        }
+      }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "identity", "readiness", "checks" ],
+        "properties": {
+          "identity": {
+            "$ref": "#/$defs/lockedProvider"
+          },
+          "installation": {
+            "$ref": "#/$defs/providerInstallation"
+          },
+          "readiness": {
+            "$ref": "#/$defs/componentReadiness"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/check"
+            }
+          }
+        }
+      }
+    },
+    "readiness": {
+      "enum": [
+        "acquired",
+        "integrity-verified",
+        "capability-checked",
+        "workflow-qualified"
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/check"
+      }
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "extensionIdentity": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "packageId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)*$",
+      "maxLength": 100
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "targetPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 512,
+      "minLength": 1
+    },
+    "absolutePath": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z]:[\\\\/]|\\\\\\\\|/)[^\\u0000]*$"
+    },
+    "platformId": {
+      "enum": [
+        "win-x64",
+        "win-arm64",
+        "osx-x64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64",
+        "linux-musl-x64",
+        "linux-musl-arm64"
+      ]
+    },
+    "recipeRef": {
+      "type": "object",
+      "required": [ "repositoryId", "target", "sha256" ],
+      "properties": {
+        "repositoryId": {
+          "$ref": "#/$defs/sha256"
+        },
+        "target": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "componentReadiness": {
+      "enum": [ "acquired", "integrity-verified", "capability-checked" ]
+    },
+    "check": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [ "failed", "skipped", "unsupported" ]
+              }
+            }
+          },
+          "then": {
+            "required": [ "reason" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "check": {
+                "const": "workflow"
+              }
+            }
+          },
+          "then": {
+            "required": [ "workflow" ]
+          },
+          "else": {
+            "not": {
+              "required": [ "workflow" ]
+            }
+          }
+        }
+      ],
+      "required": [ "check", "status" ],
+      "properties": {
+        "check": {
+          "enum": [ "integrity", "capability", "workflow" ]
+        },
+        "status": {
+          "enum": [ "passed", "failed", "skipped", "unsupported" ]
+        },
+        "reason": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "workflow": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [ "packageId", "scope" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "system-package"
+              }
+            }
+          },
+          "then": {
+            "required": [ "manager" ]
+          }
+        }
+      ],
+      "required": [ "kind" ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "manager-owned",
+            "direct-archive",
+            "dotnet-tool",
+            "system-package"
+          ]
+        },
+        "packageId": {
+          "$ref": "#/$defs/packageId"
+        },
+        "scope": {
+          "enum": [ "global", "tool-path", "local-manifest" ]
+        },
+        "manager": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "authentication": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "repository-target"
+              }
+            }
+          },
+          "then": {
+            "required": [ "repositoryId", "targetsVersion" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "recipe-digest"
+              }
+            }
+          },
+          "then": {
+            "required": [ "repositoryId", "recipeTarget", "recipeSha256" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "local-developer"
+              }
+            }
+          },
+          "then": {
+            "required": [ "policy" ]
+          }
+        }
+      ],
+      "required": [ "kind" ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "repository-target",
+            "recipe-digest",
+            "local-developer",
+            "external-owner"
+          ]
+        },
+        "repositoryId": {
+          "$ref": "#/$defs/sha256"
+        },
+        "targetsVersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recipeTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "recipeSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "policy": {
+          "const": "developer"
+        }
+      }
+    },
+    "installation": {
+      "type": "object",
+      "required": [ "ownership", "authentication", "launch" ],
+      "properties": {
+        "ownership": {
+          "$ref": "#/$defs/ownership"
+        },
+        "authentication": {
+          "$ref": "#/$defs/authentication"
+        },
+        "launch": {
+          "type": "object",
+          "required": [ "program", "args" ],
+          "properties": {
+            "program": {
+              "$ref": "#/$defs/absolutePath"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[^\\u0000]*$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "providerInstallation": {
+      "$ref": "#/$defs/installation",
+      "type": "object",
+      "if": {
+        "properties": {
+          "claimCheck": {
+            "const": "probed"
+          }
+        }
+      },
+      "then": {
+        "required": [ "probeSource" ]
+      },
+      "else": {
+        "not": {
+          "required": [ "probeSource" ]
+        }
+      },
+      "required": [ "claimCheck" ],
+      "properties": {
+        "claimCheck": {
+          "enum": [ "probed", "unchecked" ]
+        },
+        "probeSource": {
+          "enum": [ "describe", "session-fallback" ]
+        }
+      }
+    },
+    "modelInput": {
+      "type": "object",
+      "required": [ "profile", "codec", "irVersion" ],
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "modelTuple": {
+      "type": "object",
+      "required": [
+        "operation",
+        "profile",
+        "codec",
+        "envelopeVersion",
+        "irVersion"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "morphir.frontend.compileModel",
+            "morphir.backend.generateModel"
+          ]
+        },
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "envelopeVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "lockedProvider": {
+      "description": "The provider entry exactly as the lock records it for this platform",
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "compile"
+              }
+            }
+          },
+          "then": {
+            "required": [ "language" ]
+          },
+          "else": {
+            "required": [ "target" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "built-in"
+              }
+            }
+          },
+          "then": {
+            "required": [ "modelInput" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "enum": [ "process", "wasm" ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "repositoryId",
+              "descriptorTarget",
+              "descriptorSha256",
+              "artifactTarget",
+              "artifactSha256",
+              "protocolVersion"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "wasm"
+              }
+            }
+          },
+          "then": {
+            "required": [ "abi" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "repositoryId",
+              "packageId",
+              "command",
+              "packageTarget",
+              "packageSha256",
+              "protocolVersion"
+            ]
+          }
+        }
+      ],
+      "required": [ "operation", "delivery", "extensionId", "version" ],
+      "properties": {
+        "operation": {
+          "enum": [ "compile", "generate" ]
+        },
+        "language": {
+          "$ref": "#/$defs/token"
+        },
+        "target": {
+          "$ref": "#/$defs/token"
+        },
+        "delivery": {
+          "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
+        },
+        "extensionId": {
+          "$ref": "#/$defs/extensionIdentity"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "abi": {
+          "$ref": "#/$defs/token"
+        },
+        "repositoryId": {
+          "$ref": "#/$defs/sha256"
+        },
+        "descriptorTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "descriptorSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "artifactTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "packageId": {
+          "$ref": "#/$defs/packageId"
+        },
+        "command": {
+          "$ref": "#/$defs/token"
+        },
+        "packageTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "packageSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "protocolVersion": {
+          "enum": [ "0.1", "0.2.0-draft.1" ]
+        },
+        "modelTuple": {
+          "$ref": "#/$defs/modelTuple"
+        },
+        "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        }
+      }
+    }
+  }
+}

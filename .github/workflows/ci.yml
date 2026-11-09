@@ -84,6 +84,11 @@ jobs:
               # signed fixtures and schemas are executable acquisition contracts
               - 'docs/spec/tool-release-metadata/**'
               - 'website/static/schemas/tool-release-v1.schema.json'
+              # the morphirup toolchain contracts and their fixed cases
+              - 'docs/spec/toolchain/**'
+              - 'website/static/schemas/toolset-recipe-*.schema.json'
+              - 'website/static/schemas/toolchain-*.schema.json'
+              - 'website/static/schemas/morphirup-result-*.schema.json'
               - 'completions/**'
               # asserts every workspace package follows the current Rust baseline
               - 'tests/rust/test_workspace_rust_baseline.py'
@@ -306,6 +311,10 @@ jobs:
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
+
+      # A library crate of its own; --package morphir does not run its tests.
+      - name: Validate the toolchain acquisition contracts
+        run: mise run ci:validate-toolchain-contracts
 
       - name: Build
         run: cargo build --locked --release --package morphir

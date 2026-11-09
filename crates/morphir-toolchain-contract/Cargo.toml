@@ -1,0 +1,25 @@
+[package]
+name = "morphir-toolchain-contract"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Reference readers for the morphirup toolset recipe, toolchain request, lock, receipt and manager result contracts"
+publish = false
+
+[dependencies]
+# Identities, channels, digests and TUF target paths are the existing
+# acquisition types; the toolchain contracts reuse them rather than redefine them.
+morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-distribution" }
+# TUF canonical JSON, the same encoder the TUF client uses for repository
+# identity; `planSha256` is the SHA-256 of the canonical plan.
+olpc-cjson = "0.1.4"
+semver = { workspace = true, features = ["serde"] }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+# Offline validation of the fixtures against the published schemas.
+jsonschema.workspace = true

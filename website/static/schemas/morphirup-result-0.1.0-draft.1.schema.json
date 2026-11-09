@@ -1,0 +1,611 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/morphirup-result-0.1.0-draft.1.schema.json",
+  "title": "morphirup JSON result 0.1.0-draft.1",
+  "description": "The single document morphirup writes to standard output with --json. Progress goes to standard error. Unknown members are ignored unless critical names them",
+  "type": "object",
+  "required": [ "schemaVersion", "command", "outcome", "diagnostics" ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "schemaVersion",
+          "critical",
+          "command",
+          "outcome",
+          "plan",
+          "planSha256",
+          "selection",
+          "diagnostics"
+        ]
+      }
+    },
+    "command": {
+      "enum": [
+        "setup",
+        "restore",
+        "update",
+        "show",
+        "doctor",
+        "list",
+        "default",
+        "rollback",
+        "repair",
+        "remove",
+        "self-update",
+        "env"
+      ]
+    },
+    "outcome": {
+      "enum": [ "planned", "succeeded", "failed" ]
+    },
+    "plan": {
+      "$ref": "#/$defs/plan"
+    },
+    "planSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "selection": {
+      "type": "object",
+      "required": [ "source", "generationId", "platform", "host" ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/selectionSource"
+        },
+        "generationId": {
+          "$ref": "#/$defs/token"
+        },
+        "platform": {
+          "$ref": "#/$defs/platformId"
+        },
+        "host": {
+          "type": "object",
+          "required": [ "implementation", "version", "deployment" ],
+          "properties": {
+            "implementation": {
+              "$ref": "#/$defs/token"
+            },
+            "version": {
+              "$ref": "#/$defs/semanticVersion"
+            },
+            "deployment": {
+              "$ref": "#/$defs/token"
+            }
+          }
+        },
+        "lockSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    }
+  },
+  "dependentRequired": {
+    "plan": [ "planSha256" ]
+  },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "extensionIdentity": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "packageId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)*$",
+      "maxLength": 100
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "targetPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 512,
+      "minLength": 1
+    },
+    "absolutePath": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z]:[\\\\/]|\\\\\\\\|/)[^\\u0000]*$"
+    },
+    "platformId": {
+      "enum": [
+        "win-x64",
+        "win-arm64",
+        "osx-x64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64",
+        "linux-musl-x64",
+        "linux-musl-arm64"
+      ]
+    },
+    "argv": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "component": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "role": {
+            "const": "host"
+          }
+        }
+      },
+      "then": {
+        "required": [ "implementation", "deployment" ]
+      },
+      "else": {
+        "required": [ "operation" ]
+      },
+      "required": [ "role" ],
+      "properties": {
+        "role": {
+          "enum": [ "host", "provider" ]
+        },
+        "implementation": {
+          "$ref": "#/$defs/token"
+        },
+        "deployment": {
+          "$ref": "#/$defs/token"
+        },
+        "operation": {
+          "enum": [ "compile", "generate" ]
+        },
+        "language": {
+          "$ref": "#/$defs/token"
+        },
+        "target": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "required": [ "kind" ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "manager-owned",
+            "direct-archive",
+            "dotnet-tool",
+            "system-package"
+          ]
+        },
+        "packageId": {
+          "$ref": "#/$defs/packageId"
+        },
+        "scope": {
+          "enum": [ "global", "tool-path", "local-manifest" ]
+        },
+        "manager": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "prerequisite": {
+      "type": "object",
+      "required": [ "kind", "name" ],
+      "properties": {
+        "kind": {
+          "enum": [ "runtime", "sdk", "native" ]
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "phase": {
+          "enum": [ "install", "run" ]
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        }
+      }
+    },
+    "selectionSource": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "project"
+          }
+        }
+      },
+      "then": {
+        "required": [ "path" ]
+      },
+      "required": [ "kind" ],
+      "properties": {
+        "kind": {
+          "enum": [ "cli", "environment", "project", "user-default" ]
+        },
+        "path": {
+          "$ref": "#/$defs/absolutePath"
+        }
+      }
+    },
+    "alternative": {
+      "type": "object",
+      "properties": {
+        "implementation": {
+          "$ref": "#/$defs/token"
+        },
+        "deployment": {
+          "$ref": "#/$defs/token"
+        },
+        "platform": {
+          "$ref": "#/$defs/platformId"
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "unsupported-artifact"
+              }
+            }
+          },
+          "then": {
+            "required": [ "component", "platform" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "missing-prerequisite"
+              }
+            }
+          },
+          "then": {
+            "required": [ "component", "prerequisite" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "trust-failure"
+              }
+            }
+          },
+          "then": {
+            "required": [ "code", "repositoryId" ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "metadata_signature_invalid",
+                  "metadata_expired",
+                  "metadata_rollback",
+                  "metadata_link_mismatch",
+                  "metadata_root_rotation_invalid",
+                  "target_length_mismatch",
+                  "target_digest_mismatch",
+                  "release_descriptor_mismatch",
+                  "release_revoked",
+                  "no_compatible_release",
+                  "offline_metadata_unavailable"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "offline-content-unavailable"
+              }
+            }
+          },
+          "then": {
+            "required": [ "component", "target", "sha256" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "ownership-conflict"
+              }
+            }
+          },
+          "then": {
+            "required": [ "component", "ownership" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "readiness-failed"
+              }
+            }
+          },
+          "then": {
+            "required": [ "component", "check", "readiness" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "unsupported-contract"
+              }
+            }
+          },
+          "then": {
+            "required": [ "document", "code", "path" ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "invalid_document",
+                  "unsupported_contract_version",
+                  "unsupported_critical_member",
+                  "unsupported_case",
+                  "invalid_value",
+                  "non_portable_path",
+                  "credential_in_document",
+                  "inconsistent_document"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "selection-unavailable"
+              }
+            }
+          },
+          "then": {
+            "required": [ "source" ]
+          }
+        }
+      ],
+      "required": [ "kind", "severity", "message" ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "unsupported-artifact",
+            "missing-prerequisite",
+            "trust-failure",
+            "offline-content-unavailable",
+            "ownership-conflict",
+            "readiness-failed",
+            "unsupported-contract",
+            "selection-unavailable"
+          ]
+        },
+        "severity": {
+          "enum": [ "error", "warning" ]
+        },
+        "message": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "component": {
+          "$ref": "#/$defs/component"
+        },
+        "platform": {
+          "$ref": "#/$defs/platformId"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alternative"
+          }
+        },
+        "prerequisite": {
+          "$ref": "#/$defs/prerequisite"
+        },
+        "code": {
+          "type": "string"
+        },
+        "repositoryId": {
+          "$ref": "#/$defs/sha256"
+        },
+        "role": {
+          "enum": [ "root", "timestamp", "snapshot", "targets" ]
+        },
+        "mirror": {
+          "type": "string",
+          "format": "uri"
+        },
+        "target": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "ownership": {
+          "$ref": "#/$defs/ownership"
+        },
+        "instruction": {
+          "$ref": "#/$defs/argv"
+        },
+        "check": {
+          "enum": [ "integrity", "capability", "workflow" ]
+        },
+        "readiness": {
+          "enum": [
+            "acquired",
+            "integrity-verified",
+            "capability-checked",
+            "workflow-qualified"
+          ]
+        },
+        "document": {
+          "enum": [ "request", "lock", "recipe", "receipt", "result" ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/selectionSource"
+        }
+      }
+    },
+    "planComponent": {
+      "type": "object",
+      "required": [
+        "component",
+        "version",
+        "source",
+        "downloadBytes",
+        "installedBytes",
+        "updateOwner",
+        "probe"
+      ],
+      "properties": {
+        "component": {
+          "$ref": "#/$defs/component"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "extensionId": {
+          "$ref": "#/$defs/extensionIdentity"
+        },
+        "delivery": {
+          "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
+        },
+        "source": {
+          "type": "object",
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [ "repository-target", "recipe-digest" ]
+              }
+            }
+          },
+          "then": {
+            "required": [ "repositoryId", "target", "sha256" ]
+          },
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "repository-target",
+                "recipe-digest",
+                "built-in",
+                "external-owner"
+              ]
+            },
+            "repositoryId": {
+              "$ref": "#/$defs/sha256"
+            },
+            "target": {
+              "$ref": "#/$defs/targetPath"
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "downloadBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "installedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updateOwner": {
+          "$ref": "#/$defs/ownership"
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prerequisite"
+          }
+        },
+        "probe": {
+          "enum": [ "none", "in-host", "process-with-user-rights" ]
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "required": [
+        "implementation",
+        "deployment",
+        "platform",
+        "recipe",
+        "metadataRefresh",
+        "components"
+      ],
+      "properties": {
+        "implementation": {
+          "$ref": "#/$defs/token"
+        },
+        "deployment": {
+          "$ref": "#/$defs/token"
+        },
+        "platform": {
+          "$ref": "#/$defs/platformId"
+        },
+        "recipe": {
+          "type": "object",
+          "required": [ "repositoryId", "target", "sha256" ],
+          "properties": {
+            "repositoryId": {
+              "$ref": "#/$defs/sha256"
+            },
+            "target": {
+              "$ref": "#/$defs/targetPath"
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "metadataRefresh": {
+          "enum": [ "required", "not-required" ]
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/planComponent"
+          }
+        }
+      }
+    }
+  }
+}

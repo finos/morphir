@@ -1,0 +1,7 @@
+schemaVersion = "0.1.0-draft.1"
+[host]
+implementation = "dotnet"
+deployment = "framework-dependent"
+version = "1.2.3"
+[toolset]
+preset = "fsharp"

@@ -4531,6 +4531,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "morphir-toolchain-contract"
+version = "0.4.0-beta.12"
+dependencies = [
+ "jsonschema 0.26.2",
+ "morphir-distribution",
+ "olpc-cjson",
+ "semver",
+ "serde",
+ "serde_json",
+ "toml 1.1.6+spec-1.1.0",
+ "url",
+]
+
+[[package]]
 name = "morphir-workspace"
 version = "0.2.0"
 dependencies = [

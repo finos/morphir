@@ -1,0 +1,783 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "documents": [
+    {
+      "contract": "request",
+      "document": "request/approved.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/team-platforms-external-backend.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/exact-host-version.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/unknown-optional-members.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/critical-understood-member.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/reformatted-approved.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/draft-2.toml",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/released-0.1.0.toml",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/version-not-semver.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/missing-schema-version.toml",
+      "expected": {
+        "code": "invalid_document",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-critical-member.toml",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "host.mirror"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/channel-and-version.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/no-channel-or-version.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/deployment-not-a-token.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.deployment"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-channel.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.channel"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-delivery.toml",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "toolset.providers[0].delivery"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/compile-without-language.toml",
+      "expected": {
+        "code": "invalid_document",
+        "path": "toolset.providers[0].language"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-platform.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms[0]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/duplicate-platform.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/not-toml.toml",
+      "expected": {
+        "code": "invalid_document",
+        "path": ""
+      },
+      "schema": "unparsable"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/approved-fragment.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/two-platforms-bound.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "attestation"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/absolute-host-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/rooted-artifact-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.providers[0].artifactTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/traversal-descriptor-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.providers[0].descriptorTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/uppercase-digest.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.win-x64.hostSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/short-request-digest.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "requestSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-platform.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.win-x86"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/empty-platforms.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/process-without-artifact-digest.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].artifactSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-delivery.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[1].delivery"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/duplicate-operation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[1]"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/host-version-not-semver.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.version"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/wasm-without-abi.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/fsharp-synthetic.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/wasm-abi-alternatives.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "signedBy"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/musl-bound-to-tool-release.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].platforms.linux-musl-x64"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-offering.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[1]"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/wasm-without-abi.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/legacy-protocol-with-model-tuple.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].modelTuple"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/tuple-operation-mismatch.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].modelTuple.operation"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/operation-without-candidate.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations[2]"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/extension-id-not-lowercase.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "providers[0].extensionId"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/process-without-platforms.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].platforms"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/unknown-source-kind.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "hosts[0].source.kind"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/external-impersonates-built-in.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[2].extensionId"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/win-x64-qualified.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negotiation-failed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/developer-frontend-probed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/external-dotnet-tool-host.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/provider-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/host-deployment-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "leases"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/readiness-exceeds-checks.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].readiness"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/qualified-with-failed-workflow.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "readiness"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/provider-without-claim-check.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].installation.claimCheck"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/probe-source-without-probe.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.probeSource"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/relative-launch-program.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/posix-launch-on-windows.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/unknown-ownership.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "host.installation.ownership.kind"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/built-in-with-installation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[1].installation"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/developer-artifact-not-manager-owned.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.ownership"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/credential-member.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "host.installation.authorization"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/generation-id-not-a-token.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "generationId"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/unknown-readiness.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "readiness"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/show-project-selection.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-offline-missing.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/doctor-every-diagnostic.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "trace"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-diagnostic-kind.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "diagnostics[0].kind"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-with-credentials.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "diagnostics[2].mirror"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-with-query.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "diagnostics[2].mirror"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/succeeded-with-error.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "outcome"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-trust-code.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "diagnostics[2].code"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/offline-without-digest.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[3].sha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-command.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "command"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/readiness-failed-at-reached-state.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[5].readiness"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-digest-mismatch.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "planSha256"
+      },
+      "schema": "accepts"
+    }
+  ],
+  "bindings": [
+    {
+      "name": "a lock binds the exact request bytes",
+      "kind": "lock-request",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved.toml",
+      "expected": "valid"
+    },
+    {
+      "name": "a changed request is refused",
+      "kind": "lock-request",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/exact-host-version.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256"
+      }
+    },
+    {
+      "name": "reformatting the request changes its identity",
+      "kind": "lock-request",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/reformatted-approved.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256"
+      }
+    },
+    {
+      "name": "frozen restore selects a locked platform",
+      "kind": "lock-platform",
+      "lock": "lock/two-platforms-bound.json",
+      "platform": "osx-arm64",
+      "expected": "valid"
+    },
+    {
+      "name": "frozen restore refuses an unlocked platform",
+      "kind": "lock-platform",
+      "lock": "lock/two-platforms-bound.json",
+      "platform": "linux-x64",
+      "expected": {
+        "code": "platform_not_locked",
+        "path": "platforms"
+      }
+    },
+    {
+      "name": "a musl machine never takes a glibc closure",
+      "kind": "lock-platform",
+      "lock": "lock/two-platforms-bound.json",
+      "platform": "linux-musl-x64",
+      "expected": {
+        "code": "platform_not_locked",
+        "path": "platforms"
+      }
+    },
+    {
+      "name": "a receipt binds the exact lock bytes and its platform closure",
+      "kind": "receipt-lock",
+      "receipt": "receipt/win-x64-qualified.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a receipt refuses different lock bytes",
+      "kind": "receipt-lock",
+      "receipt": "receipt/win-x64-qualified.json",
+      "lock": "lock/approved-fragment.json",
+      "expected": {
+        "code": "lock_changed",
+        "path": "lockSha256"
+      }
+    },
+    {
+      "name": "a receipt refuses a substituted provider artifact",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/provider-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "providers[0].identity"
+      }
+    },
+    {
+      "name": "a receipt refuses a substituted host deployment",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/host-deployment-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "host.identity"
+      }
+    }
+  ]
+}

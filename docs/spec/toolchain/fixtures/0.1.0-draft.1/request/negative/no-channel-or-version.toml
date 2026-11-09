@@ -1,0 +1,6 @@
+schemaVersion = "0.1.0-draft.1"
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+[toolset]
+preset = "fsharp"

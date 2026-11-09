@@ -1,0 +1,557 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/toolset-recipe-0.1.0-draft.1.schema.json",
+  "title": "Morphir toolset recipe 0.1.0-draft.1",
+  "description": "An authenticated TUF target that maps host offerings to their published artifacts and binds each required operation to built-in or independently released providers by exact digest. Unknown members are ignored unless critical names them",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "preset",
+    "version",
+    "operations",
+    "hosts",
+    "providers"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "schemaVersion",
+          "critical",
+          "preset",
+          "version",
+          "operations",
+          "hosts",
+          "hosts.implementation",
+          "hosts.version",
+          "hosts.deployment",
+          "hosts.execution",
+          "hosts.source",
+          "hosts.protocolVersions",
+          "hosts.wasmAbis",
+          "hosts.prerequisites",
+          "hosts.builtIns",
+          "hosts.platforms",
+          "providers",
+          "providers.operation",
+          "providers.delivery",
+          "providers.extensionId",
+          "providers.version",
+          "providers.abi",
+          "providers.repositoryId",
+          "providers.descriptorTarget",
+          "providers.descriptorSha256",
+          "providers.artifactTarget",
+          "providers.artifactSha256",
+          "providers.packageId",
+          "providers.command",
+          "providers.packageTarget",
+          "providers.packageSha256",
+          "providers.protocolVersion",
+          "providers.modelTuple",
+          "providers.modelInput",
+          "providers.prerequisites",
+          "providers.platforms"
+        ]
+      }
+    },
+    "preset": {
+      "$ref": "#/$defs/token"
+    },
+    "version": {
+      "$ref": "#/$defs/semanticVersion"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/operation"
+      }
+    },
+    "hosts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/hostOffering"
+      }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/provider"
+      }
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "toolId": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?$",
+      "maxLength": 182
+    },
+    "extensionIdentity": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "packageId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)*$",
+      "maxLength": 100
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "comparators": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?:=|>=|<=|>|<|~|\\^)?(0|[1-9][0-9]*)(?:\\.(0|[1-9][0-9]*|\\*)(?:\\.(0|[1-9][0-9]*|\\*)(?:-[0-9A-Za-z.-]+)?)?)?$"
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "targetPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 512,
+      "minLength": 1
+    },
+    "platformId": {
+      "enum": [
+        "win-x64",
+        "win-arm64",
+        "osx-x64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64",
+        "linux-musl-x64",
+        "linux-musl-arm64"
+      ]
+    },
+    "protocolVersion": {
+      "enum": [ "0.1", "0.2.0-draft.1" ]
+    },
+    "operation": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "compile"
+          }
+        }
+      },
+      "then": {
+        "required": [ "language" ]
+      },
+      "else": {
+        "required": [ "target" ]
+      },
+      "required": [ "operation" ],
+      "properties": {
+        "operation": {
+          "enum": [ "compile", "generate" ]
+        },
+        "language": {
+          "$ref": "#/$defs/token"
+        },
+        "target": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "modelInput": {
+      "type": "object",
+      "required": [ "profile", "codec", "irVersion" ],
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "modelTuple": {
+      "type": "object",
+      "required": [
+        "operation",
+        "profile",
+        "codec",
+        "envelopeVersion",
+        "irVersion"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "morphir.frontend.compileModel",
+            "morphir.backend.generateModel"
+          ]
+        },
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "envelopeVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "prerequisite": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "runtime"
+              }
+            }
+          },
+          "then": {
+            "required": [ "versions" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "sdk"
+              }
+            }
+          },
+          "then": {
+            "required": [ "versions", "phase" ]
+          }
+        }
+      ],
+      "required": [ "kind", "name" ],
+      "properties": {
+        "kind": {
+          "enum": [ "runtime", "sdk", "native" ]
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "versions": {
+          "$ref": "#/$defs/comparators"
+        },
+        "phase": {
+          "enum": [ "install", "run" ]
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        }
+      }
+    },
+    "targetDigest": {
+      "type": "object",
+      "required": [ "target", "sha256" ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "artifactDigest": {
+      "type": "object",
+      "required": [ "artifactTarget", "artifactSha256" ],
+      "properties": {
+        "artifactTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "builtIn": {
+      "$ref": "#/$defs/operation",
+      "type": "object",
+      "required": [ "operation", "extensionId", "version", "modelInput" ],
+      "properties": {
+        "extensionId": {
+          "$ref": "#/$defs/extensionIdentity"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        }
+      }
+    },
+    "hostOffering": {
+      "type": "object",
+      "required": [
+        "implementation",
+        "version",
+        "deployment",
+        "execution",
+        "source",
+        "protocolVersions",
+        "platforms"
+      ],
+      "properties": {
+        "implementation": {
+          "$ref": "#/$defs/token"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "deployment": {
+          "$ref": "#/$defs/token"
+        },
+        "execution": {
+          "enum": [ "native-aot", "jit" ]
+        },
+        "source": {
+          "type": "object",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "tool-release"
+              }
+            }
+          },
+          "then": {
+            "required": [ "toolId" ]
+          },
+          "else": {
+            "required": [ "packageId", "command" ]
+          },
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "enum": [ "tool-release", "dotnet-tool" ]
+            },
+            "toolId": {
+              "$ref": "#/$defs/toolId"
+            },
+            "packageId": {
+              "$ref": "#/$defs/packageId"
+            },
+            "command": {
+              "$ref": "#/$defs/token"
+            }
+          }
+        },
+        "protocolVersions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/protocolVersion"
+          }
+        },
+        "wasmAbis": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/token"
+          }
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prerequisite"
+          }
+        },
+        "builtIns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/builtIn"
+          }
+        },
+        "platforms": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/platformId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/targetDigest"
+          }
+        }
+      }
+    },
+    "provider": {
+      "$ref": "#/$defs/operation",
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "process"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "repositoryId",
+              "descriptorTarget",
+              "descriptorSha256",
+              "platforms"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "wasm"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "abi",
+              "repositoryId",
+              "descriptorTarget",
+              "descriptorSha256",
+              "artifactTarget",
+              "artifactSha256"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "repositoryId",
+              "packageId",
+              "command",
+              "packageTarget",
+              "packageSha256"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocolVersion": {
+                "const": "0.1"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [ "modelTuple" ]
+            },
+            "required": [ "modelInput" ]
+          },
+          "else": {
+            "not": {
+              "required": [ "modelInput" ]
+            },
+            "required": [ "modelTuple" ]
+          }
+        }
+      ],
+      "required": [
+        "operation",
+        "delivery",
+        "extensionId",
+        "version",
+        "protocolVersion"
+      ],
+      "properties": {
+        "delivery": {
+          "enum": [ "process", "wasm", "dotnet-tool" ]
+        },
+        "extensionId": {
+          "$ref": "#/$defs/extensionIdentity"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "abi": {
+          "$ref": "#/$defs/token"
+        },
+        "repositoryId": {
+          "$ref": "#/$defs/sha256"
+        },
+        "descriptorTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "descriptorSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "artifactTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "packageId": {
+          "$ref": "#/$defs/packageId"
+        },
+        "command": {
+          "$ref": "#/$defs/token"
+        },
+        "packageTarget": {
+          "$ref": "#/$defs/targetPath"
+        },
+        "packageSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "protocolVersion": {
+          "$ref": "#/$defs/protocolVersion"
+        },
+        "modelTuple": {
+          "$ref": "#/$defs/modelTuple"
+        },
+        "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prerequisite"
+          }
+        },
+        "platforms": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/platformId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/artifactDigest"
+          }
+        }
+      }
+    }
+  }
+}

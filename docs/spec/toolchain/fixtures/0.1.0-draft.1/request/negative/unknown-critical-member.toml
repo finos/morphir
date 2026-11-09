@@ -1,0 +1,9 @@
+schemaVersion = "0.1.0-draft.1"
+critical = ["host.mirror"]
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+channel = "stable"
+mirror = "https://mirror.example.invalid/"
+[toolset]
+preset = "fsharp"

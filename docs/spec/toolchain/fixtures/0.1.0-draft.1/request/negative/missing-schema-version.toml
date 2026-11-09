@@ -1,0 +1,6 @@
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+channel = "stable"
+[toolset]
+preset = "fsharp"

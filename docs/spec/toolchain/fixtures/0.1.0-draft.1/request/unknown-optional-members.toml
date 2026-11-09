@@ -1,0 +1,11 @@
+# Members this reader does not know are ignored unless `critical` names them.
+schemaVersion = "0.1.0-draft.1"
+[host]
+implementation = "dotnet"
+deployment = "self-contained"
+channel = "preview/nightly"
+mirrorHint = "ignored by a 0.1.0-draft.1 reader"
+[toolset]
+preset = "fsharp"
+[futureSection]
+enabled = true

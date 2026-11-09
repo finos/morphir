@@ -25,6 +25,8 @@ This section contains formal specifications for Morphir configuration, IR format
 
 - **[Tool release metadata](./tool-release-metadata/)**: The authenticated release descriptor, channel, revocation, root rotation, mirror, and offline policy used by CLI-managed tools.
 
+- **[Toolchain acquisition](./toolchain/)**: The `0.1.0-draft.1` toolset recipe, project toolchain request, portable lock, installation receipt and `morphirup` JSON result contracts.
+
 - **[Morphir IR JSON Schemas](./ir/schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):
   - v3 (Current): [YAML](/schemas/morphir-ir-v3.yaml) | [JSON](/schemas/morphir-ir-v3.json)
   - v2: [YAML](/schemas/morphir-ir-v2.yaml) | [JSON](/schemas/morphir-ir-v2.json)
