@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>add-deployment-and-acquisition</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+.table-wrap { overflow-x: auto; }
+figure { margin: 1.5rem 0; overflow-x: auto; } figcaption { color: var(--muted); font-size: .95rem; }
+svg { display: block; width: 100%; min-width: 640px; } .toc ol { padding-left: 1.3rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>add-deployment-and-acquisition</h1>
+<p class="meta">Approved design | 9 November 2026 | Commands and new document shapes below are proposals, not shipped interfaces.</p>
+<p><a href="proposal.md">Proposal</a> · <a href="tasks.md">Implementation tasks</a> ·
+<a href="specs/deployment/dotnet-profiles/spec.md">Deployment</a> ·
+<a href="specs/acquisition/toolchain-management/spec.md">Manager</a> ·
+<a href="specs/acquisition/project-toolchains/spec.md">Project toolchains</a> ·
+<a href="specs/extensions/toolset-setup/spec.md">Toolsets</a></p>
+<nav class="toc" aria-label="Contents"><ol>
+<li><a href="#context">Context and evidence</a></li>
+<li><a href="#goals">Goals and boundaries</a></li>
+<li><a href="#decisions">A developer's journey and decisions</a></li>
+<li><a href="#acceptance">Acceptance and delivery sequence</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration and recovery</a></li>
+<li><a href="#references">References</a></li>
+</ol></nav>
+
+<h2 id="context">Context and evidence</h2>
+<p>See <a href="proposal.md">the proposal</a> for motivation. The important distinction is between the host a user runs, the runtime arrangement of that host, the channel that installed it, and the language toolset it can use. The executable name alone identifies none of these reliably.</p>
+<p>Inspection used morphir-dotnet main at <code>4e3321f3c13821105115b4f4f7857a611c5a3c21</code>. <code>src/Morphir/Morphir.csproj</code> names the direct executable <code>morphir</code>. <code>src/Morphir.Tool/Morphir.Tool.csproj</code> packages <code>Morphir.Tool</code> as <code>dotnet-morphir</code> and references the F# frontend. Both target .NET 10. Existing <code>scripts/publish-single-file.cs</code> already attempts a managed self-contained publish. Its presence is groundwork, not proof of a maintained release offering or clean-machine acquisition workflow.</p>
+<p>The F# frontend now has a process guest, <code>src/Morphir.Frontend.FSharp.Extension</code>, packaged as <code>Morphir.Frontend.FSharp.Extension</code>, with extension identity <code>org.finos.morphir.fsharp-frontend</code> and executable <code>morphir-fsharp-frontend</code>. Its project explicitly says FSharp.Compiler.Service is neither trim-safe nor AOT-safe. Its current delivery is a framework-dependent .NET tool. The built-in F# backend is <code>morphir.fsharp</code>. A separately packaged F# backend process guest is new work in this proposal.</p>
+<p>The parent already defines authenticated tool release metadata and extension acquisition separately. Its current <code>morphir tool install</code> command is limited to unsigned local developer Desktop packages. Reusing the contract does not mean remote CLI acquisition is already implemented. The .NET extension roadmap also has pending installation and host-runtime steps; this design does not count them as delivered.</p>
+<details><summary>Where prior art informs the design</summary>
+<ul>
+<li>PowerShell demonstrates runtime-bundled distributions, framework-dependent archives and tool installation alongside ordinary installers. We borrow explicit artifact labeling and installation guidance.</li>
+<li>Aspire demonstrates that a Native AOT executable can itself travel through the .NET tool channel. We keep channel and deployment separate even though the existing Morphir tool stays managed.</li>
+<li>dotnetup provides a standalone lifecycle manager, side-by-side SDK/runtime acquisition, non-admin installation and explicit self-update. We borrow the lifecycle boundary rather than make ordinary compile acquire software.</li>
+<li>rustup provides project selection, proxy dispatch and component sets. We keep Morphir deployment profiles distinct from toolset presets, because rustup uses the word profile for a component set.</li>
+</ul>
+</details>
+
+<h2 id="goals">Goals and boundaries</h2>
+<p>A developer without .NET should acquire the standalone host and F# tools, compile a supported source package and generate F# without installing an SDK. A teammate should restore exact selected artifacts on another supported platform. An existing .NET developer should retain the tool installation and invocation they already use.</p>
+<p>The first delivery manages the .NET host and its toolsets. Implementation identity remains explicit so a later MoonBit provider can join without changing the lock's meaning. It does not require a Rust CLI release, replace task adapters, implement an SDK manager, make arbitrary .fsproj builds runtime-independent, or add assembly-loading plugins to the AOT host. WASM engine implementation stays in the separate host change.</p>
+
+<h2 id="decisions">A developer's journey and decisions</h2>
+<h3 id="dep-1">DEP-1. Separate deployment from acquisition and toolsets</h3>
+<p>Ada downloads Morphir on a machine without .NET. She can choose AOT or managed self-contained execution. Both expose <code>morphir</code>. Ben already maintains a .NET runtime and chooses the framework-dependent apphost. Chen keeps <code>dotnet tool install Morphir.Tool</code>. Their installation instructions differ, while shared commands and configuration keep the same meaning.</p>
+<div class="table-wrap"><table><thead><tr><th>Offering</th><th>Invocation</th><th>Runtime arrangement</th><th>F# frontend default</th></tr></thead><tbody>
+<tr><td>native-aot</td><td>morphir</td><td>Native compiled, no installed .NET</td><td>Self-contained process guest</td></tr>
+<tr><td>self-contained</td><td>morphir</td><td>Managed/JIT, bundled runtime</td><td>Managed built-in when compatible</td></tr>
+<tr><td>framework-dependent</td><td>morphir</td><td>Managed/JIT, compatible installed runtime</td><td>Same managed composition</td></tr>
+<tr><td>dotnet-tool</td><td>dotnet-morphir; dotnet morphir</td><td>Current managed tool; SDK to install</td><td>Existing managed built-in</td></tr>
+</tbody></table></div>
+<p>The first three artifact basenames remain <code>morphir</code>; archives distinguish implementation, release, deployment and platform, for example <code>morphir-dotnet-1.2.3-native-aot-win-x64.zip</code>. Version 1.2.3 is illustrative. Do not rename existing release assets in place. Publish metadata describing their identity and preserve old download links during migration.</p>
+<p>Use one shared command/application layer and a separate managed composition that includes FCS. The direct managed executables and tool wrapper use that composition; the AOT entry point excludes it and uses process delivery. Extend the current <code>Morphir.Tool</code> reference arrangement rather than accidentally bring FCS into an AOT dependency graph. Managed profiles including FCS start untrimmed. Measure selective trimming in the AOT-safe core separately.</p>
+<p>Alternative: maintain four independent applications. Rejected because command and capability behavior would drift. Alternative: make all single-file builds AOT. Rejected because single-file is a packaging choice and managed execution has different dependency support. A single-file claim includes actual native-asset loading/extraction qualification, not just the publish flag.</p>
+
+<h3 id="up-1">UP-1. Make morphirup a small standalone coordinator</h3>
+<p>Ada first obtains <code>morphirup</code> as a Native AOT executable built in morphir-dotnet. It needs no installed Morphir or .NET. It owns bootstrap, selection and lifecycle. Runtime-neutral recipe/request/lock contracts live in the parent. A pure resolver produces a plan; bounded I/O adapters perform authentication, download, extraction, extension installation and activation. The manager has no compiler or generator implementation.</p>
+<figure>
+<svg viewBox="0 0 760 270" role="img" aria-labelledby="arch-title arch-desc">
+<title id="arch-title">One manager coordinates two acquisition authorities</title>
+<desc id="arch-desc">morphirup resolves a toolchain request, obtains a host through authenticated tool metadata and extensions through their existing descriptors, then activates a complete generation.</desc>
+<g fill="var(--panel)" stroke="var(--line)"><rect x="15" y="18" width="205" height="66" rx="8"/><rect x="280" y="18" width="205" height="66" rx="8"/><rect x="540" y="18" width="205" height="66" rx="8"/><rect x="130" y="160" width="230" height="70" rx="8"/><rect x="410" y="160" width="230" height="70" rx="8"/></g>
+<g fill="var(--fg)" font-size="17" text-anchor="middle"><text x="118" y="46">Request + recipe</text><text x="118" y="68">Host, profile, toolset</text><text x="382" y="46">morphirup</text><text x="382" y="68">Resolve and coordinate</text><text x="642" y="46">Active generation</text><text x="642" y="68">Exact host + providers</text><text x="245" y="190">Tool authority</text><text x="245" y="213">TUF release metadata</text><text x="525" y="190">Extension authority</text><text x="525" y="213">Descriptors, claims, locks</text></g>
+<g fill="none" stroke="var(--link)" stroke-width="2"><path d="M220 51H280m-9-5 9 5-9 5M485 51H540m-9-5 9 5-9 5M350 84 245 160m1-11-1 11 11-2M415 84 525 160m-11-2 11 2-1-11"/></g>
+</svg><figcaption>The manager joins existing contracts. MEP remains the contract for running an extension.</figcaption></figure>
+<p>Direct archives remain useful without the manager. NuGet and system package managers keep ownership of installations they created. <code>morphirup</code> can inspect them and propose an explicit side-by-side manager-owned install, but it does not overwrite them. It does not require package-manager adoption to ship the first release.</p>
+<p>Alternative: add remote installation only to <code>morphir</code>. Rejected because it leaves a bootstrap dependency and makes updating the running host harder. Alternative: write a new extension installer inside the manager. Rejected because existing descriptor, store, lock and claim checks must agree across hosts.</p>
+
+<h3 id="up-2">UP-2. Plan, verify and activate one complete generation</h3>
+<p>Ada asks for F# setup. Planning can refresh metadata but never runs a downloaded artifact or changes the selected installation. Applying setup stages the entire candidate and runs readiness checks before activation. Public toolset recipes are ordinary authenticated TUF targets that bind host descriptors, extension descriptors and selected artifact hashes. They do not change extension descriptor syntax or pretend that every existing extension repository is signed.</p>
+<pre><code class="language-console"># Proposed interface. These commands do not exist yet.
+morphirup setup --implementation dotnet --deployment native-aot --preset fsharp --channel stable --plan
+morphirup setup --implementation dotnet --deployment native-aot --preset fsharp --channel stable --yes
+morphirup show --json
+morphirup doctor --json</code></pre>
+<p>A plan names the source authority, exact release/digest, download bytes, disk requirements, update owner and process-probe behavior. <code>--yes</code> authorizes the displayed setup operation in automation. It never means bypass signatures, ignore incompatibility, modify unrelated installations or install a system SDK. If the resolved plan changes before execution, the final receipt records the actual exact plan; an <code>--expect-plan</code> digest refuses a mismatch for approval-sensitive automation.</p>
+<p>Reuse the tool metadata v1 profile without silently changing its numeric schemaVersion. Represent separately published .NET offerings as distinct tool ids in authenticated metadata, with a new versioned recipe mapping them to implementation/deployment identities. New contracts use <code>0.1.0-draft.1</code>. Use established SemVer libraries, exact draft requirements and the repository's unknown-optional/critical-member rules. Any needed evolution of a released descriptor gets its own versioned delta.</p>
+<figure>
+<svg viewBox="0 0 760 185" role="img" aria-labelledby="tx-title tx-desc"><title id="tx-title">Activation is the final publication step</title><desc id="tx-desc">Resolve, acquire and probe a candidate before switching the pointer. Any failure keeps the old generation active.</desc>
+<g fill="var(--panel)" stroke="var(--line)"><rect x="10" y="20" width="165" height="60" rx="8"/><rect x="200" y="20" width="165" height="60" rx="8"/><rect x="390" y="20" width="165" height="60" rx="8"/><rect x="580" y="20" width="165" height="60" rx="8"/><rect x="200" y="115" width="355" height="48" rx="8"/></g>
+<g fill="var(--fg)" font-size="16" text-anchor="middle"><text x="92" y="55">Resolve exact plan</text><text x="282" y="55">Acquire + verify</text><text x="472" y="55">Probe candidate</text><text x="662" y="55">Activate generation</text><text x="377" y="145">Any failure: keep previous generation</text></g>
+<g stroke="var(--link)" fill="none" stroke-width="2"><path d="M175 50H200M365 50H390M555 50H580M282 80V115M472 80V115"/></g></svg>
+<figcaption>Verified downloads can survive a failed attempt. Partial selections cannot become active.</figcaption></figure>
+<p>Store verified bytes through the existing tool and extension content stores. Add immutable toolchain metadata under <code>MORPHIR_HOME/toolchains/generations/&lt;id&gt;/</code>, plus user-default and project activation pointers. A generation contains local launch receipts and exact copies/references of the selected extension records and locks. A project generation does not replace the global extension selection. Hosts consume an additive generation-scoped selection overlay while retaining global catalog compatibility.</p>
+<p>The operation journals preparation and publication. Write the new project lock and selection to a new generation, then switch one project pointer under a lock. The pointer records the portable lock digest. A crash between filesystem publications is recovered from the journal before a new run; uncertain or mismatched state never falls back to a mixed configuration. An in-flight run pins the old generation. Repair restores exact bytes, while update resolves new versions.</p>
+<p>Alternative: install the host, change the global default, then install extensions. Rejected because an incomplete toolset would become visible. Alternative: overwrite the shared global extension lock on every project switch. Rejected because two projects could interfere.</p>
+
+<h3 id="fs-1">FS-1. Deliver F# as capabilities with a standalone process option</h3>
+<p>Ada's host is AOT. Setup resolves the self-contained <code>morphir-fsharp-frontend</code> process guest, including FCS and its managed runtime. It uses the existing Content-Length MEP transport. The default generator remains the host's built-in <code>morphir.fsharp</code>. Ben's managed host can use the same managed F# frontend composition that currently lives in the tool. An explicit provider selection always wins.</p>
+<p>Publish an additional self-contained F# backend process guest from morphir-dotnet, reusing <code>Morphir.CodeGeneration.FSharp</code> and the existing MEP backend methods. Give it a distinct external identity, proposed <code>morphir-fsharp-backend</code>, and exact claims from its actual supported tuples. No protocol members are invented. This makes the backend independently acquirable by MoonBit or another compatible host. External delivery is a required first-delivery proof even though default .NET setup avoids downloading a duplicate built-in.</p>
+<figure><svg viewBox="0 0 760 205" role="img" aria-labelledby="fs-title fs-desc"><title id="fs-title">AOT does not prevent F# workflows</title><desc id="fs-desc">The AOT host sends source to a managed self-contained process frontend, receives IR and uses a built-in or process F# backend to produce source.</desc>
+<g fill="var(--panel)" stroke="var(--line)"><rect x="10" y="25" width="180" height="65" rx="8"/><rect x="285" y="25" width="200" height="65" rx="8"/><rect x="570" y="25" width="180" height="65" rx="8"/><rect x="285" y="135" width="200" height="55" rx="8"/></g>
+<g fill="var(--fg)" text-anchor="middle" font-size="16"><text x="100" y="52">AOT morphir</text><text x="100" y="75">Orchestrate workflow</text><text x="385" y="52">F# frontend process</text><text x="385" y="75">Own runtime + FCS</text><text x="660" y="52">Morphir IR</text><text x="660" y="75">Declared model tuple</text><text x="385" y="158">F# backend</text><text x="385" y="179">Built-in or process</text></g>
+<g stroke="var(--link)" fill="none" stroke-width="2"><path d="M190 57H285M485 57H570M660 90V162H485M285 162H100V90"/></g></svg>
+<figcaption>The frontend process carries its runtime. The host does not load compiler-service assemblies.</figcaption></figure>
+<p>Compilation here means supported F# source to Morphir IR. It does not mean every arbitrary .fsproj can build without an SDK or NuGet restore. If users ask to compile generated F# into a .NET application, report that consumer workflow's SDK and package prerequisites separately. Readiness uses a small fixed source package with no external dependency resolution.</p>
+<p>Alternative: bundle an SDK with every Morphir install. Rejected because the frontend needs compiler services, not a complete SDK for this workload. Alternative: move the F# frontend into AOT. Rejected by its dependency constraints. Keep the existing frontend .NET tool available as an explicit framework-dependent delivery.</p>
+
+<h3 id="lock-1">LOCK-1. Keep requests, portable locks and local receipts distinct</h3>
+<p>Ada commits the project request and portable lock. The request can say stable; the lock records the exact resolved host and providers. Platform closures can be prepared together for the supported team platforms. Frozen restore refuses a platform absent from the lock; explicit setup/update can extend the lock. Different platform closures never silently re-resolve stable independently.</p>
+<pre><code class="language-toml"># Proposed .morphir/toolchain.toml
+schemaVersion = "0.1.0-draft.1"
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+channel = "stable"
+[toolset]
+preset = "fsharp"</code></pre>
+<details><summary>Illustrative portable lock fragment</summary>
+<p>This fragment shows one platform. A complete lock repeats the full dependency closure for every recorded platform. Digests and versions are synthetic example data, not released downloads.</p>
+<pre><code class="language-json">{
+  "schemaVersion": "0.1.0-draft.1",
+  "critical": ["host", "platforms"],
+  "requestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "recipe": {
+    "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "target": "toolchains/recipes/fsharp/1.0.0.json",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "host": {
+    "implementation": "dotnet",
+    "version": "1.2.3",
+    "deployment": "native-aot"
+  },
+  "platforms": {
+    "win-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+      "hostSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+          "artifactSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    }
+  }
+}</code></pre></details>
+<p>Request identity is SHA-256 of the request file's UTF-8 bytes. Reformatting therefore requires explicit lock refresh, a simple rule that avoids cross-language canonical TOML. The local receipt binds SHA-256 of the exact lock bytes, the platform and every installed object identity. Generation ids are local opaque ids, not public release versions. Recipes, request/lock formats, installation receipts and manager JSON result formats each start at <code>0.1.0-draft.1</code>; these names do not change MEP or IR versions.</p>
+<pre><code class="language-console"># Proposed CI workflow after acquiring morphirup
+morphirup restore --locked
+morphirup run -- compile
+morphirup run -- generate --target fsharp
+
+# Offline replay once exact artifacts are present
+morphirup restore --locked --offline
+morphirup run --offline -- compile</code></pre>
+<p>Selection order is explicit CLI selector, <code>MORPHIRUP_TOOLCHAIN</code>, nearest project file within established discovery boundaries, then user default. Overrides select an installed complete generation. <code>show</code> explains the source. <code>run</code> never downloads. A broken project lock does not fall through to a user default.</p>
+<p>Existing <code>[toolchain.&lt;name&gt;]</code> sections in morphir.toml define task adapters and keep their meaning. Use the new file instead of colliding with them. Installed tools and durable trust data live in Morphir Home. Compilation and generation continue to use the configured out root, normally <code>.morphir/out</code>, and existing task result paths. Clearing outputs cannot erase a toolchain.</p>
+<p>Alternative: check in local absolute executable paths. Rejected because they are neither portable nor acquisition instructions. Alternative: put installed executables in .morphir/out. Rejected because outputs are disposable and task-owned.</p>
+
+<h3 id="path-1">PATH-1. One proxy, explicit ownership and predictable dispatch</h3>
+<p>The manager owns a bin directory with <code>morphirup</code> and an optional <code>morphir</code> dispatch proxy. It does not rename the NuGet tool. An external dotnet-tool installation remains externally owned; users update it with the dotnet tool mechanism. An explicitly manager-owned tool delivery is installed to an isolated tool path through the SDK, with exact package provenance recorded. The manager never installs an SDK implicitly.</p>
+<p>On Windows, ship a real proxy executable; do not depend on symlink privileges or a PowerShell execution-policy exception for normal launch. Resolve the selected executable to an absolute path and spawn with an argument vector, no shell command string. Preserve streams, working directory, exit status and cancellation. Windows background child windows are suppressed, and cancellation terminates the owned process tree. A selected child cannot recursively find the proxy through PATH.</p>
+<p>Bootstrap works by absolute path. Persistent PATH/profile edits require an explicit <code>morphirup env --install</code> operation. Record exactly the manager-owned addition for reversible removal. Repeated setup adds no duplicate entries. <code>doctor</code> reports which morphir wins PATH, runtime/ABI availability, selected lock and update ownership without changing any of them.</p>
+<p>Alternative: quietly replace any morphir on PATH. Rejected because Rust, MoonBit, direct .NET and package-managed installations may coexist. Alternative: copy rustup's full override syntax immediately. Rejected because one explicit run command and a reported precedence rule cover the first delivery.</p>
+
+<h3 id="qual-1">QUAL-1. Verify language readiness and runtime hosting separately</h3>
+<p>Ada sees separate acquired, verified, capability-checked and workflow-qualified states. Setup does not say ready merely because it extracted archives. A process probe runs with Ada's rights, under the existing launch controls. Plan-only never executes it. The fixed smoke workflow checks known F# source to known semantic IR and expected generated F# files. A failed probe leaves the previous generation selected.</p>
+<p>A WASM recipe names its required ABI. The public runtime value stays <code>wasm</code>; engine identity and ABI are separate. A host supporting morphir-bytes-v1 cannot qualify an extism-kernel-v1 guest merely because both are WASM. The separate host proposal must qualify its packaged engine across every offering before setup advertises the corresponding capability.</p>
+<figure><svg viewBox="0 0 760 210" role="img" aria-labelledby="dep-title dep-desc"><title id="dep-title">Delivery dependencies stay explicit</title><desc id="dep-desc">Deployment profiles and acquisition can proceed alongside the separate WASM host. Packaged WASM qualification joins them. Bounded model access adds independent readers and session contracts.</desc>
+<g fill="var(--panel)" stroke="var(--line)"><rect x="10" y="20" width="210" height="65" rx="8"/><rect x="10" y="125" width="210" height="65" rx="8"/><rect x="290" y="20" width="205" height="65" rx="8"/><rect x="550" y="20" width="200" height="65" rx="8"/><rect x="290" y="125" width="205" height="65" rx="8"/></g>
+<g fill="var(--fg)" font-size="16" text-anchor="middle"><text x="115" y="49">Profiles + acquisition</text><text x="115" y="71">This change</text><text x="115" y="154">WASM host</text><text x="115" y="176">Separate change</text><text x="392" y="49">Packaged WASM</text><text x="392" y="71">Qualification</text><text x="650" y="49">Bounded generation</text><text x="650" y="71">Large-package gate</text><text x="392" y="154">Readers + sessions</text><text x="392" y="176">Bounded-access change</text></g>
+<g stroke="var(--link)" stroke-width="2" fill="none"><path d="M220 52H290M220 157 290 70M495 52H550M495 157 550 70"/></g></svg>
+<figcaption>F# process acquisition can ship before the WASM engine. The large-package WASM acceptance gate still needs both.</figcaption></figure>
+<p>Alternative: merge deployment, acquisition, WASM engines and bounded generation into one release gate. Rejected because process-based F# setup is useful independently. Keep evidence per repository and per feature. Use the existing shared MCK runner with explicit independent adapters for IR/MEP behavior. Acquisition/crash/ownership checks are integration tests, not a second compatibility runner.</p>
+
+<h2 id="acceptance">Acceptance and delivery sequence</h2>
+<ol>
+<li>Publish reproducible offering metadata and direct archives. Test the four offerings from their packaged outputs on all six declared platforms. Unsupported combinations remain visibly unsupported until qualified.</li>
+<li>Prove one clean-machine AOT setup plus self-contained F# frontend and built-in backend. Acquire rather than build artifacts on the consumer machine. Check fixed outputs, exact provider identities and no SDK/system runtime.</li>
+<li>Publish the standalone F# backend and exercise explicit external selection. Preserve the existing built-in backend's identity and default behavior.</li>
+<li>Restore a multi-platform project lock, rerun offline and prove that a moving stable channel cannot change a frozen build. Test missing platform closures and expired metadata according to existing trust rules.</li>
+<li>Interrupt downloads, fail probes, race activation and run a long command during update. Verify the previous generation remains usable and each run observes one complete selection. Exercise tampered archives, learned revocations, archive traversal refusal and PATH conflicts.</li>
+<li>Qualify the separate WASM-host output when available. Do not count process F# acceptance as WASM support. Add MoonBit toolchain acquisition/adoption later with its own release and receipts.</li>
+</ol>
+<p>Group focused tests and reuse packaged artifacts. Broad clean-machine platform qualification belongs in manual or release qualification, not a new job per profile on every PR. Shared fixed IR/MEP expectations stay in finos/morphir; .NET publishes its adapter and packaging receipts.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table><thead><tr><th>Risk</th><th>Mitigation</th></tr></thead><tbody>
+<tr><td>Self-contained FCS packages may be large.</td><td>Report full download/installed sizes; reuse content-addressed artifacts. First prove compatibility untrimmed. Treat further trimming as measured work.</td></tr>
+<tr><td>Native engine binaries differ by platform and offering.</td><td>Qualify packaged loading/extraction with the host change. Do not advertise an unproven ABI.</td></tr>
+<tr><td>Several installations expose morphir on PATH.</td><td>Report ownership and resolution; support explicit manager dispatch without overwriting external files.</td></tr>
+<tr><td>Project setup and global extension installs race.</td><td>Use immutable generation-scoped provider overlays, existing interprocess store locks and one activation publication.</td></tr>
+<tr><td>Offline use can miss a new revocation.</td><td>Enforce every learned revocation; report last refresh without making an installed command require a network connection. Never weaken freshness checks for new resolution.</td></tr>
+<tr><td>Self-contained runtime security patches require republishing.</td><td>Record runtime version and origin in receipts; publish a new immutable release and explicit update plan. Never rewrite existing artifact bytes.</td></tr>
+<tr><td>The shared tracker has a pre-existing conflict.</td><td>Keep this reviewable OpenSpec proposal; obtain owning issue/task links after the conflict is resolved. Do not overwrite shared state or run bd dolt push on this Windows host.</td></tr>
+</tbody></table>
+
+<h2 id="migration">Migration and recovery</h2>
+<p>Land shared contracts and fixed cases first, then .NET packaging, standalone language guests, manager resolution/activation and project dispatch. Adopt generation-scoped selection in the .NET registry as an explicit update to that repository's availability/delivery requirements. Preserve its existing top-level host strings and add offering identity rather than silently redefining their values. Existing direct/tool commands keep working.</p>
+<p>Users can adopt project requests gradually. Imported external installations remain externally owned and are not moved into manager directories. An unsigned developer artifact requires the existing explicit developer policy, with separate provenance. Bootstrap's official root is provisioned out of band in the manager release; public recipes must use production trust, never fixture keys.</p>
+<p>Rollback selects a verified prior complete generation, subject to known revocations. Active run leases protect in-use files. Cleanup removes only unreferenced manager-owned generations and disposable caches; trusted roots, known revocations and locks survive. Interrupted self-update stages a new manager executable and replaces it only through a platform-qualified helper after the old executable exits.</p>
+<p>No unresolved product decision is hidden in the implementation tasks. Signing-key custody, exact installer endpoint names and binary-size targets can be established during release preparation without changing the contracts. Before implementation, attach this proposal to its owning Beads epic and cross-repository tasks after tracker recovery.</p>
+
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://github.com/finos/morphir-dotnet/tree/4e3321f3c13821105115b4f4f7857a611c5a3c21">Inspected morphir-dotnet revision</a>, especially src/Morphir, src/Morphir.Tool, src/Morphir.Frontend.FSharp.Extension, build/Build.Packaging.cs and scripts/publish-single-file.cs.</li>
+<li><a href="https://github.com/finos/morphir-dotnet/blob/4e3321f3c13821105115b4f4f7857a611c5a3c21/docs/content/contributing/design/prds/morphir-extension-model.md">Approved .NET extension roadmap</a> and <a href="https://github.com/finos/morphir-dotnet/blob/4e3321f3c13821105115b4f4f7857a611c5a3c21/openspec/specs/extension-registry/spec.md">current registry requirements</a>.</li>
+<li><a href="https://github.com/finos/morphir/blob/main/docs/spec/tool-release-metadata/index.md">Tool release trust and offline policy</a> and <a href="https://github.com/finos/morphir/blob/main/docs/design/draft/extensions/distribution-and-acquisition.md">extension acquisition contracts</a>. Main links are navigational; the design records the local inspected files in Context.</li>
+<li><a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/">.NET deployment modes</a>, <a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview">single-file packaging</a> and <a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/trim-self-contained">trimming constraints</a>.</li>
+<li><a href="https://github.com/PowerShell/PowerShell/releases/tag/v7.6.9">PowerShell release artifacts</a> and <a href="https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-windows">installation channels</a>.</li>
+<li><a href="https://aspire.dev/whats-new/aspire-13-3/">Aspire Native AOT tool delivery</a> and <a href="https://aspire.dev/get-started/install-cli/">CLI acquisition</a>.</li>
+<li><a href="https://devblogs.microsoft.com/dotnet/introducing-dotnetup/">dotnetup lifecycle and standalone installation</a>.</li>
+<li><a href="https://rust-lang.github.io/rustup/overrides.html">rustup project overrides</a> and <a href="https://rust-lang.github.io/rustup/concepts/profiles.html">component profiles</a>.</li>
+</ul>
+</main>
+</body>
+</html>
+

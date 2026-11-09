@@ -1,0 +1,52 @@
+# Proposal
+
+## Why
+
+Users should be able to acquire Morphir and its language tools without assembling runtimes, extension packages and configuration by hand. Four .NET delivery options need one predictable setup experience that also leaves room for other hosts and independently released extensions.
+
+## What Changes
+
+Follow a developer who installs Morphir on a machine without .NET, selects the F# toolset, compiles a small package and generates F#. A colleague restores the checked-in toolchain selection in CI, offline after acquisition, with the same providers and exact artifact identities.
+
+```text
+bootstrap morphirup -> select host + deployment + toolset
+                   -> verify and stage artifacts -> activate locked toolchain
+                   -> morphir compile -> model -> morphir generate
+```
+
+- Define the .NET offerings: Native AOT `morphir`, self-contained managed `morphir`, framework-dependent `morphir`, and the existing managed `Morphir.Tool` package exposing `dotnet-morphir`. Separate deployment, acquisition channel and toolset selection.
+- Propose a standalone, runtime-independent `morphirup` manager with bootstrap, setup plans, side-by-side installation, project selection, locked restore, explicit updates, rollback and diagnostics. Its first managed toolchain implementation is .NET; the identity model also accommodates MoonBit and future hosts without making their delivery a gate here.
+- Coordinate existing tool and extension acquisition contracts rather than introducing a parallel extension repository or MEP installer. Keep direct archives, .NET tools and package-manager installations supported and record who owns updates.
+- Make F# the first complete setup preset. Preserve the built-in F# backend, acquire the F# frontend process guest when needed, and publish an independently acquirable F# backend process delivery for hosts that need it. Package compiler services with the frontend; require neither an SDK nor a system runtime for the standalone F# path.
+- Add a project toolchain request, an exact portable lock, platform artifact selection, offline execution and transactional activation. Keep toolchain state in Morphir Home and build artifacts in the configurable workspace out root.
+- Publish narrative diagrams, proposed command examples, recovery journeys and release qualification for Windows, macOS and Linux. Qualify extension hosting separately from installation success.
+
+## Capabilities
+
+### New Capabilities
+
+- `deployment/dotnet-profiles`: the supported .NET deployment offerings, capabilities, prerequisite reporting and release identity.
+- `acquisition/toolchain-management`: bootstrap, acquisition ownership, side-by-side lifecycle and safe activation through `morphirup`.
+- `acquisition/project-toolchains`: project requests, exact locks, selection precedence and reproducible offline restore/run behavior.
+- `extensions/toolset-setup`: capability-based extension setup, F# frontend/backend delivery and verifiable readiness.
+
+### Modified Capabilities
+
+None in this planning repository. Existing MEP guest requirements remain unchanged. Adoption must update morphir-dotnet's host availability and delivery reporting in its own `extension-registry` spec; executable names alone will no longer identify a deployment profile.
+
+## Tracking
+
+- Approval: the user approved this proposal and its narrative design on 9 November 2026. Implementation tasks remain unstarted.
+- OpenSpec change: `openspec/changes/add-deployment-and-acquisition/`.
+- Origin: this deployment/acquisition discussion, following [discussion #214](https://github.com/finos/morphir/discussions/214). This does not claim #214 is a deployment specification.
+- Related change: `add-bounded-model-access`. Its WASM generation path requires a qualified host; bounded readers and name compaction do not depend on this manager.
+- Separate prerequisite: the agreed .NET WASM-host change still needs its own proposal and tracking. This change specifies acquisition and profile qualification, not the WASM engine implementation.
+- Beads/GitHub owning links are pending. The preceding planning work encountered a shared Dolt merge conflict and obtained no issue id. Read-only inspection on 9 November confirmed one conflict in `issues`. Do not overwrite that conflict or invent links; create the owning epic and repository-specific tasks once the shared tracker is writable. Do not run `bd dolt push` under the Windows restriction in AGENTS.md.
+
+## Impact
+
+The parent repository owns shared acquisition contracts, fixed examples and qualification expectations. morphir-dotnet owns its publish profiles, `morphirup` executable, managed entry points and F# packages. MoonBit adoption is a follow-up using the same contracts. No submodule pin or implementation changes are part of this proposal.
+
+New toolset recipe, toolchain request, lock, installation receipt and manager result contracts start at `0.1.0-draft.1`, with exact draft support. Reuse existing tool/extension document contracts at their actual versions; do not rename their numeric or draft versions in place. Any extension to a released descriptor uses a separately reviewed compatible addition or next-major draft. MEP and IR versions are independent.
+
+First delivery covers six native platform pairs: Windows x64/ARM64, macOS x64/ARM64 and Linux glibc x64/ARM64. Unsupported artifacts are reported explicitly. Linux musl, additional package-manager integrations and managing an external SDK installation follow later. The initial public acquisition paths are direct archives/bootstrap and the existing .NET tool channel.
