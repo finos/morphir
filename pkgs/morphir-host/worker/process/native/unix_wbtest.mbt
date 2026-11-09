@@ -19,19 +19,19 @@ async fn fixture_staged() -> @shared.StagedArtifact {
 
 ///|
 /// Starts the fixture through the stub alone and returns the host's ends and
-/// the PID, so that a test can make the streams itself.
+/// the PID, so that a test can make the streams itself. It waits while the
+/// copy is busy, as `spawn` does: another test's child can hold its own
+/// staged copy open for writing for a short time.
 #cfg(not(platform="windows"))
-fn start_ends(staged : @shared.StagedArtifact) -> (HostEnds, Int32) raise {
+async fn start_ends(staged : @shared.StagedArtifact) -> (HostEnds, Int32) {
   let ends = HostEnds::{ fds: [-1, -1, -1], identity: FixedArray::make(6, 0L), }
   let pid : FixedArray[Int32] = [0]
   let executable = os_text(staged.executable())
-  let error = spawn_ffi(
+  let error = spawn_when_not_busy(
     executable,
     [executable, os_text("echo")],
-    2,
     os_text(staged.working_directory()),
-    ends.fds,
-    ends.identity,
+    ends,
     pid,
   )
   assert_eq(error, 0)
@@ -144,4 +144,26 @@ async test "a launch waits while another process briefly holds the copy open for
     channel.close()
   })
   assert_eq(stop.status, Exited(code=0))
+}
+
+///|
+#cfg(not(platform="windows"))
+async test "the stub-only start of the tests waits while the copy is busy" {
+  // As in the launch test above: on Linux an exec of a copy that is open for
+  // writing fails with ETXTBSY until the writer closes it.
+  let staged = fixture_staged()
+  let writer = @fs.open(staged.executable(), mode=WriteOnly)
+  @async.with_task_group(group => {
+    group.spawn_bg(() => {
+      @async.sleep(100)
+      writer.close()
+    })
+    let (ends, pid) = start_ends(staged)
+    for i in 0..<3 {
+      close_end_ffi(ends.fds[i], ends.identity[2 * i], ends.identity[2 * i + 1])
+    }
+    Tree::kill(ProcessGroup::{ pgid: pid, })
+    assert_true(Leader::new(pid).wait_for(@shared.STOP_CONFIRM_MS) is Some(_))
+  })
+  unstage(staged)
 }

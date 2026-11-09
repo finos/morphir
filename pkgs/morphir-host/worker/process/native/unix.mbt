@@ -38,6 +38,46 @@ extern "C" fn group_state_ffi(pgid : Int32) -> Int32 = "morphir_worker_group_sta
 const ETXTBSY : Int32 = 26
 
 ///|
+/// Runs the spawn stub and returns its errno, 0 on success. While the staged
+/// copy is busy (`ETXTBSY`), it tries again with a growing pause for at most
+/// `TEXT_BUSY_RETRY_MS`. A failed spawn leaves no process and no descriptor,
+/// so it can run again.
+#cfg(not(platform="windows"))
+async fn spawn_when_not_busy(
+  path : Bytes,
+  argv : FixedArray[Bytes],
+  cwd : Bytes,
+  ends : HostEnds,
+  pid : FixedArray[Int32],
+) -> Int32 {
+  let deadline = @async.now() + TEXT_BUSY_RETRY_MS.to_int64()
+  let mut pause = 5
+  let mut error = spawn_ffi(
+    path,
+    argv,
+    argv.length(),
+    cwd,
+    ends.fds,
+    ends.identity,
+    pid,
+  )
+  while error == ETXTBSY && @async.now() < deadline {
+    @async.sleep(pause)
+    pause = @cmp.minimum(pause * 2, 100)
+    error = spawn_ffi(
+      path,
+      argv,
+      argv.length(),
+      cwd,
+      ends.fds,
+      ends.identity,
+      pid,
+    )
+  }
+  error
+}
+
+///|
 /// A NUL-terminated UTF-8 string for a C call.
 #cfg(not(platform="windows"))
 fn os_text(text : String) -> Bytes raise @worker.LaunchError {
@@ -162,33 +202,13 @@ async fn spawn(
   }
   let ends = HostEnds::{ fds: [-1, -1, -1], identity: FixedArray::make(6, 0L), }
   let pid : FixedArray[Int32] = [0]
-  let path = os_text(executable)
-  let cwd = os_text(staged.working_directory())
-  let deadline = @async.now() + TEXT_BUSY_RETRY_MS.to_int64()
-  let mut pause = 5
-  let mut error = spawn_ffi(
-    path,
+  let error = spawn_when_not_busy(
+    os_text(executable),
     argv,
-    argv.length(),
-    cwd,
-    ends.fds,
-    ends.identity,
+    os_text(staged.working_directory()),
+    ends,
     pid,
   )
-  // A failed spawn leaves no process and no descriptor, so it can run again.
-  while error == ETXTBSY && @async.now() < deadline {
-    @async.sleep(pause)
-    pause = @cmp.minimum(pause * 2, 100)
-    error = spawn_ffi(
-      path,
-      argv,
-      argv.length(),
-      cwd,
-      ends.fds,
-      ends.identity,
-      pid,
-    )
-  }
   let group = ProcessGroup::{ pgid: pid[0], }
   // Until the worker is handed over, any way out stops its group and reaps
   // the leader, so that the caller can remove the private directory. The
