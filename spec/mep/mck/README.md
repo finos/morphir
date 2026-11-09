@@ -275,6 +275,7 @@ asset manifest.
 | 0028–0029 | Valid successful and failed compilation results |
 | 0030–0032 | Support is not proof; compile IR consistency; evidence model identity |
 | 0033–0035 | Unknown critical child, exact evidence scope, and aggregate payload budget |
+| 0036–0040 | validateModel tuples, protocol line and integrity |
 
 The `guarantees` lists describe identifiers a peer interprets. They do not
 establish those guarantees. Every identifier under `urn:morphir:mep:fixture:` is

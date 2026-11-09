@@ -65,7 +65,7 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `FrontendCapability` | `multiDocument` is written only when true; absent means false. |
 | `WorkspaceCapability` | `protocolVersions` are full SemVer strings (`0.1.0`), not MEP versions. |
 | `InitializeParams` | `modelTransport` is left out when absent; absence grants no model operations. |
-| `ExtensionCapabilities` | `frontend`, `backend`, `workspace` and `modelTransport` are left out when absent. Session model tuples must be a bilateral subset. The four flags are always written; an absent flag is read as false. `extra` members sit beside the named members, and a writer refuses an `extra` key that reuses a named member's name. |
+| `ExtensionCapabilities` | `frontend`, `backend`, `workspace`, `validator` and `modelTransport` are left out when absent. Session model tuples must be a bilateral subset. The four flags are always written; an absent flag is read as false. `extra` members sit beside the named members, and a writer refuses an `extra` key that reuses a named member's name, including `validator`. |
 | `ClaimsRequirements` | Each `host` entry is one SemVer comparator. `host` is left out when empty and read as empty when absent. |
 | `CapabilityClaimSet` | `claimsVersion` is the claims format version, and draft.1 names it `statementVersion`. A claim set with both names is refused. In draft.1, `statementVersion` in `critical` is read as `claimsVersion`, and `claimsVersion` in `critical` is refused. `protocolVersions` contain full MEP SemVer strings for new drafts and the unchanged legacy `0.1` spelling. Unknown top-level members are dropped when read. `capabilities` is open, and its named members are not checked against `ExtensionCapabilities` when read. `requires` is left out when absent, and `critical` is left out when empty. A reader refuses a `critical` path it does not understand. |
 | `CompilePackage` | `exposedModules` is left out when absent. Absent exposes every module; an empty list exposes none. |
@@ -77,7 +77,7 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `CompileBaseline` | `modules` is read as empty when absent. `contextDigest` is left out when absent. |
 | `ModuleStatus` | Wire values `compiled`, `unchanged`, `failed`, `blocked`. |
 | `ModuleResult` | `sourceDigest`, `interfaceDigest`, `ir` and `frontendState` are left out when absent. `dependsOn` and `diagnostics` are read as empty when absent. |
-| `ModelOperation` | Exact method strings `morphir.frontend.compileModel` and `morphir.backend.generateModel`; require MEP `0.2.0-draft.1`. |
+| `ModelOperation` | Exact method strings `morphir.frontend.compileModel`, `morphir.backend.generateModel` and `morphir.validator.validateModel`; require MEP `0.2.0-draft.1`. |
 | `ModelCodec`, `ModelLayout` | `ion-binary` or `morphir-json`; layout `single-document`. Media type derives from the codec. |
 | `ModelTransportSupport` | Unique complete tuples; absent `guarantees` defaults to empty. Host offer order is preference order, and the first tuple for each operation is the host's default. Session tuples keep the host order, and session tuples and limits cannot exceed either peer's offer. Only an empty agreement for an operation is a negotiation failure. |
 | `ModelPayload` | Both codecs use canonical padded base64; decoded length and SHA-256 bind exact bytes. |
@@ -85,6 +85,8 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `CompileModelRequest` | Absent `dependencies` defaults to empty. Output and dependency formats must match the selected tuple. |
 | `CompileModelResult` | `success:true` requires `model`; `success:false` forbids it, including null. Absent diagnostics and success modules default to empty. |
 | `GenerateModelRequest` | Absent `requiredGuarantees` and `options` default to empty. Result reuses `GenerateResult`. A host that can convert a model to an agreed tuple sends the converted model, converted to the first agreed tuple in host order that it can reach without loss. Only when no agreed tuple is lossless does it select the first such tuple. The converted model keeps its `modelId` and has its own digest and a revision derived from that digest, and the host reports every conversion to the user as a diagnostic or notification, with both tuples, revisions and payload digests and the dropped data. The host adds no file to the extension's output for it. A lossy conversion is refused with the host's lossy-conversion error, not `extension.tuple_unavailable`, unless the user explicitly allows loss for that operation; then the host reports the dropped data. Only when the host cannot convert does it report `extension.tuple_unavailable`. |
+| `ValidateModelRequest` | Absent `options` defaults to empty. The tuple of `model` must be a session tuple. |
+| `ValidateModelResult` | No success flag. A failure to run is a JSON-RPC error. |
 | `GenerateRequest` | `options` is read as empty when absent. |
 | `GenerateResult` | `artifacts` and `diagnostics` are read as empty when absent. |
 | `Artifact` | When `binary` is true, `content` is base64. `binary` is read as false when absent. |
@@ -145,6 +147,7 @@ The contract covers the existing SDK protocol types and the new rich-model draft
 - capabilities and capability claim sets
 - compile requests and results, including incremental baselines
 - generate requests and results, and diagnostics
+- validate model payloads
 - additive rich-model methods, complete transport tuples, bounded payloads and scoped evidence
 - method names and error codes
 - the `$/cancelRequest` and `morphir.progress` notifications from the [protocol draft](../../docs/design/draft/extensions/protocol.md), which the Rust SDK does not handle yet
@@ -157,5 +160,5 @@ Not covered yet:
   guest suite through `morphir mck mep` alongside reference cases
 - runtime implementation of rich-model SDK/host adapters; legacy `Json` fields remain supported
 - workspace discovery payloads, which live in `morphir_workspace`
-- validate and transform payloads
+- the legacy validate payload and the transform payload
 - the JSON-RPC 2.0 envelope, which is a standard and not part of MEP

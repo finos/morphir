@@ -168,10 +168,11 @@ structure WorkspaceCapability {
 
 /// What an extension can do.
 ///
-/// `frontend`, `backend`, `workspace` and `modelTransport` are left out when
-/// absent. An absent `modelTransport` means legacy only. In a session,
-/// `modelTransport` contains only tuples that both peers offer, in the order
-/// of the host offer, and limits no larger than the limits of each peer.
+/// `frontend`, `backend`, `workspace`, `validator` and `modelTransport` are
+/// left out when absent. An absent `modelTransport` means legacy only. In a
+/// session, `modelTransport` contains only tuples that both peers offer, in
+/// the order of the host offer, and limits no larger than the limits of each
+/// peer.
 ///
 /// The four flags are always written. An absent flag is read as false.
 // GAP smithy-2qe.34.18: the Gleam `extra` members sit beside the
@@ -184,6 +185,8 @@ structure ExtensionCapabilities {
     backend: BackendCapability
 
     workspace: WorkspaceCapability
+
+    validator: ValidatorCapability
 
     modelTransport: ModelTransportSupport
 

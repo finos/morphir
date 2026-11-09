@@ -9,8 +9,9 @@ $version: "2"
 // `--member-names smithy`.
 //
 // Scope: MEP 0.2.0-draft.1. That draft keeps every legacy 0.1 method and
-// shape, and adds morphir.frontend.compileModel and
-// morphir.backend.generateModel. One model covers both protocol versions.
+// shape, and adds morphir.frontend.compileModel,
+// morphir.backend.generateModel and morphir.validator.validateModel. One
+// model covers both protocol versions.
 //
 // A comment that starts with `GAP smithy-` names an open beads issue in
 // moonrockz/smithy. At that place, the smithy.rpc traits or the CLI cannot
@@ -61,6 +62,7 @@ use smithy.rpc#method
         { name: "frontendCompile", method: "morphir.initialize", pointer: "/capabilities/frontend/compile" }
         { name: "backend", method: "morphir.initialize", pointer: "/capabilities/backend" }
         { name: "backendGenerate", method: "morphir.initialize", pointer: "/capabilities/backend/generate" }
+        { name: "validator", method: "morphir.initialize", pointer: "/capabilities/validator" }
         { name: "workspaceDiscover", method: "morphir.initialize", pointer: "/capabilities/workspace/discover" }
         { name: "modelTransport", method: "morphir.initialize", pointer: "/capabilities/modelTransport" }
     ]
@@ -87,6 +89,7 @@ service ExtensionService {
         Generate
         GenerateModel
         Validate
+        ValidateModel
         Transform
         WorkspaceDiscover
         Shutdown
@@ -277,7 +280,8 @@ operation GenerateModel {
     output: GenerateResult
 }
 
-/// Validate Morphir IR. The contract does not specify the payloads yet.
+/// Validate Morphir IR. Legacy operation. The contract does not specify the
+/// payloads. `morphir.validator.validateModel` is the model-tier method.
 // GAP smithy-2qe.34.20: `extension.types` must contain `validator`.
 // GAP smithy-2qe.34.25: no trait makes the params any JSON value, as
 // `resultMember` does for a result, so each params member is unknown.
@@ -286,6 +290,18 @@ operation GenerateModel {
 operation Validate {
     input: EmptyParams
     output: OpaqueResult
+}
+
+/// Validate a complete model. Requires the exact MEP 0.2.0-draft.1 session,
+/// the `validator` capability and an admitted validateModel tuple.
+// GAP smithy-2qe.34.20: the session must use 0.2.0-draft.1, its tuples must
+// contain morphir.validator.validateModel, and `extension.types` must
+// contain `validator`.
+@method(name: "morphir.validator.validateModel", params: "named")
+@jsonRpcLifecycle(allowedIn: ["ready"], requires: ["validator", "modelTransport"])
+operation ValidateModel {
+    input: ValidateModelRequest
+    output: ValidateModelResult
 }
 
 /// Transform Morphir IR to Morphir IR. The contract does not specify the

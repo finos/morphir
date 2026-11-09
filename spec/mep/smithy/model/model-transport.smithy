@@ -15,6 +15,7 @@ namespace morphir.mep
 enum ModelOperation {
     COMPILE_MODEL = "morphir.frontend.compileModel"
     GENERATE_MODEL = "morphir.backend.generateModel"
+    VALIDATE_MODEL = "morphir.validator.validateModel"
 }
 
 /// The representation of a complete model document. `ion-binary` uses media

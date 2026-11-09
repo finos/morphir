@@ -149,6 +149,27 @@
     "model-0035": {
       "request": [],
       "note": "Valid. MEP refuses it at admission: aggregate decoded limit. Not checked: smithy-2qe.34.24."
+    },
+    "model-0036": {
+      "request": [],
+      "result": [],
+      "note": "Valid. The MEP outcome is accept."
+    },
+    "model-0037": {
+      "request": [],
+      "note": "Valid. MEP refuses it at negotiation: the agreement for validateModel is empty, so the host sends no request. Not checked: smithy-2qe.34.24."
+    },
+    "model-0038": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the session has no validateModel tuple. Not checked: smithy-2qe.34.20."
+    },
+    "model-0039": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the session is not MEP 0.2.0-draft.1. Not checked: smithy-2qe.34.20."
+    },
+    "model-0040": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission after decoding: digest mismatch. Out of scope for a message model."
     }
   }
 }
