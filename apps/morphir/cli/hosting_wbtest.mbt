@@ -56,3 +56,37 @@ async test "one host stop state reaches synchronous adapters and retains exit 13
   assert_eq(result.exit_code().to_int(), 130)
   assert_eq(events, ["diagnostics", "telemetry"])
 }
+
+///|
+async test "worker polling distinguishes internal task cancellation from an application stop" {
+  let invocation = hosted_fixture()
+  let host = invocation.host(@logging.null_logger(), () => ())
+  let observed : Array[(Bool, Bool)] = []
+  let outcome = @hosting.run(host, ctx => {
+    let context = invocation.command_context(ctx)
+    @async.with_task_group(group => {
+      let ready : @async.Queue[Unit] = @async.Queue(kind=Unbounded)
+      let waiting : @async.Queue[Unit] = @async.Queue(kind=Unbounded)
+      let task = group.spawn(() => {
+        defer {
+          let task_cancelled = try {
+            (context.check_cancelled)()
+            false
+          } catch {
+            _ => true
+          }
+          observed.push((task_cancelled, (context.stop_requested)()))
+        }
+        ready.put(())
+        ignore(waiting.get())
+      })
+      ignore(ready.get())
+      task.cancel()
+    })
+    assert_false((context.stop_requested)())
+    ctx.lifetime.stop_application(exit_code=@hosting.ExitCode::from_int(130))
+    assert_true((context.stop_requested)())
+  })
+  assert_eq(observed, [(true, false)])
+  assert_eq(outcome.exit_code().to_int(), 130)
+}

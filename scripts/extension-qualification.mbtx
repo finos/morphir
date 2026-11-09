@@ -329,7 +329,7 @@ async fn execute(
       "--evidence",
       evidence,
       "--native",
-      "\{built}/morphir/morphir/morphir.exe",
+      "\{built}/finos/morphir/morphir.exe",
       "--npm-entry",
       "\{npm}/package/bin/morphir.js",
       "--native-guest",

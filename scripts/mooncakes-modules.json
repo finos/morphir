@@ -1,0 +1,162 @@
+{
+  "profile": "morphir/mooncakes-inventory",
+  "contractVersion": "0.1.0",
+  "modules": [
+    {
+      "path": ".",
+      "name": "morphir-moonbit",
+      "disposition": "excluded",
+      "reason": "Workspace root, not a distributable module."
+    },
+    {
+      "path": "apps/morphir",
+      "name": "finos/morphir",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "apps/morphir-extension",
+      "name": "finos/morphir-extension",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "apps/morphir-otel",
+      "name": "finos/morphir-otel",
+      "disposition": "excluded",
+      "reason": "Separate OTel workspace and runtime assets require a distribution audit; excluded by the approved first-release inventory."
+    },
+    {
+      "path": "apps/morphir-site",
+      "name": "finos/morphir-site",
+      "disposition": "excluded",
+      "reason": "Documentation site generator."
+    },
+    {
+      "path": "apps/morphir-workbench",
+      "name": "finos/morphir-workbench",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "apps/morphir-workbench-desktop",
+      "name": "finos/morphir-workbench-desktop",
+      "disposition": "excluded",
+      "reason": "Desktop bundle requires a separate distribution audit; excluded by the approved first-release inventory."
+    },
+    {
+      "path": "pkgs/morphir-conceptual",
+      "name": "finos/morphir-conceptual",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-core",
+      "name": "finos/morphir-core",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-elm",
+      "name": "finos/morphir-elm",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-engine",
+      "name": "finos/morphir-engine",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-execution",
+      "name": "finos/morphir-execution",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-host",
+      "name": "finos/morphir-host",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-ir",
+      "name": "finos/morphir-ir",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-metadata",
+      "name": "finos/morphir-metadata",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-moonbit",
+      "name": "finos/morphir-moonbit",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-moonbit-bindings",
+      "name": "finos/morphir-moonbit-bindings",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-moonbit-frontend",
+      "name": "finos/morphir-moonbit-frontend",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-scheme",
+      "name": "finos/morphir-scheme",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-sdk",
+      "name": "finos/morphir-sdk",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-sdk-spec",
+      "name": "finos/morphir-sdk-spec",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-toml-edit",
+      "name": "finos/morphir-toml-edit",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-typing",
+      "name": "finos/morphir-typing",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-typing-tools",
+      "name": "finos/morphir-typing-tools",
+      "disposition": "excluded",
+      "reason": "Unpublished generation and test tools."
+    },
+    {
+      "path": "pkgs/morphir-workbench-native",
+      "name": "finos/morphir-workbench-native",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "pkgs/morphir-workbench-native-session",
+      "name": "finos/morphir-workbench-native-session",
+      "disposition": "public",
+      "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    }
+  ]
+}

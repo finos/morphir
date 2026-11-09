@@ -1,4 +1,4 @@
-name = "morphir/morphir"
+name = "finos/morphir"
 
 version = "0.1.0"
 
@@ -13,13 +13,14 @@ license = "Apache-2.0"
 readme = "README.md"
 
 import {
-  "moonrockz/moon-lander-core@0.8.0",
-  "moonrockz/moon-lander-logging@0.8.0",
-  "moonrockz/moon-lander-config@0.8.0",
-  "moonrockz/moon-lander-mediator@0.8.0",
-  "moonrockz/moon-lander-logging-hosting-async@0.8.0",
-  "moonrockz/moon-lander-hosting@0.8.0",
-  "moonrockz/moon-lander@0.8.0",
+  "moonrockz/moon-lander-core@0.11.0",
+  "moonrockz/moon-lander-logging@0.11.0",
+  "moonrockz/moon-lander-config@0.11.0",
+  "moonrockz/moon-lander-mediator@0.11.0",
+  "moonrockz/moon-lander-logging-hosting-async@0.11.0",
+  "moonrockz/moon-lander-hosting@0.11.0",
+  "moonrockz/moon-lander@0.11.0",
+  "moonrockz/moon-lander-moonx@0.11.0",
   "moonbitlang/async@0.22.7",
   "moonbitlang/x@0.5.5",
   "moonbit-community/casefold@0.1.7",

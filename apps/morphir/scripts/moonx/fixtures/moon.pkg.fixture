@@ -1,0 +1,18 @@
+pkgtype(kind: "executable")
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "console.c" ],
+)
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/process",
+  "moonbitlang/async/socket",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/string",
+  "moonbitlang/x/sys",
+}

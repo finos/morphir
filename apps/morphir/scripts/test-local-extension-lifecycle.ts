@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
-const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(repository, '_build/native/debug/build/morphir/morphir/morphir.exe'));
+const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(repository, '_build/native/debug/build/finos/morphir/morphir.exe'));
 const guest = resolve(process.env.MORPHIR_NATIVE_GUEST ?? join(repository, '_build/native/release/build/finos/morphir-extension/morphir-extension.exe'));
 const adapter = resolve(process.env.MORPHIR_NATIVE_SERVICES ?? join(repository, '.dev/native-services/target/debug/morphir-moonbit-native-services'));
 const fixtures = resolve(process.env.MORPHIR_NATIVE_FIXTURES ?? join(repository, '.dev/native-services/target/fixture'));

@@ -15,13 +15,13 @@ preferred_target = "js"
 supported_targets = "js+native+wasm+wasm-gc"
 
 import {
-  "moonrockz/moon-lander-core@0.8.0",
-  "moonrockz/moon-lander-logging@0.8.0",
-  "moonrockz/moon-lander-config@0.8.0",
-  "moonrockz/moon-lander-mediator@0.8.0",
-  "moonrockz/moon-lander-logging-hosting-async@0.8.0",
-  "moonrockz/moon-lander-hosting@0.8.0",
-  "moonrockz/moon-lander@0.8.0",
+  "moonrockz/moon-lander-core@0.11.0",
+  "moonrockz/moon-lander-logging@0.11.0",
+  "moonrockz/moon-lander-config@0.11.0",
+  "moonrockz/moon-lander-mediator@0.11.0",
+  "moonrockz/moon-lander-logging-hosting-async@0.11.0",
+  "moonrockz/moon-lander-hosting@0.11.0",
+  "moonrockz/moon-lander@0.11.0",
   "moonbitlang/x@0.5.5",
   "moonbitlang/async@0.22.7",
   "moonbit-community/rabbita@0.16.3",

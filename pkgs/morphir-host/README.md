@@ -288,6 +288,20 @@ closing the scope restores the enclosing probe and repeated close does nothing.
 Install scopes for one process owner and close nested scopes in reverse order.
 Legacy standalone callers keep their existing interruption APIs.
 
+Native shallow listings, including configuration discovery, use the existing
+single-pass bounded reader. A listing permits at most 65536 entries, at most
+4096 UTF-16 units per name and at most 1 MiB of UTF-16 name units in total.
+Concurrent entry creation or removal cannot leave uninitialized result slots;
+the listing remains an observation, rather than an atomic directory snapshot.
+This avoids the two-traversal race reported in
+[moonbitlang/x#357](https://github.com/moonbitlang/x/issues/357).
+Oversized directories fail with `directory.entry_limit` or
+`directory.name_limit`. Native CLI qualification changes an ancestor's entries
+while running 100 real discovery commands and checks their JSON results.
+The ordinary `list` API retains its non-interruptible behavior, so finalizers
+can enumerate owned scratch after cancellation. `list_bounded` continues to
+poll the owning interruption probe. Neither operation clears a retained stop.
+
 Native process waits and bounded directory enumeration call the same probe at
 safe points through a C function pointer. POSIX stdin polls at 10 ms intervals,
 so a cancel file can end an otherwise idle read. A child gets SIGINT once; after

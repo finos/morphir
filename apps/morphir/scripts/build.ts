@@ -14,7 +14,7 @@ execFileSync(
 
 mkdirSync(new URL("../dist/", import.meta.url), { recursive: true });
 copyFileSync(
-  new URL("../_build/js/release/build/morphir/morphir/node/node.js", import.meta.url),
+  new URL("../_build/js/release/build/finos/morphir/node/node.js", import.meta.url),
   new URL("../dist/morphir.js", import.meta.url),
 );
 copyFileSync(

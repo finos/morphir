@@ -410,7 +410,7 @@ async fn pack(
       text(receipt, "zigVersion") == "0.17.0" else {
       fail("Cross-build receipt target/version mismatch")
     }
-    let source = cross + "/native/release/build/morphir/morphir/morphir.exe"
+    let source = cross + "/native/release/build/finos/morphir/morphir.exe"
     check_native_format(source, expected)
     @fs.write_file(
       directory + "/morphir-native",
@@ -447,7 +447,7 @@ async fn pack(
     }
     metadata
   } else if kind == "native-cli" {
-    let source = "_build/native/release/build/morphir/morphir/morphir.exe"
+    let source = "_build/native/release/build/finos/morphir/morphir.exe"
     @fs.write_file(
       directory + "/morphir-native",
       @fs.read_file(source),

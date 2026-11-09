@@ -176,6 +176,9 @@ run = [
   "moon test scripts/artifact-client-source.mbtx",
   "moon fmt --check scripts/branch-sync.mbtx",
   "moon test scripts/branch-sync.mbtx",
+  "moon fmt --check scripts/mooncakes-release.mbtx scripts/mooncakes-credentials.mbtx",
+  "moon test scripts/mooncakes-release.mbtx",
+  "moon test scripts/mooncakes-credentials.mbtx",
   "moonx scripts/mck-release.mbtx --self-test",
   "moon fmt --check scripts/repository-tasks.mbtx scripts/refresh-ir-fixtures.mbtx scripts/setup-hooks.mbtx scripts/pre-push.mbtx scripts/beads-plan.mbtx",
   "moonx scripts/repository-tasks.mbtx --self-test",
@@ -190,6 +193,66 @@ run = [
 [tasks."ci:measure"]
 description = "Measure completed Actions run queue, execution, runner and step costs"
 run = "moonx scripts/ci-measure.mbtx"
+
+[tasks."release:check"]
+description = "Validate, package and build the public Mooncakes graph without credentials or uploads"
+run = "moonx scripts/mooncakes-release.mbtx check"
+
+[tasks."release:minimum:setup"]
+description = "Install the exact minimum consumer compiler beside the release toolchain"
+run = "moonx scripts/mooncakes-release.mbtx bootstrap-minimum"
+
+[tasks."release:inventory"]
+description = "Validate public module identities, declared files and generated CLI identity without builds"
+run = "moonx scripts/mooncakes-release.mbtx inventory"
+
+[tasks."release:plan"]
+description = "Bind Mooncakes package evidence to an exact version tag, commit and mode"
+run = "moonx scripts/mooncakes-release.mbtx plan"
+
+[tasks."release:publish"]
+description = "Publish a qualified tag plan sequentially with persistent partial outcomes"
+run = "moonx scripts/mooncakes-release.mbtx publish"
+
+[tasks."release:verify"]
+description = "Verify published public modules and CLI with fresh registry-only consumers"
+run = "moonx scripts/mooncakes-release.mbtx verify"
+
+[tasks."release:identity"]
+description = "Regenerate the CLI release identity from its module manifest for committing"
+run = "moonx scripts/mooncakes-release.mbtx identity"
+
+[tasks."release:environment"]
+description = "Prepare a private job-local Moon home outside the mise compiler cache"
+run = "moonx scripts/mooncakes-credentials.mbtx prepare"
+
+[tasks."release:environment:clean"]
+description = "Remove the owned private Moon home while preserving linked compiler files"
+run = "moonx scripts/mooncakes-credentials.mbtx dispose"
+
+[tasks."release:credentials"]
+description = "Verify the FINOS token account and create an exclusive temporary Moon login"
+run = "moonx scripts/mooncakes-credentials.mbtx setup"
+
+[tasks."release:credentials:clean"]
+description = "Remove only unchanged Moon credentials owned by the release scope"
+run = "moonx scripts/mooncakes-credentials.mbtx clean"
+
+[tasks."test:release"]
+description = "Test Mooncakes planning, publishing decisions and credential ownership without real credentials or uploads"
+run = ["moon test scripts/mooncakes-release.mbtx", "moon test scripts/mooncakes-credentials.mbtx"]
+
+[tasks."release:native:package"]
+description = "Package the qualified native macOS CLI with source identity and checksums"
+run = "moonx scripts/native-cli-release.mbtx package"
+
+[tasks."release:native:verify"]
+description = "Verify the native archive through a fresh isolated mise installation"
+run = "moonx scripts/native-cli-release.mbtx verify"
+
+[tasks."test:release:native"]
+description = "Test native archive identity, validation and command JSON without publication"
+run = "moonx scripts/native-cli-release.mbtx self-test --json"
 
 [tasks."branch:sync"]
 description = "Fast-forward finos/morphir moonshots or morphir-moonbit main to the paired branch"

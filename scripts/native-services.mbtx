@@ -291,7 +291,7 @@ async fn main {
       let environment = Map::from_array([
         (
           "MORPHIR_HEADLESS_BINARY",
-          root + "/_build/native/debug/build/morphir/morphir/morphir.exe",
+          root + "/_build/native/debug/build/finos/morphir/morphir.exe",
         ),
         ("MORPHIR_NATIVE_SERVICES", executable),
         ("MORPHIR_NATIVE_GUEST", guest),
@@ -331,7 +331,7 @@ async fn main {
       path in [
         executable,
         guest,
-        root + "/_build/native/debug/build/morphir/morphir/morphir.exe",
+        root + "/_build/native/debug/build/finos/morphir/morphir.exe",
         directory + "/target/fixture/native-fault-fixture",
         directory + "/target/fixture/native-catalog-v2",
       ] {

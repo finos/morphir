@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
+import {cliArtifact} from '../../morphir/scripts/artifact.ts';
 import { once } from 'node:events';
 import { mkdir, writeFile, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium, type Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import { createWorkbenchServer } from './server.ts';
@@ -31,7 +32,7 @@ async function notebookDownloads(page: Page, source: string) {
     await writeFile(join(directory, 'worksheet.scm'), source);
     execFileSync('moon', ['build', 'apps/morphir/node', '--target', 'js', '--release'], {cwd: workspace, stdio: ['ignore', 'pipe', 'pipe']});
     const worker = new URL('../../../pkgs/morphir-host/runners/terminal-worker.mjs', import.meta.url).href;
-    const artifact = new URL('../../../_build/js/release/build/morphir/morphir/node/node.js', import.meta.url).href;
+    const artifact = pathToFileURL(cliArtifact(join(workspace, '_build'), 'js')).href;
     const launcher = join(directory, 'launcher.mjs');
     await writeFile(launcher, `import {terminalWorker} from ${JSON.stringify(worker)};\nif (!terminalWorker(new URL(import.meta.url),process.argv.slice(2))) await import(${JSON.stringify(artifact)});\n`);
     for (const format of ['ipynb', 'dib']) {

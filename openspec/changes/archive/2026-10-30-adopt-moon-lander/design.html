@@ -13,12 +13,12 @@
   Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
   list them in nav.toc.
 -->
-<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
-<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
-<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
-<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
-<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
-<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+<link rel="stylesheet" href="../../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../../docs/templates/assets/agent-document.js"></script>
 </head>
 <body>
 <main>
@@ -71,7 +71,7 @@ after diagnostic draining and finalization, so Morphir can report cancellation e
 Main CI <a href="https://github.com/moonrockz/moon-lander/actions/runs/40826473568">40826473568</a>
 completed all 13 jobs. All nine archive hashes match actual Release artifact <code>12877891039</code>, and 42
 independent cold-cache consumers passed, including native/JS pre-first-hook cancellation at 130 and 143.</p>
-<p>On 2026-10-30 the maintainer requested the latest published release. All 40 framework and notebook pins now use
+<p>On 2026-10-30 the maintainer requested the latest published release. That phase moved all 40 framework and notebook pins to
 <a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.8.0"><code>0.8.0</code></a>, source
 <code>d6216c7469c045548cb15b3f9321857ac41d2cd0</code>. Its actual
 <a href="https://github.com/moonrockz/moon-lander/actions/runs/40990258646">Release workflow</a> and
@@ -81,6 +81,43 @@ downloaded all ten public archives and matched every SHA-256 against actual rele
 independent scratch module outside this checkout. The release retains the adopted APIs and adds notebook virtual
 file trees and source conversion. Morphir keeps its existing notebook mapping; the new optional actors module is
 not imported by this adoption.</p>
+<p>The portable CLI phase first qualified exact published
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.9.0"><code>0.9.0</code></a> for the framework,
+notebooks and optional Moonx launcher. Its release source is
+<code>e4950cafc3ff083aeba02f4ab594249ecd7393f2</code> and actual
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/41157081481">Release workflow 41157081481</a>
+succeeded. Downstream independently checked actual checksum artifact
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/41157081481/artifacts/13026204278">13026204278</a>:
+its raw ZIP SHA-256 is <code>92723135e50b0abf123b520c930fdb7b<wbr>9a33d598798ce4fc264951c6d490440f</code>, and all eleven
+approved module hashes equal the original publication approvals. Upstream independently qualified 44 library/target
+consumers and 26 cold public Moonx cases on each stock compiler. These framework proofs do not replace Morphir's
+own packaged-entry and public-consumer qualification. The optional launcher owns its isolated compatibility runtime;
+native Morphir retains its existing runtime and the actors module remains outside this adoption.</p>
+<p>The final release candidate updates these exact pins to published
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.10.0"><code>0.10.0</code></a>, following Damian's
+request to use the latest published framework. Source <code>3fb48c436244264a4318e10f3f2a4fb2e7652030</code> passed
+the actual <a href="https://github.com/moonrockz/moon-lander/actions/runs/41169383177">Release workflow</a>,
+including publication. Downstream downloaded all twelve public archives and matched their SHA-256 hashes with
+both registry metadata and actual approved artifact
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/41169383177/artifacts/13031272096">13031272096</a>.
+The consumed modules change only their versions and internal pins; the new optional Sigstore library is not
+imported. These archive checks do not replace Morphir's pending qualification on its final toolchain and source.</p>
+<p>Damian approved raising the release's minimum consumer compiler to exact stock
+<code>0.10.18+6c83a7f62</code> on 31 October 2026. The new base uses <code>moonbitlang/async@0.22.7</code>, which
+imports <code>moonbitlang/core/async</code>; the older supported cores lack that package. Minimum and producer
+qualification therefore use the same compiler version for this release, with independent installations,
+dependency caches, build caches and receipts. This changes the compiler prerequisite for source consumers;
+the downloadable native CLI still needs no installed MoonBit compiler.</p>
+<p>On 9 November 2026 the repository moved to MoonBit 0.10.20 and dropped 0.10.18, so the release's minimum
+consumer compiler became exact stock <code>0.10.20+65efd5b93</code>, the same version as the producer. For the
+same release the pins moved to published
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.11.0"><code>0.11.0</code></a>, the newest
+framework release. It changes only the actors and Sigstore libraries, which Morphir does not import. Source
+<code>02ad2dcfbad4a0fc5a4499a862851cf87aab1d11</code> passed the actual
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/41221173078">Release workflow</a>. All twelve public
+archive hashes in its artifact
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/41221173078/artifacts/13050946026">13050946026</a>
+match registry metadata, and the nine consumed archives match as downloaded.</p>
 
 <h2 id="goals">Goals and non-goals</h2>
 <p><strong>Goals:</strong> every capability in the table above comes from one Moon-Lander module in the CLI and in
@@ -401,6 +438,12 @@ profile can later adopt or extend it without a second notebook reader.</p>
 </table>
 
 <h2 id="migration">Migration plan</h2>
+<p>The maintainer subsequently approved splitting delivery into two pull requests. The core adoption landed in
+<a href="https://github.com/finos/morphir-moonbit/pull/268">PR 268</a>; portable-entry completion and release tooling
+continue in <a href="https://github.com/finos/morphir-moonbit/pull/275">PR 275</a>. Manual source qualification
+exercises actual candidate archives on both compilers in the existing Windows and macOS host lanes. Its distinct
+source receipts grant no publication authority. Fresh same-run release-tag qualification and cold public consumers
+remain mandatory before delivery is complete.</p>
 <p>The maintainer asked on 2026-10-28 for as few pull requests as needed. Group 1 happens in the Moon-Lander
 repository. Groups 2 to 9 land in one pull request in this repository, with one commit series per group in this
 order: dependencies and ADR (group 2), configuration with the parity corpus (group 3), logging, which reads its level
@@ -415,6 +458,25 @@ separate output channels, JSON schemas, cancellation and owned-child cleanup thr
 Release qualification must exercise the actual packaged entry on the supported minimum and pinned MoonBit
 runtimes, then repeat its consumer checks against the public registry. The native installer and npm delivery keep
 their existing entry contracts.</p>
+<p>The maintainer subsequently approved the explicit portable coordinate
+<code>moonx finos/morphir/moonx@VERSION</code>, while native installation remains
+<code>moon install finos/morphir@VERSION --bin DEST</code>. The portable entry is a subpackage of the same CLI
+module. Native built-in commands remain independent of Node. Signal forwarding may use the approved optional
+Moon-Lander compatibility module, whose frozen sources, provenance, retained tests and published consumer proof
+are owned upstream. The canonical async API request is
+<a href="https://github.com/moonbitlang/async/issues/706">moonbitlang/async#706</a>; its publication timing does
+not block this release.</p>
+<p>On 2026-10-30 the maintainer approved the measured Windows-only Moonx limitation. For example, pressing
+Ctrl+C in a real Windows console under the supported stock Moonrun runtime delivers Ctrl+Break to the Node
+child. The child reports its delivered <code>Quit</code> reason with 131; the launcher retains the real Windows
+cancellation status <code>0xC000013A</code>. Neither layer reconstructs an unavailable original signal. POSIX
+Moonx still preserves SIGINT and SIGTERM with 130 and 143. Native and npm entry contracts remain unchanged.</p>
+<p>The exception permits release without waiting for
+<a href="https://github.com/moonbitlang/moon/issues/2419">moonbitlang/moon#2419</a>. Windows qualification must
+still demonstrate real console delivery, cancellation while stdin stays open, bounded escalation when the child
+ignores Break, child reaping, payload cleanup and exact byte transport. A synthetic Node event qualifies only
+event registration. The final archive and public consumer are exercised on both supported stock compiler versions;
+an ordinary finite success does not establish signal delivery.</p>
 
 <h2 id="open-questions">Open questions</h2>
 <ul>

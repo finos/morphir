@@ -115,7 +115,7 @@ version, which the test migrates to IR 4. It also needs the variables that
 
 ```bash
 MORPHIR_GUEST_COST=100,800,/path/to/morphir-ir.json \
-MORPHIR_CLI=_build/native/release/build/morphir/morphir/morphir.exe \
+MORPHIR_CLI=_build/native/release/build/finos/morphir/morphir.exe \
 MORPHIR_PORTABLE_GUEST=.dev/wasm-workers/portable-mep/extension/model.wasm \
 moon test --target native --release -p finos/morphir-host/worker/wasm/native \
   -f 'portable guest cost*'

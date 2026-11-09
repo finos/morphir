@@ -31,7 +31,7 @@ and the native CLI, then write a pin over the bytes that you built. Set
 mise run build:extension
 moon build apps/morphir --target native --release
 guest="$PWD/_build/native/release/build/finos/morphir-extension/morphir-extension.exe"
-morphir="$PWD/_build/native/release/build/morphir/morphir/morphir.exe"
+morphir="$PWD/_build/native/release/build/finos/morphir/morphir.exe"
 digest=$(shasum -a 256 "$guest" 2>/dev/null || sha256sum "$guest")
 digest=${digest%% *}
 PLATFORM=aarch64-apple-darwin

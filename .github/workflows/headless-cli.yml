@@ -23,6 +23,16 @@ on:
       - '.github/workflows/headless-cli.yml'
   workflow_dispatch:
     inputs:
+      qualify-moonx-source:
+        description: Qualify packaged Moonx source on both compilers instead of the ordinary source suite
+        required: false
+        type: boolean
+        default: false
+      distribution-version:
+        description: Optional native distribution version; empty derives the version from the candidate
+        required: false
+        type: string
+        default: ''
       runners:
         description: JSON array of runner labels, for example ["macos-15"]
         required: false
@@ -31,6 +41,16 @@ on:
   # qualification.yml calls this with runners '["macos-15"]' for its macOS lane.
   workflow_call:
     inputs:
+      qualified-archives-artifact:
+        description: Same-run release plan and archive artifact; empty keeps source-only qualification
+        required: false
+        type: string
+        default: ''
+      distribution-version:
+        description: Optional native distribution version; empty derives the version from the candidate
+        required: false
+        type: string
+        default: ''
       runners:
         description: JSON array of runner labels; empty uses the default runners
         required: false
@@ -42,13 +62,20 @@ permissions:
 
 # Pull requests share one group per ref and cancel older runs. Dispatch and called
 # runs get a group per run, so a nightly call never cancels or waits on a PR run.
+# Include runner selection so distinct Windows and macOS release calls can run.
 concurrency:
-  group: headless-cli-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  group: >-
+    ${{ format('headless-cli-{0}-{1}-{2}-{3}', github.workflow, github.ref,
+        github.event_name == 'pull_request' && 'pr' || github.run_id,
+        inputs.runners || 'default') }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   headless:
-    name: Headless CLI (${{ matrix.os }})
+    name: >-
+      ${{ github.event_name == 'workflow_dispatch' && inputs.qualify-moonx-source
+          && format('Moonx source archives ({0})', matrix.os)
+          || format('Headless CLI ({0})', matrix.os) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -58,6 +85,7 @@ jobs:
     env:
       MORPHIR_HEADLESS_ONLY: '1'
       MORPHIR_MCK_REQUIRED: '1'
+      CI_MOONX_SOURCE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify-moonx-source && '1' || '0' }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
@@ -67,15 +95,53 @@ jobs:
       - uses: ./.github/actions/setup-typescript
       - name: Resolve pinned MoonBit packages
         run: moon update
+      - name: Qualify packaged Moonx source on both compilers
+        if: github.event_name == 'workflow_dispatch' && inputs.qualify-moonx-source
+        env:
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
+        run: moonx scripts/mooncakes-release.mbtx qualify-source --json
+      - name: Retain manual Moonx source qualification
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.qualify-moonx-source
+        uses: actions/upload-artifact@v7
+        with:
+          name: moonx-source-host-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .dev/mooncakes-release/portable-source-host.json
+            .dev/mooncakes-release/build/${{ github.sha }}/publish/*.zip
+          include-hidden-files: true
+          if-no-files-found: warn
+      - name: Download the selected qualified release archives
+        if: inputs.qualified-archives-artifact != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.qualified-archives-artifact }}
+          path: .dev/mooncakes-release
+      - name: Qualify the delivered Moonx entry and payload on this host
+        if: inputs.qualified-archives-artifact != ''
+        env:
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
+        run: moonx scripts/mooncakes-release.mbtx qualify-artifacts --json
+      - name: Retain the delivered Moonx host qualification receipt
+        if: always() && inputs.qualified-archives-artifact != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: moonx-host-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/mooncakes-release/portable-host.json
+          include-hidden-files: true
+          if-no-files-found: warn
       - name: Check native finite JSON presentation
-        if: runner.os != 'macOS'
+        if: (runner.os != 'macOS') && env.CI_MOONX_SOURCE_ONLY != '1'
         env:
           MORPHIR_FINITE_SECTION: pure-presentation
           MORPHIR_FINITE_TARGET: native
           MORPHIR_FINITE_RECEIPTS: .dev/guidance-native-json/I
         run: node apps/morphir/scripts/test-finite-json-presentation.ts
       - name: Retain native finite JSON receipts
-        if: always() && runner.os != 'macOS'
+        if: (always() && runner.os != 'macOS') && env.CI_MOONX_SOURCE_ONLY != '1'
         uses: actions/upload-artifact@v7
         with:
           name: finite-json-I-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -83,18 +149,18 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
       - name: Check native build command JSON boundaries on Windows
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         env:
           MORPHIR_BUILD_JSON_TEST_RECEIPT: .dev/guidance-native-json/D.json
         run: bun tools/build-command-json.test.ts
       - name: Check native portable command JSON boundaries on Windows
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         env:
           PORTABLE_JSON_TARGET: native
           PORTABLE_JSON_RECEIPTS: .dev/guidance-native-json/F.json
         run: bun tools/portable-command-json.test.ts
       - name: Retain native command JSON boundary receipts
-        if: always() && runner.os == 'Windows'
+        if: (always() && runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         uses: actions/upload-artifact@v7
         with:
           name: native-command-json-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -102,18 +168,18 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
       - name: Build Windows native protocol fault owner
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         run: moon build --target native --release pkgs/morphir-host/acceptance/protocol-fault
       - name: Build Windows JavaScript protocol fault owner
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         run: moon build --frozen --target js pkgs/morphir-host/acceptance/protocol-fault
       - name: Check Windows native protocol fault JSON presentation
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         env:
           NATIVE_OWNER_JSON_RECEIPT: .dev/guidance-native-json/J.json
         run: node apps/morphir/scripts/test-native-owner-json-presentation.ts --protocol-fault-only
       - name: Retain Windows native protocol fault JSON receipt
-        if: always() && runner.os == 'Windows'
+        if: (always() && runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         uses: actions/upload-artifact@v7
         with:
           name: native-protocol-fault-json-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -121,7 +187,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
       - name: Build Windows JavaScript protocol JSON hosts
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         run: >-
           moon build --target js
           apps/morphir-workbench/mck/js
@@ -130,19 +196,19 @@ jobs:
           apps/morphir-workbench/mck/selected/js
           apps/morphir-workbench/mck/workspace-files/js
       - name: Check Windows protocol JSON presentation
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         env:
           PROTOCOL_JSON_NATIVE: '0'
           PROTOCOL_JSON_BUILD_DIR: _build
         run: node apps/morphir/scripts/test-protocol-json-presentation.ts
       - name: Qualify Windows typing native JSON
-        if: runner.os == 'Windows'
+        if: (runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         run: node --test pkgs/morphir-typing-tools/scripts/json-cli.test.mts
         env:
           TYPING_JSON_NATIVE_ARTIFACT_DIR: ''
           TYPING_JSON_RECEIPT: .dev/guidance-native-json/H.json
       - name: Retain Windows typing native JSON receipt
-        if: always() && runner.os == 'Windows'
+        if: (always() && runner.os == 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         uses: actions/upload-artifact@v7
         with:
           name: typing-native-json-H-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -150,18 +216,23 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
       - name: Qualify native log snapshots and rotation
+        if: env.CI_MOONX_SOURCE_ONLY != '1'
         run: moon test pkgs/morphir-host/platform/flush_test.mbt --target native --target-dir .dev/headless-native-flush
       - name: Install pinned generation compilers
+        if: env.CI_MOONX_SOURCE_ONLY != '1'
         run: bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
       - name: Check structured host artifact selection
+        if: env.CI_MOONX_SOURCE_ONLY != '1'
         run: moonx scripts/headless-host.mbtx --self-test
       - name: Check released MCK selection
+        if: env.CI_MOONX_SOURCE_ONLY != '1'
         run: moonx scripts/mck-release.mbtx --self-test
       - name: Acquire pinned prebuilt MCK and canonical fixture sources
+        if: env.CI_MOONX_SOURCE_ONLY != '1'
         timeout-minutes: 10
         run: moonx scripts/mck-release.mbtx apps/morphir/fixtures/mck/release.json .dev/mck-release
       - name: Checkout exact authenticated host and installed producer sources
-        if: runner.os != 'Windows'
+        if: (runner.os != 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         uses: actions/checkout@v7
         with:
           repository: finos/morphir
@@ -169,20 +240,46 @@ jobs:
           ref: 314a739d30c8c5900a983abec52e8aa10f46d1dc
           path: .dev/headless-upstream
       - name: Populate the host's required Rust submodule
-        if: runner.os != 'Windows'
+        if: (runner.os != 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         run: git -C .dev/headless-upstream submodule update --init ecosystem/morphir-rust
       - name: Install pinned host compiler
-        if: runner.os != 'Windows'
+        if: (runner.os != 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         run: mise install rust@1.98.1
       - name: Build actual authenticated host and installed artifact producer
-        if: runner.os != 'Windows'
+        if: (runner.os != 'Windows') && env.CI_MOONX_SOURCE_ONLY != '1'
         run: mise exec rust@1.98.1 -- moonx scripts/headless-host.mbtx .dev/headless-upstream
       - name: Qualify release Node CLI and installed npm package
+        if: env.CI_MOONX_SOURCE_ONLY != '1'
         run: bun run --cwd apps/morphir test js
       - name: Qualify release native CLI
+        if: env.CI_MOONX_SOURCE_ONLY != '1'
         run: bun run --cwd apps/morphir test native
+      - name: Package the qualified macOS native CLI
+        if: (runner.os == 'macOS' && runner.arch == 'ARM64') && env.CI_MOONX_SOURCE_ONLY != '1'
+        env:
+          MORPHIR_CLI_DISTRIBUTION_VERSION: ${{ inputs.distribution-version }}
+        run: >-
+          moonx scripts/native-cli-release.mbtx package
+          --binary _build/native/release/build/finos/morphir/morphir.exe
+          --directory .dev/native-cli-release --json
+      - name: Verify isolated mise installation of the macOS native CLI
+        if: (runner.os == 'macOS' && runner.arch == 'ARM64') && env.CI_MOONX_SOURCE_ONLY != '1'
+        run: >-
+          moonx scripts/native-cli-release.mbtx verify
+          --directory .dev/native-cli-release --json
+      - name: Retain the verified macOS native distribution
+        if: (runner.os == 'macOS' && runner.arch == 'ARM64') && env.CI_MOONX_SOURCE_ONLY != '1'
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-cli-macos-arm64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          path: |
+            .dev/native-cli-release/*.zip
+            .dev/native-cli-release/manifest.json
+            .dev/native-cli-release/SHA256SUMS
+            .dev/native-cli-release/mise-install-receipt.json
       - name: Retain independent model reports and source receipts
-        if: always()
+        if: (always()) && env.CI_MOONX_SOURCE_ONLY != '1'
         uses: actions/upload-artifact@v7
         with:
           name: headless-model-reports-${{ matrix.os }}

@@ -228,6 +228,10 @@ jobs:
       - name: Smoke-test CLI for ${{ matrix.target }}
         run: bun run --cwd apps/morphir test ${{ matrix.target }}
 
+      - name: Qualify public Mooncakes archives without credentials or uploads
+        if: matrix.target == 'js'
+        run: mise run release:check -- --json
+
       - name: Install workbench browser dependencies
         if: matrix.target == 'js'
         run: moonx scripts/typescript-tooling.mbtx setup-workbench --ci
@@ -241,8 +245,10 @@ jobs:
         with:
           name: cli-${{ matrix.target }}
           path: |
-            _build/${{ matrix.target }}/release/build/morphir/morphir/morphir.*
+            _build/${{ matrix.target }}/release/build/finos/morphir/morphir.*
+            _build/${{ matrix.target }}/release/build/finos/morphir/wasm-worker.js
             apps/morphir/dist/morphir.js
+            apps/morphir/dist/wasm-worker.js
             pkgs/morphir-host/runners/wasm.mjs
           if-no-files-found: error
 
@@ -432,6 +438,9 @@ jobs:
       # YAML is checked once by lint. Keep the package/configuration validation.
       - name: Validate package configuration
         run: mise run validate:packages
+
+      - name: Validate the public release inventory and committed CLI identity
+        run: mise run release:inventory -- --json
 
   # The only check that branch protection and the merge queue require, so job renames and matrix
   # changes need no settings change. Add every new job to `needs`.

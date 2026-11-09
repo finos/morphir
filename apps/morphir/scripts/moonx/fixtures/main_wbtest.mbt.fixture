@@ -1,0 +1,10 @@
+///|
+test "JSON presentation belongs to parsed flags before the delimiter" {
+  assert_true(parse_input(["--help", "--json"]) is Help(true))
+  assert_true(parse_input(["--json", "--unknown"]) is Invalid(true, _))
+  assert_true(parse_input(["--", "--json"]) is Invalid(false, _))
+  assert_true(parse_input(["--json", "--", "--json"]) is Invalid(true, _))
+  assert_false(wants_json(["--program=--json"]))
+  let parsed = parse_input(["--kind", "wasm", "--program=--json", "--entry", "entry", "--boundary", "boundary"])
+  assert_true(parsed is Run({ program: "--json", json: false, .. }))
+}

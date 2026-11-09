@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir/moonx/options"
+
+// Values
+pub fn parse(Array[String]) -> Options raise OptionsError
+
+// Errors
+pub suberror OptionsError {
+  InvalidControls(format~ : OutputFormat, message~ : String)
+}
+
+// Types and methods
+pub struct Options {
+  // private fields
+}
+pub fn Options::format(Self) -> OutputFormat
+pub fn Options::request(Self) -> Request
+
+pub(all) enum OutputFormat {
+  Human
+  MachineJson
+}
+
+pub(all) enum Request {
+  Help
+  Forward(Array[String])
+}
+
+// Type aliases
+
+// Traits

@@ -12,7 +12,7 @@ import { hostPlatform } from './extension-qualification.ts';
 // CLI's worker host with contract 0.2.0 pins. The fault peer frames with the
 // shared morphir-host-native library and corrupts one boundary per mode.
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
-const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(repository, '_build/native/debug/build/morphir/morphir/morphir.exe'));
+const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(repository, '_build/native/debug/build/finos/morphir/morphir.exe'));
 const guest = resolve(process.env.MORPHIR_NATIVE_GUEST ?? join(repository, '_build/native/release/build/finos/morphir-extension/morphir-extension.exe'));
 const fixtures = resolve(process.env.MORPHIR_NATIVE_FIXTURES ?? join(repository, '.dev/native-services/target/fixture'));
 const fault = join(fixtures, 'native-fault-fixture');

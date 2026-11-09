@@ -3,7 +3,7 @@ pkgtype(kind: "executable")
 supported_targets = "js"
 
 import {
-  "morphir/morphir/cli",
+  "finos/morphir/cli",
   "moonrockz/moon-lander-hosting" @hosting,
   "moonrockz/moon-lander-hosting/logging" @bridge,
   "moonbitlang/async",

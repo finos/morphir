@@ -21,6 +21,9 @@ priv struct WorksheetRequest(Cli)
 priv struct CompileRequest(Cli)
 
 ///|
+priv struct VersionRequest(Cli)
+
+///|
 priv struct GenerateRequest(Cli)
 
 ///|
@@ -143,6 +146,7 @@ priv enum CommandRequest {
   EvalCommand(EvalRequest)
   WorksheetCommand(WorksheetRequest)
   CompileCommand(CompileRequest)
+  VersionCommand(VersionRequest)
   GenerateCommand(GenerateRequest)
   ModelInspectCommand(ModelInspectRequest)
   ModelExportOriginalCommand(ModelExportOriginalRequest)
@@ -193,6 +197,7 @@ fn CommandRequest::decode(cli : Cli) -> CommandRequest raise {
     "eval" => EvalCommand(EvalRequest(cli))
     "worksheet" => WorksheetCommand(WorksheetRequest(cli))
     "compile" => CompileCommand(CompileRequest(cli))
+    "version" => VersionCommand(VersionRequest(cli))
     "generate" => GenerateCommand(GenerateRequest(cli))
     "model inspect" => ModelInspectCommand(ModelInspectRequest(cli))
     "model export-original" =>
@@ -315,6 +320,16 @@ let compile_sender : @mediator_async.Sender[
 ] = command_sender("compile", (context, request) => {
   let CompileRequest(cli) = request
   pipeline_command(compilation_cli(cli), context.mode, PipelineCompile)
+})
+
+///|
+let version_sender : @mediator_async.Sender[
+  CommandContext,
+  VersionRequest,
+  Int32,
+] = command_sender("version", (context, request) => {
+  let VersionRequest(_) = request
+  version_command(context.mode)
 })
 
 ///|
@@ -706,6 +721,7 @@ async fn dispatch_cli(cli : Cli, context : CommandContext) -> Int32 {
     EvalCommand(request) => eval_sender.send(context, request)
     WorksheetCommand(request) => worksheet_sender.send(context, request)
     CompileCommand(request) => compile_sender.send(context, request)
+    VersionCommand(request) => version_sender.send(context, request)
     GenerateCommand(request) => generate_sender.send(context, request)
     ModelInspectCommand(request) => model_inspect_sender.send(context, request)
     ModelExportOriginalCommand(request) =>

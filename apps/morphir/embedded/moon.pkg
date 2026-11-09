@@ -3,7 +3,7 @@ pkgtype(kind: "executable")
 supported_targets = "wasm+wasm-gc"
 
 import {
-  "morphir/morphir/cli",
+  "finos/morphir/cli",
   "finos/morphir-host/platform",
   "finos/morphir-host/diagnostics",
   "moonrockz/moon-lander-hosting" @hosting,

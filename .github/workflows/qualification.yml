@@ -11,6 +11,14 @@ name: Full qualification
 on:
   workflow_call:
     inputs:
+      qualified-archives-artifact:
+        description: Same-run release plan and archives to qualify on the existing macOS headless lane
+        type: string
+        default: ''
+      native-distribution-version:
+        description: Native archive version for the existing macOS headless lane; empty keeps its default
+        type: string
+        default: ''
       macos:
         description: macOS lanes mode, one of skip, run or reuse
         required: true
@@ -119,6 +127,8 @@ jobs:
     uses: ./.github/workflows/headless-cli.yml
     with:
       runners: '["macos-15"]'
+      qualified-archives-artifact: ${{ inputs.qualified-archives-artifact }}
+      distribution-version: ${{ inputs.native-distribution-version }}
 
   qualification-ok:
     name: qualification-ok

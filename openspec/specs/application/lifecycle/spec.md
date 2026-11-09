@@ -1,17 +1,18 @@
-# Spec Delta
+# application/lifecycle Specification
 
 ## Purpose
 
 Defines how a Morphir CLI or Workbench run starts its work, reacts to cancellation and stop signals, releases its
 resources, and chooses its exit code, so that scripts and hosts can rely on the same behavior from every command.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Exit codes
 
 A CLI run SHALL exit with 0 on success, 1 when compilation, execution or publication fails, 2 for an invalid
 invocation or configuration, 130 when it is cancelled by SIGINT, a cancel file or a host cancellation, and 143 when it
-is stopped by SIGTERM.
+is stopped by SIGTERM. A delivered Quit uses 131. Windows Moonx follows the separately specified stock-runtime
+signal exception below.
 
 #### Scenario: Successful command
 
@@ -32,6 +33,41 @@ is stopped by SIGTERM.
 
 - **WHEN** SIGTERM arrives while a command runs on native
 - **THEN** the run stops its work, cleans up and exits with 143
+
+### Requirement: Moonx preserves host behavior with the approved Windows signal limitation
+
+The published Node-backed Moonx entry SHALL preserve opaque arguments, bytes, output channels, JSON schemas and
+owned-child cleanup. It SHALL preserve original SIGINT/SIGTERM delivery on POSIX. On supported stock Windows
+Moonrun, it SHALL report delivered reasons and full process statuses under the approved Ctrl+C-to-Ctrl+Break
+limitation. Neither layer SHALL infer an unavailable original signal. Native and npm entry contracts SHALL remain
+unchanged.
+
+#### Scenario: POSIX Moonx interruption
+
+- **WHEN** SIGINT or SIGTERM arrives while the actual packaged Moonx entry runs on a supported POSIX host
+- **THEN** the Node child receives that original signal, finishes its owned cleanup and reports 130 or 143
+- **AND** the launcher completes finalization and retains the corresponding signal status
+
+#### Scenario: Windows Moonx Ctrl+C on the stock runtime
+
+- **WHEN** a real Windows console delivers Ctrl+C to the packaged entry under a supported stock Moonrun runtime
+- **THEN** qualification records that the Node child receives Ctrl+Break and reports Quit with 131
+- **AND** the launcher retains the actual Windows cancellation status `0xC000013A`, without POSIX normalization
+- **AND** the child is reaped, owned payload files are removed, and the limitation is documented
+
+#### Scenario: Windows Moonx forced cleanup
+
+- **WHEN** the owned Node child ignores the delivered Windows break event
+- **THEN** the launcher applies its bounded escalation, reaps the child and removes its owned payload
+- **AND** qualification retains the actual child outcome and full launcher status instead of claiming original
+  Ctrl+C preservation
+
+#### Scenario: Moonx archive and registry qualification
+
+- **WHEN** the entry is prepared for release
+- **THEN** its actual packaged archive and fresh public-registry consumer run on the minimum and pinned MoonBit
+  runtimes, with finite results, JSON failures, opaque arguments and exact byte transport checked
+- **AND** Windows signal qualification uses real console delivery; synthetic Node events alone do not satisfy it
 
 ### Requirement: Cancellation reaches running work
 
@@ -103,8 +139,10 @@ command documents. In JSON mode, the failure SHALL be the documented JSON failur
 
 ### Requirement: Hosts without signals
 
-On hosts that cannot deliver signals (wasm and wasm-gc), a run SHALL keep the same exit codes for success and
-failure, and commands that need interruption SHALL refuse to start with a documented error, as they do today.
+On embedded hosts without an interruption capability, a run SHALL keep the same exit codes for success and
+failure, and commands that need interruption SHALL refuse to start with a documented error. The WASI entry
+retains this refusal. A capable Wasm-GC host retains its documented interruption support. The Moonx launcher
+qualifies its owned Node host separately and SHALL follow the Moonx requirements above.
 
 #### Scenario: Worksheet on WASI
 

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
-const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(repository, '_build/native/debug/build/morphir/morphir/morphir.exe'));
+const binary = resolve(process.env.MORPHIR_HEADLESS_BINARY ?? join(repository, '_build/native/debug/build/finos/morphir/morphir.exe'));
 const root = mkdtempSync(join(tmpdir(), 'morphir-embedded-compile-'));
 const invoke = (args: string[], status = 0) => {
   const child = spawnSync(binary, args, { cwd: root, encoding: 'utf8', timeout: 30000,

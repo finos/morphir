@@ -356,6 +356,14 @@ Their nested gates require each selected producer and consumer to pass, so a fai
 producer cannot be hidden by a skipped consumer. `qualification-ok` applies the same
 rule to the complete platform matrix.
 
+## Mooncakes releases
+
+Follow the [Mooncakes release runbook](docs/mooncakes-release.md) to prepare the
+public source packages, inspect a token-free candidate and publish from an
+authorized version tag. Publication requires successful main-push CI, fresh full
+qualification for the exact candidate and Windows headless CLI acceptance. The
+workflow keeps credentials in a private Moon home outside the compiler cache.
+
 ## Pull Request Process
 
 1. Fork the repository

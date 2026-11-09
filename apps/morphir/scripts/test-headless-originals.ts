@@ -13,7 +13,7 @@ const target=process.argv[2]??'js';
 const hostBinary=process.env.MORPHIR_MODEL_ORIGINALS_HOST;
 const portable=target==='wasm'||target==='wasm-gc';
 const root=mkdtempSync(join(tmpdir(),'morphir-headless-originals-'));
-const cliBinary=process.env.MORPHIR_HEADLESS_BINARY??join(repo,'_build/native/debug/build/morphir/morphir/morphir.exe');
+const cliBinary=process.env.MORPHIR_HEADLESS_BINARY??join(repo,'_build/native/debug/build/finos/morphir/morphir.exe');
 const launcher=process.env.MORPHIR_HEADLESS_LAUNCHER??join(repo,'apps/morphir/bin/morphir.js');
 const executable=target==='native'?cliBinary:process.execPath;
 const prefix=target==='native'?[]:portable?[join(repo,'pkgs/morphir-host/runners/wasm.mjs'),cliBinary]:[launcher];

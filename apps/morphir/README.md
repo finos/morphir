@@ -2,6 +2,55 @@
 
 The CLI discovers Morphir workspaces, resolves layered configuration, runs Scheme/IR pipelines and publishes artifacts through a host adapter.
 
+## Install the native demo with mise
+
+The native GitHub distribution runs built-in workspace, Scheme/IR and worksheet
+operations without Node or the MoonBit toolchain. Helper-backed commands keep
+their separately documented helper, compiler and provider prerequisites.
+
+The [native demo prerelease](https://github.com/finos/morphir-moonbit/releases/tag/v0.1.0-demo.1)
+is available for macOS arm64. In your demo directory, run:
+
+```sh
+mise use 'github:finos/morphir-moonbit[prerelease=true,bin_path=bin]@0.1.0-demo.1'
+mise exec -- morphir --help
+```
+
+For an explicit asset and checksum pin, save this as `mise.toml` instead:
+
+```toml
+[tools."github:finos/morphir-moonbit"]
+version = "0.1.0-demo.1"
+prerelease = true
+asset_pattern = "morphir-moonbit-0.1.0-demo.1-macos-arm64.zip"
+bin_path = "bin"
+checksum = "sha256:a04771ea6ff98d2ee93c62fa8a717f2db330d04ddacc1496db86389e68806206"
+```
+
+Then install and run it:
+
+```sh
+mise install
+mise exec -- morphir version --json
+mise exec -- morphir --help
+mise exec -- morphir worksheet demo.scm --isolated --discovery-boundary . --json
+```
+
+For the last command, `demo.scm` can contain `(+ 40 2)`. Its worksheet JSON has
+an observation whose returned integer is `42`. Invalid Scheme returns the same
+worksheet profile with a failed completion and exit 1. Result JSON uses stdout;
+diagnostics use stderr.
+
+The preview is qualified on macOS 26.6.2 arm64. Read the attached manifest and
+`SHA256SUMS` for its source commit, application version, artifact identity and
+actual qualification host. A local run on macOS 26 does not qualify macOS 15.
+This native preview is independent of the pending Mooncakes and Moonx release.
+
+The distribution includes `bin/morphir`, license/notice texts and
+`release-manifest.json`. Mise places `bin` on the command path. See
+[the native release runbook](../../docs/native-cli-release.md) for packaging and
+fresh-install verification.
+
 ## Run from this repository
 
 On a fresh MoonBit installation, initialize the dependency registry first:
@@ -19,7 +68,7 @@ Or build and run a standalone executable:
 
 ```sh
 mise exec -- moon build apps/morphir --target native --release
-./_build/native/release/build/morphir/morphir/morphir.exe run path/to/workspace --all
+./_build/native/release/build/finos/morphir/morphir.exe run path/to/workspace --all
 ```
 
 On Windows, the generated native C file requires MSVC's
@@ -27,6 +76,80 @@ On Windows, the generated native C file requires MSVC's
 Before running the native source commands above in PowerShell, set
 `$env:CL = "/bigobj $env:CL"`. The native CLI acceptance script sets this option
 for its Windows build subprocess and preserves existing `CL` options.
+
+## Mooncakes source package
+
+The Mooncakes module is `finos/morphir`. Its source distribution builds a native
+CLI with stock MoonBit `0.10.20` or later. Once the version is published, install it into
+an explicit binary directory:
+
+```sh
+moon install finos/morphir@0.1.0 --bin ./morphir-bin
+./morphir-bin/morphir --help
+./morphir-bin/morphir version --json
+```
+
+On Windows, use `./morphir-bin/morphir.exe`. Local workspace commands, Scheme/IR
+transformations and worksheet evaluation run through the native host. Operations
+that declare a process, execution, extension, connected-service or telemetry
+helper still require that helper to be provisioned explicitly. The Mooncakes
+native installation does not install the separate Moonx Node application or
+provision helper commands.
+
+## Run the portable Moonx entry
+
+After Mooncakes publication, run the packaged CLI with stock MoonBit 0.10.20 or
+later and Node 24 available on PATH. No separate npm installation is needed:
+
+```sh
+moonx finos/morphir/moonx@0.1.0 --help
+moonx finos/morphir/moonx@0.1.0 version --json
+moonx finos/morphir/moonx@0.1.0 worksheet demo.scm --json
+```
+
+The `/moonx` subpackage owns the portable launcher. Native installation still
+uses `moon install finos/morphir@0.1.0 --bin ./morphir-bin` and does not require
+Node. Moonx extracts its verified packaged Node files into a private temporary
+directory for one invocation, waits for the child to finish, then removes those
+files. The original working directory, argument values and binary streams reach
+the Node application. Existing command result schemas and framed protocols stay
+unchanged.
+
+Launcher controls apply only before the first Morphir argument:
+
+| Control | Meaning |
+| --- | --- |
+| `--moonx-help` | Show launcher help, without starting Node |
+| `--moonx-json` | Select JSON for launcher help or startup errors |
+| `--json` | Select launcher JSON and forward this same argument to Morphir |
+| `--moonx-forward` | Forward every following value literally, including launcher-looking controls |
+
+For example, `moonx finos/morphir/moonx@0.1.0 --moonx-help --json` returns one
+`morphir/command-result` 0.1.0 document on stdout, with command `moonx`, state
+`succeeded`, exitCode `0`, diagnostics and `result.help`. A launcher failure has
+state `failed`, its exitCode and `error: {code, message}` instead of result.
+Startup errors, including missing Node, go to stderr even in JSON mode. This
+leaves stdout under the forwarded command's ownership. Cleanup errors also use
+stderr. Syntax exits 2 and startup failures exit 1; child statuses are retained.
+
+On POSIX, real SIGINT and SIGTERM reach the Node host and select 130 and 143.
+Stock Windows Moonx maps parent Ctrl+C to Node Ctrl+Break. Morphir therefore
+reports Quit with child status 131, while the outer launcher retains Windows
+status `0xC000013A`. It does not claim to preserve the original Windows signal.
+The launcher bounds escalation for an unresponsive child, reaps it and removes
+the owned payload before completion. External helpers retain their documented
+prerequisites.
+
+`morphir version` prints the CLI version compiled from its module manifest.
+It does not read the current project's configuration or invoke a helper.
+`--json` writes one `morphir/command-result` version `0.1.0` document to stdout,
+with `command: "version"`, `state: "succeeded"`, `exitCode: 0`, empty
+`diagnostics` and `result: {name, version}`. Invalid embedded release metadata
+returns status 1 with `state: "failed"` and `error: {code, message}` in place of
+`result`. Diagnostics use stderr. `--json-lines` wraps this document in the
+existing `{type: "result", data: ...}` record. Help supports `--json` and
+describes the schema without executing the command. The `--version` option on
+extension commands continues to select an extension version.
 
 ## npm package
 
@@ -85,7 +208,7 @@ hosts without process/clock support keep compilation available without default f
 ```sh
 mise exec -- moon build apps/morphir/embedded --target wasm --release
 node pkgs/morphir-host/runners/wasm.mjs \
-  _build/wasm/release/build/morphir/morphir/embedded/embedded.wasm run path/to/workspace --all
+  _build/wasm/release/build/finos/morphir/embedded/embedded.wasm run path/to/workspace --all
 ```
 
 For WASM-GC, change both target/path occurrences from `wasm` to `wasm-gc`. WASI uses only Preview 1 imports and preopens the current directory; discovery cannot ascend outside that preopen. WASM-GC uses the documented `morphir_host_v1` embedding interface. See [host adapters](../../pkgs/morphir-host/README.md) for configuration mounts and runtime details.
@@ -716,6 +839,7 @@ Wasm and Wasm GC use `run_embedded`. Command handlers retain their existing resu
 | 1 | Compilation, execution or publication failure |
 | 2 | Invalid invocation or configuration |
 | 130 | SIGINT, cancel file or host cancellation |
+| 131 | Delivered Quit, including POSIX SIGQUIT or Windows Node SIGBREAK |
 | 143 | SIGTERM |
 
 For `execute` and `verify`, CLI-owned cancellation also uses 130, including cancellation before capability
@@ -726,6 +850,8 @@ failure without a CLI stop remains exit 1; child status fields retain their orig
 evaluation, bounded filesystem reads, stdin waits and owned child processes. The first signal requests
 cleanup. A second signal ends the process immediately with that signal's exit code. The JavaScript launcher
 keeps signal reception on its parent thread while command work runs in an owned worker.
+It forwards SIGQUIT on POSIX and SIGBREAK on Windows through the existing Quit probe.
+This handles a delivered Quit; it does not infer or relabel an earlier signal in another process.
 Native originals publication polls that same lifetime, including when optional consumer observation
 is active. Its owned helper receives cancellation and retains its cleanup budget before escalation.
 
@@ -739,8 +865,8 @@ stdout result and any earlier failure or cancellation status.
 
 Started services stop in reverse order after success, failure or cancellation. The diagnostic session drains
 before telemetry flushes, and the logging bridge closes it again idempotently before exit. The public completion
-callback reports a pending SIGINT or SIGTERM even when it stops the host before the first service or command
-starts. It runs after finalization; Morphir emits its command's cancellation result once, with exit 130 or 143.
+callback reports a pending Interrupt, Quit or Terminate even when it stops the host before the first service or command
+starts. It runs after finalization; Morphir emits its command's cancellation result once, with exit 130, 131 or 143.
 JSON failures stay on
 stdout; diagnostic records and child logs use their documented channels. MEP and native-worker messages retain
 their existing formats and child status fields. WASI refuses worksheet evaluation with

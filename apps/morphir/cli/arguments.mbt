@@ -116,7 +116,7 @@ fn command_schema(path : String) -> CliSchema {
       children = [
         "run", "workspace", "execute", "verify", "conform", "eval", "worksheet",
         "compile", "generate", "model", "connected", "project", "toolchain", "mck",
-        "notebook", "extension",
+        "notebook", "extension", "version",
       ]
     "run" => {
       flags = ["all", "dry-run", "file", "directory", "log"]
@@ -330,7 +330,14 @@ fn render_help(path : String) -> String {
     }
   }
   text += " [options]\n"
-  if path == "compile" {
+  if path == "version" {
+    text += "\nReport the CLI module name and version embedded from its release manifest.\n"
+    text += "--json returns morphir/command-result 0.1.0 with command=version.\n"
+    text += "Success result is {name,version}; embedded metadata failures exit 1 with error{code,message}.\n"
+    text += "The finite result goes to stdout; diagnostics go to stderr.\n"
+    text += "--json-lines wraps the same document in the existing result record.\n"
+    text += "Help lists this schema without reading project files or running child processes.\n"
+  } else if path == "compile" {
     text += "\nCompile with the embedded rich engine and publish admitted checkpoints.\n"
     text += "--input is an alternative to the positional project/directory/file path.\n"
     text += "--project selects a workspace member; --package sets the model package name.\n"

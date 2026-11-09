@@ -5,7 +5,8 @@ import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
 import { exerciseNotebooks } from './notebook-acceptance.ts';
 import {verifyConfigurationCorpus} from './configuration-parity.ts';
-import {exerciseConfiguration} from './configuration-acceptance.ts';
+import {exerciseConfiguration, exerciseNativeDiscoveryChurn} from './configuration-acceptance.ts';
+import {exerciseVersion} from './version-acceptance.ts';
 import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
 import { exerciseExtensionWorker } from './extension-worker-acceptance.ts';
@@ -26,6 +27,17 @@ const targets = ["native", "js", "wasm", "wasm-gc"];
 const selected = process.argv[2] ? [process.argv[2]] : targets;
 const headlessOnly = process.env.MORPHIR_HEADLESS_ONLY === '1';
 let reference: unknown;
+
+// Run platform-neutral launcher-tool regressions once in the existing JS lane.
+// Actual packaged host/console qualification belongs to release artifacts.
+if (selected.includes('js')) {
+  execFileSync(process.execPath, ['--test',
+    join(appDirectory, 'scripts/moonx/qualification-cli.test.mts'),
+    join(appDirectory, 'scripts/moonx/process-fixture.test.mts'),
+    join(appDirectory, 'scripts/moonx/preload.test.mts'),
+    join(appDirectory, 'scripts/moonx/terminal-owner.test.mts'),
+  ], {cwd: workspaceDirectory, stdio: 'inherit', timeout: 60000});
+}
 
 function checkHelp(output: string) {
   assert.match(output, /^Morphir CLI\r?\n/);
@@ -148,6 +160,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     assert.ok(Object.hasOwn(record, "data"));
     return record;
   });
+  exerciseVersion(directory, run, JSON.parse(readFileSync(join(appDirectory, 'package.json'), 'utf8')).version);
   exerciseConfiguration(directory, run, target);
   put("morphir.toml", '[workspace]\nmembers=["packages/*"]\nexclude=["packages/skip"]\ndefault_member="packages/core"\n');
   put("morphir.config.scm", '(pipeline (transform (lambda (file) file)))');
@@ -893,6 +906,7 @@ for (const target of selected) {
       const workerHost = pathToFileURL(join(workspaceDirectory, 'pkgs/morphir-host/runners/terminal-worker.mjs')).href;
       writeFileSync(headlessLauncher, `import {terminalWorker} from ${JSON.stringify(workerHost)};\nif (!terminalWorker(new URL(import.meta.url),process.argv.slice(2))) await import(${JSON.stringify(pathToFileURL(binary).href)});\n`);
     }
+    if (target === 'native') await exerciseNativeDiscoveryChurn(binary);
     await headlessAcceptance(target, binary, headlessLauncher);
     await exerciseHostLifecycle(target, binary, headlessLauncher);
     exerciseTelemetryDiagnosticParity(target, binary, headlessLauncher);

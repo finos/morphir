@@ -1,0 +1,286 @@
+///|
+// Adapted from moonrockz/moon-lander tests/moonx-console-controller,
+// commit 93dfb1411e0d2873a5848cb8b86acb0723770ae0, Apache-2.0.
+// This test-only controller owns a private console and diagnostic protocol.
+extern "C" fn prepare_console() -> Int32 = "morphir_test_moonx_console_prepare"
+
+///|
+#borrow(program, entry, boundary)
+extern "C" fn start_console(
+  program : String,
+  program_length : Int32,
+  entry : String,
+  entry_length : Int32,
+  boundary : String,
+  boundary_length : Int32,
+  registry : Int32,
+) -> Int32 = "morphir_test_moonx_console_start"
+
+///|
+extern "C" fn resume_console() -> Int32 = "morphir_test_moonx_console_resume"
+
+///|
+extern "C" fn send_event() -> Int32 = "morphir_test_moonx_console_event"
+
+///|
+extern "C" fn last_error() -> Int32 = "morphir_test_moonx_console_error"
+
+///|
+extern "C" fn close_console() -> Unit = "morphir_test_moonx_console_close"
+
+///|
+extern "C" fn process_running(pid : Int32) -> Int32 = "morphir_test_moonx_process_running"
+
+///|
+extern "C" fn watch_child(pid : Int32) -> Int32 = "morphir_test_moonx_watch_child"
+
+///|
+extern "C" fn child_status() -> Int32 = "morphir_test_moonx_child_status"
+
+///|
+enum InvocationKind {
+  Wasm
+  Registry
+}
+
+///|
+struct Invocation {
+  kind : InvocationKind
+  program : String
+  entry : String
+  boundary : String
+  json : Bool
+}
+
+///|
+enum Input {
+  Help(Bool)
+  Invalid(Bool, String)
+  Run(Invocation)
+}
+
+///|
+fn parse_input(args : Array[String]) -> Input {
+  let requested_json = wants_json(args)
+  let command = @argparse.Command(
+    "moonx-console-controller",
+    disable_help_flag=true,
+    flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help")],
+    options=[
+      @argparse.OptionArg("kind"),
+      @argparse.OptionArg("program"),
+      @argparse.OptionArg("entry"),
+      @argparse.OptionArg("boundary"),
+    ],
+  )
+  let parsed = command.parse(argv=args, env=Map([])) catch {
+    error => return Invalid(requested_json, error.to_string())
+  }
+  let json = parsed.flags.get("json").unwrap_or(false)
+  if parsed.flags.get("help").unwrap_or(false) {
+    return Help(json)
+  }
+  guard parsed.values.get("kind") is Some([kind]) &&
+    parsed.values.get("program") is Some([program]) &&
+    parsed.values.get("entry") is Some([entry]) &&
+    parsed.values.get("boundary") is Some([boundary]) else {
+    return Invalid(
+      json, "Require --kind, --program, --entry and --boundary exactly once",
+    )
+  }
+  let kind : InvocationKind = match kind {
+    "wasm" => Wasm
+    "registry" => Registry
+    _ => return Invalid(json, "--kind is wasm or registry")
+  }
+  Run({ kind, program, entry, boundary, json, })
+}
+
+///|
+fn wants_json(args : Array[String]) -> Bool {
+  let probe = @argparse.Command(
+    "presentation",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("json")],
+    positionals=[
+      @argparse.PositionArg(
+        "opaque",
+        allow_hyphen_values=true,
+        num_args=@argparse.ValueRange(lower=0),
+      ),
+    ],
+  )
+  let parsed = probe.parse(argv=args, env=Map([])) catch { _ => return false }
+  parsed.flags.get("json").unwrap_or(false)
+}
+
+///|
+let input : Input = parse_input(@env.args()[1:].to_owned())
+
+///|
+// Console attachment must precede the ordinary async runtime's console hooks.
+let console_setup : Int32 = match input {
+  Run(_) => prepare_console()
+  _ => 0
+}
+
+///|
+let usage : String =
+  #|Internal Windows console qualification controller.
+  #|--kind wasm|registry --program ABSOLUTE_PROGRAM --entry WASM_OR_COORDINATE
+  #|--boundary ABSOLUTE_SCRATCH [--json]
+  #|--help [--json] returns finite help on stdout.
+  #|A run owns a test control protocol on stdout, interleaved with the actual
+  #|application stdout. --json selects a command-result summary on stderr,
+  #|separate from that protocol; child diagnostics also remain on stderr.
+  #|Connect to CONTROL_ADDR, send WATCH_NODE=PID, wait for CHILD_WATCHED,
+  #|send CTRL_C, wait for CTRL_SENT, then after CONSOLE_STATUS send CHECK_NODE.
+  #|The response retains NODE_RUNNING and CHILD_STATUS before DONE.
+  #|Success exits 0; input errors exit 2; failed qualification exits 1.
+
+///|
+fn report_failure(
+  json : Bool,
+  code : String,
+  message : String,
+  status : Int32,
+) -> Unit {
+  if json {
+    let document : Json = {
+      "profile": "morphir/command-result",
+      "contractVersion": "0.1.0",
+      "command": "moonx-console-controller",
+      "state": "failed",
+      "exitCode": status,
+      "diagnostics": [],
+      "error": { "code": code, "message": message },
+    }
+    eprintln(document.stringify())
+  } else {
+    eprintln(message)
+  }
+}
+
+///|
+async fn control(invocation : Invocation) -> Json {
+  assert_eq(@env.get_env_var("OS"), Some("Windows_NT"))
+  assert_eq(console_setup, 0)
+  let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
+  defer server.close()
+  defer close_console()
+  let pid = start_console(
+    invocation.program,
+    invocation.program.length(),
+    invocation.entry,
+    invocation.entry.length(),
+    invocation.boundary,
+    invocation.boundary.length(),
+    if invocation.kind is Registry {
+      1
+    } else {
+      0
+    },
+  )
+  let error = last_error()
+  assert_true(pid != 0, msg="CreateProcessW: " + error.to_string())
+  @stdio.stdout.write(
+    "CONTROL_ADDR=" +
+    server.addr.to_string() +
+    "\nCONSOLE_PID=" +
+    pid.to_string() +
+    "\n",
+  )
+  assert_eq(resume_console(), 0)
+  let node_status : Ref[Int32?] = Ref(None)
+  let parent_status = @async.with_task_group(group => {
+    let connected = Ref(false)
+    let exchange = group.spawn(no_wait=true, () => {
+      let (connection, _) = server.accept()
+      connected.val = true
+      defer connection.close()
+      let request = connection.read_until("\n").unwrap()
+      guard request.strip_prefix("WATCH_NODE=") is Some(text) else {
+        fail(request)
+      }
+      let child = @string.parse_int(text)
+      assert_eq(watch_child(child), 0)
+      connection.write("CHILD_WATCHED\n")
+      assert_eq(connection.read_until("\n"), Some("CTRL_C"))
+      assert_eq(send_event(), 0)
+      connection.write("CTRL_SENT\n")
+      assert_eq(connection.read_until("\n"), Some("CHECK_NODE"))
+      let running = process_running(child)
+      connection.write("NODE_RUNNING=" + running.to_string() + "\n")
+      assert_eq(running, 0)
+      let status = child_status()
+      assert_eq(last_error(), 0)
+      node_status.val = Some(status)
+      connection.write("CHILD_STATUS=" + status.to_string() + "\nDONE\n")
+    })
+    let status = @process.wait_pid(pid)
+    @stdio.stdout.write("CONSOLE_STATUS=" + status.to_string() + "\n")
+    if connected.val {
+      exchange.wait()
+    }
+    status
+  })
+  guard node_status.val is Some(node_status) else {
+    fail("No child status was observed")
+  }
+  close_console()
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "moonx-console-controller",
+    "state": "succeeded",
+    "exitCode": 0,
+    "diagnostics": [],
+    "result": {
+      "parentStatusBits": parent_status.reinterpret_as_uint(),
+      "childStatusBits": node_status.reinterpret_as_uint(),
+      "childReaped": true,
+    },
+  }
+}
+
+///|
+async fn main {
+  match input {
+    Help(json) =>
+      if json {
+        let document : Json = {
+          "profile": "morphir/command-result",
+          "contractVersion": "0.1.0",
+          "command": "moonx-console-controller",
+          "state": "succeeded",
+          "exitCode": 0,
+          "diagnostics": [],
+          "result": { "help": usage },
+        }
+        println(document.stringify())
+      } else {
+        println(usage)
+      }
+    Invalid(json, message) => {
+      report_failure(json, "invalid_arguments", message, 2)
+      @sys.exit(2)
+    }
+    Run(invocation) => {
+      let result = @async.with_timeout(30000, () => control(invocation)) catch {
+        error => {
+          report_failure(
+            invocation.json,
+            "qualification_failed",
+            error.to_string(),
+            1,
+          )
+          return @sys.exit(1)
+        }
+      }
+      if invocation.json {
+        eprintln(result.stringify())
+      }
+    }
+  }
+}

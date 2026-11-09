@@ -108,6 +108,10 @@ test "directory enumeration polls the same typed host state" {
     _ => false
   }
   assert_true(refused)
+  // Finalizers still use the ordinary list API after a retained stop. They
+  // must be able to enumerate scratch without consuming the stop request.
+  assert_eq(list(root), ["child"])
+  assert_true(interruption_requested())
 }
 
 ///|

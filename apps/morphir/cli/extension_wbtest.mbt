@@ -148,7 +148,7 @@ test "each status has one exit code and one report shape" {
   assert_eq(Refused.exit_code(), 2)
   assert_eq(Failed.exit_code(), 1)
   assert_eq(TimedOut.exit_code(), 124)
-  assert_eq(Cancelled.exit_code(), 130)
+  assert_eq(ExtensionStatus::Cancelled.exit_code(), 130)
   let report = ExtensionReport::failure(
     Compile,
     refused(Worker(ClaimsMismatch), "the descriptor claims differ"),

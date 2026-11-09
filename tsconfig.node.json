@@ -13,6 +13,7 @@
   "include": [
     "apps/morphir/**/*.ts",
     "apps/morphir/**/*.mts",
+    "apps/morphir/**/*.cts",
     "apps/morphir-workbench/**/*.test.ts",
     "apps/morphir-workbench/browser/native-test-fixture.ts",
     "apps/morphir-workbench/scripts/**/*.ts",

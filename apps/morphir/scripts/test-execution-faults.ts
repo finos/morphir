@@ -82,8 +82,8 @@ if(result.status===0&&request.operation==='invoke') {
 process.stdout.write(stdout);process.stderr.write(result.stderr);process.exitCode=result.status;
 `);
   const dependencies=['finos/morphir-sdk=pkgs/morphir-sdk','finos/morphir-execution=pkgs/morphir-execution','moonrockz/ion=.mooncakes/moonrockz/ion','moonbitlang/x=.mooncakes/moonbitlang/x','moonbitlang/async=.mooncakes/moonbitlang/async'].flatMap(v=>['--dependency',v]);
-  const js=join(repo,'_build/js/debug/build/morphir/morphir/node/node.js');
-  const native=join(repo,'_build/native/debug/build/morphir/morphir/morphir.exe');
+  const js=join(repo,'_build/js/debug/build/finos/morphir/node/node.js');
+  const native=join(repo,'_build/native/debug/build/finos/morphir/morphir.exe');
   const faults=['truncated','malformed','oversize','absent','missing','extra','duplicate','reordered','wrong-id','duration','value','wrong-suite','wrong-profile','wrong-trace','extensions','duplicate-field',
     ...['leaseId','target','attemptId','suiteIdentity','executableIdentity'].map(f=>'receipt-'+f),'source','dependency','diagnostics','tree-failure','cancel-tree-failure','outer-timeout'];
   const verified=[];

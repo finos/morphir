@@ -57,7 +57,7 @@ async fn assert_middleware_cancellation() -> Unit {
     logger: logs,
     clock: fn() { 1.0 },
     check_cancelled: fn() raise { raise CommandCancelled },
-    stop_requested: fn() { true },
+    stop_requested: fn() { false },
     failed: fn(presentation, error) {
       mapped.val = presentation is Compilation && error is CommandCancelled
       failures.val += 1
@@ -78,6 +78,14 @@ async fn assert_middleware_cancellation() -> Unit {
   assert_true(mapped.val)
   assert_eq(logs.events().length(), 3)
   assert_eq(logs.events()[1].level, @logging.Error)
+  let application_stopped = {
+    ..context,
+    check_cancelled: fn() { () },
+    stop_requested: fn() { true },
+  }
+  assert_eq(sender.send(application_stopped, ()), 0)
+  assert_eq(calls.val, 1)
+  assert_eq(failures.val, 1)
 }
 
 ///|
@@ -85,6 +93,10 @@ test "command middleware retains notebook and legacy failure presentation" {
   assert_true(failure_presentation("notebook export") is Notebook(Export))
   assert_true(failure_presentation("notebook import") is Notebook(Import))
   assert_true(failure_presentation("run") is Legacy)
+  assert_true(failure_presentation("version") is Version)
+  assert_true(
+    CommandRequest::decode(parse_cli(["version"])) is VersionCommand(_),
+  )
   assert_true(CommandRequest::decode(parse_cli(["run", "."])) is RunCommand(_))
   assert_true(
     CommandRequest::decode(parse_cli(["notebook", "import", "sheet.dib"]))
@@ -133,4 +145,23 @@ test "embedded command middleware scopes timing and preserves the handler result
 #cfg(any(target="wasm", target="wasm-gc"))
 test "embedded command middleware checks cancellation before effects and maps failure once" {
   run_middleware_assertion(() => assert_middleware_cancellation())
+}
+
+///|
+#cfg(any(target="native", target="js"))
+async test "version uses typed dispatch and shared cancellation before output" {
+  let failures = Ref(0)
+  let context : CommandContext = {
+    ..command_context(JSON),
+    check_cancelled: fn() raise { raise CommandCancelled },
+    failed: fn(presentation, error) {
+      assert_true(presentation is Version && error is CommandCancelled) catch {
+        _ => return -1
+      }
+      failures.val += 1
+      130
+    },
+  }
+  assert_eq(dispatch_cli(parse_cli(["version", "--json"]), context), 130)
+  assert_eq(failures.val, 1)
 }

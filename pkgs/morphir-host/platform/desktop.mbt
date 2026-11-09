@@ -31,6 +31,7 @@ pub fn write(path : String, content : String) -> Unit raise {
 }
 
 ///|
+#cfg(target="js")
 pub fn list(path : String) -> Array[String] raise {
   @fs.read_dir(path).to_owned()
 }

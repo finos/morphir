@@ -37,7 +37,7 @@ for (const target of ['js', 'native']) {
   checked('moon', ['build', target === 'js' ? 'apps/morphir/node' : 'apps/morphir', '--target', target, '--target-dir', build]);
   checked('moon', ['build', `apps/morphir-workbench/mck/capabilities/${target}`, '--target', target, '--target-dir', build]);
   const extension = target === 'js' ? '.js' : '.exe';
-  const cli = join(build, `${target}/debug/build/morphir/morphir/${target === 'js' ? 'node/node' : 'morphir'}${extension}`);
+  const cli = join(build, `${target}/debug/build/finos/morphir/${target === 'js' ? 'node/node' : 'morphir'}${extension}`);
   const workbench = join(build, `${target}/debug/build/finos/morphir-workbench/mck/capabilities/${target}/${target}${extension}`);
   for (const [producer, artifact] of [['primary-cli', cli], ['workbench-shared-policy', workbench]] as const) {
     const artifactHash = hash(artifact);

@@ -13,7 +13,7 @@ const root=mkdtempSync(join(tmpdir(),'morphir-conformance-'));
 const receipts=process.env.MORPHIR_CONFORMANCE_RECEIPTS;
 if(receipts)mkdirSync(receipts,{recursive:true});
 const moon=join(home,'bin/moon');
-const cli=join(repo,'_build/js/debug/build/morphir/morphir/node/node.js');
+const cli=join(repo,'_build/js/debug/build/finos/morphir/node/node.js');
 const helper=join(repo,'apps/morphir/build-provider/execution.mjs');
 const rustHelper=join(repo,'apps/morphir/build-provider/evaluator.mjs');
 const dependencies=['finos/morphir-sdk=pkgs/morphir-sdk','finos/morphir-execution=pkgs/morphir-execution','moonrockz/ion=.mooncakes/moonrockz/ion','moonbitlang/x=.mooncakes/moonbitlang/x','moonbitlang/async=.mooncakes/moonbitlang/async'].flatMap(v=>['--dependency',v]);

@@ -261,7 +261,7 @@ try {
   const coreDigest=digestTree(core,true);
   // Exercise the complete configured pipeline with substantial current and historical IR.
   execFileSync(moon,['build','--target','native'],{cwd:repository,stdio:'pipe'});
-  const cli=join(repository,'_build/native/debug/build/morphir/morphir','morphir.exe');
+  const cli=join(repository,'_build/native/debug/build/finos/morphir','morphir.exe');
   const fixture=join(workspace,'pipeline');mkdirSync(join(fixture,'src'),{recursive:true});
   writeFileSync(join(fixture,'morphir.toml'),"[project]\nname='Acceptance'\n[frontend]\nlanguage='ir-json'\n");
   const invoke=(args: string[])=>JSON.parse(execFileSync(cli,['run','.',...args,'--json'],{cwd:fixture,encoding:'utf8',maxBuffer:16777216}));

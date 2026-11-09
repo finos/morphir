@@ -29,7 +29,7 @@ pub fn Invocation::prepare(
   }
   let environment = @platform.environment()
   let directory = host_working_directory()
-  if cli.help {
+  if cli.help || cli.command == "version" {
     return {
       cli,
       mode,
@@ -311,22 +311,30 @@ pub fn Invocation::host(
 }
 
 ///|
+fn Invocation::command_context(
+  self : Invocation,
+  ctx : @hosting.Context[Unit],
+) -> CommandContext {
+  let logger = match active_run.val {
+    Some(run) => run.logger
+    None => @logging.null_logger()
+  }
+  {
+    ..command_context(self.mode, configuration=self.configuration.framework()),
+    logger,
+    check_cancelled: fn() raise { ctx.check_cancelled() },
+    stop_requested: fn() { self.stop_requested(ctx) },
+    workers: self.workers,
+  }
+}
+
+///|
 pub async fn Invocation::execute(
   self : Invocation,
   ctx : @hosting.Context[Unit],
 ) -> Unit {
   self.command_started.val = true
-  let logger = match active_run.val {
-    Some(run) => run.logger
-    None => @logging.null_logger()
-  }
-  let context = {
-    ..command_context(self.mode, configuration=self.configuration.framework()),
-    logger,
-    check_cancelled: fn() raise { ctx.check_cancelled() },
-    stop_requested: fn() { ctx.stop_requested() },
-    workers: self.workers,
-  }
+  let context = self.command_context(ctx)
   let status = if self.cli.help {
     help_command(self.cli, self.mode)
   } else {
@@ -372,7 +380,8 @@ pub fn Invocation::report_unstarted_stop(
   self : Invocation,
   status : Int32,
 ) -> Unit {
-  if !self.command_started.val && (status == 130 || status == 143) {
+  if !self.command_started.val &&
+    (status == 130 || status == 131 || status == 143) {
     self.command_started.val = true
     ignore(
       report_command_failure(

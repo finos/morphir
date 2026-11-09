@@ -130,6 +130,19 @@ The maintainer confirmed these on 2026-10-28:
   reuses the packaged Node CLI without a separate npm installation and preserves its bounded filesystem operations,
   publication guarantees, opaque argument arrays, byte streams, JSON schemas and cancellation behavior. Release
   qualification covers the supported minimum and pinned MoonBit runtimes, plus the actual archive and public registry.
+- On 2026-10-30 the maintainer approved keeping native installation at `moon install finos/morphir@VERSION --bin DEST`
+  and selecting the portable entry with `moonx finos/morphir/moonx@VERSION`. The `moonx` entry is a subpackage of
+  the same published CLI module. Its Node prerequisite does not apply to native built-in commands. The maintainer
+  also approved an optional upstream Moon-Lander compatibility module for correct signal forwarding without waiting
+  for a `moonbitlang/async` release, with frozen-source provenance, retained tests and public-consumer qualification.
+  The upstream API request is tracked separately in `moonbitlang/async#706`.
+- On 2026-10-30 the maintainer approved a Windows-only Moonx signal limitation. With the supported stock
+  Moonrun runtimes, Ctrl+C reaches the Node child as Ctrl+Break: the child reports the delivered Quit with 131,
+  while the launcher retains its actual Windows cancellation status. This release documents and qualifies that
+  behavior without inferring or relabeling the original signal. POSIX Moonx retains original SIGINT/SIGTERM
+  delivery and 130/143 results. Finite results, owned-child cleanup, forced reaping and byte transport remain
+  required on Windows. Native and npm entry contracts are unchanged. The stock runtime gap is tracked in
+  `moonbitlang/moon#2419`; its fix is not a prerequisite for this release.
 - The work lands in as few pull requests as needed: one pull request for the migration here, with a separate pull
   request only for a group that is blocked while the rest is ready.
 

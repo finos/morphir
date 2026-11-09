@@ -225,7 +225,7 @@ async fn execute(target : Target, scope : Scope) -> Json {
   python_extensions(python)
   let env : Map[String, String] = {
     "CI": "true",
-    "MORPHIR_CLI": "\{built}/native/release/build/morphir/morphir/morphir.exe",
+    "MORPHIR_CLI": "\{built}/native/release/build/finos/morphir/morphir.exe",
     "MORPHIR_NATIVE_GUEST": "\{built}/native/release/build/finos/morphir-extension/morphir-extension.exe",
     "MORPHIR_PORTABLE_GUEST": "\{portable}/extension/model.wasm",
     "MORPHIR_PYTHON_EXTENSIONS": python,

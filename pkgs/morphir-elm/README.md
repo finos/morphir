@@ -1,5 +1,8 @@
 # Morphir Elm
 
+Version 0.1.0 is the frozen copy from finos/morphir-moonbit. The
+[finos/morphir-elm](https://github.com/finos/morphir-elm) repository owns this module and publishes later versions.
+
 ## Purpose
 
 `finos/morphir-elm` generates Elm source from current Morphir IR. The package `finos/morphir-elm/backend` lowers

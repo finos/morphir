@@ -6,7 +6,7 @@ import {join,delimiter} from "node:path";
 import {fileURLToPath} from "node:url";
 
 const directory=mkdtempSync(join(tmpdir(),"morphir-acquisition-"));
-const executable=process.argv[2] ?? fileURLToPath(new URL('../../../_build/native/release/build/morphir/morphir/morphir.exe',import.meta.url));
+const executable=process.argv[2] ?? fileURLToPath(new URL('../../../_build/native/release/build/finos/morphir/morphir.exe',import.meta.url));
 const home=join(directory,'toolchain with spaces');
 const env: NodeJS.ProcessEnv={...process.env,MORPHIR_HOME:join(directory,'morphir'),HOME:join(directory,'home')};
 delete env.MOON_HOME;

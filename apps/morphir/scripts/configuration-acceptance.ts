@@ -1,6 +1,63 @@
 import assert from 'node:assert/strict';
-import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {once} from 'node:events';
+import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {Worker} from 'node:worker_threads';
+import {headlessEnvironment} from './headless-environment.ts';
+
+/** Discovery must tolerate an ancestor changing while its entries are read. */
+export async function exerciseNativeDiscoveryChurn(binary: string) {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'morphir-discovery-churn-')));
+  const app = join(root, 'app');
+  mkdirSync(app);
+  writeFileSync(join(root, 'morphir.toml'), "[project]\nname='Churn'\n");
+  const env = headlessEnvironment(join(root, 'cli-environment'));
+  const run = () => spawnSync(binary, ['project', 'list', '--json', '--isolated', '--discovery-boundary', root], {
+    cwd: app, env, encoding: 'utf8', timeout: 15_000,
+  });
+  const cycles = new Int32Array(new SharedArrayBuffer(4));
+  const writer = new Worker(new URL('data:text/javascript,' + encodeURIComponent(`
+    import {workerData, parentPort} from 'node:worker_threads';
+    import {writeFileSync, unlinkSync} from 'node:fs';
+    const cycles = new Int32Array(workerData.cycles);
+    for (let i = 0; i < 300; i++) writeFileSync(workerData.root + '/churn-' + i, '');
+    parentPort.postMessage('ready');
+    while (true) {
+      for (let i = 0; i < 300; i++) unlinkSync(workerData.root + '/churn-' + i);
+      for (let i = 0; i < 300; i++) writeFileSync(workerData.root + '/churn-' + i, '');
+      Atomics.add(cycles, 0, 1);
+    }
+  `)), {workerData: {root, cycles: cycles.buffer}});
+  try {
+    await once(writer, 'message');
+    for (let i = 0; i < 100; i++) {
+      const result = run();
+      const context = `native discovery churn iteration ${i}: ${result.error?.message ?? ''}\n${result.stderr}`;
+      assert.equal(result.error, undefined, context);
+      assert.equal(result.signal, null, context);
+      const report = JSON.parse(result.stdout);
+      if (result.status === 0) {
+        assert.deepEqual(report.projects.map((project: {name: string}) => project.name), ['Churn'], context);
+      } else {
+        // A removed name can disappear before kind inspection. Discovery keeps
+        // its existing fail-closed refusal instead of inventing a snapshot.
+        assert.equal(result.status, 2, context);
+        assert.equal(report.successful, false, context);
+        assert.match(result.stderr, /Unreadable or unsupported entry: churn-\d+/, context);
+      }
+    }
+    assert.ok(Atomics.load(cycles, 0) > 0, 'the writer changed the directory during qualification');
+  } finally {
+    await writer.terminate();
+    try {
+      const stable = run();
+      assert.equal(stable.status, 0, stable.stderr);
+      assert.deepEqual(JSON.parse(stable.stdout).projects.map((project: {name: string}) => project.name), ['Churn']);
+    } finally { rmSync(root, {recursive: true, force: true}); }
+  }
+}
 
 /** Run against each actual CLI host, using the public controls of an isolated driver. */
 export function exerciseConfiguration(

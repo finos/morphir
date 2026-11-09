@@ -113,13 +113,17 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
   };
   const interrupt = () => stop(1, 130);
   const terminate = () => stop(2, 143);
+  const quit = () => stop(3, 131);
+  const quitSignal = process.platform === 'win32' ? 'SIGBREAK' : 'SIGQUIT';
   process.on('SIGINT', interrupt);
   process.on('SIGTERM', terminate);
+  process.on(quitSignal, quit);
   worker.on('message', inputRequest);
   worker.once('error', error => { workerFailed = true; console.error(error instanceof Error ? error.message : String(error)); });
   worker.once('exit', code => {
     process.off('SIGINT', interrupt);
     process.off('SIGTERM', terminate);
+    process.off(quitSignal, quit);
     if (inputActive) {
       process.stdin.off('readable', pump);
       process.stdin.off('end', pump);

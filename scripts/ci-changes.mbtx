@@ -553,6 +553,14 @@ async fn self_test() -> Unit {
     ([".github/workflows/qualification.yml"], true, true, suites),
     ([".github/workflows/ci-packaged.yml"], true, true, suites),
     (["scripts/ci-changes.mbtx"], true, false, suites),
+    (["scripts/mooncakes-release.mbtx"], true, false, suites),
+    (["scripts/mooncakes-credentials.mbtx"], true, false, suites),
+    (["scripts/mooncakes-modules.json"], true, false, suites),
+    (["apps/morphir/.moonignore"], true, false, suites),
+    (["pkgs/morphir-core/native.c"], true, true, suites),
+    (["apps/morphir/release_identity.mbt"], true, false, suites),
+    ([".github/workflows/release.yml"], true, true, suites),
+    (["pkgs/morphir-core/README.md"], false, true, []),
     (["moon.work"], true, true, suites),
     (["pkgs/morphir-moonbit/moon.mod"], true, true, backend),
     ([".config/mise/config.toml", "bun.lock"], true, true, suites),
@@ -593,6 +601,13 @@ async fn self_test() -> Unit {
       ) else {
       fail("Wrong required job set: " + paths.join(", "))
     }
+  }
+  // Deletions use the same path classifier. README-only changes still run
+  // validate-config, whose release inventory check refuses missing files.
+  guard required(select(["pkgs/morphir-core/README.md"])).contains(
+    "validate-config",
+  ) else {
+    fail("README deletion must retain release inventory validation")
   }
   for
     (path, expected) in [

@@ -14,7 +14,7 @@ function run(program: string,args: string[],status=0) {
   const r=spawnSync(program,args,{cwd:repo,encoding:'utf8',timeout:180000,maxBuffer:8388608});
   assert.equal(r.error,undefined);assert.equal(r.status,status,r.stderr+'\n'+r.stdout);return r;
 }
-const cli=join(repo,'_build/js/debug/build/morphir/morphir/node/node.js');
+const cli=join(repo,'_build/js/debug/build/finos/morphir/node/node.js');
 const dependencies=['finos/morphir-sdk=pkgs/morphir-sdk','finos/morphir-execution=pkgs/morphir-execution','moonrockz/ion=.mooncakes/moonrockz/ion','moonbitlang/x=.mooncakes/moonbitlang/x','moonbitlang/async=.mooncakes/moonbitlang/async'].flatMap(v=>['--dependency',v]);
 try {
   const fixture=JSON.parse(run(join(home,'bin/moon'),['run','--target','js','pkgs/morphir-moonbit/acceptance']).stdout);

@@ -236,7 +236,7 @@ async function regression() {
       copyExecutable(stubPath, join(cwd, '_build/native/release/build/finos/morphir-extension/morphir-extension.exe'));
       // The filename is part of the existing primary CLI build path. Tell the
       // synthetic native child its role through a hardlink with that same name.
-      copyExecutable(stubPath, join(cwd, '_build/native/release/build/morphir/morphir/morphir.exe'));
+      copyExecutable(stubPath, join(cwd, '_build/native/release/build/finos/morphir/morphir.exe'));
       const kitPath = join(cwd, 'kit --json 雪.json'); put(kitPath, JSON.stringify(kit));
       const workbench = join(cwd, 'workbench'); put(join(workbench, 'cases.json'), JSON.stringify({ formatVersion: '0.1.0-draft.26', cases: [{}] }));
       const runner = join(bin, 'mck' + executable);

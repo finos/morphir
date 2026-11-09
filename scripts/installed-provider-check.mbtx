@@ -265,7 +265,7 @@ async fn execute() -> Json {
       cwd="apps/morphir",
       receipts~,
     )
-    build + "/native/release/build/morphir/morphir/morphir.exe"
+    build + "/native/release/build/finos/morphir/morphir.exe"
   }
   let native = root + "/morphir-native"
   @fs.write_file(native, @fs.read_file(native_source))

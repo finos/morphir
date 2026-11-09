@@ -1,0 +1,1251 @@
+----
+import {
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/moon_config@0.4.4" @config,
+  "moonbitlang/lexer@0.4.4/basic",
+  "moonbitlang/x@0.5.6/crypto",
+  "moonbitlang/x@0.5.6/sys",
+  "moonbitstack/moonsver@0.1.0" @semver,
+  "moonbit-community/zipc@0.2.2",
+}
+----
+
+///|
+// Unicode data notice, https://www.unicode.org/license.txt, retrieved 2026-10-30.
+// SHA256 of the UTF-8 text including its final newline: e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96
+let unicode_notice : String =
+  #|UNICODE LICENSE V3
+  #|
+  #|COPYRIGHT AND PERMISSION NOTICE
+  #|
+  #|Copyright © 1991-2026 Unicode, Inc.
+  #|
+  #|NOTICE TO USER: Carefully read the following legal agreement. BY
+  #|DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+  #|SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+  #|TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+  #|DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+  #|
+  #|Permission is hereby granted, free of charge, to any person obtaining a
+  #|copy of data files and any associated documentation (the "Data Files") or
+  #|software and any associated documentation (the "Software") to deal in the
+  #|Data Files or Software without restriction, including without limitation
+  #|the rights to use, copy, modify, merge, publish, distribute, and/or sell
+  #|copies of the Data Files or Software, and to permit persons to whom the
+  #|Data Files or Software are furnished to do so, provided that either (a)
+  #|this copyright and permission notice appear with all copies of the Data
+  #|Files or Software, or (b) this copyright and permission notice appear in
+  #|associated Documentation.
+  #|
+  #|THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+  #|KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  #|MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+  #|THIRD PARTY RIGHTS.
+  #|
+  #|IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+  #|BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+  #|OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+  #|WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+  #|ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+  #|FILES OR SOFTWARE.
+  #|
+  #|Except as contained in this notice, the name of a copyright holder shall
+  #|not be used in advertising or otherwise to promote the sale, use or other
+  #|dealings in these Data Files or Software without prior written
+  #|authorization of the copyright holder.
+
+///|
+suberror DistributionError {
+  Invalid(String)
+  Arguments(String)
+  Child(Int32, String)
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+fn text(value : Json, name : String) -> String raise {
+  guard field(value, name) is String(result) else {
+    raise Invalid("Missing string field: " + name)
+  }
+  result
+}
+
+///|
+fn number(value : Json, name : String) -> Int32 raise {
+  guard field(value, name) is Number(result, ..) else {
+    raise Invalid("Missing integer field: " + name)
+  }
+  guard result >= 0.0 &&
+    result <= 2147483647.0 &&
+    result.to_int().to_double() == result else {
+    raise Invalid("Invalid integer: " + name)
+  }
+  result.to_int()
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+}
+
+///|
+fn valid_sha(value : String) -> Bool {
+  value.length() == 40 &&
+  value.iter().all(c => "0123456789abcdef".contains(c.to_string()))
+}
+
+///|
+fn distribution_version(value : String) -> String raise {
+  ignore(
+    @semver.Version::parse(value, syntax=@semver.Syntax::strict()) catch {
+      _ => raise Invalid("Distribution version must be strict SemVer")
+    },
+  )
+  guard value.length() <= 96 &&
+    value
+    .iter()
+    .all(c => {
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-+".contains(
+        c.to_string(),
+      )
+    }) else {
+    raise Invalid("Unsafe distribution version")
+  }
+  value
+}
+
+///|
+fn safe_member(value : String) -> Bool {
+  !value.is_empty() &&
+  !value.has_prefix("/") &&
+  !value.contains("\\") &&
+  !value.contains("\u0000") &&
+  value.split("/").all(part => part != "" && part != "." && part != "..")
+}
+
+///|
+fn file_url(path : String) -> String {
+  let mut result = "file://"
+  for byte in @utf8.encode(path) {
+    let code = byte.to_int()
+    if (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 48 && code <= 57) ||
+      [47, 45, 46, 95, 126].contains(code) {
+      result += @utf8.decode(Bytes::from_array([byte])) catch { _ => "" }
+    } else {
+      result += "%" + @crypto.bytes_to_hex_string(Bytes::from_array([byte]))
+    }
+  }
+  result
+}
+
+///|
+async fn checked(
+  program : String,
+  args : Array[String],
+  environment~ : Map[String, String] = Map([]),
+) -> String {
+  let (code, stdout, stderr) = @async.with_timeout(180000, () => {
+    @process.collect_output(program, args, extra_env=environment)
+  })
+  @stdio.stderr.write(stderr)
+  guard code == 0 else {
+    @stdio.stderr.write(stdout)
+    raise Child(if code > 0 { code } else { 128 - code }, program + " failed")
+  }
+  stdout.text().trim().to_owned()
+}
+
+///|
+async fn regular(path : String, limit : Int64) -> Bytes {
+  guard @fs.kind(path, follow_symlink=false) is Regular &&
+    @fs.file_size(path) <= limit else {
+    raise Invalid("Expected bounded regular file: " + path)
+  }
+  @fs.read_file(path).binary()
+}
+
+///|
+fn parse_manifest(path : String, source : String) -> Json raise {
+  let (ast, reports) = @config.parse_moon_mod(name=path, source)
+  guard reports.is_empty() else {
+    raise Invalid(
+      "Invalid module manifest: " +
+      path +
+      ": " +
+      reports.map(fn(report : @basic.Report) { report.msg }).join("; "),
+    )
+  }
+  Json(ast)
+}
+
+///|
+fn clone_object(value : Json) -> Map[String, Json] raise {
+  guard @json.parse(value.stringify()) is Object(fields) else {
+    raise Invalid("Expected object")
+  }
+  fields
+}
+
+///|
+fn fact(path : String, bytes : Bytes, mode : Int32) -> Json {
+  {
+    "path": path,
+    "sha256": digest(bytes),
+    "bytes": bytes.length(),
+    "mode": mode & 0o7777,
+  }
+}
+
+///|
+async fn license_files(
+  base : String,
+  relative : String,
+  prefix : String,
+  files : Array[(String, Bytes, Int32)],
+  remaining : Ref[Int32],
+) -> Int32 {
+  let directory = if relative == "" { base } else { base + "/" + relative }
+  let mut count = 0
+  for name in @fs.readdir(directory, sort=true, include_hidden=true) {
+    remaining.val -= 1
+    guard remaining.val >= 0 else {
+      raise Invalid("License inventory exceeds its bound")
+    }
+    if ["_build", ".git", ".mooncakes", "node_modules", "target"].contains(name) {
+      continue
+    }
+    let rel = if relative == "" { name } else { relative + "/" + name }
+    let path = base + "/" + rel
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => count += license_files(base, rel, prefix, files, remaining)
+      Regular => {
+        let upper = name.to_upper()
+        if upper == "LICENSE" ||
+          upper.has_prefix("LICENSE.") ||
+          upper == "NOTICE" ||
+          upper.has_prefix("NOTICE.") ||
+          upper == "COPYING" ||
+          upper.has_prefix("COPYING.") ||
+          upper == "ATTRIBUTIONS" ||
+          upper.has_prefix("ATTRIBUTIONS.") {
+          let bytes = regular(path, 4L * 1024L * 1024L)
+          guard safe_member(prefix + "/" + rel) else {
+            raise Invalid("Unsafe license path")
+          }
+          files.push((prefix + "/" + rel, bytes, 0o100644))
+          count += 1
+        }
+      }
+      _ => ()
+    }
+  }
+  count
+}
+
+///|
+async fn collect_licenses(
+  root : String,
+  home : String,
+  files : Array[(String, Bytes, Int32)],
+) -> Json {
+  let graph = @json.parse(
+    checked("moon", ["-C", root + "/apps/morphir", "tree", "--json"], environment={
+      "MOON_WORK": root + "/moon.work",
+    }),
+  )
+  guard field(graph, "status") == Json("success") &&
+    field(graph, "modules") is Array(modules) &&
+    field(graph, "edges") is Array(edges) else {
+    raise Invalid("Dependency graph unavailable")
+  }
+  let selected : Map[Int32, Bool] = Map([])
+  selected[number(graph, "root")] = true
+  let mut changed = true
+  while changed {
+    changed = false
+    for edge in edges {
+      let from = number(edge, "from")
+      let target = number(edge, "to")
+      if selected.contains(from) && !selected.contains(target) {
+        selected[target] = true
+        changed = true
+      }
+    }
+  }
+  let remaining = Ref(100000)
+  let records : Array[Json] = []
+  let apache = regular(root + "/apps/morphir/LICENSE", 4L * 1024L * 1024L)
+  for index, item in modules {
+    if !selected.contains(index) {
+      continue
+    }
+    let name = text(item, "name")
+    guard safe_member(name) else {
+      raise Invalid("Unsafe dependency module name")
+    }
+    let source = field(item, "source")
+    let base = if name == "moonbitlang/core" {
+      home + "/lib/core"
+    } else if field(source, "kind") == Json("local") {
+      text(source, "path")
+    } else {
+      root + "/.mooncakes/" + name
+    }
+    let base = @fs.realpath(base)
+    let manifest = if @fs.exists(base + "/moon.mod") {
+      parse_manifest(
+        base + "/moon.mod",
+        @fs.read_file(base + "/moon.mod").text(),
+      )
+    } else {
+      @fs.read_file(base + "/moon.mod.json").json()
+    }
+    let license = text(manifest, "license")
+    guard text(manifest, "name") == name &&
+      field(manifest, "version") == field(item, "version") else {
+      raise Invalid("Resolved dependency source identity differs: " + name)
+    }
+    let prefix = "licenses/" + name
+    let count = license_files(base, "", prefix, files, remaining)
+    let fallback = !@fs.exists(base + "/LICENSE") && license == "Apache-2.0"
+    if fallback {
+      files.push((prefix + "/LICENSE-Apache-2.0", apache, 0o100644))
+    }
+    guard count > 0 || fallback else {
+      raise Invalid(
+        "Missing dependency license text: " + name + " (" + license + ")",
+      )
+    }
+    records.push({
+      "name": name,
+      "version": field(item, "version"),
+      "license": license,
+      "licenseFiles": count,
+      "canonicalApacheTextAdded": fallback,
+    })
+  }
+  files.push(
+    (
+      "licenses/unicode/UNICODE-LICENSE.txt",
+      @utf8.encode(unicode_notice + "\n"),
+      0o100644,
+    ),
+  )
+  let core_count = license_files(
+    home + "/lib/core",
+    "",
+    "licenses/moonbitlang/core",
+    files,
+    remaining,
+  )
+  guard core_count > 0 else {
+    raise Invalid("Stock core license notices unavailable")
+  }
+  {
+    "scope": "Conservative resolved CLI module dependency closure and stock core",
+    "modules": records,
+    "coreNoticeFiles": core_count,
+    "unicodeDataNotice": {
+      "source": "https://www.unicode.org/license.txt",
+      "sha256": digest(@utf8.encode(unicode_notice + "\n")),
+    },
+    "unresolved": [],
+  }
+}
+
+///|
+async fn notices(directory : String) -> Json {
+  guard !@fs.exists(directory) else {
+    raise Invalid("Notice output directory already exists")
+  }
+  let root = @fs.realpath(".")
+  let home = @env.get_env_var("MOON_TOOLCHAIN_ROOT").unwrap_or(
+    @env.get_env_var("MOON_HOME").unwrap_or(""),
+  )
+  guard home != "" else {
+    raise Invalid("Selected Moon toolchain home required")
+  }
+  let files : Array[(String, Bytes, Int32)] = []
+  let licenses = collect_licenses(root, home, files)
+  files.sort_by((left, right) => left.0.lexical_compare(right.0))
+  let paths : Map[String, Bool] = Map([])
+  for (path, _, _) in files {
+    guard safe_member(path) && !paths.contains(path) else {
+      raise Invalid("Duplicate or unsafe notice path: " + path)
+    }
+    paths[path] = true
+  }
+  let manifest : Json = {
+    "profile": "morphir/cli-notices",
+    "contractVersion": "0.1.0",
+    "licenses": licenses,
+    "files": files.map(file => fact(file.0, file.1, file.2)),
+  }
+  @fs.mkdir(directory, recursive=true)
+  let complete = Ref(false)
+  defer (if !complete.val { @fs.rmdir(directory, recursive=true) })
+  for (path, bytes, _) in files {
+    let segments = path.split("/").to_array()
+    @fs.mkdir(
+      directory + "/" + segments[:segments.length() - 1].join("/"),
+      recursive=true,
+      allow_exist=true,
+    )
+    @fs.write_file(
+      directory + "/" + path,
+      bytes,
+      create_mode=CreateNew,
+      permission=0o644,
+    )
+  }
+  @fs.write_file(
+    directory + "/notices.json",
+    manifest.stringify() + "\n",
+    create_mode=CreateNew,
+    permission=0o644,
+  )
+  complete.val = true
+  manifest
+}
+
+///|
+fn archive_bytes(files : Array[(String, Bytes, Int32)]) -> Bytes raise {
+  let archive = @zipc.Archive::empty()
+  for (path, bytes, mode) in files {
+    guard safe_member(path) && !archive.mem(path) else {
+      raise Invalid("Duplicate or unsafe archive member: " + path)
+    }
+    ignore(
+      archive.add(
+        @zipc.Member::make(
+          path,
+          File(@zipc.File::deflate_from_bytes(bytes)),
+          mode~,
+          mtime=@zipc.dos_epoch,
+        ),
+      ),
+    )
+  }
+  archive.to_bytes()
+}
+
+///|
+fn validate_archive(bytes : Bytes, manifest : Json) -> Map[String, Bytes] raise {
+  let archive = @zipc.Archive::from_bytes(bytes)
+  guard field(manifest, "files") is Array(facts) else {
+    raise Invalid("Missing file inventory")
+  }
+  guard archive.member_count() == facts.length() + 1 else {
+    raise Invalid("Archive member inventory differs")
+  }
+  let expected : Map[String, Json] = Map([])
+  for entry in facts {
+    let path = text(entry, "path")
+    guard safe_member(path) && !expected.contains(path) else {
+      raise Invalid("Duplicate or unsafe file inventory")
+    }
+    expected[path] = entry
+  }
+  let extracted : Map[String, Bytes] = Map([])
+  for item in archive.to_array() {
+    let path = item.path()
+    guard safe_member(path) &&
+      item.kind() is File(file) &&
+      file.decompressed_size() <= 256 * 1024 * 1024 else {
+      raise Invalid("Unexpected archive member: " + path)
+    }
+    let wanted_mode = if path == "bin/morphir" { 0o755 } else { 0o644 }
+    guard item.mode() == wanted_mode else {
+      raise Invalid("Archive member mode differs: " + path)
+    }
+    let data = file.to_bytes()
+    if path == "release-manifest.json" {
+      guard @json.parse(@utf8.decode(data)) == manifest else {
+        raise Invalid("Embedded release manifest differs")
+      }
+    } else {
+      guard expected.get(path) is Some(record) &&
+        text(record, "sha256") == digest(data) &&
+        number(record, "bytes") == data.length() &&
+        number(record, "mode") == item.mode() else {
+        raise Invalid("Archive member identity differs: " + path)
+      }
+    }
+    extracted[path] = data
+  }
+  for
+    required in [
+      "bin/morphir", "LICENSE", "NOTICE", "README.txt", "release-manifest.json",
+    ] {
+    guard extracted.contains(required) else {
+      raise Invalid("Missing archive member: " + required)
+    }
+  }
+  // zipc exposes permission bits but strips Unix file-type bits on input.
+  // Requiring this producer's canonical regular-file ZIP also checks the raw
+  // metadata, duplicate central entries, timestamps and trailing content.
+  let canonical = facts.map(record => {
+    let path = text(record, "path")
+    (path, extracted[path], number(record, "mode") | 0o100000)
+  })
+  canonical.push(
+    ("release-manifest.json", extracted["release-manifest.json"], 0o100644),
+  )
+  guard archive_bytes(canonical) == bytes else {
+    raise Invalid("ZIP differs from canonical regular-file distribution")
+  }
+  extracted
+}
+
+///|
+async fn current_host() -> Json {
+  let os = checked("/usr/bin/uname", ["-s"])
+  let arch = checked("/usr/bin/uname", ["-m"])
+  guard os == "Darwin" && arch == "arm64" else {
+    raise Invalid("This distribution is supported only on macOS arm64")
+  }
+  {
+    "platform": "macos-arm64",
+    "osVersion": checked("/usr/bin/sw_vers", ["-productVersion"]),
+    "architecture": arch,
+    "runnerOS": @env.get_env_var("RUNNER_OS").unwrap_or("local"),
+    "runnerArch": @env.get_env_var("RUNNER_ARCH").unwrap_or("local"),
+    "runnerImage": @env.get_env_var("ImageVersion").unwrap_or("local"),
+  }
+}
+
+///|
+fn metadata_line(source : String, key : String) -> String raise {
+  for line in source.split("\n") {
+    let line = line.trim().to_owned()
+    if line.has_prefix(key + " ") {
+      return line[key.length() + 1:].trim().to_owned()
+    }
+  }
+  raise Invalid("Missing Mach-O metadata: " + key)
+}
+
+///|
+async fn package_distribution(
+  binary : String,
+  directory : String,
+  requested_version : String,
+  requested_sha : String,
+) -> Json {
+  let host = current_host()
+  let root = @fs.realpath(".")
+  let sha = checked("git", ["rev-parse", "HEAD"])
+  let expected = if requested_sha != "" {
+    requested_sha
+  } else {
+    @env.get_env_var("GITHUB_SHA").unwrap_or(sha)
+  }
+  guard valid_sha(sha) &&
+    expected == sha &&
+    @env.get_env_var("GITHUB_SHA").unwrap_or(sha) == sha else {
+    raise Invalid("Source SHA differs from checkout or workflow candidate")
+  }
+  let original = regular(binary, 256L * 1024L * 1024L)
+  let binary = @fs.realpath(binary)
+  let description = checked("/usr/bin/file", ["-b", binary])
+  guard description.contains("Mach-O 64-bit executable arm64") else {
+    raise Invalid("Expected an arm64 Mach-O executable")
+  }
+  let dependencies = checked("/usr/bin/otool", ["-L", binary])
+  for index, line in dependencies.split("\n").to_array() {
+    if index == 0 {
+      continue
+    }
+    let line = line.trim().to_owned()
+    guard line.has_prefix("/usr/lib/") || line.has_prefix("/System/Library/") else {
+      raise Invalid("Unbundled non-system dynamic dependency: " + line)
+    }
+  }
+  let load_commands = checked("/usr/bin/otool", ["-l", binary])
+  let minimum = metadata_line(load_commands, "minos")
+  let sdk = metadata_line(load_commands, "sdk")
+  let app = parse_manifest(
+    "apps/morphir/moon.mod",
+    @fs.read_file("apps/morphir/moon.mod").text(),
+  )
+  guard text(app, "name") == "finos/morphir" else {
+    raise Invalid("Unexpected CLI module identity")
+  }
+  let application_version = text(app, "version")
+  let observed = @json.parse(checked(binary, ["version", "--json"]))
+  guard field(observed, "state") == Json("succeeded") &&
+    field(field(observed, "result"), "name") == Json("finos/morphir") &&
+    field(field(observed, "result"), "version") == Json(application_version) else {
+    raise Invalid("Native executable version differs from application manifest")
+  }
+  let version = distribution_version(
+    if requested_version != "" {
+      requested_version
+    } else {
+      let configured = @env.get_env_var("MORPHIR_CLI_DISTRIBUTION_VERSION").unwrap_or(
+        "",
+      )
+      if configured != "" {
+        configured
+      } else {
+        application_version + "-ci." + sha[:12].to_owned()
+      }
+    },
+  )
+  let pin_bytes = regular("tools/moonbit-core-pin.json", 1048576L)
+  let pin = @json.parse(@utf8.decode(pin_bytes))
+  let compiler = checked("moonc", ["-v"])
+  guard compiler.has_prefix("v" + text(pin, "compilerVersion") + " ") else {
+    raise Invalid("Pinned compiler required")
+  }
+  let home = @env.get_env_var("MOON_TOOLCHAIN_ROOT").unwrap_or(
+    @env.get_env_var("MOON_HOME").unwrap_or(""),
+  )
+  guard home != "" else { raise Invalid("Pinned Moon toolchain home required") }
+  let compiler_path = @fs.realpath(checked("/usr/bin/which", ["moonc"]))
+  guard compiler_path == @fs.realpath(home + "/bin/moonc") else {
+    raise Invalid("Compiler on PATH differs from selected toolchain root")
+  }
+  let compiler_sha256 = digest(regular(compiler_path, 268435456L))
+  let core_check = @json.parse(
+    checked("moonx", ["scripts/moonbit-core.mbtx", "check", "--json"]),
+  )
+  let files = [
+    ("bin/morphir", original, 0o100755),
+    ("LICENSE", regular("apps/morphir/LICENSE", 4194304L), 0o100644),
+    ("NOTICE", regular("apps/morphir/NOTICE", 4194304L), 0o100644),
+    (
+      "README.txt",
+      @utf8.encode(
+        "Morphir native CLI for macOS arm64.\nRun morphir --help, morphir version --json, or morphir worksheet demo.scm --json.\nBuilt-in operations need neither Node nor MoonBit. Helper-backed commands retain their explicit helper, Node, compiler, SDK and provider prerequisites.\nDeployment metadata does not prove compatibility with older macOS. Qualification applies only to the recorded host and installation checks.\nSource and dependency notices are in release-manifest.json and licenses/.\n",
+      ),
+      0o100644,
+    ),
+  ]
+  let licenses = collect_licenses(root, home, files)
+  files.sort_by((left, right) => left.0.lexical_compare(right.0))
+  let manifest : Json = {
+    "profile": "morphir/native-cli-distribution",
+    "contractVersion": "0.1.0",
+    "distributionVersion": version,
+    "applicationVersion": application_version,
+    "sourceCommit": sha,
+    "sourceDirty": checked("git", [
+      "status", "--porcelain", "--untracked-files=normal",
+    ]) !=
+    "",
+    "runId": @env.get_env_var("GITHUB_RUN_ID").unwrap_or("local"),
+    "runAttempt": @env.get_env_var("GITHUB_RUN_ATTEMPT").unwrap_or("local"),
+    "platform": "macos-arm64",
+    "qualifiedHost": host,
+    "qualificationScope": "Only the recorded host; mise receipt required separately; no publication approval",
+    "compiler": compiler,
+    "compilerSha256": compiler_sha256,
+    "corePin": pin,
+    "corePinSha256": digest(pin_bytes),
+    "coreCheck": core_check,
+    "machO": {
+      "description": description,
+      "dynamicDependencies": dependencies,
+      "minimumMacOS": minimum,
+      "sdk": sdk,
+    },
+    "binarySha256": digest(original),
+    "licenses": licenses,
+    "files": files.map(file => fact(file.0, file.1, file.2)),
+  }
+  let internal = @utf8.encode(manifest.stringify() + "\n")
+  files.push(("release-manifest.json", internal, 0o100644))
+  let bytes = archive_bytes(files)
+  ignore(validate_archive(bytes, manifest))
+  guard digest(regular(binary, 268435456L)) == digest(original) &&
+    checked("git", ["rev-parse", "HEAD"]) == sha else {
+    raise Invalid("Binary or source candidate changed during packaging")
+  }
+  if @fs.exists(directory) {
+    guard @fs.kind(directory, follow_symlink=false) is Directory &&
+      @fs.readdir(directory, include_hidden=true).is_empty() else {
+      raise Invalid("Packaging requires a new or empty output directory")
+    }
+  } else {
+    @fs.mkdir(directory, recursive=true)
+  }
+  let archive_name = "morphir-moonbit-" + version + "-macos-arm64.zip"
+  let external = clone_object(manifest)
+  external["archive"] = {
+    "name": archive_name,
+    "sha256": digest(bytes),
+    "bytes": bytes.length(),
+  }
+  external["releaseManifestSha256"] = Json(digest(internal))
+  @fs.write_file(directory + "/" + archive_name, bytes, create_mode=CreateNew)
+  @fs.write_file(
+    directory + "/SHA256SUMS",
+    digest(bytes) + "  " + archive_name + "\n",
+    create_mode=CreateNew,
+  )
+  @fs.write_file(
+    directory + "/manifest.json",
+    Json(external).stringify() + "\n",
+    create_mode=CreateNew,
+  )
+  Json(external)
+}
+
+///|
+async fn isolated_run(
+  program : String,
+  args : Array[String],
+  directory : String,
+  environment : Map[String, String],
+  expected : Int32,
+) -> String {
+  let (code, stdout, stderr) = @async.with_timeout(180000, () => {
+    @process.collect_output(
+      program,
+      args,
+      cwd=directory,
+      inherit_env=false,
+      extra_env=environment,
+    )
+  })
+  @stdio.stderr.write(stderr)
+  guard code == expected else {
+    @stdio.stderr.write(stdout)
+    raise Child(
+      if code == 0 {
+        1
+      } else if code > 0 {
+        code
+      } else {
+        128 - code
+      },
+      "Isolated command returned unexpected status",
+    )
+  }
+  stdout.text()
+}
+
+///|
+async fn verify(directory : String) -> Json {
+  let host = current_host()
+  guard @fs.kind(directory, follow_symlink=false) is Directory else {
+    raise Invalid("Expected distribution directory")
+  }
+  let directory = @fs.realpath(directory)
+  let external = @json.parse(
+    @utf8.decode(regular(directory + "/manifest.json", 8388608L)),
+  )
+  guard field(external, "profile") == Json("morphir/native-cli-distribution") &&
+    field(external, "contractVersion") == Json("0.1.0") &&
+    field(external, "platform") == Json("macos-arm64") &&
+    valid_sha(text(external, "sourceCommit")) else {
+    raise Invalid("Invalid distribution manifest")
+  }
+  let receipt_path = directory + "/mise-install-receipt.json"
+  if @fs.exists(receipt_path) {
+    guard @fs.kind(receipt_path, follow_symlink=false) is Regular else {
+      raise Invalid("Unsafe previous install receipt")
+    }
+    @fs.remove(receipt_path)
+  }
+  for
+    (variable, key) in [
+      ("GITHUB_SHA", "sourceCommit"),
+      ("GITHUB_RUN_ID", "runId"),
+      ("GITHUB_RUN_ATTEMPT", "runAttempt"),
+    ] {
+    if @env.get_env_var(variable) is Some(expected) {
+      guard text(external, key) == expected else {
+        raise Invalid(
+          "Distribution differs from current workflow identity: " + key,
+        )
+      }
+    }
+  }
+  let version = distribution_version(text(external, "distributionVersion"))
+  let archive_name = "morphir-moonbit-" + version + "-macos-arm64.zip"
+  let archive = field(external, "archive")
+  guard text(archive, "name") == archive_name else {
+    raise Invalid("Archive name differs from distribution")
+  }
+  let internal_fields = clone_object(external)
+  internal_fields.remove("archive")
+  internal_fields.remove("releaseManifestSha256")
+  let internal = Json(internal_fields)
+  let bytes = regular(directory + "/" + archive_name, 134217728L)
+  guard digest(bytes) == text(archive, "sha256") &&
+    bytes.length() == number(archive, "bytes") &&
+    @fs.read_file(directory + "/SHA256SUMS").text() ==
+    digest(bytes) + "  " + archive_name + "\n" else {
+    raise Invalid("Archive checksum or size differs")
+  }
+  let entries = validate_archive(bytes, internal)
+  guard digest(entries["release-manifest.json"]) ==
+    text(external, "releaseManifestSha256") &&
+    digest(entries["bin/morphir"]) == text(external, "binarySha256") else {
+    raise Invalid("Embedded manifest or executable digest differs")
+  }
+  let zip_files = @fs.readdir(directory).filter(name => name.has_suffix(".zip"))
+  guard zip_files == [archive_name] else {
+    raise Invalid("Distribution must contain exactly its declared ZIP")
+  }
+  let mise = checked("/usr/bin/which", ["mise"])
+  let scratch = @fs.tmpdir(prefix="morphir-native-mise-")
+  let cleaned = Ref(false)
+  defer (if !cleaned.val { @fs.rmdir(scratch, recursive=true) })
+  let scratch = @fs.realpath(scratch)
+  let checkout = @fs.realpath(".")
+  guard !scratch.has_prefix(checkout + "/") &&
+    !scratch.has_prefix(directory + "/") else {
+    raise Invalid(
+      "Mise verification must use a temporary directory outside checkout and output",
+    )
+  }
+  let environment : Map[String, String] = {
+    "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+    "MISE_CONFIG_DIR": scratch + "/config",
+    "MISE_DATA_DIR": scratch + "/data",
+    "MISE_CACHE_DIR": scratch + "/cache",
+    "MISE_STATE_DIR": scratch + "/state",
+    "MISE_GLOBAL_CONFIG_FILE": scratch + "/empty.toml",
+    "MISE_SYSTEM_CONFIG_FILE": scratch + "/empty.toml",
+    "MISE_YES": "1",
+    "MISE_TRUSTED_CONFIG_PATHS": scratch,
+    "MISE_AUTO_INSTALL": "0",
+    "XDG_CONFIG_HOME": scratch + "/xdg-config",
+    "XDG_CACHE_HOME": scratch + "/xdg-cache",
+    "XDG_DATA_HOME": scratch + "/xdg-data",
+    "XDG_STATE_HOME": scratch + "/xdg-state",
+    "MORPHIR_HOME": scratch + "/morphir",
+    "TMPDIR": scratch + "/tmp",
+    "LANG": "en_US.UTF-8",
+  }
+  if @env.get_env_var("HOME") is Some(parent_home) {
+    environment["HOME"] = parent_home
+  }
+  for
+    key in [
+      "MISE_CONFIG_DIR", "MISE_DATA_DIR", "MISE_CACHE_DIR", "MISE_STATE_DIR", "XDG_CONFIG_HOME",
+      "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "MORPHIR_HOME", "TMPDIR",
+    ] {
+    @fs.mkdir(environment[key], recursive=true)
+  }
+  @fs.write_file(scratch + "/empty.toml", "")
+  @fs.write_file(
+    scratch + "/mise.toml",
+    "[tools.\"http:morphir\"]\nversion = " +
+    Json(version).stringify() +
+    "\nurl = " +
+    Json(file_url(directory + "/" + archive_name)).stringify() +
+    "\nchecksum = " +
+    Json("sha256:" + digest(bytes)).stringify() +
+    "\nbin_path = \"bin\"\n",
+  )
+  let config_listing = @json.parse(
+    isolated_run(mise, ["config", "ls", "--json"], scratch, environment, 0),
+  )
+  guard config_listing is Array(configs) && !configs.is_empty() else {
+    raise Invalid("Mise configuration inventory unavailable")
+  }
+  let config_files : Array[String] = []
+  for item in configs {
+    let path = @fs.realpath(text(item, "path"))
+    guard path.has_prefix(scratch + "/") else {
+      raise Invalid(
+        "Mise read configuration outside its owned verification directory",
+      )
+    }
+    config_files.push(path[scratch.length() + 1:].to_owned())
+  }
+  ignore(isolated_run("/usr/bin/which", ["node"], scratch, environment, 1))
+  ignore(isolated_run("/usr/bin/which", ["moon"], scratch, environment, 1))
+  ignore(isolated_run("/usr/bin/which", ["moonc"], scratch, environment, 1))
+  @stdio.stderr.write(isolated_run(mise, ["install"], scratch, environment, 0))
+  let installed = scratch +
+    "/data/installs/http-morphir/" +
+    version +
+    "/bin/morphir"
+  guard digest(regular(installed, 268435456L)) == text(external, "binarySha256") else {
+    raise Invalid("Mise-installed executable differs from qualified archive")
+  }
+  for path, expected in entries {
+    guard regular(
+        scratch + "/data/installs/http-morphir/" + version + "/" + path,
+        268435456L,
+      ) ==
+      expected else {
+      raise Invalid("Mise-installed file differs from archive: " + path)
+    }
+  }
+  let help = isolated_run(installed, ["--help"], scratch, environment, 0)
+  guard help.contains("Usage: morphir") else {
+    raise Invalid("Installed help unavailable")
+  }
+  let observed = @json.parse(
+    isolated_run(installed, ["version", "--json"], scratch, environment, 0),
+  )
+  guard field(observed, "state") == Json("succeeded") &&
+    field(field(observed, "result"), "name") == Json("finos/morphir") &&
+    field(field(observed, "result"), "version") ==
+    field(external, "applicationVersion") else {
+    raise Invalid("Installed application version differs")
+  }
+  @fs.write_file(scratch + "/demo.scm", "(+ 40 2)\n")
+  let worksheet = @json.parse(
+    isolated_run(
+      installed,
+      ["worksheet", "demo.scm", "--json"],
+      scratch,
+      environment,
+      0,
+    ),
+  )
+  guard field(worksheet, "observations") is Array(observations) &&
+    observations.length() == 1 &&
+    field(field(field(observations[0], "outcome"), "value"), "value") ==
+    Json("42") &&
+    field(field(worksheet, "completion"), "status") == Json("returned") else {
+    raise Invalid("Installed worksheet did not return exactly 42")
+  }
+  @fs.write_file(scratch + "/invalid.scm", "(\n")
+  let invalid = @json.parse(
+    isolated_run(
+      installed,
+      ["worksheet", "invalid.scm", "--json"],
+      scratch,
+      environment,
+      1,
+    ),
+  )
+  guard field(field(invalid, "completion"), "status") == Json("failed") else {
+    raise Invalid("Installed invalid worksheet did not report failure")
+  }
+  let result : Json = {
+    "profile": "morphir/native-cli-mise-install",
+    "contractVersion": "0.1.0",
+    "state": "succeeded",
+    "distributionVersion": version,
+    "applicationVersion": field(external, "applicationVersion"),
+    "sourceCommit": field(external, "sourceCommit"),
+    "sourceDirty": field(external, "sourceDirty"),
+    "runId": field(external, "runId"),
+    "runAttempt": field(external, "runAttempt"),
+    "archiveSha256": digest(bytes),
+    "binarySha256": field(external, "binarySha256"),
+    "manifestSha256": digest(regular(directory + "/manifest.json", 8388608L)),
+    "qualifiedHost": host,
+    "miseVersion": isolated_run(mise, ["--version"], scratch, environment, 0)
+    .trim()
+    .to_owned(),
+    "acquisition": "checksum-pinned http file backend; public GitHub backend remains separate",
+    "isolatedOutsideCheckout": true,
+    "parentHomePreserved": environment.get("HOME") == @env.get_env_var("HOME"),
+    "miseConfigFiles": config_files,
+    "systemAndGlobalMiseConfigIsolated": true,
+    "temporaryHomesRemovedOnExit": true,
+    "nodeAndMoonAbsentFromPath": true,
+    "help": "passed",
+    "version": observed,
+    "worksheet": worksheet,
+    "invalidWorksheet": invalid,
+    "invalidExitCode": 1,
+  }
+  @fs.rmdir(scratch, recursive=true)
+  cleaned.val = true
+  @fs.write_file(receipt_path, result.stringify() + "\n", create_mode=CreateNew)
+  result
+}
+
+///|
+fn command() -> @argparse.Command {
+  fn operation(
+    name : String,
+    options : Array[@argparse.OptionArg],
+  ) -> @argparse.Command {
+    @argparse.Command(
+      name,
+      options~,
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("help", short='h', global=true)],
+    )
+  }
+  @argparse.Command(
+    "native-cli-release.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    about="Package an already-qualified macOS arm64 native CLI without rebuilding it, or verify its checksum-pinned isolated mise installation. package requires --binary and --directory; optional --version overrides MORPHIR_CLI_DISTRIBUTION_VERSION then appVersion-ci.sha12. --sha must equal checkout and GITHUB_SHA when present. verify checks manifest, archive entries/bytes/modes, then creates private mise homes outside checkout and tests help, version, worksheet 42 and JSON failure 1 without Node or Moon on PATH. notices requires a new --directory and selected Moon toolchain home; it exports the same resolved CLI dependency and stock-core notices for other CLI distributions, with a morphir/cli-notices 0.1.0 inventory of paths, hashes and module identities. No command publishes. Only the recorded host is qualified; deployment minimum alone is not older-macOS proof. --json writes one morphir/command-result 0.1.0 document on stdout with command native-cli.release, state, exitCode, diagnostics and result or error{code,message}; child diagnostics use stderr. Help has result.help and no effects. Syntax exits 2, validation exits 1, child status is retained. self-test checks parser, archive modes/integrity and refusals.",
+    flags=[
+      @argparse.FlagArg("json", global=true),
+      @argparse.FlagArg("help", short='h', global=true),
+    ],
+    subcommands=[
+      operation("package", [
+        @argparse.OptionArg("binary"),
+        @argparse.OptionArg("directory"),
+        @argparse.OptionArg("version"),
+        @argparse.OptionArg("sha"),
+      ]),
+      operation("verify", [@argparse.OptionArg("directory")]),
+      operation("notices", [@argparse.OptionArg("directory")]),
+      operation("self-test", []),
+    ],
+  )
+}
+
+///|
+fn option(
+  matches : @argparse.Matches,
+  name : String,
+  required~ : Bool = false,
+) -> String raise {
+  let value = matches.values.get(name).unwrap_or([]).get(0).unwrap_or("")
+  guard !required || value != "" else { raise Arguments("Missing --" + name) }
+  value
+}
+
+///|
+fn wants_json(argv : Array[String]) -> Bool {
+  let probe = @argparse.Command(
+    "presentation",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("json")],
+    positionals=[
+      @argparse.PositionArg(
+        "opaque",
+        allow_hyphen_values=true,
+        num_args=@argparse.ValueRange(lower=0),
+      ),
+    ],
+  )
+  let parsed = probe.parse(argv~, env=Map([])) catch { _ => return false }
+  parsed.flags.get_or_default("json", false)
+}
+
+///|
+fn document(code : Int32, result : Json) -> Json {
+  let values : Map[String, Json] = {
+    "profile": Json("morphir/command-result"),
+    "contractVersion": Json("0.1.0"),
+    "command": Json("native-cli.release"),
+    "state": Json(if code == 0 { "succeeded" } else { "failed" }),
+    "exitCode": Json(code),
+    "diagnostics": Json::array([]),
+  }
+  values[if code == 0 { "result" } else { "error" }] = result
+  Json(values)
+}
+
+///|
+async fn self_test() -> Json {
+  let fixture = @fs.tmpdir(prefix="morphir-notice-fixture-")
+  defer @fs.rmdir(fixture, recursive=true)
+  @fs.mkdir(fixture + "/engine/wamr", recursive=true)
+  @fs.write_file(fixture + "/LICENSE", "module license")
+  @fs.write_file(fixture + "/engine/wamr/LICENSE", "engine license")
+  @fs.write_file(
+    fixture + "/engine/wamr/ATTRIBUTIONS.md",
+    "engine attributions",
+  )
+  @fs.write_file(fixture + "/engine/wamr/README.md", "not a notice")
+  let notices : Array[(String, Bytes, Int32)] = []
+  assert_eq(
+    license_files(fixture, "", "licenses/fixture", notices, Ref(100)),
+    3,
+  )
+  assert_true(
+    notices.any(file => {
+      file.0 == "licenses/fixture/engine/wamr/ATTRIBUTIONS.md" &&
+      file.1 == b"engine attributions" &&
+      file.2 == 0o100644
+    }),
+  )
+  assert_true(wants_json(["package", "--unknown", "--json"]))
+  assert_false(wants_json(["--", "--json"]))
+  assert_false(wants_json(["package", "--binary=--json", "--help"]))
+  assert_true(valid_sha("0123456789abcdef0123456789abcdef01234567"))
+  assert_false(valid_sha("HEAD"))
+  assert_eq(
+    distribution_version("0.1.0-ci.0123456789ab"),
+    "0.1.0-ci.0123456789ab",
+  )
+  for bad in ["../escape", "0.1.0/evil", "latest", "1.0.0\nbad"] {
+    let refused = try {
+      ignore(distribution_version(bad))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused)
+  }
+  for bad in ["/absolute", "../escape", "a/../escape", "a\\b", "a//b"] {
+    assert_false(safe_member(bad))
+  }
+  assert_eq(
+    file_url("/tmp/space 雪#%.zip"),
+    "file:///tmp/space%20%e9%9b%aa%23%25.zip",
+  )
+  let files = [
+    ("bin/morphir", b"fixture", 0o100755),
+    ("LICENSE", b"license", 0o100644),
+    ("NOTICE", b"notice", 0o100644),
+    ("README.txt", b"readme", 0o100644),
+  ]
+  let manifest : Json = {
+    "files": files.map(file => fact(file.0, file.1, file.2)),
+  }
+  let with_manifest = files.copy()
+  with_manifest.push(
+    ("release-manifest.json", @utf8.encode(manifest.stringify()), 0o100644),
+  )
+  let zip = archive_bytes(with_manifest)
+  assert_eq(validate_archive(zip, manifest)["bin/morphir"], b"fixture")
+  for kind in [0, 1, 2, 3] {
+    let damaged = with_manifest.copy()
+    if kind == 0 {
+      damaged[0] = ("bin/morphir", b"tampered", 0o100755)
+    }
+    if kind == 1 {
+      damaged[0] = ("bin/morphir", b"fixture", 0o100644)
+    }
+    if kind == 3 {
+      damaged[0] = ("bin/morphir", b"fixture", 0o120755)
+    }
+    if kind == 2 {
+      damaged.push(("unexpected", b"x", 0o100644))
+    }
+    let refused = try {
+      ignore(validate_archive(archive_bytes(damaged), manifest))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused)
+  }
+  for
+    (argv, expected) in [
+      (["--json", "--help"], 0),
+      (["package", "--help", "--json"], 0),
+      (["verify", "--help", "--json"], 0),
+      (["notices", "--help", "--json"], 0),
+      (["self-test", "--help", "--json"], 0),
+      (["--unknown", "--json"], 2),
+      (["package", "--json"], 2),
+      (["verify", "--json"], 2),
+      (["notices", "--json"], 2),
+      (["notices", "--directory", ".", "--json"], 1),
+      (["verify", "--directory", "/missing-native-distribution", "--json"], 1),
+    ] {
+    let (code, out, _) = @process.collect_output(
+      "moonx",
+      ["scripts/native-cli-release.mbtx", "--"] + argv,
+    )
+    assert_eq(code, expected)
+    let value = out.json()
+    assert_eq(field(value, "profile"), Json("morphir/command-result"))
+    assert_eq(field(value, "exitCode"), Json(expected))
+    assert_eq(
+      field(value, "state"),
+      Json(if expected == 0 { "succeeded" } else { "failed" }),
+    )
+  }
+  for
+    (argv, expected, help) in [
+      (["--", "--json"], 2, false),
+      (["package", "--binary=--json", "--help"], 0, true),
+    ] {
+    let (code, stdout, stderr) = @process.collect_output(
+      "moonx",
+      ["scripts/native-cli-release.mbtx", "--"] + argv,
+    )
+    assert_eq(code, expected)
+    if help {
+      assert_true(stdout.text().contains("Usage:"))
+      assert_eq(stderr.text(), "")
+    } else {
+      assert_eq(stdout.text(), "")
+      assert_true(!stderr.text().is_empty())
+    }
+  }
+  { "pureChecks": 18, "archiveRefusals": 4, "cliCases": 13, "state": "passed" }
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:].to_owned()
+  let mut json_mode = wants_json(argv)
+  let result : Json = try {
+    let parsed = command().parse(argv~, env=Map([])) catch {
+      error => raise Arguments(error.to_string())
+    }
+    let (name, selected) = parsed.subcommand.unwrap_or(("", parsed))
+    json_mode = parsed.flags.get_or_default("json", false) ||
+      selected.flags.get_or_default("json", false)
+    if parsed.flags.get_or_default("help", false) ||
+      selected.flags.get_or_default("help", false) ||
+      name == "" {
+      { "help": command().render_help() }
+    } else {
+      match name {
+        "package" =>
+          package_distribution(
+            option(selected, "binary", required=true),
+            option(selected, "directory", required=true),
+            option(selected, "version"),
+            option(selected, "sha"),
+          )
+        "verify" => verify(option(selected, "directory", required=true))
+        "notices" => notices(option(selected, "directory", required=true))
+        "self-test" => self_test()
+        _ => raise Arguments("Unknown operation")
+      }
+    }
+  } catch {
+    error => {
+      let (code, kind) = match error {
+        Arguments(_) => (2, "arguments.invalid")
+        Child(code, _) => (code, "child.failed")
+        _ => (1, "distribution.invalid")
+      }
+      let message = match error {
+        Invalid(message) | Arguments(message) | Child(_, message) => message
+        _ => error.to_string()
+      }
+      if json_mode {
+        @stdio.stdout.write(
+          document(code, { "code": kind, "message": message }).stringify() +
+          "\n",
+        )
+      } else {
+        @stdio.stderr.write(message + "\n")
+      }
+      @sys.exit(code)
+      return
+    }
+  }
+  if !json_mode && field(result, "help") is String(help) {
+    @stdio.stdout.write(help + "\n")
+  } else {
+    @stdio.stdout.write(
+      (if json_mode { document(0, result) } else { result }).stringify() + "\n",
+    )
+  }
+}

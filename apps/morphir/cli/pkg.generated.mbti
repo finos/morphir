@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "morphir/morphir/cli"
+package "finos/morphir/cli"
 
 import {
   "finos/morphir-host/diagnostics",

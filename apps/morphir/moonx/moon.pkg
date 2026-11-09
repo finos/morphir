@@ -1,0 +1,11 @@
+pkgtype(kind: "executable")
+
+supported_targets = "wasm"
+
+import {
+  "finos/morphir/moonx/options",
+  "moonrockz/moon-lander-moonx" @launcher,
+  "moonrockz/moon-lander-moonx/driver",
+  "moonbitlang/core/env",
+  "moonbitlang/x/sys",
+}

@@ -8,7 +8,7 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
           Json::array(
             [
               "run", "execute", "verify", "conform", "eval", "worksheet", "compile",
-              "generate", "model inspect", "model export-original", "notebook export",
+              "version", "generate", "model inspect", "model export-original", "notebook export",
               "notebook import", "connected connect", "connected run", "connected artifacts",
               "connected originals", "workspace", "workspace init", "project list",
               "project add", "project remove", "toolchain info", "toolchain setup",

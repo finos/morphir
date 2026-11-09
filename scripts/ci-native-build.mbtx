@@ -190,7 +190,7 @@ async fn execute(argv : Array[String]) -> Unit {
     stderr=@stdio.stderr,
   )
   guard status == 0 else { fail("Zig CLI build failed") }
-  let source = root + "/native/release/build/morphir/morphir/morphir.exe"
+  let source = root + "/native/release/build/finos/morphir/morphir.exe"
   let metadata : Json = {
     "target": target,
     "platform": platform,

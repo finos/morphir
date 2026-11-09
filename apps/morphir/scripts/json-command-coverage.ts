@@ -4,7 +4,7 @@ type Run = (args: string[], expected?: number) => { stdout: string; stderr: stri
 
 // These are public command paths, independent of the parser's declarations.
 const commands = [
-  'run', 'execute', 'verify', 'conform', 'eval', 'worksheet', 'compile', 'generate',
+  'run', 'execute', 'verify', 'conform', 'eval', 'worksheet', 'compile', 'version', 'generate',
   'model inspect', 'model export-original', 'notebook export', 'notebook import', 'connected connect', 'connected run',
   'connected artifacts', 'connected originals', 'workspace', 'workspace init',
   'project list', 'project add', 'project remove', 'toolchain info',
@@ -20,6 +20,18 @@ const commands = [
 export function exerciseJsonCommandCoverage(run: Run) {
   const root = JSON.parse(run(['--json', '--help']).stdout);
   assert.deepEqual(root.commands, commands);
+  const version = JSON.parse(run(['version', '--json']).stdout);
+  assert.equal(version.profile, 'morphir/command-result');
+  assert.equal(version.contractVersion, '0.1.0');
+  assert.equal(version.command, 'version');
+  assert.equal(version.state, 'succeeded');
+  assert.equal(version.exitCode, 0);
+  assert.deepEqual(version.diagnostics, []);
+  assert.equal(version.result.name, 'finos/morphir');
+  assert.match(version.result.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(run(['version']).stdout.trim(), `Morphir ${version.result.version}`);
+  assert.deepEqual(JSON.parse(run(['--json', 'version']).stdout), version);
+  assert.deepEqual(JSON.parse(run(['version', '--json-lines']).stdout), { type: 'result', data: version });
   // Parent command help is an interface too, even without an operation.
   for (const path of ['', ...commands, 'model', 'connected', 'project', 'toolchain', 'extension', 'extension repository', 'notebook']) {
     const argv = path ? path.split(' ') : [];
@@ -61,6 +73,7 @@ export function exerciseJsonCommandCoverage(run: Run) {
   // parser failures that occur before a command can be selected.
   for (const args of [
     ['--json', '--unknown'], ['--json', 'unknown'],
+    ['version', 'unexpected', '--json'],
     ['--json', 'run', '--help', '--unknown'],
     ['--json', 'extension', 'compile', 'x.mbt', '--target', 'moonbit'],
   ]) {

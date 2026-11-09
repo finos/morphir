@@ -1,0 +1,232 @@
+name: Mooncakes release
+
+on:
+  push:
+    # Native demo prereleases have their own promotion contract. This workflow
+    # publishes only the stable X.Y.Z Mooncakes candidate it already validates.
+    tags: ['v*', '!v*-*']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Dry-run a candidate or publish from the actual existing version tag
+        type: choice
+        options: [dry-run, publish]
+        default: dry-run
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mooncakes-release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan exact Mooncakes candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      sha: ${{ steps.candidate.outputs.sha }}
+      tag: ${{ steps.candidate.outputs.tag }}
+      version: ${{ steps.candidate.outputs.version }}
+      mode: ${{ steps.candidate.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-moonbit
+        with:
+          tools: http:moonbit node bun
+      - name: Test release decisions without credentials or uploads
+        run: mise run test:release
+      - name: Validate actual workflow ref and candidate
+        id: candidate
+        run: >-
+          moonx scripts/mooncakes-release.mbtx workflow
+          --mode ${{ github.event_name == 'push' && 'publish' || inputs.mode }}
+          --github-output --json
+      - name: Bootstrap the separate minimum consumer compiler
+        # Planning verifies its exact compiler and stock-core source bytes.
+        run: moonx scripts/mooncakes-release.mbtx bootstrap-minimum --json
+      - name: Package and qualify both compiler versions
+        run: >-
+          moonx scripts/mooncakes-release.mbtx plan
+          --tag ${{ steps.candidate.outputs.tag }}
+          --sha ${{ steps.candidate.outputs.sha }}
+          --mode ${{ steps.candidate.outputs.mode }} --json
+      - name: Retain the candidate-bound plan and qualified archives
+        uses: actions/upload-artifact@v7
+        with:
+          name: mooncakes-plan-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .dev/mooncakes-release/plan.json
+            .dev/mooncakes-release/build/${{ github.sha }}/publish/*.zip
+          include-hidden-files: true
+          if-no-files-found: error
+      - name: Retain token-free registry availability evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mooncakes-preflight-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/mooncakes-release/preflight.json
+          include-hidden-files: true
+          if-no-files-found: warn
+      - name: Retain minimum compiler evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mooncakes-minimum-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .dev/mooncakes-release/minimum.json
+            .dev/mooncakes-release/moonx-archive-minimum.json
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  ci:
+    name: Require exact main-push CI
+    needs: plan
+    if: needs.plan.outputs.mode == 'publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+      - uses: ./.github/actions/setup-moonbit
+      - name: Require the successful main-push run and ci-ok aggregate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          moonx scripts/mooncakes-release.mbtx gate-ci
+          --sha ${{ needs.plan.outputs.sha }} --json
+      - name: Retain main-push CI evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: mooncakes-ci-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/mooncakes-release/ci-gate.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+  qualification:
+    name: Qualify the actual release tag
+    needs: [plan, ci]
+    if: needs.plan.outputs.mode == 'publish'
+    permissions:
+      contents: read
+      attestations: read
+    uses: ./.github/workflows/qualification.yml
+    with:
+      # Existing macOS lanes run only for this validated tag candidate.
+      macos: run
+      qualified-archives-artifact: mooncakes-plan-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+      native-distribution-version: ${{ needs.plan.outputs.version }}
+
+  headless:
+    name: Qualify the release CLI on Windows
+    needs: [plan, ci]
+    if: needs.plan.outputs.mode == 'publish'
+    uses: ./.github/workflows/headless-cli.yml
+    with:
+      # Workbench packaged fallback and macOS headless prove different hosts.
+      runners: '["windows-latest"]'
+      qualified-archives-artifact: mooncakes-plan-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+  publish:
+    name: Publish and verify the qualified candidate
+    needs: [plan, ci, qualification, headless]
+    # Still evaluate skipped/failed prerequisites before any credential step.
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.mode == 'publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-moonbit
+        with:
+          tools: http:moonbit node
+      - name: Refuse missing skipped failed or cancelled release prerequisites
+        env:
+          RELEASE_NEEDS: ${{ toJSON(needs) }}
+        run: moonx scripts/mooncakes-release.mbtx gate-needs --json
+      - name: Download this attempt's plan and qualified archives
+        uses: actions/download-artifact@v8
+        with:
+          name: mooncakes-plan-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/mooncakes-release
+      - name: Verify and reproduce the retained archives before credentials
+        run: moonx scripts/mooncakes-release.mbtx check-artifacts --json
+      - name: Download this run's qualification receipt
+        uses: actions/download-artifact@v8
+        with:
+          name: qualification-${{ github.sha }}
+          path: .dev/qualification-receipt
+      - name: Require fresh full qualification for this exact run and commit
+        run: >-
+          moonx scripts/mooncakes-release.mbtx gate-qualification
+          --sha ${{ needs.plan.outputs.sha }} --json
+      - name: Prepare the minimum compiler for fresh public consumers
+        run: moonx scripts/mooncakes-release.mbtx bootstrap-minimum --json
+      - name: Prepare a private Moon home outside the toolchain cache
+        run: >-
+          moonx scripts/mooncakes-credentials.mbtx prepare
+          --scope ${{ github.run_id }}-${{ github.run_attempt }} --json
+      # Use direct MoonBit commands after prepare: mise's global MOON_HOME
+      # would otherwise replace the private home exported through GITHUB_ENV.
+      - name: Initialize the private dependency registry before credentials
+        run: moon update
+      - name: Check the private toolchain stock core before credentials
+        run: moonx scripts/moonbit-core.mbtx check --json
+      - name: Verify the FINOS account and create this scope's temporary login
+        env:
+          MOONCAKES_TOKEN: ${{ secrets.MOONCAKES_TOKEN }}
+        run: >-
+          moonx scripts/mooncakes-credentials.mbtx setup
+          --scope ${{ github.run_id }}-${{ github.run_attempt }} --json
+      - name: Publish once per module with verified-existing recovery
+        run: moonx scripts/mooncakes-release.mbtx publish --json
+      - name: Verify fresh registry-only libraries and installed CLI
+        run: >-
+          moonx scripts/mooncakes-release.mbtx verify
+          ${{ needs.plan.outputs.version }} --json
+      - name: Verify fresh public consumers with the minimum compiler
+        run: >-
+          moonx scripts/mooncakes-release.mbtx verify
+          ${{ needs.plan.outputs.version }}
+          --minimum-home .dev/mooncakes-release/minimum-toolchain
+          --output .dev/mooncakes-release/consumer-minimum.json --json
+      - name: Remove unchanged credentials owned by this scope
+        if: always()
+        run: >-
+          moonx scripts/mooncakes-credentials.mbtx clean
+          --scope ${{ github.run_id }}-${{ github.run_attempt }} --json
+      - name: Dispose the private home before cache saves or artifact uploads
+        if: always()
+        run: >-
+          moonx scripts/mooncakes-credentials.mbtx dispose
+          --scope ${{ github.run_id }}-${{ github.run_attempt }} --json
+      - name: Retain only public plans and release outcome evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mooncakes-outcomes-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .dev/mooncakes-release/plan.json
+            .dev/mooncakes-release/qualification-gate.json
+            .dev/qualification-receipt/receipt.ionb
+            .dev/mooncakes-release/publication.json
+            .dev/mooncakes-release/consumer.json
+            .dev/mooncakes-release/consumer-minimum.json
+            .dev/mooncakes-release/moonx-public.json
+            .dev/mooncakes-release/moonx-public-minimum.json
+          include-hidden-files: true
+          if-no-files-found: warn

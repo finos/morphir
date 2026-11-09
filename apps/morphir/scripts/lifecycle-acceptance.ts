@@ -7,7 +7,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {headlessEnvironment} from './headless-environment.ts';
 
 type LifecycleReceipt = {target: string; request: string; command: string; code: number; signal: null; diagnosticRecords: number};
-type LifecycleCase = {request: 'cancel-file' | 'SIGINT' | 'SIGTERM'; command: 'worksheet' | 'notebook' | 'connected'; code: 130 | 143; input?: 'empty-idle'};
+type LifecycleCase = {request: 'cancel-file' | 'SIGINT' | 'SIGQUIT' | 'SIGTERM'; command: 'worksheet' | 'notebook' | 'connected'; code: 130 | 131 | 143; input?: 'empty-idle'};
 
 function gcHostFixture(root: string, mode: 'normal' | 'transient-file' | 'missing-registration' | 'missing-clock' | 'failed-cleanup' = 'normal') {
   const ready = join(root, 'command-ready');
@@ -66,6 +66,7 @@ export async function exerciseHostLifecycle(target: string, binary: string, laun
     : process.platform === 'win32'
     ? [{request: 'cancel-file', command: 'worksheet', code: 130}]
     : [{request: 'SIGINT', command: 'worksheet', code: 130},
+       {request: 'SIGQUIT', command: 'worksheet', code: 131},
        {request: 'SIGTERM', command: 'worksheet', code: 143},
        {request: 'SIGTERM', command: 'notebook', code: 143},
        {request: 'cancel-file', command: 'worksheet', code: 130}];
@@ -172,9 +173,31 @@ export async function exerciseHostLifecycle(target: string, binary: string, laun
       receipts.push({target, request: item.request, command: item.command, code: result.code!, signal: null, diagnosticRecords: records.length});
     } finally { rmSync(root, {recursive: true, force: true}); }
   }
+  if (target === 'js') receipts.push(exercisePrestartQuit(binary, launcher));
   if (embedded) exerciseGcRegistrationFailures(binary);
-  console.log(`CLI hosted lifecycle ${target}: ${receipts.length} real stops, single JSON results and drained diagnostics passed.`);
+  console.log(`CLI hosted lifecycle ${target}: ${receipts.length} stop scenarios, single JSON results and drained diagnostics passed.`);
   return receipts;
+}
+
+/** A retained parent Quit before the first hook still gets one owned result. */
+export function exercisePrestartQuit(binary: string, launcher?: string): LifecycleReceipt {
+  const root = mkdtempSync(join(tmpdir(), 'morphir-prestart-quit-'));
+  try {
+    const preload = join(root, 'quit-before-host.mjs');
+    writeFileSync(preload, `import {isMainThread,workerData} from 'node:worker_threads';
+if(!isMainThread && workerData?.morphirInterrupt instanceof SharedArrayBuffer) Atomics.store(new Int32Array(workerData.morphirInterrupt),0,3);
+`);
+    const result = spawnSync(process.execPath, ['--import', pathToFileURL(preload).href,
+      launcher ?? binary, 'worksheet', 'must-not-be-read.scm', '--json', '--isolated', '--discovery-boundary', '.'], {
+      cwd: root, env: headlessEnvironment(root), encoding: 'utf8', timeout: 10000,
+    });
+    assert.equal(result.signal, null, result.stdout + result.stderr);
+    assert.equal(result.status, 131, result.stdout + result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.ok(report.completion?.status === 'cancelled' || report.error === 'Cancelled', result.stdout);
+    assert.ok(!result.stderr.includes('Starting worksheet'), 'A retained Quit skips the command hook');
+    return {target: 'js', request: 'Quit-before-start', command: 'worksheet', code: 131, signal: null, diagnosticRecords: 0};
+  } finally { rmSync(root, {recursive: true, force: true}); }
 }
 
 function exerciseGcRegistrationFailures(binary: string) {
