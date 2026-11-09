@@ -26,8 +26,8 @@ None. Morphir runtime behavior and versioned contracts are unchanged.
 
 ## Tracking
 
-Change path: `openspec/changes/adopt-openspec-narrative-guidance`.
-The adoption PR records the verification and scope. Beads task creation is
+Change: `adopt-openspec-narrative-guidance`.
+[Adoption PR #1145](https://github.com/finos/morphir/pull/1145) records the verification and scope. Beads task creation is
 deferred because the shared Dolt database rejected the transaction with an
 existing merge conflict; no issue identifier was allocated.
 

@@ -36,7 +36,7 @@ svg { max-width: 100%; height: auto; }
 <body>
 <main>
 <h1>adopt-openspec-narrative-guidance</h1>
-<p class="meta">OpenSpec docs/tooling adoption | 2026-11-09 | approved scope, pending PR review</p>
+<p class="meta">OpenSpec docs/tooling adoption | 2026-11-09 | scoped implementation reviewed, pending GitHub approval and CI</p>
 <nav class="toc" aria-label="Contents"><ul>
 <li><a href="#context">Context</a></li>
 <li><a href="#goals">Goals and non-goals</a></li>
@@ -83,8 +83,8 @@ context. Check apply output separately for task state.</td></tr>
 </tbody></table>
 <h2 id="migration">Migration plan</h2>
 <p>Run the installer, verify instructions and <code>mise run openspec:verify</code>,
-check formatting and submit the scoped adoption PR. Parent review owns landing;
-leave this change unarchived for that review. Rollback restores the previous tools
+check formatting and submit the scoped adoption PR. Parent review verifies the
+adoption before archiving its completed record. GitHub approval and CI still gate landing. Rollback restores the previous tools
 pin and matching installer-owned files together. Reverting only the pin would
 leave the bundle check failing. See <a href="tasks.md">the verification tasks</a>.</p>
 </main>
