@@ -58,7 +58,7 @@ windows-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.20%2B65efd5b9
 # The shared OpenSpec html-design bundle and its checker. This pinned binary
 # replaces scripts/openspec-ext.mbtx; see docs/developers/openspec.md.
 [tools."github:moonrockz/mission-control"]
-version = "0.1.0"
+version = "0.1.2"
 version_prefix = "tools-v"
 
 [tools."github:moonrockz/mission-control".platforms]
