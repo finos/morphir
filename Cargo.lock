@@ -4534,12 +4534,15 @@ dependencies = [
 name = "morphir-toolchain-contract"
 version = "0.4.0-beta.12"
 dependencies = [
+ "ed25519-dalek",
  "jsonschema 0.26.2",
  "morphir-distribution",
  "olpc-cjson",
  "semver",
  "serde",
  "serde_json",
+ "tempfile",
+ "tokio",
  "toml 1.1.6+spec-1.1.0",
  "url",
 ]

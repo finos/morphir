@@ -59,6 +59,50 @@ A reader refuses with `inconsistent_document`:
 - an operation that some offering can perform neither with a built-in nor with a compatible provider;
 - a `modelTuple` whose method does not perform the provider's operation, or compatibility members that do not match `protocolVersion`.
 
+## Authenticated recipe targets
+
+A recipe is published as a TUF target at `toolchains/recipes/<preset>/<version>.json` in a repository that follows [tool release metadata v1](../tool-release-metadata/index.md#offering-specific-tool-ids). Its `custom.morphir` object is:
+
+```json
+{
+  "kind": "toolset-recipe",
+  "schemaVersion": "0.1.0-draft.1",
+  "preset": "fsharp",
+  "version": "1.0.0",
+  "channels": ["stable"],
+  "status": "active"
+}
+```
+
+`schemaVersion` here is the recipe contract version, not the version 1 profile's numeric `schemaVersion`. Channel membership and status are current authenticated state, with the version 1 rules: a moving channel selects the greatest `active` recipe for the preset on that channel, and `stable` admits only final versions. A recipe on no channel is reachable only by its exact target path.
+
+The TUF client authenticates the metadata. A manager then checks the recipe and every host binding, in this order, and refuses with the first failure:
+
+| Check | Code |
+| --- | --- |
+| The recipe bytes have the authenticated length and digest | `target_not_authenticated`, `target_length_mismatch`, `target_digest_mismatch` |
+| A `tool-release` offering's descriptor `releases/<toolId>/<version>.json` is an authenticated `tool-release` target that is not revoked | `target_not_authenticated`, `release_revoked` |
+| Each platform's `target` is an authenticated target | `target_not_authenticated` |
+| Its `sha256` equals the authenticated digest | `target_digest_mismatch` |
+| The offering's release lists the target | `release_descriptor_mismatch` |
+| The artifact's version 1 platform is the bound platform | `artifact_platform_mismatch` |
+
+Authentication alone is not enough: each refusal above has a fixture recipe that is validly signed and still wrong.
+## Selecting a closure
+
+Resolution is pure: it reads a recipe, a request and a platform and performs no I/O.
+
+1. The request's preset is the recipe's preset. Take the offering whose `implementation` and `deployment` equal the request's. An exact request also requires an equal `version`. Otherwise report `unsupported_artifact` with the offerings that exist.
+2. Take the offering's artifact for the platform. A missing platform is `unsupported_artifact`; no other platform, deployment or implementation is substituted.
+3. For each operation, in order: an explicit request choice selects the first built-in or fitting provider with its `delivery` and `extensionId`; if none matches, the result is `unsupported_artifact`. Without one, a built-in for the operation wins. Otherwise the first provider, in recipe order, that fits the host: the host speaks its MEP version, a process provider has an artifact for the platform, and a WASM provider's ABI is one the host supports.
+4. Write the host and each selected provider into the lock closure.
+
+A refusal's path names the request member that cannot be met: `toolset.preset`, `host` (implementation or deployment), `host.version`, `platforms`, `toolset` (no provider for an operation) or `toolset.providers[i]` (an explicit choice).
+
+Plan-only setup may refresh metadata, but it never runs an acquired artifact. Readiness probes happen after staging, under the existing launch controls.
+
 ## Fixtures
 
 `fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`. `recipe/negative/` covers each consistency rule plus a later draft, an unknown critical member, a WASM provider without an ABI, an uppercase identity, a process provider without platforms and an unknown source kind.
+
+The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes the three archive offerings as version 1 tool releases on the six first-delivery platforms, the `Morphir.Tool` package, the `fsharp-builtin` recipe, and four validly signed recipes that each break one binding rule. `signed/cases.json` lists the selection cases and the recipe binding cases with their expected targets or codes. Every key in that repository derives from a public label recorded in `testOnlyKeys`, so anyone can sign with it. Never trust that repository, its keys or its `repositoryId` outside tests.

@@ -23,3 +23,8 @@ url.workspace = true
 [dev-dependencies]
 # Offline validation of the fixtures against the published schemas.
 jsonschema.workspace = true
+# The TEST-ONLY signed repository is generated from labelled seeds and read
+# through the existing TUF tool client.
+ed25519-dalek.workspace = true
+tempfile.workspace = true
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

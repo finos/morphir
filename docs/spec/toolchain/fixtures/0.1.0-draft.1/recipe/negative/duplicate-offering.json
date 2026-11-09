@@ -282,7 +282,7 @@
       "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "packageId": "Morphir.Frontend.FSharp.Extension",
       "command": "morphir-fsharp-frontend",
-      "packageTarget": "extensions/fsharp-frontend/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg",
+      "packageTarget": "packages/nuget/morphir.frontend.fsharp.extension/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg",
       "packageSha256": "26a4a6da0d3798e22b0990e998b58c89a04f2c6497da3c37060a1cffc6c8dbbe",
       "protocolVersion": "0.2.0-draft.1",
       "modelTuple": {

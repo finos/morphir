@@ -34,6 +34,7 @@
 //! assert_eq!(refused.path, "schemaVersion");
 //! ```
 
+mod authenticated;
 mod diagnostic;
 mod envelope;
 mod ids;
@@ -44,8 +45,10 @@ mod reader;
 mod receipt;
 mod recipe;
 mod request;
+mod resolve;
 mod result;
 
+pub use authenticated::{AuthenticatedTarget, AuthenticatedTargets, RecipeTargetState};
 pub use diagnostic::{Code, Diagnostic, Result};
 pub use envelope::{CONTRACT_VERSION, SUPPORTED_VERSIONS};
 pub use ids::{
@@ -71,6 +74,7 @@ pub use recipe::{
 pub use request::{
     HostSelection, ProviderSelection, RequestedHost, ToolchainRequest, read_request,
 };
+pub use resolve::resolve_closure;
 pub use result::{
     COMMANDS, ComponentRef, ManagerResult, Outcome, ResultDiagnostic, ResultDiagnosticKind,
     SelectionSource, Severity, TRUST_CODES, canonical_sha256, read_result,

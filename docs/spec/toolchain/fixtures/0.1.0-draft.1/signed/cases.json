@@ -1,0 +1,205 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "repository": "repository.json",
+  "cliVersion": "0.4.0",
+  "selection": [
+    {
+      "name": "native-aot on win-x64 selects the native-aot archive",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "win-x64",
+      "expected": {
+        "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "self-contained on win-x64 selects a different archive with the same morphir.exe",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"self-contained\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "win-x64",
+      "expected": {
+        "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip",
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "native-aot on win-arm64 selects the ARM64 archive",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "win-arm64",
+      "expected": {
+        "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip",
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "framework-dependent on linux-arm64 selects its glibc archive",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"framework-dependent\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "linux-arm64",
+      "expected": {
+        "hostTarget": "artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz",
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "self-contained on osx-x64 selects its macOS archive",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"self-contained\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "osx-x64",
+      "expected": {
+        "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz",
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "dotnet-tool on osx-arm64 selects the Morphir.Tool package",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"dotnet-tool\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "osx-arm64",
+      "expected": {
+        "hostTarget": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an exact host version selects the same archive",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nversion = \"1.2.3\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "linux-x64",
+      "expected": {
+        "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz",
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a musl machine is not given a glibc archive",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "linux-musl-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "platforms"
+      }
+    },
+    {
+      "name": "an unpublished deployment is not substituted",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"trimmed\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "host"
+      }
+    },
+    {
+      "name": "another implementation is not substituted",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"moonbit\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "host"
+      }
+    },
+    {
+      "name": "an absent exact host version is not substituted",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nversion = \"1.2.2\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "host.version"
+      }
+    }
+  ],
+  "recipeBindings": [
+    {
+      "name": "every host binding is an authenticated artifact of its offering",
+      "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a substituted digest is refused",
+      "recipe": "toolchains/recipes/negative-digest-substituted/1.0.0.json",
+      "expected": {
+        "code": "target_digest_mismatch",
+        "path": "hosts[0].platforms.win-x64.sha256"
+      }
+    },
+    {
+      "name": "another platform's artifact is refused",
+      "recipe": "toolchains/recipes/negative-platform-substituted/1.0.0.json",
+      "expected": {
+        "code": "artifact_platform_mismatch",
+        "path": "hosts[0].platforms.win-x64.target"
+      }
+    },
+    {
+      "name": "another deployment's artifact is refused",
+      "recipe": "toolchains/recipes/negative-deployment-substituted/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "hosts[0].platforms.win-x64.target"
+      }
+    },
+    {
+      "name": "an unpublished target is refused",
+      "recipe": "toolchains/recipes/negative-unauthenticated-target/1.0.0.json",
+      "expected": {
+        "code": "target_not_authenticated",
+        "path": "hosts[0].platforms.win-x64.target"
+      }
+    }
+  ]
+}

@@ -274,27 +274,27 @@
       ],
       "platforms": {
         "win-x64": {
-          "target": "artifacts/morphir-dotnet-tool/1.2.3/morphir.tool.1.2.3.nupkg",
+          "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
           "sha256": "2241e950494a319c24f816ea919995d6d5118debc320004c03c0df2cdf9a7c01"
         },
         "win-arm64": {
-          "target": "artifacts/morphir-dotnet-tool/1.2.3/morphir.tool.1.2.3.nupkg",
+          "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
           "sha256": "2241e950494a319c24f816ea919995d6d5118debc320004c03c0df2cdf9a7c01"
         },
         "osx-x64": {
-          "target": "artifacts/morphir-dotnet-tool/1.2.3/morphir.tool.1.2.3.nupkg",
+          "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
           "sha256": "2241e950494a319c24f816ea919995d6d5118debc320004c03c0df2cdf9a7c01"
         },
         "osx-arm64": {
-          "target": "artifacts/morphir-dotnet-tool/1.2.3/morphir.tool.1.2.3.nupkg",
+          "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
           "sha256": "2241e950494a319c24f816ea919995d6d5118debc320004c03c0df2cdf9a7c01"
         },
         "linux-x64": {
-          "target": "artifacts/morphir-dotnet-tool/1.2.3/morphir.tool.1.2.3.nupkg",
+          "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
           "sha256": "2241e950494a319c24f816ea919995d6d5118debc320004c03c0df2cdf9a7c01"
         },
         "linux-arm64": {
-          "target": "artifacts/morphir-dotnet-tool/1.2.3/morphir.tool.1.2.3.nupkg",
+          "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
           "sha256": "2241e950494a319c24f816ea919995d6d5118debc320004c03c0df2cdf9a7c01"
         }
       }
@@ -367,7 +367,7 @@
       "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "packageId": "Morphir.Frontend.FSharp.Extension",
       "command": "morphir-fsharp-frontend",
-      "packageTarget": "extensions/fsharp-frontend/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg",
+      "packageTarget": "packages/nuget/morphir.frontend.fsharp.extension/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg",
       "packageSha256": "26a4a6da0d3798e22b0990e998b58c89a04f2c6497da3c37060a1cffc6c8dbbe",
       "protocolVersion": "0.2.0-draft.1",
       "modelTuple": {

@@ -117,17 +117,26 @@ Readers report one code and the member path it concerns. Paths use dotted member
 | `lock_changed` | A receipt's `lockSha256` differs from the SHA-256 of the lock bytes |
 | `receipt_lock_mismatch` | A receipt identity differs from the lock's closure for its platform |
 | `unsupported_artifact` | No artifact matches the requested implementation, deployment, platform, ABI or protocol |
+| `target_not_authenticated` | A recipe or binding names a target the authenticated targets metadata does not list |
+| `target_length_mismatch`, `target_digest_mismatch` | Bytes or a bound digest disagree with the authenticated target (the tool release metadata v1 codes) |
+| `release_descriptor_mismatch` | A binding disagrees with the authenticated release it names (the v1 code) |
+| `artifact_platform_mismatch` | A platform is bound to another platform's artifact |
+| `release_revoked` | The authenticated release state is revoked (the v1 code) |
 
 ## Fixtures and conformance
 
 The fixed cases are under [`fixtures/0.1.0-draft.1/`](https://github.com/finos/morphir/tree/main/docs/spec/toolchain/fixtures/0.1.0-draft.1). `cases.json` lists every fixture document with the contract it claims to follow and either `valid` or the exact code and path a reader must report, and whether the JSON Schema accepts it. Its `bindings` cases check request, lock and receipt identities against each other. Every fixture file is listed; none is an example download.
 
+`signed/` holds a TEST-ONLY signed repository in the tool release metadata v1 profile, with its own `cases.json` for host selection and authenticated recipe bindings. Its keys derive from public labels listed in `testOnlyKeys`, so they authenticate nothing outside tests; a production configuration must refuse its `repositoryId` and keys.
+
 Digests and versions in these fixtures are synthetic. A repeated-character digest (`aaaa…`) or the SHA-256 of a `synthetic:<label>` string names no released artifact, and version `1.2.3` is illustrative.
 
-The reference readers live in the `morphir-toolchain-contract` crate. They parse each document into domain types and implement no acquisition. Run the cases with:
+The fixtures, manifests and schemas are the contract. They are language-neutral: an implementation in any language reads the same files and must report the same outcome, code and path for every case. The JSON Schemas check document shape; consistency and binding rules that a schema cannot express are stated on each page and covered by cases marked `"schema": "accepts"`.
+
+This repository checks the cases with a small Rust reference reader, the `morphir-toolchain-contract` crate, which parses each document into domain types and implements no acquisition:
 
 ```sh
 cargo test --locked --package morphir-toolchain-contract
 ```
 
-CI runs the same command through `mise run ci:validate-toolchain-contracts`. The JSON Schemas are also checked by `mise run fmt-check:schema` and `mise run lint:schema`. An implementation in another language reads the same fixture files and must report the same codes and paths. This is ordinary contract testing; it is not a second compatibility runner, and IR or MEP behavior is still qualified through `morphir mck`.
+CI runs the same command through `mise run ci:validate-toolchain-contracts`, and checks the JSON Schemas with `mise run fmt-check:schema` and `mise run lint:schema`. This is ordinary contract testing, not a compatibility kit runner; IR and MEP behavior is qualified separately.

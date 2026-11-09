@@ -34,6 +34,19 @@ pub enum Code {
     /// No artifact matches the requested implementation, deployment, platform,
     /// ABI or protocol; nothing is substituted.
     UnsupportedArtifact,
+    /// A recipe names a target the authenticated targets metadata does not list.
+    TargetNotAuthenticated,
+    /// Bytes or a recipe length disagree with the authenticated target length.
+    TargetLengthMismatch,
+    /// Bytes or a recipe digest disagree with the authenticated target digest.
+    TargetDigestMismatch,
+    /// A recipe binding disagrees with the authenticated release descriptor
+    /// it names, for example a target the release does not publish.
+    ReleaseDescriptorMismatch,
+    /// A recipe binds a platform to an artifact published for another platform.
+    ArtifactPlatformMismatch,
+    /// The authenticated release state is revoked.
+    ReleaseRevoked,
 }
 
 impl Code {
@@ -53,6 +66,12 @@ impl Code {
             Self::LockChanged => "lock_changed",
             Self::ReceiptLockMismatch => "receipt_lock_mismatch",
             Self::UnsupportedArtifact => "unsupported_artifact",
+            Self::TargetNotAuthenticated => "target_not_authenticated",
+            Self::TargetLengthMismatch => "target_length_mismatch",
+            Self::TargetDigestMismatch => "target_digest_mismatch",
+            Self::ReleaseDescriptorMismatch => "release_descriptor_mismatch",
+            Self::ArtifactPlatformMismatch => "artifact_platform_mismatch",
+            Self::ReleaseRevoked => "release_revoked",
         }
     }
 }

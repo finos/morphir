@@ -150,6 +150,43 @@ An exact request ignores channel membership and may select a prerelease or yanke
 
 One repository cannot contain two records with the same exact version. It also cannot contain versions with equal semantic precedence but different build metadata. Both would make the selected record depend on document order.
 
+## Offering-specific tool ids
+
+A host published in several deployments uses one tool id per separately published offering. Each id is an ordinary version 1 tool release; this section adds no descriptor member and leaves `schemaVersion` at `1`. The .NET host publishes:
+
+| Deployment | Tool id | Example artifact target |
+| --- | --- | --- |
+| `native-aot` | `morphir-dotnet-native-aot` | `artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip` |
+| `self-contained` | `morphir-dotnet-self-contained` | `artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip` |
+| `framework-dependent` | `morphir-dotnet-framework-dependent` | `artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz` |
+| `dotnet-tool` | none: the `Morphir.Tool` NuGet package | `packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg` |
+
+All three archive offerings launch `morphir` (`morphir.exe` on Windows). The executable name therefore identifies none of them; the tool id, version and platform do. Version 1.2.3 is illustrative.
+
+A [toolset recipe](../toolchain/toolset-recipe.md) maps each offering to its implementation and deployment identity and binds each platform to an exact target and digest:
+
+```json
+{
+  "implementation": "dotnet",
+  "version": "1.2.3",
+  "deployment": "native-aot",
+  "execution": "native-aot",
+  "source": { "kind": "tool-release", "toolId": "morphir-dotnet-native-aot" },
+  "platforms": {
+    "win-x64": {
+      "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+      "sha256": "<the authenticated SHA-256 of that target>"
+    }
+  }
+}
+```
+
+A recipe binding is accepted only when the target is authenticated, its digest equals the authenticated digest, the offering's release descriptor `releases/<tool-id>/<version>.json` lists that target, and the artifact's version 1 platform is the bound platform. Version 1 platforms do not state a C library, so an offering's Linux artifacts bind only to glibc platforms (`linux-x64`, `linux-arm64`); a musl machine is told that no artifact matches.
+
+Version 1 requires `compatibility.morphirCli`. An offering the Morphir CLI does not launch publishes `>=0.0.0`; the recipe, not this field, states which manager and host combinations are supported.
+
+Recipe targets are a separate target kind. Their `custom.morphir` object is `{ "kind": "toolset-recipe", "schemaVersion": "0.1.0-draft.1", "preset", "version", "channels", "status" }`, versioned by the recipe contract. A version 1 tool client selects only `tool-release` targets and ignores them. Channel and status follow the [release states](#release-states) and [channel resolution](#channel-and-exact-version-resolution) above.
+
 ## Mirrors
 
 Mirror order belongs to effective user or administrator configuration. The client tries mirrors in order for each metadata or target path. It verifies every response with the same trusted root, metadata links, declared length, and hashes.

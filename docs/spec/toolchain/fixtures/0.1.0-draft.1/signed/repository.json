@@ -1,0 +1,768 @@
+{
+  "testOnly": "TEST-ONLY. Every key in this repository is derived from the public label recorded in testOnlyKeys, so anyone can sign with it. Never trust this repository or these keys outside tests.",
+  "contractVersion": "0.1.0-draft.1",
+  "profile": "tool-release-metadata-v1",
+  "referenceTime": "2030-01-01T00:00:00Z",
+  "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+  "testOnlyKeys": [
+    {
+      "role": "root",
+      "label": "morphir-toolchain-contract TEST-ONLY fixture key: root-1",
+      "keyId": "361bbeac79540688ca0e808225659f00c431c9a06988a1ffc8ada832e60e7f3f",
+      "public": "f9db72b56a2dc2a43424eb6391d3821584c62194d2e539f748bafc9159e865a0"
+    },
+    {
+      "role": "root",
+      "label": "morphir-toolchain-contract TEST-ONLY fixture key: root-2",
+      "keyId": "34aab171ebf2e3b139cb0500a58b05ed1d15d26ea72553b2702e29db760b20b7",
+      "public": "c27cf17ad50b98201df9c5f35993ad472cf1dc45ac2678df17cdb2249900b173"
+    },
+    {
+      "role": "targets",
+      "label": "morphir-toolchain-contract TEST-ONLY fixture key: targets-1",
+      "keyId": "e77a02b94ce13badf11b5aa960636533254a563ae3d27f5ab513987a5311e1e9",
+      "public": "139a7bf84b988c484391e5b513b8ccc357ba531f042f6a6fef04949a9c1fa50c"
+    },
+    {
+      "role": "snapshot",
+      "label": "morphir-toolchain-contract TEST-ONLY fixture key: snapshot-1",
+      "keyId": "3fae3f21b240af07dd49e49207ca65a5eb0cdd56ce7b19f1c2471a3c2c3e27a3",
+      "public": "a0e75c13e50d16e9b8810b56a0364a1786d80ed5e04c2b18345571172801d3f1"
+    },
+    {
+      "role": "timestamp",
+      "label": "morphir-toolchain-contract TEST-ONLY fixture key: timestamp-1",
+      "keyId": "b788df375cbbed42587871cf30081118c31a2e2b141d2273907cd941230c616d",
+      "public": "c7bbb4edb1d3835582259412da5a09e50393b90ed506afb539a615bfee833317"
+    }
+  ],
+  "trustedRoot": {
+    "signatures": [
+      {
+        "keyid": "361bbeac79540688ca0e808225659f00c431c9a06988a1ffc8ada832e60e7f3f",
+        "sig": "daa4f0c35f5b2f3742e35d7c0d260781a80537f6aeeef066cfb324c55e37a84be2817b8c5ecc9669d725186acc818ff21da1b707cabd92c977a5ca802ff8b00c"
+      },
+      {
+        "keyid": "34aab171ebf2e3b139cb0500a58b05ed1d15d26ea72553b2702e29db760b20b7",
+        "sig": "4540cffbf08fbf4f248068b3a5e94437ede3d1d3f822b574522466d3acb7568e68c642cf9f168096fbc3bb689faaee2a819e84d14174dca7ea3cfe9311b2fb0c"
+      }
+    ],
+    "signed": {
+      "_type": "root",
+      "spec_version": "1.0.36",
+      "version": 1,
+      "expires": "2999-01-01T00:00:00Z",
+      "consistent_snapshot": true,
+      "keys": {
+        "361bbeac79540688ca0e808225659f00c431c9a06988a1ffc8ada832e60e7f3f": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "f9db72b56a2dc2a43424eb6391d3821584c62194d2e539f748bafc9159e865a0"
+          }
+        },
+        "34aab171ebf2e3b139cb0500a58b05ed1d15d26ea72553b2702e29db760b20b7": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "c27cf17ad50b98201df9c5f35993ad472cf1dc45ac2678df17cdb2249900b173"
+          }
+        },
+        "e77a02b94ce13badf11b5aa960636533254a563ae3d27f5ab513987a5311e1e9": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "139a7bf84b988c484391e5b513b8ccc357ba531f042f6a6fef04949a9c1fa50c"
+          }
+        },
+        "3fae3f21b240af07dd49e49207ca65a5eb0cdd56ce7b19f1c2471a3c2c3e27a3": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "a0e75c13e50d16e9b8810b56a0364a1786d80ed5e04c2b18345571172801d3f1"
+          }
+        },
+        "b788df375cbbed42587871cf30081118c31a2e2b141d2273907cd941230c616d": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "c7bbb4edb1d3835582259412da5a09e50393b90ed506afb539a615bfee833317"
+          }
+        }
+      },
+      "roles": {
+        "root": {
+          "keyids": [
+            "361bbeac79540688ca0e808225659f00c431c9a06988a1ffc8ada832e60e7f3f",
+            "34aab171ebf2e3b139cb0500a58b05ed1d15d26ea72553b2702e29db760b20b7"
+          ],
+          "threshold": 2
+        },
+        "targets": {
+          "keyids": [
+            "e77a02b94ce13badf11b5aa960636533254a563ae3d27f5ab513987a5311e1e9"
+          ],
+          "threshold": 1
+        },
+        "snapshot": {
+          "keyids": [
+            "3fae3f21b240af07dd49e49207ca65a5eb0cdd56ce7b19f1c2471a3c2c3e27a3"
+          ],
+          "threshold": 1
+        },
+        "timestamp": {
+          "keyids": [
+            "b788df375cbbed42587871cf30081118c31a2e2b141d2273907cd941230c616d"
+          ],
+          "threshold": 1
+        }
+      }
+    }
+  },
+  "metadata": {
+    "timestamp": {
+      "signatures": [
+        {
+          "keyid": "b788df375cbbed42587871cf30081118c31a2e2b141d2273907cd941230c616d",
+          "sig": "4a23cc81b953b73272b968ec3358a212d3c90841b9b7739ec547e4a1fc618c83c6733e2c756cdc31f01e87ebbb2884bd58d8b234674ff21e3208cad0b026070e"
+        }
+      ],
+      "signed": {
+        "_type": "timestamp",
+        "spec_version": "1.0.36",
+        "version": 1,
+        "expires": "2999-01-01T00:00:00Z",
+        "meta": {
+          "snapshot.json": {
+            "version": 1,
+            "length": 468,
+            "hashes": {
+              "sha256": "a6e19e5738ea399b6382b0318324f2eb0ffbb572b36a4d4d3d5dee0b89658229"
+            }
+          }
+        }
+      }
+    },
+    "snapshot": {
+      "signatures": [
+        {
+          "keyid": "3fae3f21b240af07dd49e49207ca65a5eb0cdd56ce7b19f1c2471a3c2c3e27a3",
+          "sig": "e30fc97fec9f72e3da0bb771c02315b808787c325de0d69fbfda5daf673ac1192ff2811b752a3e67c4b2b97f1806e10e2876a7ad9da70ee01be0c576473fbb0f"
+        }
+      ],
+      "signed": {
+        "_type": "snapshot",
+        "spec_version": "1.0.36",
+        "version": 1,
+        "expires": "2999-01-01T00:00:00Z",
+        "meta": {
+          "targets.json": {
+            "version": 1,
+            "length": 9833,
+            "hashes": {
+              "sha256": "e6d90bbd9ef2ac6550eef7b086a3501703f407a28cbe11f9b401bc2ff25ef761"
+            }
+          }
+        }
+      }
+    },
+    "targets": {
+      "signatures": [
+        {
+          "keyid": "e77a02b94ce13badf11b5aa960636533254a563ae3d27f5ab513987a5311e1e9",
+          "sig": "a9579ad4cdd4c1d984cf997038a4fa1e08f73b7b41cbd3214ac62e7f8b7c0394092d44baa3ce5a61281e502420d84c49ea7dba6d1232abcc2caccec72e6a3106"
+        }
+      ],
+      "signed": {
+        "_type": "targets",
+        "spec_version": "1.0.36",
+        "version": 1,
+        "expires": "2999-01-01T00:00:00Z",
+        "targets": {
+          "artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz": {
+            "length": 107,
+            "hashes": {
+              "sha256": "6f0867412ab79c7e9a535992190885780b5dd42698bbf4a5183575f90ea8ba18"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-framework-dependent",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "linux",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz": {
+            "length": 105,
+            "hashes": {
+              "sha256": "4c25d43f8256ab950afb25917f986dea7281e81723fe68c959ae3c2ad0d21666"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-framework-dependent",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz": {
+            "length": 105,
+            "hashes": {
+              "sha256": "af2eec0fe1fbc3afd9b46eb1f44ffc95d7ac51f4dad494a5af418d72333d65db"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-framework-dependent",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "macos",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz": {
+            "length": 103,
+            "hashes": {
+              "sha256": "8d2335d928f7f4cc5478a593065239a50bf5814e15b343309fc029df41abefd4"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-framework-dependent",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "macos",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip": {
+            "length": 105,
+            "hashes": {
+              "sha256": "14fa6a009dc43362f262cfb3064c947dbb6d7cd4a61647425fe56dc9fc83d7a5"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-framework-dependent",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "windows",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip": {
+            "length": 103,
+            "hashes": {
+              "sha256": "2d0819ba518f1600d70602733d4a736d9571024b4088f87259a59413d15cb37b"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-framework-dependent",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "windows",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz": {
+            "length": 98,
+            "hashes": {
+              "sha256": "c6d031d6274e92b666e4cb07454de65dd3f5361d01003288c8805adb912327cc"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-native-aot",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "linux",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz": {
+            "length": 96,
+            "hashes": {
+              "sha256": "71152a5dc855c64cb3de65aec365537098bcbb6704026f9cf4a89843ae0a2f8b"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-native-aot",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz": {
+            "length": 96,
+            "hashes": {
+              "sha256": "0dd19d15c043700587da8e498e192f3d4fa60dd7a9be1de80773da91595b575e"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-native-aot",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "macos",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz": {
+            "length": 94,
+            "hashes": {
+              "sha256": "7609eac79ff052ca3696faf15d5dfebe8fc8393d360e10621ec0aa44e478fb53"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-native-aot",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "macos",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip": {
+            "length": 96,
+            "hashes": {
+              "sha256": "4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-native-aot",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "windows",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip": {
+            "length": 94,
+            "hashes": {
+              "sha256": "aa76ea5eb00aa3c46c5de6322d4d587ed8145e2320f23df9eef71ef6cfe459cc"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-native-aot",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "windows",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz": {
+            "length": 102,
+            "hashes": {
+              "sha256": "98ed1ab1b3ed808c6b4bc9fc7488d6aa025511a08757d08441d6d4e7d520d140"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-self-contained",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "linux",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz": {
+            "length": 100,
+            "hashes": {
+              "sha256": "bca86ec9b78520733e9d5a778a22f58d2a471224228e3463e77f8f43c71fa112"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-self-contained",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz": {
+            "length": 100,
+            "hashes": {
+              "sha256": "59022e9ca6ec4f41b123603e0f2fe71f10721f7cbbb50a9deca6716758e779aa"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-self-contained",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "macos",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz": {
+            "length": 98,
+            "hashes": {
+              "sha256": "33a52aa3865ce885a822e7df57b8daf012b02e4589e04e3fda61f0ab65a66d5d"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-self-contained",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "macos",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip": {
+            "length": 100,
+            "hashes": {
+              "sha256": "89f6514820a581a9635359ec0af0ef24e556f4c290797db10dfba7946d5806e7"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-self-contained",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "windows",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip": {
+            "length": 98,
+            "hashes": {
+              "sha256": "accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "morphir-dotnet-self-contained",
+                "version": "1.2.3",
+                "platform": {
+                  "os": "windows",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg": {
+            "length": 79,
+            "hashes": {
+              "sha256": "4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff"
+            }
+          },
+          "releases/morphir-dotnet-framework-dependent/1.2.3.json": {
+            "length": 1720,
+            "hashes": {
+              "sha256": "84eb8f60256f6a164720c183db734a31cde7ec85560c3499bee7be256201b951"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-release",
+                "toolId": "morphir-dotnet-framework-dependent",
+                "version": "1.2.3",
+                "channels": [
+                  "stable"
+                ],
+                "status": "active",
+                "compatibility": {
+                  "morphirCli": ">=0.0.0"
+                },
+                "platforms": [
+                  {
+                    "os": "windows",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "windows",
+                    "arch": "aarch64"
+                  },
+                  {
+                    "os": "macos",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "macos",
+                    "arch": "aarch64"
+                  },
+                  {
+                    "os": "linux",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "linux",
+                    "arch": "aarch64"
+                  }
+                ]
+              }
+            }
+          },
+          "releases/morphir-dotnet-native-aot/1.2.3.json": {
+            "length": 1648,
+            "hashes": {
+              "sha256": "6f796296ef3dce6f52931396b28abb96d955a2f8790775888c7e47a4cd96629f"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-release",
+                "toolId": "morphir-dotnet-native-aot",
+                "version": "1.2.3",
+                "channels": [
+                  "stable"
+                ],
+                "status": "active",
+                "compatibility": {
+                  "morphirCli": ">=0.0.0"
+                },
+                "platforms": [
+                  {
+                    "os": "windows",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "windows",
+                    "arch": "aarch64"
+                  },
+                  {
+                    "os": "macos",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "macos",
+                    "arch": "aarch64"
+                  },
+                  {
+                    "os": "linux",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "linux",
+                    "arch": "aarch64"
+                  }
+                ]
+              }
+            }
+          },
+          "releases/morphir-dotnet-self-contained/1.2.3.json": {
+            "length": 1680,
+            "hashes": {
+              "sha256": "3f9f9d986c8ab4f2027c29da59c372d18db916d34308a1337d12140818251019"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-release",
+                "toolId": "morphir-dotnet-self-contained",
+                "version": "1.2.3",
+                "channels": [
+                  "stable"
+                ],
+                "status": "active",
+                "compatibility": {
+                  "morphirCli": ">=0.0.0"
+                },
+                "platforms": [
+                  {
+                    "os": "windows",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "windows",
+                    "arch": "aarch64"
+                  },
+                  {
+                    "os": "macos",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "macos",
+                    "arch": "aarch64"
+                  },
+                  {
+                    "os": "linux",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "linux",
+                    "arch": "aarch64"
+                  }
+                ]
+              }
+            }
+          },
+          "toolchains/recipes/fsharp-builtin/1.0.0.json": {
+            "length": 6381,
+            "hashes": {
+              "sha256": "ca625c03ffc0edad3d0ea92b52a7aa532608d9a3fcf3ee5688440e7d5cd72a0b"
+            },
+            "custom": {
+              "morphir": {
+                "kind": "toolset-recipe",
+                "schemaVersion": "0.1.0-draft.1",
+                "preset": "fsharp-builtin",
+                "version": "1.0.0",
+                "channels": [
+                  "stable"
+                ],
+                "status": "active"
+              }
+            }
+          },
+          "toolchains/recipes/negative-deployment-substituted/1.0.0.json": {
+            "length": 6402,
+            "hashes": {
+              "sha256": "805f5123c544a5b8b307b5ed19a60bbf7f02d263c6914197fb59e2c18dfde345"
+            },
+            "custom": {
+              "morphir": {
+                "kind": "toolset-recipe",
+                "schemaVersion": "0.1.0-draft.1",
+                "preset": "negative-deployment-substituted",
+                "version": "1.0.0",
+                "channels": [],
+                "status": "active"
+              }
+            }
+          },
+          "toolchains/recipes/negative-digest-substituted/1.0.0.json": {
+            "length": 6394,
+            "hashes": {
+              "sha256": "ba0530ae3398084bfd80b61197cf7c8a4e23b5c43e0d7c6e3acb3dd6700d6e6b"
+            },
+            "custom": {
+              "morphir": {
+                "kind": "toolset-recipe",
+                "schemaVersion": "0.1.0-draft.1",
+                "preset": "negative-digest-substituted",
+                "version": "1.0.0",
+                "channels": [],
+                "status": "active"
+              }
+            }
+          },
+          "toolchains/recipes/negative-platform-substituted/1.0.0.json": {
+            "length": 6398,
+            "hashes": {
+              "sha256": "5541078587725cade2ab35f2acfa4a624adb64a72bf4346228266a3dd1935a4f"
+            },
+            "custom": {
+              "morphir": {
+                "kind": "toolset-recipe",
+                "schemaVersion": "0.1.0-draft.1",
+                "preset": "negative-platform-substituted",
+                "version": "1.0.0",
+                "channels": [],
+                "status": "active"
+              }
+            }
+          },
+          "toolchains/recipes/negative-unauthenticated-target/1.0.0.json": {
+            "length": 6410,
+            "hashes": {
+              "sha256": "466132a7f86954d5ad98318717d27262ee2ad0b58048fc12e8317c4476e377f2"
+            },
+            "custom": {
+              "morphir": {
+                "kind": "toolset-recipe",
+                "schemaVersion": "0.1.0-draft.1",
+                "preset": "negative-unauthenticated-target",
+                "version": "1.0.0",
+                "channels": [],
+                "status": "active"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "targetFiles": {
+    "artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-framework-dependent 1.2.3 linux-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-framework-dependent 1.2.3 linux-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-framework-dependent 1.2.3 osx-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-framework-dependent 1.2.3 osx-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip": "TEST-ONLY synthetic morphir-dotnet-framework-dependent 1.2.3 win-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip": "TEST-ONLY synthetic morphir-dotnet-framework-dependent 1.2.3 win-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-native-aot 1.2.3 linux-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-native-aot 1.2.3 linux-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-native-aot 1.2.3 osx-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-native-aot 1.2.3 osx-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip": "TEST-ONLY synthetic morphir-dotnet-native-aot 1.2.3 win-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip": "TEST-ONLY synthetic morphir-dotnet-native-aot 1.2.3 win-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-self-contained 1.2.3 linux-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-self-contained 1.2.3 linux-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-self-contained 1.2.3 osx-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz": "TEST-ONLY synthetic morphir-dotnet-self-contained 1.2.3 osx-x64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip": "TEST-ONLY synthetic morphir-dotnet-self-contained 1.2.3 win-arm64 archive. Not a released download.\n",
+    "artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip": "TEST-ONLY synthetic morphir-dotnet-self-contained 1.2.3 win-x64 archive. Not a released download.\n",
+    "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg": "TEST-ONLY synthetic Morphir.Tool 1.2.3 NuGet package. Not a released download.\n",
+    "releases/morphir-dotnet-framework-dependent/1.2.3.json": "{\"artifacts\":[{\"archive\":{\"entryPoint\":\"morphir.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir.exe\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip\"},{\"archive\":{\"entryPoint\":\"morphir.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir.exe\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz\"}],\"channels\":[\"stable\"],\"compatibility\":{\"morphirCli\":\">=0.0.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"active\",\"tool\":{\"id\":\"morphir-dotnet-framework-dependent\",\"name\":\"Morphir .NET framework-dependent (TEST-ONLY fixture)\"},\"version\":\"1.2.3\"}",
+    "releases/morphir-dotnet-native-aot/1.2.3.json": "{\"artifacts\":[{\"archive\":{\"entryPoint\":\"morphir.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir.exe\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip\"},{\"archive\":{\"entryPoint\":\"morphir.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir.exe\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz\"}],\"channels\":[\"stable\"],\"compatibility\":{\"morphirCli\":\">=0.0.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"active\",\"tool\":{\"id\":\"morphir-dotnet-native-aot\",\"name\":\"Morphir .NET Native AOT (TEST-ONLY fixture)\"},\"version\":\"1.2.3\"}",
+    "releases/morphir-dotnet-self-contained/1.2.3.json": "{\"artifacts\":[{\"archive\":{\"entryPoint\":\"morphir.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir.exe\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip\"},{\"archive\":{\"entryPoint\":\"morphir.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir.exe\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz\"},{\"archive\":{\"entryPoint\":\"morphir\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz\"}],\"channels\":[\"stable\"],\"compatibility\":{\"morphirCli\":\">=0.0.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"active\",\"tool\":{\"id\":\"morphir-dotnet-self-contained\",\"name\":\"Morphir .NET self-contained (TEST-ONLY fixture)\"},\"version\":\"1.2.3\"}",
+    "toolchains/recipes/fsharp-builtin/1.0.0.json": "{\"hosts\":[{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"native-aot\",\"execution\":\"native-aot\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"c6d031d6274e92b666e4cb07454de65dd3f5361d01003288c8805adb912327cc\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"71152a5dc855c64cb3de65aec365537098bcbb6704026f9cf4a89843ae0a2f8b\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"0dd19d15c043700587da8e498e192f3d4fa60dd7a9be1de80773da91595b575e\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"7609eac79ff052ca3696faf15d5dfebe8fc8393d360e10621ec0aa44e478fb53\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"aa76ea5eb00aa3c46c5de6322d4d587ed8145e2320f23df9eef71ef6cfe459cc\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-native-aot\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"self-contained\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"98ed1ab1b3ed808c6b4bc9fc7488d6aa025511a08757d08441d6d4e7d520d140\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"bca86ec9b78520733e9d5a778a22f58d2a471224228e3463e77f8f43c71fa112\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"59022e9ca6ec4f41b123603e0f2fe71f10721f7cbbb50a9deca6716758e779aa\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"33a52aa3865ce885a822e7df57b8daf012b02e4589e04e3fda61f0ab65a66d5d\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"89f6514820a581a9635359ec0af0ef24e556f4c290797db10dfba7946d5806e7\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-self-contained\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"framework-dependent\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"6f0867412ab79c7e9a535992190885780b5dd42698bbf4a5183575f90ea8ba18\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"4c25d43f8256ab950afb25917f986dea7281e81723fe68c959ae3c2ad0d21666\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"af2eec0fe1fbc3afd9b46eb1f44ffc95d7ac51f4dad494a5af418d72333d65db\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"8d2335d928f7f4cc5478a593065239a50bf5814e15b343309fc029df41abefd4\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"14fa6a009dc43362f262cfb3064c947dbb6d7cd4a61647425fe56dc9fc83d7a5\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"2d0819ba518f1600d70602733d4a736d9571024b4088f87259a59413d15cb37b\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-framework-dependent\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"dotnet-tool\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"linux-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"sdk\",\"name\":\"Microsoft.NET.Sdk\",\"phase\":\"install\",\"versions\":[\">=10.0.100\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"command\":\"dotnet-morphir\",\"kind\":\"dotnet-tool\",\"packageId\":\"Morphir.Tool\"},\"version\":\"1.2.3\",\"wasmAbis\":[]}],\"operations\":[{\"operation\":\"generate\",\"target\":\"fsharp\"}],\"preset\":\"fsharp-builtin\",\"providers\":[],\"schemaVersion\":\"0.1.0-draft.1\",\"version\":\"1.0.0\"}",
+    "toolchains/recipes/negative-deployment-substituted/1.0.0.json": "{\"hosts\":[{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"native-aot\",\"execution\":\"native-aot\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"c6d031d6274e92b666e4cb07454de65dd3f5361d01003288c8805adb912327cc\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"71152a5dc855c64cb3de65aec365537098bcbb6704026f9cf4a89843ae0a2f8b\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"0dd19d15c043700587da8e498e192f3d4fa60dd7a9be1de80773da91595b575e\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"7609eac79ff052ca3696faf15d5dfebe8fc8393d360e10621ec0aa44e478fb53\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-native-aot\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"self-contained\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"98ed1ab1b3ed808c6b4bc9fc7488d6aa025511a08757d08441d6d4e7d520d140\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"bca86ec9b78520733e9d5a778a22f58d2a471224228e3463e77f8f43c71fa112\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"59022e9ca6ec4f41b123603e0f2fe71f10721f7cbbb50a9deca6716758e779aa\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"33a52aa3865ce885a822e7df57b8daf012b02e4589e04e3fda61f0ab65a66d5d\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"89f6514820a581a9635359ec0af0ef24e556f4c290797db10dfba7946d5806e7\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-self-contained\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"framework-dependent\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"6f0867412ab79c7e9a535992190885780b5dd42698bbf4a5183575f90ea8ba18\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"4c25d43f8256ab950afb25917f986dea7281e81723fe68c959ae3c2ad0d21666\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"af2eec0fe1fbc3afd9b46eb1f44ffc95d7ac51f4dad494a5af418d72333d65db\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"8d2335d928f7f4cc5478a593065239a50bf5814e15b343309fc029df41abefd4\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"14fa6a009dc43362f262cfb3064c947dbb6d7cd4a61647425fe56dc9fc83d7a5\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"2d0819ba518f1600d70602733d4a736d9571024b4088f87259a59413d15cb37b\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-framework-dependent\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"dotnet-tool\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"linux-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"sdk\",\"name\":\"Microsoft.NET.Sdk\",\"phase\":\"install\",\"versions\":[\">=10.0.100\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"command\":\"dotnet-morphir\",\"kind\":\"dotnet-tool\",\"packageId\":\"Morphir.Tool\"},\"version\":\"1.2.3\",\"wasmAbis\":[]}],\"operations\":[{\"operation\":\"generate\",\"target\":\"fsharp\"}],\"preset\":\"negative-deployment-substituted\",\"providers\":[],\"schemaVersion\":\"0.1.0-draft.1\",\"version\":\"1.0.0\"}",
+    "toolchains/recipes/negative-digest-substituted/1.0.0.json": "{\"hosts\":[{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"native-aot\",\"execution\":\"native-aot\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"c6d031d6274e92b666e4cb07454de65dd3f5361d01003288c8805adb912327cc\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"71152a5dc855c64cb3de65aec365537098bcbb6704026f9cf4a89843ae0a2f8b\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"0dd19d15c043700587da8e498e192f3d4fa60dd7a9be1de80773da91595b575e\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"7609eac79ff052ca3696faf15d5dfebe8fc8393d360e10621ec0aa44e478fb53\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-native-aot\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"self-contained\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"98ed1ab1b3ed808c6b4bc9fc7488d6aa025511a08757d08441d6d4e7d520d140\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"bca86ec9b78520733e9d5a778a22f58d2a471224228e3463e77f8f43c71fa112\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"59022e9ca6ec4f41b123603e0f2fe71f10721f7cbbb50a9deca6716758e779aa\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"33a52aa3865ce885a822e7df57b8daf012b02e4589e04e3fda61f0ab65a66d5d\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"89f6514820a581a9635359ec0af0ef24e556f4c290797db10dfba7946d5806e7\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-self-contained\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"framework-dependent\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"6f0867412ab79c7e9a535992190885780b5dd42698bbf4a5183575f90ea8ba18\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"4c25d43f8256ab950afb25917f986dea7281e81723fe68c959ae3c2ad0d21666\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"af2eec0fe1fbc3afd9b46eb1f44ffc95d7ac51f4dad494a5af418d72333d65db\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"8d2335d928f7f4cc5478a593065239a50bf5814e15b343309fc029df41abefd4\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"14fa6a009dc43362f262cfb3064c947dbb6d7cd4a61647425fe56dc9fc83d7a5\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"2d0819ba518f1600d70602733d4a736d9571024b4088f87259a59413d15cb37b\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-framework-dependent\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"dotnet-tool\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"linux-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"sdk\",\"name\":\"Microsoft.NET.Sdk\",\"phase\":\"install\",\"versions\":[\">=10.0.100\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"command\":\"dotnet-morphir\",\"kind\":\"dotnet-tool\",\"packageId\":\"Morphir.Tool\"},\"version\":\"1.2.3\",\"wasmAbis\":[]}],\"operations\":[{\"operation\":\"generate\",\"target\":\"fsharp\"}],\"preset\":\"negative-digest-substituted\",\"providers\":[],\"schemaVersion\":\"0.1.0-draft.1\",\"version\":\"1.0.0\"}",
+    "toolchains/recipes/negative-platform-substituted/1.0.0.json": "{\"hosts\":[{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"native-aot\",\"execution\":\"native-aot\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"c6d031d6274e92b666e4cb07454de65dd3f5361d01003288c8805adb912327cc\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"71152a5dc855c64cb3de65aec365537098bcbb6704026f9cf4a89843ae0a2f8b\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"0dd19d15c043700587da8e498e192f3d4fa60dd7a9be1de80773da91595b575e\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"7609eac79ff052ca3696faf15d5dfebe8fc8393d360e10621ec0aa44e478fb53\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-native-aot\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"self-contained\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"98ed1ab1b3ed808c6b4bc9fc7488d6aa025511a08757d08441d6d4e7d520d140\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"bca86ec9b78520733e9d5a778a22f58d2a471224228e3463e77f8f43c71fa112\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"59022e9ca6ec4f41b123603e0f2fe71f10721f7cbbb50a9deca6716758e779aa\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"33a52aa3865ce885a822e7df57b8daf012b02e4589e04e3fda61f0ab65a66d5d\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"89f6514820a581a9635359ec0af0ef24e556f4c290797db10dfba7946d5806e7\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-self-contained\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"framework-dependent\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"6f0867412ab79c7e9a535992190885780b5dd42698bbf4a5183575f90ea8ba18\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"4c25d43f8256ab950afb25917f986dea7281e81723fe68c959ae3c2ad0d21666\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"af2eec0fe1fbc3afd9b46eb1f44ffc95d7ac51f4dad494a5af418d72333d65db\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"8d2335d928f7f4cc5478a593065239a50bf5814e15b343309fc029df41abefd4\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"14fa6a009dc43362f262cfb3064c947dbb6d7cd4a61647425fe56dc9fc83d7a5\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"2d0819ba518f1600d70602733d4a736d9571024b4088f87259a59413d15cb37b\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-framework-dependent\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"dotnet-tool\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"linux-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"sdk\",\"name\":\"Microsoft.NET.Sdk\",\"phase\":\"install\",\"versions\":[\">=10.0.100\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"command\":\"dotnet-morphir\",\"kind\":\"dotnet-tool\",\"packageId\":\"Morphir.Tool\"},\"version\":\"1.2.3\",\"wasmAbis\":[]}],\"operations\":[{\"operation\":\"generate\",\"target\":\"fsharp\"}],\"preset\":\"negative-platform-substituted\",\"providers\":[],\"schemaVersion\":\"0.1.0-draft.1\",\"version\":\"1.0.0\"}",
+    "toolchains/recipes/negative-unauthenticated-target/1.0.0.json": "{\"hosts\":[{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"native-aot\",\"execution\":\"native-aot\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"c6d031d6274e92b666e4cb07454de65dd3f5361d01003288c8805adb912327cc\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"71152a5dc855c64cb3de65aec365537098bcbb6704026f9cf4a89843ae0a2f8b\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"0dd19d15c043700587da8e498e192f3d4fa60dd7a9be1de80773da91595b575e\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"7609eac79ff052ca3696faf15d5dfebe8fc8393d360e10621ec0aa44e478fb53\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"target\":\"artifacts/morphir-dotnet-native-aot/1.2.3/win-x64-unpublished.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-native-aot\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"self-contained\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"98ed1ab1b3ed808c6b4bc9fc7488d6aa025511a08757d08441d6d4e7d520d140\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"bca86ec9b78520733e9d5a778a22f58d2a471224228e3463e77f8f43c71fa112\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"59022e9ca6ec4f41b123603e0f2fe71f10721f7cbbb50a9deca6716758e779aa\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"33a52aa3865ce885a822e7df57b8daf012b02e4589e04e3fda61f0ab65a66d5d\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"89f6514820a581a9635359ec0af0ef24e556f4c290797db10dfba7946d5806e7\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b\",\"target\":\"artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-self-contained\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"framework-dependent\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"6f0867412ab79c7e9a535992190885780b5dd42698bbf4a5183575f90ea8ba18\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz\"},\"linux-x64\":{\"sha256\":\"4c25d43f8256ab950afb25917f986dea7281e81723fe68c959ae3c2ad0d21666\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz\"},\"osx-arm64\":{\"sha256\":\"af2eec0fe1fbc3afd9b46eb1f44ffc95d7ac51f4dad494a5af418d72333d65db\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz\"},\"osx-x64\":{\"sha256\":\"8d2335d928f7f4cc5478a593065239a50bf5814e15b343309fc029df41abefd4\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz\"},\"win-arm64\":{\"sha256\":\"14fa6a009dc43362f262cfb3064c947dbb6d7cd4a61647425fe56dc9fc83d7a5\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip\"},\"win-x64\":{\"sha256\":\"2d0819ba518f1600d70602733d4a736d9571024b4088f87259a59413d15cb37b\",\"target\":\"artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"native\",\"name\":\"glibc\",\"platforms\":[\"linux-x64\",\"linux-arm64\"],\"versions\":[\">=2.28.0\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"kind\":\"tool-release\",\"toolId\":\"morphir-dotnet-framework-dependent\"},\"version\":\"1.2.3\",\"wasmAbis\":[]},{\"builtIns\":[{\"extensionId\":\"morphir.fsharp\",\"modelInput\":{\"codec\":\"morphir-json\",\"irVersion\":\"4.0.0\",\"profile\":\"morphir-ir\"},\"operation\":\"generate\",\"target\":\"fsharp\",\"version\":\"1.2.3\"}],\"deployment\":\"dotnet-tool\",\"execution\":\"jit\",\"implementation\":\"dotnet\",\"platforms\":{\"linux-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"linux-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"osx-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-arm64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"},\"win-x64\":{\"sha256\":\"4051f9198c28e3af4edb012bb14e06107a4c9058c922920e4531731aafa43fff\",\"target\":\"packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg\"}},\"prerequisites\":[{\"kind\":\"runtime\",\"name\":\"Microsoft.NETCore.App\",\"versions\":[\">=10.0.0\",\"<11.0.0\"]},{\"kind\":\"sdk\",\"name\":\"Microsoft.NET.Sdk\",\"phase\":\"install\",\"versions\":[\">=10.0.100\"]}],\"protocolVersions\":[\"0.1\",\"0.2.0-draft.1\"],\"source\":{\"command\":\"dotnet-morphir\",\"kind\":\"dotnet-tool\",\"packageId\":\"Morphir.Tool\"},\"version\":\"1.2.3\",\"wasmAbis\":[]}],\"operations\":[{\"operation\":\"generate\",\"target\":\"fsharp\"}],\"preset\":\"negative-unauthenticated-target\",\"providers\":[],\"schemaVersion\":\"0.1.0-draft.1\",\"version\":\"1.0.0\"}"
+  }
+}
