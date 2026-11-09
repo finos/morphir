@@ -39,17 +39,56 @@ fn candidate(
 }
 
 ///|
+/// Names that are taken: the names of a shared base map and the names added
+/// to this set. Only the additions are copied, so the local names of each
+/// declaration can block every global name without a copy of all of them.
+/// Nothing may change the base while a set over it is in use: the global names
+/// in `TargetNames::reserved` are final when `TargetNames::new` returns.
+priv struct NameSet {
+  base : Map[String, Bool]
+  own : Map[String, Bool]
+}
+
+///|
+/// A set of the names of `base` and no others.
+fn NameSet::over(base : Map[String, Bool]) -> NameSet {
+  { base, own: Map([]), }
+}
+
+///|
+/// A set of `names`.
+fn NameSet::of(names : Array[String]) -> NameSet {
+  { base: Map([]), own: Map::from_array(names.map(name => (name, true))), }
+}
+
+///|
+fn NameSet::contains(self : NameSet, name : String) -> Bool {
+  self.own.contains(name) || self.base.contains(name)
+}
+
+///|
+fn NameSet::add(self : NameSet, name : String) -> Unit {
+  self.own[name] = true
+}
+
+///|
+/// A set with the same names, whose additions do not change this one.
+fn NameSet::copy(self : NameSet) -> NameSet {
+  { base: self.base, own: self.own.copy(), }
+}
+
+///|
 fn allocate_namespace(
   plan : TargetNames,
   candidates : Array[NamingCandidate],
-  blocked : Map[String, Bool],
+  blocked : NameSet,
   reserve_global~ : Bool = true,
 ) -> Unit {
   let exact = candidates.filter(c => c.requested is Some(_))
   let blocked = blocked.copy()
   for c in exact {
     let name = c.requested.unwrap()
-    blocked[name] = true
+    blocked.add(name)
     plan.names[c.owner] = name
     if reserve_global {
       plan.reserved[name] = true
@@ -78,12 +117,12 @@ fn allocate_namespace(
   let reserved = blocked.copy()
   for c in candidates {
     groups.get_or_init(c.candidate, fn() { [] }).push(c)
-    reserved[c.candidate] = true
+    reserved.add(c.candidate)
   }
   // Reserve qualified candidates too, so recovery cannot take a later owner's spelling.
   for c in candidates {
     if groups[c.candidate].length() > 1 || blocked.contains(c.candidate) {
-      reserved[c.qualified] = true
+      reserved.add(c.qualified)
     }
   }
   let used = blocked.copy()
@@ -111,7 +150,7 @@ fn allocate_namespace(
         }
       }
     }
-    used[allocated] = true
+    used.add(allocated)
     if reserve_global {
       plan.reserved[allocated] = true
       plan.reserved_locations
@@ -214,7 +253,7 @@ fn allocate_fields(
       })
     }
   }
-  allocate_namespace(plan, candidates, Map([]), reserve_global=false)
+  allocate_namespace(plan, candidates, NameSet::of([]), reserve_global=false)
   if plan.style == Readable {
     for name in names {
       mapped[name] = plan.names["shape:" +

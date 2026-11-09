@@ -101,6 +101,36 @@ exhausted budget fails the session with `extension.budget_exhausted`, a passed
 call deadline ends it as a deadline, a refused memory growth fails it with
 `extension.memory_limit`, and a trap with `extension.guest_trap`.
 
+### The instruction cost of a guest
+
+The budget is the same for each model, so the cost of a guest's work decides
+which models it can generate. The test `portable guest cost` in
+`worker/wasm/native` measures it. For each input it runs `generateModel` in the
+portable guest on WAMR, as the CLI's worker mode does, and finds the least
+budget that completes, to within 1 %, with a binary search on the budget. It
+runs only when `MORPHIR_GUEST_COST` names the inputs: a count of public integer
+literal values in one module, or the absolute path of a model file of any IR
+version, which the test migrates to IR 4. It also needs the variables that
+`mise run test:wasm-workers` sets:
+
+```bash
+MORPHIR_GUEST_COST=100,800,/path/to/morphir-ir.json \
+MORPHIR_CLI=_build/native/release/build/morphir/morphir/morphir.exe \
+MORPHIR_PORTABLE_GUEST=.dev/wasm-workers/portable-mep/extension/model.wasm \
+moon test --target native --release -p finos/morphir-host/worker/wasm/native \
+  -f 'portable guest cost*'
+```
+
+Each input gives one JSON line on stdout, for example
+`{"input":"values=800","bytes":109852,"instructions":"1325782875"}`. The
+`instructions` member is the count, `over 2147483647`, or `{"refused": ...}`
+when the guest refuses the model for another reason. Bead
+`morphir-ukvn.5.64.36.29` found with it that generation was quadratic in the
+number of values: the portable guest failed at 354 values before the fix and
+completes 1,250 after it. The test
+`800 literal values generate within the budget of the model line` keeps that
+in the CI tests.
+
 ## The worker mode
 
 `morphir extension worker` is an internal subcommand of the native CLI. The

@@ -1,5 +1,9 @@
 ///|
 fn part(text : String) -> String {
+  // Most names have neither character, and need no escape.
+  if !text.contains_char('~') && !text.contains_char('/') {
+    return text
+  }
   text
   .split("~")
   .map(StringView::to_owned)
@@ -56,8 +60,26 @@ fn collect(
 /// Stable declaration identities, with JSON-pointer suffixes for structural children.
 /// Pair-array indices denote positions, not identities preserved through reordering.
 pub fn nodes(unit_id : String, file : @ir.IRFile) -> Array[String] raise {
+  let result = node_set(unit_id, file).keys().collect()
+  result.sort()
+  result
+}
+
+///|
+/// The identities of `nodes` as a set, for a caller that only asks whether a
+/// node exists: it is not sorted. A caller that has `@ir_json.to_json(file)`
+/// already passes it as `json`, so that the file is not encoded again.
+pub fn node_set(
+  unit_id : String,
+  file : @ir.IRFile,
+  json? : Json,
+) -> Map[String, Bool] raise {
   let owned = Map::from_array([("unit:" + unit_id, true)])
-  collect("unit:" + unit_id + "/ir", @ir_json.to_json(file), owned)
+  let json = match json {
+    Some(json) => json
+    None => @ir_json.to_json(file)
+  }
+  collect("unit:" + unit_id + "/ir", json, owned)
   if file.distribution is Library(package_name, _, definition) {
     for module_name, module_def in definition.modules {
       let module_id = "module:" +
@@ -114,7 +136,5 @@ pub fn nodes(unit_id : String, file : @ir.IRFile) -> Array[String] raise {
       }
     }
   }
-  let result = owned.keys().collect()
-  result.sort()
-  result
+  owned
 }

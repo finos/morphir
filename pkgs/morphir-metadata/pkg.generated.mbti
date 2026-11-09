@@ -13,7 +13,7 @@ pub const ADAPTER_PROFILE : String = "morphir_linked_metadata_v1"
 
 pub const TARGET_NAMES_PREDICATE : String = "morphir://ir/pkg/morphir/naming?format=4.1.0#/module/naming/value/target-names"
 
-pub fn interpret(@v4.IRFile, String, Array[MetadataEntry], capabilities? : Capabilities) -> Interpretation raise
+pub fn interpret(@v4.IRFile, String, Array[MetadataEntry], capabilities? : Capabilities, owned? : Map[String, Bool]) -> Interpretation raise
 
 pub fn is_target_names_predicate(String) -> Bool raise
 

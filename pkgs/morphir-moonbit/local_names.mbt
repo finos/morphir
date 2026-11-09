@@ -1,7 +1,7 @@
 ///|
 priv struct LocalNames {
   names : Map[@ir.Name, String]
-  used : Map[String, Bool]
+  used : NameSet
   plan : TargetNames
   owner : String
 }
@@ -140,7 +140,7 @@ fn LocalNames::new(
   }
   let result : LocalNames = {
     names: Map([]),
-    used: plan.reserved.copy(),
+    used: NameSet::over(plan.reserved),
     plan,
     owner,
   }
@@ -173,7 +173,7 @@ fn LocalNames::new(
   allocate_namespace(plan, candidates, result.used, reserve_global=false)
   for name in names {
     result.names[name] = plan.names[owner + "/local/" + name.to_canonical()]
-    result.used[result.names[name]] = true
+    result.used.add(result.names[name])
   }
   result
 }
@@ -184,7 +184,7 @@ fn LocalNames::fresh(self : LocalNames, role : String) -> String {
   while true {
     let name = role + "_" + ordinal.to_string()
     if !self.used.contains(name) {
-      self.used[name] = true
+      self.used.add(name)
       self.plan.allocations.push({
         owner: self.owner + "/temporary/" + name,
         role: "temporary",

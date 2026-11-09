@@ -67,7 +67,7 @@ fn lower_type(
     }
     Unit(_) => Atom(Scalar::Unit)
     Reference(_, name, args) => {
-      ignore(value_name(name))
+      validate_fqname(name)
       match name.to_canonical() {
         "morphir/SDK:list#list" if args.length() == 1 =>
           Sequence(lower_type(ctx, args[0], context, trail~))

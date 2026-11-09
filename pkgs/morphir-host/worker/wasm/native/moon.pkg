@@ -27,6 +27,9 @@ import {
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/async/process" @spawn,
+  "finos/morphir-ir/migration",
+  "finos/morphir-ir/versioned/json" @versioned_json,
+  "finos/morphir-ir/versions/v4/json" @v4_json,
 } for "test"
 
 // The worker-mode tests serve a guest in the test process, and a guest call

@@ -123,10 +123,12 @@ fn render_name(name : @ir.Name, upper : Bool) -> String {
 }
 
 ///|
+/// `owned` holds the node identities of the input, from `@identities.nodes`.
 fn TargetNames::new(
   input : Input,
   style : NamingStyle,
   capabilities : @linked_metadata.Capabilities,
+  owned : Map[String, Bool],
 ) -> TargetNames raise {
   let plan : TargetNames = {
     style,
@@ -135,6 +137,7 @@ fn TargetNames::new(
       input.unit_id,
       input.metadata.map(m => { node_id: m.node_id, data: m.data, }),
       capabilities~,
+      owned~,
     ),
     origins: Map([]),
     names: Map([]),
@@ -171,7 +174,7 @@ fn TargetNames::new(
   for module_name, access in definition.modules {
     for name, _ in access.value.values {
       let fqname : @ir.FQName = { package_name, module_name, local_name: name, }
-      ignore(value_name(fqname))
+      validate_fqname(fqname)
       let owner = value_node(fqname)
       let (hint, source) = declaration_hint(plan, owner)
       let fact = facts_by_owner.get(owner)
@@ -221,7 +224,7 @@ fn TargetNames::new(
     }
     for name, entry in access.value.types {
       let fqname : @ir.FQName = { package_name, module_name, local_name: name, }
-      ignore(value_name(fqname))
+      validate_fqname(fqname)
       if entry.value.value is CustomTypeDefinition(_, cases) {
         let owner = "type:" + fqname.to_canonical()
         if style == LegacyHex {
@@ -271,22 +274,20 @@ fn TargetNames::new(
       requests[text] = c.owner
     }
   }
-  allocate_namespace(plan, values, Map([]))
+  allocate_namespace(plan, values, NameSet::of([]))
   allocate_namespace(
     plan,
     types,
-    Map::from_array(
-      [
-        "Int", "Int16", "Int32", "Int64", "UInt", "UInt16", "UInt32", "UInt64", "Bool",
-        "Double", "Float", "String", "StringView", "Char", "Byte", "Bytes", "BytesView",
-        "Unit", "Array", "FixedArray", "Option", "Result",
-      ].map(n => (n, true)),
-    ),
+    NameSet::of([
+      "Int", "Int16", "Int32", "Int64", "UInt", "UInt16", "UInt32", "UInt64", "Bool",
+      "Double", "Float", "String", "StringView", "Char", "Byte", "Bytes", "BytesView",
+      "Unit", "Array", "FixedArray", "Option", "Result",
+    ]),
   )
   allocate_namespace(
     plan,
     constructors,
-    Map::from_array(["Some", "None", "Ok", "Err"].map(n => (n, true))),
+    NameSet::of(["Some", "None", "Ok", "Err"]),
   )
   plan
 }

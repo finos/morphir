@@ -88,6 +88,10 @@
   before and after in the pull request
 - [x] 5.5 Add the Node worker-thread launcher and its entry module built from MoonBit, shipped in the npm package
   (WASM-3); verify the "Node worker threads" scenario and that the npm package runs it from an unpacked tarball
+- [x] 5.6 Make generation in the portable guest linear in the number of values (bead `morphir-ukvn.5.64.36.29`):
+  measure the least WAMR budget of `generateModel` for value-dense and real models, remove the quadratic name copies
+  and lookups and the repeated identity walk, and keep the output byte for byte; verify the "Value-dense model
+  within the budget" scenario
 
 ## 6. Extension commands on the worker host (morphir-ukvn.5.64.36.6)
 

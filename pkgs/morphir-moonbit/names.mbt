@@ -32,12 +32,19 @@ fn validate_path(path : @ir.Path) -> Unit raise {
 }
 
 ///|
-/// Legacy ABI helper. Read Output.symbols for names allocated in readable mode.
-/// Hex encodes validated canonical FQNames without folding case or word boundaries.
-pub fn value_name(name : @ir.FQName) -> String raise {
+/// Refuses an FQName whose names do not round-trip, as `value_name` does,
+/// without building the hex name.
+fn validate_fqname(name : @ir.FQName) -> Unit raise {
   validate_path(name.package_name)
   validate_path(name.module_name)
   validate_name(name.local_name)
+}
+
+///|
+/// Legacy ABI helper. Read Output.symbols for names allocated in readable mode.
+/// Hex encodes validated canonical FQNames without folding case or word boundaries.
+pub fn value_name(name : @ir.FQName) -> String raise {
+  validate_fqname(name)
   "v_" + hex(name.to_canonical())
 }
 

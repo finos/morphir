@@ -120,8 +120,18 @@ async fn generate_plain_ir(
   spec : @worker.WorkerSpec,
   size : Int32,
 ) -> Json {
+  generate_bytes(host, spec, plain_ir_of_size(size))
+}
+
+///|
+/// Wraps the plain IR file `bytes` as the CLI does, and sends it to the guest
+/// with `generateModel`. Returns the generate result.
+async fn generate_bytes(
+  host : @worker.Host,
+  spec : @worker.WorkerSpec,
+  bytes : Bytes,
+) -> Json {
   let claims = host.probe(spec).claims
-  let bytes = plain_ir_of_size(size)
   let wrapped = @worker.WrappedPlainIr::of(
     bytes,
     @json.parse(@utf8.decode(bytes[:])),
@@ -158,6 +168,25 @@ async test "byte callback adapter: a plain IR file of 2 MiB generates within the
       2 * 1024 * 1024,
     )
     assert_true(generated.stringify().contains("answer"))
+  })
+}
+
+///|
+async test "byte callback adapter: 800 literal values generate within the budget of the model line" {
+  guard cli() is Some(path) &&
+    prerequisite("MORPHIR_PORTABLE_GUEST") is Some(portable) else {
+    return
+  }
+  // Before bead morphir-ukvn.5.64.36.29 the guest failed at 354 values, because
+  // generation was quadratic in the number of values. 800 values take about
+  // 1,330,000,000 instructions of the 2,147,483,647 of the model line.
+  with_host(path, host => {
+    let generated = generate_bytes(
+      host,
+      wasm_spec(@fs.read_file(portable).binary(), abi=MorphirBytesV1),
+      value_dense_ir(800),
+    )
+    assert_true(generated.stringify().contains("valuebet"))
   })
 }
 

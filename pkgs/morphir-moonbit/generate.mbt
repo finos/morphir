@@ -77,7 +77,8 @@ fn generate_library(
       )
   }
   validate_path(package_name)
-  let source_ir = canonical_json(@ir_json.to_json(input.ir))
+  let source_json = @ir_json.to_json(input.ir)
+  let source_ir = canonical_json(source_json)
   if @utf8.encode(source_ir).length() > limits.max_bytes {
     raise Invalid(
       "moonbit.byte_limit",
@@ -85,9 +86,7 @@ fn generate_library(
       "Source IR snapshot exceeds the output budget",
     )
   }
-  let owned = Map::from_array(
-    @identities.nodes(input.unit_id, input.ir).map(id => (id, true)),
-  )
+  let owned = @identities.node_set(input.unit_id, input.ir, json=source_json)
   let index : Map[@ir.FQName, Declaration] = Map([])
   let source_extensions = Map([])
   for dependency_name, specification in dependencies {
@@ -110,7 +109,7 @@ fn generate_library(
   }
   let lowering : Lowering = {
     error_contract,
-    names: TargetNames::new(input, naming, metadata_capabilities),
+    names: TargetNames::new(input, naming, metadata_capabilities, owned),
     locals: None,
     types: Map([]),
     constructors: Map([]),
@@ -124,7 +123,7 @@ fn generate_library(
   for module_name, access in package_def.modules {
     for name, entry in access.value.types {
       let fqname : @ir.FQName = { package_name, module_name, local_name: name, }
-      ignore(value_name(fqname))
+      validate_fqname(fqname)
       lowering.types[fqname] = {
         definition: entry.value.value,
         public: access.access == @ir.Access::Public &&
@@ -448,6 +447,11 @@ fn generate_library(
   let (invocation_codecs, invocation_types) = invocation_codecs(
     lowering, invocations,
   )
+  // One lookup for each name: a search of the invocations for each name would
+  // make generation quadratic in the number of values.
+  let invoked : Map[String, Bool] = Map::from_array(
+    invocations.map(e => (e.fqname, true)),
+  )
   {
     artifacts,
     symbols,
@@ -460,10 +464,11 @@ fn generate_library(
     invocation_types,
     invocation_rejections: names.filter_map(name => {
       let d = index[name]
-      if d.public && !invocations.any(e => e.fqname == name.to_canonical()) {
+      let fqname = name.to_canonical()
+      if d.public && !invoked.contains(fqname) {
         Some(
           (
-            name.to_canonical(),
+            fqname,
             if boundary_type(d.output) is None ||
               d.inputs.any(p => boundary_type(p.1) is None) {
               "execution.boundary_function"

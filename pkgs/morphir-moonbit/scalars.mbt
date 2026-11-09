@@ -10,7 +10,7 @@ fn scalar_type(tpe : @ir.Type, context : String) -> Scalar raise {
       Unit
     }
     Reference(attrs, name, args) => {
-      ignore(value_name(name))
+      validate_fqname(name)
       if !attrs.constraints.is_empty() || !args.is_empty() {
         raise Invalid(
           "moonbit.unsupported_type", context, "Constrained or parameterized scalar type",

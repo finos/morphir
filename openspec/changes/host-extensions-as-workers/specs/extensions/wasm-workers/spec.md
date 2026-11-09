@@ -127,6 +127,12 @@ report SHALL state which bounds the host enforced.
 - **WHEN** a guest runs more instructions than its per-call budget on an engine that meters
 - **THEN** the call stops, the session fails with `extension.budget_exhausted` and the exit status is 1, not 124
 
+#### Scenario: Value-dense model within the budget
+- **WHEN** the native CLI runs `generateModel` of the MoonBit portable guest on the model line with a plain IR file of
+  800 public literal values in one module
+- **THEN** the call completes within the budget, because the guest's cost grows linearly with the number of values
+  (bead: morphir-ukvn.5.64.36.29)
+
 #### Scenario: Host without metering
 - **WHEN** the guest runs on a host whose engine has no instruction metering
 - **THEN** the report lists the deadline and memory ceiling as enforced and the instruction budget as not enforced

@@ -1,11 +1,15 @@
 ///|
 /// Interpret the explicit engine adapter without changing any authored Ion.
 /// This is not a native IR 4.1/Ion codec or a general JSON-LD processor.
+/// A caller that has the node identities of `file` and `unit_id` already, as
+/// `@identities.nodes` gives them, passes them as `owned`, so that they are not
+/// collected again.
 pub fn interpret(
   file : @ir.IRFile,
   unit_id : String,
   entries : Array[MetadataEntry],
   capabilities~ : Capabilities = Capabilities::unavailable(),
+  owned? : Map[String, Bool],
 ) -> Interpretation raise {
   let owners : Map[String, String] = Map([])
   if file.distribution is Library(package_name, _, definition) {
@@ -20,9 +24,10 @@ pub fn interpret(
       }
     }
   }
-  let owned = Map::from_array(
-    @identities.nodes(unit_id, file).map(id => (id, true)),
-  )
+  let owned = match owned {
+    Some(owned) => owned
+    None => @identities.node_set(unit_id, file)
+  }
   let facts : Map[String, NamingFact] = Map([])
   let unvalidated : Map[String, Bool] = Map([])
   let restored : Map[String, String] = Map([])
