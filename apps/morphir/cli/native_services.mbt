@@ -241,7 +241,7 @@ fn native_services_cleanup(
   .observer()
   .scope()
   .observe(@observe.Cleanup, _ => {
-    extension_cleanup(root)
+    services_scratch_cleanup(root)
     if @platform.kind(root) != 0 {
       raise @config.Invalid("native.scratch_cleanup_failed")
     }
@@ -351,7 +351,7 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
     raise @config.Invalid("native.timeout_limit")
   }
   let root = @platform.temporary()
-  errdefer extension_cleanup(root)
+  errdefer services_scratch_cleanup(root)
   let logs = native_services_logs(cli)
   let flush_logs = telemetry_flush(fn() { logs.flush() })
   errdefer flush_logs()
@@ -388,7 +388,7 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
     "timeout": timeout,
     "cancelFile": value(cli, "cancel-file"),
   }
-  extension_dispatch(
+  services_dispatch(
     helper,
     control,
     root,
@@ -468,7 +468,7 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
 ///|
 /// Remove only the files this command creates. A guest that wrote into its
 /// working directory leaves it in place, and the report already says so.
-fn extension_cleanup(root : String) -> Unit {
+fn services_scratch_cleanup(root : String) -> Unit {
   for name in ["control.json", "request.bin", "response.bin"] {
     let file = try @platform.kind(root + "/" + name) == 1 catch {
       _ => false
@@ -488,8 +488,11 @@ fn extension_cleanup(root : String) -> Unit {
 }
 
 ///|
+/// Runs the services helper (`build-provider/native-services.mjs`) of the
+/// local repository and installation commands. The extension commands do not
+/// use it: they run on the worker host.
 #cfg(target="js")
-extern "js" fn extension_start(
+extern "js" fn services_start(
   helper : String,
   config : String,
   interrupted : () -> Bool,
@@ -497,7 +500,7 @@ extern "js" fn extension_start(
   started : (String) -> Unit,
 ) -> @js_async.Promise[Int32] =
   #| (helper, config, interrupted, finish, started) => {
-  #|   const failed = JSON.stringify({profile:'morphir/cli/extension-command',contractVersion:'0.1.0-draft.1',state:'failed',exitCode:null,stderr:'',error:'extension.helper_unavailable',workDirectoryEmpty:false});
+  #|   const failed = JSON.stringify({profile:'morphir/cli/native-services',contractVersion:'0.1.0',state:'failed',stderr:'',error:'native.helper_unavailable',workDirectoryEmpty:false});
   #|   return import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
   #|     .then(module=>module.extensionCommand(JSON.parse(config),interrupted,started))
   #|     .then(reply=>JSON.stringify(reply),()=>failed)
@@ -506,7 +509,7 @@ extern "js" fn extension_start(
 
 ///|
 #cfg(target="js")
-fn extension_dispatch(
+fn services_dispatch(
   helper : String,
   control : Json,
   _root : String,
@@ -515,7 +518,7 @@ fn extension_dispatch(
   finish : (String) -> Int32,
 ) -> Int32 {
   remember_completion(
-    extension_start(
+    services_start(
       helper,
       control.stringify(),
       @platform.interruption_requested,
@@ -528,7 +531,7 @@ fn extension_dispatch(
 
 ///|
 #cfg(target="native")
-fn extension_dispatch(
+fn services_dispatch(
   helper : String,
   control : Json,
   root : String,
@@ -559,7 +562,7 @@ fn extension_dispatch(
 
 ///|
 #cfg(any(target="wasm", target="wasm-gc"))
-fn extension_dispatch(
+fn services_dispatch(
   _helper : String,
   _control : Json,
   _root : String,

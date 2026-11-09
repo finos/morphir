@@ -1084,3 +1084,34 @@ test "the output's parent directory is found for each path form" {
   assert_eq(output_parent("C:\\out"), "C:\\")
   assert_eq(output_parent("C:\\work\\out"), "C:\\work")
 }
+
+///|
+/// The services helper serves only the local repository commands. When it
+/// does not load, the reply uses the services profile, not the profile of the
+/// retired extension helper.
+#cfg(target="js")
+async test "a services helper that does not load fails with native.helper_unavailable" {
+  let reply = Ref("")
+  let status = services_start(
+    @platform.temporary() + "/missing-native-services.mjs",
+    "{}",
+    () => false,
+    text => {
+      reply.val = text
+      0
+    },
+    _ => (),
+  ).wait()
+  assert_eq(status, 0)
+  guard @json.parse(reply.val) is Object(fields) else { fail("no reply") }
+  assert_eq(
+    fields.get("profile"),
+    Some(Json::string("morphir/cli/native-services")),
+  )
+  assert_eq(fields.get("contractVersion"), Some(Json::string("0.1.0")))
+  assert_eq(fields.get("state"), Some(Json::string("failed")))
+  assert_eq(
+    fields.get("error"),
+    Some(Json::string("native.helper_unavailable")),
+  )
+}

@@ -230,7 +230,7 @@ async function regression() {
       }
       for (const name of hostModules) put(join(cwd, 'pkgs/morphir-host/embedding', name), `fixture ${name}\n`);
       for (const name of ['apps/morphir/bin/morphir.js', 'apps/morphir/dist/morphir.js',
-        'apps/morphir/build-provider/extension.mjs', 'apps/morphir/build-provider/supervision.mjs',
+        'apps/morphir/build-provider/supervision.mjs',
         'apps/morphir/build-provider/identity.mjs']) put(join(cwd, name), `fixture ${name}\n`);
       copyExecutable(stubPath, join(cwd, '_build/native/release/build/finos/morphir-extension/acceptance/acceptance.exe'));
       copyExecutable(stubPath, join(cwd, '_build/native/release/build/finos/morphir-extension/morphir-extension.exe'));

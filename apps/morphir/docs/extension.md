@@ -643,6 +643,29 @@ and `execution.deadline` is `extension.deadline`.
 stderr is in the report and on stderr, and the CLI's `--log-level` diagnostics
 still apply. Remove the two options from scripts that call these commands.
 
+### BREAKING: the helper routes are removed
+
+The worker host replaced the helper routes, and the routes are now removed.
+They needed a pinned Node runtime and helper modules, or a Rust adapter built
+from a finos/morphir checkout. The worker host runs the same extensions with no
+helper, so there is only one host to maintain and to qualify.
+
+| Removed | What to use |
+| --- | --- |
+| `build-provider/extension.mjs` in the npm package (the `core-wasm-process` helper, control flag `--morphir-extension-v1`, reply profile `morphir/cli/extension-command`) | `morphir extension describe`, `compile` or `generate` with a contract `0.2.0` pin, `runtime.kind` `wasm` and `abi` `morphir-bytes-v1` |
+| `build-provider/extism.mjs` in the npm package (the `extism-wasm` helper, reply profile `morphir/cli/extism-services`) | The same commands with `runtime.kind` `wasm` and `abi` `extism-kernel-v1` |
+| The npm launcher's default for `MORPHIR_EXTENSION_HELPER` | Nothing. The CLI does not read the variable |
+| The Rust adapter operations `describe`, `compile` and `generate` (`native-process`) and `extism.describe`, `extism.compile` and `extism.generate` | The same commands with `runtime.kind` `process` or `wasm` |
+
+The section [Retired pins and options](#breaking-retired-pins-and-options) shows
+each old pin and its contract `0.2.0` replacement. A program that imported one
+of the removed modules, or sent one of the removed operations to the Rust
+adapter, must call the commands instead.
+
+The Rust adapter and `build-provider/native-services.mjs` stay. They serve only
+the [controlled local repositories](#controlled-local-repositories) commands,
+with `--services-pin` and `--services-helper`.
+
 ## Qualification
 
 The routine CLI tests (`mise run test:cli`) run the commands with the native
@@ -804,9 +827,10 @@ selection to invocation. That downstream acceptance remains morphir-ukvn.5.64.30
 
 `mise run test:cli-native-prerequisites` used to test these commands with the
 retired helper route. It now qualifies the native MoonBit guest on the worker
-host; see [Qualification](#qualification). The Rust adapter acceptance stays
-available as `moon run scripts/native-services.mbtx -- --acceptance --shared
-/path/to/finos/morphir --json` until the helper routes are removed. It runs the
+host; see [Qualification](#qualification). The Rust adapter acceptance is
+`moon run scripts/native-services.mbtx -- --acceptance --shared
+/path/to/finos/morphir --json`. The adapter serves only the commands above; its
+extension operations were removed with the helper routes. The acceptance runs the
 local repository lifecycle above through the adapter, the extension commands on
 the worker host with the native guest and the Rust fault peer
 (`apps/morphir/native-services/fault-fixture.rs`: malformed and oversized

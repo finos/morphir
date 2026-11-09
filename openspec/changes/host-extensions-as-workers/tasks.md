@@ -197,12 +197,23 @@
 
 ## 9. Retire the helper routes (morphir-ukvn.5.64.36.9)
 
-- [ ] 9.1 Remove `apps/morphir/build-provider/extension.mts`, `extism.mts`, the invocation role of
+- [x] 9.1 Remove `apps/morphir/build-provider/extension.mts`, `extism.mts`, the invocation role of
   `native-services.mts` and the Native and Extism operations of `apps/morphir/native-services/`, and the npm
-  launcher's helper default (MIG-1); verify the CLI, npm package and qualification tasks build and pass
-- [ ] 9.2 Remove the MoonBit code of the old bindings; verify no new warnings in the touched modules
-- [ ] 9.3 Add the breaking-change notes and update the remaining documentation; verify the docs build and link check
-  pass
+  launcher's helper default (MIG-1); verify the CLI, npm package and qualification tasks build and pass. The unused
+  `test-extism.mts`, `extism.rs` with its tests, and the shared Extism test target of the generated manifest go too.
+  `native-services.mts` and the adapter keep the local repository and installation operations, so the crate
+  dependencies stay and the lock file loses only the adapter's `wat` entry. On macOS arm64: `test:cli` (with the
+  installed npm package), `check:typescript`, the `native-services.mbtx --acceptance` of the nightly job (all five
+  parts) and `test:extension-qualification` (elm 22 passed and 2 known, python 172, moonbit-native 17,
+  moonbit-portable 16, conformance 20, model-line 111 passed and 2 known) pass
+- [x] 9.2 Remove the MoonBit code of the old bindings; verify no new warnings in the touched modules. Group 6 removed
+  the old bindings from `extension.mbt`; the remaining helper dispatch in `native_services.mbt` now has the services
+  role and name, and its fallback reply uses `native.helper_unavailable` (js test). `moon check apps/morphir/cli
+  --deny-warn` passes on native, js, wasm and wasm-gc, and the CLI unit suites pass on native and js
+- [x] 9.3 Add the breaking-change notes and update the remaining documentation; verify the docs build and link check
+  pass. `CHANGELOG.md` (no release tool owns one) and the section "BREAKING: the helper routes are removed" of
+  `apps/morphir/docs/extension.md` give the reason and the migration; the first commit has a `BREAKING CHANGE`
+  footer. `build:site` and `check:site` (49 pages) pass
 
 ## Workflow follow-up
 
