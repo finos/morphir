@@ -12,6 +12,6 @@
 ## Workflow follow-up
 
 - Follow AGENTS.md for review, archive, tracker closure and release approval.
-- Open the follow-up issue for a model-node IRI in `Diagnostic` (VAL-4).
+- Resolve finos/morphir#1144, the follow-up issue for a model-node IRI in `Diagnostic` (VAL-4).
 - SDK, host and guest support for `validateModel` follows in finos/morphir-rust, finos/morphir-moonbit and finos/morphir-dotnet.
-- IR regeneration with the MoonBit CLI follows bead `morphir-sugs`.
+- IR regeneration with the MoonBit CLI follows bead `morphir-sugs` and finos/morphir-moonbit#325.

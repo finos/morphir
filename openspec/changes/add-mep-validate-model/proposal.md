@@ -52,11 +52,11 @@ None. `openspec/specs/` has no capability for MEP model transport.
 - Pull request finos/morphir#1139.
 - Design source: task 7.1 and design UP-1 of the morphir-dotnet change
   `add-mep-core`.
-- Follow-up: an issue that proposes an optional model-node IRI in
+- Follow-up: finos/morphir#1144 proposes an optional model-node IRI in
   `Diagnostic` for all methods (decision VAL-4).
 - Follow-up: bead `morphir-sugs` (IR regeneration with the Gleam extension on
   the MoonBit CLI), through a `--types-only` flag on
-  `morphir extension compile` in finos/morphir-moonbit.
+  `morphir extension compile` (finos/morphir-moonbit#325).
 
 ## Impact
 

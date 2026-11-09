@@ -164,7 +164,7 @@ allowed loss: the result of a lossy validation has no use.</p>
 <h3 id="val-4">VAL-4. Model-node references are deferred</h3>
 <p>This change keeps <code>Diagnostic</code> as it is. A validator fills
 <code>location</code> when the model has a source range, and otherwise names the
-node in <code>message</code>. A follow-up issue proposes an optional
+node in <code>message</code>. The follow-up issue finos/morphir#1144 proposes an optional
 <code>Diagnostic.node</code> for all methods, as an IRI of the model node, in the
 style of SHACL <code>sh:focusNode</code>. <strong>Alternatives rejected:</strong>
 (a) a contract key in <code>Diagnostic.data</code>: <code>data</code> belongs to
@@ -198,7 +198,8 @@ calls <code>GleamExtension.compile</code> of <code>morphir-gleam-binding</code>
 0.4.0 (finos/morphir-gleam <code>a529add</code>) with <code>typesOnly: true</code>
 and IR 4. The same program gives a byte-identical IR for the unchanged contract
 on <code>main</code>. A <code>--types-only</code> flag on <code>morphir extension
-compile</code> in finos/morphir-moonbit closes bead <code>morphir-sugs</code>.
+compile</code> in finos/morphir-moonbit (finos/morphir-moonbit#325) closes bead
+<code>morphir-sugs</code>.
 <strong>Alternatives rejected:</strong> (a) commit the program here: the MoonBit
 route replaces it; (b) wait for a MoonBit release: it blocks this change.</p>
 
@@ -235,7 +236,7 @@ member and ignores it. Rollback is a revert of finos/morphir#1139.</p>
 <h2 id="open-questions">Open questions</h2>
 <ul>
 <li>How does an FQName become a model-node IRI? The follow-up issue for
-<code>Diagnostic.node</code> decides this (<a href="#val-4">VAL-4</a>).</li>
+<code>Diagnostic.node</code>, finos/morphir#1144, decides this (<a href="#val-4">VAL-4</a>).</li>
 </ul>
 
 </main>
