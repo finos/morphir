@@ -321,3 +321,59 @@ test "worker arguments: with --json a usage error is a command-result failure fo
   }
   assert_false(document is { "result": _, .. })
 }
+
+///|
+test "worker arguments: --instructions takes 1 to 9007199254740991" {
+  let base = [
+    "--abi",
+    "morphir-bytes-v1",
+    "--module",
+    "m.wasm",
+    "--build-identity",
+    "a".repeat(64),
+  ]
+  let instructions = (text : String) => {
+    guard @native.WorkerInvocation::parse([..base, "--instructions", text])
+      is Serve({ call: Some(call), .. }) else {
+      fail("no call bounds for --instructions \{text}")
+    }
+    call.instructions
+  }
+  assert_eq(instructions("1"), Some(1L))
+  assert_eq(instructions("2147483648"), Some(2147483648L))
+  assert_eq(instructions("5000000000"), Some(5000000000L))
+  assert_eq(instructions("9007199254740991"), Some(9007199254740991L))
+  let refused = [
+    "0", "-1", "9007199254740992", "9223372036854775808", "1e9", "x", "+5", "0x10",
+    "0b101", "1_000", " 5", "5 ", "",
+  ]
+  for text in refused {
+    for args in [["--instructions", text], ["--instructions=\{text}"]] {
+      guard (Ok(@native.WorkerInvocation::parse([..base, ..args])) catch {
+          e => Err(e)
+        })
+        is Err(@native.UsageError(message)) else {
+        fail("accepted \{@debug.to_string(args)}")
+      }
+      assert_eq(
+        message, "--instructions must be an integer from 1 to 9007199254740991",
+      )
+    }
+  }
+}
+
+///|
+async test "worker budget above 2^31: a worker with --instructions 3000000000 serves its calls" {
+  with_module_file(@fixtures.extism_echo_guest(), path => {
+    let (code, responses, _) = run_worker(
+      options(ExtismKernelV1, path, extra=["--instructions", "3000000000"]),
+      [
+        request(1, "morphir.extension.describe"),
+        request(2, "morphir.shutdown"),
+        exit_notification(),
+      ],
+    )
+    assert_eq(code, 0)
+    assert_eq(responses.length(), 2)
+  })
+}

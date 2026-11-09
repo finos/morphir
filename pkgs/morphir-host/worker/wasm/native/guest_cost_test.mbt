@@ -85,7 +85,7 @@ async fn generate_within(
   path : String,
   portable : Bytes,
   bytes : Bytes,
-  instructions : Int32,
+  instructions : Int64,
 ) -> Ending {
   let call = @guest.CallBounds::new(
     deadline_ms=600000,
@@ -122,19 +122,20 @@ async fn generate_within(
 
 ///|
 /// The smallest budget, to within 1 %, at which the portable guest generates
-/// `bytes`: a count, "over 2147483647", or the refusal of the guest.
+/// `bytes`: a count, "over 5000000000" (the budget of the model line), or the
+/// refusal of the guest.
 async fn least_budget(path : String, portable : Bytes, bytes : Bytes) -> Json {
-  let max = 2147483647L
-  match generate_within(path, portable, bytes, max.to_int()) {
+  let max = 5000000000L
+  match generate_within(path, portable, bytes, max) {
     Generated => ()
-    OverBudget => return Json::string("over 2147483647")
+    OverBudget => return Json::string("over \{max}")
     Refused(text) => return { "refused": text }
   }
   let mut low = 1000000L
   let mut high = max
   while high - low > high / 100L {
     let middle = low + (high - low) / 2L
-    if generate_within(path, portable, bytes, middle.to_int()) is Generated {
+    if generate_within(path, portable, bytes, middle) is Generated {
       high = middle
     } else {
       low = middle

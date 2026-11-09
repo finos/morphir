@@ -39,7 +39,7 @@ pub(open) trait Guest {
 #derive(Eq, Debug)
 pub struct CallBounds {
   deadline_ms : Int32
-  instructions : Int32?
+  instructions : Int64?
 }
 
 ///|
@@ -51,7 +51,7 @@ pub extend CallBounds with @debug.Debug::{to_repr}
 ///|
 pub fn CallBounds::new(
   deadline_ms~ : Int32,
-  instructions~ : Int32?,
+  instructions~ : Int64?,
 ) -> CallBounds {
   { deadline_ms, instructions, }
 }
@@ -59,7 +59,7 @@ pub fn CallBounds::new(
 ///|
 /// The bounds of each call for an ABI profile: 30 seconds for
 /// `extism-kernel-v1` and 10 seconds for `morphir-bytes-v1`, with the instruction
-/// budget of the session limits. That budget is 2,147,483,647 on the model line
+/// budget of the session limits. That budget is 5,000,000,000 on the model line
 /// and 1,000,000,000 on MEP 0.1.
 pub fn CallBounds::for_abi(
   abi : @worker.WasmAbi,
@@ -82,7 +82,7 @@ fn CallBounds::engine(
 ) -> (@engine.Budget?, @engine.Deadline) raise @worker.LaunchError {
   try {
     let budget = match self.instructions {
-      Some(count) => Some(@engine.Budget::parse(count.to_int64()))
+      Some(count) => Some(@engine.Budget::parse(count))
       None => None
     }
     (budget, @engine.Deadline::parse(self.deadline_ms))

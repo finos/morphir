@@ -91,7 +91,10 @@ fn worker_command() -> @argparse.Command {
       ),
       @argparse.OptionArg(
         "instructions",
-        about="The instruction budget of each guest call",
+        about="The instruction budget of each guest call, from 1 to 9007199254740991",
+        // So that a negative value gets the range message, not "a value is
+        // required".
+        allow_hyphen_values=true,
       ),
       @argparse.OptionArg(
         "memory-pages",
@@ -141,6 +144,24 @@ fn positive(
 }
 
 ///|
+/// The value of `--instructions`: decimal digits only, from 1 to
+/// `@worker.max_call_instructions`.
+fn instruction_budget(matches : @argparse.Matches) -> Int64? raise UsageError {
+  guard single(matches, "instructions") is Some(text) else { return None }
+  let refused = UsageError(
+    "--instructions must be an integer from 1 to \{@worker.max_call_instructions}",
+  )
+  guard text != "" && text.iter().all(c => c >= '0' && c <= '9') else {
+    raise refused
+  }
+  let value = @strconv.parse_int64(text, base=10) catch { _ => raise refused }
+  guard value > 0L && value <= @worker.max_call_instructions else {
+    raise refused
+  }
+  Some(value)
+}
+
+///|
 /// Parses the arguments after `extension worker`.
 pub fn WorkerInvocation::parse(
   argv : ArrayView[String],
@@ -168,7 +189,7 @@ pub fn WorkerInvocation::parse(
   let host = @worker.Limits::host()
   let defaults = @guest.CallBounds::for_abi(abi)
   let call_ms = positive(matches, "call-ms")
-  let instructions = positive(matches, "instructions")
+  let instructions = instruction_budget(matches)
   let call = if call_ms is None && instructions is None {
     None
   } else {

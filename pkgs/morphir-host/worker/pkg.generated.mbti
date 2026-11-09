@@ -10,6 +10,8 @@ import {
 // Values
 pub let legacy_fallback_code : String
 
+pub let max_call_instructions : Int64
+
 pub fn parse_model_document(Bytes) -> Json raise
 
 // Errors
@@ -602,13 +604,13 @@ pub struct Limits {
   request_bytes : Int32
   response_bytes : Int32
   model : ModelLimits
-  call_instructions : Int32
+  call_instructions : Int64
 } derive(Eq, @debug.Debug)
 pub fn Limits::equal(Self, Self) -> Bool
 pub fn Limits::for_probe(Self) -> Self
 pub fn Limits::for_session(Self, Offer, WorkerRuntime) -> Self
 pub fn Limits::host() -> Self
-pub fn Limits::new(request_bytes~ : Int32, response_bytes~ : Int32, model~ : ModelLimits, call_instructions? : Int32) -> Self raise ValueError
+pub fn Limits::new(request_bytes~ : Int32, response_bytes~ : Int32, model~ : ModelLimits, call_instructions? : Int64) -> Self raise ValueError
 pub fn Limits::not_equal(Self, Self) -> Bool
 pub fn Limits::to_json(Self) -> Json
 pub fn Limits::to_repr(Self) -> @debug.Repr

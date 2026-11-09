@@ -346,9 +346,19 @@ async fn model_line_ending(
 }
 
 ///|
-async test "runaway guest on the model line: the instruction budget stops a call of each ABI" {
+async test "runaway guest on the model line: a budget above 2^31 stops a call of each ABI" {
   guard cli() is Some(path) else { return }
-  with_host(path, host => {
+  // The budget of the model line, 5,000,000,000, takes about 7 s on a
+  // developer machine (the tests here give about 3 s for 2,147,483,647), near
+  // the 10 s call deadline of morphir-bytes-v1. So the
+  // launcher gives the worker 2,147,483,648 instructions, one more than a C
+  // `int` holds, and a deadline that the budget comes before. The session
+  // keeps the limits of the model line.
+  let call = @guest.CallBounds::new(
+    deadline_ms=60000,
+    instructions=Some(2147483648L),
+  )
+  with_host(path, call~, host => {
     for
       spec in [
         wasm_spec(@fixtures.runaway_guest()),
@@ -358,7 +368,7 @@ async test "runaway guest on the model line: the instruction budget stops a call
         is Some((Failed(Host(code=BudgetExhausted, ..)), report)) else {
         fail("a runaway guest did not end at its budget")
       }
-      assert_eq(report.limits.call_instructions, 2147483647)
+      assert_eq(report.limits.call_instructions, 5000000000L)
     }
   })
 }

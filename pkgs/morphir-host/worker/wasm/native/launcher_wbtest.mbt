@@ -30,11 +30,11 @@ test "worker options: each protocol line gives its budget, its frame and the dea
     ).to_args()
   }
   let model = start(MorphirBytesV1, Model([tuple]))
-  assert_eq(option_of(model, "--instructions"), Some("2147483647"))
+  assert_eq(option_of(model, "--instructions"), Some("5000000000"))
   assert_eq(option_of(model, "--request-bytes"), Some("6291456"))
   assert_eq(option_of(model, "--call-ms"), Some("10000"))
   let model = start(ExtismKernelV1, Model([tuple]))
-  assert_eq(option_of(model, "--instructions"), Some("2147483647"))
+  assert_eq(option_of(model, "--instructions"), Some("5000000000"))
   assert_eq(option_of(model, "--call-ms"), Some("30000"))
   let legacy = start(ExtismKernelV1, Legacy)
   assert_eq(option_of(legacy, "--instructions"), Some("1000000000"))

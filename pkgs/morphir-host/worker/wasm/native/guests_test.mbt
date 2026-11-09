@@ -179,7 +179,7 @@ async test "byte callback adapter: 800 literal values generate within the budget
   }
   // Before bead morphir-ukvn.5.64.36.29 the guest failed at 354 values, because
   // generation was quadratic in the number of values. 800 values take about
-  // 1,330,000,000 instructions of the 2,147,483,647 of the model line.
+  // 1,330,000,000 instructions of the 5,000,000,000 of the model line.
   with_host(path, host => {
     let generated = generate_bytes(
       host,

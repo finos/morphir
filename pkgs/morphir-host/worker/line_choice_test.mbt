@@ -662,7 +662,7 @@ test "plain IR limits: a 3 MiB file goes on the model line with the model line's
   let limits = host.for_session(offer, Wasm(abi=Some(ExtismKernelV1)))
   assert_eq(limits.request_bytes, 6291456)
   assert_eq(limits.model.decoded_bytes, 4194304)
-  assert_eq(limits.call_instructions, 2147483647)
+  assert_eq(limits.call_instructions, 5000000000L)
 }
 
 ///|
@@ -675,7 +675,7 @@ test "plain IR limits: a 3 MiB file on the fallback keeps the limits of MEP 0.1"
   let host = @worker.Limits::host()
   let wasm = host.for_session(Legacy, Wasm(abi=Some(ExtismKernelV1)))
   assert_eq(wasm.request_bytes, 4194304)
-  assert_eq(wasm.call_instructions, 1000000000)
+  assert_eq(wasm.call_instructions, 1000000000L)
   let process = host.for_session(
     Legacy,
     Process(platform=X86_64UnknownLinuxGnu, args=[]),

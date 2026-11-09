@@ -46,8 +46,8 @@ pub struct Limits {
   response_bytes : Int32
   model : ModelLimits
   /// The instruction budget of one guest call, where the engine meters
-  /// instructions.
-  call_instructions : Int32
+  /// instructions: from 1 to `max_call_instructions`.
+  call_instructions : Int64
 }
 
 ///|
@@ -61,13 +61,13 @@ pub fn Limits::new(
   request_bytes~ : Int32,
   response_bytes~ : Int32,
   model~ : ModelLimits,
-  call_instructions~ : Int32 = model_call_instructions,
+  call_instructions~ : Int64 = model_call_instructions,
 ) -> Limits raise ValueError {
   {
     request_bytes: positive("request_bytes", request_bytes),
     response_bytes: positive("response_bytes", response_bytes),
     model,
-    call_instructions: positive("call_instructions", call_instructions),
+    call_instructions: call_budget(call_instructions),
   }
 }
 
@@ -78,15 +78,29 @@ pub fn Limits::new(
 let call_frame_bytes : Int32 = 4 * 1024 * 1024
 
 ///|
-/// The instruction budget of one guest call on the model line: the largest that
-/// the engine accepts, because WAMR holds the count in a C `int`. A call on
+/// The largest instruction budget of one guest call: 2^53 - 1, the largest
+/// integer that a JSON number and a JavaScript `Number` hold exactly. Thus the
+/// budget is the same in a JSON report and on the npm host. The engine
+/// accepts budgets up to the Int64 maximum.
+pub let max_call_instructions : Int64 = 9007199254740991L
+
+///|
+fn call_budget(value : Int64) -> Int64 raise ValueError {
+  guard value > 0L && value <= max_call_instructions else {
+    raise InvalidLimit("call_instructions=\{value}")
+  }
+  value
+}
+
+///|
+/// The instruction budget of one guest call on the model line. A call on
 /// MEP 0.1, and a probe, keep the budget of the restricted Extism profile.
-let model_call_instructions : Int32 = 2147483647
+let model_call_instructions : Int64 = 5000000000L
 
 ///|
 /// The host's own limits: a 6 MiB framed request, a 16 MiB response and model
 /// limits of 4 MiB decoded, 5,592,408 encoded bytes, depth 128 and 100,000
-/// nodes, and 2,147,483,647 instructions for one guest call.
+/// nodes, and 5,000,000,000 instructions for one guest call.
 ///
 /// The encoded limit is 4 * ceil(4194304 / 3), the base64 length of the decoded
 /// limit. The frame must hold that and the envelope, the method and the other

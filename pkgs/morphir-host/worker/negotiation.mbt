@@ -297,8 +297,8 @@ pub fn ExtismProfile::restricted() -> ExtismProfile {
 fn ExtismProfile::call_instructions(
   self : ExtismProfile,
   limits : Limits,
-) -> Int32 {
-  @cmp.minimum(limits.call_instructions.to_int64(), self.instructions).to_int()
+) -> Int64 {
+  @cmp.minimum(limits.call_instructions, self.instructions)
 }
 
 ///|

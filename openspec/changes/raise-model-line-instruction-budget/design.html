@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model-line instruction budget</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> as it is, and write the content inside <main>.
+  Styles and scripts are files in docs/templates/assets/, referenced and not embedded. In a copy, change the
+  "assets/" prefix of each href and src to the relative path from the copy to that directory, for example
+  "../../docs/templates/assets/" from .dev/beads-specs/. See AGENTS.md, "Specs and plans are HTML documents".
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc.
+-->
+<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+</head>
+<body>
+<main>
+<h1>Model-line instruction budget</h1>
+<p class="meta">Bead <code>morphir-ukvn.5.64.36.33</code> · 2026-11-09 · Proposed</p>
+<p>A WASM guest call on the model line gets 5,000,000,000 instructions, where the native engine meters them. This page
+says why the host can now give that budget, why the host keeps a lower maximum than the engine, and how the tests
+prove the budget above 2<sup>31</sup>. See <a href="proposal.md">the proposal</a> and
+<a href="specs/extensions/wasm-workers/spec.md">the requirement</a>.</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#walkthrough">One call, from the limits to the engine</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#tests">Tests</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+</ul></nav>
+
+<section id="context"><h2>Context</h2>
+<p>The budget sets how far a WASM guest gets on the native host, because WAMR meters each call. Bead
+<code>morphir-ukvn.5.64.36.26</code> raised the model-line budget from 1,000,000,000 to 2,147,483,647. Damian Reeves
+first chose 5,000,000,000, but <code>Budget::parse</code> in <code>moonrockz/extism</code> 0.1.1 refused budgets above
+2,147,483,647, because WAMR held the count in a C <code>int</code>. Bead <code>morphir-ukvn.5.64.36.33</code> gave
+<code>moonrockz/extism</code> 0.3.0 a 64-bit counter in its vendored WAMR, and <code>Budget::parse</code> now accepts
+1 to the <code>Int64</code> maximum. Bead <code>morphir-ukvn.5.64.36.29</code> already made the portable MoonBit guest
+linear in the number of values, so the larger budget is for large real models, not for a guest defect.</p>
+</section>
+
+<section id="walkthrough"><h2>One call, from the limits to the engine</h2>
+<p>The session limits give the budget. <code>Limits::host()</code> has 5,000,000,000, and
+<code>Limits::for_session</code> keeps it on the model line and lowers it to the restricted Extism profile on MEP
+<code>0.1</code>. The native launcher makes <code>CallBounds::for_abi</code> from the limits and starts the worker with
+<code>--instructions 5000000000</code>. The worker parses the option into <code>CallBounds</code>, and
+<code>CallBounds::engine</code> gives <code>@engine.Budget::parse</code> the same <code>Int64</code>. The Node and
+browser hosts give <code>instructions=None</code>, because their engine does not meter.</p>
+<pre><code class="language-moonbit">pub let max_call_instructions : Int64 = 9007199254740991L
+let model_call_instructions : Int64 = 5000000000L
+
+pub struct CallBounds {
+  deadline_ms : Int32
+  instructions : Int64?
+}
+</code></pre>
+</section>
+
+<section id="decisions"><h2>Decisions</h2>
+<h3 id="bud-1">BUD-1. The model line has 5,000,000,000 instructions (Owner)</h3>
+<p>Damian Reeves asked for this budget. MEP <code>0.1</code> and a probe keep 1,000,000,000, and the call deadlines of
+10 and 30 seconds do not change. A runaway guest on the model line still stops at the budget or at the deadline,
+whichever comes first. At about 7 seconds for 5,000,000,000 instructions on a developer machine, the 10 second deadline
+of <code>morphir-bytes-v1</code> can come first on a slow machine.</p>
+<h3 id="bud-2">BUD-2. The host keeps budgets from 1 to 2<sup>53</sup> − 1 (Owner, 2026-11-09)</h3>
+<p>The engine accepts the full <code>Int64</code> range. The host keeps a budget that a JSON number and a JavaScript
+<code>Number</code> hold exactly, because the npm host and the JSON reports carry host values. 9,007,199,254,740,991
+instructions are more than 70 days of run time at the measured rate, so the lower maximum takes nothing from a real
+call. <code>Limits::new</code> and the worker parser check the range.</p>
+<h3 id="bud-3">BUD-3. <code>--instructions</code> takes decimal digits only (Call)</h3>
+<p>The parser refuses <code>0x10</code>, <code>0b101</code>, <code>1_000</code>, <code>+5</code>, white space and an
+empty value, and it takes values that start with a hyphen, so that <code>--instructions -1</code> gets the range
+message and not the message of the argument parser. The launcher always writes plain digits.</p>
+</section>
+
+<section id="tests"><h2>Tests</h2>
+<table>
+<thead><tr><th>Test</th><th>Proves</th><th>Targets</th></tr></thead>
+<tbody>
+<tr><td>Limits range (<code>outcome_test.mbt</code>)</td><td>1, 2147483648, 5000000000 and 9007199254740991 are accepted;
+0, −1 and 9007199254740992 are refused</td><td>native, js, wasm, wasm-gc</td></tr>
+<tr><td>Engine budget (<code>limits_wbtest.mbt</code>)</td><td><code>CallBounds::engine</code> gives exactly
+5,000,000,000 and 9,007,199,254,740,991</td><td>native, js</td></tr>
+<tr><td>Worker arguments (<code>worker_mode_test.mbt</code>)</td><td>The range and the strict form, in both option
+forms; a worker with <code>--instructions 3000000000</code> serves its calls</td><td>native</td></tr>
+<tr><td>Runaway guest on the model line (<code>launcher_test.mbt</code>, with <code>MORPHIR_CLI</code>)</td><td>A
+runaway guest of each ABI stops at a launcher budget of 2,147,483,648, and the report gives 5,000,000,000</td>
+<td>native</td></tr>
+</tbody>
+</table>
+<p>The end-to-end test uses 2,147,483,648, one more than a C <code>int</code> holds, and a 60 second deadline, so that
+the budget and not the deadline stops the call on a loaded runner.</p>
+</section>
+
+<section id="risks"><h2>Risks and trade-offs</h2>
+<ul>
+<li>The measurements in the extension guide were made at 2,147,483,647. The guide says so; they are not measured again
+here.</li>
+<li><code>CallBounds::new</code> does not check its value, as before. Repository code makes <code>CallBounds</code> only
+from checked <code>Limits</code>, from the worker parser, or with no budget.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

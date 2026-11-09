@@ -463,7 +463,7 @@ process tree. A failure leaves no output directory and no
 | Frame header | 8 KiB |
 | Offered model limits | 5,592,408 encoded bytes, 4 MiB decoded, depth 128, 100,000 nodes; the worker's smaller values apply |
 | Generate input | A 6 MiB file, depth 128, 100,000 nodes; a plain IR file on the model line has the 4 MiB decoded limit |
-| Instructions for one WASM guest call, where the engine meters them | 2,147,483,647 on the model line; 1,000,000,000 on MEP `0.1` and for a probe |
+| Instructions for one WASM guest call, where the engine meters them | 5,000,000,000 on the model line; 1,000,000,000 on MEP `0.1` and for a probe |
 | Compile sources | 1,024 files, 1 MiB for one file, 2 MiB in total, 16,384 directory entries, depth 32 |
 | Guest stderr kept | The last 64 KiB |
 | Deadline | 60,000 ms by default, at most 594,000 ms, for the probe and the session together |
@@ -474,12 +474,14 @@ process tree. A failure leaves no output directory and no
 
 The byte limits let a plain IR file of 4 MiB reach a guest on the model line. On
 the native host, a WASM guest can stop sooner, because the instruction budget
-measures the guest's work and not the file's size. The engine accepts no budget
-above 2,147,483,647, because WAMR holds the count in a C `int`; bead
-`morphir-ukvn.5.64.36.33` tracks a wider counter. The Node and browser hosts
-meter no instructions, so there only the call deadline applies.
+measures the guest's work and not the file's size. The budget of one call can be
+at most 9,007,199,254,740,991 (2^53 - 1), the largest integer that a JSON number
+holds exactly; the engine counts with a 64-bit counter. The Node and browser
+hosts meter no instructions, so there only the call deadline applies.
 
-These values were measured on the native host with `generateModel`. A padded
+These values were measured on the native host with `generateModel`, with the
+earlier budget of 2,147,483,647 instructions for one call. They are not yet
+measured again with 5,000,000,000. A padded
 file is a small IR document followed by JSON white space, and a dense file is a
 synthetic library of literal values. Real models fall between the two.
 

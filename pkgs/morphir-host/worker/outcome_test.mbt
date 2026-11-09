@@ -174,3 +174,26 @@ test "session report: the host enforces the byte limits; depth and nodes are neg
     "wireCancellation": false,
   })
 }
+
+///|
+test "call instructions: Limits::new accepts 1 to 9007199254740991 and refuses 0, -1 and 9007199254740992" {
+  let model = @worker.Limits::host().model
+  let make = (count : Int64) => {
+    @worker.Limits::new(
+      request_bytes=1,
+      response_bytes=1,
+      model~,
+      call_instructions=count,
+    ).call_instructions
+  }
+  assert_eq(@worker.max_call_instructions, 9007199254740991L)
+  assert_eq(make(1L), 1L)
+  assert_eq(make(2147483648L), 2147483648L)
+  assert_eq(make(5000000000L), 5000000000L)
+  assert_eq(make(9007199254740991L), 9007199254740991L)
+  for count in [0L, -1L, 9007199254740992L] {
+    guard (Ok(make(count)) catch { e => Err(e) }) is Err(InvalidLimit(_)) else {
+      fail("accepted call_instructions=\{count}")
+    }
+  }
+}

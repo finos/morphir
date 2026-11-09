@@ -92,7 +92,7 @@ notification, and `exit` ends the instance. The host functions follow WASM-4:
 | Bound | Native worker mode | Node worker thread | Browser Web Worker |
 | --- | --- | --- | --- |
 | Memory ceiling, 256 MiB | Enforced by the engine | Enforced: the rewritten maximum | Enforced: the rewritten maximum |
-| Instruction budget per call: 2,147,483,647 on the model line, 1,000,000,000 on MEP `0.1` and for a probe | Enforced by WAMR metering | Not enforced: the js engine has no metering | Not enforced: the js engine has no metering |
+| Instruction budget per call: 5,000,000,000 on the model line, 1,000,000,000 on MEP `0.1` and for a probe | Enforced by WAMR metering | Not enforced: the js engine has no metering | Not enforced: the js engine has no metering |
 | Call deadline, 30 s Extism and 10 s bytes | Enforced: the engine interrupts the call | Enforced: the channel terminates the thread | Enforced: the channel terminates the Web Worker |
 | Session deadline and cancellation | The process group is stopped | The thread is terminated, and the host waits until it has terminated | The Web Worker is terminated, which is final at once |
 
@@ -123,7 +123,7 @@ moon test --target native --release -p finos/morphir-host/worker/wasm/native \
 
 Each input gives one JSON line on stdout, for example
 `{"input":"values=800","bytes":109852,"instructions":"1325782875"}`. The
-`instructions` member is the count, `over 2147483647`, or `{"refused": ...}`
+`instructions` member is the count, `over 5000000000`, or `{"refused": ...}`
 when the guest refuses the model for another reason. Bead
 `morphir-ukvn.5.64.36.29` found with it that generation was quadratic in the
 number of values: the portable guest failed at 354 values before the fix and
@@ -247,7 +247,7 @@ thread, so they need no browser.
 ## Dependency on moonrockz/extism
 
 The engine, the Extism kernel and the plugin API come from the published
-Mooncakes package `moonrockz/extism@0.1.1`, which `pkgs/morphir-host/moon.mod`
+Mooncakes package `moonrockz/extism@0.3.0`, which `pkgs/morphir-host/moon.mod`
 names. The workspace has no local copy of it.
 
 ## Tests with real guests and executables
