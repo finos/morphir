@@ -370,8 +370,8 @@ For an exact `0.2.0-draft.1` session, `modelTransport` has one specific narrowin
 rule. Its session tuples and guarantee IDs must be subsets of the static claim
 and the host offer, and positive session limits must not exceed either set of
 limits. It cannot introduce an unclaimed member. Other capability members keep
-the equality rule above. `modelTransport` is negotiation metadata for frontend
-and backend operations, not a new extension type. This is a new contract rule;
+the equality rule above. `modelTransport` is negotiation metadata for frontend,
+backend and validator model operations, not a new extension type. This is a new contract rule;
 the current SDK's equality-based checker needs a follow-up runtime change.
 See [model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md).
 
@@ -402,6 +402,16 @@ example, the MoonBit CLI reports the diagnostic `extension.model_converted`.
 Only when the host cannot convert the model does it report
 `extension.tuple_unavailable`.
 
+For `morphir.validator.validateModel`, the same conversion rules apply with one
+difference: the host converts only without loss. It never sends a lossy
+conversion for validation, even when the user allows loss, because a validator
+that does not see all of the model can give a wrong result. When only a lossy
+conversion is possible, the host refuses with its lossy-conversion error, not
+`extension.tuple_unavailable`. A host offers `validateModel` tuples only to an
+extension whose describe result or recorded claims list at least one
+validateModel tuple, because existing extensions can refuse an offer with an
+operation that they do not know.
+
 Comparing two claim sets, as publication and installation do, is a comparison
 of equal documents.
 
@@ -417,6 +427,7 @@ exact `0.2.0-draft.1` session indicated below:
 | `morphir.frontend.compileModel` | frontend, new exact draft | Source set, full dependency models and selected output tuple | Success with a full model, or compilation failure |
 | `morphir.backend.generateModel` | backend, new exact draft | Retained model, selected input tuple, target and scoped prerequisites | Existing generation result |
 | `morphir.validator.validate` | validator | Morphir IR and rule options | Diagnostics |
+| `morphir.validator.validateModel` | validator, new exact draft | Retained model, selected input tuple and extension options | Diagnostics, with no success flag |
 | `morphir.transform.transform` | transform | Morphir IR and transform options | Morphir IR and diagnostics |
 
 An extension may implement any combination of these capabilities. The first Elm delivery implements only `morphir.frontend.compile`.
@@ -897,8 +908,9 @@ records the rename.
 
 The recorded exception remains only for legacy `0.1`. The next protocol change
 is the rich-model draft `0.2.0-draft.1`, which adopts full SemVer and exact draft
-matching. It adds `morphir.frontend.compileModel` and
-`morphir.backend.generateModel` without replacing legacy JSON methods. The
+matching. It adds `morphir.frontend.compileModel`,
+`morphir.backend.generateModel` and `morphir.validator.validateModel` without
+replacing legacy JSON methods. The
 model envelope is independently versioned at `0.1.0-draft.1`. Current runtime
 SDK support for `0.1` does not imply support for this draft.
 

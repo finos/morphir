@@ -313,7 +313,7 @@ fn model_operations_have_explicit_carriers_and_scoped_evidence() {
                     "options",
                 ],
             ),
-            ("validate-model-request", &["model", "options"]),
+            ("validate-model-request", &["model", "input", "options"]),
             ("validate-model-result", &["diagnostics"]),
         ],
     );
@@ -459,7 +459,7 @@ fn model_reference_corpus_binds_real_payload_assets() {
             "preservation"
         ])
     );
-    assert_eq!(ids.len(), 40);
+    assert_eq!(ids.len(), 41);
     let case = |id: &str| cases.iter().find(|case| case["id"] == id).unwrap();
     assert_eq!(
         case("model-0026")["request"]["method"],
@@ -535,14 +535,10 @@ fn positive_model_json_matches_the_existing_ir_contract() {
         let text = String::from_utf8(bytes).unwrap();
         let release = supported_ir(&text);
         assert_eq!(model["irVersion"], release.to_string());
-        let params = &case["request"]["params"];
-        if case["request"]["method"] == "morphir.validator.validateModel" {
-            // validateModel has no `input`: the envelope and the method name
-            // the tuple.
-            assert!(params.get("input").is_none());
-        } else {
-            assert_eq!(params["input"]["irVersion"], model["irVersion"]);
-        }
+        assert_eq!(
+            case["request"]["params"]["input"]["irVersion"],
+            model["irVersion"]
+        );
         checked += 1;
     }
     assert!(checked > 0, "keep an accepted explicit JSON model example");
@@ -561,6 +557,7 @@ const CAPABILITY_TYPES: &[&str] = &[
     "backend-capability",
     "workspace-capability",
     "validator-capability",
+    "validator-rule",
     "extension-capabilities",
     "capability-claim-set",
     "claims-requirements",
@@ -595,7 +592,8 @@ fn the_contract_covers_capabilities_and_claims() {
             &["targets", "ir-versions", "generate"],
         ),
         ("workspace-capability", &["protocol-versions", "discover"]),
-        ("validator-capability", &["ir-versions"]),
+        ("validator-capability", &["ir-versions", "rules"]),
+        ("validator-rule", &["id", "code"]),
         (
             "extension-capabilities",
             &[
@@ -825,6 +823,11 @@ fn every_wire_exception_is_documented() {
         ("FrontendCapability", &["only when it is true"]),
         ("WorkspaceCapability", &["full SemVer"]),
         (
+            "ValidatorCapability",
+            &["left out when empty", "read as empty", "unique"],
+        ),
+        ("ValidatorRule", &["absolute IRI", "plain string"]),
+        (
             "ExtensionCapabilities",
             &[
                 "beside the named members",
@@ -868,7 +871,14 @@ fn every_wire_exception_is_documented() {
         ("ModuleStatus", &["Wire values"]),
         ("ModuleResult", &["left out when absent", "read as empty"]),
         // Rich model wire mappings are explicit rather than inferred tags.
-        ("InitializeParams", &["modelTransport", "left out"]),
+        (
+            "InitializeParams",
+            &[
+                "modelTransport",
+                "left out",
+                "at least one validateModel tuple",
+            ],
+        ),
         (
             "ModelOperation",
             &[
@@ -923,7 +933,10 @@ fn every_wire_exception_is_documented() {
             &["REQUIRED", "even null", "read as empty"],
         ),
         ("GenerateModelRequest", &["read as empty", "required scope"]),
-        ("ValidateModelRequest", &["read as empty", "session tuple"]),
+        (
+            "ValidateModelRequest",
+            &["read as empty", "admitted validateModel tuple", "lossy"],
+        ),
         (
             "ValidateModelResult",
             &["can be empty", "no success flag", "JSON-RPC error"],

@@ -170,6 +170,10 @@
     "model-0040": {
       "request": [],
       "note": "Valid. MEP refuses it at admission after decoding: digest mismatch. Out of scope for a message model."
+    },
+    "model-0041": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the model envelope does not match the input tuple. Not checked: smithy-2qe.34.24."
     }
   }
 }

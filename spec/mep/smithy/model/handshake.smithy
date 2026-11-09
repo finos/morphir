@@ -48,7 +48,9 @@ structure InitializeParams {
     /// The host offer. Left out when absent. Absence means legacy only, and
     /// never an implicit offer of model transport. The offer lists tuples in
     /// preference order, and the first tuple for each operation is the
-    /// default.
+    /// default. A host offers `morphir.validator.validateModel` tuples only
+    /// to an extension whose describe result or recorded claims list at
+    /// least one validateModel tuple in `capabilities.modelTransport`.
     modelTransport: ModelTransportSupport
 }
 

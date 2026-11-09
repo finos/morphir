@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>add-mep-validate-model: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>add-mep-validate-model: design</h1>
+<p class="meta">OpenSpec change | 2026-11-09 | finos/morphir#1139</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#flow">Request flow</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See <a href="proposal.md">proposal.md</a> for the reason for this change. MEP
+<code>0.2.0-draft.1</code> has two model methods, <code>compileModel</code> and
+<code>generateModel</code>. Each needs its role capability and an admitted tuple
+of five members (<code>operation</code>, <code>profile</code>, <code>codec</code>,
+<code>envelopeVersion</code>, <code>irVersion</code>). The validator role has only
+the legacy <code>morphir.validator.validate</code>, with <code>EmptyParams</code>
+and <code>OpaqueResult</code>.</p>
+<p>Constraints from the existing peers at finos/morphir-rust
+<code>99c0b676</code> and finos/morphir-moonbit <code>28271c61</code>:</p>
+<ul>
+<li>The Rust SDK (<code>model/operation.rs</code>, <code>selected</code>), the MoonBit
+guest (<code>model_input.mbt</code>, <code>retain_input</code>) and the MoonBit host
+(<code>worker/session.mbt</code>) read the selected tuple from <code>output</code> or
+<code>input</code>. The MoonBit host adds <code>input</code> to every request that
+is not a compile request.</li>
+<li>All existing readers refuse an offered tuple whose operation they do not know:
+the MoonBit guest refuses the whole offer (<code>invalid_support</code>), and the
+Rust <code>ModelOperation</code> is a closed enum. finos/morphir-dotnet
+<code>Morphir.Mep</code> also has a closed union.</li>
+<li>All existing hosts offer only the operation of the call.</li>
+<li>The MoonBit wire reader refuses unknown members, so a member that is added to a
+record later can break existing readers.</li>
+</ul>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> a validator method that a host can negotiate, admit and
+check with the same rules as the other model methods; a rule identity that does
+not depend on the extension or its location; no change for existing peers.</p>
+<p><strong>Non-goals:</strong> the payload of the legacy
+<code>morphir.validator.validate</code>; the transform payload; contract-defined
+references to model nodes in diagnostics (<a href="#val-4">VAL-4</a>); common
+validation options; how a host merges the diagnostics of more than one validator;
+SDK and host changes in other repositories.</p>
+
+<h2 id="flow">Request flow</h2>
+<svg viewBox="0 0 760 300" role="img" aria-labelledby="flow-title" xmlns="http://www.w3.org/2000/svg">
+<title id="flow-title">The host offers validateModel tuples only to a validator, converts without loss only, and the extension admits the model and returns diagnostics</title>
+<style>
+.b{fill:none;stroke:currentColor;stroke-width:1.5}
+.t{font:13px system-ui,sans-serif;fill:currentColor}
+.a{stroke:currentColor;stroke-width:1.5;marker-end:url(#arr)}
+</style>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+<rect class="b" x="10" y="10" width="220" height="70" rx="6"/>
+<text class="t" x="20" y="35">Claims name validateModel</text>
+<text class="t" x="20" y="55">tuples: host offers them;</text>
+<text class="t" x="20" y="72">else: no validateModel tuple</text>
+<rect class="b" x="270" y="10" width="220" height="70" rx="6"/>
+<text class="t" x="280" y="35">Extension selects tuples</text>
+<text class="t" x="280" y="55">in host order; empty:</text>
+<text class="t" x="280" y="72">extension.tuple_unavailable</text>
+<rect class="b" x="530" y="10" width="220" height="70" rx="6"/>
+<text class="t" x="540" y="35">Model not in an agreed tuple:</text>
+<text class="t" x="540" y="55">lossless: convert and report</text>
+<text class="t" x="540" y="72">lossy: refuse, always</text>
+<line class="a" x1="230" y1="45" x2="268" y2="45"/>
+<line class="a" x1="490" y1="45" x2="528" y2="45"/>
+<rect class="b" x="270" y="140" width="220" height="70" rx="6"/>
+<text class="t" x="280" y="165">validateModel(model, input,</text>
+<text class="t" x="280" y="185">options): admit model,</text>
+<text class="t" x="280" y="202">check input and irVersions</text>
+<line class="a" x1="640" y1="80" x2="490" y2="150"/>
+<rect class="b" x="10" y="220" width="220" height="70" rx="6"/>
+<text class="t" x="20" y="245">result: diagnostics,</text>
+<text class="t" x="20" y="265">codes map to rule IRIs</text>
+<text class="t" x="20" y="282">through validator.rules</text>
+<rect class="b" x="530" y="220" width="220" height="70" rx="6"/>
+<text class="t" x="540" y="245">cannot run: -32003</text>
+<text class="t" x="540" y="265">bad shape or tuple: -32602</text>
+<text class="t" x="540" y="282">no capability: -32013</text>
+<line class="a" x1="300" y1="210" x2="200" y2="236"/>
+<line class="a" x1="460" y1="210" x2="560" y2="236"/>
+</svg>
+
+<h2 id="decisions">Decisions</h2>
+<p>Damian Reeves decided VAL-1 to VAL-6 on 2026-11-09, in review of the open
+questions of finos/morphir#1139.</p>
+
+<h3 id="val-1">VAL-1. The request carries an <code>input</code> tuple</h3>
+<p><code>ValidateModelRequest</code> has <code>model</code>, <code>input</code> and
+<code>options</code>, as <code>GenerateModelRequest</code> has <code>model</code> and
+<code>input</code>. The extension checks that <code>input</code> is a session tuple
+and that the envelope matches it. <strong>Alternative rejected:</strong> no
+<code>input</code>, because the envelope and the method name give the five
+values. Then each SDK needs a separate admission path, and the MoonBit host,
+which adds <code>input</code> to every request that is not a compile request,
+needs a third branch. <code>generateModel</code> already accepts the same
+repetition.</p>
+
+<h3 id="val-2">VAL-2. Edit draft.1 in place, with an offer rule</h3>
+<p>The change edits <code>0.2.0-draft.1</code> in place, as finos/morphir#1101
+(<code>Diagnostic.data</code>), #1115 and #1117 did. A host offers a
+<code>validateModel</code> tuple only to an extension whose describe result or
+recorded claims list at least one validateModel tuple.
+All existing hosts already offer only the operation of the call.
+<strong>Alternatives rejected:</strong> (a) publish <code>0.2.0-draft.2</code>:
+drafts match exactly, so every peer must move at the same time, and draft.1 and
+draft.2 peers cannot connect; (b) a rule that readers ignore an offered tuple
+with an unknown operation: it changes every existing reader now. A later change
+can still add (b).</p>
+
+<h3 id="val-3">VAL-3. Host conversion for validation is lossless only</h3>
+<p>The host conversion rules for generation apply to <code>validateModel</code>,
+but the host never sends a lossy conversion, even when the user allows loss.
+A lossless conversion keeps the content, so the diagnostics are also correct for
+the original model. A validator that does not see all of the model can miss a
+problem or report a problem that the original does not have.
+<strong>Alternatives rejected:</strong> (a) no conversion for validation: hosts
+then differ, because the rule is not defined; (b) the full generation rule with
+allowed loss: the result of a lossy validation has no use.</p>
+
+<h3 id="val-4">VAL-4. Model-node references are deferred</h3>
+<p>This change keeps <code>Diagnostic</code> as it is. A validator fills
+<code>location</code> when the model has a source range, and otherwise names the
+node in <code>message</code>. A follow-up issue proposes an optional
+<code>Diagnostic.node</code> for all methods, as an IRI of the model node, in the
+style of SHACL <code>sh:focusNode</code>. <strong>Alternatives rejected:</strong>
+(a) a contract key in <code>Diagnostic.data</code>: <code>data</code> belongs to
+the extension; (b) a <code>morphir:</code> URI in <code>location.uri</code>: the
+required <code>range</code> then has no meaning; (c) <code>Diagnostic.node</code>
+in this change: it changes the diagnostics of compile and generate too, and needs
+its own review.</p>
+
+<h3 id="val-5">VAL-5. Rules have IRIs and codes</h3>
+<p><code>ValidatorCapability.rules</code> lists <code>ValidatorRule(id, code)</code>.
+<code>id</code> is an absolute IRI (RFC 3987), compared as a plain string. It gives
+a rule an identity that does not depend on the extension or its location, and RDF
+and linked data can use it directly, as SHACL names a rule with
+<code>sh:sourceShape</code>. <code>code</code> is the short diagnostic code of the
+rule, so diagnostics keep short codes, and the host maps (extension, code) to the
+IRI. The list is optional: empty means that the validator does not list its
+rules. The member is in the first version of the record, because the MoonBit
+reader refuses unknown members. <strong>Alternatives rejected:</strong> (a) the
+diagnostic <code>code</code> is the IRI: long codes in tables and editors, and
+validator codes look different from the codes of other roles; (b) no rule list:
+a later member can break strict readers; (c) a common <code>options.rules</code>
+selector: the contract then owns part of <code>options</code>, and a host can
+remove the diagnostics of a rule that the user turned off.</p>
+
+<h3 id="val-6">VAL-6. The IR is regenerated with the Gleam binding for now</h3>
+<p><code>mise run spec:mep</code> stops, because the Gleam frontend moved to
+finos/morphir-gleam. The MoonBit CLI can run the Gleam 0.4.0 Wasm guest, but
+<code>morphir extension compile</code> always sends <code>typesOnly: false</code>.
+This change regenerates <code>generated/mep.ir.json</code> with a program that
+calls <code>GleamExtension.compile</code> of <code>morphir-gleam-binding</code>
+0.4.0 (finos/morphir-gleam <code>a529add</code>) with <code>typesOnly: true</code>
+and IR 4. The same program gives a byte-identical IR for the unchanged contract
+on <code>main</code>. A <code>--types-only</code> flag on <code>morphir extension
+compile</code> in finos/morphir-moonbit closes bead <code>morphir-sugs</code>.
+<strong>Alternatives rejected:</strong> (a) commit the program here: the MoonBit
+route replaces it; (b) wait for a MoonBit release: it blocks this change.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>A host offers every operation to every extension, and an existing guest
+refuses the offer.</td><td>The offer rule forbids it, and no existing host does
+it (<a href="#val-2">VAL-2</a>).</td></tr>
+<tr><td>The input tuple and the envelope can disagree.</td><td>The extension
+refuses with <code>-32602</code> (corpus label <code>unsupported_tuple</code>);
+MCK case model-0041 covers it.</td></tr>
+<tr><td>Hosts cannot sort or link diagnostics by model node in a standard
+way.</td><td>The follow-up issue for <code>Diagnostic.node</code>
+(<a href="#val-4">VAL-4</a>).</td></tr>
+<tr><td>Others cannot repeat the IR regeneration exactly until bead
+<code>morphir-sugs</code> is done.</td><td>The pull request names the program
+and its commit, and the byte-identical check on <code>main</code> shows that the
+method is correct.</td></tr>
+<tr><td>The Smithy model cannot check that rule ids and codes are unique, or the
+full IRI syntax.</td><td>A pattern checks the IRI scheme; the uniqueness rule is
+a <code>GAP smithy-2qe.34.24</code> comment.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>The change only adds items, and no host offers a <code>validateModel</code>
+tuple to an existing extension, so no peer must upgrade at the same time.
+SDKs and hosts add the method in their own repositories. An older host reads
+<code>capabilities.validator</code> from a newer extension as an <code>extra</code>
+member and ignores it. Rollback is a revert of finos/morphir#1139.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>How does an FQName become a model-node IRI? The follow-up issue for
+<code>Diagnostic.node</code> decides this (<a href="#val-4">VAL-4</a>).</li>
+</ul>
+
+</main>
+</body>
+</html>

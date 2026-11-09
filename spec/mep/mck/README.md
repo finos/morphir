@@ -211,7 +211,7 @@ arguments; the MoonBit and Python profiles keep those checks.
 ## Model transport reference corpus
 
 [`model-transport.cases.json`](model-transport.cases.json) records fixed examples
-for the additive `compileModel` and `generateModel` contract. Its corpus contract
+for the additive `compileModel`, `generateModel` and `validateModel` contract. Its corpus contract
 is `0.1.0-draft.1`, its MEP target is exactly `0.2.0-draft.1`, and the independent
 model envelope is exactly `0.1.0-draft.1`. The unchanged JSON operations remain
 available through legacy MEP `0.1`.
@@ -275,7 +275,7 @@ asset manifest.
 | 0028–0029 | Valid successful and failed compilation results |
 | 0030–0032 | Support is not proof; compile IR consistency; evidence model identity |
 | 0033–0035 | Unknown critical child, exact evidence scope, and aggregate payload budget |
-| 0036–0040 | validateModel tuples, protocol line and integrity |
+| 0036–0041 | validateModel tuples, protocol line, integrity and the input tuple |
 
 The `guarantees` lists describe identifiers a peer interprets. They do not
 establish those guarantees. Every identifier under `urn:morphir:mep:fixture:` is

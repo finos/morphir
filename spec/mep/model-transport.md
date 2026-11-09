@@ -1,7 +1,8 @@
 # MorphirModel transport
 
-This draft specifies the additive `morphir.frontend.compileModel` and
-`morphir.backend.generateModel` methods. The canonical types are in
+This draft specifies the additive `morphir.frontend.compileModel`,
+`morphir.backend.generateModel` and `morphir.validator.validateModel` methods.
+The canonical types are in
 [`contract/src/mep.gleam`](contract/src/mep.gleam). This is a protocol contract,
 not a claim that the current SDK, host, or an extension implements these methods.
 The [reference corpus](mck/README.md) checks examples and literal assets;
@@ -48,19 +49,22 @@ When a static claim set is available, the new draft permits only
 are subsets, and positive session limits do not exceed the claimed limits or
 the host offer. A session cannot introduce an unclaimed model transport member.
 Other capability members retain existing agreement rules. `modelTransport` is
-negotiation metadata for frontend/backend methods, not an additional extension
-type. The current SDK's equality-based claim checker needs a separate runtime
-update before accepting this narrowing; this draft does not claim it does so.
+negotiation metadata for frontend, backend and validator model methods, not an
+additional extension type. The current SDK's equality-based claim checker needs
+a separate runtime update before accepting this narrowing; this draft does not
+claim it does so.
 
 Each tuple contains all of `operation`, `profile`, `codec`, `envelopeVersion`,
 and `irVersion`. Compare all five exactly. Never form a Cartesian product of
-independent codec, profile, or IR lists. `output` on compile and `input` on
-generate must equal an admitted tuple, including the method's operation.
+independent codec, profile, or IR lists. `output` on compile, and `input` on
+generate and validate, must equal an admitted tuple, including the method's
+operation.
 Language/source-count and backend target capabilities must also admit the
 request. A target is a separately advertised language or output target, not a
-model profile. Selecting a compile tuple does not authorize generation. The corresponding
-frontend/backend capability must be present. Its language, source-count, target
-and IR-version restrictions still apply. The tuple authorizes the rich method;
+model profile. Selecting a compile tuple does not authorize generation or
+validation. The corresponding frontend, backend or validator capability must be
+present. Its language, source-count, target and IR-version restrictions still
+apply. The tuple authorizes the rich method;
 legacy `frontend.compile` and `backend.generate` booleans authorize only their
 legacy methods and need not be true for a rich-only provider.
 
@@ -117,10 +121,11 @@ The host refuses the operation and sends no request for it. A host reports this
 refusal as `extension.tuple_unavailable`. This is a host outcome code, not a new
 JSON-RPC error number. When the host does not require a format, an extension
 that does not support the host's default but supports another offered tuple is
-not an error: the session uses the first agreed tuple. For generation, a model
-that the host has in a tuple outside the agreement is also not an error when the
-host can convert it (see
-[Host conversion for generation](#host-conversion-for-generation)).
+not an error: the session uses the first agreed tuple. For generation and
+validation, a model that the host has in a tuple outside the agreement is also
+not an error when the host can convert it (see
+[Host conversion for generation](#host-conversion-for-generation) and
+[Host conversion for validation](#host-conversion-for-validation)).
 
 In this example the host prefers Ion and also offers JSON for compilation. A
 JSON-only extension agrees on JSON, and the host compiles with JSON. Tuples show
@@ -139,6 +144,14 @@ session support  []                             -> extension.tuple_unavailable
 ```
 
 This is a clarification of the `0.2.0-draft.1` draft. It adds no wire member.
+
+A host offers `morphir.validator.validateModel` tuples only to an extension
+whose `morphir.extension.describe` result or recorded claims list at least one
+validateModel tuple in `capabilities.modelTransport`. A host that has neither
+offers no validateModel tuple. Extensions that implement an earlier text of this draft know only the
+`compileModel` and `generateModel` operations, and they can refuse the whole
+offer when it contains an operation that they do not know. With this rule they
+keep working, and the draft version does not change.
 
 ## Profiles and encoded payloads
 
@@ -253,7 +266,7 @@ inside opaque profile content or individual evidence entries are registered.
 Refuse any unrecognized critical path and identify it. Ignore unknown optional
 protocol members; preserve unknown profile content by retaining its bytes.
 
-## Compile and generate
+## Compile, generate and validate
 
 `CompileModelRequest` reuses `SourceSet`, `CompilePackage` and `CompileOptions`.
 It carries complete `CompileModelDependency` models, a required context digest,
@@ -277,6 +290,25 @@ advertised target, context digest, required guarantees and options. Absent
 format agreement, consumer prerequisites and evidence before passing a checked
 view to the generator. Generation reuses `GenerateResult`, `Artifact` and
 `Diagnostic`, including the existing artifact binary/base64 rule.
+
+`ValidateModelRequest` carries the retained model, the selected input tuple and
+options. Absent `options` default to empty. The extension owns the options and
+refuses an option that it does not know with `-32602`. The model must match
+`input`, and `input.irVersion` must be in `validator.irVersions`. The request
+has no context digest and no required guarantees: a validator reads the model
+and needs no prerequisite from the host. Evidence in the envelope gets the
+usual admission and stays opaque. `ValidateModelResult` has a required
+`diagnostics` list, which can be empty, and no success flag: the host decides
+the outcome from the severities. A model that breaks a rule gives diagnostics
+in a result. A validator that cannot run answers with `-32003`, not with a
+result.
+
+`ValidatorCapability.rules` can list the rules of a validator. Each rule has an
+absolute IRI `id` and the diagnostic `code` that the rule reports. Compare the
+IRI as a plain string. The extension owns it, and a host does not have to
+dereference it. A host maps a diagnostic to its rule IRI through the extension
+and the code. An empty list means that the validator does not list its rules.
+This draft does not define how a diagnostic names a model node.
 
 Unsupported methods use `-32601`. Invalid shapes, digests or bounds use
 `-32602`; an unavailable negotiated capability uses `-32013`. Evidence rejection
@@ -377,8 +409,10 @@ These rules apply to a host conversion:
    not a retry after the extension refuses admission. The extension does not
    ask for a conversion, and the host does not resend a refused request in a
    different tuple.
-8. **Scope.** This rule applies only to `generateModel`. This draft does not
-   define host conversion for `compileModel` dependencies.
+8. **Scope.** This rule applies to `generateModel`.
+   [Host conversion for validation](#host-conversion-for-validation) applies
+   it to `validateModel` without loss. This draft does not define host
+   conversion for `compileModel` dependencies.
 
 ```text
 host model        morphir-model/ion-binary
@@ -401,6 +435,41 @@ The spec leaves these details to the host:
 The MoonBit CLI implements this rule in its host library, which every MoonBit
 host front end shares
 ([finos/morphir-moonbit#281](https://github.com/finos/morphir-moonbit/pull/281)).
+This rule adds no wire member and does not change the `0.2.0-draft.1` draft
+version.
+
+### Host conversion for validation
+
+The host conversion rules for generation also apply to
+`morphir.validator.validateModel`, with one difference: the host never sends a
+lossy conversion for validation. A validator that does not see all of the model
+can miss a problem, or report a problem that the original model does not have.
+
+1. The host converts the model only to an agreed `validateModel` tuple that it
+   can reach without loss. It uses the first such tuple in host order. The
+   request `input` is that tuple.
+2. When the host can convert the model only with loss, it refuses with its
+   lossy-conversion error and sends no request. A permission to allow loss,
+   for example `--allow-model-loss` in the MoonBit CLI, does not apply to
+   validation, and the error message does not offer a way to allow loss.
+   This refusal is not `extension.tuple_unavailable`.
+3. Rule 1 of generation (what loss is) and rules 4 to 7 (identity, guarantees
+   and evidence, conversion report, before dispatch) apply without change. The list of dropped data in
+   the report is always empty.
+4. The diagnostics refer to the converted model. A lossless conversion keeps
+   the content of the model, so a source location in a diagnostic is also
+   correct for the original model.
+
+```text
+host model        morphir-model/ion-binary
+session support   [validateModel/morphir-ir/morphir-json]
+lossless          -> send the converted JSON model (same modelId, new revision),
+                     report the conversion
+lossy             -> lossy-conversion error, no request, also when the user
+                     allows loss for other operations
+no conversion     -> extension.tuple_unavailable, no request
+```
+
 This rule adds no wire member and does not change the `0.2.0-draft.1` draft
 version.
 
