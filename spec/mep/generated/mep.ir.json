@@ -180,7 +180,7 @@
                 },
                 "initialize-params": {
                   "Public": {
-                    "doc": "Parameters of `morphir.initialize`. Full SemVer protocol versions are used\nby the model-operation draft; legacy `0.1` remains an explicit exception.\n`model_transport` (wire `modelTransport`) is left out when absent. Absence\nmeans legacy-only, never an implicit offer of model transport. The offer\nlists every supported tuple in preference order; the first tuple for each\noperation is the host's default. A host that requires one format offers\nonly that tuple.",
+                    "doc": "Parameters of `morphir.initialize`. Full SemVer protocol versions are used\nby the model-operation draft; legacy `0.1` remains an explicit exception.\n`model_transport` (wire `modelTransport`) is left out when absent. Absence\nmeans legacy-only, never an implicit offer of model transport. The offer\nlists every supported tuple in preference order; the first tuple for each\noperation is the host's default. A host that requires one format offers\nonly that tuple. A host offers `morphir.validator.validateModel` tuples\nonly to an extension whose `morphir.extension.describe` result or recorded\nclaims list at least one validateModel tuple in\n`capabilities.modelTransport`. A host without either offers none: an\nextension that does not know an operation can refuse the whole offer.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -607,9 +607,81 @@
                     }
                   }
                 },
+                "validator-capability": {
+                  "Public": {
+                    "doc": "What a validator can check. `ir_versions` (wire `irVersions`) lists the\nsemantic IR versions that the validator reads, with the same spelling as\n`FrontendCapability` and `BackendCapability`. A\n`morphir.validator.validateModel` tuple authorizes the method, and the\n`irVersion` of that tuple must also be in `irVersions`. There is no\nboolean as `compile` or `generate`: those authorize only legacy methods.\n`rules` lists the rules that the validator can report. In one list, each\nrule `id` and each rule `code` is unique. An empty list means that the\nvalidator does not list its rules; it does not mean that it has none.\n\nWire rules: `rules` is left out when empty, and an absent `rules` is read\nas empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "validator-capability": [
+                          [
+                            "ir-versions",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "rules",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#validator-rule"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "validator-rule": {
+                  "Public": {
+                    "doc": "One rule of a validator. `id` is an absolute IRI (RFC 3987) that names\nthe rule. Compare it as a plain string, with no normalization. The\nextension owns the IRI, and a host does not have to dereference it.\n`code` is the nonempty `Diagnostic.code` of each diagnostic that the rule\nreports, so a host maps a diagnostic to its rule IRI through the extension\nand the code.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "validator-rule": [
+                          [
+                            "id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "code",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
                 "extension-capabilities": {
                   "Public": {
-                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend`, `workspace` and `modelTransport` are left out\nwhen absent. An absent `modelTransport` means legacy-only.\n- `modelTransport` before initialization is guest support. In a session\nit contains only tuples explicitly offered by both peers and limits no\nlarger than either peer's limits. It is not a Cartesian product. The\nextension keeps the host offer order, and the host uses the first agreed\ntuple for each operation. Only an empty agreement is a failure.\nUnder the new draft, agreement with static claims permits this narrowing\nfor modelTransport only; legacy capability equality rules are unchanged.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `streaming`, `incremental`,\n`cancellation`, `progress` or `modelTransport`.",
+                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend`, `workspace`, `validator` and `modelTransport` are\nleft out when absent. An absent `modelTransport` means legacy-only.\n- `modelTransport` before initialization is guest support. In a session\nit contains only tuples explicitly offered by both peers and limits no\nlarger than either peer's limits. It is not a Cartesian product. The\nextension keeps the host offer order, and the host uses the first agreed\ntuple for each operation. Only an empty agreement is a failure.\nUnder the new draft, agreement with static claims permits this narrowing\nfor modelTransport only; legacy capability equality rules are unchanged.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `validator`, `streaming`,\n`incremental`, `cancellation`, `progress` or `modelTransport`.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -654,6 +726,21 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#workspace-capability"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "validator",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#validator-capability"
                                     }
                                   }
                                 ]
@@ -856,7 +943,7 @@
                 },
                 "method": {
                   "Public": {
-                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                       | Kind         |\n| ------------------- | -------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`             | request      |\n| `Describe`          | `morphir.extension.describe`     | request      |\n| `Initialized`       | `morphir.initialized`            | notification |\n| `Ping`              | `morphir.ping`                   | request      |\n| `Info`              | `morphir.extension.info`         | request      |\n| `Capabilities`      | `morphir.extension.capabilities` | request      |\n| `Compile`           | `morphir.frontend.compile`       | request      |\n| `CompileModel`      | `morphir.frontend.compileModel`  | request      |\n| `Generate`          | `morphir.backend.generate`       | request      |\n| `GenerateModel`     | `morphir.backend.generateModel`  | request      |\n| `Validate`          | `morphir.validator.validate`     | request      |\n| `Transform`         | `morphir.transform.transform`    | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |\n| `Shutdown`          | `morphir.shutdown`               | request      |\n| `Exit`              | `morphir.exit`                   | notification |\n| `CancelRequest`     | `$/cancelRequest`                | notification |\n| `Progress`          | `morphir.progress`               | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
+                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                        | Kind         |\n| ------------------- | --------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`              | request      |\n| `Describe`          | `morphir.extension.describe`      | request      |\n| `Initialized`       | `morphir.initialized`             | notification |\n| `Ping`              | `morphir.ping`                    | request      |\n| `Info`              | `morphir.extension.info`          | request      |\n| `Capabilities`      | `morphir.extension.capabilities`  | request      |\n| `Compile`           | `morphir.frontend.compile`        | request      |\n| `CompileModel`      | `morphir.frontend.compileModel`   | request      |\n| `Generate`          | `morphir.backend.generate`        | request      |\n| `GenerateModel`     | `morphir.backend.generateModel`   | request      |\n| `Validate`          | `morphir.validator.validate`      | request      |\n| `ValidateModel`     | `morphir.validator.validateModel` | request      |\n| `Transform`         | `morphir.transform.transform`     | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`      | request      |\n| `Shutdown`          | `morphir.shutdown`                | request      |\n| `Exit`              | `morphir.exit`                    | notification |\n| `CancelRequest`     | `$/cancelRequest`                 | notification |\n| `Progress`          | `morphir.progress`                | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -872,6 +959,7 @@
                         "generate": [],
                         "generate-model": [],
                         "validate": [],
+                        "validate-model": [],
                         "transform": [],
                         "workspace-discover": [],
                         "shutdown": [],
@@ -1744,13 +1832,14 @@
                 },
                 "model-operation": {
                   "Public": {
-                    "doc": "A model operation. Wire values are `morphir.frontend.compileModel` and\n`morphir.backend.generateModel`, respectively. These methods require the\nexact MEP draft `0.2.0-draft.1`, bilateral model transport and operation\ncapability admission; legacy `0.1` never enables them.",
+                    "doc": "A model operation. Wire values are `morphir.frontend.compileModel`,\n`morphir.backend.generateModel` and `morphir.validator.validateModel`,\nrespectively. These methods require the exact MEP draft `0.2.0-draft.1`,\nbilateral model transport and operation capability admission; legacy\n`0.1` never enables them.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
                       "constructors": {
                         "compile-model-operation": [],
-                        "generate-model-operation": []
+                        "generate-model-operation": [],
+                        "validate-model-operation": []
                       }
                     }
                   }
@@ -2413,6 +2502,83 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "validate-model-request": {
+                  "Public": {
+                    "doc": "Parameters of `morphir.validator.validateModel`: validate a complete\nmodel. `input` selects an admitted validateModel tuple; the model's\nprofile, codec, envelope and semantic IR version must match it, and its\n`irVersion` must be in `validator.irVersions`. The request has no\n`contextDigest` or `requiredGuarantees`: a validator reads the model and\nreports, and needs no prerequisite from the host. `options` belongs to\nthe extension, and an extension refuses an option that it does not know\nwith -32602.\nIf the host has the model in a tuple that the session does not agree, but\ncan convert it without loss to an agreed tuple, the host sends the model\nconverted to the first such tuple in host order, with the identity,\nevidence and report rules of `generateModel`. The host never sends a\nlossy conversion for validation, even when the user allows loss: a\nvalidator that does not see all of the model can give a wrong result.\nWhen only a lossy conversion is possible, the host refuses with its\nlossy-conversion error. Only when it cannot convert does it report\n`extension.tuple_unavailable`.\nWire rules: absent `options` is read as empty.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "validate-model-request": [
+                          [
+                            "model",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#morphir-model"
+                              }
+                            }
+                          ],
+                          [
+                            "input",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-transport-tuple"
+                              }
+                            }
+                          ],
+                          [
+                            "options",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:dict#dict",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  },
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "validate-model-result": {
+                  "Public": {
+                    "doc": "Result of `morphir.validator.validateModel`.\n\nWire rules: `diagnostics` is required and can be empty. There is no\nsuccess flag: the host decides the outcome from the severities. A model\nthat breaks a rule gives diagnostics in a result. A validator that cannot\nrun answers with a JSON-RPC error (`ValidationError`, -32003), not with a\nresult.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "validate-model-result": [
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
                                     }
                                   }
                                 ]

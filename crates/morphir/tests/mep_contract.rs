@@ -163,6 +163,7 @@ fn the_contract_covers_every_method_and_error_code() {
             "generate",
             "generate-model",
             "validate",
+            "validate-model",
             "transform",
             "workspace-discover",
             "shutdown",
@@ -312,11 +313,17 @@ fn model_operations_have_explicit_carriers_and_scoped_evidence() {
                     "options",
                 ],
             ),
+            ("validate-model-request", &["model", "input", "options"]),
+            ("validate-model-result", &["diagnostics"]),
         ],
     );
     assert_eq!(
         constructor_names(&ir, "model-operation"),
-        ["compile-model-operation", "generate-model-operation"]
+        [
+            "compile-model-operation",
+            "generate-model-operation",
+            "validate-model-operation"
+        ]
     );
     assert_eq!(
         constructor_names(&ir, "model-codec"),
@@ -452,7 +459,7 @@ fn model_reference_corpus_binds_real_payload_assets() {
             "preservation"
         ])
     );
-    assert_eq!(ids.len(), 35);
+    assert_eq!(ids.len(), 41);
     let case = |id: &str| cases.iter().find(|case| case["id"] == id).unwrap();
     assert_eq!(
         case("model-0026")["request"]["method"],
@@ -549,6 +556,8 @@ const CAPABILITY_TYPES: &[&str] = &[
     "frontend-capability",
     "backend-capability",
     "workspace-capability",
+    "validator-capability",
+    "validator-rule",
     "extension-capabilities",
     "capability-claim-set",
     "claims-requirements",
@@ -583,12 +592,15 @@ fn the_contract_covers_capabilities_and_claims() {
             &["targets", "ir-versions", "generate"],
         ),
         ("workspace-capability", &["protocol-versions", "discover"]),
+        ("validator-capability", &["ir-versions", "rules"]),
+        ("validator-rule", &["id", "code"]),
         (
             "extension-capabilities",
             &[
                 "frontend",
                 "backend",
                 "workspace",
+                "validator",
                 "model-transport",
                 "streaming",
                 "incremental",
@@ -811,8 +823,18 @@ fn every_wire_exception_is_documented() {
         ("FrontendCapability", &["only when it is true"]),
         ("WorkspaceCapability", &["full SemVer"]),
         (
+            "ValidatorCapability",
+            &["left out when empty", "read as empty", "unique"],
+        ),
+        ("ValidatorRule", &["absolute IRI", "plain string"]),
+        (
             "ExtensionCapabilities",
-            &["beside the named members", "always written", "refuses"],
+            &[
+                "beside the named members",
+                "always written",
+                "refuses",
+                "`validator`",
+            ],
         ),
         ("ClaimsRequirements", &["comparator", "left out when empty"]),
         (
@@ -849,10 +871,22 @@ fn every_wire_exception_is_documented() {
         ("ModuleStatus", &["Wire values"]),
         ("ModuleResult", &["left out when absent", "read as empty"]),
         // Rich model wire mappings are explicit rather than inferred tags.
-        ("InitializeParams", &["modelTransport", "left out"]),
+        (
+            "InitializeParams",
+            &[
+                "modelTransport",
+                "left out",
+                "at least one validateModel tuple",
+            ],
+        ),
         (
             "ModelOperation",
-            &["Wire values", "0.2.0-draft.1", "legacy `0.1`"],
+            &[
+                "Wire values",
+                "`morphir.validator.validateModel`",
+                "0.2.0-draft.1",
+                "legacy `0.1`",
+            ],
         ),
         (
             "ModelCodec",
@@ -899,6 +933,14 @@ fn every_wire_exception_is_documented() {
             &["REQUIRED", "even null", "read as empty"],
         ),
         ("GenerateModelRequest", &["read as empty", "required scope"]),
+        (
+            "ValidateModelRequest",
+            &["read as empty", "admitted validateModel tuple", "lossy"],
+        ),
+        (
+            "ValidateModelResult",
+            &["can be empty", "no success flag", "JSON-RPC error"],
+        ),
         // Generate
         ("GenerateRequest", &["read as empty"]),
         ("GenerateResult", &["read as empty"]),

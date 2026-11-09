@@ -18,9 +18,10 @@ this model in the same pull request. The check below compares the two.
 
 - **Protocol version:** MEP `0.2.0-draft.1`, the version in
   `contract/gleam.toml`. This draft keeps every legacy `0.1` method and shape,
-  and adds `morphir.frontend.compileModel` and `morphir.backend.generateModel`.
-  So one model covers legacy `0.1` sessions and `0.2.0-draft.1` sessions. The
-  services have `version: "0.2.0-draft.1"`.
+  and adds `morphir.frontend.compileModel`, `morphir.backend.generateModel`
+  and `morphir.validator.validateModel`. So one model covers legacy `0.1`
+  sessions and `0.2.0-draft.1` sessions. The services have
+  `version: "0.2.0-draft.1"`.
 - **JSON-RPC version:** 2.0 only.
 - **Not in scope:** Content-Length framing, which is transport, and admission
   rules that need decoded payloads or trust decisions: payload length and
@@ -38,6 +39,7 @@ spec/mep/smithy/
     compile.smithy          legacy compile request and result
     generate.smithy         generate request and result, diagnostics
     model-transport.smithy  rich model transport (0.2.0-draft.1)
+    validate.smithy         validateModel request, result and capability
   transcripts/              session transcripts, checked as tests
   values.json               JSON examples that are not JSON-RPC messages
   mck-expectations.json     expected findings for each MCK model-transport case
@@ -117,14 +119,16 @@ match that list.
 | `doc-generate.md` | protocol.md generate request and result, backend capability | Valid |
 | `session-legacy.md` | a complete `0.1` session, with the protocol.md claim set | Valid |
 | `session-model-transport.md` | a `0.2.0-draft.1` session with MCK cases model-0028 and model-0001 | Valid |
+| `session-validate-model.md` | a `0.2.0-draft.1` validator session with MCK case model-0036 | Valid |
+| `validate-model-failure.md` | a validator that cannot run, then -32003 | Valid |
 | `lifecycle-violations.md` | requests in the wrong state, capabilities not advertised | 7 expected findings |
 | `protocol-errors.md` | unknown method, bad params, wrong reply id, unsolicited reply | 6 expected findings |
 
 ## MCK cases
 
-All 35 requests of `model-transport.cases.json` and their transport offers
+All 41 requests of `model-transport.cases.json` and their transport offers
 are valid, except model-0033, which the validator refuses as an unknown
-member. Of the five results, model-0020 (`model: null` on failure) is
+member. Of the six results, model-0020 (`model: null` on failure) is
 refused. The other cases that MEP refuses fail at admission, which a message
 model does not check, or at a rule that is a gap below.
 `mck-expectations.json` states the reason for each case.
@@ -147,6 +151,6 @@ model marks each place with a `GAP smithy-2qe.34.N` comment.
 | smithy-2qe.34.21 | `CompileModelResult` requires `model` when `success` is true and forbids it when false; a claim set has exactly one of `claimsVersion` and `statementVersion`. |
 | smithy-2qe.34.22 | A request id is a number or a string; the model uses a `document`. |
 | smithy-2qe.34.23 | An unknown `PeerKind` is read as `unspecified`; the validator refuses it. |
-| smithy-2qe.34.24 | Relations between values: the selected version and tuples come from the offers, `options.irVersion` equals `output.irVersion`, progress names an active request, `baseline` only for an incremental frontend. |
+| smithy-2qe.34.24 | Relations between values: the selected version and tuples come from the offers, `options.irVersion` equals `output.irVersion`, a validateModel `model` matches its `input`, rule ids and codes are unique in `validator.rules`, progress names an active request, `baseline` only for an incremental frontend. |
 | smithy-2qe.34.25 | Params of validate, transform and workspace discover are any JSON value; there is no `paramsMember`. |
 | smithy-2qe.34.26 | A canonical base64 pattern on a model payload exceeds the default validation work budget, and the CLI cannot raise it, so `content` has no pattern. |

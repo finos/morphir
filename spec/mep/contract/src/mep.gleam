@@ -49,7 +49,11 @@ pub type DescribeParams {
 /// means legacy-only, never an implicit offer of model transport. The offer
 /// lists every supported tuple in preference order; the first tuple for each
 /// operation is the host's default. A host that requires one format offers
-/// only that tuple.
+/// only that tuple. A host offers `morphir.validator.validateModel` tuples
+/// only to an extension whose `morphir.extension.describe` result or recorded
+/// claims list at least one validateModel tuple in
+/// `capabilities.modelTransport`. A host without either offers none: an
+/// extension that does not know an operation can refuse the whole offer.
 pub type InitializeParams {
   InitializeParams(
     protocol_versions: List(String),
@@ -131,11 +135,37 @@ pub type WorkspaceCapability {
   WorkspaceCapability(protocol_versions: List(String), discover: Bool)
 }
 
+/// What a validator can check. `ir_versions` (wire `irVersions`) lists the
+/// semantic IR versions that the validator reads, with the same spelling as
+/// `FrontendCapability` and `BackendCapability`. A
+/// `morphir.validator.validateModel` tuple authorizes the method, and the
+/// `irVersion` of that tuple must also be in `irVersions`. There is no
+/// boolean as `compile` or `generate`: those authorize only legacy methods.
+/// `rules` lists the rules that the validator can report. In one list, each
+/// rule `id` and each rule `code` is unique. An empty list means that the
+/// validator does not list its rules; it does not mean that it has none.
+///
+/// Wire rules: `rules` is left out when empty, and an absent `rules` is read
+/// as empty.
+pub type ValidatorCapability {
+  ValidatorCapability(ir_versions: List(String), rules: List(ValidatorRule))
+}
+
+/// One rule of a validator. `id` is an absolute IRI (RFC 3987) that names
+/// the rule. Compare it as a plain string, with no normalization. The
+/// extension owns the IRI, and a host does not have to dereference it.
+/// `code` is the nonempty `Diagnostic.code` of each diagnostic that the rule
+/// reports, so a host maps a diagnostic to its rule IRI through the extension
+/// and the code.
+pub type ValidatorRule {
+  ValidatorRule(id: String, code: String)
+}
+
 /// What an extension can do.
 ///
 /// Wire rules:
-/// - `frontend`, `backend`, `workspace` and `modelTransport` are left out
-///   when absent. An absent `modelTransport` means legacy-only.
+/// - `frontend`, `backend`, `workspace`, `validator` and `modelTransport` are
+///   left out when absent. An absent `modelTransport` means legacy-only.
 /// - `modelTransport` before initialization is guest support. In a session
 ///   it contains only tuples explicitly offered by both peers and limits no
 ///   larger than either peer's limits. It is not a Cartesian product. The
@@ -148,13 +178,14 @@ pub type WorkspaceCapability {
 /// - Members of `extra` sit beside the named members on the wire, not under
 ///   an `extra` key. Unknown members are read into `extra`.
 /// - A writer refuses an `extra` key that is one of the reserved names
-///   `frontend`, `backend`, `workspace`, `streaming`, `incremental`,
-///   `cancellation`, `progress` or `modelTransport`.
+///   `frontend`, `backend`, `workspace`, `validator`, `streaming`,
+///   `incremental`, `cancellation`, `progress` or `modelTransport`.
 pub type ExtensionCapabilities {
   ExtensionCapabilities(
     frontend: Option(FrontendCapability),
     backend: Option(BackendCapability),
     workspace: Option(WorkspaceCapability),
+    validator: Option(ValidatorCapability),
     model_transport: Option(ModelTransportSupport),
     streaming: Bool,
     incremental: Bool,
@@ -213,25 +244,26 @@ pub type CapabilityClaimSet {
 
 /// A MEP method. The wire value is the JSON-RPC 2.0 `method` string:
 ///
-/// | Constructor         | Wire value                       | Kind         |
-/// | ------------------- | -------------------------------- | ------------ |
-/// | `Initialize`        | `morphir.initialize`             | request      |
-/// | `Describe`          | `morphir.extension.describe`     | request      |
-/// | `Initialized`       | `morphir.initialized`            | notification |
-/// | `Ping`              | `morphir.ping`                   | request      |
-/// | `Info`              | `morphir.extension.info`         | request      |
-/// | `Capabilities`      | `morphir.extension.capabilities` | request      |
-/// | `Compile`           | `morphir.frontend.compile`       | request      |
-/// | `CompileModel`      | `morphir.frontend.compileModel`  | request      |
-/// | `Generate`          | `morphir.backend.generate`       | request      |
-/// | `GenerateModel`     | `morphir.backend.generateModel`  | request      |
-/// | `Validate`          | `morphir.validator.validate`     | request      |
-/// | `Transform`         | `morphir.transform.transform`    | request      |
-/// | `WorkspaceDiscover` | `morphir.workspace.discover`     | request      |
-/// | `Shutdown`          | `morphir.shutdown`               | request      |
-/// | `Exit`              | `morphir.exit`                   | notification |
-/// | `CancelRequest`     | `$/cancelRequest`                | notification |
-/// | `Progress`          | `morphir.progress`               | notification |
+/// | Constructor         | Wire value                        | Kind         |
+/// | ------------------- | --------------------------------- | ------------ |
+/// | `Initialize`        | `morphir.initialize`              | request      |
+/// | `Describe`          | `morphir.extension.describe`      | request      |
+/// | `Initialized`       | `morphir.initialized`             | notification |
+/// | `Ping`              | `morphir.ping`                    | request      |
+/// | `Info`              | `morphir.extension.info`          | request      |
+/// | `Capabilities`      | `morphir.extension.capabilities`  | request      |
+/// | `Compile`           | `morphir.frontend.compile`        | request      |
+/// | `CompileModel`      | `morphir.frontend.compileModel`   | request      |
+/// | `Generate`          | `morphir.backend.generate`        | request      |
+/// | `GenerateModel`     | `morphir.backend.generateModel`   | request      |
+/// | `Validate`          | `morphir.validator.validate`      | request      |
+/// | `ValidateModel`     | `morphir.validator.validateModel` | request      |
+/// | `Transform`         | `morphir.transform.transform`     | request      |
+/// | `WorkspaceDiscover` | `morphir.workspace.discover`      | request      |
+/// | `Shutdown`          | `morphir.shutdown`                | request      |
+/// | `Exit`              | `morphir.exit`                    | notification |
+/// | `CancelRequest`     | `$/cancelRequest`                 | notification |
+/// | `Progress`          | `morphir.progress`                | notification |
 ///
 /// A notification carries no request id and gets no response.
 ///
@@ -252,6 +284,7 @@ pub type Method {
   Generate
   GenerateModel
   Validate
+  ValidateModel
   Transform
   WorkspaceDiscover
   Shutdown
@@ -496,13 +529,15 @@ pub type ModuleResult {
 
 // -- Rich model transport ---------------------------------------------------
 
-/// A model operation. Wire values are `morphir.frontend.compileModel` and
-/// `morphir.backend.generateModel`, respectively. These methods require the
-/// exact MEP draft `0.2.0-draft.1`, bilateral model transport and operation
-/// capability admission; legacy `0.1` never enables them.
+/// A model operation. Wire values are `morphir.frontend.compileModel`,
+/// `morphir.backend.generateModel` and `morphir.validator.validateModel`,
+/// respectively. These methods require the exact MEP draft `0.2.0-draft.1`,
+/// bilateral model transport and operation capability admission; legacy
+/// `0.1` never enables them.
 pub type ModelOperation {
   CompileModelOperation
   GenerateModelOperation
+  ValidateModelOperation
 }
 
 /// The representation of a complete model document. Wire values are
@@ -702,6 +737,43 @@ pub type GenerateModelRequest {
     required_guarantees: List(ModelGuaranteeRequirement),
     options: Dict(String, Json),
   )
+}
+
+/// Parameters of `morphir.validator.validateModel`: validate a complete
+/// model. `input` selects an admitted validateModel tuple; the model's
+/// profile, codec, envelope and semantic IR version must match it, and its
+/// `irVersion` must be in `validator.irVersions`. The request has no
+/// `contextDigest` or `requiredGuarantees`: a validator reads the model and
+/// reports, and needs no prerequisite from the host. `options` belongs to
+/// the extension, and an extension refuses an option that it does not know
+/// with -32602.
+/// If the host has the model in a tuple that the session does not agree, but
+/// can convert it without loss to an agreed tuple, the host sends the model
+/// converted to the first such tuple in host order, with the identity,
+/// evidence and report rules of `generateModel`. The host never sends a
+/// lossy conversion for validation, even when the user allows loss: a
+/// validator that does not see all of the model can give a wrong result.
+/// When only a lossy conversion is possible, the host refuses with its
+/// lossy-conversion error. Only when it cannot convert does it report
+/// `extension.tuple_unavailable`.
+/// Wire rules: absent `options` is read as empty.
+pub type ValidateModelRequest {
+  ValidateModelRequest(
+    model: MorphirModel,
+    input: ModelTransportTuple,
+    options: Dict(String, Json),
+  )
+}
+
+/// Result of `morphir.validator.validateModel`.
+///
+/// Wire rules: `diagnostics` is required and can be empty. There is no
+/// success flag: the host decides the outcome from the severities. A model
+/// that breaks a rule gives diagnostics in a result. A validator that cannot
+/// run answers with a JSON-RPC error (`ValidationError`, -32003), not with a
+/// result.
+pub type ValidateModelResult {
+  ValidateModelResult(diagnostics: List(Diagnostic))
 }
 
 // -- Generate ---------------------------------------------------------------

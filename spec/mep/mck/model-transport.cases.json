@@ -3384,6 +3384,571 @@
         "admission": "reject",
         "code": "decoded_limit"
       }
+    },
+    {
+      "id": "model-0036",
+      "kind": "negotiation",
+      "description": "Exact bilateral validateModel tuple admits a model validation request.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            },
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.validator.validateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-ir",
+            "payload": {
+              "codec": "morphir-json",
+              "layout": "single-document",
+              "decodedByteLength": 130,
+              "sha256": "fd49ad8b0cab49216323beb969c08f91a888925dbb995838c57a05b48a80bb2f",
+              "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.validator.validateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "options": {}
+        }
+      },
+      "result": {
+        "diagnostics": [
+          {
+            "severity": "warning",
+            "code": "example.empty-package",
+            "message": "Package example/mep-fixture has no module."
+          }
+        ]
+      },
+      "expected": {
+        "admission": "accept",
+        "code": "accepted",
+        "retainedAsset": "fixtures/plain-ir.json"
+      }
+    },
+    {
+      "id": "model-0037",
+      "kind": "negotiation",
+      "description": "An empty validateModel agreement makes the operation unavailable. The host sends no request.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.validator.validateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-ir",
+            "payload": {
+              "codec": "morphir-json",
+              "layout": "single-document",
+              "decodedByteLength": 130,
+              "sha256": "fd49ad8b0cab49216323beb969c08f91a888925dbb995838c57a05b48a80bb2f",
+              "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.validator.validateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0038",
+      "kind": "negotiation",
+      "description": "Generate support does not authorize validateModel.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.backend.generateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.validator.validateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-ir",
+            "payload": {
+              "codec": "morphir-json",
+              "layout": "single-document",
+              "decodedByteLength": 130,
+              "sha256": "fd49ad8b0cab49216323beb969c08f91a888925dbb995838c57a05b48a80bb2f",
+              "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.validator.validateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
+    },
+    {
+      "id": "model-0039",
+      "kind": "negotiation",
+      "description": "Legacy MEP0.1 cannot invoke validateModel.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.validator.validateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-ir",
+            "payload": {
+              "codec": "morphir-json",
+              "layout": "single-document",
+              "decodedByteLength": 130,
+              "sha256": "fd49ad8b0cab49216323beb969c08f91a888925dbb995838c57a05b48a80bb2f",
+              "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.validator.validateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_protocol"
+      }
+    },
+    {
+      "id": "model-0040",
+      "kind": "integrity",
+      "description": "SHA256 binds the decoded bytes of a validated model.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.validator.validateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-ir",
+            "payload": {
+              "codec": "morphir-json",
+              "layout": "single-document",
+              "decodedByteLength": 130,
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+              "content": "eyJmb3JtYXRWZXJzaW9uIjoiNC4wLjAiLCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6ImV4YW1wbGUvbWVwLWZpeHR1cmUiLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19Cg=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.validator.validateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "digest_mismatch"
+      }
+    },
+    {
+      "id": "model-0041",
+      "kind": "negotiation",
+      "description": "The input tuple of validateModel must agree with the model envelope, even when both tuples are agreed.",
+      "hostOffer": {
+        "protocolVersions": [
+          "0.2.0-draft.1",
+          "0.1"
+        ],
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            },
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "guestSupport": {
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTransport": {
+          "tuples": [
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-model",
+              "codec": "ion-binary",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            },
+            {
+              "operation": "morphir.validator.validateModel",
+              "profile": "morphir-ir",
+              "codec": "morphir-json",
+              "envelopeVersion": "0.1.0-draft.1",
+              "irVersion": "4.0.0"
+            }
+          ],
+          "limits": {
+            "maxEncodedBytes": 8192,
+            "maxDecodedBytes": 4096,
+            "maxDepth": 64,
+            "maxNodes": 256
+          },
+          "guarantees": [
+            "urn:morphir:mep:fixture:checked"
+          ]
+        }
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.validator.validateModel",
+        "params": {
+          "model": {
+            "envelopeVersion": "0.1.0-draft.1",
+            "modelId": "urn:morphir:mep:fixture:model",
+            "revision": "fixture-revision-1",
+            "irVersion": "4.0.0",
+            "profile": "morphir-model",
+            "payload": {
+              "codec": "ion-binary",
+              "layout": "single-document",
+              "decodedByteLength": 499,
+              "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+              "content": "4AEA6u4Co4GD3gKeh74Cmo1tb3JwaGlyX21vZGVsgmlyjWZvcm1hdFZlcnNpb26MZGlzdHJpYnV0aW9uh0xpYnJhcnmLcGFja2FnZU5hbWWMZGVwZW5kZW5jaWVzg2RlZodtb2R1bGVzi2VucmljaG1lbnRzhW93bmVyhGRhdGGLc291cmNlX25hbWWLdGFyZ2V0X25hbWWMb3JpZ2luYWxOYW1linRhcmdldE5hbWWOj3NvdXJjZVByZWNpc2lvboRraW5khWludDY0hWV4YWN0hmFtb3VudIpmdXR1cmVGYWN0jpFmdXR1cmVfdm9jYWJ1bGFyeYdlbmFibGVkinByb3ZlbmFuY2WOjmZpeHR1cmVfb3JpZ2luiHByb2R1Y2VyhnNvdXJjZe4BxoGK3gHBi96pjIU0LjAuMI3en47enI+Ok2V4YW1wbGUvbWVwLWZpeHR1cmWQ0JHSktCTvuXe45SOqnVybjptb3JwaGlyOm1lcDpmaXh0dXJlOnVua25vd24tZW5yaWNobWVudJXus4KWl96umIdpc1JlYWR5mYhpc19yZWFkeZrcm3EcnScgAAAAAAABnlTEEtZEn+WBoNKhEaK+qu6ogaPepKSOlG1lcC1yZWZlcmVuY2UtY29ycHVzpYtmaXh0dXJlLm1idA=="
+            },
+            "evidence": [],
+            "critical": []
+          },
+          "input": {
+            "operation": "morphir.validator.validateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          },
+          "options": {}
+        }
+      },
+      "expected": {
+        "admission": "reject",
+        "code": "unsupported_tuple"
+      }
     }
   ]
 }
