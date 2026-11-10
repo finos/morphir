@@ -62,6 +62,7 @@ Depends on: 1.2, 1.3 and 1.4.
 
   Verify with a test that installs a package at a path one unit under and one unit over each limit.
 - [ ] 2.6 Publish the F# frontend as a package for each platform, with its `treeSha256` and `artifacts.package` in `critical`, from the installer plan's adoption task 3.3, and install it with the Native AOT host from a TEST-ONLY repository; verify that the readiness workflow passes with the installed frontend. **Depends on [Q-LAUNCH](design.html#q-launch)** for how it is started.
+- [ ] 2.7 Make the publisher of #1150's task 2.7, morphir-dotnet's bundle authoring (Decision 13), write package artifacts. It computes `treeSha256` by [TREE-1](design.html#tree-1) from the archive it publishes, writes the `package` member, lists `artifacts.package` in `critical`, and refuses to publish an archive that a host would refuse under [RD-1](design.html#rd-1) and [EXT-1](design.html#ext-1). It also publishes the existing single-executable `.tgz` extensions, such as morphir-elm, as one-file packages when they are next released. Verify with the valid package cases, whose published descriptors must match the expected `package` members, and with one refusal case per rule group.
 
 ## 3. MoonBit host
 
@@ -87,7 +88,7 @@ Depends on: 2.6. These pages are in `docs/spec/toolchain/`, on `origin/feat/morp
 
 This work does not gate the change or any task above, and no `ecosystem/morphir-rust` pin move is planned for it:
 
-- finos/morphir-rust `morphir-distribution`: reuse the tool extractor for extension packages with this change's rules, and stop refusing archives that carry a `package` member at publication. The rules to apply are in particular the reading rules, ASCII names, the executable set from the descriptor, the bounds, read-only modes and the lease;
+- finos/morphir-rust `morphir-distribution`: reuse the tool extractor so that the Rust CLI can install extension packages with this change's rules. Its publication path is not extended (#1150's Decision 13). The rules to apply are in particular the reading rules, ASCII names, the executable set from the descriptor, the bounds, read-only modes and the lease;
 - the Rust CLI: install and start packages;
 - each would run the shared cases.
 
