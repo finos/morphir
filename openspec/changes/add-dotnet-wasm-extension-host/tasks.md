@@ -1,0 +1,59 @@
+# Tasks
+
+This is the OpenSpec implementation breakdown, not a completed-work ledger. Beads remains the task tracker. The owning epic and child links are pending because the shared database still rejects writes with a Dolt merge conflict; no id exists. Create those links after the conflict is resolved and before claiming implementation tasks.
+
+Dependencies: group 1 fixes the contract and the crafted corpus. Group 2 builds the engine layer and the byte profile against them. Group 3 adds the Extism profile on group 2. Group 4 needs one working profile and can start after group 2. Group 5 needs group 2 for something to package and can run beside groups 3 and 4. Group 6 consolidates after all of them. `add-bounded-model-access` task 5.2 can start after groups 2 and 4. Keep implementation changes in their owning repositories.
+
+Runner home: the conformance runner is the Rust `morphir mck` today, and the maintainer intends to move it to the .NET or MoonBit host. That choice is not made. The corpus, expectations and report contract in group 1 are data and do not depend on it. Tasks 1.5 and 4.3 run on whichever runner hosts the kit when they start; confirm its home with the maintainer first, and do not add code to `crates/morphir-mck` without that confirmation.
+
+## 1. Shared contract and crafted corpus, finos/morphir
+
+- [ ] 1.1 Publish the profile contract `0.1.0-draft.1` under `spec/mep`, with the full import table for both profiles: every accepted name and signature, the Extism kernel functions for one pinned kernel version, the `handle` result codes, the policy table, the bounds and the failure codes. Verify each row against the MoonBit classifier at the commit the design cites and the Rust extension SDK's declarations, and record the Rust host's `morphir_get_workspace_info` difference as a known deviation with a tracking issue.
+- [ ] 1.2 Add the crafted modules as WebAssembly text under `spec/mep/mck/fixtures/wasm`, one fault each, with a pinned assembler and the SHA-256 of each built binary. Verify a clean rebuild reproduces every digest and that the build needs no guest language toolchain.
+- [ ] 1.3 Write each crafted case's expected observation by hand and link it to the contract requirement it tests. Verify a kit self-check fails when a contract failure code or outcome has no case, by removing one case and seeing the check fail.
+- [ ] 1.4 Define the host qualification report alongside the existing MCK report contract: runner, corpus digest, contract version, host executable digest, declared offering, platform and engine, per-bound enforcement and per-case observations. Verify fixed valid and invalid reports through `report-check`, including an edited verdict and a bound recorded as `not_enforced`.
+- [ ] 1.5 Add to the kit's runner only what is needed to run crafted cases through a stdio worker and to read its stderr reports, in the runner home confirmed above. Verify the complete corpus against the MoonBit native CLI's worker mode first, since that host already exists, and record each difference as a contract question or a MoonBit issue before any .NET result is compared.
+- [ ] 1.6 Document the two profiles for extension authors and host implementers in the published extension docs, with the classification diagram, the result-code table and the policy table. Verify `openspec validate add-dotnet-wasm-extension-host --strict`, the MEP spec checks and `mise run openspec:verify` pass.
+
+## 2. Engine layer and byte profile, morphir-dotnet
+
+- [ ] 2.1 Open a morphir-dotnet OpenSpec change that adopts these requirements for roadmap steps 2a (runtime) and 5, updating its `extension-registry` delivery values and `mep-protocol` host dispatch. Verify it validates strictly and links this change; no implementation task below starts before it is approved, as that repository's PRD requires.
+- [ ] 2.2 Add failing tests for a message-based host channel in `Morphir.Mep`, then implement it and move the stream framing behind it. Verify every existing process-guest test and replay passes unchanged, and that a fake single-message guest completes initialize, a request and shutdown.
+- [ ] 2.3 Add the engine layer: one engine with fuel and epoch interruption, one store per session, in-memory module reuse by digest, and classification from the validated module against the contract table. Verify the crafted classification cases in-process, including an unknown import named in the refusal and a feature refusal for shared memory.
+- [ ] 2.4 Implement the bounds and their mapping: fuel, epoch deadline, cancellation, the per-memory limit and the at-ceiling memory rule, with memory size on every failure. Verify the crafted bounds cases, that Ctrl+C stops a spinning guest within one second with exit status 130, and record the published guests' fuel use and compile time on the kit package in the change's evidence.
+- [ ] 2.5 Implement the byte adapter with the three callbacks registered through a source-generated unmanaged binding. Verify the Gleam `0.4.0` guest compiles the kit package to the expected IR, the result-code cases pass, a 16 MiB round trip meets the design's proposed threshold on the Native AOT host, and the AOT publish reports zero IL2026 and IL3050 warnings with no suppressions.
+- [ ] 2.6 Load a module from `extensions.<name>.path` by content, with an optional declared ABI and digest, and separate guest output from command results. Verify a text file at the path, a replaced module and a guest that logs 10 MiB under `--json`, and document the configuration beside the existing extension settings.
+
+## 3. Extism profile and sandbox, morphir-dotnet
+
+- [ ] 3.1 Prove the kernel approach before anything else in this group: embed the pinned Extism kernel module, link it in the session store and run `initialize` on the Python `0.4.2` module under the Native AOT host. Verify zero AOT warnings, that the limiter applies to the kernel's memory and that the host reads the `handle` result directly. If any of these fails, stop and return decision KRN-1 for review.
+- [ ] 3.2 Implement the Extism adapter: one instance per session, input and output through the kernel, Extism errors as session failures, no notifications to the guest and `exit` ending the instance. Verify a compile session on the Python guest makes one `handle` call per request and that `initialized` and `exit` are not delivered.
+- [ ] 3.3 Implement the host-function policy and the Morphir functions with their limits. Verify the crafted sandbox cases: `http_request` fails with no connection attempt and its URL recorded, the variable store and IR cache enforce their limits, and a second session starts empty.
+- [ ] 3.4 Configure the WASI sandbox with no preopens, arguments, environment or stdin, and bounded capture of stdout and stderr. Verify `path_open` returns an error with the session continuing, clocks and random bytes work, and guest stdout never reaches a MEP response.
+- [ ] 3.5 Run the generic guest kit in-process for the Python guest and the SDK fixture. Verify IR equal to the kit's expectations for each claimed IR version, and document the Extism profile's resident memory bound of twice the ceiling in the host's extension guide.
+
+## 4. Worker mode and runtime report, morphir-dotnet
+
+- [ ] 4.1 Add `morphir extension worker` to both executables with MoonBit's argument shape, joining a stream channel to a WASM channel through the shared session code. Verify stdout carries only MEP frames, a refused module yields a `refused` line on stderr with no stdout bytes and a non-zero exit status, and a stale `--build-identity` exits before the module is read.
+- [ ] 4.2 Add the runtime availability report and the `extension.runtime_unavailable` failure with its reasons, probing the engine only on first need. Verify a host started without its engine library reports `engine_missing`, fails a WASM command by name and still runs commands that need no WASM.
+- [ ] 4.3 Drive the worker from the kit's runner with the same worker arguments used for the MoonBit host, changing only the host path. Verify the generic guest kit and the crafted corpus both complete with no runner change, and document the command in the contributor guide as internal and experimental.
+
+## 5. Packaging across offerings, morphir-dotnet
+
+- [ ] 5.1 Try the static link of the engine into the Native AOT executable on all six platforms before other packaging work, with the C API archive pinned by SHA-256 and its version checked against the managed package. Verify each platform's result on its own runner and record, per platform, static link or separate library and the shipped size.
+- [ ] 5.2 Package the engine for the `self-contained` and `framework-dependent` offerings on all six platforms. Verify each released archive on a clean machine of its platform, including first-run extraction with a read-only install directory.
+- [ ] 5.3 Add release metadata for native assets and single-file claims per offering and platform, as `deployment/dotnet-profiles` requires. Verify a platform that ships a separate library does not claim single-file delivery and that the release check rejects a report cited for another offering.
+- [ ] 5.4 Convert `Morphir.Tool` to platform-specific packages with a fallback package that has no engine, first confirming the pinned SDK supports that arrangement. Verify install, update and uninstall from a local feed on Linux x64 and on Linux musl, where the tool installs and reports `wasm` as unavailable, and update the install guide and release notes in the same change.
+
+## 6. Qualification evidence, both repositories
+
+- [ ] 6.1 Run host qualification from released artifacts on clean machines for every offering and platform that claims the runtime. Verify each report passes `report-check`, records the artifact digest and engine identity, and shows the memory ceiling and call deadline as enforced.
+- [ ] 6.2 Run one bundle pinned in `.config/published-extension-bundles.toml` in both the Native AOT host and `dotnet-morphir`. Verify its digest matches the pin and its result matches the Rust CLI's for the same input, which is the roadmap's completion evidence for step 5.
+- [ ] 6.3 Update the support table in this repository's extension documentation with the qualified .NET revisions, offerings and platforms, and mark the prerequisite as met in `add-bounded-model-access` and `add-deployment-and-acquisition`. Verify the parent documentation and spec gates pass and that the Rust deviation remains listed as open.
+
+## Workflow follow-up
+
+- These files capture a proposal for review. Do not begin implementation from this planning turn.
+- Resolve the shared Beads database conflict without overwriting unrelated work, then create the owning epic and repository-specific children and link this change. Run `bd dolt pull` and `bd dolt push` only through the guard script.
+- Keep these as separately scoped follow-up work: product commands that select a WASM analyzer or generator, user-granted host capabilities, extension installation, an on-disk compiled-module cache, MoonBit's adoption of the shared crafted corpus and the Rust host's signature fix.
+- Follow AGENTS.md for review, spec synchronization, archive, tracker closure and release approval.
