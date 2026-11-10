@@ -27,8 +27,13 @@ Two installers share a home when they read and write the same `MORPHIR_HOME`. Th
 | Repositories configuration | `config/extensions/repositories.json` | `1` | refused |
 | State lock | `locks/extensions.state.lock` | none, no content | not applicable |
 | Repositories lock | `locks/extensions.repositories.lock` | none, no content | not applicable |
+| Publish lock | `.publish.lock` in a local repository | none, no content | not applicable |
 
 Paths in the home are relative to the home root, and paths in a repository are relative to the repository root.
+
+This capability fixes each file's path, version, encoding, unknown-member rule, locking and recovery. It does not list the members of a catalog entry, an extension lock or the repositories configuration. Those member tables are written by task 1.4 on `docs/design/draft/extensions/distribution-and-acquisition.md`. Until that page lands, an installer cannot be built from this change alone, and the Rust source is the only statement of those members.
+
+A host can find a home in a state it cannot use: files at earlier versions written by an older host, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. What a host does with old state is provisional on the open question `Q-OLDHOME`.
 
 ## ADDED Requirements
 
@@ -127,32 +132,64 @@ A Morphir home SHALL record every installed extension, whatever the form of its 
 - **WHEN** a host installs `org.finos.morphir.fsharp-frontend` into a home that holds `morphir-elm`
 - **THEN** the `extensions` array of `catalog/extensions.json` holds two entries, `morphir-elm` first, and the new lock is `locks/extensions/org.finos.morphir.fsharp-frontend.json`
 
+### Requirement: A reader refuses a catalog out of order
+A reader SHALL refuse a catalog whose `extensions` entries are not in ascending byte order of `extensionId`, or that names one id in two entries, and SHALL name the file and the first entry out of place.
+
+#### Scenario: A catalog with an id twice
+- **WHEN** a host reads a `2.0.0-draft.3` catalog whose entries are `morphir-elm`, `morphir-elm`
+- **THEN** it refuses the catalog and names its second entry
+
 ### Requirement: State changes are made under the state lock
-A host SHALL take the state lock `locks/extensions.state.lock` before it replays a journal or reads, writes or removes the catalog, a lock or a journal, and SHALL hold it until the last of those writes and removals is complete. A host SHALL take the repositories lock `locks/extensions.repositories.lock` in the same way around every read-modify-write of `config/extensions/repositories.json`.
+A host SHALL take the state lock `locks/extensions.state.lock` before it detects old state, replays a journal or reads, writes or removes the catalog, a lock or a journal, and SHALL hold it until the last of those writes and removals is complete. A host SHALL take the repositories lock `locks/extensions.repositories.lock` in the same way around every read-modify-write of `config/extensions/repositories.json`. A host SHALL NOT hold both lock files at once.
 
 #### Scenario: Two hosts exclude each other
 - **WHEN** one process holds the state lock of a home and a process of another host implementation starts an install into the same home
 - **THEN** the second process reads and writes no catalog, lock or journal until the first releases the state lock
 
+#### Scenario: The two locks are never held together
+- **WHEN** a host installs an extension from a configured repository
+- **THEN** it reads the repositories configuration under the repositories lock, releases it, and only then takes the state lock
+
 ### Requirement: The lock primitive is a whole-file exclusive operating-system lock
-A host SHALL take both lock files with one primitive: on Unix, `flock` with `LOCK_EX` on a descriptor open on the file; on Windows, `LockFileEx` with `LOCKFILE_EXCLUSIVE_LOCK` from offset 0 over a length of `0xFFFFFFFF` low and `0xFFFFFFFF` high. A host SHALL create a lock file that is absent, SHALL NOT write content to it, and SHALL NOT remove it.
+A host SHALL take each lock file with one primitive: on Unix, `flock` with `LOCK_EX` and without `LOCK_NB` on a descriptor open on the file; on Windows, `LockFileEx` with `LOCKFILE_EXCLUSIVE_LOCK` and without `LOCKFILE_FAIL_IMMEDIATELY` from offset 0 over a length of `0xFFFFFFFF` low and `0xFFFFFFFF` high. A host SHALL create a lock file that is absent, SHALL NOT write content to it, and SHALL NOT remove it.
 
 #### Scenario: A record lock does not count
 - **WHEN** a host on Linux takes the state lock
 - **THEN** it calls `flock` with `LOCK_EX`, so that another host's `flock` on the same file waits, and it does not rely on an `fcntl` record lock
 
-### Requirement: Shared documents are UTF-8 JSON compared by members
-Every shared JSON document SHALL be UTF-8 without a byte order mark. Two installers SHALL be treated as conforming when they write equal members and values; their bytes need not be equal.
+### Requirement: A lock file is opened so that a second host waits rather than fails
+On Unix a host SHALL open a lock file with `open` and `O_RDWR`, `O_CREAT` and `O_CLOEXEC`, mode `0644`, and SHALL take no lock on it other than the one this capability names. On Windows a host SHALL open it with read and write access and with `FILE_SHARE_READ`, `FILE_SHARE_WRITE` and `FILE_SHARE_DELETE`. A host MAY stop waiting after a time it reports, and SHALL NOT go on without the lock.
+
+#### Scenario: A .NET host waits for another host's lock
+- **WHEN** another host holds the state lock and the .NET host starts an install on Linux
+- **THEN** the .NET host's open of `locks/extensions.state.lock` succeeds and its `flock` call waits, instead of the open failing because of a lock that .NET takes when it opens a file
+
+### Requirement: A home on a network file system is not supported
+A home on a network file system SHALL be outside this contract, because the lock primitive does not keep its guarantees there. A host that can tell that the home is on a network file system SHALL refuse every command that reads or writes extension state, naming the home and saying it is not supported. A host is not required to detect it.
+
+#### Scenario: A host that can tell refuses
+- **WHEN** a host on Linux finds through `statfs` that `MORPHIR_HOME` is on NFS
+- **THEN** it refuses the install, names the home and says a home on a network file system is not supported
+
+### Requirement: Shared documents are I-JSON compared by parsed values
+Every shared JSON document SHALL be UTF-8 without a byte order mark and SHALL be I-JSON (RFC 7493). A member name SHALL NOT repeat in an object. A number SHALL be an integer written without a fraction or an exponent. A reader SHALL refuse a document that breaks these rules. Strings SHALL be compared code point by code point without normalization, and array order is significant.
+
+#### Scenario: Numbers in another form
+- **WHEN** a host reads a journal whose `nextLock` holds `123.0`, or a lock whose member name appears twice
+- **THEN** it refuses the document and names the file
+
+### Requirement: Absent and null are different
+A member that is absent SHALL differ from a member whose value is `null`. A reader SHALL refuse `null` for a member unless this capability or the page that defines the member allows it. Two installers SHALL be treated as conforming when their documents are equal as parsed values; their bytes, member order, spacing and line endings need not be equal.
 
 #### Scenario: Different spacing, same document
 - **WHEN** two hosts write the same catalog entries with different indentation and member order
 - **THEN** each host reads the other's catalog as the same catalog
 
 ### Requirement: Documents that carry a claim set ignore unknown members unless critical
-A reader of a release descriptor, an index record or an installed catalog SHALL ignore a member it does not understand unless the document's `critical` list names it, and SHALL refuse a document whose `critical` list names a member it does not understand.
+A reader of a release descriptor, an index record or an installed catalog SHALL ignore a member it does not understand unless the document's top-level `critical` list names its path, and SHALL refuse a document whose `critical` list names a path it does not understand. A path names an array element's member through the array's name, as in `extensions.note` for a catalog entry's `note`.
 
 #### Scenario: An unknown member in an open document
-- **WHEN** a host reads a `2.0.0-draft.3` catalog whose entry holds an optional member `note` that it does not understand, and another catalog whose `critical` list names `note`
+- **WHEN** a host reads a `2.0.0-draft.3` catalog whose entry holds an optional member `note` that it does not understand, and another catalog whose top-level `critical` list names `extensions.note`
 - **THEN** it reads the first catalog and ignores `note`, and refuses the second
 
 ### Requirement: Locks, journals and the repositories configuration refuse unknown members
@@ -163,18 +200,26 @@ A reader of an extension lock, a transaction journal or the repositories configu
 - **THEN** it refuses the lock and names the file and the member
 
 ### Requirement: Writers spell repository paths as ordinary absolute paths
-A writer SHALL write `endpoint.path` in the repositories configuration and `index.identity` in a lock as the repository root's absolute path with symbolic links resolved, as `realpath` (Unix) or `GetFinalPathNameByHandleW` with `FILE_NAME_NORMALIZED` (Windows) reports it. It SHALL NOT write the verbatim prefix `\\?\`, SHALL write `\\?\UNC\server\share\…` as `\\server\share\…`, and SHALL write a drive letter in uppercase.
+A writer SHALL write `endpoint.path` in the repositories configuration and `index.identity` in a lock as the path that `realpath` (Unix) or `GetFinalPathNameByHandleW` with `FILE_NAME_NORMALIZED` and `VOLUME_NAME_DOS` (Windows) reports for the open repository root. It SHALL NOT write the verbatim prefix `\\?\`, SHALL write `\\?\UNC\server\share\…` as `\\server\share\…`, SHALL write a drive letter in uppercase, and SHALL write no trailing separator except at a volume root such as `D:\`.
 
 #### Scenario: A writer drops the verbatim prefix
 - **WHEN** a host on Windows adds the local repository `C:\ext-repo` and the operating system reports its final path as `\\?\C:\ext-repo`
 - **THEN** the host writes `C:\ext-repo` as `endpoint.path`
 
+#### Scenario: A volume root keeps its separator
+- **WHEN** a host on Windows adds a repository at the root of drive `D:` and the operating system reports `\\?\D:\`
+- **THEN** the host writes `D:\`
+
 ### Requirement: Readers read a verbatim path as the plain path
-A reader SHALL read a path that carries the verbatim prefix as the same path without it, reading `\\?\UNC\server\share\…` as `\\server\share\…`, and SHALL compare two repository paths by their bytes after that rule.
+A reader SHALL read a path that carries the verbatim prefix as the same path without it, reading `\\?\UNC\server\share\…` as `\\server\share\…`, then SHALL uppercase its drive letter and compare repository paths by their bytes. A reader SHALL refuse a verbatim path with a component that ends in `.` or a space, or that is a Windows device name, because without the prefix it names another file.
 
 #### Scenario: A verbatim path names the same repository
-- **WHEN** a home's repositories configuration names a repository at `\\?\C:\ext-repo` and a lock's `index.identity` is `C:\ext-repo`
+- **WHEN** a home's repositories configuration names a repository at `\\?\c:\ext-repo` and a lock's `index.identity` is `C:\ext-repo`
 - **THEN** a host treats both as the same repository, and when it next writes either file it writes `C:\ext-repo`
+
+#### Scenario: A verbatim path that needs its prefix
+- **WHEN** a repositories configuration names `\\?\C:\repo.`
+- **THEN** the reader refuses the file and names the path
 
 ### Requirement: Shared files are replaced through temporary files that readers ignore
 A writer SHALL replace a shared file by writing a temporary file in the same directory, flushing it, and renaming it over the target. A temporary file's name SHALL start with `.stage-`. A reader that lists `locks/extensions/`, `catalog/` or a repository's `extensions/` SHALL ignore every entry whose name starts with `.`, and every entry that is not a regular file. No name derived from an id starts with `.`.
@@ -184,26 +229,44 @@ A writer SHALL replace a shared file by writing a temporary file in the same dir
 - **THEN** recovery considers only `morphir-elm.json.transaction` and leaves `.stage-3f2a` in place
 
 ### Requirement: The transaction journal has a fixed version and encoding
-A host SHALL journal each change to an extension's lock and the catalog in `locks/extensions/<id>.json.transaction` before it writes either file. The journal SHALL have exactly the members `schemaVersion`, `nextLock` and `nextCatalog`. `schemaVersion` SHALL be the string `2.0.0-draft.1`. `nextLock` and `nextCatalog` SHALL each be present, and each SHALL be `null`, meaning the file is to be absent, or an array of integers from 0 to 255 holding the file's exact bytes.
+A host SHALL journal each change to an extension's lock and the catalog in `locks/extensions/<id>.json.transaction` before it writes either file. The journal SHALL have exactly the members `schemaVersion`, `nextLock` and `nextCatalog`. `schemaVersion` SHALL be the string `2.0.0-draft.1`. `nextLock` and `nextCatalog` SHALL each be present, and each SHALL be `null`, meaning the file is to be absent, or an array of integers from 0 to 255, written in decimal, holding the file's exact bytes.
 
 #### Scenario: A journal of an install
 - **WHEN** a host installs `morphir-elm` and has written its journal but not yet the lock
 - **THEN** `locks/extensions/morphir-elm.json.transaction` has `schemaVersion` `2.0.0-draft.1` and holds the new lock's and the new catalog's bytes as arrays of integers
 
+### Requirement: One journal exists at a time
+A host SHALL NOT write a journal while another journal exists in `locks/extensions/`. When a host cannot remove a journal after its change is committed, the command SHALL fail and report the journal, and the next state command SHALL recover it before anything else.
+
+#### Scenario: A deferred cleanup is finished first
+- **WHEN** a host committed an install of `morphir-elm` but could not remove `morphir-elm.json.transaction`, and a second install of `acme.tools` starts
+- **THEN** the second install recovers and removes the first journal before it writes its own
+
+### Requirement: Old state is detected before recovery
+Under the state lock, before it recovers any journal, a host SHALL check for old state: a catalog not at `2.0.0-draft.3`, an extension lock or journal not at `2.0.0-draft.1`, more than one journal, or a journal that fails the checks of the next requirement. It SHALL read only each file's `schemaVersion` and the journals to do so. Only when the home holds no old state SHALL it recover a journal.
+
+#### Scenario: A home the Rust CLI left mid-install
+- **WHEN** a current host takes the state lock in a home with a `2.0.0-draft.2` catalog and `locks/extensions/morphir-elm.json.transaction` at integer `1`
+- **THEN** it reports old state and handles it as `Q-OLDHOME` decides, and does not report a journal refusal first
+
+#### Scenario: Two journals are old state
+- **WHEN** a host takes the state lock and finds `morphir-elm.json.transaction` and `acme.tools.json.transaction`
+- **THEN** it writes nothing from either, and reports both as old state
+
 ### Requirement: Recovery checks a journal before it writes
-Recovery SHALL run under the state lock before any read of the catalog or a lock. For each journal it SHALL check that the journal is at `2.0.0-draft.1`, that a saved lock is valid JSON at `2.0.0-draft.1`, and that a saved catalog is valid JSON at `2.0.0-draft.3`. When a check fails, recovery SHALL refuse the journal, name it, and write nothing. Otherwise it SHALL write the lock, then the catalog, then remove the journal.
+A journal passes its checks when it is at `2.0.0-draft.1`, its saved lock is a valid `2.0.0-draft.1` lock and its saved catalog a valid `2.0.0-draft.3` catalog, each validated in full as that document's reader validates it, including ids, order and critical members. Recovery SHALL write the lock, then the catalog, then remove the journal.
 
 #### Scenario: An interrupted install is completed
-- **WHEN** a host takes the state lock and finds a `2.0.0-draft.1` journal for `morphir-elm` whose saved lock and catalog are at the current drafts
+- **WHEN** a host takes the state lock and finds one `2.0.0-draft.1` journal for `morphir-elm` whose saved lock and catalog pass their checks
 - **THEN** it writes `locks/extensions/morphir-elm.json` and `catalog/extensions.json` with the saved bytes and removes the journal
 
-#### Scenario: A journal at an earlier version is refused
+#### Scenario: A journal at an earlier version is old state
 - **WHEN** a host takes the state lock and finds a journal whose `schemaVersion` is the integer `1`
-- **THEN** it refuses the journal, names it, and writes nothing
+- **THEN** it writes nothing from the journal and reports it as old state
 
-#### Scenario: A journal that would restore an earlier document is refused
+#### Scenario: A journal that would restore an earlier document is old state
 - **WHEN** a host finds a `2.0.0-draft.1` journal whose `nextCatalog` holds the bytes of a `2.0.0-draft.2` catalog
-- **THEN** it refuses the journal, names it, and writes neither the lock nor the catalog
+- **THEN** it writes neither the lock nor the catalog and reports the journal as old state
 
 ### Requirement: The documents that can carry a dotted id are at new exact drafts
 A writer SHALL write every release descriptor, repository index record and installed catalog at `2.0.0-draft.3`, and every extension lock at `2.0.0-draft.1`, whatever the form of the ids it names. `2.0.0-draft.3` differs from `2.0.0-draft.2` only in the id grammar, and the lock's `2.0.0-draft.1` differs from `"1.0"` only in the id grammar.
@@ -228,11 +291,15 @@ A reader SHALL read `2.0.0-draft.3` descriptors, index records and catalogs, and
 - **THEN** it refuses the release as an unsupported extension schema version, names `release.json` and the version `2.0.0-draft.3`, and installs nothing
 
 ### Requirement: A repository history is read whole and holds one version
-A reader SHALL read a history `extensions/<id>.jsonl` whole. Lines are separated by LF and numbered from 1; a line that holds only JSON whitespace is skipped but still counted. When any line is not a `2.0.0-draft.3` index record, the reader SHALL refuse the whole file, name the file and the number of the first such line, and select no release from it.
+A reader SHALL read a history `extensions/<id>.jsonl` whole. Lines are separated by LF and numbered from 1; a line that holds only JSON whitespace, a CR included, is skipped but still counted. When any line is not a `2.0.0-draft.3` index record, the reader SHALL refuse the whole file, name the file and the number of the first such line, and select no release from it. A history with no record SHALL be refused.
 
 #### Scenario: A history with earlier lines is refused
 - **WHEN** a reader reads `extensions/morphir-elm.jsonl` whose lines 1 and 2 are `2.0.0-draft.2` records and whose line 3 is a `2.0.0-draft.3` record
 - **THEN** it refuses the file, names it and line 1, and resolves no `morphir-elm` release from it
+
+#### Scenario: CRLF lines and an empty history
+- **WHEN** a reader reads one history whose two draft.3 records end in CR LF, and another that is empty or holds only blank lines
+- **THEN** it reads the first, and refuses the second as a history with no record
 
 ### Requirement: A publisher does not append to a history at another version
 A publisher SHALL NOT append a `2.0.0-draft.3` record to a history that holds a line at another version. It SHALL refuse the publication, name the file and the first such line, and leave the file unchanged.
@@ -241,8 +308,15 @@ A publisher SHALL NOT append a `2.0.0-draft.3` record to a history that holds a 
 - **WHEN** a publisher adds a `2.0.0-draft.3` release of `morphir-elm` to a repository whose `extensions/morphir-elm.jsonl` holds `2.0.0-draft.2` lines
 - **THEN** it refuses the publication, names the file and its first earlier line, and leaves the file unchanged
 
-### Requirement: A home that an older host wrote holds old state
-Provisional on open question `Q-OLDHOME`, under every outcome. A home SHALL be treated as holding old state when its `catalog/extensions.json` is not at `2.0.0-draft.3`, or when `locks/extensions/` holds a lock or a journal that is not at `2.0.0-draft.1`. A host SHALL NOT read, replay or convert old state. Outcome `OLDHOME-C`, converting old state in place, contradicts the decision that transient drafts are not converted, so this change specifies no conversion.
+### Requirement: A publisher holds the repository's publish lock
+A publisher to a local repository SHALL hold an exclusive lock on `.publish.lock` at the repository root, with the primitive and opening rules of the state lock, from before it reads a history until after it has written it. It SHALL create the file if absent and SHALL NOT write content to it.
+
+#### Scenario: Two publishers to one repository
+- **WHEN** two publishers add `morphir-elm` 0.8.0 and 0.8.1 to the same local repository at the same time
+- **THEN** one waits for the other's publish lock, and the history ends with both records, each written once
+
+### Requirement: A host does not read, replay or convert old state
+Provisional on open question `Q-OLDHOME`, under every outcome. A host SHALL NOT read, replay or convert old state. Outcome `OLDHOME-C`, converting old state in place, contradicts the decision that transient drafts are not converted, so this change specifies no conversion. When any file is old state, every extension's state in the home is old state: a current catalog beside one old extension lock is moved aside too.
 
 #### Scenario: Old state is found by version
 - **WHEN** a current host takes the state lock in a home whose catalog is at `2.0.0-draft.3` and whose `locks/extensions/morphir-elm.json` is at `"1.0"`
@@ -256,15 +330,30 @@ Provisional on `Q-OLDHOME`; this is outcome `OLDHOME-A`. A host SHALL refuse eve
 - **THEN** it refuses, names `catalog/extensions.json`, the version `2.0.0-draft.3` and the command that moves the old state aside, and changes no file
 
 ### Requirement: Old state moves to a named backup
-Provisional on `Q-OLDHOME` (outcomes A and B). Under the state lock, a host SHALL move every lock and journal in `locks/extensions/`, then `catalog/extensions.json`, into `backups/extensions-<time>/`, `<time>` being the UTC time as `YYYYMMDDTHHMMSSZ`, each file keeping its path relative to the home. If a backup directory without a catalog exists, the host SHALL complete it, not start another. It SHALL NOT move the store, the repositories configuration or a lock file.
+Provisional on `Q-OLDHOME` (outcomes A and B). Under the state lock, a host SHALL move every journal and extension lock in `locks/extensions/`, then `catalog/extensions.json` if present, into `backups/extensions-<time>/` (UTC, as `YYYYMMDDTHHMMSSZ`), each keeping its path relative to the home, then write an empty `.complete` there. It SHALL NOT move the store, the repositories configuration or either lock file.
 
 #### Scenario: The old state is moved aside
 - **WHEN** the user runs that command at 2026-11-10T09:30:00Z in that home, which also holds `locks/extensions/morphir-elm.json` at `"1.0"`
-- **THEN** `backups/extensions-20261110T093000Z/` holds `catalog/extensions.json` and `locks/extensions/morphir-elm.json`, the home holds neither, `config/extensions/repositories.json` is unchanged, and the next install writes a `2.0.0-draft.3` catalog
+- **THEN** `backups/extensions-20261110T093000Z/` holds `catalog/extensions.json`, `locks/extensions/morphir-elm.json` and `.complete`, the home holds neither moved file, `config/extensions/repositories.json` is unchanged, and the next install writes a `2.0.0-draft.3` catalog
+
+#### Scenario: Old state without a catalog
+- **WHEN** the home holds `locks/extensions/morphir-elm.json` at `"1.0"` and no catalog, and the move runs
+- **THEN** the backup directory holds that lock and `.complete`, and no catalog
+
+### Requirement: Only a backup without its completion marker is completed
+Provisional on `Q-OLDHOME` (outcomes A and B). A backup directory `backups/extensions-<time>/` is complete when it holds `.complete`. When exactly one lacks it, a host SHALL move any old state into it, then write `.complete`, instead of starting another; with no old state left it only writes `.complete`. When more than one lacks it, a file to move exists at its target, or a new directory's name exists, the host SHALL refuse and name them.
 
 #### Scenario: An interrupted move is completed
-- **WHEN** the command was interrupted after it moved the locks and before it moved the catalog, and the user runs it again
-- **THEN** it moves the catalog into the same backup directory and starts no new one
+- **WHEN** the move was interrupted after it moved the extension locks and before it moved the catalog, and it runs again
+- **THEN** it moves the catalog into the same backup directory, writes `.complete`, and starts no new one
+
+#### Scenario: Interrupted before the marker
+- **WHEN** the move had moved every file but stopped before writing `.complete`, and any state command runs
+- **THEN** the host writes `.complete` in that directory and goes on, since no old state is left
+
+#### Scenario: A completed backup is never reused
+- **WHEN** a complete backup holds `locks/extensions/morphir-elm.json`, the older CLI later writes old state again, and the move runs
+- **THEN** it creates a new backup directory, and the complete one is unchanged
 
 ### Requirement: Project configuration quotes a dotted id
 A dotted id SHALL appear in project configuration as one quoted TOML key, such as `[extensions."org.finos.morphir.fsharp-frontend"]`. A configuration reader SHALL refuse an `extensions` entry whose key is not a valid id, naming the key and the rule it breaks. Diagnostics that print a configuration key for a dotted id SHALL print it quoted.
@@ -282,14 +371,22 @@ A dotted id SHALL appear in project configuration as one quoted TOML key, such a
 - **THEN** the reader reads it as before
 
 ### Requirement: An extension entry holds only its settings
-The settings members of an `extensions` entry are `path`, `url`, `command`, `args`, `enabled` and `config`. A configuration reader SHALL refuse an entry that holds a member whose value is a table and whose name is not `config`. It SHALL ignore a member whose value is not a table and whose name is not a settings member.
+The settings members of an `extensions` entry and their types are `path`, `url` and `command` (strings), `args` (an array of strings), `enabled` (a boolean) and `config` (a table). A configuration reader SHALL refuse a settings member of another type, naming it and its type, except a table under a settings name, which is a nested entry. It SHALL refuse any other member whose value is a table or an array of tables, and SHALL ignore any other member.
 
 #### Scenario: An extension's config table is read as settings
 - **WHEN** a project configuration has `[extensions.acme.config]` with `x = 1`
 - **THEN** the reader reads extension `acme` with the `config` table `{ x = 1 }`
 
+#### Scenario: Settings of the wrong type
+- **WHEN** a project configuration has `[extensions.acme]` with `config = 1`, and another has `[[extensions.acme.args]]`, and a third has `[[extensions.acme.x]]`
+- **THEN** the reader refuses `config` as not a table, `args` as not an array of strings, and `x` as an array of tables
+
 ### Requirement: A refused nested entry suggests the quoted key
-For a refused nested table, the reader SHALL follow its tables down to the first table that holds a settings member or a value that is not a table. When each table on that chain has exactly one member, and the keys from the entry down that chain joined with `.` form a valid id, the refusal SHALL suggest that id as one quoted key. Otherwise it SHALL name the key path and suggest nothing.
+A nested entry is a member of an entry whose value is a table and whose name is not `config`. The reader SHALL follow the nested tables down to the first table that holds a settings member of its settings type. When each table above that one has exactly one member, and the keys from the entry down to it joined with `.` form a valid id, the refusal SHALL suggest that id as one quoted key. Otherwise it SHALL name the key path and suggest nothing.
+
+#### Scenario: A dotted id whose last segment is a settings name
+- **WHEN** a project configuration has `[extensions.acme.path]` with `command = "x"`
+- **THEN** the reader refuses the entry `acme` and suggests `[extensions."acme.path"]`, because `path` there is a table, not a string
 
 #### Scenario: An unquoted dotted key is refused
 - **WHEN** a project configuration has `[extensions.org.finos.morphir.fsharp-frontend]` with `command = "morphir-fsharp-frontend"`
