@@ -537,9 +537,7 @@
       "expected": {
         "code": "inconsistent_document",
         "path": "providers[1].installation"
-      },
-      "schema": "accepts",
-      "schemaGap": "Not expressed in the schema: whether a provider has an installation depends on its identity's delivery."
+      }
     },
     {
       "contract": "receipt",
@@ -1406,6 +1404,70 @@
       },
       "schema": "accepts",
       "schemaGap": "JSON Schema's integer type accepts any number whose value is an integer, whatever its spelling."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/provider-component-without-extension-id.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].extensionId"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/host-component-with-extension-id.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].extensionId"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-component-without-prerequisites.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.components[0].prerequisites"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/provider-component-without-language.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[0].component.language"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/dotnet-tool-ownership-without-scope.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[4].ownership.scope"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/runtime-prerequisite-without-versions.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[1].prerequisite.versions"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/provider-without-installation.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].installation"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/provider-identity-without-model-tuple.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].identity.modelTuple"
+      }
     }
   ],
   "bindings": [

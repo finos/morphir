@@ -1,0 +1,129 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "generationId": "gen-0001",
+  "platform": "win-x64",
+  "lockSha256": "1f5573b35fb2772da39fca1ac51783ea160d7884f17097ba4e94fd69aee0b926",
+  "recipe": {
+    "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "target": "toolchains/recipes/fsharp/1.0.0.json",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "host": {
+    "identity": {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "native-aot",
+      "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "execution": {
+      "mode": "native-aot",
+      "runtime": {
+        "kind": "none"
+      }
+    },
+    "installation": {
+      "ownership": {
+        "kind": "manager-owned"
+      },
+      "authentication": {
+        "kind": "repository-target",
+        "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "targetsVersion": 1
+      },
+      "launch": {
+        "program": "C:\\Users\\fixture\\.morphir\\toolchains\\objects\\dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\morphir.exe",
+        "args": []
+      }
+    },
+    "readiness": "capability-checked",
+    "checks": [
+      {
+        "check": "integrity",
+        "status": "passed"
+      },
+      {
+        "check": "capability",
+        "status": "passed"
+      }
+    ]
+  },
+  "providers": [
+    {
+      "identity": {
+        "operation": "compile",
+        "language": "fsharp",
+        "delivery": "process",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "version": "0.6.0",
+        "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+        "descriptorSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+        "artifactSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "protocolVersion": "0.2.0-draft.1"
+      },
+      "installation": {
+        "ownership": {
+          "kind": "manager-owned"
+        },
+        "authentication": {
+          "kind": "recipe-digest",
+          "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "recipeTarget": "toolchains/recipes/fsharp/1.0.0.json",
+          "recipeSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "claimCheck": "probed",
+        "probeSource": "describe",
+        "launch": {
+          "program": "C:\\Users\\fixture\\.morphir\\store\\extensions\\sha256\\ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\\morphir-fsharp-frontend.exe",
+          "args": []
+        }
+      },
+      "readiness": "capability-checked",
+      "checks": [
+        {
+          "check": "integrity",
+          "status": "passed"
+        },
+        {
+          "check": "capability",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "operation": "generate",
+        "target": "fsharp",
+        "delivery": "built-in",
+        "extensionId": "morphir.fsharp",
+        "version": "1.2.3",
+        "modelInput": {
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "irVersion": "4.0.0"
+        }
+      },
+      "readiness": "capability-checked",
+      "checks": [
+        {
+          "check": "integrity",
+          "status": "passed"
+        },
+        {
+          "check": "capability",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "readiness": "workflow-qualified",
+  "checks": [
+    {
+      "check": "workflow",
+      "status": "passed",
+      "workflow": "fsharp-compile-generate"
+    }
+  ]
+}

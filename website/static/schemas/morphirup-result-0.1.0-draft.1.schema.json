@@ -168,6 +168,19 @@
         "required": [ "implementation", "deployment" ]
       },
       "else": {
+        "if": {
+          "properties": {
+            "operation": {
+              "const": "compile"
+            }
+          }
+        },
+        "then": {
+          "required": [ "language" ]
+        },
+        "else": {
+          "required": [ "target" ]
+        },
         "required": [ "operation" ]
       },
       "required": [ "role" ],
@@ -194,6 +207,32 @@
     },
     "ownership": {
       "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [ "packageId", "scope" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "system-package"
+              }
+            }
+          },
+          "then": {
+            "required": [ "manager" ]
+          }
+        }
+      ],
       "required": [ "kind" ],
       "properties": {
         "kind": {
@@ -217,6 +256,32 @@
     },
     "prerequisite": {
       "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [ "runtime", "sdk" ]
+              }
+            }
+          },
+          "then": {
+            "required": [ "versions" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "sdk"
+              }
+            }
+          },
+          "then": {
+            "required": [ "phase" ]
+          }
+        }
+      ],
       "required": [ "kind", "name" ],
       "properties": {
         "kind": {
@@ -618,12 +683,21 @@
             }
           },
           "then": {
-            "required": [ "delivery" ]
+            "required": [ "delivery", "extensionId" ]
           },
           "else": {
-            "not": {
-              "required": [ "delivery" ]
-            }
+            "allOf": [
+              {
+                "not": {
+                  "required": [ "delivery" ]
+                }
+              },
+              {
+                "not": {
+                  "required": [ "extensionId" ]
+                }
+              }
+            ]
           }
         },
         {
@@ -658,6 +732,7 @@
         "downloadBytes",
         "installedBytes",
         "updateOwner",
+        "prerequisites",
         "probe"
       ],
       "properties": {

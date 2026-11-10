@@ -173,6 +173,25 @@
       "type": "array",
       "items": {
         "type": "object",
+        "if": {
+          "properties": {
+            "identity": {
+              "properties": {
+                "delivery": {
+                  "const": "built-in"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "not": {
+            "required": [ "installation" ]
+          }
+        },
+        "else": {
+          "required": [ "installation" ]
+        },
         "required": [ "identity", "readiness", "checks" ],
         "properties": {
           "identity": {
@@ -601,6 +620,38 @@
           },
           "then": {
             "required": [ "abi" ]
+          }
+        },
+        {
+          "if": {
+            "required": [ "protocolVersion" ],
+            "properties": {
+              "protocolVersion": {
+                "const": "0.1"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [ "modelTuple" ]
+            },
+            "required": [ "modelInput" ]
+          }
+        },
+        {
+          "if": {
+            "required": [ "protocolVersion" ],
+            "properties": {
+              "protocolVersion": {
+                "const": "0.2.0-draft.1"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [ "modelInput" ]
+            },
+            "required": [ "modelTuple" ]
           }
         },
         {

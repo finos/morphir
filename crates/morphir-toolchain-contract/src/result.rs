@@ -837,6 +837,13 @@ fn plan_component(node: Node<'_>) -> Result<PlanComponent> {
             "a provider component names its delivery and a host component does not",
         ));
     }
+    let extension_id = object.opt("extensionId", model::extension_id)?;
+    if matches!(component, ComponentRef::Provider(_)) != extension_id.is_some() {
+        return Err(inconsistent(
+            object.member_path("extensionId"),
+            "a provider component names its extensionId and a host component does not",
+        ));
+    }
     let source = object.req("source", |node| {
         let source = node.object()?;
         match source.case(
@@ -882,13 +889,14 @@ fn plan_component(node: Node<'_>) -> Result<PlanComponent> {
     Ok(PlanComponent {
         component,
         version: object.req("version", model::version)?,
-        extension_id: object.opt("extensionId", model::extension_id)?,
+        extension_id,
         delivery,
         source,
         download_bytes: object.req("downloadBytes", |node| node.u64())?,
         installed_bytes: object.req("installedBytes", |node| node.u64())?,
         update_owner: object.req("updateOwner", ownership)?,
-        prerequisites: model::prerequisites(&object)?,
+        // Every plan component lists its prerequisites, possibly none.
+        prerequisites: object.req("prerequisites", |node| node.array(model::prerequisite))?,
         probe,
     })
 }
