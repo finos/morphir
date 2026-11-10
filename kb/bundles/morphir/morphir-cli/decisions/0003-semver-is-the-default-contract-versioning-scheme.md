@@ -1,7 +1,8 @@
 ---
 type: Decision Record
 title: SemVer is the default contract versioning scheme
-state: Accepted
+state: Superseded
+superseded_by: "0004"
 decided: 2026-09-22
 tags: [versioning, semver, compatibility, protocol, schema, mep, workspace, distribution]
 status: stable

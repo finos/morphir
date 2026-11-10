@@ -7,7 +7,9 @@ context: |
   finos/morphir is the ecosystem umbrella repository, owning the Rust CLI,
   documentation website, shared specifications and ecosystem integration.
   Follow AGENTS.md and CONTRIBUTING.md. Keep domain logic pure and immutable,
-  preserve versioned contracts and use the shared native Morphir MCK runner.
+  preserve versioned contracts and keep one Morphir MCK runner. Keep its cases
+  and expected results runner-neutral: the runner is moving off the Rust CLI to
+  the .NET host in morphir-dotnet, so add new runner code there.
   Use Beads for task tracking and link the GitHub issue and OpenSpec change.
   Keep language implementation work in its owning repository. Do not move
   pinned ecosystem submodules unless a proposal explicitly covers that update.
