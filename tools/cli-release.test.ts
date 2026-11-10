@@ -16,8 +16,13 @@ import {
 	extractCommand,
 	gitlinkCommit,
 	gitmodulesUrl,
-	isolatedToolInstall,
-	verifyInstalledCopies,
+	type HelperResult,
+	applyEnvironment,
+	helperCommand,
+	helperResultProblems,
+	helperToolInstall,
+	installHelperPath,
+	toolLaunchStep,
 	launchPlan,
 	legacyAliasNames,
 	legacyPlatforms,
@@ -209,24 +214,28 @@ describe("qualification launches what ships", () => {
 	};
 
 	test("an archive offering runs its extracted executable or apphost directly", () => {
-		const plan = launchPlan(archive, "/work/extract", "/work/tools");
+		const plan = launchPlan(archive, "/work/extract");
 		expect(plan).toEqual([{ invocation: "morphir", command: [path.join("/work/extract", "morphir.exe")] }]);
-		const apphost = launchPlan({ ...archive, deployment: "framework-dependent", layout: "folder", launchPath: "morphir" }, "/x", "/t");
+		const apphost = launchPlan({ ...archive, deployment: "framework-dependent", layout: "folder", launchPath: "morphir" }, "/x");
 		expect(apphost[0]?.command).toEqual([path.join("/x", "morphir")]);
 		for (const step of [...plan, ...apphost]) expect(step.command[0]).not.toBe("dotnet");
 	});
 
-	test("the tool package runs as dotnet-morphir and as dotnet morphir", () => {
-		const plan = launchPlan(
-			{ ...archive, deployment: "dotnet-tool", platform: "any", artifact: "Morphir.Tool.0.4.0-alpha.4.nupkg", launchPath: "dotnet-morphir", layout: "tool-package" },
-			"/unused",
-			"/work/tools",
-		);
-		expect(plan.map(step => step.invocation)).toEqual(["dotnet-morphir", "dotnet morphir"]);
-		expect(plan[0]?.command[0]).toBe(path.join("/work/tools", process.platform === "win32" ? "dotnet-morphir.exe" : "dotnet-morphir"));
-		expect(plan[1]?.command).toEqual(["dotnet", "morphir"]);
+	test("the tool package starts from the helper's result: the installed command, and dotnet morphir from the manifest", () => {
+		expect(() => launchPlan({ ...archive, deployment: "dotnet-tool", platform: "any", artifact: "Morphir.Tool.0.4.0-alpha.4.nupkg", launchPath: "dotnet-morphir", layout: "tool-package" }, "/unused")).toThrow("install helper");
+		const command = path.resolve("/q/tool-path-tool", process.platform === "win32" ? "dotnet-morphir.exe" : "dotnet-morphir");
+		const global = toolLaunchStep({ mode: "tool-path", invocation: { file: command, arguments: [], workingDirectory: null, environment: {} } } as unknown as HelperResult);
+		expect(global).toEqual({ invocation: "dotnet-morphir", command: [command], env: {} });
+		const manifest = path.resolve("/q/local-tool");
+		const env = { NUGET_PACKAGES: path.resolve("/q/local-nuget/packages"), DOTNET_CLI_HOME: path.resolve("/q/local-nuget/cli-home") };
+		const local = toolLaunchStep({ mode: "local", invocation: { file: "dotnet", arguments: ["morphir"], workingDirectory: manifest, environment: env } } as unknown as HelperResult);
+		expect(local).toEqual({ invocation: "dotnet morphir", command: ["dotnet", "morphir"], cwd: manifest, env });
 	});
 
+	test("an invocation's environment is applied as given; null removes a variable", () => {
+		const applied = applyEnvironment({ PATH: "p", NUGET_FALLBACK_PACKAGES: "ambient", NUGET_PACKAGES: "ambient" }, { NUGET_PACKAGES: "isolated", NUGET_FALLBACK_PACKAGES: null });
+		expect(applied).toEqual({ PATH: "p", NUGET_PACKAGES: "isolated" });
+	});
 	test("a macOS packaged input result is never counted as qualified until triaged", () => {
 		expect(scenarioStatus(config, "osx-arm64", "packaged-input", 0)).toBe("pending-triage");
 		expect(scenarioStatus(config, "osx-x64", "packaged-input", 1)).toBe("pending-triage");
@@ -655,32 +664,43 @@ function sdkAssembly(): string | undefined {
 	return dll !== undefined && Bun.file(dll).size > 0 ? dll : undefined;
 }
 
-describe("the tool package installs only its own bytes", () => {
+describe("the tool package installs through the source's helper, and only its own bytes", () => {
 	const assembly = sdkAssembly();
+	const pwsh = Bun.spawnSync(["pwsh", "-NoLogo", "-NoProfile", "-Command", "$PSVersionTable.PSVersion.Major"], { stdout: "pipe", stderr: "ignore", windowsHide: true });
+	const pwshAvailable = pwsh.exitCode === 0 && Number(pwsh.stdout.toString().trim()) >= 7;
+	const helper = installHelperPath(root, config);
 	const toolPackage = (marker: string) =>
 		storedZip([
 			["Morphir.Tool.nuspec", Buffer.from(`<?xml version="1.0"?><package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd"><metadata><id>Morphir.Tool</id><version>9.9.9-isolation</version><authors>test</authors><description>${marker}</description><packageTypes><packageType name="DotnetTool" /></packageTypes></metadata></package>`)],
 			["tools/net10.0/any/DotnetToolSettings.xml", Buffer.from('<?xml version="1.0" encoding="utf-8"?><DotNetCliTool Version="1"><Commands><Command Name="dotnet-morphir" EntryPoint="dotnet-morphir.dll" Runner="dotnet" /></Commands></DotNetCliTool>')],
 			["tools/net10.0/any/dotnet-morphir.dll", Buffer.concat([readFileSync(assembly ?? process.execPath), Buffer.from(marker)])],
 		]);
+	const sha = (file: string) => new Bun.CryptoHasher("sha256").update(readFileSync(file)).digest("hex");
 
-	// Not run without a .NET SDK (it needs `dotnet tool install` and a managed assembly); the release
-	// qualification job always has one.
-	test.skipIf(assembly === undefined)("a same-id, same-version package in the working directory's feed and in a warm cache never wins", () => {
-		const work = mkdtempSync(path.join(os.tmpdir(), "cli-tool-isolation-"));
+	test("the pinned source carries the helper, and the command runs it in each mode with new folders and a result file", () => {
+		expect(existsSync(helper)).toBe(true);
+		const tool = helperCommand(helper, "pkg/a.nupkg", "q/tool", "q/nuget", "tool-path", "q/r.json");
+		expect(tool.slice(0, 6)).toEqual(["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", helper]);
+		expect(tool).not.toContain("-Local");
+		for (const [flag, value] of [["-Package", "pkg/a.nupkg"], ["-ToolPath", "q/tool"], ["-WorkDir", "q/nuget"], ["-ResultFile", "q/r.json"]] as const) {
+			expect(tool[tool.indexOf(flag) + 1]).toBe(path.resolve(value));
+		}
+		expect(helperCommand(helper, "a.nupkg", "t", "w", "local", "r.json")).toContain("-Local");
+	});
+
+	// Runs the real helper against a same-id, same-version package in the working directory's NuGet configuration
+	// and in a warm packages folder. Needs PowerShell 7 and a .NET SDK, which every release runner has.
+	test.skipIf(assembly === undefined || !pwshAvailable)("a conflicting feed and a warm cache never win, in either mode, and a tampered copy is refused", () => {
+		const work = mkdtempSync(path.join(os.tmpdir(), "cli-helper-isolation-"));
 		const produced = path.join(work, "produced", "Morphir.Tool.9.9.9-isolation.nupkg");
 		const external = path.join(work, "external", "Morphir.Tool.9.9.9-isolation.nupkg");
 		mkdirSync(path.dirname(produced), { recursive: true });
 		mkdirSync(path.dirname(external), { recursive: true });
 		writeFileSync(produced, toolPackage("PRODUCED"));
 		writeFileSync(external, toolPackage("EXTERNAL"));
-		const sha = (file: string) => new Bun.CryptoHasher("sha256").update(readFileSync(file)).digest("hex");
-
-		// The conflicting source: a nuget.config where the installs run, naming a feed with the other package.
 		const qualifyWork = path.join(work, "qualify");
 		mkdirSync(qualifyWork);
 		writeFileSync(path.join(qualifyWork, "nuget.config"), `<?xml version="1.0" encoding="utf-8"?><configuration><packageSources><add key="external" value="${path.dirname(external)}" /></packageSources></configuration>`);
-		// The conflicting cache: a packages folder that already holds the other package, set in the environment.
 		const warm = path.join(work, "warm-packages");
 		const seed = path.join(work, "seed");
 		mkdirSync(seed);
@@ -692,34 +712,54 @@ describe("the tool package installs only its own bytes", () => {
 		const saved = process.env.NUGET_PACKAGES;
 		process.env.NUGET_PACKAGES = warm;
 		try {
-			const { evidence } = isolatedToolInstall(produced, "Morphir.Tool.9.9.9-isolation.nupkg", "Morphir.Tool", "9.9.9-isolation", qualifyWork, path.join(qualifyWork, "tools"));
-			expect(evidence.packagesFolder).not.toBe(warm);
-			expect(evidence.installedCopies.length).toBeGreaterThanOrEqual(2);
-			for (const copy of evidence.installedCopies) {
-				expect(copy.sha256).toBe(sha(produced));
-				expect(copy.sha256).not.toBe(sha(external));
+			const { steps, evidence } = helperToolInstall(root, config, produced, sha(produced), qualifyWork);
+			expect(evidence.map(e => e.mode)).toEqual(["tool-path", "local"]);
+			for (const { result } of evidence) {
+				expect(result.package.sha256).toBe(sha(produced));
+				expect(result.caches.packagesFolder).not.toBe(warm);
+				for (const copy of result.stored) {
+					expect(sha(copy.path)).toBe(sha(produced));
+					expect(sha(copy.path)).not.toBe(sha(external));
+				}
 			}
-			// A copy that changes after the install is refused by the same check.
-			const storeCopy = evidence.installedCopies.find(copy => copy.path.includes(".store"))!;
-			writeFileSync(storeCopy.path, readFileSync(external));
-			expect(() => verifyInstalledCopies(path.join(qualifyWork, "tools"), evidence.packagesFolder, "Morphir.Tool", "9.9.9-isolation", sha(produced))).toThrow("not the produced package's");
+			expect(steps.map(step => step.invocation)).toEqual(["dotnet-morphir", "dotnet morphir"]);
+			expect(steps[1]).toMatchObject({ command: ["dotnet", "morphir"], cwd: evidence[1]!.result.toolPath });
+
+			// The parent's own hashing refuses a copy that changes after the helper checked it, in either mode.
+			for (const { result, mode } of evidence) {
+				writeFileSync(result.stored[0]!.path, readFileSync(external));
+				expect(helperResultProblems(result, mode, sha(produced)).join()).toContain("parent's own hashing");
+			}
 		} finally {
 			if (saved === undefined) delete process.env.NUGET_PACKAGES;
 			else process.env.NUGET_PACKAGES = saved;
 		}
-	}, 300_000);
+	}, 600_000);
 
-	// The source is adding a shared, source-owned install helper (finos/morphir-dotnet#590, locally e7d780c7, not yet
-	// pushed or pinned). isolatedToolInstall is the interim parent install; when the pin carries the helper,
-	// qualification must call it and keep only the parent's own byte check (verifyInstalledCopies).
-	test("the interim parent install exists only while the pinned source has no shared helper", () => {
-		const helper = path.join(root, config.source.submodule, ".github/scripts/install-tool-package.ps1");
-		expect(existsSync(helper), "the pinned source now carries install-tool-package.ps1: call it from qualify and drop isolatedToolInstall").toBe(false);
-	});
-
-	test("an install that kept no copy is refused", () => {
-		const empty = mkdtempSync(path.join(os.tmpdir(), "cli-tool-empty-"));
-		expect(() => verifyInstalledCopies(path.join(empty, "tools"), path.join(empty, "packages"), "Morphir.Tool", "1.0.0", "0".repeat(64))).toThrow("no installed copy");
+	test("a result of another mode, another package, relative paths or a shell-like invocation is refused", () => {
+		const work = mkdtempSync(path.join(os.tmpdir(), "cli-helper-result-"));
+		const store = path.join(work, "tool", ".store", "morphir.tool", "1.0.0", "morphir.tool", "1.0.0");
+		mkdirSync(store, { recursive: true });
+		const copy = path.join(store, "morphir.tool.1.0.0.nupkg");
+		writeFileSync(copy, "package");
+		const command = path.join(work, "tool", process.platform === "win32" ? "dotnet-morphir.exe" : "dotnet-morphir");
+		writeFileSync(command, "shim");
+		const good: HelperResult = {
+			mode: "tool-path",
+			package: { id: "Morphir.Tool", version: "1.0.0", command: "dotnet-morphir", path: copy, sha256: sha(copy) },
+			caches: { packagesFolder: path.join(work, "nuget", "packages"), httpCache: path.join(work, "nuget", "http-cache"), pluginsCache: path.join(work, "nuget", "plugins-cache"), cliHome: null },
+			toolPath: path.join(work, "tool"),
+			packageFolder: store,
+			stored: [{ path: copy, sha256: sha(copy) }],
+			invocation: { file: command, arguments: [], workingDirectory: null, environment: {} },
+		};
+		expect(helperResultProblems(good, "tool-path", sha(copy))).toEqual([]);
+		expect(helperResultProblems(good, "local", sha(copy)).join()).toContain("not local");
+		expect(helperResultProblems(good, "tool-path", "0".repeat(64)).join()).toContain("not the artifact's");
+		expect(helperResultProblems({ ...good, toolPath: "tool" }, "tool-path", sha(copy)).join()).toContain("not absolute");
+		expect(helperResultProblems({ ...good, stored: [] }, "tool-path", sha(copy)).join()).toContain("no stored package");
+		expect(helperResultProblems({ ...good, invocation: { ...good.invocation, arguments: "--version" as unknown as string[] } }, "tool-path", sha(copy)).join()).toContain("argument array");
+		expect(helperResultProblems({ ...good, mode: "local", invocation: { file: path.join(store, "dotnet-morphir.dll"), arguments: [], workingDirectory: work, environment: {} } }, "local", sha(copy)).join()).toContain("not `dotnet <command>`");
 	});
 });
 describe("real zip archives", () => {

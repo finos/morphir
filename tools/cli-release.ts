@@ -178,25 +178,18 @@ export function releaseMatrix(config: CliReleaseConfig): { include: Platform[] }
 
 // ---- Qualification -------------------------------------------------------
 
-export type LaunchStep = { invocation: string; command: string[] };
+/** One way to start an offering: the command, and for an installed tool the folder and environment it needs. */
+export type LaunchStep = { invocation: string; command: string[]; cwd?: string; env?: Record<string, string | null> };
 
 /**
- * How each invocation of an offering is started. Archives run their extracted executable or apphost itself,
- * never `dotnet exec`: launching the produced file is what users do, and the file's own loader behaviour is
- * part of what ships. The tool package runs as the `dotnet-morphir` shim the SDK installed and as
- * `dotnet morphir` from a local tool manifest.
+ * How an archive offering is started: its extracted executable or apphost itself, never `dotnet exec`. Launching
+ * the produced file is what users do, and the file's own loader behaviour is part of what ships. The tool package is
+ * started from what the source's install helper reports (`toolLaunchPlan`).
  */
-export function launchPlan(launch: LaunchMetadata, extracted: string, toolPath: string): LaunchStep[] {
-	if (launch.layout === "tool-package") {
-		const shim = process.platform === "win32" ? `${launch.launchPath}.exe` : launch.launchPath;
-		return [
-			{ invocation: "dotnet-morphir", command: [path.join(toolPath, shim)] },
-			{ invocation: "dotnet morphir", command: ["dotnet", "morphir"] },
-		];
-	}
+export function launchPlan(launch: LaunchMetadata, extracted: string): LaunchStep[] {
+	if (launch.layout === "tool-package") throw new Error(`${launch.artifact} is a tool package; it is started from the install helper's result`);
 	return [{ invocation: "morphir", command: [path.join(extracted, launch.launchPath)] }];
 }
-
 /**
  * Whether `--version` output names the release built from the pinned commit. The executable prints the release,
  * normally followed by `+` and the commit it was built from (`0.4.0-alpha.4+<sha>`); the launch metadata's `release`
@@ -248,8 +241,6 @@ export function releaseBlocker(config: CliReleaseConfig): string | undefined {
 	return candidate === undefined ? undefined : `the CLI source pin is an unmerged candidate (${candidate.pullRequest}); ${candidate.reason}`;
 }
 
-export type ToolInstallEvidence = { configFile: string; packagesFolder: string; installedCopies: { path: string; sha256: string }[] };
-
 /** The package copies NuGet keeps for an installed package: files named `<id>.<version>.nupkg`, any case, under `roots`. */
 export function installedPackageCopies(roots: string[], id: string, version: string): string[] {
 	const wanted = `${id}.${version}.nupkg`.toLowerCase();
@@ -263,54 +254,116 @@ export function installedPackageCopies(roots: string[], id: string, version: str
 	return roots.flatMap(walk);
 }
 
+/** The source's install helper, as the pinned commit carries it. */
+export function installHelperPath(root: string, config: CliReleaseConfig): string {
+	return path.join(root, config.source.submodule, ".github", "scripts", "install-tool-package.ps1");
+}
+
+export type HelperMode = "tool-path" | "local";
+
 /**
- * Installs the produced tool package twice (into a tool path, and as a local tool) so that nothing but its own bytes
- * can be installed. `dotnet tool install` queries every configured source in parallel and takes the fastest one that
- * has the version, and it reuses the global packages folder; a feed or cache holding another Morphir.Tool of the same
- * version could win. So the installs use only a generated NuGet configuration (`<clear />` and one feed holding this
- * package, through `--configfile`) and fresh packages and HTTP cache folders, and every package copy NuGet kept, in
- * the tool store and in the packages folder, must have the artifact's SHA-256. Returns the environment that runs the
- * installed tool (the local tool resolves from that packages folder) and the evidence.
+ * The result file of the source's install helper (`-ResultFile`): internal evidence of finos/morphir-dotnet, not a
+ * contract. Only the members the parent reads are typed.
  */
-export function isolatedToolInstall(artifact: string, fileName: string, id: string, version: string, work: string, toolPath: string): { env: Record<string, string | undefined>; evidence: ToolInstallEvidence } {
-	const feed = path.join(work, "feed");
-	mkdirSync(feed, { recursive: true });
-	copyFileSync(artifact, path.join(feed, fileName));
-	const configFile = path.join(work, "nuget.isolated.config");
-	const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
-	writeFileSync(configFile, `<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <clear />\n    <add key="produced" value="${escape(feed)}" />\n  </packageSources>\n</configuration>\n`);
-	const packagesFolder = path.join(work, "nuget-packages");
-	const env: Record<string, string | undefined> = {
-		...process.env,
-		NUGET_PACKAGES: packagesFolder,
-		NUGET_HTTP_CACHE_PATH: path.join(work, "nuget-http-cache"),
-		NUGET_PLUGINS_CACHE_PATH: path.join(work, "nuget-plugins-cache"),
-		DOTNET_CLI_TELEMETRY_OPTOUT: "1",
-		DOTNET_NOLOGO: "1",
-	};
-	const install = (target: string[]) => ["dotnet", "tool", "install", id, "--version", version, "--configfile", configFile, ...target];
-	check(run(install(["--tool-path", toolPath]), { cwd: work, env }), "dotnet tool install --tool-path");
-	check(run(["dotnet", "new", "tool-manifest", "--force"], { cwd: work, env }), "dotnet new tool-manifest");
-	check(run(install(["--local"]), { cwd: work, env }), "dotnet tool install --local");
-	const installedCopies = verifyInstalledCopies(toolPath, packagesFolder, id, version, sha256(artifact));
-	return { env, evidence: { configFile, packagesFolder, installedCopies } };
+export type HelperResult = {
+	mode: HelperMode;
+	package: { id: string; version: string; command: string; path: string; sha256: string };
+	caches: { packagesFolder: string; httpCache: string; pluginsCache: string; cliHome: string | null };
+	toolPath: string;
+	packageFolder: string;
+	stored: { path: string; sha256: string }[];
+	invocation: { file: string; arguments: string[]; workingDirectory: string | null; environment: Record<string, string | null> };
+};
+
+/**
+ * The command that runs the source's install helper: one isolated install of the produced package, into new folders,
+ * writing its result file. `-Local` installs into a new tool manifest instead of a tool path. PowerShell 7 runs it on
+ * every release runner.
+ */
+export function helperCommand(helper: string, artifact: string, toolPath: string, workDir: string, mode: HelperMode, resultFile: string): string[] {
+	return ["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", helper, "-Package", path.resolve(artifact), "-ToolPath", path.resolve(toolPath), "-WorkDir", path.resolve(workDir), ...(mode === "local" ? ["-Local"] : []), "-ResultFile", path.resolve(resultFile)];
 }
 
-/** Every package copy NuGet kept in the tool store and the packages folder; each must have `expected` as SHA-256. */
-export function verifyInstalledCopies(toolPath: string, packagesFolder: string, id: string, version: string, expected: string): { path: string; sha256: string }[] {
-	const verified: { path: string; sha256: string }[] = [];
-	for (const [label, root] of [["tool path", path.join(toolPath, ".store")], ["packages folder", packagesFolder]] as const) {
-		const copies = installedPackageCopies([root], id, version);
-		if (copies.length === 0) throw new Error(`no installed copy of ${id} ${version} in the ${label} (${root})`);
-		for (const copy of copies) {
-			const digest = sha256(copy);
-			if (digest !== expected) throw new Error(`the ${label} holds ${copy} with SHA-256 ${digest}, not the produced package's ${expected}`);
-			verified.push({ path: copy, sha256: digest });
-		}
+/**
+ * The parent's own check of a helper run, independent of the helper's: the mode and package are the produced ones,
+ * every reported copy and every `<id>.<version>.nupkg` the parent itself finds where that mode installs (the tool
+ * store, or the packages folder of a local install) has the artifact's SHA-256 by the parent's own hashing, every
+ * path is absolute, and the invocation is a direct command with an argument array, never a shell string or an
+ * entry assembly. Returns the problems.
+ */
+export function helperResultProblems(result: HelperResult, mode: HelperMode, artifactSha256: string): string[] {
+	const problems: string[] = [];
+	if (result.mode !== mode) problems.push(`the helper ran in ${result.mode} mode, not ${mode}`);
+	if (result.package?.sha256 !== artifactSha256) problems.push(`the helper installed a package with SHA-256 ${result.package?.sha256}, not the artifact's ${artifactSha256}`);
+	const absolute = [result.toolPath, result.packageFolder, result.caches?.packagesFolder, ...(result.stored ?? []).map(copy => copy.path)];
+	if (absolute.some(value => typeof value !== "string" || !path.isAbsolute(value))) problems.push("the helper reported a path that is not absolute");
+	if (!Array.isArray(result.stored) || result.stored.length === 0) problems.push("the helper reported no stored package");
+	for (const copy of result.stored ?? []) {
+		if (!existsSync(copy.path)) problems.push(`the reported copy ${copy.path} does not exist`);
+		else if (sha256(copy.path) !== artifactSha256) problems.push(`the reported copy ${copy.path} does not have the artifact's SHA-256 by the parent's own hashing`);
 	}
-	return verified;
+	if (problems.length === 0) {
+		const root = mode === "tool-path" ? path.join(result.toolPath, ".store") : result.caches.packagesFolder;
+		const found = installedPackageCopies([root], result.package.id, result.package.version);
+		if (found.length === 0) problems.push(`the parent finds no ${result.package.id}.${result.package.version}.nupkg under ${root}`);
+		for (const copy of found) if (sha256(copy) !== artifactSha256) problems.push(`${copy} does not have the artifact's SHA-256`);
+	}
+	const invocation = result.invocation;
+	if (invocation === undefined || typeof invocation.file !== "string" || !Array.isArray(invocation.arguments) || typeof invocation.environment !== "object" || invocation.environment === null) problems.push("the helper's invocation is not a command, an argument array and an environment object");
+	else if (mode === "tool-path") {
+		if (!path.isAbsolute(invocation.file) || !existsSync(invocation.file) || invocation.arguments.length !== 0) problems.push(`the tool-path invocation is not the installed command itself: ${invocation.file}`);
+		else if (!path.resolve(invocation.file).startsWith(path.resolve(result.toolPath))) problems.push(`the tool-path command ${invocation.file} is outside the tool path`);
+	} else if (invocation.file !== "dotnet" || invocation.arguments.length !== 1 || typeof invocation.workingDirectory !== "string" || !path.isAbsolute(invocation.workingDirectory)) {
+		problems.push(`the local invocation is not \`dotnet <command>\` from the manifest folder: ${invocation.file} ${invocation.arguments.join(" ")}`);
+	}
+	return problems;
 }
 
+/** How a verified helper result starts the tool: its command, folder and environment, applied as they are. */
+export function toolLaunchStep(result: HelperResult): LaunchStep {
+	const { file, arguments: args, workingDirectory, environment } = result.invocation;
+	return {
+		invocation: result.mode === "tool-path" ? path.basename(file).replace(/\.exe$/i, "") : `dotnet ${args.join(" ")}`,
+		command: [file, ...args],
+		...(workingDirectory === null ? {} : { cwd: workingDirectory }),
+		env: environment,
+	};
+}
+
+export type ToolInstallEvidence = { mode: HelperMode; resultFile: string; result: HelperResult };
+
+/**
+ * Installs the produced tool package through the source's helper, once into a tool path and once as a local tool,
+ * each into its own new folders, and checks each result with `helperResultProblems`. The helper owns the isolation
+ * (finos/morphir-dotnet's single implementation); the parent owns the independent byte check.
+ */
+export function helperToolInstall(root: string, config: CliReleaseConfig, artifact: string, artifactSha256: string, work: string): { steps: LaunchStep[]; evidence: ToolInstallEvidence[] } {
+	const helper = installHelperPath(root, config);
+	if (!existsSync(helper)) throw new Error(`the pinned source has no install helper at ${helper}`);
+	const steps: LaunchStep[] = [];
+	const evidence: ToolInstallEvidence[] = [];
+	for (const mode of ["tool-path", "local"] as const) {
+		const resultFile = path.join(work, `install-${mode}.json`);
+		check(run(helperCommand(helper, artifact, path.join(work, `${mode}-tool`), path.join(work, `${mode}-nuget`), mode, resultFile), { cwd: work }), `install-tool-package.ps1 (${mode})`);
+		if (!existsSync(resultFile)) throw new Error(`the install helper wrote no result file in ${mode} mode`);
+		const result = JSON.parse(readFileSync(resultFile, "utf8")) as HelperResult;
+		const problems = helperResultProblems(result, mode, artifactSha256);
+		if (problems.length > 0) throw new Error(problems.join("; "));
+		steps.push(toolLaunchStep(result));
+		evidence.push({ mode, resultFile, result });
+	}
+	return { steps, evidence };
+}
+
+/** Applies an invocation's environment to a base environment: a null value removes the variable. */
+export function applyEnvironment(base: Record<string, string | undefined>, overrides: Record<string, string | null> | undefined): Record<string, string | undefined> {
+	const env = { ...base };
+	for (const [name, value] of Object.entries(overrides ?? {})) {
+		for (const key of Object.keys(env)) if (key.toUpperCase() === name.toUpperCase()) delete env[key];
+		if (value !== null) env[name] = value;
+	}
+	return env;
+}
 function sha256(file: string): string {
 	return createHash("sha256").update(readFileSync(file)).digest("hex");
 }
@@ -358,7 +411,7 @@ export type Qualification = {
 	invocations: { invocation: string; reportedVersion: string; scenarios: { scenario: string; status: ScenarioStatus; exitCode: number }[] }[];
 	qualified: boolean;
 	pending: string[];
-	toolInstall?: ToolInstallEvidence;
+	toolInstall?: ToolInstallEvidence[];
 };
 
 function readLaunch(releaseDir: string, deployment: string, rid: string | undefined): LaunchMetadata {
@@ -383,19 +436,19 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 
 	const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), `cli-${deployment}-`));
 	const extracted = path.join(work, "extracted");
-	const toolPath = path.join(work, "tools");
 	mkdirSync(extracted);
 	let env: Record<string, string | undefined> = { ...process.env };
-	let toolEvidence: ToolInstallEvidence | undefined;
+	let toolEvidence: ToolInstallEvidence[] | undefined;
+	let steps: LaunchStep[];
 	if (launch.layout === "tool-package") {
-		const pkg = config.deployments.find(d => d.id === deployment)?.package ?? "Morphir.Tool";
-		const installed = isolatedToolInstall(artifact, launch.artifact, pkg, version, work, toolPath);
-		env = installed.env;
+		const installed = helperToolInstall(root, config, artifact, digest, work);
+		steps = installed.steps;
 		toolEvidence = installed.evidence;
 	} else {
 		// bsdtar (Windows, macOS) reads zip and tar.gz; Linux archives are tar.gz.
 		check(run(extractCommand(artifact, extracted), { cwd: work }), `extract ${launch.artifact}`);
 		if (deployment !== "framework-dependent") env = withoutDotnet();
+		steps = launchPlan(launch, extracted);
 	}
 
 	const input = path.join(work, "input");
@@ -403,15 +456,17 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 	const example = path.join(input, "greeting-example.json");
 	copyFileSync(path.join(root, "website/static/ir/examples/v3/greeting-example.json"), example);
 
-	const invocations = launchPlan(launch, extracted, toolPath).map(step => {
+	const invocations = steps.map(step => {
 		if (!existsSync(step.command[0]!) && step.command[0] !== "dotnet") throw new Error(`${launch.artifact} has no ${step.command[0]}`);
 		const scenarios: Qualification["invocations"][number]["scenarios"] = [];
-		const version_ = run([...step.command, "--version"], { cwd: work, env });
+		const stepEnv = applyEnvironment(env, step.env);
+		const cwd = step.cwd ?? work;
+		const version_ = run([...step.command, "--version"], { cwd, env: stepEnv });
 		const versionMatches = version_.exitCode === 0 && versionReported(version_.stdout, launch.release, config.source.commit);
 		scenarios.push({ scenario: "launch", status: scenarioStatus(config, launch.platform === "any" ? platform : launch.platform, "launch", versionMatches ? 0 : 1), exitCode: version_.exitCode });
-		const help = run([...step.command, "--help"], { cwd: work, env });
+		const help = run([...step.command, "--help"], { cwd, env: stepEnv });
 		scenarios.push({ scenario: "help", status: help.exitCode === 0 ? "passed" : "failed", exitCode: help.exitCode });
-		const verify = run([...step.command, "ir", "verify", example], { cwd: work, env });
+		const verify = run([...step.command, "ir", "verify", example], { cwd, env: stepEnv });
 		scenarios.push({ scenario: "packaged-input", status: scenarioStatus(config, platform, "packaged-input", verify.exitCode), exitCode: verify.exitCode });
 		for (const [name, result] of [["--version", version_], ["--help", help], ["ir verify", verify]] as const) {
 			console.error(`${step.invocation} ${name}: exit ${result.exitCode}\n${result.stdout}${result.stderr}`);
