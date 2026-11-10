@@ -1,6 +1,6 @@
 ;; An extism-kernel-v1 guest that accepts notifications. It answers its first
-;; request, morphir.initialize, with a result that advertises acceptance with
-;; the illustrative member capabilities.notifications.accept. It counts every
+;; request, morphir.initialize, with a result that gives
+;; capabilities.notificationDelivery the value "call". It counts every
 ;; handle call. A message without "id" is a notification: it gives no output.
 ;; Its second request is answered with {"jsonrpc":"2.0","id":2,"result":n},
 ;; where n is the number of handle calls so far, so a delivered notification
@@ -16,8 +16,8 @@
   (global $calls (mut i32) (i32.const 0))
   (global $requests (mut i32) (i32.const 0))
   (data (i32.const 0) "\22id\22")
-  ;; 118 bytes.
-  (data (i32.const 16) "{\22jsonrpc\22:\222.0\22,\22id\22:1,\22result\22:{\22protocolVersion\22:\220.2.0-draft.1\22,\22capabilities\22:{\22notifications\22:{\22accept\22:true}}}}")
+  ;; 116 bytes.
+  (data (i32.const 16) "{\22jsonrpc\22:\222.0\22,\22id\22:1,\22result\22:{\22protocolVersion\22:\220.2.0-draft.1\22,\22capabilities\22:{\22notificationDelivery\22:\22call\22}}}")
   ;; 35 bytes; the count is at 256 + 33.
   (data (i32.const 256) "{\22jsonrpc\22:\222.0\22,\22id\22:2,\22result\22:0}")
   ;; Copies $len bytes of guest memory at $ptr into a new kernel block.
@@ -59,7 +59,7 @@
     (global.set $requests (i32.add (global.get $requests) (i32.const 1)))
     (if (i32.eq (global.get $requests) (i32.const 1))
       (then
-        (call $output_set (call $block (i32.const 16) (i32.const 118)) (i64.const 118))
+        (call $output_set (call $block (i32.const 16) (i32.const 116)) (i64.const 116))
         (return (i32.const 0))))
     (i32.store8 (i32.const 289) (i32.add (i32.const 48) (global.get $calls)))
     (call $output_set (call $block (i32.const 256) (i32.const 35)) (i64.const 35))

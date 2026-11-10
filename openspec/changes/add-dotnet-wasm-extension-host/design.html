@@ -185,19 +185,29 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <p class="stage">Stage 6. The host has something to tell the guest that is not a request</p>
 <h3 id="ntf-1">NTF-1. Deliver notifications to an Extism guest that asks for them</h3>
 <p>After the handshake the host sends <code>morphir.initialized</code>, and at the end <code>morphir.exit</code>. Both are notifications: messages with no <code>id</code> and no response. Today every host drops them for an Extism guest, because the published guests were written to answer requests and nobody knows what their <code>handle</code> does with anything else. A byte-profile guest does receive them. Retiring that profile should not remove the ability.</p>
-<p>The guest opts in. In its <code>morphir.initialize</code> result it advertises that it accepts notifications, the same way MEP already gates <code>$/cancelRequest</code> on what the extension advertises. From then on the host passes each notification to <code>handle</code> as it would a request, and the guest returns with no output. An output of zero bytes is how Extism already says "nothing to return". <code>morphir.exit</code> is delivered and then the instance ends.</p>
-<pre><code class="language-json">{"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "0.2.0-draft.1", "capabilities": {"notifications": {"accept": true}}}}</code></pre>
-<p>The member name above is illustrative. Its place in the contract model is fixed with task 1.1.</p>
+<p>The guest opts in. In its <code>morphir.initialize</code> result it says how it wants notifications delivered, the same way MEP already gates <code>$/cancelRequest</code> on what the extension advertises. With the value <code>call</code> the host passes each notification to <code>handle</code> as it would a request, and the guest returns with no output. An output of zero bytes is how Extism already says "nothing to return". <code>morphir.exit</code> is delivered and then the instance ends.</p>
+<pre><code class="language-json">{"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "0.2.0-draft.1", "capabilities": {"notificationDelivery": "call"}}}</code></pre>
+<p>The member is a string with a fixed set of values, not a flag. A flag can say only whether the guest wants notifications. There are three ways to answer how they arrive:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Value</th><th>How a notification reaches the guest</th><th>In this draft</th></tr></thead>
+<tbody>
+<tr><td><code>none</code></td><td>It does not. This is also what an absent member means</td><td>Defined, and the default</td></tr>
+<tr><td><code>call</code></td><td>One <code>handle</code> call between requests</td><td>Defined</td></tr>
+<tr><td><code>poll</code></td><td>The guest asks the host for pending notifications while a call runs</td><td>Reserved. It needs a new host function</td></tr>
+</tbody></table></div>
+<p>A host reads a value it does not know as <code>none</code>. That keeps one rule for every case in which a guest gets no delivery: a host on the earlier contract ignores the member, a host on this draft does not know <code>poll</code>, and a guest spelled the value wrong. A guest therefore cannot depend on delivery, and no session fails over a value added later.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Guest</th><th>Host sends <code>morphir.initialized</code></th><th>Host sends <code>morphir.exit</code></th></tr></thead>
 <tbody>
 <tr><td>Published bundle, advertises nothing</td><td>Not delivered, as today</td><td>Instance ends without a call, as today</td></tr>
-<tr><td>Advertises that it accepts notifications</td><td>One <code>handle</code> call, no output expected</td><td>One <code>handle</code> call, then the instance ends</td></tr>
-<tr><td>Advertises, then returns output for a notification</td><td colspan="2">The session fails: a notification has no response</td></tr>
+<tr><td>Advertises <code>call</code></td><td>One <code>handle</code> call, no output expected</td><td>One <code>handle</code> call, then the instance ends</td></tr>
+<tr><td>Advertises <code>call</code>, then returns output for a notification</td><td colspan="2">The session fails: a notification has no response</td></tr>
+<tr><td>Advertises a value the contract does not list</td><td>Not delivered</td><td>Instance ends without a call</td></tr>
 </tbody></table></div>
+<p>MEP <code>0.2.0-draft.1</code> already lets an extension send capability members the draft does not name, so the member is valid on that draft. The next MEP draft names it in the handshake model (task 1.7).</p>
 <p>This needs no new import and no ABI change, so every published bundle keeps running unchanged and an old host simply never delivers. It is a contract rule for hosts, which is why it belongs in the shared profile and not in .NET alone.</p>
-<p><em>What it does not do.</em> It cannot deliver <code>$/cancelRequest</code> during a call. A WASM guest runs one call at a time, so the host cancels by interrupting the engine (BND-1). It also does not let the guest send a notification to the host, such as <code>morphir.progress</code>. That direction needs a new host function, which changes the import surface, and is left as an open question.</p>
-<p><em>Alternatives.</em> Deliver to every Extism guest: it risks failing published bundles whose behavior for a message without an <code>id</code> is unknown. Signal with a marker export in the module: it works before the handshake, but it puts protocol capability in the binary, where MEP's own negotiation cannot see it.</p>
+<p><em>What it does not do.</em> <code>call</code> delivery cannot deliver <code>$/cancelRequest</code> during a call. A WASM guest runs one call at a time, so the host cancels by interrupting the engine (BND-1). Cooperative cancellation is what the reserved <code>poll</code> value is for. This decision also does not let the guest send a notification to the host, such as <code>morphir.progress</code>. Both need a new host function, which changes the import surface, and are left as an open question.</p>
+<p><em>Alternatives.</em> A boolean such as <code>capabilities.notifications</code>, matching <code>cancellation</code> and <code>progress</code>: it cannot express polling, so adding that later would need a second member and a rule for when the two disagree. A list of the methods the guest accepts: MEP already gates each notification on its own capability, so the list would repeat it. Deliver to every Extism guest: it risks failing published bundles whose behavior for a message without an <code>id</code> is unknown. Signal with a marker export in the module: it works before the handshake, but it puts protocol capability in the binary, where MEP's own negotiation cannot see it.</p>
 
 <p class="stage">Stage 7. The guest reaches outside</p><h3 id="sbx-1">SBX-1. Accept the imports, bound the calls</h3>
 <p>The Python guest links <code>http_request</code> and WASI's <code>path_open</code> even though compiling a Morphir model needs neither. Refusing those imports would refuse every published bundle. The contract's policy table accepts them and gives the guest nothing through them. The .NET host implements that table exactly:</p>
@@ -352,7 +362,7 @@ $ morphir mck mep guest-run \
 <li>Is a slimmer engine build, without the compiler features Morphir never uses, worth maintaining? The spike did not measure one.</li>
 <li>What location, integrity check and clean-up rule would make an on-disk compiled-module cache safe (CACHE-1)?</li>
 <li>Should the worker mode become a documented public command once a second host uses the same shape? finos/morphir-moonbit#297 asks the same of MoonBit.</li>
-<li>Should a guest be able to send the host a notification, such as <code>morphir.progress</code>? It needs a new function in <code>extism:host/user</code>, and a module that imports it would be refused by hosts on the current contract (NTF-1).</li>
+<li>Should a guest be able to send the host a notification, such as <code>morphir.progress</code>? It needs a new function in <code>extism:host/user</code>, and a module that imports it would be refused by hosts on the current contract (NTF-1). The same holds for the reserved <code>poll</code> delivery, which would let a guest see <code>$/cancelRequest</code> during a call.</li>
 <li>When the roadmap's host grants are designed, do they belong in the shared profile contract or stay host-specific?</li>
 </ul>
 

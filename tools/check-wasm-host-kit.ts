@@ -181,7 +181,7 @@ export type Profile = {
 	memory?: Rule[];
 	callDeadlineSeconds: number;
 	handleResults: { result: string }[];
-	notificationAdvertisement?: { provisional: boolean; illustrativeMember: string };
+	notificationDelivery?: { member: string; default: string; values: { value: string }[]; reserved?: { value: string }[] };
 };
 export type WorkerArgument = { name: string; required?: boolean; flag?: boolean; default?: number | Record<string, number> };
 export type Contract = {
@@ -321,7 +321,12 @@ export function documentProblems(contract: Contract, markdown: string): string[]
 			if (!line(code(entry.name), code(signatureText(entry)))) problems.push(`the document has no line with ${code(entry.name)} and ${code(signatureText(entry))}`);
 		}
 		if (!mentionsNumber(markdown, profile.callDeadlineSeconds, "seconds")) problems.push(`the document does not state the ${name} call deadline of ${profile.callDeadlineSeconds} seconds`);
-		if (profile.notificationAdvertisement) need(code(profile.notificationAdvertisement.illustrativeMember), "the advertisement member");
+		const delivery = profile.notificationDelivery;
+		if (delivery) {
+			need(code(delivery.member), "the notification delivery member");
+			for (const entry of [...delivery.values, ...(delivery.reserved ?? [])]) need(code(entry.value), `the notification delivery value of ${name}`);
+			if (!delivery.values.some((entry) => entry.value === delivery.default)) problems.push(`the ${name} notification delivery default ${delivery.default} is not one of its values`);
+		}
 	}
 	for (const entry of refusalCodes(contract)) need(code(entry), "the refusal code");
 	for (const entry of contract.faults) {

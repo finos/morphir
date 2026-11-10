@@ -33,12 +33,28 @@ The first import from a profile namespace decides the profile, and every other i
 | Request reaches the guest | Guest pulls it one byte at a time | Extism input |
 | Response leaves the guest | Guest pushes it one byte at a time | Extism output |
 | `handle` result | Response length, or a code | Success or error |
-| Notifications from the host | Delivered | Delivered when the guest advertises that it accepts them |
+| Notifications from the host | Delivered | Delivered when the guest advertises `call` delivery |
 | Ambient authority | None | None beyond clocks and random bytes |
 
 `extism-kernel-v1` is what the published bundles are, and it is the one profile every host runs. `morphir-bytes-v1` was added when one host could not yet run Extism modules everywhere. That host now can, so the byte profile is kept only until its three guests have moved, and is then removed.
 
 An Extism guest does not need a PDK. A module that imports five kernel functions (`input_length`, `input_load_u8`, `alloc`, `store_u8`, `output_set`) reads and writes bytes the way a byte-profile guest does.
+
+### How an Extism guest asks for notifications
+
+The guest sets one string in its `morphir.initialize` result:
+
+```json
+{"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "0.2.0-draft.1", "capabilities": {"notificationDelivery": "call"}}}
+```
+
+| `notificationDelivery` | What the host does with `morphir.initialized` and `morphir.exit` |
+| --- | --- |
+| Absent or `none` | Delivers neither. Every published bundle is in this row |
+| `call` | Delivers each as one `handle` call between requests, expecting no output |
+| `poll` (reserved) | Not defined in this draft, so read as `none`. The guest would ask the host for pending notifications while a call runs |
+
+It is a string and not a flag because of the last row. A guest runs one call at a time, so `call` delivery cannot reach it during the request it is working on. Polling is the only way `$/cancelRequest` could, and it needs a host function that does not exist yet.
 
 ### A message crossing the boundary
 
@@ -166,7 +182,7 @@ For `extism-kernel-v1` the host SHALL keep one instance for the session and call
 - **THEN** each request is one `handle` call on the same instance
 
 ### Requirement: Notifications reach an Extism guest that accepts them
-A host SHALL deliver a notification to an `extism-kernel-v1` guest only after the guest advertised, in its `morphir.initialize` result, that it accepts notifications. Each delivered notification SHALL be one `handle` call that returns no output; output SHALL fail the session. A guest that advertised nothing SHALL receive no notification.
+A host SHALL deliver a notification to an `extism-kernel-v1` guest only when the guest's `morphir.initialize` result gives the string `capabilities.notificationDelivery` the value `call`. Each delivered notification SHALL be one `handle` call that returns no output; output SHALL fail the session. When the member is absent, is `none` or holds a value the contract does not list, the guest SHALL receive no notification.
 
 #### Scenario: Published guest that advertises nothing
 - **WHEN** the host completes the handshake with the Python `0.4.2` guest and later ends the session
@@ -174,13 +190,17 @@ A host SHALL deliver a notification to an `extism-kernel-v1` guest only after th
 - **AND** the instance ends without a further call
 
 #### Scenario: Guest that accepts notifications
-- **WHEN** a guest advertises that it accepts notifications and the host completes the handshake
+- **WHEN** a guest advertises `"notificationDelivery": "call"` and the host completes the handshake
 - **THEN** `morphir.initialized` is one `handle` call that returns no output
 - **AND** `morphir.exit` is one `handle` call, after which the instance ends
 
 #### Scenario: Guest answers a notification
-- **WHEN** a guest that accepts notifications returns output for `morphir.initialized`
+- **WHEN** a guest that advertised `call` returns output for `morphir.initialized`
 - **THEN** the session fails
+
+#### Scenario: Guest advertises a value the contract does not list
+- **WHEN** a guest advertises `"notificationDelivery": "unlisted"` and the host completes the handshake
+- **THEN** the session continues and no notification is delivered to the guest
 
 #### Scenario: Cancellation during a call
 - **WHEN** the host cancels a request while the guest is inside `handle`

@@ -38,7 +38,7 @@ flowchart LR
 | Request reaches the guest | Guest pulls it one byte at a time | Extism input |
 | Response leaves the guest | Guest pushes it one byte at a time | Extism output |
 | `handle` result | Response length, or a code | 0 with output, or a failure |
-| Notifications from the host | Every one is delivered | Delivered only after the guest advertises that it accepts them |
+| Notifications from the host | Every one is delivered | Delivered only after the guest advertises `call` delivery |
 | Call deadline | 10 seconds | 30 seconds |
 | Ambient authority | None | None beyond clocks and random bytes |
 
@@ -176,15 +176,21 @@ The host keeps one instance for the session. For each request it sets the reques
 
 ### Notifications
 
-A host delivers a notification to an Extism guest only after the guest advertised, in its `morphir.initialize` result, that it accepts notifications. Each delivered notification is one `handle` call that gives no output, and output fails the session. `morphir.exit` is delivered as one call, and then the instance ends.
-
-A guest that advertised nothing, which is every published bundle today, receives no notification: `morphir.initialized` is not delivered and `morphir.exit` ends the instance without a call.
-
-The member that advertises acceptance is not fixed yet. The JSON marks it `provisional`; until it is fixed, the corpus uses the illustrative spelling `capabilities.notifications.accept`:
+An Extism guest says how it wants notifications delivered with the string member `capabilities.notificationDelivery` of its `morphir.initialize` result:
 
 ```json
-{"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "0.2.0-draft.1", "capabilities": {"notifications": {"accept": true}}}}
+{"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "0.2.0-draft.1", "capabilities": {"notificationDelivery": "call"}}}
 ```
+
+| Value | The host |
+| --- | --- |
+| `none`, or the member is absent | Delivers no notification. `morphir.initialized` is not delivered and `morphir.exit` ends the instance without a call. Every published bundle today is in this row |
+| `call` | Delivers each notification as one `handle` call between requests. The call gives no output, and output fails the session. `morphir.exit` is delivered as one call, and then the instance ends |
+| Any other value | Reads it as `none` |
+
+The member is a string and not a flag because there is a third way to deliver. A guest runs one call at a time, so `call` cannot deliver `$/cancelRequest` for the request the guest is working on. A guest could instead ask the host for pending notifications while it works. That value, `poll`, is reserved. It needs a host function this draft does not define, so a host on this draft reads it as `none`.
+
+MEP `0.2.0-draft.1` reads the member as an extra capability member. The MEP draft that follows names it in the handshake model.
 
 ## Policy values
 
@@ -328,7 +334,7 @@ Each rule was read from these places, and the import tables were compared entry 
 - moonrockz/extism at `v0.3.0`, the version morphir-moonbit pins: `pkgs/extism/kernel/kernel.mbt` (the 20 kernel functions and their types), `pkgs/extism/plugin.mbt` (call results, `config_get`, `var_*`, logging, HTTP), `pkgs/extism/policy.mbt` (log level codes, the kernel memory ceiling) and `pkgs/extism/wasi/sandbox.mbt` (WASI answers and errnos).
 - finos/morphir-rust at `extension/rust/v0.4.0-2`: `crates/morphir-extension-sdk/src/host.rs` (Morphir host function declarations).
 
-The notification rule for Extism guests is new in this draft. The MoonBit host at `89f8924` delivers no notification to an Extism guest, also one that advertises acceptance.
+The notification rule for Extism guests is new in this draft. The MoonBit host at `89f8924` delivers no notification to an Extism guest, also one that advertises `call`.
 
 ## Qualification
 

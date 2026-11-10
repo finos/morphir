@@ -73,15 +73,24 @@
       ],
       "wasi": "wasi_snapshot_preview1",
       "notifications": [
-        { "id": "advertised", "rule": "A notification is delivered only after the guest advertised, in its morphir.initialize result, that it accepts notifications. Each delivered notification is one handle call that gives no output. morphir.exit is delivered, and then the instance ends." },
+        { "id": "advertised", "rule": "A notification is delivered only after the guest's morphir.initialize result gave capabilities.notificationDelivery the value call. Each delivered notification is one handle call that gives no output. morphir.exit is delivered, and then the instance ends." },
         { "id": "output-fails", "rule": "Output for a delivered notification fails the session." },
-        { "id": "unadvertised", "rule": "A guest that advertised nothing receives no notification, and morphir.exit ends its instance without a call." }
+        { "id": "unadvertised", "rule": "A guest whose result has no capabilities.notificationDelivery, or gives it the value none, receives no notification, and morphir.exit ends its instance without a call." },
+        { "id": "unlisted-value", "rule": "A value of capabilities.notificationDelivery that this contract does not list is read as none." }
       ],
-      "notificationAdvertisement": {
-        "provisional": true,
-        "illustrativeMember": "capabilities.notifications.accept",
-        "illustrativeValue": true,
-        "note": "The member of the morphir.initialize result that advertises acceptance is not fixed yet. Until it is, the corpus uses the illustrative spelling."
+      "notificationDelivery": {
+        "member": "capabilities.notificationDelivery",
+        "of": "morphir.initialize result",
+        "type": "string",
+        "default": "none",
+        "values": [
+          { "value": "none", "meaning": "The host delivers no notification to the guest." },
+          { "value": "call", "meaning": "The host delivers each notification as one handle call, between requests." }
+        ],
+        "reserved": [
+          { "value": "poll", "meaning": "The guest asks the host for pending notifications while a call runs. It needs a host function this draft does not define, so a host on this draft reads it as none." }
+        ],
+        "note": "MEP 0.2.0-draft.1 reads the member as an extra capability member. The MEP draft that follows names it in the handshake model."
       },
       "memory": [
         { "id": "recovered", "rule": "A guest that has a growth refused and still answers has succeeded." }

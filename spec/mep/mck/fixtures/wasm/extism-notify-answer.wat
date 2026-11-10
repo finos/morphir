@@ -1,6 +1,6 @@
 ;; An extism-kernel-v1 guest that advertises, in its answer to its first
-;; call, that it accepts notifications, with the illustrative member
-;; capabilities.notifications.accept. Every later call, a notification
+;; call, that it accepts notifications: capabilities.notificationDelivery
+;; with the value "call". Every later call, a notification
 ;; included, gives the output {"jsonrpc":"2.0","id":1,"result":"answer"}.
 ;; Cases: extism/notification-answered
 (module
@@ -9,8 +9,8 @@
   (import "extism:host/env" "output_set" (func $output_set (param i64 i64)))
   (memory 1)
   (global $calls (mut i32) (i32.const 0))
-  ;; 118 bytes.
-  (data (i32.const 16) "{\22jsonrpc\22:\222.0\22,\22id\22:1,\22result\22:{\22protocolVersion\22:\220.2.0-draft.1\22,\22capabilities\22:{\22notifications\22:{\22accept\22:true}}}}")
+  ;; 116 bytes.
+  (data (i32.const 16) "{\22jsonrpc\22:\222.0\22,\22id\22:1,\22result\22:{\22protocolVersion\22:\220.2.0-draft.1\22,\22capabilities\22:{\22notificationDelivery\22:\22call\22}}}")
   ;; 42 bytes.
   (data (i32.const 256) "{\22jsonrpc\22:\222.0\22,\22id\22:1,\22result\22:\22answer\22}")
   ;; Copies $len bytes of guest memory at $ptr into a new kernel block.
@@ -30,7 +30,7 @@
     (global.set $calls (i32.add (global.get $calls) (i32.const 1)))
     (if (i32.eq (global.get $calls) (i32.const 1))
       (then
-        (call $output_set (call $block (i32.const 16) (i32.const 118)) (i64.const 118))
+        (call $output_set (call $block (i32.const 16) (i32.const 116)) (i64.const 116))
         (return (i32.const 0))))
     (call $output_set (call $block (i32.const 256) (i32.const 42)) (i64.const 42))
     (i32.const 0)))

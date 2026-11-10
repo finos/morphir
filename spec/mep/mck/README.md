@@ -346,7 +346,7 @@ Each module is a `.wat` file of a few lines that does one thing, with the
 module does, and its `;; Cases:` line names the cases that use it. The kit
 records each binary's SHA-256.
 
-Every case has an `appliesTo` profile. The 45 cases for `extism-kernel-v1`
+Every case has an `appliesTo` profile. The 46 cases for `extism-kernel-v1`
 apply to every host, because every host must run that profile. The 11 cases
 for `morphir-bytes-v1`, a transitional profile, apply only to a host that
 declares it, and a runner records them as `not_applicable` for any other. One
@@ -360,7 +360,7 @@ must serve it. The runner takes the profiles a host declares as an input.
 | `classification/` (14) | Refusals before any guest code runs: an unknown namespace, a known import with another signature, WASI in a byte module, a missing or mistyped `handle`, a wrong declaration, the workspace-info signature, the first import deciding the profile, a byte-profile module on a host that does not run it, and shared, 64-bit and second memories. Also the profile a declaration gives a module with no profile imports, and a module that imports the whole Extism table. |
 | `worker/` (2) | The worker's own rules: a missing `--abi` and another build identity. |
 | `bytes/` (6) | The `morphir-bytes-v1` handle results: a response, 0 for a request, a consumed notification, -2 for a request, -1, and a response that is not UTF-8. |
-| `extism/` (8) | The Extism handle results: a response, an error, a non-zero result, no output, and a response that is not an object. Notifications: not delivered to a guest that advertises nothing, delivered to one that advertises acceptance, and a failure when the guest answers one. |
+| `extism/` (9) | The Extism handle results: a response, an error, a non-zero result, no output, and a response that is not an object. Notifications: not delivered to a guest that advertises nothing, delivered to one that advertises `call` delivery, not delivered to one that advertises a value the contract does not list, and a failure when the guest answers one. |
 | `limits/` (2) | A request over `--request-bytes` and a response over `--response-bytes`, both far from the limit. |
 | `bounds/` (8) | Runaway guests on both profiles, memory growth to the ceiling, a refused growth an Extism guest survives, a refused growth on the byte profile, a refused growth below the ceiling, a trap, and an initial memory above the ceiling. |
 | `sandbox/` (16) | The host function and WASI policy: HTTP with and without a request, `path_open` on fd 3, unsupported WASI functions, `proc_exit(0)`, stdout and stderr, arguments, environment, stdin and preopens, clocks and random bytes, configuration, vars, the IR cache and its limits, workspace info, and logging. |
@@ -381,9 +381,9 @@ mode never applies because `--abi` is required. The kit's `withoutCase` lists
 each with its reason, and the check fails when a listed element gains a case
 or an unlisted one has none.
 
-The notification cases use the illustrative advertisement
-`capabilities.notifications.accept`, which the contract marks provisional, and
-change when the member is fixed.
+The notification cases advertise with the contract's string member
+`capabilities.notificationDelivery`: `call` for delivery, and `unlisted` for a
+value the contract does not list.
 
 [`tools/check-wasm-host-kit.ts`](../../../tools/check-wasm-host-kit.ts) checks
 the corpus. It assembles every `.wat` with the `wabt` version that

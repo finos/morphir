@@ -422,7 +422,7 @@ function extismSession(guest: ReturnType<typeof extismGuest>, frames: string[]) 
 		if ("id" in message) {
 			const response = json(guest.call(frame(name)).output);
 			if (message.method === "morphir.initialize") {
-				accepts = (response as { result?: { capabilities?: { notifications?: { accept?: unknown } } } }).result?.capabilities?.notifications?.accept === true;
+				accepts = (response as { result?: { capabilities?: { notificationDelivery?: unknown } } }).result?.capabilities?.notificationDelivery === "call";
 			}
 			responses.push(response);
 		} else if (accepts) {
@@ -503,12 +503,14 @@ test("Extism guests: echo, error, non-zero, no output, not an object and the ful
 
 test("Extism notifications: delivered only after the guest advertises, and an answer to one is a failure", () => {
 	const frames = ["initialize", "initialized", "shutdown", "exit"];
-	const advertised = { jsonrpc: "2.0", id: 1, result: { protocolVersion: "0.2.0-draft.1", capabilities: { notifications: { accept: true } } } };
+	const advertising = (delivery: string) => ({ jsonrpc: "2.0", id: 1, result: { protocolVersion: "0.2.0-draft.1", capabilities: { notificationDelivery: delivery } } });
+	const advertised = advertising("call");
 	expect(extismSession(extismGuest(wasm("extism-count-calls")), frames)).toEqual([
 		{ jsonrpc: "2.0", id: 1, result: 1 },
 		{ jsonrpc: "2.0", id: 2, result: 2 },
 	]);
 	expect(extismSession(extismGuest(wasm("extism-notify-accept")), frames)).toEqual([advertised, { jsonrpc: "2.0", id: 2, result: 3 }]);
+	expect(extismSession(extismGuest(wasm("extism-notify-unlisted")), frames)).toEqual([advertising("unlisted"), { jsonrpc: "2.0", id: 2, result: 2 }]);
 	const answering = extismGuest(wasm("extism-notify-answer"));
 	expect(() => extismSession(answering, ["initialize", "initialized", "exit"])).toThrow("answered the notification initialized");
 	expect(json(extismGuest(wasm("extism-notify-answer")).call(frame("initialize")).output)).toEqual(advertised);
