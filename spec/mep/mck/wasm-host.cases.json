@@ -1,0 +1,1068 @@
+{
+	"kit": "morphir/mep-wasm-host-kit",
+	"version": "0.1.0-draft.1",
+	"contract": { "id": "morphir/mep-wasm-execution-profiles", "version": "0.1.0-draft.1", "path": "spec/mep/wasm-execution-profiles.json" },
+	"assembler": { "package": "wabt", "version": "1.0.39", "features": ["threads", "memory64", "multi_memory"] },
+	"deadlineMarginSeconds": 2,
+	"conventions": {
+		"expectations": "Every expectation is written by hand from the profile contract and the profile spec. None is recorded from a host run.",
+		"worker": "Each run starts a new worker process: <host> extension worker --module <wasm> --json, with --abi <declaredAbi> when the case declares one, and --request-bytes and --response-bytes from the case's worker limits.",
+		"frames": "A run writes its frames in order, each as a Content-Length framed message whose body is the UTF-8 of the frame's value serialized compactly with members in the order written. After the last frame, stdin stays open until the worker exits.",
+		"exitCode": "The worker's exit status: 0 served until exit; 1 a fault, an invalid frame, or stdin ended before exit; 2 bad arguments; 3 a refusal before any request. Absent means not constrained.",
+		"stdout": "stdoutBytes is the byte count of all of stdout. stdoutFrames lists every frame on stdout, in order. A frame matches when its body parses to a JSON value equal to json, or equal to the body of the run's frame sameAsFrame, or satisfying every pointers entry (an RFC 6901 pointer with equals, a JSON value, or type, a JSON type name).",
+		"events": "events lists stderr events that must appear in this order, possibly among others. A matcher names the event and may fix abi (started), code and messageIncludes (refused; each string must occur in error.message) or kind (fault; absent means any kind). noEvents names events that must not appear. eventText lists strings that some stderr line must contain. Every started event's moduleSha256 must equal the module's sha256.",
+		"guestOutput": "guestOutput lists strings that must occur, in order, in the text of the run's output events joined in their order.",
+		"timing": "withinSeconds.range is measured from the end of the write of the run's last frame to the first fault event (until: fault) or to the worker's exit (until: exit).",
+		"alternatives": "A run with alternatives uses the one whose when matches what the started event's bounds declare for that bound.",
+		"bounds": "A case's bounds are the bounds it exercises. When the host declares one of them not enforced, the case is recorded as not_enforced, not as passed or failed.",
+		"gaps": "A case's gaps say what the contract leaves open about the observation; the expectation stops there."
+	},
+	"frames": {
+		"initialize": { "jsonrpc": "2.0", "id": 1, "method": "morphir.initialize", "params": { "protocolVersion": "0.2.0-draft.1" } },
+		"initialize-id-4": { "jsonrpc": "2.0", "id": 4, "method": "morphir.initialize", "params": { "protocolVersion": "0.2.0-draft.1" } },
+		"initialized": { "jsonrpc": "2.0", "method": "morphir.initialized", "params": {} },
+		"shutdown": { "jsonrpc": "2.0", "id": 2, "method": "morphir.shutdown" },
+		"exit": { "jsonrpc": "2.0", "method": "morphir.exit" }
+	},
+	"modules": {
+		"env-open-socket": { "wat": "fixtures/wasm/env-open-socket.wat", "wasm": "fixtures/wasm/env-open-socket.wasm", "sha256": "bebbfeda31c2703c2022bf4ba27206fc0fcf22a540dda195476569c973e7addd" },
+		"bytes-input-byte-i64": { "wat": "fixtures/wasm/bytes-input-byte-i64.wat", "wasm": "fixtures/wasm/bytes-input-byte-i64.wasm", "sha256": "6ea50a7f4c76d4dbf3eab91880b4dbae1c763bfea29136d10138a5802f77026b" },
+		"bytes-imports-wasi": { "wat": "fixtures/wasm/bytes-imports-wasi.wat", "wasm": "fixtures/wasm/bytes-imports-wasi.wasm", "sha256": "7f4a2dd3b06dfaa926fa0cb9dbfcc9c125b9268dc7410d237a9703b8102a5c29" },
+		"extism-no-handle": { "wat": "fixtures/wasm/extism-no-handle.wat", "wasm": "fixtures/wasm/extism-no-handle.wasm", "sha256": "bd519f47cce30eee592290302651510f37a2952ecd724d12785f1d3d6c9eb8f0" },
+		"bytes-handle-i64": { "wat": "fixtures/wasm/bytes-handle-i64.wat", "wasm": "fixtures/wasm/bytes-handle-i64.wasm", "sha256": "114287ca69dce250f2656c72fbe458ff4e4abfdc80843d4fa72efd0138ce0cf7" },
+		"extism-workspace-info-i64": { "wat": "fixtures/wasm/extism-workspace-info-i64.wat", "wasm": "fixtures/wasm/extism-workspace-info-i64.wasm", "sha256": "8819b2f55761a0dcc22f9eb93c6a7deeba50eabd1dfc0932b62f1c01faab6434" },
+		"no-imports": { "wat": "fixtures/wasm/no-imports.wat", "wasm": "fixtures/wasm/no-imports.wasm", "sha256": "00eccd449472ee25314e7f8fc6c2da7ddb69f7a1523e4361be1ac70d323ebc05" },
+		"shared-memory": { "wat": "fixtures/wasm/shared-memory.wat", "wasm": "fixtures/wasm/shared-memory.wasm", "sha256": "8b0fe9848fbafa50dfce5a2083a7dcfcda52abc5ffe07636e16ed984fecb9668" },
+		"memory64": { "wat": "fixtures/wasm/memory64.wat", "wasm": "fixtures/wasm/memory64.wasm", "sha256": "651cb7d85d9d1e5bee15f9d4c3bf739d5d0854099acc21266e70273a62a9bebc" },
+		"two-memories": { "wat": "fixtures/wasm/two-memories.wat", "wasm": "fixtures/wasm/two-memories.wasm", "sha256": "c3785778c6ea362581330d72644e0a64ed67b506524085315c118df83f43ff3f" },
+		"extism-full-surface": { "wat": "fixtures/wasm/extism-full-surface.wat", "wasm": "fixtures/wasm/extism-full-surface.wasm", "sha256": "58555a17ca0c3e501ecb32c9c45152d5165d2e470d3514893f40e9e983c604ac" },
+		"bytes-echo": { "wat": "fixtures/wasm/bytes-echo.wat", "wasm": "fixtures/wasm/bytes-echo.wasm", "sha256": "49a87314af3cb02860dc6c4bc3e84dc3b4ec1330609f0d4fad88de7491afaa76" },
+		"bytes-exit": { "wat": "fixtures/wasm/bytes-exit.wat", "wasm": "fixtures/wasm/bytes-exit.wasm", "sha256": "49c946c1f69ebfe6b4440acf7b9390c8d949199e7d0a43fd35f41b4c89e93f47" },
+		"bytes-minus-two": { "wat": "fixtures/wasm/bytes-minus-two.wat", "wasm": "fixtures/wasm/bytes-minus-two.wasm", "sha256": "709f65979c52897dba2420fdb37b8d9b9f5cf4705bbb900cdcabd24c606cd453" },
+		"bytes-minus-one": { "wat": "fixtures/wasm/bytes-minus-one.wat", "wasm": "fixtures/wasm/bytes-minus-one.wasm", "sha256": "4a241f77c90fbd7c0925bed84592eb7a53756a18d73cdf0a1fe0661d7d779921" },
+		"bytes-not-utf8": { "wat": "fixtures/wasm/bytes-not-utf8.wat", "wasm": "fixtures/wasm/bytes-not-utf8.wasm", "sha256": "1de385e7d1a9fb08c9a455f1617d9815b39c642de18323c332e763dc9e8f38e9" },
+		"extism-echo": { "wat": "fixtures/wasm/extism-echo.wat", "wasm": "fixtures/wasm/extism-echo.wasm", "sha256": "c4cc77b47d1d3251713a12bcece9937afab58c73b29967c01f17d4102b877acc" },
+		"extism-error": { "wat": "fixtures/wasm/extism-error.wat", "wasm": "fixtures/wasm/extism-error.wasm", "sha256": "b384508b1553cb3357109f5251c333a1abecc866b0cfff07d85dbcf242b47b48" },
+		"extism-count-calls": { "wat": "fixtures/wasm/extism-count-calls.wat", "wasm": "fixtures/wasm/extism-count-calls.wasm", "sha256": "bc61a4014f59112351563703a06ef5f370df4b5f2a259d4d679e0f8f45aba539" },
+		"extism-trap": { "wat": "fixtures/wasm/extism-trap.wat", "wasm": "fixtures/wasm/extism-trap.wasm", "sha256": "bfc9709481aa4d8a5ae6109c5a7ecb0c61eac230384b9971c3524976155ecf6b" },
+		"bytes-fixed-response": { "wat": "fixtures/wasm/bytes-fixed-response.wat", "wasm": "fixtures/wasm/bytes-fixed-response.wasm", "sha256": "9a5ef45cf2407b4b95076b1c351ff8a666772d8a321fdd445c8d6cb57daad460" },
+		"bytes-spin": { "wat": "fixtures/wasm/bytes-spin.wat", "wasm": "fixtures/wasm/bytes-spin.wasm", "sha256": "69768991322b8dc01561b9d8c7952cf9c8bcfe3e30ca7239513919088e91e5cc" },
+		"extism-spin": { "wat": "fixtures/wasm/extism-spin.wat", "wasm": "fixtures/wasm/extism-spin.wasm", "sha256": "013df84b7cdecce0386f1b20b6395d663df1533c01fcac16141019ce87d3e11e" },
+		"bytes-grow-then-trap": { "wat": "fixtures/wasm/bytes-grow-then-trap.wat", "wasm": "fixtures/wasm/bytes-grow-then-trap.wasm", "sha256": "c5150c547ea60651ef6c13467bdd93d59233bb2b8bfdb1e6225f80a3500c3f01" },
+		"bytes-grow-then-respond": { "wat": "fixtures/wasm/bytes-grow-then-respond.wat", "wasm": "fixtures/wasm/bytes-grow-then-respond.wasm", "sha256": "c2ddf9e271a23cdc7b7cc58d5bb054f6ac127201414036f4afdc3c1b49811570" },
+		"bytes-grow-below-ceiling": { "wat": "fixtures/wasm/bytes-grow-below-ceiling.wat", "wasm": "fixtures/wasm/bytes-grow-below-ceiling.wasm", "sha256": "f305712e64022400b8ab753db3f40abcb05159c9dd0ad7022d7f91aa3998f9af" },
+		"initial-memory-4097": { "wat": "fixtures/wasm/initial-memory-4097.wat", "wasm": "fixtures/wasm/initial-memory-4097.wasm", "sha256": "7d9320654105c3054b2e05f3ec2f56a9cdfe95850d8204c2591e460568ae357c" },
+		"extism-http": { "wat": "fixtures/wasm/extism-http.wat", "wasm": "fixtures/wasm/extism-http.wasm", "sha256": "a00b6b70ca7c9c2cd35d7198c081c3342b758905ef3418b7b880e95238a27507" },
+		"extism-path-open": { "wat": "fixtures/wasm/extism-path-open.wat", "wasm": "fixtures/wasm/extism-path-open.wasm", "sha256": "ff398c4983ecd215e8a85cb736646bdfde60b1a6bcf85e54f1fe0118fb424846" },
+		"extism-fd-write": { "wat": "fixtures/wasm/extism-fd-write.wat", "wasm": "fixtures/wasm/extism-fd-write.wasm", "sha256": "cef05b0a5472c30c44712fc2a1227649f14cd8b9e42e728e568173e144c09064" },
+		"extism-wasi-empty": { "wat": "fixtures/wasm/extism-wasi-empty.wat", "wasm": "fixtures/wasm/extism-wasi-empty.wasm", "sha256": "cd0227ebf3d04efc90a2b3318ee4b2a249ae783a2af6da4ab2349e880c387392" },
+		"extism-clock-random": { "wat": "fixtures/wasm/extism-clock-random.wat", "wasm": "fixtures/wasm/extism-clock-random.wasm", "sha256": "ea62e7ee25cd80b7de535aaa7a7bf78e925ee549801d769dec552318cd05acaa" },
+		"extism-config": { "wat": "fixtures/wasm/extism-config.wat", "wasm": "fixtures/wasm/extism-config.wasm", "sha256": "58e1e803b4155513d62bd953a0a4a8a567cf1fdf49eb738d4c6429b862ae587f" },
+		"extism-var-round-trip": { "wat": "fixtures/wasm/extism-var-round-trip.wat", "wasm": "fixtures/wasm/extism-var-round-trip.wasm", "sha256": "bf17ae8d92f91556f2689415df4a0ca852814328ccaf51643bed3c65142fa5cf" },
+		"extism-var-over-limit": { "wat": "fixtures/wasm/extism-var-over-limit.wat", "wasm": "fixtures/wasm/extism-var-over-limit.wasm", "sha256": "c2c068fe57cd814fba0bdf7285df61fcb69647d2c3ec8d896b0909e1cf52d8c3" },
+		"extism-ir-cache-round-trip": { "wat": "fixtures/wasm/extism-ir-cache-round-trip.wat", "wasm": "fixtures/wasm/extism-ir-cache-round-trip.wasm", "sha256": "bd4ff4a99eb8916b6414856f63455e4e3ca3ac49e1408a43faafc2e0a4069657" },
+		"extism-ir-cache-over-bytes": { "wat": "fixtures/wasm/extism-ir-cache-over-bytes.wat", "wasm": "fixtures/wasm/extism-ir-cache-over-bytes.wasm", "sha256": "378d73679535f114fb99c280e100c2f45a0f1456294dc8a16d837181b76cdf44" },
+		"extism-ir-cache-over-entries": { "wat": "fixtures/wasm/extism-ir-cache-over-entries.wat", "wasm": "fixtures/wasm/extism-ir-cache-over-entries.wasm", "sha256": "d471becd94d0a4d42a85f635161ba727a8736c82fc94a7f6931ad255419905ea" },
+		"extism-workspace-info": { "wat": "fixtures/wasm/extism-workspace-info.wat", "wasm": "fixtures/wasm/extism-workspace-info.wasm", "sha256": "9ca458d3b1416f5cdf6c119c4430d162d7b97208913c55c1c1928f62813a09fc" },
+		"extism-log": { "wat": "fixtures/wasm/extism-log.wat", "wasm": "fixtures/wasm/extism-log.wasm", "sha256": "7ddab844f9c3ac098079ab9fcd8bce18bf758cc3b2c744647f6f5bd6dd6e7bab" }
+	},
+	"cases": [
+		{
+			"caseId": "classification/unknown-namespace",
+			"module": "env-open-socket",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Classification before instantiation"],
+				"scenarios": ["Import from an unknown namespace"],
+				"contract": ["refusal:extension.abi_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["open_socket"] }],
+						"noEvents": ["fault"]
+					}
+				}
+			],
+			"gaps": [
+				"The contract says the refusal names the import but not how, so the message must contain only open_socket.",
+				"The contract does not say how a runner observes that the module was not instantiated; exit status 3 with no fault is the observable part."
+			]
+		},
+		{
+			"caseId": "classification/known-name-other-signature",
+			"module": "bytes-input-byte-i64",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Classification before instantiation", "Byte profile import surface"],
+				"scenarios": ["Known name with another signature"],
+				"contract": ["refusal:extension.abi_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["input_byte"] }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/byte-module-imports-wasi",
+			"module": "bytes-imports-wasi",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Byte profile import surface"],
+				"scenarios": ["Byte module that imports WASI"],
+				"contract": ["refusal:extension.abi_unsupported", "wasi:morphir-bytes-v1"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["fd_write"] }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/missing-handle",
+			"module": "extism-no-handle",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Handle export"],
+				"scenarios": ["Module without handle"],
+				"contract": ["refusal:extension.abi_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["handle"] }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/handle-other-type",
+			"module": "bytes-handle-i64",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Handle export"],
+				"contract": ["refusal:extension.abi_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["handle"] }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/declared-abi-mismatch",
+			"module": "extism-echo",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Declared ABI confirms and never widens"],
+				"scenarios": ["Wrong declaration"],
+				"contract": ["refusal:extension.abi_mismatch"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.abi_mismatch", "messageIncludes": ["morphir-bytes-v1", "extism-kernel-v1"] }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/workspace-info-with-param",
+			"module": "extism-workspace-info-i64",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Extism profile import surface"],
+				"scenarios": ["Workspace info signature"],
+				"contract": ["refusal:extension.abi_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["morphir_get_workspace_info"] }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/no-imports-undeclared",
+			"module": "no-imports",
+			"tests": {
+				"requirements": ["Classification before instantiation"],
+				"scenarios": ["Module with no profile imports"],
+				"contract": ["classification:default"]
+			},
+			"runs": [
+				{
+					"frames": ["exit"],
+					"expect": {
+						"exitCode": 0,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"]
+					}
+				}
+			],
+			"gaps": ["The runner omits --abi for this case. The worker contract does not say whether worker mode accepts a run without --abi."]
+		},
+		{
+			"caseId": "classification/no-imports-declared-bytes",
+			"module": "no-imports",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Classification before instantiation"],
+				"scenarios": ["Module with no profile imports"],
+				"contract": ["classification:2"]
+			},
+			"runs": [
+				{
+					"frames": ["exit"],
+					"expect": {
+						"exitCode": 0,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }],
+						"noEvents": ["refused", "fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/shared-memory",
+			"module": "shared-memory",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Traps and unsupported features"],
+				"scenarios": ["Shared memory"],
+				"contract": ["refusal:extension.wasm_feature_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.wasm_feature_unsupported" }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/memory64",
+			"module": "memory64",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Traps and unsupported features"],
+				"contract": ["refusal:extension.wasm_feature_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.wasm_feature_unsupported" }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/two-memories",
+			"module": "two-memories",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Traps and unsupported features"],
+				"contract": ["refusal:extension.wasm_feature_unsupported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.wasm_feature_unsupported" }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "classification/full-extism-surface",
+			"module": "extism-full-surface",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Extism profile import surface"],
+				"scenarios": ["Module built with the Morphir extension SDK"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "sameAsFrame": 0 }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bytes/echo",
+			"module": "bytes-echo",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Byte profile call results", "One message per call"],
+				"contract": ["handleResult:morphir-bytes-v1:positive", "classification:0"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "sameAsFrame": 0 }]
+					}
+				}
+			],
+			"gaps": ["The contract does not say whether the guest receives the frame body unchanged. The response is compared as a JSON value, so a host that re-serializes the message still passes."]
+		},
+		{
+			"caseId": "bytes/exit",
+			"module": "bytes-exit",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Byte profile call results"],
+				"contract": ["handleResult:morphir-bytes-v1:0"]
+			},
+			"runs": [
+				{
+					"frames": ["exit"],
+					"expect": {
+						"exitCode": 0,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }],
+						"noEvents": ["refused", "fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bytes/notification-consumed",
+			"module": "bytes-echo",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Byte profile call results"],
+				"contract": ["handleResult:morphir-bytes-v1:-2", "notifications:morphir-bytes-v1"]
+			},
+			"runs": [
+				{
+					"frames": ["initialized", "initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "sameAsFrame": 1 }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bytes/notification-code-for-request",
+			"module": "bytes-minus-two",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Byte profile call results", "Failures end the instance"],
+				"scenarios": ["Request answered with the notification code"],
+				"contract": ["fault:failure"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize-id-4"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "failure" }],
+						"withinSeconds": { "until": "exit", "range": [0, 12] }
+					}
+				}
+			],
+			"gaps": ["The contract says the host does not wait but gives no time. The range ends at the byte profile's call deadline plus the margin."]
+		},
+		{
+			"caseId": "bytes/failure",
+			"module": "bytes-minus-one",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Byte profile call results", "Failures end the instance"],
+				"contract": ["handleResult:morphir-bytes-v1:-1", "fault:failure"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "failure" }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bytes/response-not-utf8",
+			"module": "bytes-not-utf8",
+			"declaredAbi": "morphir-bytes-v1",
+			"tests": {
+				"requirements": ["Byte profile call results"],
+				"scenarios": ["Response is not UTF-8"],
+				"contract": ["fault:failure"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "failure" }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "extism/echo",
+			"module": "extism-echo",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Extism profile calls", "One message per call"],
+				"contract": ["handleResult:extism-kernel-v1:0", "classification:1"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "sameAsFrame": 0 }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "extism/error-set",
+			"module": "extism-error",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Extism profile calls", "Failures end the instance"],
+				"contract": ["handleResult:extism-kernel-v1:error set", "fault:failure"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "failure" }]
+					}
+				}
+			],
+			"gaps": ["The contract gives no meaning to a non-zero handle result without an Extism error. This guest sets an error and returns 1."]
+		},
+		{
+			"caseId": "extism/notifications-not-delivered",
+			"module": "extism-count-calls",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Extism profile calls"],
+				"contract": ["notifications:extism-kernel-v1"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "initialized", "shutdown", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [
+							{ "json": { "jsonrpc": "2.0", "id": 1, "result": 1 } },
+							{ "json": { "jsonrpc": "2.0", "id": 2, "result": 2 } }
+						]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "limits/request-over-limit",
+			"module": "extism-trap",
+			"declaredAbi": "extism-kernel-v1",
+			"worker": { "requestBytes": 64 },
+			"tests": {
+				"requirements": ["One message per call"],
+				"scenarios": ["Oversized request"],
+				"contract": ["refusal:extension.request_limit"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"events": [
+							{ "event": "started", "abi": "extism-kernel-v1" },
+							{ "event": "refused", "code": "extension.request_limit", "messageIncludes": ["64", "99"] }
+						],
+						"noEvents": ["fault"]
+					}
+				}
+			],
+			"gaps": [
+				"The contract does not say whether the session continues after a refused request, so the exit status and stdout are not constrained. A guest call would trap, so no fault shows that handle was not called.",
+				"The contract does not say how the diagnostic writes the limit and the size. The message must contain 64, the limit, and 99, the byte length of the initialize frame."
+			]
+		},
+		{
+			"caseId": "limits/response-over-limit",
+			"module": "bytes-fixed-response",
+			"declaredAbi": "morphir-bytes-v1",
+			"worker": { "requestBytes": 1024, "responseBytes": 32 },
+			"tests": {
+				"requirements": ["One message per call"],
+				"scenarios": ["Oversized response"],
+				"contract": ["fault:failure"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "failure" }]
+					}
+				}
+			],
+			"gaps": ["The contract names extension.response_limit for this failure, but the worker's fault event has a kind and a message and no code, so only the kind is fixed."]
+		},
+		{
+			"caseId": "bounds/spin-bytes",
+			"module": "bytes-spin",
+			"declaredAbi": "morphir-bytes-v1",
+			"bounds": ["callDeadline"],
+			"tests": {
+				"requirements": ["Call deadline", "Instruction budget where the engine meters"],
+				"scenarios": ["Runaway guest", "Budget exhausted", "Engine without metering"],
+				"contract": ["fault:call-deadline", "fault:budget-exhausted", "deadline:morphir-bytes-v1"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"alternatives": [
+						{
+							"when": { "bound": "instructionBudget", "enforced": true },
+							"expect": {
+								"exitCode": 1,
+								"stdoutBytes": 0,
+								"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "budget-exhausted" }],
+								"withinSeconds": { "until": "fault", "range": [0, 10] }
+							}
+						},
+						{
+							"when": { "bound": "instructionBudget", "enforced": false },
+							"expect": {
+								"exitCode": 1,
+								"stdoutBytes": 0,
+								"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "call-deadline" }],
+								"withinSeconds": { "until": "fault", "range": [10, 12] }
+							}
+						}
+					]
+				}
+			],
+			"gaps": [
+				"The contract does not fix the shape of started.bounds; the runner reads from it whether instructionBudget is enforced.",
+				"The worker event contract has no outcome member; fault kind call-deadline stands for outcome deadline."
+			]
+		},
+		{
+			"caseId": "bounds/spin-extism",
+			"module": "extism-spin",
+			"declaredAbi": "extism-kernel-v1",
+			"bounds": ["callDeadline"],
+			"tests": {
+				"requirements": ["Call deadline", "Instruction budget where the engine meters"],
+				"scenarios": ["Runaway guest"],
+				"contract": ["fault:call-deadline", "fault:budget-exhausted", "deadline:extism-kernel-v1"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"alternatives": [
+						{
+							"when": { "bound": "instructionBudget", "enforced": true },
+							"expect": {
+								"exitCode": 1,
+								"stdoutBytes": 0,
+								"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "budget-exhausted" }],
+								"withinSeconds": { "until": "fault", "range": [0, 30] }
+							}
+						},
+						{
+							"when": { "bound": "instructionBudget", "enforced": false },
+							"expect": {
+								"exitCode": 1,
+								"stdoutBytes": 0,
+								"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "call-deadline" }],
+								"withinSeconds": { "until": "fault", "range": [30, 32] }
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"caseId": "bounds/grow-to-ceiling-then-trap",
+			"module": "bytes-grow-then-trap",
+			"declaredAbi": "morphir-bytes-v1",
+			"bounds": ["memoryCeiling"],
+			"tests": {
+				"requirements": ["Memory ceiling"],
+				"scenarios": ["Module without a maximum"],
+				"contract": ["fault:memory-limit"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "memory-limit" }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bounds/grow-refused-then-respond",
+			"module": "bytes-grow-then-respond",
+			"declaredAbi": "morphir-bytes-v1",
+			"bounds": ["memoryCeiling"],
+			"tests": {
+				"requirements": ["Memory ceiling"],
+				"scenarios": ["Guest recovers from a refused growth"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "sameAsFrame": 0 }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bounds/grow-refused-below-ceiling",
+			"module": "bytes-grow-below-ceiling",
+			"declaredAbi": "morphir-bytes-v1",
+			"bounds": ["memoryCeiling"],
+			"tests": {
+				"requirements": ["Memory ceiling"],
+				"scenarios": ["Large allocation refused below the ceiling"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault" }]
+					}
+				}
+			],
+			"gaps": [
+				"The spec requires the diagnostic to report a memory size of 100 MiB against a ceiling of 256 MiB but fixes no format, so the message is not constrained.",
+				"The fault kind is not constrained. faults[memory-limit] applies while the guest's memory is at the ceiling, which 100 MiB is not, so the contract points to trap; the MoonBit worker README reports any refused growth as extension.memory_limit."
+			]
+		},
+		{
+			"caseId": "bounds/trap",
+			"module": "extism-trap",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Traps and unsupported features", "Failures end the instance"],
+				"scenarios": ["Guest traps"],
+				"contract": ["fault:trap"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "trap" }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bounds/initial-memory-over-ceiling",
+			"module": "initial-memory-4097",
+			"declaredAbi": "morphir-bytes-v1",
+			"bounds": ["memoryCeiling"],
+			"tests": {
+				"requirements": ["Memory ceiling"],
+				"contract": ["refusal:extension.memory_limit"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 3,
+						"stdoutBytes": 0,
+						"events": [{ "event": "refused", "code": "extension.memory_limit" }],
+						"noEvents": ["fault"]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "sandbox/http-request",
+			"module": "extism-http",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy"],
+				"scenarios": ["Guest requests HTTP"],
+				"contract": ["policy:httpRequest"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"eventText": ["https://example.org/", "GET"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "done" } }]
+					}
+				}
+			],
+			"gaps": [
+				"The contract says the host records the method and URL but not in which event, so some stderr line must contain each.",
+				"The contract says the call fails but not what http_request returns to the guest; the guest ignores the result. That no connection is made is not observable here."
+			]
+		},
+		{
+			"caseId": "sandbox/path-open",
+			"module": "extism-path-open",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["WASI sandbox"],
+				"scenarios": ["Guest opens a file"],
+				"contract": ["policy:wasi.other"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "t" } }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "sandbox/fd-write",
+			"module": "extism-fd-write",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["WASI sandbox"],
+				"scenarios": ["Guest prints"],
+				"contract": ["policy:wasi.stdout", "policy:wasi.stderr", "wasi:extism-kernel-v1"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"guestOutput": ["kit-stdout-marker", "kit-stderr-marker"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "printed" } }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "sandbox/wasi-empty-world",
+			"module": "extism-wasi-empty",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["WASI sandbox"],
+				"contract": ["policy:wasi.preopens", "policy:wasi.arguments", "policy:wasi.environment", "policy:wasi.stdin"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "tttt" } }]
+					}
+				}
+			],
+			"gaps": ["The spec allows an error code or an empty answer for arguments and environment; the guest counts either as empty."]
+		},
+		{
+			"caseId": "sandbox/clock-random",
+			"module": "extism-clock-random",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["WASI sandbox"],
+				"contract": ["policy:wasi.clocks", "policy:wasi.random"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "ttt" } }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "sandbox/config-get",
+			"module": "extism-config",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy"],
+				"contract": ["policy:config"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "t" } }]
+					}
+				}
+			],
+			"gaps": ["The contract says config_get gives no value but not whether that is handle 0 or an empty block; the guest accepts either."]
+		},
+		{
+			"caseId": "sandbox/var-round-trip",
+			"module": "extism-var-round-trip",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy", "Extism profile calls"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "shutdown", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [
+							{ "json": { "jsonrpc": "2.0", "id": 1, "result": "stored" } },
+							{ "json": { "jsonrpc": "2.0", "id": 2, "result": "from-var" } }
+						]
+					}
+				},
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "stored" } }]
+					}
+				}
+			],
+			"gaps": ["The contract does not say what var_get returns for a missing key; the guest treats anything but its own 44 bytes as missing."]
+		},
+		{
+			"caseId": "sandbox/var-over-limit",
+			"module": "extism-var-over-limit",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy"],
+				"contract": ["policy:varStoreBytes"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault" }]
+					}
+				}
+			],
+			"gaps": ["The contract says a write over the limit fails that call but not which fault kind follows, so the kind is not constrained."]
+		},
+		{
+			"caseId": "sandbox/ir-cache-round-trip",
+			"module": "extism-ir-cache-round-trip",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy", "Failures end the instance"],
+				"scenarios": ["IR cache between calls"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "shutdown", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [
+							{ "json": { "jsonrpc": "2.0", "id": 1, "result": "stored" } },
+							{ "json": { "jsonrpc": "2.0", "id": 2, "result": "from-cache" } }
+						]
+					}
+				},
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "stored" } }]
+					}
+				}
+			],
+			"gaps": ["The contract does not say what morphir_get_cached_ir returns for a missing key; the guest treats anything but its own 46 bytes as missing."]
+		},
+		{
+			"caseId": "sandbox/ir-cache-over-bytes",
+			"module": "extism-ir-cache-over-bytes",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy"],
+				"contract": ["policy:irCacheBytes"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault" }]
+					}
+				}
+			],
+			"gaps": ["The contract says a write over the limit fails that call but not which fault kind follows, so the kind is not constrained."]
+		},
+		{
+			"caseId": "sandbox/ir-cache-over-entries",
+			"module": "extism-ir-cache-over-entries",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy"],
+				"contract": ["policy:irCacheEntries"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault" }]
+					}
+				}
+			],
+			"gaps": ["The contract says a write over the limit fails that call but not which fault kind follows, so the kind is not constrained."]
+		},
+		{
+			"caseId": "sandbox/workspace-info",
+			"module": "extism-workspace-info",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Extism profile import surface", "Host function policy"],
+				"scenarios": ["Workspace info signature"],
+				"contract": ["deviation:extism:host/user morphir_get_workspace_info"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"stdoutFrames": [
+							{
+								"pointers": [
+									{ "pointer": "/id", "equals": 1 },
+									{ "pointer": "/result/output_dir", "equals": "" },
+									{ "pointer": "/result/root", "type": "string" }
+								]
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "sandbox/log-info",
+			"module": "extism-log",
+			"declaredAbi": "extism-kernel-v1",
+			"tests": {
+				"requirements": ["Host function policy"],
+				"contract": ["policy:logLevel"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize", "exit"],
+					"expect": {
+						"exitCode": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }],
+						"noEvents": ["refused", "fault"],
+						"guestOutput": ["kit-log-marker"],
+						"stdoutFrames": [{ "json": { "jsonrpc": "2.0", "id": 1, "result": "logged" } }]
+					}
+				}
+			],
+			"gaps": ["The contract sets logLevel info but gives neither the get_log_level number for info nor whether trace and debug messages are dropped, so the case checks only that an info message is guest output."]
+		}
+	]
+}

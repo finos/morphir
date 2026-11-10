@@ -326,3 +326,59 @@ binary payload is **499 bytes**, with SHA-256
 
 Changes to a fixture's intended meaning require a reviewed corpus change. Do
 not regenerate expected admission outcomes from the implementation under test.
+
+## WASM host qualification corpus
+
+[`wasm-host.cases.json`](wasm-host.cases.json) qualifies a WASM extension host
+against the execution profile contract,
+[`../wasm-execution-profiles.json`](../wasm-execution-profiles.json), version
+`0.1.0-draft.1`. Each case names one crafted module in
+[`fixtures/wasm/`](fixtures/wasm/), the ABI the runner declares, any worker byte
+limits, the frames the runner sends, and the observation it expects. A runner
+drives the host through its worker mode,
+`<host> extension worker --module <wasm> --json`, so the same cases apply to the
+MoonBit host, the .NET host and any later one. This corpus has no runner yet.
+
+Each module is a `.wat` file of a few lines that does one thing, with the
+`.wasm` built from it committed beside it. The leading comment says what the
+module does, and its `;; Cases:` line names the cases that use it. The kit
+records each binary's SHA-256.
+
+| Group | What its cases check |
+| --- | --- |
+| `classification/` (13) | Refusals before any guest code runs: an unknown namespace, a known import with another signature, WASI in a byte module, a missing or mistyped `handle`, a wrong declaration, the workspace-info signature, shared, 64-bit and second memories. Also the profile of a module with no profile imports, and a module that imports the whole Extism table. |
+| `bytes/` (6) | The `morphir-bytes-v1` handle results: a response, exit, a consumed notification, -2 for a request, -1, and a response that is not UTF-8. |
+| `extism/` (3) | An Extism response, an Extism error, and that notifications never reach the guest. |
+| `limits/` (2) | A request over `--request-bytes` and a response over `--response-bytes`. |
+| `bounds/` (7) | Runaway guests on both profiles, memory growth to the ceiling, a refused growth the guest survives, a refused growth below the ceiling, a trap, and an initial memory above the ceiling. |
+| `sandbox/` (13) | The host function and WASI policy: HTTP, `path_open`, stdout and stderr, arguments, environment, stdin and preopens, clocks and random bytes, configuration, vars, the IR cache and its limits, workspace info, and logging. |
+
+The expectations are written by hand from the contract and the profile spec.
+None comes from running a host, so two hosts that share a bug cannot qualify
+each other. Where the contract leaves part of an observation open, the case
+stops there and says so in its `gaps`. A runaway case accepts either bound: a
+host that declares the instruction budget enforced must report
+`budget-exhausted` before the call deadline; otherwise it must report
+`call-deadline` between the deadline and two seconds after it. The
+`conventions` object of the kit defines the matchers.
+
+[`tools/check-wasm-host-kit.ts`](../../../tools/check-wasm-host-kit.ts) checks
+the corpus. It assembles every `.wat` with the `wabt` version that
+`tools/package.json` pins and fails when a `.wasm` or a digest differs, when a
+refusal code, fault kind, handle result, classification rule, bound, policy
+entry, known deviation or table import has no case, when a case names a
+requirement or scenario the profile spec lacks, and when a module meant to be
+accepted imports something outside the contract's table. Its tests also run
+each runnable module against a small model of the two ABIs, to show that the
+module does what its case says. That model never produces an expectation.
+
+```bash
+mise run spec:mep-wasm-check                  # or: bun run tools/check-wasm-host-kit.ts
+bun run tools/check-wasm-host-kit.ts --write  # reassemble the .wasm files and refresh the digests
+bun test tools/check-wasm-host-kit.test.ts
+```
+
+To add a case, add the module and the case, run `--write`, and write the
+expectation from the contract. The tests require each case to be the only one
+that covers some contract element or uses some module, so add a case only for a
+contract element that would otherwise have none.
