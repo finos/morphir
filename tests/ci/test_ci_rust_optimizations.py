@@ -29,7 +29,7 @@ class CiRustOptimizationTests(unittest.TestCase):
     def test_rust_jobs_use_shared_setup_action(self) -> None:
         self.assertEqual(
             self.ci_workflow.count("uses: ./.github/actions/setup-rust-ci"),
-            7,
+            5,
         )
 
     def test_setup_rust_ci_action_shares_cargo_cache(self) -> None:
@@ -41,43 +41,20 @@ class CiRustOptimizationTests(unittest.TestCase):
         self.assertIn("default: morphir-rust", self.setup_rust_ci_action)
         self.assertIn("link-arg=-fuse-ld=mold", self.setup_rust_ci_action)
 
-    def test_ci_tests_published_bundles_and_builds_no_wasm_guest(self) -> None:
-        # The repository that owns each extension builds its guest. This repository checks
-        # that a CLI change does not break the bundles users already installed.
-        self.assertIn("mise run ci:fetch-published-bundles", self.ci_workflow)
+    def test_ci_builds_no_wasm_guest(self) -> None:
+        # The repository that owns each extension builds its guest. The checks
+        # that ran the deleted Rust CLI against the published bundles went with
+        # it; the Morphir CLI's own compatibility with them is qualified in
+        # finos/morphir-dotnet.
         self.assertNotIn("--target wasm32-unknown-unknown", self.ci_workflow)
         self.assertNotIn("package_extension.py", self.ci_workflow)
-        for test in (
-            "generate_extension",
-            "generate_openapi_extension",
-            "python_extension",
-            "rust_extension",
-        ):
-            self.assertIn(f"--test {test}", self.ci_workflow)
-        # Moving a pin changes what the CLI is tested against, so it runs the Rust jobs.
-        self.assertIn(
-            "              - '.config/published-extension-bundles.toml'\n", self.ci_workflow
-        )
-
-    def test_release_package_job_uses_shared_rust_setup(self) -> None:
-        package_job = self.release_workflow.split("  package-cli:\n", maxsplit=1)[1].split(
-            "  publish-release:\n", maxsplit=1
-        )[0]
-        self.assertIn("uses: ./.github/actions/setup-rust-ci", package_job)
-        self.assertIn(
-            "install-mold: ${{ runner.os == 'Linux' }}",
-            package_job,
-        )
-        self.assertIn(
-            "shared-key: morphir-release-${{ matrix.target }}",
-            package_job,
-        )
-        self.assertIn(
-            "enable-sccache: ${{ runner.arch != 'ARM64' }}",
-            package_job,
-        )
+        self.assertNotIn("--test host_compatibility", self.ci_workflow)
+    def test_release_builds_no_rust_product(self) -> None:
+        # The official CLI is built from finos/morphir-dotnet; release.yml
+        # compiles Rust only to read the kit identity with morphir-mck.
+        self.assertNotIn("uses: ./.github/actions/setup-rust-ci", self.release_workflow)
+        self.assertNotIn("--package morphir ", self.release_workflow)
         self.assertNotIn("SCCACHE_GHA_ENABLED", self.release_workflow)
-
 
 if __name__ == "__main__":
     unittest.main()

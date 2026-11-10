@@ -18,11 +18,8 @@ CONFORMANCE_ONLY_INPUTS = [
     "- 'spec/ir/mck/**'",
     "- 'spec/mck/**'",
     "- 'ecosystem/morphir-typescript'",
-    "- 'website/scripts/validate-migrated-ir.js'",
     "- 'website/static/schemas/morphir-ir-v4.json'",
     "- 'website/static/schemas/morphir-ir-v4-document-tree-files.json'",
-    "- 'website/package.json'",
-    "- 'website/package-lock.json'",
 ]
 
 
@@ -69,10 +66,12 @@ class PathAwareCiTests(unittest.TestCase):
             "- 'crates/**'",
             "- 'Cargo.lock'",
             "- 'ecosystem/morphir-rust'",
-            "- 'website/static/ir/examples/**'",
             "- '.github/actions/setup-rust-ci/**'",
             # mep_contract reads spec/mep/contract and the committed IR
             "- 'spec/mep/**'",
+            # package_runtime and kb_acceptance read these
+            "- 'spec/package/mck/fixtures/**'",
+            "- 'kb/**'",
         ]:
             self.assertIn(entry, rust_filter)
 
@@ -82,12 +81,14 @@ class PathAwareCiTests(unittest.TestCase):
         self.assertIn("needs.changes.outputs.rust == 'true'", job)
         self.assertIn("needs.changes.outputs.rust-conformance == 'true'", job)
         self.assertIn("mise run mck:run-rust", job)
-        self.assertIn("mise run migrate:validate", job)
+        # It ran the deleted Rust CLI's `migrate`; the task now stops with a pointer.
+        self.assertNotIn("run: mise run migrate:validate", job)
+        self.assertIn("unavailable", self.tasks["migrate:validate"]["run"])
 
-    def test_cli_test_job_no_longer_runs_conformance_steps(self) -> None:
-        job = job_body(self.ci, "morphir-cli-test")
+    def test_dev_tools_job_does_not_run_conformance_steps(self) -> None:
+        job = job_body(self.ci, "rust-dev-tools")
         self.assertNotIn("mise run mck:run-rust", job)
-        self.assertNotIn("mise run migrate:validate", job)
+        self.assertIn("cargo test --locked --package morphir-mck-cli", job)
 
     def test_docs_job_does_not_repeat_the_package_suite(self) -> None:
         self.assertNotIn("mise run package:check", job_body(self.ci, "docs"))
@@ -114,9 +115,7 @@ class PathAwareCiTests(unittest.TestCase):
         mck_filter = filter_body(self.ci, "mck")
         for entry in [
             "- 'crates/morphir-mck/**'",
-            "- 'crates/morphir/src/commands/mck*'",
-            "- 'crates/morphir/src/commands/mck/**'",
-            "- 'crates/morphir/src/main.rs'",
+            "- 'crates/morphir-mck-cli/**'",
             "- 'Cargo.toml'",
             "- 'Cargo.lock'",
             "- '.github/actions/setup-rust-ci/**'",
@@ -144,14 +143,14 @@ class PathAwareCiTests(unittest.TestCase):
 
     def test_production_mck_tasks_use_native_authoring_and_coverage_gates(self) -> None:
         check = self.tasks["mck:check"]["run"]
-        self.assertIn("cargo run --locked -p morphir -- mck check spec/ir/mck", check)
-        schema = "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck"
+        self.assertIn("cargo run --locked -p morphir-mck-cli -- check spec/ir/mck", check)
+        schema = "cargo run --locked -p morphir-mck-cli -- schema check --kit spec/ir/mck"
         self.assertIn(schema, check)
         self.assertEqual(self.tasks["mck:schema-check"]["run"], schema)
         self.assertNotIn("mck:schema-check", self.tasks["check"]["depends"])
         for name in ("mck:run", "mck:run-rust"):
             commands = self.tasks[name]["run"]
-            self.assertIn("cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck", commands)
+            self.assertIn("cargo run --locked -p morphir-mck-cli -- coverage --kit spec/ir/mck", commands)
         for name in ("mck:check", "mck:schema-check", "mck:run", "mck:run-rust"):
             commands = str(self.tasks[name]["run"])
             for legacy in ("src/cli.ts", "validate-mck-", "jsonschema "):
@@ -231,8 +230,8 @@ class PathAwareCiTests(unittest.TestCase):
         self.assertRegex(self.setup_rust, r"save-cache:\n(?:    .*\n)*?    default: \"false\"")
         self.assertIn("inputs.save-cache == 'true' &&", self.setup_rust)
         self.assertEqual(self.ci.count('save-cache: "true"'), 1)
-        self.assertIn('save-cache: "true"', job_body(self.ci, "morphir-cli-test"))
-        self.assertIn('save-cache: "true"', self.release)
+        self.assertIn('save-cache: "true"', job_body(self.ci, "rust-dev-tools"))
+        self.assertNotIn("setup-rust-ci", self.release)
 
     def test_rust_cache_covers_the_submodule_target_directory(self) -> None:
         self.assertIn("ecosystem/morphir-rust -> target", self.setup_rust)
@@ -261,29 +260,6 @@ class PathAwareCiTests(unittest.TestCase):
         self.assertNotIn("build-elm-extension", self.ci)
         self.assertNotIn("build:mep-extension", self.ci)
         self.assertNotIn("- 'ecosystem/morphir-elm'", filter_body(self.ci, "rust"))
-        job = job_body(self.ci, "morphir-cli-test")
-        self.assertIn(
-            "${{ github.workspace }}/.dev/out/published-bundles/elm/morphir-elm-extension", job
-        )
-        # The CLI refuses an extension whose reported version differs from the version it was
-        # installed with, so the install test gets the version of the pinned release.
-        self.assertIn("MORPHIR_ELM_EXTENSION_VERSION=", job)
-        self.assertIn(".dev/out/published-bundles/elm/version.txt", job)
-        # The executable has to exist before the Elm integration tests use it.
-        self.assertLess(
-            job.index("mise run ci:fetch-published-bundles"),
-            job.index("--test elm_extension"),
-        )
-
-    # ----- critical path -----
-
-    def test_ci_release_build_skips_fat_lto(self) -> None:
-        job = job_body(self.ci, "morphir-cli-test")
-        self.assertIn('CARGO_PROFILE_RELEASE_LTO: "off"', job)
-        self.assertIn("CARGO_PROFILE_RELEASE_CODEGEN_UNITS:", job)
-        # The shipped binary keeps the workspace release profile.
-        self.assertNotIn("CARGO_PROFILE_RELEASE", self.release)
-
 
 if __name__ == "__main__":
     unittest.main()

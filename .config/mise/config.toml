@@ -1,6 +1,9 @@
 # Morphir Development Tools Configuration
 # This project contains:
-# - Rust-based CLI tooling (crates/morphir)
+# - Rust development tools: the standalone MCK runner (crates/morphir-mck-cli,
+#   `morphir-mck`) and the internal development tool (crates/morphir-dev-tools,
+#   `morphir-dev`). The Morphir CLI itself is finos/morphir-dotnet, pinned at
+#   ecosystem/morphir-dotnet and released by .github/workflows/release.yml.
 # - Docusaurus website (website/)
 
 [settings]
@@ -23,10 +26,6 @@ bun = "1.4.2"
 # JSON Schema CLI (https://github.com/sourcemeta/jsonschema)
 jsonschema = "latest"
 
-# CLI documentation generator (https://usage.jdx.dev/)
-# Pinned: docs:cli commits generated output to docs/cli/ and completions/,
-# and the freshness check in CI fails when a new usage release changes it.
-usage = "6.11.1"
 
 # Match finos/morphir-moonbit's pinned toolchain. When upgrading, update the
 # version, platform URLs (encode "+" as "%2B") and Windows core checksum together.
@@ -424,8 +423,8 @@ run = "node website/scripts/check-config-schema-sync.js"
 description = "Check Gherkin MCK cases, schemas, protocol examples and IR fences with the native engine"
 depends = ["mck:vocabulary-check"]
 run = [
-    "cargo run --locked -p morphir -- mck check spec/ir/mck",
-    "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
+    "cargo run --locked -p morphir-mck-cli -- check spec/ir/mck",
+    "cargo run --locked -p morphir-mck-cli -- schema check --kit spec/ir/mck",
 ]
 
 [tasks."spec:mep"]
@@ -437,7 +436,7 @@ run = "bun -e \"console.error('spec:mep is unavailable: the Rust CLI no longer c
 
 [tasks."spec:mep-check"]
 description = "Check the MEP contract: coverage and documented wire rules in spec/mep/generated/mep.ir.json"
-run = "cargo test --locked -p morphir --test mep_contract"
+run = "cargo test --locked -p morphir-dev-tools --test mep_contract"
 
 [tasks."spec:mep-smithy-check"]
 description = "Check the MEP Smithy model with the moonrockz/smithy CLI: model, transcripts, protocol draft examples and MCK cases"
@@ -462,14 +461,14 @@ run = [
 
 [tasks."mck:schema-check"]
 description = "Validate MCK schemas, JSON and protocol examples, and accepted or rejected IR fences"
-run = "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck"
+run = "cargo run --locked -p morphir-mck-cli -- schema check --kit spec/ir/mck"
 
 [tasks."mck:run"]
 description = "Run the native MCK against the TypeScript adapter and check its report and kit coverage"
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "bun run tools/run-mck-gate.ts .dev/out/mck/morphir-typescript-adapter.json spec/ir/mck/allowed-failing.json spec/ir/mck bun ecosystem/morphir-typescript/packages/mck/src/adapter.ts",
-    "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
+    "cargo run --locked -p morphir-mck-cli -- coverage --kit spec/ir/mck",
 ]
 
 [tasks."mck:run-rust"]
@@ -478,19 +477,17 @@ description = "Run the native MCK against the pinned Rust adapter and check its 
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "bun run tools/run-mck-gate.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json spec/ir/mck ecosystem/morphir-rust/target/debug/mck-adapter-rust",
-    "cargo run --locked -p morphir -- mck node-address run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address --report .dev/out/mck/node-address-rust.json",
-    "cargo run --locked -p morphir -- mck coverage --kit spec/ir/mck",
+    "cargo run --locked -p morphir-mck-cli -- node-address run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address --report .dev/out/mck/node-address-rust.json",
+    "cargo run --locked -p morphir-mck-cli -- coverage --kit spec/ir/mck",
 ]
 
 [tasks."migrate:validate"]
-description = "Migrate the published v3 example to v4 and validate the output against the v4 JSON Schema"
-# The validator is a website script, so it needs website/node_modules; `init`
-# only checks out submodules.
-depends = ["website:install"]
-run = [
-    "cargo run -p morphir -- migrate website/static/ir/examples/v3/greeting-example.json --output .dev/out/migrate/out.json",
-    "node website/scripts/validate-migrated-ir.js .dev/out/migrate/out.json",
-]
+description = "Unavailable: it ran the deleted Rust product CLI's migrate command"
+# It migrated the published v3 example with the Rust CLI and validated the
+# result against the v4 schema. That checked the Rust CLI's `migrate`, which
+# was deleted with the CLI; migration is the .NET Morphir CLI's to qualify.
+# Bun, not shell, so the message also prints on Windows.
+run = "bun -e \"console.error('migrate:validate is unavailable: it ran the migrate command of the deleted Rust CLI. Migrate with the Morphir CLI (finos/morphir-dotnet) and validate the result with: node website/scripts/validate-migrated-ir.js <file>. See openspec/changes/move-cli-delivery-to-umbrella.'); process.exit(1)\""
 
 [tasks."package:schema-check"]
 description = "Validate draft package schemas and example structures (not MCK package compatibility)"
@@ -510,7 +507,7 @@ run = [
 [tasks."package:definitions-check"]
 description = "Inspect draft.3 candidate definitions and pending assets without executing restore"
 run = [
-    "cargo run --locked -p morphir -- mck package inspect --source . --contract 0.1.0-draft.3",
+    "cargo run --locked -p morphir-mck-cli -- package inspect --source . --contract 0.1.0-draft.3",
 ]
 
 [tasks."package:fixture-check"]
@@ -523,14 +520,14 @@ run = [
 [tasks."package:assurance-check"]
 description = "Check fixed synthetic restore assurance preflight vectors through native runtime support (not restore compatibility)"
 run = [
-    "cargo test --locked -p morphir --test package_runtime assurance_",
+    "cargo test --locked -p morphir-dev-tools --test package_runtime assurance_",
 ]
 
 [tasks."package:publisher-check"]
 description = "Check publisher-signature evidence and fixed decoder probes through native runtime support (not restore compatibility)"
 run = [
-    "cargo test --locked -p morphir --test package_runtime publisher_",
-    "cargo test --locked -p morphir --test package_runtime decode_",
+    "cargo test --locked -p morphir-dev-tools --test package_runtime publisher_",
+    "cargo test --locked -p morphir-dev-tools --test package_runtime decode_",
 ]
 
 [tasks."package:check"]
@@ -565,7 +562,7 @@ run = [
 description = "Run the signed local Library MVP restore, resolve, refresh and update inventory through native MCK and the Rust adapter"
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
-    "cargo run --locked -p morphir -- mck package mvp-run --source . --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg package-mvp",
+    "cargo run --locked -p morphir-mck-cli -- package mvp-run --source . --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg package-mvp",
 ]
 
 [tasks."hooks:install"]
@@ -608,22 +605,6 @@ run = "bun run tools/gen-naming-corpus.ts --check"
 description = "Verify the format-version conformance corpus and its copy vendored into morphir-rust are byte-identical"
 run = "bun run tools/check-vendored-fixture.ts docs/spec/ir/fixtures/format-version-conformance.json ecosystem/morphir-rust/tests/fixtures/format-version-conformance.json"
 
-[tasks."fixtures:yaml-acceptance"]
-description = "Regenerate the greeting-example YAML acceptance fixture from the reference writer"
-run = [
-    "cargo run -p morphir -- migrate website/static/ir/examples/v3/greeting-example.json --output .dev/out/migrate/greeting.v4.json",
-    "bun run tools/gen-yaml-acceptance-fixture.ts .dev/out/migrate/greeting.v4.json crates/morphir/tests/fixtures/yaml/greeting-example.v4.yaml",
-]
-
-[tasks."fixtures:tree-acceptance"]
-description = "Regenerate the greeting-example document-tree acceptance fixture from the reference writer"
-# Both sides start from the same model: the CLI migrates the published v3
-# example to v4 JSON, and the reference writer lays that same JSON out as a
-# tree, so the fixture pins the layout rather than a migration difference.
-run = [
-    "cargo run -p morphir -- migrate website/static/ir/examples/v3/greeting-example.json --output .dev/out/migrate/greeting.v4.json",
-    "bun run tools/gen-yaml-acceptance-fixture.ts --tree .dev/out/migrate/greeting.v4.json crates/morphir/tests/fixtures/tree/greeting-example",
-]
 
 [tasks."tools:install"]
 description = "Install dependencies for the Bun specification tooling"
@@ -662,10 +643,6 @@ run = [
     "bun test spec/conceptual/language/scopes/fixture-builders.test.ts spec/conceptual/language/scopes/fixture-integrity.test.ts",
 ]
 
-[tasks."vendor:morphir-web"]
-description = "Build and vendor a clean morphir-web worktree twice with provenance"
-run = "bun run tools/vendor-morphir-web.ts"
-
 [tasks."demo:desktop"]
 description = "Build, install and run the real Desktop demo in a fresh temporary Home"
 usage = 'flag "--prepare-only" help="Build and install without opening Desktop"'
@@ -700,8 +677,11 @@ depends = [
 
 # ===== Testing Tasks =====
 [tasks."test:examples"]
-description = "Run categorized Markdown and Gherkin example scenarios through the Morphir CLI"
-run = "cargo run --locked --package morphir -- itest examples"
+description = "Unavailable: the example scenarios ran through the deleted Rust product CLI's itest driver"
+# The scenarios under examples/ exercise CLI workflows. They ran through the
+# Rust CLI, which was deleted; they are pending qualification against the .NET
+# Morphir CLI and are not run in the meantime. Bun, so it prints on Windows.
+run = "bun -e \"console.error('test:examples is unavailable: the example scenarios ran through the itest driver of the deleted Rust CLI and are pending qualification against the Morphir CLI (finos/morphir-dotnet). See openspec/changes/move-cli-delivery-to-umbrella.'); process.exit(1)\""
 
 [tasks."examples:prepare-elm"]
 description = "Stage a downloaded reference Elm extension for the CLI examples"
@@ -711,18 +691,15 @@ run = "bun run tools/prepare-elm-examples.ts"
 description = "Verify and stage pinned WASM bundles for the CLI backend examples"
 run = "bun run tools/prepare-backend-examples.ts"
 
-[tasks."test:itest"]
-description = "Test the integration scenario driver and its real CLI acceptance cases"
-run = [
-    "cargo test --locked --package morphir --lib commands::itest",
-    "cargo test --locked --package morphir --test itest --test eval",
-    "cargo test --locked --package morphir-evaluator --package morphir-opa",
-]
+# The two development tools, for running by hand: `mise run mck -- <command>`
+# and `mise run kb -- <command>`.
+[tasks.mck]
+description = "Run the standalone MCK runner (morphir-mck)"
+run = "cargo run --locked -q -p morphir-mck-cli --"
 
-[tasks."test:host-compatibility"]
-description = "Gate host-only releases against the pinned published extensions"
-env.MORPHIR_PUBLISHED_BUNDLES = "{{ env.MORPHIR_PUBLISHED_BUNDLES | default(value='.dev/out/published-bundles') }}"
-run = "cargo test --locked --release --package morphir --test host_compatibility -- --ignored --nocapture"
+[tasks.kb]
+description = "Run the knowledge base commands of the internal development tool (morphir-dev kb)"
+run = "cargo run --locked -q -p morphir-dev-tools -- kb"
 
 [tasks.test]
 description = "Run tests"

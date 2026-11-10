@@ -58,29 +58,23 @@ jobs:
               - '.github/workflows/ci.yml'
             rust:
               - 'third_party/rust-tuf/**'
-              # itest runs the same categorized projects readers use
-              - 'examples/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/**'
-              # mck_run in the CLI crate replays and compares these frozen inputs.
+              # mck_run in morphir-mck-cli replays and compares these frozen inputs.
               - 'spec/mck/baseline/package/**'
-              # mep_contract compiles the MEP contract and checks the committed IR
+              # mep_contract in morphir-dev-tools checks the committed MEP contract IR
               - 'spec/mep/**'
-              # crates/morphir path-depends on crates inside this submodule,
-              # so a ref bump changes compiled source
+              # package_runtime in morphir-dev-tools reads the fixed package fixtures
+              - 'spec/package/mck/fixtures/**'
+              # kb_acceptance drives morphir-dev kb over these OKF rules
+              - 'kb/**'
+              # the development tools path-depend on crates inside this
+              # submodule, so a ref bump changes compiled source
               - 'ecosystem/morphir-rust'
               - '.gitmodules'
               # pins the Rust toolchain these jobs build with
               - '.config/mise/**'
-              # pins the published extension bundles the CLI is tested against
-              - '.config/published-extension-bundles.toml'
-              - 'tools/fetch-published-bundles*'
-              - 'tools/prepare-elm-examples*'
-              - 'tools/prepare-backend-examples*'
-              # generated CLI docs are diff-checked against the CLI source
-              - 'docs/cli/**'
-              - 'docs/man/**'
               # signed fixtures and schemas are executable acquisition contracts
               - 'docs/spec/tool-release-metadata/**'
               - 'website/static/schemas/tool-release-v1.schema.json'
@@ -96,14 +90,10 @@ jobs:
               - 'docs/design/proposals/toolchain-acquisition.md'
               - 'docs/design/proposals/index.md'
               - 'docs/assets/toolchain-*.svg'
-              - 'completions/**'
               # asserts every workspace package follows the current Rust baseline
               - 'tests/rust/test_workspace_rust_baseline.py'
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-rust-ci/**'
-              # crates/morphir tests read the published examples as fixtures, and
-              # `mise run migrate:validate` migrates and validates them
-              - 'website/static/ir/examples/**'
             # Kit and schema changes run binding conformance here and focused
             # native MCK tests in docs, without the full Rust extension pipeline.
             # That job also runs for every `rust` change, so the inputs both
@@ -113,6 +103,9 @@ jobs:
               # mck:run-rust runs the kit against the Rust binding, so its fences are an input
               - 'spec/ir/mck/**'
               - 'spec/mck/**'
+              # the kit's IR fences are checked against the v4 schema
+              - 'website/static/schemas/morphir-ir-v4.json'
+              - 'website/static/schemas/morphir-ir-v4.yaml'
               - 'website/static/schemas/morphir-ir-v4-document-tree-files.json'
               - 'website/static/schemas/morphir-ir-v4-document-tree-files.yaml'
               # the TypeScript implementation owns its independent adapter
@@ -121,14 +114,6 @@ jobs:
               - 'tools/run-mck-gate*'
               - 'tools/record-mck-transcript*'
               - 'tools/mck-ci-summary*'
-              # validates the output of `mise run migrate:validate` against the v4 schema
-              - 'website/scripts/validate-migrated-ir.js'
-              # the v4 schema `mise run migrate:validate` validates migrated IR against
-              - 'website/static/schemas/morphir-ir-v4.json'
-              - 'website/static/schemas/morphir-ir-v4.yaml'
-              # migrate:validate depends on website:install, and validate-migrated-ir.js imports ajv/ajv-formats from it
-              - 'website/package.json'
-              - 'website/package-lock.json'
             docs:
               - 'openspec/**'
               - 'website/**'
@@ -161,9 +146,7 @@ jobs:
               - 'third_party/rust-tuf/**'
               # The native runner, report reader and renderer now drive this job.
               - 'crates/morphir-mck/**'
-              - 'crates/morphir/src/commands/mck*'
-              - 'crates/morphir/src/commands/mck/**'
-              - 'crates/morphir/src/main.rs'
+              - 'crates/morphir-mck-cli/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.github/actions/setup-rust-ci/**'
@@ -193,7 +176,8 @@ jobs:
               - 'third_party/rust-tuf/**'
               - 'spec/mck/baseline/package-cases.json'
               - 'crates/morphir-mck/**'
-              - 'crates/morphir/**'
+              - 'crates/morphir-mck-cli/**'
+              - 'crates/morphir-dev-tools/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.github/actions/setup-rust-ci/**'
@@ -212,17 +196,19 @@ jobs:
               - '.github/workflows/ci.yml'
             release:
               - '.github/workflows/release.yml'
+              # the official CLI release: its expectations, checks and the pinned source
+              - '.config/cli-release.json'
+              - 'tools/cli-release*'
+              - 'ecosystem/morphir-dotnet'
+              - '.gitmodules'
+              # historical acceptance of released Rust CLI tags
               - '.github/workflows/mck-release-acceptance.yml'
               - 'tools/mck-release-acceptance.mjs'
               - 'tools/mck-release-version*.mjs'
               - 'tools/mck-release-qualification*.mjs'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - 'crates/morphir/Cargo.toml'
               # every test here asserts workflow or action content
               - 'tests/ci/**'
               - '.github/actions/**'
-              - '.github/scripts/select_release_assets.py'
               - '.github/workflows/ci.yml'
 
   desktop-demo:
@@ -269,26 +255,20 @@ jobs:
         uses: ./.github/actions/setup-rust-ci
 
       - name: Check formatting
-        run: cargo fmt --package morphir --package integration-tests --check
+        run: cargo fmt --package morphir-mck-cli --package morphir-dev-tools --check
 
       - name: Run clippy
-        run: cargo clippy --locked --package morphir --package integration-tests --all-targets -- -D warnings
+        run: cargo clippy --locked --package morphir-mck-cli --package morphir-dev-tools --all-targets -- -D warnings
 
-  # Main Rust build + integration tests. The Elm and Scala process extensions are downloaded
-  # from their published releases, so this job needs lint only.
-  morphir-cli-test:
-    name: morphir CLI (test + integration)
+  # The Rust development tools: the standalone MCK runner (morphir-mck), the
+  # internal development tool (morphir-dev) and the reference contract
+  # checkers. The Rust product CLI and its integration jobs were deleted; the
+  # Morphir CLI is built and qualified from finos/morphir-dotnet by release.yml.
+  rust-dev-tools:
+    name: Rust development tools (test)
     runs-on: ubuntu-latest
     needs: [changes, lint]
     if: ${{ needs.changes.outputs.rust == 'true' }}
-    env:
-      # The workspace release profile uses fat LTO with one codegen unit. That
-      # final link is not cacheable and took 8.5 minutes of this job. CI only
-      # needs an optimized binary for the integration tests; release.yml builds
-      # the shipped binary with the full profile. The override is job-wide so
-      # that every step sees the same profile and cargo does not rebuild.
-      CARGO_PROFILE_RELEASE_LTO: "off"
-      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -301,163 +281,33 @@ jobs:
       - name: Initialize environment
         run: mise run init -- --ci
 
-      - name: Add Rust components
-        run: rustup component add rustfmt clippy
-
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
         with:
-          # This job builds the most (debug tests and the release binary), so
-          # it is the one writer of the shared cargo cache. lint and check-cli-docs only restore it.
+          # This job builds the most, so it is the one writer of the shared
+          # cargo cache. lint only restores it.
           save-cache: "true"
 
-      - name: Run tests
-        run: cargo test --locked --package morphir
+      # morphir-mck: the shared runner's command line, end to end, including
+      # the copied-binary acceptance with an empty tool path.
+      - name: Test the standalone MCK runner
+        run: cargo test --locked --package morphir-mck-cli
 
-      # The MCK engine is a library crate of its own; --package morphir does not run its tests.
+      # The MCK engine is a library crate of its own.
       - name: Run MCK engine tests
         run: cargo test --locked --package morphir-mck
+
+      # morphir-dev: the kb commands and the repository contract gates
+      # (MEP contract IR, tool release metadata, package runtime vectors).
+      - name: Test the internal development tool and repository gates
+        run: cargo test --locked --package morphir-dev-tools
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
 
-      # A library crate of its own; --package morphir does not run its tests.
+      # A library crate of its own.
       - name: Validate the toolchain acquisition contracts
         run: mise run ci:validate-toolchain-contracts
-
-      - name: Build
-        run: cargo build --locked --release --package morphir
-
-      - name: Fetch the published extensions
-        # The extensions users install, at the tags and digests pinned in
-        # .config/published-extension-bundles.toml: four WASM bundles from the
-        # repositories that release them, the Elm process extension from
-        # finos/morphir-elm and the Scala Elm provider from
-        # finos/morphir-scala. The owning
-        # repository checks that a new release
-        # works with the released CLI; this job checks that a CLI change does
-        # not break the published releases.
-        run: |
-          mise run ci:fetch-published-bundles
-          printf 'MORPHIR_ELM_EXTENSION_VERSION=%s\n' \
-            "$(cat .dev/out/published-bundles/elm/version.txt)" >> "$GITHUB_ENV"
-          printf 'MORPHIR_SCALA_ELM_EXTENSION_VERSION=%s\n' \
-            "$(cat .dev/out/published-bundles/scala-elm/version.txt)" >> "$GITHUB_ENV"
-
-      - name: Run host compatibility suite
-        env:
-          MORPHIR_PUBLISHED_BUNDLES: ${{ github.workspace }}/.dev/out/published-bundles
-        run: cargo test --locked --release --package morphir --test host_compatibility -- --ignored --nocapture
-
-      - name: Run Morphir Elm CLI integration tests
-        env:
-          MORPHIR_ELM_EXTENSION_BIN: >-
-            ${{ github.workspace }}/.dev/out/published-bundles/elm/morphir-elm-extension
-        run: |
-          cargo test --locked --package integration-tests --test elm_extension \
-            -- --ignored --nocapture
-          cargo test --locked --package morphir --test cli_integration \
-            real_installed_morphir_elm_is_verified_and_activates_offline \
-            -- --ignored --nocapture
-          mise run examples:prepare-elm
-          target/release/morphir itest examples --tag suite:elm-reference
-
-      - name: Run Morphir Scala Elm CLI integration test
-        env:
-          MORPHIR_SCALA_ELM_EXTENSION_BIN: >-
-            ${{ github.workspace }}/.dev/out/published-bundles/scala-elm/morphir-scala-elm
-        run: >-
-          cargo test --locked --package morphir --test cli_integration
-          real_installed_morphir_scala_elm_is_selected_and_activates_offline
-          -- --ignored --exact --nocapture
-
-      - name: Run CLI integration tests
-        # integration-tests finds the CLI binary in target/release/morphir
-        run: cargo test --locked --package integration-tests
-
-      - name: Run the CLI against the published extension bundles
-        # --release makes CARGO_BIN_EXE_morphir the optimized binary built
-        # above. These tests compile and run WASM guests through the CLI, and
-        # the debug binary spent 4 minutes doing that.
-        env:
-          BUNDLES: ${{ github.workspace }}/.dev/out/published-bundles
-        run: |
-          MORPHIR_AVRO_GUEST="$(ls "$BUNDLES"/avro/*.wasm)"
-          MORPHIR_OPENAPI_GUEST="$(ls "$BUNDLES"/openapi/*.wasm)"
-          MORPHIR_PYTHON_BUNDLE="$BUNDLES/python"
-          MORPHIR_RUST_BUNDLE="$BUNDLES/rust"
-          export MORPHIR_AVRO_GUEST MORPHIR_OPENAPI_GUEST MORPHIR_PYTHON_BUNDLE MORPHIR_RUST_BUNDLE
-          cargo test --locked --release --package morphir \
-            --test generate_extension --test generate_openapi_extension \
-            --test python_extension --test rust_extension \
-            -- --ignored --nocapture
-          mise run examples:prepare-backends
-          target/release/morphir itest examples --tag suite:wasm-backends
-
-  library-publish-macos:
-    name: Library publication (macOS)
-    runs-on: macos-26
-    needs: changes
-    if: ${{ needs.changes.outputs.rust == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Install mise
-        uses: jdx/mise-action@v4
-        with:
-          cache_save: ${{ github.ref == 'refs/heads/main' }}
-
-      - name: Initialize environment
-        run: mise run init -- --ci
-
-      - name: Set up Rust CI
-        uses: ./.github/actions/setup-rust-ci
-        with:
-          install-mold: "false"
-
-      - name: Test authoring and publication
-        run: cargo test --locked --package morphir --test package_author_publish
-
-      - name: Publish and consume the example Library
-        run: mise run test:examples -- --filter 'package/local-library-publish#publish-and-consume'
-
-  # Generate and diff-check CLI reference docs — parallel with extension builds
-  # and integration tests (only needs a debug morphir build, not extensions).
-  check-cli-docs:
-    name: Check CLI docs
-    runs-on: ubuntu-latest
-    needs: changes
-    if: ${{ needs.changes.outputs.rust == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Install mise
-        uses: jdx/mise-action@v4
-        with:
-          cache_save: ${{ github.ref == 'refs/heads/main' }}
-
-      - name: Initialize environment
-        run: mise run init -- --ci
-
-      - name: Set up Rust CI
-        uses: ./.github/actions/setup-rust-ci
-
-      - name: Generate CLI docs
-        run: mise run docs:cli
-
-      - name: Check CLI docs are up to date
-        run: |
-          # --ignored=matching also surfaces generated outputs that a
-          # .gitignore rule would silently keep out of the repository
-          CHANGES=$(git status --porcelain --ignored=matching -- docs/cli docs/man completions)
-          if [ -n "$CHANGES" ]; then
-            echo "::error::Generated CLI documentation is out of date or untracked. Run 'mise run docs:cli' and commit the changes."
-            echo "$CHANGES"
-            git diff -- docs/cli docs/man completions
-            exit 1
-          fi
 
   docs:
     name: Docs
@@ -558,11 +408,12 @@ jobs:
             .dev/out/mck/morphir-typescript-adapter.html
             .dev/out/mck/morphir-typescript-adapter.ndjson
 
-  # Kit run against the Rust binding and the migrate validation. Both build
-  # from the shared cargo cache and neither needs the extensions, so they run
-  # beside the CLI test job instead of inside it.
+  # Kit run against the Rust binding. It builds from the shared cargo cache
+  # and runs beside the development tools job instead of inside it. The
+  # migrate validation that also ran here was a check of the deleted Rust
+  # product CLI's `migrate` command; see `mise run migrate:validate`.
   rust-conformance:
-    name: Rust conformance (MCK + migrate)
+    name: Rust conformance (MCK)
     runs-on: ubuntu-latest
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.rust-conformance == 'true' }}
@@ -600,10 +451,6 @@ jobs:
             .dev/out/mck/morphir-rust.html
             .dev/out/mck/morphir-rust.ndjson
             .dev/out/mck/node-address-rust.json
-
-      - name: Validate migrated IR against the v4 schema
-        if: ${{ !cancelled() }}
-        run: mise run migrate:validate
 
   package-mck:
     name: MCK package compatibility (TypeScript + Rust)
@@ -670,6 +517,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      # The release tests read the pinned CLI source's build profiles and
+      # CHANGELOG, so the submodule must be at its recorded commit.
+      - name: Check out the pinned CLI source
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install tooling dependencies
+        run: bun install --frozen-lockfile
+        working-directory: tools
+
+      - name: Test the official CLI release orchestration
+        run: bun test tools/cli-release.test.ts
+
+      - name: Verify the CLI source pin
+        run: bun run tools/cli-release.ts verify-source
+
       - name: Validate release workflow
         run: python3 -B -m unittest discover -s tests/ci
 
@@ -682,7 +548,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, morphir-cli-test, library-publish-macos, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
+    needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
     if: always()
     steps:
       - name: Check results
@@ -705,9 +571,7 @@ jobs:
             exit 1
           fi
           require "${{ needs.changes.outputs.rust }}" lint "${{ needs.lint.result }}"
-          require "${{ needs.changes.outputs.rust }}" morphir-cli-test "${{ needs.morphir-cli-test.result }}"
-          require "${{ needs.changes.outputs.rust }}" library-publish-macos "${{ needs.library-publish-macos.result }}"
-          require "${{ needs.changes.outputs.rust }}" check-cli-docs "${{ needs.check-cli-docs.result }}"
+          require "${{ needs.changes.outputs.rust }}" rust-dev-tools "${{ needs.rust-dev-tools.result }}"
           if [[ "${{ needs.changes.outputs.rust }}" == "true" || "${{ needs.changes.outputs.rust-conformance }}" == "true" ]]; then
             require true rust-conformance "${{ needs.rust-conformance.result }}"
           fi
