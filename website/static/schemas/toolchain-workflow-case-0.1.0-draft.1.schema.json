@@ -225,10 +225,38 @@
     },
     "provenance": {
       "type": "object",
-      "required": [ "kind", "repository", "commit", "path", "blob" ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "generated"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "branch",
+              "released",
+              "observedOn",
+              "producers",
+              "blob"
+            ]
+          },
+          "else": {
+            "required": [ "path", "blob" ]
+          }
+        }
+      ],
+      "required": [ "kind", "repository", "commit" ],
       "properties": {
         "kind": {
-          "enum": [ "hand-authored", "spec-derived", "reviewed-candidate" ]
+          "enum": [
+            "hand-authored",
+            "spec-derived",
+            "reviewed-candidate",
+            "generated"
+          ]
         },
         "repository": {
           "type": "string",
@@ -242,6 +270,38 @@
         },
         "blob": {
           "$ref": "#/$defs/gitObject"
+        },
+        "branch": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "released": {
+          "type": "boolean"
+        },
+        "observedOn": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          }
+        },
+        "producers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "delivery", "host" ],
+            "properties": {
+              "delivery": {
+                "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
+              },
+              "host": {
+                "enum": [ "jit", "native-aot", "dotnet-tool" ]
+              }
+            }
+          }
         }
       }
     },
@@ -347,13 +407,17 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": [ "path", "file", "sha256" ],
+            "required": [ "path", "file", "bytes", "sha256" ],
             "properties": {
               "path": {
                 "$ref": "#/$defs/relativePath"
               },
               "file": {
                 "$ref": "#/$defs/relativePath"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
               },
               "sha256": {
                 "$ref": "#/$defs/sha256"
@@ -377,7 +441,8 @@
         "target",
         "input",
         "providers",
-        "expected"
+        "expected",
+        "formatting"
       ],
       "properties": {
         "id": {
@@ -458,6 +523,10 @@
               "required": [ "modelInput" ]
             }
           }
+        },
+        "formatting": {
+          "description": "Generation runs with formatting explicitly off, however the host spells it.",
+          "const": "off"
         }
       }
     },

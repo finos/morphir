@@ -78,7 +78,14 @@ fn every_listed_file_exists_with_its_digest() {
     for step in case["steps"].as_array().unwrap() {
         for set in step["expected"]["sets"].as_array().into_iter().flatten() {
             for file in set["files"].as_array().unwrap() {
-                checked_file(file["file"].as_str().unwrap(), &file["sha256"]);
+                let bytes = checked_file(file["file"].as_str().unwrap(), &file["sha256"]);
+                assert_eq!(
+                    Some(bytes.len() as u64),
+                    file["bytes"].as_u64(),
+                    "{} has its stated length",
+                    file["file"]
+                );
+                TargetPath::parse(file["path"].as_str().unwrap()).unwrap();
             }
         }
     }
@@ -145,18 +152,48 @@ fn the_expected_ir_is_well_formed_for_its_declared_version() {
     );
 }
 
+/// The decision of 9 November 2026: one unformatted set, LF line endings,
+/// produced with formatting off by every delivery, compared byte for byte.
 #[test]
-fn pending_generation_steps_record_no_expected_files() {
+fn the_generate_step_has_one_unformatted_lf_set_for_every_delivery() {
     let case = case();
-    let expected = &step(&case, "generate")["expected"];
-    assert_eq!(expected["status"], "pending");
-    assert!(expected["sets"].as_array().unwrap().is_empty());
+    let generate = step(&case, "generate");
+    assert_eq!(generate["formatting"], "off");
+    let expected = &generate["expected"];
+    assert_eq!(expected["status"], "frozen");
+    let sets = expected["sets"].as_array().unwrap();
+    assert_eq!(sets.len(), 1, "one set");
+    let set = &sets[0];
     assert!(
-        expected["reason"]
-            .as_str()
-            .unwrap()
-            .starts_with("Pending: the expected generated F# files come from morphir-dotnet")
+        set.get("appliesTo").is_none(),
+        "the set covers every delivery"
     );
+    assert_eq!(set["comparison"], "exact-bytes");
+    for file in set["files"].as_array().unwrap() {
+        let bytes = read(&root().join(CASE_DIR).join(file["file"].as_str().unwrap()));
+        let text = std::str::from_utf8(&bytes).expect("UTF-8");
+        assert!(!text.starts_with('\u{feff}'), "no byte order mark");
+        assert!(!bytes.contains(&b'\r'), "LF line endings only");
+        assert!(
+            text.ends_with('\n') && !text.ends_with("\n\n"),
+            "exactly one final line feed"
+        );
+    }
+    // The producers are not released and have been observed on one platform;
+    // the provenance says so rather than the case claiming more.
+    let provenance = &set["provenance"];
+    assert_eq!(provenance["kind"], "generated");
+    assert_eq!(provenance["released"], false);
+    assert_eq!(provenance["observedOn"], json!(["win-arm64"]));
+    let producers = provenance["producers"].as_array().unwrap();
+    for provider in generate["providers"].as_array().unwrap() {
+        assert!(
+            producers
+                .iter()
+                .any(|producer| producer["delivery"] == provider["delivery"]),
+            "a producer for every covered delivery"
+        );
+    }
 }
 
 /// A step names each delivery it covers once, and frozen sets that name

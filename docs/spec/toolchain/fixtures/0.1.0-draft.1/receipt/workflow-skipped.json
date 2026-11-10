@@ -131,7 +131,7 @@
       "check": "workflow",
       "status": "skipped",
       "workflow": "fsharp-compile-generate",
-      "reason": "The fsharp-compile-generate case has a pending generate step: its expected files have not arrived from morphir-dotnet."
+      "reason": "No runner on this machine can observe generated files: the compatibility kit observes compilation only."
     }
   ]
 }

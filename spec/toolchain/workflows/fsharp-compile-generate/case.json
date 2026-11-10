@@ -17,7 +17,9 @@
   },
   "package": {
     "name": "acme/demo",
-    "exposedModules": ["Pricing"]
+    "exposedModules": [
+      "Pricing"
+    ]
   },
   "sources": [
     {
@@ -90,6 +92,7 @@
         "step": "compile",
         "model": "expected-ir"
       },
+      "formatting": "off",
       "providers": [
         {
           "delivery": "built-in",
@@ -113,9 +116,53 @@
         }
       ],
       "expected": {
-        "status": "pending",
-        "reason": "Pending: the expected generated F# files come from morphir-dotnet and are reviewed before they are frozen. Decided on 9 November 2026: one unformatted set with LF line endings, which every offering and both backends produce with formatting explicitly off.",
-        "sets": []
+        "status": "frozen",
+        "sets": [
+          {
+            "files": [
+              {
+                "path": "Pricing.fs",
+                "file": "expected/generated/Pricing.fs",
+                "bytes": 112,
+                "sha256": "64e08313f3e57be2c18995a2e8b275db9d921341958da2c8cd960c601c066de0"
+              }
+            ],
+            "comparison": "exact-bytes",
+            "provenance": {
+              "kind": "generated",
+              "repository": "finos/morphir-dotnet",
+              "branch": "feat/fixed-generated-fsharp",
+              "commit": "4440b51b0e04e99e53dfc7961f088e4b2c8f1ef4",
+              "released": false,
+              "observedOn": [
+                "win-arm64"
+              ],
+              "producers": [
+                {
+                  "delivery": "built-in",
+                  "host": "jit"
+                },
+                {
+                  "delivery": "built-in",
+                  "host": "native-aot"
+                },
+                {
+                  "delivery": "built-in",
+                  "host": "dotnet-tool"
+                },
+                {
+                  "delivery": "process",
+                  "host": "jit"
+                },
+                {
+                  "delivery": "process",
+                  "host": "native-aot"
+                }
+              ],
+              "blob": "97411d61661c88f991413be66da68b2be3261c46"
+            }
+          }
+        ]
       }
     }
   ]
