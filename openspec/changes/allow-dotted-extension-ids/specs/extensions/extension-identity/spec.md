@@ -33,7 +33,7 @@ Paths in the home are relative to the home root, and paths in a repository are r
 
 This capability fixes each file's path, version, encoding, unknown-member rule, locking and recovery. It does not list the members of a catalog entry, an extension lock or the repositories configuration. Those member tables are written by task 1.4 on `docs/design/draft/extensions/distribution-and-acquisition.md`. Until that page lands, an installer cannot be built from this change alone, and the Rust source is the only statement of those members.
 
-A host can find a home in a state it cannot use: files at earlier versions written by an older host, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. The maintainer decided what a host does with it on 10 November 2026 (Decision 10, recorded on finos/morphir#1146): it moves the old state to a marked backup, asking first; `--yes` skips the question; `morphir doctor --fix` makes the same move by hand. Four readings of that decision are provisional on the maintainer's confirmation (`Q-OLDHOME-READINGS`).
+A host can find a home in a state it cannot use: files at earlier versions written by an older host, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. The maintainer decided what a host does with it on 10 November 2026 (Decision 10, recorded on finos/morphir#1146): it moves the old state to a marked backup, asking first; `--yes` skips the question; `morphir doctor --fix` makes the same move by hand. The maintainer confirmed four readings of it the same day (Decision 11): the refusal without a terminal or on a decline, `morphir doctor` reporting only, and `morphir doctor --fix` asking first.
 
 ## ADDED Requirements
 
@@ -334,7 +334,7 @@ When a command that needs extension state finds old state, the host SHALL show w
 - **THEN** the host makes the same move without asking and installs `morphir-elm`
 
 ### Requirement: A declined or unanswerable prompt changes nothing
-Provisional on the maintainer's confirmation of `Q-OLDHOME-READINGS` (readings 1 and 2). When the user declines the prompt, or when standard input is not a terminal and `--yes` is not given, the host SHALL refuse the command and change nothing. The refusal SHALL name the first old file, `morphir doctor --fix` and `--yes`.
+Decision 11, readings 1 and 2. When the user declines the prompt, or when standard input is not a terminal and `--yes` is not given, the host SHALL refuse the command and change nothing. The refusal SHALL name the first old file, `morphir doctor --fix` and `--yes`.
 
 #### Scenario: Declined
 - **WHEN** the user declines the prompt
@@ -345,14 +345,14 @@ Provisional on the maintainer's confirmation of `Q-OLDHOME-READINGS` (readings 1
 - **THEN** it asks nothing, fails, changes nothing, and names the same file, `morphir doctor --fix` and `--yes`
 
 ### Requirement: morphir doctor reports old state
-`morphir doctor` SHALL check the home for old state and for a backup without its completion marker. Provisional on `Q-OLDHOME-READINGS` (reading 3): without `--fix` it SHALL report each finding and the files `--fix` would move, and change nothing. It SHALL write its result on stdout and its messages on stderr, and exit 0 when it finds nothing to fix, 1 when it finds something, and 2 when it does not run, such as on an unknown option.
+`morphir doctor` SHALL check the home for old state and for a backup without its completion marker. Decision 11, reading 3: without `--fix` it SHALL report each finding and the files `--fix` would move, and change nothing. It SHALL write its result on stdout and its messages on stderr, and exit 0 when it finds nothing to fix, 1 when it finds something, and 2 when it does not run, such as on an unknown option.
 
 #### Scenario: doctor reports only
 - **WHEN** a user runs `morphir doctor` in a home whose catalog is at `2.0.0-draft.2`
 - **THEN** it reports old state, lists the catalog and each extension lock and journal that `--fix` would move, exits 1, and changes no file
 
 ### Requirement: morphir doctor --fix makes the move
-`morphir doctor --fix` SHALL make the move of "Old state moves to a named backup" and complete an unmarked backup. Provisional on `Q-OLDHOME-READINGS` (reading 4): it SHALL first show what it will move and ask, unless `--yes` is given, and a declined or unanswerable prompt SHALL change nothing. It SHALL exit 0 when nothing is left to fix, and 1 otherwise.
+`morphir doctor --fix` SHALL make the move of "Old state moves to a named backup" and complete an unmarked backup. Decision 11, reading 4: it SHALL first show what it will move and ask, unless `--yes` is given, and a declined or unanswerable prompt SHALL change nothing. It SHALL exit 0 when nothing is left to fix, and 1 otherwise.
 
 #### Scenario: doctor --fix moves
 - **WHEN** a user runs `morphir doctor --fix --yes` in a home with old state
