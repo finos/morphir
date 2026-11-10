@@ -6,9 +6,9 @@
 //! `valid` or the exact diagnostic code and member path a reader reports.
 
 use morphir_toolchain_contract::{
-    Code, Operation, PlatformId, ProtocolVersion, canonical_json, canonical_sha256, comparator,
-    discover_request, exact_version, prerequisite_met, read_lock, read_receipt, read_recipe,
-    read_request, read_result, resolve_closure, understood,
+    Code, Operation, PlatformId, ProtocolVersion, canonical_json, canonical_sha256,
+    cli_requirement, comparator, discover_request, exact_version, prerequisite_met, read_lock,
+    read_receipt, read_recipe, read_request, read_result, resolve_closure, understood,
 };
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -193,8 +193,52 @@ fn every_binding_case_matches_the_reference_checks() {
         jsonschema::validator_for(&recipe_schema["$defs"]["semanticVersion"]).unwrap(),
         jsonschema::validator_for(&recipe_schema["$defs"]["comparators"]["items"]).unwrap(),
     );
+    // The CLI requirement grammar is the binding check's, stricter than tool
+    // release metadata v1: the version 1 schema must accept every
+    // requirement in it, while it may accept more.
+    let tool_release: Value = serde_json::from_slice(&read(
+        &repository_root().join("website/static/schemas/tool-release-v1.schema.json"),
+    ))
+    .unwrap();
+    let v1_cli_schema = jsonschema::validator_for(
+        &tool_release["properties"]["compatibility"]["properties"]["morphirCli"],
+    )
+    .expect("the version 1 morphirCli schema compiles");
     for case in cases()["bindings"].as_array().expect("binding cases") {
         let name = case["name"].as_str().unwrap();
+        if case["kind"] == "cli-requirement" {
+            let text = case["requirement"].as_str().unwrap();
+            let parsed = cli_requirement(text);
+            if let Some(cli) = case["cliVersion"].as_str() {
+                let cli = semver::Version::parse(cli).unwrap();
+                let met = parsed
+                    .as_deref()
+                    .is_ok_and(|requirement| prerequisite_met(requirement, &cli));
+                if Some(met) != case["expected"]["met"].as_bool() || parsed.is_err() {
+                    failures.push(format!("{name}: met is {met}"));
+                }
+                continue;
+            }
+            let actual = parsed
+                .map(drop)
+                .map_err(|_| (Code::InvalidValue.as_str().to_owned(), String::new()));
+            if actual != expected(case) {
+                failures.push(format!("{name}: gave {actual:?}"));
+            }
+            if actual.is_ok() {
+                // Each comparator is one the recipe schema's comparator
+                // pattern accepts, and the whole is a valid version 1 value.
+                for part in text.split(", ") {
+                    if !version_schemas.1.is_valid(&Value::String(part.to_owned())) {
+                        failures.push(format!("{name}: the comparator pattern refuses {part}"));
+                    }
+                }
+                if !v1_cli_schema.is_valid(&Value::String(text.to_owned())) {
+                    failures.push(format!("{name}: the version 1 schema refuses it"));
+                }
+            }
+            continue;
+        }
         if case["kind"] == "version" {
             // A version member, or a comparator, on its own: a refusal is
             // invalid_value at the member that holds it.

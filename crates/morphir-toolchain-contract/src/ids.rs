@@ -335,6 +335,17 @@ pub fn comparator(value: &str) -> Result<Comparator, String> {
         .map_err(|error| format!("'{value}' is not a SemVer comparator: {error}"))
 }
 
+/// Parse a `compatibility.morphirCli` requirement in the binding check's
+/// CLI requirement grammar: one or more single comparators, each as
+/// [`comparator`] reads it, separated by a comma and exactly one space, such
+/// as `>=0.4.0-alpha.5, <0.5.0`. All of them must hold, and a prerelease CLI
+/// meets the requirement only as [`crate::prerequisite_met`] says. This is a
+/// toolchain contract rule, stricter than tool release metadata v1, which
+/// does not define the member's grammar.
+pub fn cli_requirement(value: &str) -> Result<Vec<Comparator>, String> {
+    value.split(", ").map(comparator).collect()
+}
+
 /// A MEP protocol version on the supported 0.2 line: every prerelease of
 /// `0.2.0` and every final `0.2.x`, in canonical SemVer spelling and without
 /// build metadata. MEP `0.1` is not supported. Admitting every prerelease of

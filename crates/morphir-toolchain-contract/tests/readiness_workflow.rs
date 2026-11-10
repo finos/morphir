@@ -183,6 +183,11 @@ fn the_generate_step_has_one_unformatted_lf_set_for_every_delivery() {
     // the provenance says so rather than the case claiming more.
     let provenance = &set["provenance"];
     assert_eq!(provenance["kind"], "generated");
+    // A squash-merging repository drops branch commits, so the provenance
+    // names the pull request; its merge commit is added once it exists.
+    assert_eq!(provenance["repository"], "finos/morphir-dotnet");
+    assert_eq!(provenance["pullRequest"], 578);
+    assert!(provenance.get("branch").is_none());
     assert_eq!(provenance["released"], false);
     assert_eq!(provenance["observedOn"], json!(["win-arm64"]));
     let producers = provenance["producers"].as_array().unwrap();

@@ -431,6 +431,18 @@ pub fn add_tool_release(
     on: &[PlatformId],
     metadata_platform: impl Fn(PlatformId) -> PlatformId,
 ) {
+    add_tool_release_with(targets, offering, on, metadata_platform, |_, _| {});
+}
+
+/// As [`add_tool_release`], with `edit` adjusting the descriptor and then
+/// the release target's `custom.morphir` before they are written.
+pub fn add_tool_release_with(
+    targets: &mut Targets,
+    offering: &Offering,
+    on: &[PlatformId],
+    metadata_platform: impl Fn(PlatformId) -> PlatformId,
+    edit: impl FnOnce(&mut Value, &mut Value),
+) {
     let artifacts = on
         .iter()
         .map(|platform| {
@@ -451,7 +463,7 @@ pub fn add_tool_release(
         })
         .collect::<Vec<_>>();
     // Release descriptors record the state at initial publication.
-    let descriptor = json!({
+    let mut descriptor = json!({
         "schemaVersion": 1,
         "kind": "morphir-tool-release",
         "tool": { "id": offering.tool_id, "name": offering.name },
@@ -461,20 +473,22 @@ pub fn add_tool_release(
         "compatibility": { "morphirCli": OFFERING_MORPHIR_CLI },
         "artifacts": artifacts
     });
+    let mut custom = json!({
+        "schemaVersion": 1,
+        "kind": "tool-release",
+        "toolId": offering.tool_id,
+        "version": HOST_VERSION,
+        "channels": ["stable"],
+        "status": "active",
+        "compatibility": { "morphirCli": OFFERING_MORPHIR_CLI },
+        "platforms": on.iter().map(|platform| v1_platform(*platform)).collect::<Vec<_>>()
+    });
+    edit(&mut descriptor, &mut custom);
     targets.insert(
         format!("releases/{}/{HOST_VERSION}.json", offering.tool_id),
         Target {
             bytes: String::from_utf8(canonical(&descriptor)).unwrap(),
-            custom: Some(json!({
-                "schemaVersion": 1,
-                "kind": "tool-release",
-                "toolId": offering.tool_id,
-                "version": HOST_VERSION,
-                "channels": ["stable"],
-                "status": "active",
-                "compatibility": { "morphirCli": OFFERING_MORPHIR_CLI },
-                "platforms": on.iter().map(|platform| v1_platform(*platform)).collect::<Vec<_>>()
-            })),
+            custom: Some(custom),
         },
     );
     for platform in on {
@@ -677,6 +691,74 @@ pub const WASM_FILE: &str = "morphir-bytes-v1.wasm";
 /// A tool whose authenticated release state is a tool release but whose
 /// release bytes are not one.
 pub const NOT_A_RELEASE_TOOL: &str = "morphir-dotnet-not-a-release";
+
+/// Host releases that are each wrong in one way, published for the host
+/// binding rows: the preset of the recipe that binds each, its tool, and how
+/// its descriptor and then its release target state differ from an
+/// offering's.
+pub type ReleaseEdit = fn(&mut Value, &mut Value);
+pub const HOST_RELEASE_VARIANTS: [(&str, Offering, ReleaseEdit); 4] = [
+    (
+        "negative-host-release-status",
+        Offering {
+            deployment: "native-aot",
+            tool_id: "morphir-dotnet-unknown-status",
+            name: "Morphir .NET unknown release status (TEST-ONLY fixture)",
+        },
+        |_, custom| custom["status"] = json!("withdrawn"),
+    ),
+    (
+        "negative-host-release-tool-id",
+        Offering {
+            deployment: "native-aot",
+            tool_id: "morphir-dotnet-other-tool-id",
+            name: "Morphir .NET descriptor for another tool (TEST-ONLY fixture)",
+        },
+        |descriptor, _| descriptor["tool"]["id"] = json!("morphir-dotnet-native-aot"),
+    ),
+    (
+        "negative-host-release-version",
+        Offering {
+            deployment: "native-aot",
+            tool_id: "morphir-dotnet-other-version",
+            name: "Morphir .NET descriptor for another version (TEST-ONLY fixture)",
+        },
+        |descriptor, _| descriptor["version"] = json!("1.2.4"),
+    ),
+    (
+        "negative-host-release-cli-range",
+        Offering {
+            deployment: "native-aot",
+            tool_id: "morphir-dotnet-cli-range",
+            name: "Morphir .NET caret CLI requirement (TEST-ONLY fixture)",
+        },
+        |descriptor, custom| {
+            descriptor["compatibility"]["morphirCli"] = json!("^0.4.0");
+            custom["compatibility"]["morphirCli"] = json!("^0.4.0");
+        },
+    ),
+];
+
+/// The release targets that are deliberately not valid offering releases.
+pub fn negative_release_tools() -> Vec<&'static str> {
+    std::iter::once(NOT_A_RELEASE_TOOL)
+        .chain(
+            HOST_RELEASE_VARIANTS
+                .iter()
+                .map(|(_, offering, _)| offering.tool_id),
+        )
+        .collect()
+}
+
+/// A version 1 tool release that is not a .NET offering. Its CLI
+/// requirement admits the 0.4.0 CLI and its prereleases, so the version 1
+/// client selects it: the `v1Client` controls show that client selecting.
+pub const V1_CONTROL: Offering = Offering {
+    deployment: "native-aot",
+    tool_id: "morphir-v1-control",
+    name: "Morphir version 1 client control (TEST-ONLY fixture)",
+};
+pub const V1_CONTROL_MORPHIR_CLI: &str = ">=0.4.0-0, <0.5.0";
 /// The preset whose recipes exercise channel selection, and those recipes:
 /// version, channels and status.
 pub const CHANNEL_PRESET: &str = "channel-example";
@@ -1014,8 +1096,75 @@ pub fn claim_variants() -> Vec<(&'static str, &'static str, &'static str, Claims
             "morphir-other-frontend",
             with(&|claims| claims.id = "morphir-other-frontend"),
         ),
+        (
+            "negative-claims-no-protocol",
+            "extensions/fsharp-frontend-no-protocol/0.6.0",
+            FRONTEND_ID,
+            with(&|claims| claims.protocols = vec![]),
+        ),
     ]
 }
+
+/// Frontend releases whose descriptor, rather than one claim, is wrong in
+/// one way for a binding check to read: the recipe preset, the release
+/// directory, the platforms it publishes, and the edit to its descriptor.
+pub type DescriptorEdit = fn(&mut Value);
+pub const DESCRIPTOR_VARIANTS: [(&str, &str, &[&str], DescriptorEdit); 5] = [
+    (
+        "negative-descriptor-later-draft",
+        "extensions/fsharp-frontend-later-draft/0.6.0",
+        &["win-x64"],
+        |descriptor| descriptor["schemaVersion"] = json!("2.0.0-draft.3"),
+    ),
+    (
+        // The first draft's member names, which the existing reader converts
+        // and a binding check never reads.
+        "negative-descriptor-earlier-draft",
+        "extensions/fsharp-frontend-earlier-draft/0.6.0",
+        &["win-x64"],
+        |descriptor| {
+            descriptor["schemaVersion"] = json!("2.0.0-draft.1");
+            for artifact in descriptor["artifacts"].as_array_mut().unwrap() {
+                let object = artifact.as_object_mut().unwrap();
+                let mut claims = object.remove("claims").unwrap();
+                let set = claims.as_object_mut().unwrap();
+                set.remove("claimsVersion");
+                set.insert("statementVersion".into(), json!("0.1.0-draft.1"));
+                object.insert("statement".into(), claims);
+                object.remove("claimCheck");
+                object.insert("statementSource".into(), json!("declared"));
+            }
+        },
+    ),
+    (
+        "negative-claims-critical-unread",
+        "extensions/fsharp-frontend-critical-unread/0.6.0",
+        &["win-x64"],
+        |descriptor| {
+            let claims = &mut descriptor["artifacts"][0]["claims"];
+            claims["capabilities"]["frontend"]["incremental"] = json!(false);
+            claims["critical"] = json!(["capabilities.frontend.incremental"]);
+        },
+    ),
+    (
+        "negative-descriptor-duplicate-filename",
+        "extensions/fsharp-frontend-duplicate-filename/0.6.0",
+        &["win-x64", "osx-x64"],
+        |descriptor| {
+            let first = descriptor["artifacts"][0]["filename"].clone();
+            descriptor["artifacts"][1]["filename"] = first;
+        },
+    ),
+    (
+        "negative-claims-per-platform",
+        "extensions/fsharp-frontend-claims-per-platform/0.6.0",
+        &["win-x64", "osx-x64"],
+        |descriptor| {
+            descriptor["artifacts"][0]["claims"]["capabilities"]["frontend"]["languages"] =
+                json!([{ "id": "elm", "fileExtensions": [".elm"] }]);
+        },
+    ),
+];
 
 /// The published content of the test-only repository.
 pub fn published() -> Targets {
@@ -1124,6 +1273,32 @@ pub fn published() -> Targets {
     let mut not_v1 = offering_recipe(&targets, "negative-host-release-not-v1");
     not_v1["hosts"][0]["source"]["toolId"] = json!(NOT_A_RELEASE_TOOL);
     add_recipe(&mut targets, &not_v1, &[], "active", |_| {});
+    // Host releases with an unknown status, a descriptor for another tool or
+    // version, and a CLI requirement outside the binding check's grammar.
+    for (preset, offering, edit) in HOST_RELEASE_VARIANTS {
+        add_tool_release_with(
+            &mut targets,
+            &offering,
+            &[windows],
+            |platform| platform,
+            edit,
+        );
+        let mut recipe = offering_recipe(&targets, preset);
+        recipe["hosts"][0]["source"]["toolId"] = json!(offering.tool_id);
+        add_recipe(&mut targets, &recipe, &[], "active", |_| {});
+    }
+    // A release the version 1 client selects, beside the offerings it never
+    // selects.
+    add_tool_release_with(
+        &mut targets,
+        &V1_CONTROL,
+        &[windows],
+        |platform| platform,
+        |descriptor, custom| {
+            descriptor["compatibility"]["morphirCli"] = json!(V1_CONTROL_MORPHIR_CLI);
+            custom["compatibility"]["morphirCli"] = json!(V1_CONTROL_MORPHIR_CLI);
+        },
+    );
 
     // Recipes of one preset on several channels and statuses, for channel
     // selection. Only their authenticated state is read.
@@ -1171,6 +1346,21 @@ pub fn published() -> Targets {
             FRONTEND_VERSION,
             &claims,
             &[windows],
+        );
+    }
+    for (_, dir, on, edit) in DESCRIPTOR_VARIANTS {
+        let artifacts = on
+            .iter()
+            .map(|id| ReleaseArtifact::Process(platform(id)))
+            .collect::<Vec<_>>();
+        add_release(
+            &mut targets,
+            dir,
+            FRONTEND_ID,
+            FRONTEND_VERSION,
+            &Claims::frontend(),
+            &artifacts,
+            edit,
         );
     }
     let backend_wrong_target = "extensions/fsharp-backend-csharp-claims/0.1.0";
@@ -1312,6 +1502,17 @@ pub fn published() -> Targets {
             providers[0] = frontend_provider(&targets, &repository, dir, &windows_only);
             if preset == "negative-descriptor-identity" {
                 providers[0]["extensionId"] = json!(FRONTEND_ID);
+            }
+        }));
+    }
+    for (preset, dir, on, _) in DESCRIPTOR_VARIANTS {
+        let bound = on.iter().map(|id| platform(id)).collect::<Vec<_>>();
+        negatives.push(provider(preset, &|providers| {
+            providers[0] = frontend_provider(&targets, &repository, dir, &bound);
+            if preset == "negative-claims-per-platform" {
+                // The win-x64 claims fail before the osx-x64 artifact is
+                // checked, because the claim rows run per platform.
+                providers[0]["platforms"]["osx-x64"]["artifactSha256"] = json!("3".repeat(64));
             }
         }));
     }

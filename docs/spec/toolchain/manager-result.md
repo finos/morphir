@@ -71,7 +71,10 @@ Because `lock` is inside the plan, `--expect-plan` pins every closure that setup
    2. For the host component:
       - its `implementation`, `deployment` and `version` are the lock's host, at `plan.components[i]` (`result/negative/plan-host-component-other-deployment.json`, `-other-implementation.json`, `-other-version.json`);
       - its source kind is `repository-target`, for a release authenticated by its own TUF target, or `external-owner`, at `source` (`plan-host-built-in-source.json`, `plan-host-recipe-digest-source.json`);
-      - its source target is that platform's host artifact, at `source.target`. So a host source of the wrong kind that also names the wrong target is refused at `source`.
+      - its source `target` is that platform's host artifact path, at `source.target` (`plan-host-source-other-target.json`);
+      - its source `sha256` is that artifact's locked digest, at `source.sha256` (`plan-host-source-other-digest.json`). A source with the right target and the wrong digest is refused at `source.sha256`, not at `source` or `source.target`.
+
+      So a host source of the wrong kind that also names the wrong target is refused at `source`, and one with the wrong target and the wrong digest at `source.target`.
    3. For a provider component:
       - the closure has a provider for its operation, at `plan.components[i].component`;
       - its `extensionId`, `version` and `delivery` are that locked provider, at `plan.components[i]`. Provider components are matched to the lock by operation, so their order in `components` is free (`result/setup-plan-providers-swapped.json` is valid);
@@ -96,6 +99,8 @@ All of this is required because a plan's digest covers it: every member of a pla
 ### The plan digest
 
 `planSha256` is the SHA-256 of the plan's canonical JSON bytes. `--expect-plan <digest>` compares against it, and a different plan fails with `plan_changed` (`lock-binding`, `document` `result`, `path` `planSha256`; `result/setup-plan-changed.json`) before anything is changed. A result whose `planSha256` does not match its plan is `inconsistent_document` at `planSha256`.
+
+The digest is compared last. The reader first reads the whole plan, including every check of the plan against its lock above and the NFC key check below, and only then computes the canonical bytes and compares `planSha256` with their SHA-256. So a plan that breaks a plan rule and also carries a stale digest is refused at the plan rule (`result/negative/precedence-plan-rule-before-digest.json`, refused at `plan.components[0].source.sha256`, not `planSha256`).
 
 The canonical form is defined by the rules below, and this page is their authority. They are the canonical JSON that tool release metadata v1 uses for repository identity and signatures, and this repository's reference checker produces them with the `olpc-cjson` crate. "OLPC canonical JSON" is not one fixed format across implementations. These rules differ from the canonical JSON of the TUF reference implementations, securesystemslib and go-securesystemslib, in key order and in NFC ([the TUF profile](../tool-release-metadata/index.md#canonical-json-and-the-reference-tuf-implementations) says what that means for signing). Where any library, `olpc-cjson` included, differs from these rules, the rules apply:
 
@@ -173,7 +178,8 @@ Only `platform_not_locked` has `platform`. A `lock-binding` diagnostic with `pla
 `fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, two `show` results explaining a project selection and a `MORPHIRUP_TOOLCHAIN` selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, one failed result for each `lock-binding` code in the table above, a `request_changed` naming CRLF line endings as its cause, a restore whose lock is absent (`document_unavailable`), the setup plan with its provider components in the other order, a `repository_mismatch` and two `unsupported_artifact` refusals that name the document member they concern. The plans carry `lock/two-platforms-bound.json` as their `lock`. `result/negative/` covers:
 
 - a plan without `lock`, a lock that does not record the plan's platform, a lock for another recipe, a provider component that is not the locked provider, a source from another repository, a host and a built-in whose `probe` is `none`, and a plan prerequisite that names platforms;
-- a host component of another deployment, implementation or release than the lock's, a provider with a `repository-target` source, and a host with a `built-in` source;
+- a host component of another deployment, implementation or release than the lock's, a provider with a `repository-target` source, a host with a `built-in` source, a host source naming another target, and one naming the locked target with another digest;
+- a plan that breaks a plan rule and carries a stale `planSha256`, refused at the plan rule (`precedence-plan-rule-before-digest.json`);
 - a diagnostic `path` without `document`, a `lock-binding` diagnostic with another document, `platform_not_locked` without `platform`, `abi` on another code, a `document_unavailable` with a path, a `critical` that is not an array, a plan without `planSha256` and a `planSha256` without a plan;
 - `cause` on a code other than `request_changed`;
 

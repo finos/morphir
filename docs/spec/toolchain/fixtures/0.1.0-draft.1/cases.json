@@ -2071,6 +2071,36 @@
       },
       "schema": "accepts",
       "schemaGap": "No schema keyword checks Unicode normalization."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-source-other-digest.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.sha256"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-source-other-target.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.target"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/precedence-plan-rule-before-digest.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.sha256"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock, and cannot compute planSha256."
     }
   ],
   "bindings": [
@@ -3256,6 +3286,222 @@
       "result": "result/setup-plan-key-order.json",
       "canonical": "result/setup-plan-key-order.plan.canonical.json",
       "expected": "valid"
+    },
+    {
+      "name": "the profile's example CLI requirement is valid",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "expected": "valid"
+    },
+    {
+      "name": "an offering's CLI requirement is valid",
+      "kind": "cli-requirement",
+      "requirement": "<0.0.0-0",
+      "expected": "valid"
+    },
+    {
+      "name": "one exact comparator is a valid CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "=1.2.3",
+      "expected": "valid"
+    },
+    {
+      "name": "a caret range is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "^0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a tilde range is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "~0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a wildcard is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "*",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a partial version is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a bare version is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "comparators separated by a comma alone are refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0,<0.5.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "comparators separated by a comma and two spaces are refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0,  <0.5.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "comparators separated by a space alone are refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0 <0.5.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "an alternative of ranges is refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0 || >=1.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a space after the operator is refused",
+      "kind": "cli-requirement",
+      "requirement": ">= 0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a leading space is refused",
+      "kind": "cli-requirement",
+      "requirement": " >=0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a trailing separator is refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0, ",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "an empty CLI requirement is refused",
+      "kind": "cli-requirement",
+      "requirement": "",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a 16-digit numeric identifier is refused in a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": ">=1234567890123456.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "the lower bound's own prerelease meets the range",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.0-alpha.5",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "an earlier prerelease of the lower bound's version does not meet it",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.0-alpha.4",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "a final version inside the range meets it",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.12",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "a prerelease of another version inside the range does not meet it",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.1-beta.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "a prerelease of the upper bound does not meet the range",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.5.0-alpha.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "the upper bound does not meet the range",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.5.0",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "no prerelease meets an offering's requirement",
+      "kind": "cli-requirement",
+      "requirement": "<0.0.0-0",
+      "cliVersion": "0.0.0-0",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "no final version meets an offering's requirement",
+      "kind": "cli-requirement",
+      "requirement": "<0.0.0-0",
+      "cliVersion": "0.0.0",
+      "expected": {
+        "met": false
+      }
     }
   ]
 }

@@ -1022,11 +1022,21 @@ impl Plan {
                             "a host component's source is repository-target or external-owner",
                         ));
                     }
-                    if target.is_some_and(|target| target != closure.host()) {
-                        return Err(inconsistent(
-                            join(&source_path, "target"),
-                            "the host component installs the lock's host artifact",
-                        ));
+                    // The target path first, then its digest, each at its
+                    // own member.
+                    if let Some(target) = target {
+                        if target.target != closure.host().target {
+                            return Err(inconsistent(
+                                join(&source_path, "target"),
+                                "the host component installs the lock's host artifact",
+                            ));
+                        }
+                        if target.sha256 != closure.host().sha256 {
+                            return Err(inconsistent(
+                                join(&source_path, "sha256"),
+                                "the host component's digest is the lock's host artifact digest",
+                            ));
+                        }
                     }
                 }
                 ComponentRef::Provider(operation) => {

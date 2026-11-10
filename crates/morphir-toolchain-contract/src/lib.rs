@@ -46,14 +46,16 @@ mod request;
 mod resolve;
 mod result;
 
-pub use authenticated::{AuthenticatedTargets, RecipeStatus, RecipeTargetState};
+pub use authenticated::{
+    AuthenticatedTargets, MAX_DESCRIPTOR_BYTES, RecipeStatus, RecipeTargetState,
+};
 pub use diagnostic::{Code, Diagnostic, DiagnosticKind, Result};
 pub use envelope::{CONTRACT_VERSION, SUPPORTED_VERSIONS};
 pub use ids::{
     AbsolutePath, CommandName, DeploymentId, ExtensionIdentity, GenerationId, ImplementationId,
     LanguageId, ModelToken, PackageId, PackageManagerId, PathStyle, PresetId, ProtocolVersion,
-    Sha256, TargetDigest, TargetPath, WasmAbi, WorkflowId, comparator, exact_version,
-    version_bounds,
+    Sha256, TargetDigest, TargetPath, WasmAbi, WorkflowId, cli_requirement, comparator,
+    exact_version, version_bounds,
 };
 pub use lock::{LockedHost, PlatformClosure, RequestChangeCause, ToolchainLock, read_lock};
 pub use model::{
@@ -81,8 +83,13 @@ pub use result::{
     SelectionSource, Severity, TufRole, canonical_json, canonical_sha256, read_result,
 };
 
-/// Understood `critical` member paths, by document.
+/// Understood `critical` member paths, by document. A binding check also
+/// reads version-2 extension release descriptors, their artifact entries and
+/// their claim sets, and understands only the paths of the members it reads.
 pub mod understood {
+    pub use crate::authenticated::UNDERSTOOD_ARTIFACT_PATHS as DESCRIPTOR_ARTIFACT;
+    pub use crate::authenticated::UNDERSTOOD_CLAIM_PATHS as CLAIM_SET;
+    pub use crate::authenticated::UNDERSTOOD_DESCRIPTOR_PATHS as DESCRIPTOR;
     pub use crate::lock::UNDERSTOOD_PATHS as LOCK;
     pub use crate::receipt::UNDERSTOOD_PATHS as RECEIPT;
     pub use crate::recipe::UNDERSTOOD_PATHS as RECIPE;

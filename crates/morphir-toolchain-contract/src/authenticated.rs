@@ -10,7 +10,7 @@
 
 use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::envelope::CONTRACT_VERSION;
-use crate::ids::{PresetId, Sha256, TargetDigest, TargetPath};
+use crate::ids::{PresetId, Sha256, TargetDigest, TargetPath, cli_requirement};
 use crate::model::Operation;
 use crate::platform::PlatformId;
 use crate::reader::{index, join};
@@ -666,10 +666,16 @@ impl AuthenticatedTargets {
             let release = match host.source() {
                 HostSource::ToolRelease { tool_id } => {
                     let path = format!("releases/{tool_id}/{}.json", host.version());
+                    // A tool release state with a status outside the three
+                    // the profile defines is not a version 1 release state.
                     let custom = self.custom(&path).filter(|custom| {
                         custom["kind"] == "tool-release"
                             && custom["toolId"] == tool_id.as_str()
                             && custom["version"] == host.version().to_string()
+                            && matches!(
+                                custom["status"].as_str(),
+                                Some("active" | "yanked" | "revoked")
+                            )
                     });
                     let Some(custom) = custom else {
                         return Err(Diagnostic::new(
@@ -685,15 +691,42 @@ impl AuthenticatedTargets {
                             format!("{tool_id} {} is revoked", host.version()),
                         ));
                     }
-                    let bytes = self.read_bound(&path, &join(&host_path, "source")).await?;
-                    let record: ToolReleaseRecord =
-                        serde_json::from_slice(&bytes).map_err(|error| {
-                            Diagnostic::new(
-                                Code::ReleaseDescriptorMismatch,
-                                join(&host_path, "source"),
-                                format!("{path} is not a v1 tool release: {error}"),
-                            )
-                        })?;
+                    let source = join(&host_path, "source");
+                    self.within_descriptor_bound(&path, &source)?;
+                    let bytes = self.read_bound(&path, &source).await?;
+                    let not_v1 = |message: String| {
+                        Diagnostic::new(
+                            Code::ReleaseDescriptorMismatch,
+                            &source,
+                            format!("{path} is not a v1 tool release: {message}"),
+                        )
+                    };
+                    let record: ToolReleaseRecord = serde_json::from_slice(&bytes)
+                        .map_err(|error| not_v1(error.to_string()))?;
+                    // The binding check's CLI requirement grammar, which is
+                    // stricter than the version 1 profile and its reader.
+                    let document: Value = serde_json::from_slice(&bytes)
+                        .map_err(|error| not_v1(error.to_string()))?;
+                    let requirement = document["compatibility"]["morphirCli"]
+                        .as_str()
+                        .unwrap_or_default();
+                    cli_requirement(requirement).map_err(not_v1)?;
+                    // The descriptor repeats the immutable identity of the
+                    // authenticated release state.
+                    if record.tool_id().as_str() != tool_id.as_str()
+                        || record.version() != host.version()
+                    {
+                        return Err(Diagnostic::new(
+                            Code::ReleaseDescriptorMismatch,
+                            &source,
+                            format!(
+                                "{path} describes {} {}, not {tool_id} {}",
+                                record.tool_id(),
+                                record.version(),
+                                host.version()
+                            ),
+                        ));
+                    }
                     Some(record)
                 }
                 HostSource::DotnetTool { .. } => None,
@@ -713,6 +746,23 @@ impl AuthenticatedTargets {
             }
         }
         Ok(())
+    }
+
+    /// A release descriptor of either kind is read only when its
+    /// authenticated length is at most [`MAX_DESCRIPTOR_BYTES`], before any
+    /// of its bytes are downloaded.
+    fn within_descriptor_bound(&self, target: &str, member: &str) -> Result<()> {
+        match self.targets.get(target) {
+            Some(entry) if entry.length > MAX_DESCRIPTOR_BYTES => Err(Diagnostic::new(
+                Code::ReleaseDescriptorMismatch,
+                member,
+                format!(
+                    "{target} is {} bytes; a release descriptor is at most {MAX_DESCRIPTOR_BYTES}",
+                    entry.length
+                ),
+            )),
+            _ => Ok(()),
+        }
     }
 
     /// Check that a bound target is authenticated with the bound digest.
@@ -762,10 +812,13 @@ impl AuthenticatedTargets {
             }
             let descriptor = provider.delivery().descriptor();
             self.bound(&path, "descriptorTarget", "descriptorSha256", descriptor)?;
+            let descriptor_path = join(&path, "descriptorTarget");
+            self.within_descriptor_bound(descriptor.target.as_str(), &descriptor_path)?;
             let bytes = self
-                .read_bound(descriptor.target.as_str(), &join(&path, "descriptorTarget"))
+                .read_bound(descriptor.target.as_str(), &descriptor_path)
                 .await?;
             let release = read_descriptor(&bytes, &path)?;
+            check_descriptor_reading(&bytes, &descriptor_path)?;
             check_release_identity(&release, provider, &path)?;
             match provider.delivery() {
                 RecipeDelivery::Process { platforms, .. } => {
@@ -815,6 +868,112 @@ impl AuthenticatedTargets {
         }
         Ok(())
     }
+}
+
+/// The largest release descriptor a binding check reads: 1 MiB, the
+/// tool release metadata v1 bound, for version 1 and version 2 descriptors.
+pub const MAX_DESCRIPTOR_BYTES: u64 = 1_048_576;
+
+/// The extension release descriptor and claim set versions a binding check
+/// reads, from the table of referenced contract versions.
+const DESCRIPTOR_VERSION: &str = "2.0.0-draft.2";
+const CLAIMS_VERSION: &str = "0.1.0-draft.2";
+
+/// The `critical` paths a binding check understands in a version-2
+/// extension release descriptor, at its root, in each artifact entry, and in
+/// each artifact's claim set: exactly the members the binding rows read.
+pub const UNDERSTOOD_DESCRIPTOR_PATHS: &[&str] = &[
+    "schemaVersion",
+    "extensionId",
+    "version",
+    "artifacts",
+    "artifacts.runtime",
+    "artifacts.platform",
+    "artifacts.filename",
+    "artifacts.sha256",
+    "artifacts.claims",
+];
+/// The `critical` paths a binding check understands in an artifact entry.
+pub const UNDERSTOOD_ARTIFACT_PATHS: &[&str] =
+    &["runtime", "platform", "filename", "sha256", "claims"];
+/// The `critical` paths a binding check understands in a claim set. Not
+/// `requires.host`: no binding row reads it (open question Q4).
+pub const UNDERSTOOD_CLAIM_PATHS: &[&str] = &[
+    "claimsVersion",
+    "protocolVersions",
+    "extension",
+    "extension.id",
+    "extension.version",
+    "extension.types",
+    "capabilities.frontend.compile",
+    "capabilities.frontend.languages",
+    "capabilities.frontend.languages.id",
+    "capabilities.backend.generate",
+    "capabilities.backend.targets",
+    "capabilities.modelTransport.tuples",
+];
+
+/// The rules of reading a version-2 descriptor that the binding check adds
+/// to the existing reader, in order: the descriptor's `critical` paths, then
+/// each artifact's in index order (the entry's, then its claim set's), then
+/// one artifact per `filename`.
+fn check_descriptor_reading(bytes: &[u8], member: &str) -> Result<()> {
+    let refuse =
+        |message: String| Diagnostic::new(Code::ReleaseDescriptorMismatch, member, message);
+    let document: Value =
+        serde_json::from_slice(bytes).map_err(|error| refuse(error.to_string()))?;
+    // Only the listed versions are read; the existing reader also converts
+    // earlier drafts, which the toolchain contracts never read.
+    if document["schemaVersion"] != DESCRIPTOR_VERSION {
+        return Err(refuse(format!(
+            "the descriptor is not at schemaVersion {DESCRIPTOR_VERSION}"
+        )));
+    }
+    let artifacts = document["artifacts"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    if let Some(position) = artifacts
+        .iter()
+        .position(|artifact| artifact["claims"]["claimsVersion"] != CLAIMS_VERSION)
+    {
+        return Err(refuse(format!(
+            "artifact {position}'s claims are not at claimsVersion {CLAIMS_VERSION}"
+        )));
+    }
+    let understood = |value: &Value, paths: &[&str], at: &str| -> Result<()> {
+        let listed = value["critical"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        match listed
+            .iter()
+            .find(|path| !path.as_str().is_some_and(|path| paths.contains(&path)))
+        {
+            Some(path) => Err(refuse(format!(
+                "{at} names critical member {path}, which a binding check does not read"
+            ))),
+            None => Ok(()),
+        }
+    };
+    understood(&document, UNDERSTOOD_DESCRIPTOR_PATHS, "the descriptor")?;
+    for (position, artifact) in artifacts.iter().enumerate() {
+        let at = format!("artifact {position}");
+        understood(artifact, UNDERSTOOD_ARTIFACT_PATHS, &at)?;
+        understood(
+            &artifact["claims"],
+            UNDERSTOOD_CLAIM_PATHS,
+            &format!("{at}'s claims"),
+        )?;
+    }
+    let mut filenames = std::collections::BTreeSet::new();
+    for artifact in artifacts {
+        let filename = artifact["filename"].as_str().unwrap_or_default();
+        if !filenames.insert(filename) {
+            return Err(refuse(format!("the descriptor lists {filename} twice")));
+        }
+    }
+    Ok(())
 }
 
 fn read_descriptor(bytes: &[u8], path: &str) -> Result<ReleaseBundleDescriptor> {

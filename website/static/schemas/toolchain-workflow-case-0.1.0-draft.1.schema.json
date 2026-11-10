@@ -236,7 +236,7 @@
           },
           "then": {
             "required": [
-              "branch",
+              "pullRequest",
               "released",
               "observedOn",
               "producers",
@@ -244,11 +244,11 @@
             ]
           },
           "else": {
-            "required": [ "path", "blob" ]
+            "required": [ "commit", "path", "blob" ]
           }
         }
       ],
-      "required": [ "kind", "repository", "commit" ],
+      "required": [ "kind", "repository" ],
       "properties": {
         "kind": {
           "enum": [
@@ -271,9 +271,9 @@
         "blob": {
           "$ref": "#/$defs/gitObject"
         },
-        "branch": {
-          "type": "string",
-          "pattern": "\\S"
+        "pullRequest": {
+          "type": "integer",
+          "minimum": 1
         },
         "released": {
           "type": "boolean"

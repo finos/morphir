@@ -131,8 +131,7 @@
             "provenance": {
               "kind": "generated",
               "repository": "finos/morphir-dotnet",
-              "branch": "feat/fixed-generated-fsharp",
-              "commit": "4440b51b0e04e99e53dfc7961f088e4b2c8f1ef4",
+              "pullRequest": 578,
               "released": false,
               "observedOn": [
                 "win-arm64"

@@ -257,6 +257,50 @@ async fn no_version_1_client_selects_a_dotnet_offering() {
     // although every Windows archive's entry point is morphir.exe.
     assert_eq!(selections.len(), ARCHIVE_OFFERINGS.len() * 6);
     assert_eq!(selected.len(), selections.len());
+
+    // The same client selects a release whose CLI requirement admits the
+    // CLI, so a client that never selects fails here.
+    let controls = section["controls"].as_array().unwrap();
+    let mut chosen = 0;
+    for case in controls {
+        let platform = morphir_distribution::Platform::new(
+            case["platform"]["os"].as_str().unwrap(),
+            case["platform"]["arch"].as_str().unwrap(),
+        )
+        .unwrap();
+        let version = Version::parse(case["cliVersion"].as_str().unwrap()).unwrap();
+        let resolved = client
+            .resolve(
+                &ToolId::parse(case["toolId"].as_str().unwrap()).unwrap(),
+                &Selection::Channel(Channel::parse(case["channel"].as_str().unwrap()).unwrap()),
+                &platform,
+                &version,
+            )
+            .await;
+        let wanted = &case["expected"];
+        match (&resolved, wanted["selected"].as_bool().unwrap()) {
+            (Ok(release), true) => {
+                chosen += 1;
+                assert_eq!(release.release().version().to_string(), wanted["version"]);
+                assert_eq!(
+                    release.artifact().target_path().as_str(),
+                    wanted["targetPath"]
+                );
+            }
+            (Err(_), false) => {}
+            _ => panic!("{version}: {resolved:?}"),
+        }
+        // The requirement means the same under the binding check's grammar.
+        let requirement =
+            morphir_toolchain_contract::cli_requirement(repository::V1_CONTROL_MORPHIR_CLI)
+                .unwrap();
+        assert_eq!(
+            morphir_toolchain_contract::prerequisite_met(&requirement, &version),
+            wanted["selected"] == true,
+            "{version}"
+        );
+    }
+    assert!(chosen > 0 && chosen < controls.len());
 }
 
 /// Recipe channel selection reads only the authenticated recipe state: the
@@ -367,17 +411,23 @@ async fn offering_releases_are_unchanged_v1_descriptors() {
         );
         assert_eq!(targets.custom(path).unwrap()["kind"], "tool-release");
     }
-    // Every published release is listed except the deliberate negative.
+    // Every published release is listed except the deliberate negatives.
+    let negatives = repository::negative_release_tools();
     let published = fixture["targetFiles"]
         .as_object()
         .unwrap()
         .keys()
         .filter(|path| path.starts_with("releases/"))
-        .filter(|path| !path.contains(repository::NOT_A_RELEASE_TOOL))
+        .filter(|path| {
+            !negatives
+                .iter()
+                .any(|tool| path.starts_with(&format!("releases/{tool}/")))
+        })
         .cloned()
         .collect::<BTreeSet<_>>();
     assert_eq!(listed, published);
-    assert_eq!(listed.len(), ARCHIVE_OFFERINGS.len() + 1);
+    // The offerings, the metadata mismatch and the version 1 control.
+    assert_eq!(listed.len(), ARCHIVE_OFFERINGS.len() + 2);
 }
 
 fn summarize(closure: &morphir_toolchain_contract::PlatformClosure) -> Vec<Value> {

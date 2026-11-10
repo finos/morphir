@@ -93,9 +93,9 @@ morphir-dotnet produced it five ways from that IR, and all five were byte-identi
 - the built-in backend under a JIT host, under the Native AOT host, and as the .NET tool;
 - the external MEP guest driven by a JIT host and by the Native AOT host.
 
-Its `provenance` (`kind: "generated"`) records that branch and commit, `released: false`, `observedOn: ["win-arm64"]`, each producer, and the file's git blob. **The set is fixed; its producers are not.**
+Its `provenance` (`kind: "generated"`) records the producing pull request, finos/morphir-dotnet#578 (`pullRequest: 578`), `released: false`, `observedOn: ["win-arm64"]`, each producer, and the file's git blob. **The set is fixed; its producers are not.**
 
-- The producing work is on an unmerged branch of finos/morphir-dotnet, `feat/fixed-generated-fsharp`, stacked on finos/morphir-dotnet#574.
+- The producing work is the unmerged finos/morphir-dotnet#578, stacked on finos/morphir-dotnet#574. That repository squash-merges, so the commits on the pull request's branch become unreachable once the branch is deleted, and the provenance names the pull request rather than a branch commit. When #578 merges, its merge commit on the default branch is recorded in `commit`. The file's bytes and digest do not change then, and the blob stays the same.
 - No released build has produced the file.
 - It has been observed on Windows ARM64 only; Linux and macOS have not been observed.
 
@@ -105,7 +105,7 @@ A frozen step lists one or more sets. Each set has:
 
 - `files`: the generated path, the committed file, its length in bytes and its SHA-256;
 - a `comparison`: `exact-bytes` or `json-member-order-insensitive`;
-- a `provenance`. A `generated` provenance records the producing repository, `branch`, `commit`, whether the producers are `released`, the platforms the result was `observedOn`, the `producers` by delivery and host, and the file's `blob`. The other kinds record the source repository, commit, `path` and `blob`;
+- a `provenance`. A `generated` provenance records the producing repository and its `pullRequest` number, the pull request's merge `commit` once it exists (absent before), whether the producers are `released`, the platforms the result was `observedOn`, the `producers` by delivery and host, and the file's `blob`. The other kinds record the source repository, commit, `path` and `blob`;
 - an optional `appliesTo`, keyed by delivery: `{ "delivery": ["built-in", "process"] }` names the deliveries of the selected provider it covers.
 
 A set without `appliesTo` covers every delivery and must be the step's only set. Otherwise each delivery appears in at most one set, and only deliveries the step lists under `providers`. A step whose files have not arrived has `status: "pending"`, a `reason`, and an empty `sets` array.

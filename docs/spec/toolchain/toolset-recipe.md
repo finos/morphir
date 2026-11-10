@@ -132,10 +132,12 @@ Then each host offering, in order. A failed read of a target that a binding name
 
 | Check | Code | Path | Cases |
 | --- | --- | --- | --- |
-| A `tool-release` offering's descriptor `releases/<toolId>/<version>.json` is an authenticated `tool-release` target for that tool and version | `target_not_authenticated` | `hosts[i].source` | `host-release-authenticated` |
+| A `tool-release` offering's descriptor `releases/<toolId>/<version>.json` is an authenticated `tool-release` target for that tool and version, whose state has a known `status` (`active`, `yanked` or `revoked`) | `target_not_authenticated` | `hosts[i].source` | `host-release-authenticated` |
 | That release's current status is not `revoked` | `release_revoked` | `hosts[i].version` | `host-release-revoked` |
+| The descriptor's authenticated length is at most 1 MiB (1,048,576 bytes), the profile's descriptor bound, checked before any byte is read | `release_descriptor_mismatch` | `hosts[i].source` | No fixture: a descriptor over 1 MiB would add more than 1 MiB to the committed signed repository |
 | The descriptor bytes have the authenticated length and digest | `target_length_mismatch`, `target_digest_mismatch` | `hosts[i].source` | `host-release-read` |
-| The descriptor reads as a version 1 tool release | `release_descriptor_mismatch` | `hosts[i].source` | `host-release-v1` |
+| The descriptor reads as a version 1 tool release, and its `compatibility.morphirCli` is in the binding check's [CLI requirement grammar](#cli-requirement-grammar) | `release_descriptor_mismatch` | `hosts[i].source` | `host-release-v1` |
+| The descriptor's own `tool.id` and `version` are the offering's tool id and version. The profile calls a descriptor that differs from its authenticated state in those immutable values a `release_descriptor_mismatch` | `release_descriptor_mismatch` | `hosts[i].source` | `host-release-identity` |
 | Each platform's `target` is an authenticated target | `target_not_authenticated` | `hosts[i].platforms.<id>.target` | `host-target-authenticated` |
 | Its `sha256` equals the authenticated digest | `target_digest_mismatch` | `hosts[i].platforms.<id>.sha256` | `host-target-digest` |
 | The release lists the target | `release_descriptor_mismatch` | `hosts[i].platforms.<id>.target` | `host-target-listed` |
@@ -150,8 +152,11 @@ Then each provider, in order:
 | --- | --- | --- | --- |
 | `repositoryId` is the identity of the authenticated repository the checks run against | `repository_mismatch` | `providers[i].repositoryId` | `provider-repository` |
 | `descriptorTarget` is authenticated with `descriptorSha256` | `target_not_authenticated`, `target_digest_mismatch` | `providers[i].descriptorTarget`, `providers[i].descriptorSha256` | `provider-descriptor-bound` |
+| The descriptor's authenticated length is at most 1 MiB (1,048,576 bytes), checked before any byte is read | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | No fixture: a descriptor over 1 MiB would add more than 1 MiB to the committed signed repository |
 | The descriptor bytes have the authenticated length and digest | `target_length_mismatch`, `target_digest_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-read` |
-| The descriptor reads, with the existing reader, as an extension release descriptor | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-parses` |
+| The descriptor reads as an extension release descriptor at `schemaVersion` `2.0.0-draft.2`, and each artifact's claim set at `claimsVersion` `0.1.0-draft.2`. An earlier or later draft is refused, never converted | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-parses` |
+| Every path in the descriptor's `critical`, then in each artifact's, then in that artifact's claim set's, is one a binding check [understands](#what-a-binding-check-reads) | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-critical` |
+| The descriptor lists each `filename` once: a bundle directory holds one file per name | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-filenames` |
 | The descriptor's own `extensionId` is the provider's `extensionId` | `release_descriptor_mismatch` | `providers[i].extensionId` | `provider-descriptor-identity` |
 | The descriptor's `version` is the provider's `version` | `release_descriptor_mismatch` | `providers[i].version` | `provider-descriptor-version` |
 | Every artifact's claims name the descriptor's `extensionId` and `version`, as publication already requires | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-claims-identity` |
@@ -165,9 +170,48 @@ Then each provider, in order:
 | The claims support the language (`capabilities.frontend.compile` is `true` and `languages` has its `id`) or the target (`capabilities.backend.generate` is `true` and `targets` has it) | `release_descriptor_mismatch` | `providers[i].language`, `providers[i].target` | `provider-claims-operand` |
 | `capabilities.modelTransport.tuples` contains the provider's `modelTuple` exactly | `release_descriptor_mismatch` | `providers[i].modelTuple` | `provider-claims-model` |
 
-A process provider's platforms are checked in platform table order, and for each platform the artifact rows apply in the order above. A `wasm` provider has one artifact, at `providers[i].artifactTarget` and `providers[i].artifactSha256`. A `dotnet-tool` provider's package is checked by the bound-member row, and its capability rows are checked against every artifact's claims in its descriptor.
+A process provider's platforms are checked in platform table order, and for each platform the artifact rows and then the claim rows apply in the order above, all of them before the next platform: each platform's artifact carries its own claim set. So a `win-x64` artifact whose claims lack the language is refused at `providers[i].language` before an `osx-x64` artifact with a wrong digest is checked (`negative-claims-per-platform`). A `wasm` provider has one artifact, at `providers[i].artifactTarget` and `providers[i].artifactSha256`. A `dotnet-tool` provider's package is checked by the bound-member row, and its capability rows are checked against every artifact's claims in its descriptor.
 
 Authentication alone is never enough: for each refusal in these three tables the signed fixtures publish a validly signed recipe, or declare a trust case, that is refused for exactly that reason. The coverage test in this repository fails when a row names no case and is not marked as having none.
+
+### What a binding check reads
+
+The binding rows read three documents that other contracts define, each only at the version in the [table of referenced contracts](./index.md#version-authorities). The version 1 descriptor has a published schema and profile, both pinned with these contracts. The version-2 descriptor and the claim set are defined by design drafts, which these contracts do not pin. A binding check relies on exactly these members and on nothing else in those documents:
+
+| Document | Members a binding check reads |
+| --- | --- |
+| Tool release descriptor, `schemaVersion` `1` | `tool.id`, `version`, `compatibility.morphirCli` (its grammar only; a manager never evaluates it), and each artifact's `targetPath` and `platform`. The rest is read only as far as the version 1 schema requires |
+| Extension release descriptor, `2.0.0-draft.2` | `schemaVersion`, `extensionId`, `version`, `critical`, and in each artifact `runtime`, `platform`, `filename`, `sha256`, `claims` and `critical` |
+| Capability claim set, `0.1.0-draft.2` | `claimsVersion`, `protocolVersions`, `extension.id`, `extension.version`, `extension.types`, `critical`, and in `capabilities`: `frontend.compile`, `frontend.languages[].id`, `backend.generate`, `backend.targets` and `modelTransport.tuples` |
+
+**Critical paths.** The extension documents follow the same rule as these contracts: a reader refuses a `critical` path it does not understand. A binding check understands a path only when it names a member that the check reads, written as the `critical` list that holds it writes it:
+
+- in the descriptor's `critical`: `schemaVersion`, `extensionId`, `version`, `artifacts`, `artifacts.runtime`, `artifacts.platform`, `artifacts.filename`, `artifacts.sha256`, `artifacts.claims`;
+- in an artifact's `critical`: `runtime`, `platform`, `filename`, `sha256`, `claims`;
+- in a claim set's `critical`: `claimsVersion`, `protocolVersions`, `extension`, `extension.id`, `extension.version`, `extension.types`, `capabilities.frontend.compile`, `capabilities.frontend.languages`, `capabilities.frontend.languages.id`, `capabilities.backend.generate`, `capabilities.backend.targets`, `capabilities.modelTransport.tuples`.
+
+Any other path is refused by the `provider-descriptor-critical` row, even one a host understands, such as `capabilities.frontend.incremental` (`negative-claims-critical-unread`). A binding check does not use a member it does not read, so it cannot honour a critical one.
+
+**`requires.host`** is a claim set member that the extension contract requires to be listed in `critical`. No binding row evaluates it, so the critical rule refuses it. Whether a binding check should instead evaluate it against the recipe's host offerings is [open question Q4](./index.md#open-questions).
+
+**What the claim set's own validity leaves alone.** A binding check adds no rule to the claim set's lists. An empty `protocolVersions` lists no MEP version, so it fails the `provider-claims-protocol` row at `providers[i].protocolVersion` (`negative-claims-no-protocol`), not the reading. A repeated `protocolVersions` entry or capability kind changes no binding outcome, and a binding check does not refuse it. Whether those lists may repeat is the claim set contract's rule.
+
+**`claimCheck`** is not read. The receipt records the installed record's `claimCheck`, which the install-time probe decides ([claim checks and publisher authentication](#claim-checks-and-publisher-authentication)). A descriptor without one is not refused.
+
+**Descriptor consistency on an exact request.** Tool release metadata v1 says an exact request still enforces "immutable descriptor consistency". For a recipe's host offering, that is the host rows above: a manager never runs version 1 resolution for an offering, and the `host-release-identity` row and the artifact rows compare the descriptor with the authenticated state. A resolver run under these contracts, as for the `v1Client` cases, reads only `custom.morphir`, and these rows compare the descriptor when it is read. This states where these contracts check consistency; it does not change the version 1 profile.
+
+The member table and schema of the version-2 descriptor and of the claim set as wholes belong to the extension contracts, not to these pages.
+
+### CLI requirement grammar
+
+A binding check, and a resolver run under these contracts, accepts a `compatibility.morphirCli` only in this grammar. This rule belongs to these contracts. It is **stricter than tool release metadata v1**, which gives the member one example and no grammar, and whose schema requires only a non-blank string. Whether the profile itself should adopt the grammar is [open question Q5](./index.md#open-questions); until it is answered, a version 1 client outside these contracts may accept more.
+
+- The requirement is one or more single comparators, separated by a comma and exactly one space, such as `>=0.4.0-alpha.5, <0.5.0`.
+- A comparator is the same as one in a prerequisite's `versions` ([versions](./index.md#versions)): one of `=`, `>`, `>=`, `<` or `<=`, then a complete version in canonical SemVer spelling, with no space between them, within the bound on a version.
+- There is no other form. `^0.4.0`, `~0.4.0`, `*`, a partial version such as `>=0.4`, a bare version, `||`, a space-separated list and a comma without its space are refused. The Rust `semver` crate, `@std/semver` and npm `semver` read several of those forms differently.
+- A CLI version meets the requirement when it satisfies every comparator by SemVer precedence and, if it is a prerelease, at least one comparator names a prerelease of the same major, minor and patch version: the npm `semver` and Rust `semver` crate rule, and the rule for [prerequisite versions](./index.md#tagged-cases). So `0.4.0-beta.12` meets `>=0.4.0-0, <0.5.0`, `0.5.0-alpha.1` does not, although it is below `0.5.0`, and no version meets `<0.0.0-0`.
+
+A host descriptor whose requirement is outside the grammar is refused by the `host-release-v1` row (`negative-host-release-cli-range`, with `^0.4.0`). A manager never evaluates an offering's requirement; it checks only the grammar. A resolver under these contracts evaluates the `custom.morphir` requirement with the same grammar and rule, and refuses a record outside the grammar with `release_descriptor_mismatch`. The `cli-requirement` binding cases pin the grammar and the rule. Every requirement in the signed repository is in the grammar except that deliberate negative, so no `v1Client` case depends on which reading a resolver applies.
 
 ### What revocation reaches
 
@@ -213,7 +257,7 @@ A WASM guest for another ABI is therefore chosen only when the request names tha
 
 - **Dotted provider identities are decided; the descriptor change is pending.** Release descriptors will allow dotted extension ids, with the descriptor id equal to the claims id, through the separately reviewed change finos/morphir#1149. The external F# guests are `org.finos.morphir.fsharp-frontend` and `org.finos.morphir.fsharp-backend`. Until #1149 lands, a version-2 descriptor accepts only a single token, so the TEST-ONLY signed fixtures bind `morphir-fsharp-frontend` and `morphir-fsharp-backend`. They move to the dotted ids in #1149's toolchain task, together with the provider identity grammar (see [identifiers](./index.md#identifiers)). Built-in identities such as `morphir.fsharp` and `morphir-dotnet.fsharp` are unaffected, because a built-in has no descriptor.
 - **A provider must publish a version-2 descriptor.** Public toolset recipes bind extension artifacts and descriptors (approved toolchain management, "Explicit extension trust policy"), and a descriptor's claims are the only authenticated statement of what a guest does. A provider published only as a NuGet package, with no version-2 descriptor, therefore cannot be bound by a recipe or recorded in a lock in `0.1.0-draft.1`.
-- **Offerings publish a `compatibility.morphirCli` that no version matches.** Version 1 requires every release descriptor to state the Morphir CLI versions that may acquire it, and its resolver filters by the acquiring CLI's version. The Morphir CLI must never select a .NET host offering, because there is no second installer. An offering descriptor therefore publishes `<0.0.0-0`, which no version satisfies: `>=0.0.0` would start matching at the first final CLI release. A manager never evaluates the member: it resolves the recipe, then checks each host binding against the authenticated release and its targets as above. The signed fixtures publish `<0.0.0-0`, and their `v1Client` cases show the version 1 client selecting no offering.
+- **Offerings publish a `compatibility.morphirCli` that no version matches.** Version 1 requires every release descriptor to state the Morphir CLI versions that may acquire it, and its resolver filters by the acquiring CLI's version. The Morphir CLI must never select a .NET host offering, because there is no second installer. An offering descriptor therefore publishes `<0.0.0-0`, which no version satisfies: `>=0.0.0` would start matching at the first final CLI release. A manager never evaluates the member, and checks only that it is in the [CLI requirement grammar](#cli-requirement-grammar): it resolves the recipe, then checks each host binding against the authenticated release and its targets as above. The signed fixtures publish `<0.0.0-0`, and their `v1Client` cases show the version 1 client selecting no offering, while selecting a control release whose requirement admits the CLI.
 - **One repository per binding check**, as stated [above](#one-repository-per-binding-check).
 - **A multi-file extension is a package form that a separate change defines.** The self-contained F# frontend is a .NET program of 239 files, because the F# compiler inside it needs its reference assemblies as files on disk, while the shared extension store, records and activation assume one file per extension. The maintainer decided (9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6760228228)) that the shared extension contract is extended so an extension can be a multi-file package, and that no self-unpacking single-file form of the frontend is built. That package form is a separately reviewed OpenSpec change in this repository, written for the .NET and MoonBit hosts first. Only the Native AOT offering needs an installed F# frontend, so the recipe's binding of the Native AOT offering's process frontend, one archive per platform in `artifactTarget`, is **provisional** on that change.
 
@@ -226,8 +270,9 @@ The maintainer decisions these pages follow are listed with their dates under [D
 The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes:
 
 - the three archive offerings as version 1 tool releases on the six first-delivery platforms, and the `Morphir.Tool` package;
+- host releases that are each wrong in one way for the host rows: an unknown status, a descriptor for another tool or another version, and a caret `compatibility.morphirCli`; and `morphir-v1-control`, a release that is not an offering and that the version 1 client selects;
 - the F# frontend `morphir-fsharp-frontend` 0.6.0 and the standalone backend `morphir-fsharp-backend` 0.1.0 as version-2 extension releases, with the frontend's .NET tool package;
-- a portable WASM frontend for `morphir-bytes-v1`, and releases whose claims or descriptors are each wrong in one way, among them a frontend whose claims list MEP `0.2.0` while the recipe binds `0.2.0-draft.1`;
+- a portable WASM frontend for `morphir-bytes-v1`, and releases whose claims or descriptors are each wrong in one way, among them a frontend whose claims list MEP `0.2.0` while the recipe binds `0.2.0-draft.1`, one with no MEP version, descriptors at the first and at a later draft, a claim set with a critical member no binding row reads, a descriptor that lists one filename twice, and a two-platform release whose first platform's claims lack the language;
 - the `fsharp-builtin` and `fsharp` recipes, six `channel-example` recipes on different channels and statuses, and a validly signed recipe for each refusal in the tables above.
 
 `signed/cases.json` lists the recipes in `recipeChecks`, together with the trust cases, channel selection, version 1 client selections, frozen locks and lock-against-recipe cases described in the [overview](./index.md#fixtures-and-conformance). Four frozen requests and their locks record complete closures on all six first-delivery platforms:

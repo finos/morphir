@@ -505,6 +505,96 @@
         "code": "repository_mismatch",
         "path": "providers[0].repositoryId"
       }
+    },
+    {
+      "name": "a host release state with an unknown status is not an authenticated tool release",
+      "rule": "host-release-authenticated",
+      "recipe": "toolchains/recipes/negative-host-release-status/1.0.0.json",
+      "expected": {
+        "code": "target_not_authenticated",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "a host release descriptor whose CLI requirement is outside the binding check's grammar is refused",
+      "rule": "host-release-v1",
+      "recipe": "toolchains/recipes/negative-host-release-cli-range/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "a host release descriptor for another tool is refused",
+      "rule": "host-release-identity",
+      "recipe": "toolchains/recipes/negative-host-release-tool-id/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "a host release descriptor for another version is refused",
+      "rule": "host-release-identity",
+      "recipe": "toolchains/recipes/negative-host-release-version/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "a descriptor at the first draft is refused, although the existing reader converts it",
+      "rule": "provider-descriptor-parses",
+      "recipe": "toolchains/recipes/negative-descriptor-earlier-draft/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].descriptorTarget"
+      }
+    },
+    {
+      "name": "a descriptor at a later draft is refused, not converted",
+      "rule": "provider-descriptor-parses",
+      "recipe": "toolchains/recipes/negative-descriptor-later-draft/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].descriptorTarget"
+      }
+    },
+    {
+      "name": "a critical claim path that no binding row reads is refused",
+      "rule": "provider-descriptor-critical",
+      "recipe": "toolchains/recipes/negative-claims-critical-unread/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].descriptorTarget"
+      }
+    },
+    {
+      "name": "a descriptor that lists one filename twice is refused",
+      "rule": "provider-descriptor-filenames",
+      "recipe": "toolchains/recipes/negative-descriptor-duplicate-filename/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].descriptorTarget"
+      }
+    },
+    {
+      "name": "claims with no MEP version fail the protocol row, not the reading",
+      "rule": "provider-claims-protocol",
+      "recipe": "toolchains/recipes/negative-claims-no-protocol/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].protocolVersion"
+      }
+    },
+    {
+      "name": "the claim rows run for each platform before the next platform's artifact rows",
+      "rule": "provider-claims-operand",
+      "recipe": "toolchains/recipes/negative-claims-per-platform/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].language"
+      }
     }
   ],
   "trust": [
@@ -1233,7 +1323,7 @@
     }
   ],
   "v1Client": {
-    "note": "Offering descriptors publish compatibility.morphirCli \"<0.0.0-0\", which no version satisfies, so the Morphir CLI's tool release metadata v1 client never selects a .NET host offering, at referenceClient.cliVersion or any other version. Each selection runs that client by tool id, channel and v1 platform and expects nothing selected; the fsharp-builtin recipe still binds recipeBinding.targetPath for that deployment and platform with its authenticated digest, and the 18 digests are distinct.",
+    "note": "Offering descriptors publish compatibility.morphirCli \"<0.0.0-0\", which no version satisfies, so the Morphir CLI's tool release metadata v1 client never selects a .NET host offering, at referenceClient.cliVersion or any other version. Each selection runs that client by tool id, channel and v1 platform and expects nothing selected; the fsharp-builtin recipe still binds recipeBinding.targetPath for that deployment and platform with its authenticated digest, and the 18 digests are distinct. The controls run the same client on morphir-v1-control 1.2.3, a release that is not an offering, whose compatibility.morphirCli is \">=0.4.0-0, <0.5.0\": it is selected at 0.4.0, 0.4.0-beta.12 and 0.4.9, and not at 0.3.9, 0.5.0 or 0.5.0-alpha.1, which is below 0.5.0 but a prerelease of another version. So a client that never selects fails them. The version 1 resolver's own corpus is docs/spec/tool-release-metadata/fixtures/v1/conformance.json.",
     "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
     "selections": [
       {
@@ -1524,16 +1614,97 @@
           "selected": false
         }
       }
+    ],
+    "controls": [
+      {
+        "toolId": "morphir-v1-control",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "cliVersion": "0.4.0",
+        "expected": {
+          "selected": true,
+          "version": "1.2.3",
+          "targetPath": "artifacts/morphir-v1-control/1.2.3/win-x64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-v1-control",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "cliVersion": "0.4.0-beta.12",
+        "expected": {
+          "selected": true,
+          "version": "1.2.3",
+          "targetPath": "artifacts/morphir-v1-control/1.2.3/win-x64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-v1-control",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "cliVersion": "0.4.9",
+        "expected": {
+          "selected": true,
+          "version": "1.2.3",
+          "targetPath": "artifacts/morphir-v1-control/1.2.3/win-x64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-v1-control",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "cliVersion": "0.3.9",
+        "expected": {
+          "selected": false
+        }
+      },
+      {
+        "toolId": "morphir-v1-control",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "cliVersion": "0.5.0-alpha.1",
+        "expected": {
+          "selected": false
+        }
+      },
+      {
+        "toolId": "morphir-v1-control",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "cliVersion": "0.5.0",
+        "expected": {
+          "selected": false
+        }
+      }
     ]
   },
   "v1Descriptors": {
-    "note": "Each listed release target, read through the TUF client, is an unchanged tool release metadata v1 descriptor: it validates against tool-release-v1.schema.json, has schemaVersion 1, and its target's custom.morphir kind is tool-release. The one release target not listed is the deliberate negative releases/morphir-dotnet-not-a-release/1.2.3.json.",
+    "note": "Each listed release target, read through the TUF client, is an unchanged tool release metadata v1 descriptor: it validates against tool-release-v1.schema.json, has schemaVersion 1, and its target's custom.morphir kind is tool-release. The release targets not listed are the deliberate negatives that the host binding rows refuse: releases/morphir-dotnet-not-a-release, -unknown-status, -other-tool-id, -other-version and -cli-range, each at 1.2.3.",
     "schema": "tool-release-v1.schema.json",
     "releases": [
       "releases/morphir-dotnet-framework-dependent/1.2.3.json",
       "releases/morphir-dotnet-metadata-mismatch/1.2.3.json",
       "releases/morphir-dotnet-native-aot/1.2.3.json",
-      "releases/morphir-dotnet-self-contained/1.2.3.json"
+      "releases/morphir-dotnet-self-contained/1.2.3.json",
+      "releases/morphir-v1-control/1.2.3.json"
     ]
   }
 }
