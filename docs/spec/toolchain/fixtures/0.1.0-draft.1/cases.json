@@ -1468,6 +1468,11 @@
         "code": "invalid_document",
         "path": "providers[0].identity.modelTuple"
       }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/host-repository-substituted.json",
+      "expected": "valid"
     }
   ],
   "bindings": [
@@ -1770,6 +1775,17 @@
       "expected": {
         "code": "receipt_lock_mismatch",
         "path": "providers"
+      }
+    },
+    {
+      "name": "a receipt whose host was authenticated by another repository is refused",
+      "rule": "receipt-lock-repository",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/host-repository-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "repository_mismatch",
+        "path": "host.installation.authentication.repositoryId"
       }
     }
   ]

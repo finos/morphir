@@ -59,6 +59,7 @@ pub struct RecipeTargetState {
 /// The authenticated targets of a loaded tool repository.
 pub struct AuthenticatedTargets {
     repository: tough::Repository,
+    repository_id: Sha256,
     targets: BTreeMap<String, AuthenticatedTarget>,
     targets_version: u64,
 }
@@ -161,11 +162,26 @@ impl AuthenticatedTargets {
             );
         }
         let targets_version = repository.targets().signed.version.get();
+        // The repository identity of tool release metadata v1: the SHA-256 of
+        // the canonical JSON of the out-of-band trusted root's `signed`
+        // object. Root rotation does not change it.
+        let root: Value = serde_json::from_slice(trusted_root).map_err(|error| {
+            invalid_metadata("", format!("the trusted root is not JSON: {error}"))
+        })?;
+        let repository_id = crate::result::canonical_sha256(&root["signed"])
+            .map_err(|message| invalid_metadata("", message))?;
         Ok(Self {
             repository,
+            repository_id,
             targets,
             targets_version,
         })
+    }
+
+    /// The repository identity: the SHA-256 of the canonical JSON of the
+    /// trusted root's `signed` object, as tool release metadata v1 defines it.
+    pub fn repository_id(&self) -> &Sha256 {
+        &self.repository_id
     }
 
     /// The authenticated targets metadata version.
@@ -473,6 +489,19 @@ impl AuthenticatedTargets {
     async fn check_providers(&self, recipe: &ToolsetRecipe) -> Result<()> {
         for (position, provider) in recipe.providers().iter().enumerate() {
             let path = index("providers", position);
+            // One repository per binding check: the provider's descriptor
+            // and artifacts are authenticated by this repository only.
+            let named = provider.delivery().repository_id();
+            if named != &self.repository_id {
+                return Err(Diagnostic::new(
+                    Code::RepositoryMismatch,
+                    join(&path, "repositoryId"),
+                    format!(
+                        "the provider names repository {named}, but the binding is checked against repository {}",
+                        self.repository_id
+                    ),
+                ));
+            }
             let descriptor = provider.delivery().descriptor();
             self.bound(&path, "descriptorTarget", "descriptorSha256", descriptor)?;
             let bytes = self

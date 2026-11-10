@@ -137,6 +137,9 @@ codes! {
     ReleaseDescriptorMismatch = "release_descriptor_mismatch" => TrustFailure,
     /// A platform is bound to another platform's artifact.
     ArtifactPlatformMismatch = "artifact_platform_mismatch" => TrustFailure,
+    /// A document names a repository identity other than the one the check
+    /// runs against: one repository per binding check.
+    RepositoryMismatch = "repository_mismatch" => TrustFailure,
     /// Tool release metadata v1: the authenticated state is revoked.
     ReleaseRevoked = "release_revoked" => TrustFailure,
     /// Tool release metadata v1: a metadata signature or threshold check failed.

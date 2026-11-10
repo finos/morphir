@@ -141,6 +141,30 @@ fn every_fixture_key_is_derived_from_its_test_only_label() {
     }
 }
 
+/// The loaded repository's identity is the SHA-256 of the canonical JSON of
+/// the trusted root's `signed` object, whatever bytes the root was given as;
+/// the fixture records the value.
+#[tokio::test]
+async fn the_repository_identity_is_the_digest_of_the_canonical_root() {
+    let fixture = fixture();
+    let (_keep, targets) = authenticated(&fixture, &fixture["metadata"]).await;
+    let canonical =
+        morphir_toolchain_contract::canonical_json(&fixture["trustedRoot"]["signed"]).unwrap();
+    assert_eq!(
+        morphir_toolchain_contract::Sha256::of_bytes(&canonical).to_string(),
+        fixture["repositoryId"]
+    );
+    assert_eq!(targets.repository_id().to_string(), fixture["repositoryId"]);
+    // The F# recipe's providers name this repository.
+    let recipe = targets
+        .check_recipe("toolchains/recipes/fsharp/1.0.0.json")
+        .await
+        .unwrap();
+    for provider in recipe.providers() {
+        assert_eq!(provider.delivery().repository_id(), targets.repository_id());
+    }
+}
+
 #[tokio::test]
 async fn the_v1_tool_client_selects_each_offering_by_tool_id_and_platform() {
     let fixture = fixture();
@@ -542,7 +566,7 @@ async fn locks_bind_closures_the_recipe_allows() {
         let recipe = read_recipe(&recipe_bytes).unwrap();
         let lock_bytes = std::fs::read(signed_dir().join(case["lock"].as_str().unwrap())).unwrap();
         let lock = read_lock(&lock_bytes).unwrap();
-        let actual = outcome(lock.check_recipe(&recipe_bytes, &recipe));
+        let actual = outcome(lock.check_recipe(&recipe_bytes, &recipe, targets.repository_id()));
         if actual != expected(case) {
             failures.push(format!("{name}: {actual:?}, expected {:?}", expected(case)));
         }

@@ -510,6 +510,15 @@
         "code": "release_descriptor_mismatch",
         "path": "providers[0].modelInput.irVersion"
       }
+    },
+    {
+      "name": "a provider that names another repository is refused",
+      "rule": "provider-repository",
+      "recipe": "toolchains/recipes/negative-provider-repository/1.0.0.json",
+      "expected": {
+        "code": "repository_mismatch",
+        "path": "providers[0].repositoryId"
+      }
     }
   ],
   "trust": [
@@ -915,6 +924,26 @@
       "expected": {
         "code": "lock_recipe_mismatch",
         "path": "platforms.win-x64.providers"
+      }
+    },
+    {
+      "name": "a lock whose recipe names another repository is refused",
+      "rule": "lock-recipe-repository",
+      "lock": "negative/lock-recipe-repository.lock.json",
+      "recipe": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "code": "repository_mismatch",
+        "path": "recipe.repositoryId"
+      }
+    },
+    {
+      "name": "a lock provider that names another repository is refused",
+      "rule": "lock-provider-repository",
+      "lock": "negative/lock-provider-repository.lock.json",
+      "recipe": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "code": "repository_mismatch",
+        "path": "platforms.win-x64.providers[0].repositoryId"
       }
     }
   ],

@@ -99,15 +99,19 @@ A lock records each platform's complete dependency closure. A closure with no pr
 
 ### Checking a lock against its recipe
 
-Given the recipe's exact bytes, a lock is refused with `lock_recipe_mismatch` at the first failure of these checks, in this order. The closures are visited in [platform table order](./index.md#order-of-checks), and for each closure the host artifact, then the operations, then each provider in index order:
+Given the recipe's exact bytes, a lock is refused with `lock_recipe_mismatch` at the first failure of these checks, in this order. The closures are visited in [platform table order](./index.md#order-of-checks), and for each closure the host artifact, then the operations, then each provider in index order (its repository, then its identity):
 
 | Check | Code | Path | Cases |
 | --- | --- | --- | --- |
 | The SHA-256 of the recipe bytes equals `recipe.sha256` | `lock_recipe_mismatch` | `recipe.sha256` | `lock-recipe-bytes` |
+| `recipe.repositoryId` is the identity of the authenticated repository the recipe bytes were read from | `repository_mismatch` | `recipe.repositoryId` | `lock-recipe-repository` |
 | The recipe offers a host with the lock's implementation, deployment and version | `lock_recipe_mismatch` | `host` | `lock-recipe-host` |
 | A closure's host artifact is the offering's artifact for that platform | `lock_recipe_mismatch` | `platforms.<id>.hostTarget` | `lock-recipe-host-artifact` |
 | A closure's operations are exactly the recipe's operations | `lock_recipe_mismatch` | `platforms.<id>.providers` | `lock-recipe-operations` |
+| Each provider's `repositoryId`, when its delivery has one, is that same repository identity | `repository_mismatch` | `platforms.<id>.providers[i].repositoryId` | `lock-provider-repository` |
 | Each provider is the offering's built-in for its operation or a recipe provider that fits the host on that platform, in its locked form | `lock_recipe_mismatch` | `platforms.<id>.providers[i]` | `lock-recipe-provider` |
+
+The two repository rows apply the [one repository per binding check](./toolset-recipe.md#one-repository-per-binding-check) rule: a lock resolved from a recipe names that recipe's repository, and so does every provider in it.
 
 ## Fixtures
 

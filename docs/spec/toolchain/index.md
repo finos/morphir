@@ -100,7 +100,7 @@ The provider delivery cases are:
 
 The public runtime name for WASM stays `wasm`. The ABI, such as `morphir-bytes-v1` or `extism-kernel-v1`, is a separate member, and a host that supports one ABI never accepts a guest for another.
 
-Prerequisites are `runtime`, `sdk` (with `phase` `install` or `run`) and `native` (optionally limited to `platforms`). Versions are lists of single SemVer comparators, `[">=10.0.0", "<11.0.0"]`, because Rust and TypeScript separate combined ranges differently. A native library's version is written as SemVer with missing parts as zero: glibc 2.28 is `2.28.0`, so the comparator is `>=2.28.0`.
+Prerequisites are `runtime`, `sdk` (with `phase` `install` or `run`) and `native` (optionally limited to `platforms`). Every prerequisite has `kind` and `name`. `versions` is required for `runtime` and `sdk` and optional for `native`; `phase` is required for `sdk`. Versions are lists of single SemVer comparators, `[">=10.0.0", "<11.0.0"]`, because Rust and TypeScript separate combined ranges differently. A native library's version is written as SemVer with missing parts as zero: glibc 2.28 is `2.28.0`, so the comparator is `>=2.28.0`.
 
 ### Identifiers
 
@@ -186,6 +186,7 @@ Every code has exactly one result diagnostic kind, so a [manager result](./manag
 | `target_digest_mismatch` | `trust-failure` | Tool release metadata v1: bytes or a bound digest disagree with the authenticated digest |
 | `release_descriptor_mismatch` | `trust-failure` | Tool release metadata v1: a binding disagrees with the authenticated release, descriptor or target state |
 | `artifact_platform_mismatch` | `trust-failure` | A platform is bound to another platform's artifact |
+| `repository_mismatch` | `trust-failure` | A document names a repository identity other than the one the check runs against ([one repository per binding check](./toolset-recipe.md#one-repository-per-binding-check)) |
 | `release_revoked` | `trust-failure` | Tool release metadata v1: the authenticated state is revoked |
 | `metadata_signature_invalid` | `trust-failure` | Tool release metadata v1: a signature or threshold check failed |
 | `metadata_expired` | `trust-failure` | Tool release metadata v1: metadata has expired |
@@ -198,6 +199,8 @@ Every code has exactly one result diagnostic kind, so a [manager result](./manag
 ## Fixtures and conformance
 
 The contract is the specification pages, the JSON Schemas, the fixture files and the case manifests. They are language-neutral: an implementation in any language reads the same files and must report the same outcome, code and path for every case. The schemas check document shape. Rules a schema does not express are stated on these pages and covered by cases marked `"schema": "accepts"`; each of those cases also has a `schemaGap` saying why the schema is looser, and a test requires one exactly where the schema accepts a refused document.
+
+The schemas and the readers require the same members. A test removes each member of every valid fixture in turn, at every depth: a member whose absence the reader refuses as missing must be one the schema requires, a member the schema requires must be one the reader refuses without, and the members both let a document omit must be exactly a committed list, each optional on its page.
 
 Cases that pin a row of a check table carry a `rule`, which that row's Cases column names. A row that cannot have a case says `No fixture:` and why. A test fails when a row names no case and is not marked, when a rule's cases report a code or path the row does not list, when a code the row lists has no case, or when a case's rule is in no table.
 

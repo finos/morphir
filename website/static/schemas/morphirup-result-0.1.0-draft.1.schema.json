@@ -403,6 +403,7 @@
                   "target_digest_mismatch",
                   "release_descriptor_mismatch",
                   "artifact_platform_mismatch",
+                  "repository_mismatch",
                   "release_revoked",
                   "metadata_signature_invalid",
                   "metadata_expired",

@@ -73,20 +73,24 @@ Given the lock bytes and the lock they read as, a receipt is checked in this ord
 | --- | --- | --- | --- |
 | The SHA-256 of the lock bytes equals `lockSha256` | `lock_changed` | `lockSha256` | `receipt-lock-bytes` |
 | `recipe` equals the lock's `recipe` (`repositoryId`, `target`, `sha256`) | `receipt_lock_mismatch` | `recipe` | `receipt-lock-recipe` |
+| Every `repository-target` authentication, of the host and then of each provider in index order, names the lock's `recipe.repositoryId` | `repository_mismatch` | `host.installation.authentication.repositoryId`, `providers[i].installation.authentication.repositoryId` | `receipt-lock-repository` |
 | The lock records a closure for the receipt's `platform` | `platform_not_locked` | `platforms` | `receipt-lock-platform` |
 | `host.identity` has the lock's host `implementation`, `version` and `deployment`, and the closure's `hostTarget` and `hostSha256` as `target` and `sha256` | `receipt_lock_mismatch` | `host.identity` | `receipt-lock-host` |
 | `providers` has as many entries as the closure's `providers` | `receipt_lock_mismatch` | `providers` | `receipt-lock-provider-count` |
 | Each provider's `identity`, in index order, equals the closure's provider at the same index | `receipt_lock_mismatch` | `providers[i].identity` | `receipt-lock-provider` |
 
-A [manager result](./manager-result.md#diagnostics) reports `lock_changed` and `receipt_lock_mismatch` with `document` `receipt`, and `platform_not_locked` with `document` `lock`.
+The repository row applies the [one repository per binding check](./toolset-recipe.md#one-repository-per-binding-check) rule: bytes the receipt says a repository authenticated came from the lock's repository. A `recipe-digest` authentication already names the receipt's own recipe, and `local-developer` and `external-owner` name no repository.
+
+A [manager result](./manager-result.md#diagnostics) reports `lock_changed` and `receipt_lock_mismatch` with `document` `receipt`, and `platform_not_locked` with `document` `lock`. `repository_mismatch` is a `trust-failure` diagnostic, whose `repositoryId` names the repository the check ran against.
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/receipt/` holds a workflow-qualified Windows generation bound to `lock/two-platforms-bound.json`, a generation whose frontend failed negotiation, a probed unsigned developer frontend, and an externally owned global .NET tool host bound to `lock/dotnet-tool-host.json`. `receipt/binding/` holds valid receipts that do not bind their lock: a substituted provider artifact, a substituted host release, a platform the lock does not record, another recipe, a missing provider, and another recipe together with another host release, which is refused at `recipe` because the recipe is compared first. `receipt/negative/` covers:
+`fixtures/0.1.0-draft.1/receipt/` holds a workflow-qualified Windows generation bound to `lock/two-platforms-bound.json`, a generation whose frontend failed negotiation, a probed unsigned developer frontend, and an externally owned global .NET tool host bound to `lock/dotnet-tool-host.json`. `receipt/binding/` holds valid receipts that do not bind their lock: a substituted provider artifact, a substituted host release, a platform the lock does not record, another recipe, a missing provider, a host authenticated by another repository, and another recipe together with another host release, which is refused at `recipe` because the recipe is compared first. `receipt/negative/` covers:
 
 - a later draft and an unknown critical member;
 - readiness above its checks, a qualified generation with a failed workflow, an unknown readiness state, a non-passed check without a reason, a workflow name on a component check, two workflow checks, and a built-in whose integrity differs from its host's;
 - a provider without a claim check and a probe source on an unchecked claim set;
+- a process provider without `installation`, and a provider identity without its `modelTuple`;
 - Native AOT with a bundled runtime, and a deployment whose execution disagrees;
 - an unknown owner, a built-in with an installation, a developer artifact outside manager-owned storage, a developer policy other than `developer`, an external owner for a manager-owned installation, and `recipe-digest` authentication naming another recipe;
 - relative, wrong-platform, traversing and drive-root launch paths;

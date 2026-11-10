@@ -291,6 +291,17 @@ impl LockedDelivery {
             Self::DotnetTool { .. } => DeliveryKind::DotnetTool,
         }
     }
+
+    /// The repository holding the provider's descriptor and artifacts; a
+    /// built-in has none.
+    pub fn repository_id(&self) -> Option<&Sha256> {
+        match self {
+            Self::BuiltIn { .. } => None,
+            Self::Process { repository_id, .. }
+            | Self::Wasm { repository_id, .. }
+            | Self::DotnetTool { repository_id, .. } => Some(repository_id),
+        }
+    }
 }
 
 /// An authenticated recipe target.

@@ -1130,6 +1130,9 @@ pub fn published() -> Targets {
                 "extensions/fsharp-frontend-elm-claims/0.6.0",
             );
         }),
+        provider("negative-provider-repository", &|providers| {
+            providers[0]["repositoryId"] = json!("6".repeat(64));
+        }),
         provider("negative-descriptor-unpublished", &|providers| {
             providers[0]["descriptorTarget"] =
                 json!(format!("{FRONTEND_DIR}/missing-release.json"));
@@ -1446,9 +1449,23 @@ pub fn lock_recipe_negatives(lock: &Value, targets: &Targets) -> Vec<(&'static s
             .unwrap()
             .retain(|provider| provider["operation"] != "generate");
     }
+    // Another repository named by the lock's recipe reference, and by one
+    // provider on every platform so the lock stays consistent.
+    let mut recipe_repository = lock.clone();
+    recipe_repository["recipe"]["repositoryId"] = json!("6".repeat(64));
+    let mut provider_repository = lock.clone();
+    for closure in provider_repository["platforms"]
+        .as_object_mut()
+        .unwrap()
+        .values_mut()
+    {
+        closure["providers"][0]["repositoryId"] = json!("6".repeat(64));
+    }
     vec![
         ("lock-host-not-offered.lock.json", host_not_offered),
         ("lock-host-artifact-substituted.lock.json", host_artifact),
         ("lock-operations-differ.lock.json", operations),
+        ("lock-recipe-repository.lock.json", recipe_repository),
+        ("lock-provider-repository.lock.json", provider_repository),
     ]
 }

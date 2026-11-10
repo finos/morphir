@@ -28,10 +28,10 @@ Understood critical paths: `schemaVersion`, `critical`, `command`, `outcome`, `p
 
 A plan names `implementation`, `deployment`, `platform`, the `recipe`, whether `metadataRefresh` is `required` or `not-required`, and its `components`. Each component has:
 
-- `component`: `{ "role": "host", "implementation", "deployment" }` or `{ "role": "provider", "operation", "language" | "target" }`;
-- `version`, and for a provider `extensionId` and `delivery`. A provider component without `delivery`, or a host component with one, is `inconsistent_document`;
+- `component`: `{ "role": "host", "implementation", "deployment" }` or `{ "role": "provider", "operation", "language" | "target" }`, where a `compile` provider requires `language` and a `generate` provider requires `target`. Diagnostics name components the same way;
+- `version`, and for a provider `extensionId` and `delivery`. A provider component without `delivery` or `extensionId`, or a host component with either, is `inconsistent_document` at that member, checked `delivery` first (`result/negative/provider-component-without-extension-id.json`, `host-component-with-extension-id.json`);
 - `source`: `repository-target` or `recipe-digest` with `repositoryId`, `target` and `sha256`, or `built-in`, or `external-owner`;
-- `downloadBytes`, `installedBytes`, `updateOwner` (an ownership case) and `prerequisites`;
+- `downloadBytes`, `installedBytes`, `updateOwner` (an ownership case) and `prerequisites`, all required; `prerequisites` may be empty;
 - `probe`: `none`, `in-host`, or `process-with-user-rights`. A `process` or `dotnet-tool` provider's readiness probe runs acquired code with the user's rights, so its `probe` is `process-with-user-rights`, and no other component's is. Anything else is `inconsistent_document`.
 
 ### The plan digest
@@ -56,7 +56,7 @@ Every diagnostic has `kind`, `code`, `severity` (`error` or `warning`), a human 
 | --- | --- | --- | --- |
 | `unsupported-artifact` | `unsupported_artifact`, `abi_unavailable`, `no_compatible_release` | `component`, `platform`; `abi` exactly for `abi_unavailable` | `alternatives` (`implementation`, `deployment`, `platform`) |
 | `missing-prerequisite` | `missing_prerequisite` | `component`, `prerequisite` | `alternatives` |
-| `trust-failure` | `target_not_authenticated`, `target_length_mismatch`, `target_digest_mismatch`, `release_descriptor_mismatch`, `artifact_platform_mismatch`, `release_revoked`, the `metadata_*` codes, `offline_metadata_unavailable`, `repository_unavailable` | `repositoryId` | `role` (`root`, `timestamp`, `snapshot`, `targets`), `target`, `mirror` |
+| `trust-failure` | `target_not_authenticated`, `target_length_mismatch`, `target_digest_mismatch`, `release_descriptor_mismatch`, `artifact_platform_mismatch`, `repository_mismatch`, `release_revoked`, the `metadata_*` codes, `offline_metadata_unavailable`, `repository_unavailable` | `repositoryId` | `role` (`root`, `timestamp`, `snapshot`, `targets`), `target`, `mirror` |
 | `offline-content-unavailable` | `offline_content_unavailable` | `component`, `target`, `sha256` | |
 | `ownership-conflict` | `ownership_conflict` | `component`, `ownership` | |
 | `readiness-failed` | `readiness_failed` | `component`, `check`, `readiness` | |
@@ -82,6 +82,7 @@ Only `platform_not_locked` has `platform`. A `lock-binding` diagnostic with `pla
 
 - a later draft, an unknown critical member, an unknown command and an unknown diagnostic kind;
 - a diagnostic without a code, and a `lock-binding` diagnostic with `platform` on another code;
+- a provider component without `extensionId`, a host component with one, a component without `prerequisites`, a provider component without `language`, a `dotnet-tool` ownership without `scope`, and a `runtime` prerequisite without `versions`;
 - `downloadBytes` written as `41943040.0` and as `1e3`;
 - mirrors carrying user information or a query;
 - a succeeded outcome with an error, a failed outcome without one, and a planned outcome without a plan;

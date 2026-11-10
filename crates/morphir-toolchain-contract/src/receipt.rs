@@ -854,6 +854,41 @@ impl InstallationReceipt {
         if &self.recipe != lock.recipe() {
             return Err(mismatch("recipe", "the recipe"));
         }
+        // One repository per binding: bytes the receipt says a repository
+        // authenticated came from the lock's repository. `recipe-digest`
+        // authentication already names the receipt's own recipe.
+        let repository = &lock.recipe().repository_id;
+        let installations = std::iter::once(("host".to_owned(), Some(&self.host.installation)))
+            .chain(
+                self.providers
+                    .iter()
+                    .enumerate()
+                    .map(|(position, provider)| {
+                        (
+                            index("providers", position),
+                            provider
+                                .installation
+                                .as_ref()
+                                .map(|(installation, _)| installation),
+                        )
+                    }),
+            );
+        for (path, installation) in installations {
+            if let Some(Installation {
+                authentication: Authentication::RepositoryTarget { repository_id, .. },
+                ..
+            }) = installation
+                && repository_id != repository
+            {
+                return Err(Diagnostic::new(
+                    Code::RepositoryMismatch,
+                    join(&path, "installation.authentication.repositoryId"),
+                    format!(
+                        "the receipt says repository {repository_id} authenticated these bytes, but the lock binds repository {repository}"
+                    ),
+                ));
+            }
+        }
         let closure = lock.closure(self.platform)?;
         let host = &self.host.identity;
         let locked = lock.host();

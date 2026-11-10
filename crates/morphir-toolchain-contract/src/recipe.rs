@@ -254,6 +254,15 @@ impl RecipeDelivery {
         }
     }
 
+    /// Return the repository holding the descriptor and artifacts.
+    pub fn repository_id(&self) -> &Sha256 {
+        match self {
+            Self::Process { repository_id, .. }
+            | Self::Wasm { repository_id, .. }
+            | Self::DotnetTool { repository_id, .. } => repository_id,
+        }
+    }
+
     /// Return the extension release descriptor.
     pub fn descriptor(&self) -> &TargetDigest {
         match self {

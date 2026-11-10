@@ -239,11 +239,31 @@ impl ToolchainLock {
     /// closure is one the recipe allows: the offering's artifact for that
     /// platform, and for each recipe operation either the offering's
     /// built-in or a recipe provider bound for that platform.
-    pub fn check_recipe(&self, recipe_bytes: &[u8], recipe: &ToolsetRecipe) -> Result<()> {
+    ///
+    /// `repository_id` is the identity of the authenticated repository the
+    /// recipe bytes were read from. One repository per binding check: the
+    /// lock's `recipe.repositoryId` and every provider's `repositoryId` must
+    /// be that identity, or the refusal is `repository_mismatch`.
+    pub fn check_recipe(
+        &self,
+        recipe_bytes: &[u8],
+        recipe: &ToolsetRecipe,
+        repository_id: &Sha256,
+    ) -> Result<()> {
         if Sha256::of_bytes(recipe_bytes) != self.recipe.sha256 {
             return Err(recipe_mismatch(
                 "recipe.sha256",
                 "the lock binds other recipe bytes",
+            ));
+        }
+        if &self.recipe.repository_id != repository_id {
+            return Err(Diagnostic::new(
+                Code::RepositoryMismatch,
+                "recipe.repositoryId",
+                format!(
+                    "the lock names repository {}, but the recipe was authenticated by repository {repository_id}",
+                    self.recipe.repository_id
+                ),
             ));
         }
         let host = recipe
@@ -271,6 +291,18 @@ impl ToolchainLock {
                 ));
             }
             for (position, provider) in closure.providers.iter().enumerate() {
+                let provider_path = index(&join(&path, "providers"), position);
+                if let Some(named) = provider.delivery().repository_id()
+                    && named != repository_id
+                {
+                    return Err(Diagnostic::new(
+                        Code::RepositoryMismatch,
+                        join(&provider_path, "repositoryId"),
+                        format!(
+                            "the provider names repository {named}, but the recipe was authenticated by repository {repository_id}"
+                        ),
+                    ));
+                }
                 let allowed =
                     crate::resolve::allowed(recipe, host, *platform, provider.operation());
                 if !allowed.contains(provider) {

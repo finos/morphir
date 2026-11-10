@@ -27,9 +27,9 @@ A toolset recipe is an ordinary authenticated TUF target in a tool repository, f
 | `execution` | `native-aot` or `jit` |
 | `source` | `{ "kind": "tool-release", "toolId": … }` or `{ "kind": "dotnet-tool", "packageId": …, "command": … }` |
 | `protocolVersions` | MEP versions the host speaks |
-| `wasmAbis` | WASM ABIs the host's qualified engine supports; empty when it has none |
-| `prerequisites` | Runtime, SDK and native prerequisites |
-| `builtIns` | Built-in providers, at most one per operation: `operation`, `extensionId`, `version`, `modelInput` |
+| `wasmAbis` | WASM ABIs the host's qualified engine supports. Optional; absent or empty when it has none |
+| `prerequisites` | Runtime, SDK and native prerequisites. Optional; absent means none |
+| `builtIns` | Built-in providers, at most one per operation: `operation`, `extensionId`, `version`, `modelInput`. Optional; absent means none |
 | `platforms` | The authenticated artifact (`target`, `sha256`) for each supported platform |
 
 A `tool-release` source names a tool release metadata v1 tool id. Each separately published offering has its own tool id, so implementation and deployment are never inferred from an executable name. A v1 platform states no C library, so a `tool-release` offering lists no `linux-musl-*` platform. A `dotnet-tool` source binds the package bytes per platform like any other host artifact.
@@ -100,6 +100,14 @@ A recipe is published as a TUF target at `toolchains/recipes/<preset>/<version>.
 
 A recipe on no channel is reachable only by its exact target path. The `channelSelection` cases pin each of these rules.
 
+### One repository per binding check
+
+The checks below run against one authenticated repository: the one whose metadata the TUF client loaded from an out-of-band trusted root. Its identity is the [tool release metadata v1 repository identity](../tool-release-metadata/index.md): the lowercase SHA-256 of the [canonical JSON](./manager-result.md#the-plan-digest) bytes of the trusted root's `signed` object. The root's signatures are not part of it, and a later root rotation does not change it. For the TEST-ONLY signed repository it is the `repositoryId` recorded in `signed/repository.json`.
+
+The recipe target, every host release and artifact, and every provider descriptor, artifact and package are authenticated by that repository. A provider whose `repositoryId` names any other repository is refused with `repository_mismatch` at `providers[i].repositoryId`, before its descriptor is read, so a recipe cannot bind a provider to a trust root other than the one that authenticated the bytes. Host offerings name no repository: their releases and artifacts are this repository's targets. The lock and receipt checks apply the same rule.
+
+Binding providers from several repositories in one recipe is not part of this contract version; it is later work. A provider published in another repository is bound by a recipe in that repository.
+
 The TUF client authenticates the metadata. A manager then checks the recipe target, in this order, and refuses with the first failure. Refusals about the recipe target itself have the empty path; the empty path is never used for any other target. The Cases column names the `rule` of the cases in `signed/cases.json` and `cases.json` that pin each row.
 
 | Check | Code | Path | Cases |
@@ -133,6 +141,7 @@ Then each provider, in order:
 
 | Check | Code | Path | Cases |
 | --- | --- | --- | --- |
+| `repositoryId` is the identity of the authenticated repository the checks run against | `repository_mismatch` | `providers[i].repositoryId` | `provider-repository` |
 | `descriptorTarget` is authenticated with `descriptorSha256` | `target_not_authenticated`, `target_digest_mismatch` | `providers[i].descriptorTarget`, `providers[i].descriptorSha256` | `provider-descriptor-bound` |
 | The descriptor bytes have the authenticated length and digest | `target_length_mismatch`, `target_digest_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-read` |
 | The descriptor reads, with the existing reader, as an extension release descriptor | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-parses` |
