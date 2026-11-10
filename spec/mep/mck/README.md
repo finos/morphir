@@ -351,8 +351,14 @@ one page at a time and reached the call deadline before the ceiling on a slow
 engine; those modules now grow in halving steps. A rerun with the
 corpus at `48d10706f` passed 56 of 58; the two failures are the notification
 cases, and both memory cases ended with `memory-limit` after about a second.
-Both runs used an x64 binary under emulation, so the timings need a run on
-native hardware. The evidence is in finos/morphir-dotnet#570.
+A third run at `8d678d2b8` passed 57 of 59, with `bounds/error-at-ceiling` among the
+passes. The runs used an x64 binary under emulation, so the timings need a run
+on native hardware.
+
+The first run against the .NET host was the Native AOT `morphir` on Windows
+ARM64, with the corpus at `48d10706f`: of 58 cases, 48 passed and the 10
+byte-profile cases were not applicable. The evidence for every run is in
+finos/morphir-dotnet#570.
 
 Each module is a `.wat` file of a few lines that does one thing, with the
 `.wasm` built from it committed beside it. The leading comment says what the

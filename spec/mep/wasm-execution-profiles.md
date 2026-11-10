@@ -296,8 +296,8 @@ A runner qualifies a host through `<host> extension worker`. stdout carries only
 | `--request-bytes` | No | 6291456 (6 MiB) |
 | `--response-bytes` | No | 16777216 (16 MiB) |
 | `--call-ms` | No | 30000 for `extism-kernel-v1`, 10000 for `morphir-bytes-v1` |
-| `--instructions` | No | 5,000,000,000 |
-| `--memory-pages` | No | 4096, the 256 MiB ceiling |
+| `--instructions` | No | 5,000,000,000. An integer from 1 to 9007199254740991 |
+| `--memory-pages` | No | 4096, the 256 MiB ceiling. It sets the ceiling of the guest's memory |
 | `--json` | No | A flag: write the report as JSON lines |
 | `--help` | No | A flag: write the help to stdout and serve nothing |
 
@@ -311,7 +311,11 @@ Without `--abi`, `--module` or `--build-identity` the worker serves nothing and 
 | `refused` | `error.code`, a refusal code; `error.message` |
 | `exited` | `exitCode` |
 
-`started` is emitted only after the module has loaded. A refusal comes instead of it, never after it, and a fault before it is a load fault, such as an initial memory above the ceiling. `started.bounds` has exactly the members `memoryCeiling`, `instructionBudget` and `callDeadline`. Each is `{"enforced": true}`, or `{"enforced": false, "reason": r}` with `r` one of `no-memory-ceiling`, `no-instruction-metering` and `no-call-interruption`.
+`started` is emitted only after the module has loaded. A refusal comes instead of it, never after it, and a fault before it is a load fault, such as an initial memory above the ceiling. `started.bounds` has exactly the members `memoryCeiling`, `instructionBudget` and `callDeadline`. Each is `{"enforced": true}`, or `{"enforced": false, "reason": r}` with `r` one of `no-memory-ceiling`, `no-instruction-metering` and `no-call-interruption`. The event says whether a bound is enforced and not its value, so a runner sees that `--call-ms`, `--instructions` or `--memory-pages` took effect only from what the worker then does. No event carries the engine's identity: the engine is part of the build identity, and a runner is given it as an input.
+
+`--memory-pages` sets the ceiling of the guest's memory. The MoonBit host leaves the Extism kernel's ceiling at 256 MiB. A host whose engine has one limit for every memory of a session applies the argument to the kernel's memory too, and that is allowed. The two differ only below the default, and no qualification case sets the argument.
+
+The JSON lines use the `morphir/command-event` and `morphir/command-result` documents of the MoonBit CLI, `contractVersion` `0.1.0`. This contract fixes the event names and the members in the table above. It does not define the rest of those documents, the help text in the `--help --json` result, or the document a usage failure writes; a host follows the MoonBit CLI for them until a shared contract states them. The MoonBit worker at `89f8924` reports a `--memory-pages` value it cannot use as `failure` with exit status 1, after it reads the module; the rule here is exit status 2.
 
 The `extension.*` fault codes and the outcome `deadline` exist only in the host session's outcome. A worker's fault has a kind and a message and no code.
 

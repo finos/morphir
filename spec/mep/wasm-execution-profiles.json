@@ -189,8 +189,8 @@
       { "name": "--request-bytes", "default": 6291456 },
       { "name": "--response-bytes", "default": 16777216 },
       { "name": "--call-ms", "default": { "extism-kernel-v1": 30000, "morphir-bytes-v1": 10000 } },
-      { "name": "--instructions", "default": 5000000000 },
-      { "name": "--memory-pages", "default": 4096 },
+      { "name": "--instructions", "default": 5000000000, "range": [1, 9007199254740991] },
+      { "name": "--memory-pages", "default": 4096, "note": "The ceiling of the guest's memory. A host whose engine has one limit for every memory of a session applies it to the Extism kernel's memory too." },
       { "name": "--json", "flag": true },
       { "name": "--help", "flag": true }
     ],

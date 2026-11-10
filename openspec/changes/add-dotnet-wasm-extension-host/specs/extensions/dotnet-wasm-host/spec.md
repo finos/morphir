@@ -110,7 +110,7 @@ The host SHALL load a WASM extension from the path in `extensions.<name>.path` a
 - **THEN** the host fails with a diagnostic that names the path and states that it is not a WASM module
 
 ### Requirement: Module identity in every report
-The host SHALL compute the SHA-256 digest of the module file it loads and SHALL include that digest, the classified profile and the engine identity in session diagnostics and worker reports. When a digest is declared for the module, the host SHALL refuse different bytes before classification.
+The host SHALL compute the SHA-256 digest of the module file it loads and SHALL include that digest and the classified profile in session diagnostics and in the worker's `started` event. The engine identity SHALL be in session diagnostics and the runtime report; a worker event does not carry it. When a digest is declared for the module, the host SHALL refuse different bytes before classification.
 
 #### Scenario: Replaced module
 - **WHEN** a declared digest differs from the digest of the file at the configured path
@@ -182,7 +182,11 @@ The host SHALL provide `morphir extension worker`, taking every worker argument 
 - **THEN** stderr carries a `refused` report with `extension.abi_unsupported`, stdout carries no bytes and the exit status is not zero
 
 ### Requirement: Worker build identity
-`morphir extension worker --help --json` SHALL report a build identity for the executable. When `--build-identity` is given and differs, the worker SHALL refuse with `extension.worker_runtime_mismatch` before loading the module.
+`morphir extension worker --help --json` SHALL report the build identity of the executable. `--build-identity` is required. A worker started with another identity SHALL refuse with `extension.worker_runtime_mismatch` before loading the module.
+
+#### Scenario: No identity given
+- **WHEN** the worker is started without `--build-identity`
+- **THEN** it exits with status 2 and serves nothing
 
 #### Scenario: Stale identity
 - **WHEN** the worker is started with the build identity of another release
