@@ -70,7 +70,7 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <td>The host needs a message-based session, a new delivery kind and the runtime itself. Configuration needs no new key to name a module.</td></tr>
 <tr><td>morphir-dotnet extension-model PRD and its WASM runtime spike</td>
 <td>Wasmtime 50.0.1 was the only candidate that enforced memory, fuel and a deadline with zero AOT warnings. A static link into the AOT executable was measured on macOS arm64 only: 11,949,456 bytes, 10,647,232 more than the baseline. Untyped host callbacks echoed 1 MiB in 149 ms; typed callbacks took 18 ms but raised an IL3050 warning. The Extism .NET SDK hid the result of <code>handle</code>, set the ceiling one page too high, turned a refused growth into a trap and added 5.6 MB.</td>
-<td>The engine choice is settled. The callback binding, the Extism approach and five of six platforms are not.</td></tr>
+<td>The engine choice is settled. The spike left the callback binding, the Extism approach and five of six platforms open. Task 5.1 has since linked the engine statically on all six (PKG-1).</td></tr>
 <tr><td>morphir-moonbit <code>main</code> at <code>28271c6</code></td>
 <td>A complete worker host for both profiles, with a written spec (<code>extensions/wasm-workers</code>), a classifier, a host-function policy and a worker mode that today's runner already drives.</td>
 <td>The behavior to match exists and is tested. This design copies its observable rules and does not reinvent them.</td></tr>
@@ -269,12 +269,23 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <div class="table-wrap"><table>
 <thead><tr><th>Offering</th><th>How the engine arrives</th><th>Still to prove</th></tr></thead>
 <tbody>
-<tr><td><code>native-aot</code></td><td>The engine's static library is linked into <code>morphir</code>. The build downloads the C API archive for the platform and checks its SHA-256. Its version must equal the managed package's.</td><td>Static linking on five of six platforms. Only macOS arm64 was measured.</td></tr>
+<tr><td><code>native-aot</code></td><td>The engine's static library is linked into <code>morphir</code>. The build downloads the C API archive for the platform and checks its SHA-256. Its version must equal the managed package's.</td><td>Nothing for the link itself. Task 5.1 linked the engine statically on all six platforms, each on its own runner, and ran the executable alone in an empty directory. The released executable must be linked the same way before an offering claims single-file delivery (tasks 5.2 and 5.3).</td></tr>
 <tr><td><code>self-contained</code></td><td>The native library ships inside the single file and is extracted on first run.</td><td>Extraction on a clean machine with a read-only install directory.</td></tr>
 <tr><td><code>framework-dependent</code></td><td>The native library sits beside <code>morphir</code> in a platform-specific archive.</td><td>That the archive for each platform holds the matching library.</td></tr>
 <tr><td><code>dotnet-tool</code></td><td>See PKG-2.</td><td>See PKG-2.</td></tr>
 </tbody></table></div>
-<p>If static linking fails on a platform, that platform ships the library beside the AOT executable and its release metadata stops claiming single-file delivery there. The spec makes this an explicit, visible outcome. It does not block the release.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Platform</th><th>Runner</th><th>Static executable, bytes</th></tr></thead>
+<tbody>
+<tr><td>linux-x64</td><td>ubuntu-24.04</td><td>21,511,576</td></tr>
+<tr><td>linux-arm64</td><td>ubuntu-24.04-arm</td><td>18,222,520</td></tr>
+<tr><td>osx-x64</td><td>macos-15-intel</td><td>20,088,952</td></tr>
+<tr><td>osx-arm64</td><td>macos-15</td><td>17,354,608</td></tr>
+<tr><td>win-x64</td><td>windows-2025</td><td>19,913,728</td></tr>
+<tr><td>win-arm64</td><td>windows-11-arm</td><td>16,028,672</td></tr>
+</tbody></table></div>
+<p>These are the Native AOT probe from <a href="https://github.com/finos/morphir-dotnet/actions/runs/42801833498">the task 5.1 run</a> in finos/morphir-dotnet, linked against the C API archives of Wasmtime <code>v50.0.1</code>, pinned by SHA-256. Each ran the Python <code>0.6.0</code> guest with no engine library beside it, and the publish reported no IL2026 or IL3050 warning. The static executable is smaller than the dynamic pair: on win-arm64 the executable and <code>wasmtime.dll</code> together are 22,821,888 bytes.</p>
+<p>If static linking fails on a later platform or engine version, that platform ships the library beside the AOT executable and its release metadata stops claiming single-file delivery there. The spec makes this an explicit, visible outcome. It does not block the release. Linux musl is unchanged: the managed package has no musl native asset, and nobody has tried the musl C API archives.</p>
 <p>At start-up the host does not touch the engine. The first command that needs a WASM extension, or the runtime report, probes for it once and turns a missing or unloadable library into <code>extension.runtime_unavailable</code> with a reason. Commands that never use WASM pay nothing and cannot be broken by a packaging fault.</p>
 <p><em>Alternative.</em> A separately installed runtime component that the host downloads when first needed. It keeps the base executable small, but it makes a build depend on the network, which <code>add-deployment-and-acquisition</code> rules out for ordinary commands.</p>
 
@@ -349,7 +360,7 @@ $ morphir mck mep guest-run \
 <div class="table-wrap"><table>
 <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
 <tbody>
-<tr><td>Static linking fails on Linux or Windows, where it was never tried.</td><td>Task 5.1 tries every platform before other packaging work. A failing platform ships the library beside the executable and says so in release metadata (PKG-1).</td></tr>
+<tr><td>Static linking fails on a later platform or engine version.</td><td>Task 5.1 linked all six current platforms. A platform that fails later ships the library beside the executable and says so in release metadata (PKG-1).</td></tr>
 <tr><td>The Extism kernel does not link cleanly under the AOT host, or the limiter does not cover its memory.</td><td>Task 3.1 is a proving slice with the real Python module. Failure returns KRN-1 for review before further Extism work.</td></tr>
 <tr><td>A fault in the engine's native code crashes the host process.</td><td>Accepted for product commands in exchange for start-up cost and simplicity (ENG-1). The worker mode runs the same guest out of process when isolation matters.</td></tr>
 <tr><td>The Native AOT executable grows by about 10 MB and passes the roadmap's 20 MB guideline.</td><td>The PRD already states that size alone does not reject a native runtime. Size per offering is reported from shipped files. A slimmer engine build is an open question.</td></tr>
