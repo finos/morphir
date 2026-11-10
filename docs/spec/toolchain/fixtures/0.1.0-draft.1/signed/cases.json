@@ -799,6 +799,92 @@
         "code": "target_length_mismatch",
         "path": "providers[0].descriptorTarget"
       }
+    },
+    {
+      "name": "a locked generation whose recipe and host are current may launch",
+      "metadata": "metadata",
+      "mutations": [],
+      "action": {
+        "op": "check-locked-generation",
+        "lock": "fsharp-native-aot.lock.json"
+      },
+      "expected": "valid"
+    },
+    {
+      "name": "a learned recipe revocation refuses launch and rollback of generations bound to it",
+      "rule": "generation-recipe-revoked",
+      "metadata": "recipeRevocation",
+      "mutations": [],
+      "action": {
+        "op": "check-locked-generation",
+        "lock": "fsharp-native-aot.lock.json"
+      },
+      "expected": {
+        "code": "release_revoked",
+        "path": "recipe.target"
+      }
+    },
+    {
+      "name": "a learned recipe revocation refuses a managed generation bound to it too",
+      "rule": "generation-recipe-revoked",
+      "metadata": "recipeRevocation",
+      "mutations": [],
+      "action": {
+        "op": "check-locked-generation",
+        "lock": "fsharp-self-contained.lock.json"
+      },
+      "expected": {
+        "code": "release_revoked",
+        "path": "recipe.target"
+      }
+    },
+    {
+      "name": "a learned host release revocation refuses launch and rollback of its generations",
+      "rule": "generation-host-revoked",
+      "metadata": "learnedRevocation",
+      "mutations": [],
+      "action": {
+        "op": "check-locked-generation",
+        "lock": "fsharp-native-aot.lock.json"
+      },
+      "expected": {
+        "code": "release_revoked",
+        "path": "host.version"
+      }
+    },
+    {
+      "name": "a generation whose host release is not revoked may launch after another release is",
+      "metadata": "learnedRevocation",
+      "mutations": [],
+      "action": {
+        "op": "check-locked-generation",
+        "lock": "fsharp-self-contained.lock.json"
+      },
+      "expected": "valid"
+    },
+    {
+      "name": "a generation locked against another repository is refused",
+      "rule": "generation-repository",
+      "metadata": "metadata",
+      "mutations": [],
+      "action": {
+        "op": "check-locked-generation",
+        "lock": "negative/lock-recipe-repository.lock.json"
+      },
+      "expected": {
+        "code": "repository_mismatch",
+        "path": "recipe.repositoryId"
+      }
+    },
+    {
+      "name": "a target with a non-ASCII NFC path is signed, served and read",
+      "metadata": "metadata",
+      "mutations": [],
+      "action": {
+        "op": "read",
+        "target": "extensions/fsharp-frontend/0.6.0/notes/café-naïve-字.txt"
+      },
+      "expected": "valid"
     }
   ],
   "frozen": [

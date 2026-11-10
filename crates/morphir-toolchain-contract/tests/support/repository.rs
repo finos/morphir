@@ -185,6 +185,11 @@ pub type Targets = BTreeMap<String, Target>;
 
 /// Sign a complete metadata set (targets, snapshot, timestamp) at `version`.
 pub fn metadata(keys: &Keys, targets: &Targets, version: u64, timestamp_expires: &str) -> Value {
+    // Publication refuses a target path that is not NFC: the canonical
+    // encoder would otherwise sign it under its NFC spelling.
+    for path in targets.keys() {
+        assert!(unicode_normalization::is_nfc(path), "{path} is not NFC");
+    }
     let entries = targets
         .iter()
         .map(|(path, target)| {
@@ -1045,6 +1050,13 @@ pub fn published() -> Targets {
             custom: None,
         },
     );
+    targets.insert(
+        NON_ASCII_TARGET.to_owned(),
+        Target {
+            bytes: synthetic("release notes with a non-ASCII NFC target path"),
+            custom: None,
+        },
+    );
     for (_, dir, store_id, claims) in claim_variants() {
         add_extension_release(
             &mut targets,
@@ -1232,6 +1244,26 @@ pub fn published() -> Targets {
     targets
 }
 
+/// The same targets after the publisher learns that the F# recipe must be
+/// revoked: a provider it binds has no version 1 status of its own, so
+/// revoking the recipe is how a provider is revoked.
+pub fn recipe_revoked(targets: &Targets) -> Targets {
+    let mut revoked = targets.clone();
+    let custom = revoked
+        .get_mut(&recipe_path("fsharp", "1.0.0"))
+        .unwrap()
+        .custom
+        .as_mut()
+        .unwrap();
+    custom["status"] = json!("revoked");
+    custom["channels"] = json!([]);
+    revoked
+}
+
+/// A published target whose path is non-ASCII NFC text, so the canonical
+/// encoder signs, serves and identifies a key that is not ASCII.
+pub const NON_ASCII_TARGET: &str = "extensions/fsharp-frontend/0.6.0/notes/café-naïve-字.txt";
+
 /// The same targets after the publisher learns that the native-aot 1.2.3
 /// release must be revoked. Descriptor bytes do not change; only the
 /// authenticated release state does.
@@ -1265,6 +1297,7 @@ pub fn fixture() -> Value {
         "trustedRoot": trusted_root,
         "metadata": metadata(&keys, &targets, 1, NEVER),
         "learnedRevocation": metadata(&keys, &revoked(&targets), 2, NEVER),
+        "recipeRevocation": metadata(&keys, &recipe_revoked(&targets), 2, NEVER),
         "rejectionMetadata": {
             "expiredTimestamp": metadata(&keys, &targets, 2, "2020-01-01T00:00:00Z")["timestamp"]
         },

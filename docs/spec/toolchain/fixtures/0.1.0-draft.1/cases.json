@@ -429,8 +429,11 @@
     },
     {
       "contract": "receipt",
-      "document": "receipt/developer-frontend-probed.json",
-      "expected": "valid"
+      "document": "receipt/negative/developer-artifact-in-generation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.authentication"
+      }
     },
     {
       "contract": "receipt",
@@ -538,16 +541,6 @@
         "code": "inconsistent_document",
         "path": "providers[1].installation"
       }
-    },
-    {
-      "contract": "receipt",
-      "document": "receipt/negative/developer-artifact-not-manager-owned.json",
-      "expected": {
-        "code": "inconsistent_document",
-        "path": "providers[0].installation.ownership"
-      },
-      "schema": "accepts",
-      "schemaGap": "Not expressed in the schema: the allowed ownership depends on the authentication kind."
     },
     {
       "contract": "receipt",
@@ -961,15 +954,6 @@
       "expected": {
         "code": "inconsistent_document",
         "path": "checks"
-      },
-      "schema": "rejects"
-    },
-    {
-      "contract": "receipt",
-      "document": "receipt/negative/developer-policy-other.json",
-      "expected": {
-        "code": "inconsistent_document",
-        "path": "providers[0].installation.authentication.policy"
       },
       "schema": "rejects"
     },
@@ -1634,6 +1618,21 @@
         "code": "unsupported_contract_version",
         "path": "schemaVersion"
       }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/target-path-non-ascii-nfc.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-path-nfd.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "No schema keyword checks Unicode normalization."
     }
   ],
   "bindings": [

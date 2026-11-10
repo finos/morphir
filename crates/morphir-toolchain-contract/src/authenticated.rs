@@ -147,6 +147,20 @@ impl AuthenticatedTargets {
         .map_err(|error| Diagnostic::new(trust_code(&error, false), "", error.to_string()))?;
         let mut targets = BTreeMap::new();
         for (name, target) in repository.all_targets() {
+            // Publication refuses non-NFC target paths, because canonical
+            // encoding would sign them under their NFC spelling. A server
+            // that serves non-canonical metadata could still list one, and
+            // the client would then disagree with every canonical encoder.
+            if !unicode_normalization::is_nfc(name.raw()) {
+                return Err(Diagnostic::new(
+                    Code::NonPortablePath,
+                    "",
+                    format!(
+                        "the targets metadata lists {}, which is not NFC",
+                        name.raw()
+                    ),
+                ));
+            }
             let digest: [u8; 32] = target.hashes.sha256.as_ref().try_into().map_err(|_| {
                 invalid_metadata("", format!("{} has no SHA-256 digest", name.raw()))
             })?;
@@ -394,6 +408,71 @@ impl AuthenticatedTargets {
         }
         self.check_recipe_bindings(&recipe).await?;
         Ok(recipe)
+    }
+
+    /// Check that a locked generation may still be launched or rolled back to,
+    /// against the learned state of this repository. A provider has no
+    /// version 1 status, so revoking the recipe that binds it is how it is
+    /// revoked: a learned recipe revocation refuses every generation bound to
+    /// that recipe. A learned revocation of the host release refuses it too.
+    /// Paths name the lock's members.
+    pub async fn check_locked_generation(&self, lock: &crate::lock::ToolchainLock) -> Result<()> {
+        let recipe = lock.recipe();
+        if recipe.repository_id != self.repository_id {
+            return Err(Diagnostic::new(
+                Code::RepositoryMismatch,
+                "recipe.repositoryId",
+                format!(
+                    "the lock names repository {}, but this is repository {}",
+                    recipe.repository_id, self.repository_id
+                ),
+            ));
+        }
+        let at_target = |mut refusal: Diagnostic| {
+            refusal.path = "recipe.target".to_owned();
+            refusal
+        };
+        let state = self
+            .recipe_state(recipe.target.as_str())
+            .map_err(at_target)?;
+        if state.status == RecipeStatus::Revoked {
+            return Err(Diagnostic::new(
+                Code::ReleaseRevoked,
+                "recipe.target",
+                format!("{} is revoked", recipe.target),
+            ));
+        }
+        let bytes = self
+            .read_bound(recipe.target.as_str(), "recipe.target")
+            .await?;
+        if Sha256::of_bytes(&bytes) != recipe.sha256 {
+            return Err(Diagnostic::new(
+                Code::TargetDigestMismatch,
+                "recipe.sha256",
+                "the lock binds other recipe bytes than the authenticated recipe target",
+            ));
+        }
+        let document = crate::recipe::read_recipe(&bytes).map_err(at_target)?;
+        let locked = lock.host();
+        let host = document.hosts().iter().find(|host| {
+            host.implementation() == &locked.implementation
+                && host.deployment() == &locked.deployment
+                && host.version() == &locked.version
+        });
+        if let Some(HostSource::ToolRelease { tool_id }) = host.map(|host| host.source()) {
+            let path = format!("releases/{tool_id}/{}.json", locked.version);
+            if self
+                .custom(&path)
+                .is_some_and(|custom| custom["status"] == "revoked")
+            {
+                return Err(Diagnostic::new(
+                    Code::ReleaseRevoked,
+                    "host.version",
+                    format!("{tool_id} {} is revoked", locked.version),
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// Check every host and provider binding of a recipe document.

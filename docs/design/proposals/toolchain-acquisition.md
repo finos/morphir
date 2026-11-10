@@ -360,10 +360,10 @@ Skipped or unsupported checks stay visible in the receipt. A valid archive whose
 
 Two facts that are easy to confuse stay separate:
 
-- **Publisher authentication** says who published the bytes: the TUF repository authenticated them, or an authenticated recipe bound their digest, or nobody did, because an unsigned developer artifact was admitted under explicit developer policy.
+- **Publisher authentication** says who published the bytes: the TUF repository authenticated them, or an authenticated recipe bound their digest, or the manager did not, because an external owner such as the .NET SDK installed them.
 - **The claim check** says whether the installed artifact was run to compare its capability claims: `probed` or `unchecked`.
 
-A recipe never turns `unchecked` into `probed`, and a probe never makes an artifact authenticated. An unsigned developer artifact stays labelled as developer-supplied, can appear only in a local receipt, and can never be bound by a recipe or named by a portable lock. The [installation receipt](../../spec/toolchain/installation-receipt.md#installation) records both facts side by side.
+A recipe never turns `unchecked` into `probed`, and a probe never makes an artifact authenticated. An unsigned developer artifact is never part of a toolchain generation: no recipe binds it, so no lock names it and no receipt records it. It is installed outside generations under explicit developer policy. The [installation receipt](../../spec/toolchain/installation-receipt.md#installation) records both facts side by side.
 
 A WASM recipe names the ABI its guest needs. The public runtime name stays `wasm`; the engine and its ABI are separate. A host that supports `morphir-bytes-v1` cannot qualify an `extism-kernel-v1` guest merely because both are WASM, and setup reports the missing ABI as not ready. It does not quietly pick another guest built for an ABI the host has either: resolution reports `abi_unavailable`, naming the missing ABI, unless the request chooses the other ABI explicitly. Process F# readiness establishes nothing about WASM capability. The WASM engine is a separate host change that must qualify its packaged engine across every offering before setup advertises it.
 

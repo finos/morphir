@@ -492,6 +492,12 @@ async fn trust_cases() {
                 action["target"].as_str().unwrap(),
                 action["text"].as_str().unwrap().as_bytes(),
             )),
+            ("check-locked-generation", Ok(targets)) => {
+                let bytes =
+                    std::fs::read(signed_dir().join(action["lock"].as_str().unwrap())).unwrap();
+                let lock = read_lock(&bytes).unwrap();
+                outcome(targets.check_locked_generation(&lock).await)
+            }
             ("check-recipe-bindings", Ok(targets)) => {
                 let bytes = targets
                     .read(action["recipe"].as_str().unwrap())

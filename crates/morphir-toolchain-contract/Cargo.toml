@@ -18,6 +18,9 @@ futures-core = "0.3"
 # identity; `planSha256` is the SHA-256 of the canonical plan.
 olpc-cjson = "0.1.4"
 semver = { workspace = true, features = ["serde"] }
+# Target paths must be NFC, because canonical encoding normalizes the keys
+# of signed targets metadata. Already a dependency of olpc-cjson.
+unicode-normalization = "0.1"
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true

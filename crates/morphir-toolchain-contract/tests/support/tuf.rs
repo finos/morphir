@@ -46,11 +46,26 @@ pub fn write_set(
         else {
             continue;
         };
-        let destination = targets.join(format!("{digest}.{name}"));
+        let destination = served_path(&targets, &format!("{digest}.{name}"));
         std::fs::create_dir_all(destination.parent().unwrap()).unwrap();
         std::fs::write(destination, content.as_str().unwrap()).unwrap();
     }
     (trusted_root, metadata, targets, root.join("datastore"))
+}
+
+/// Where tough 0.24's filesystem transport looks for `relative` under
+/// `targets`. It joins the name to the directory URL, which percent-encodes
+/// non-ASCII characters, and opens the URL path without decoding it, so a
+/// target named `café.txt` is served from a file named `caf%C3%A9.txt`.
+fn served_path(targets: &Path, relative: &str) -> PathBuf {
+    let base = url::Url::from_directory_path(targets).unwrap();
+    let url = base.join(relative).unwrap();
+    let path = url.path();
+    PathBuf::from(if cfg!(windows) {
+        path.strip_prefix('/').unwrap_or(path)
+    } else {
+        path
+    })
 }
 
 /// Load a set through the existing v1 tool client.

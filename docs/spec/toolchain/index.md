@@ -143,6 +143,14 @@ A target path names an authenticated TUF target. It is relative, uses `/` as its
 
 A path that breaks any of these rules is `non_portable_path`. These are the rules the existing tool and extension stores apply to every stored path, so a target that passes can be stored on every first-delivery platform.
 
+A target path is also in Unicode Normalization Form C. Canonical encoding normalizes the keys of signed targets metadata to NFC, so a path in another form would be signed under one key and looked up under another. The rule is applied in three places:
+
+- a publisher refuses to publish a target whose path is not NFC;
+- a reader refuses a document member that names a non-NFC target path with `non_portable_path` at that member (`lock/negative/target-path-nfd.json`);
+- a client refuses a repository whose targets metadata lists a non-NFC path with `non_portable_path` at the empty path.
+
+Non-ASCII NFC paths are allowed, and the signed repository publishes one (`extensions/fsharp-frontend/0.6.0/notes/café-naïve-字.txt`), read by a trust case, so every runner's canonical encoder signs and serves a key that is not ASCII. `lock/target-path-non-ascii-nfc.json` is the valid lock counterpart.
+
 The length limits count UTF-8 bytes and UTF-16 code units, never code points or characters. `字` (U+5B57) is 3 bytes and 1 code unit; `𝄞` (U+1D11E) is 4 bytes and 2 code units. Both limits apply, so a path of 175 code units is still refused when it is 513 bytes. The schemas cannot express these limits: their `maxLength: 240` counts code points, so they accept some paths the reader refuses. The reader's limits govern, and the cases that the schema accepts record that in `schemaGap`. `lock/target-path-512-utf8-bytes.json` and `lock/target-path-240-utf16-units.json` are valid at each limit; `lock/negative/target-path-513-utf8-bytes.json`, `target-path-241-utf16-units.json` and `target-component-256-utf8-bytes.json` are one past them.
 
 ### Local paths
@@ -242,7 +250,7 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 | `recipeChecks` | `recipe` target | The [authenticated recipe checks](./toolset-recipe.md#authenticated-recipe-targets) |
 | `trust` | `metadata` set, `mutations`, `action` | The outcome of loading or reading the mutated repository |
 | `channelSelection` | `preset`, `channel` | The recipe target that [channel selection](./toolset-recipe.md#authenticated-recipe-targets) picks, or the code and path |
-| `v1Client` | `toolId`, `channel`, version 1 `platform` | The tool release metadata v1 client selects `expected.targetPath`; its authenticated digest is the one the `fsharp-builtin` recipe binds for `deployment` and `recipePlatform`, and the 18 digests are distinct |
+| `v1Client` | `toolId`, `channel`, version 1 `platform` | Offering descriptors publish `compatibility.morphirCli` `<0.0.0-0`, so the tool release metadata v1 client selects nothing (`expected.selected` is `false`) at `referenceClient.cliVersion` or any other CLI version. The `fsharp-builtin` recipe still binds `recipeBinding.targetPath` for `deployment` and `recipePlatform` with its authenticated digest, and the 18 digests are distinct |
 | `v1Descriptors` | release target | Read through the client, it validates unchanged against `tool-release-v1.schema.json`. Every release target except the deliberate negative is listed |
 | `frozen` | `request`, `lock`, `recipe` | The SHA-256 of the request bytes is `expected.requestSha256` and the lock binds it; the lock's `recipe.sha256` is `expected.recipeSha256`, the authenticated recipe digest; the lock records exactly `expected.platforms`, the six first-delivery platforms; and each closure equals the resolution of the request on its platform |
 | `lockRecipe` | `lock`, `recipe` | The lock's closures are ones the recipe allows |
@@ -250,10 +258,10 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 The metadata is served as files. Each role is the canonical JSON bytes, by the [plan digest rules](./manager-result.md#the-plan-digest), of its envelope (`signatures` and `signed`) as stored in `repository.json`; every signature is over the canonical bytes of `signed`. The repository uses consistent snapshots:
 
 - the metadata directory holds `1.root.json` (also given to the client out of band as the trusted root), `timestamp.json`, `<version>.snapshot.json` and `<version>.targets.json`, each version taken from that role's `signed.version`;
-- each entry of `targetFiles` that the targets metadata lists is served under its SHA-256. tough 0.24, the client used here, requests `<sha256>.<target path>` from the targets directory. The TUF specification puts the digest in front of the file name inside the target's directory, as in `toolchains/recipes/fsharp/<sha256>.1.0.0.json`. A runner serves each target where its own client asks for it; the expected outcomes do not depend on the layout;
+- each entry of `targetFiles` that the targets metadata lists is served under its SHA-256. tough 0.24, the client used here, requests `<sha256>.<target path>` from the targets directory, and its filesystem transport opens the percent-encoded URL path without decoding it, so the non-ASCII target is served from a file named with `%C3%A9` and the like. The TUF specification puts the digest in front of the file name inside the target's directory, as in `toolchains/recipes/fsharp/<sha256>.1.0.0.json`. A runner serves each target where its own client asks for it; the expected outcomes do not depend on the layout;
 - a `targetFiles` entry the targets metadata does not list is not served.
 
-A trust case starts from the committed `repository.json`, takes the named metadata set (`metadata` or `learnedRevocation`), applies its `mutations` in order and serves the result as a consistent-snapshot repository trusted from `trustedRoot`:
+A trust case starts from the committed `repository.json`, takes the named metadata set, applies its `mutations` in order and serves the result as a consistent-snapshot repository trusted from `trustedRoot`:
 
 | Mutation `op` | Effect |
 | --- | --- |
@@ -263,13 +271,20 @@ A trust case starts from the committed `repository.json`, takes the named metada
 | `replace-target-bytes` | Serve the bytes of target `with` in place of target `target` |
 | `replace-target-text` | Serve `target` with the first `find` replaced by `replace` |
 
+The metadata sets are:
+
+- `metadata`: the published repository, version 1 of every role;
+- `learnedRevocation`: version 2, in which the host offering release `morphir-dotnet-native-aot` 1.2.3 has release status `revoked`;
+- `recipeRevocation`: version 2, in which the recipe target `toolchains/recipes/fsharp/1.0.0.json` has status `revoked` and no channels, which reaches every generation bound to that recipe.
+
 The `action` is one of:
 
 - `load`: load the repository;
 - `read`: read `target` through the TUF client;
 - `authenticate`: compare the UTF-8 bytes of `text` with the authenticated length and digest of `target`, as for bytes from a local store;
 - `check-recipe`: the authenticated recipe checks on `recipe`;
-- `check-recipe-bindings`: read `recipe` through the client and parse it as JSON, then apply each entry of `documentMutations` in order. Each entry has a `pointer`, an RFC 6901 pointer into the recipe document that names an existing member or array element, and a `value` that replaces it. Read the result with the recipe reader and run only the host and provider binding checks. The mutated document is not authenticated, and the recipe target checks are not run on it.
+- `check-recipe-bindings`: read `recipe` through the client and parse it as JSON, then apply each entry of `documentMutations` in order. Each entry has a `pointer`, an RFC 6901 pointer into the recipe document that names an existing member or array element, and a `value` that replaces it. Read the result with the recipe reader and run only the host and provider binding checks. The mutated document is not authenticated, and the recipe target checks are not run on it;
+- `check-locked-generation`: the [launch and rollback checks](./installation-receipt.md#launch-and-rollback-against-learned-revocations) on the committed fixture `lock`, against the repository's learned trust state.
 
 A refused load has the empty path, as does a refused `read` or `authenticate` of a target named directly. A binding check reports the binding member that named the target.
 

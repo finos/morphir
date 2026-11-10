@@ -86,9 +86,6 @@ pub enum Authentication {
     },
     /// The bytes matched a digest in the receipt's own authenticated recipe.
     RecipeDigest,
-    /// An unsigned artifact admitted by explicit developer policy. It carries
-    /// no publisher authentication.
-    LocalDeveloper,
     /// An externally owned installation the manager did not acquire.
     ExternalOwner,
 }
@@ -536,24 +533,17 @@ fn installation(object: &Obj<'_>, context: &Context<'_>) -> Result<Installation>
                 }
                 Ok(Authentication::RecipeDigest)
             }
-            AuthenticationTag::Developer => {
-                if auth.str("policy")? != "developer" {
-                    return Err(inconsistent(
-                        auth.member_path("policy"),
-                        "an unsigned developer artifact requires the explicit developer policy",
-                    ));
-                }
-                Ok(Authentication::LocalDeveloper)
-            }
+            // A receipt always binds a lock, and a lock names only artifacts
+            // a recipe authenticated, so an unsigned developer artifact is
+            // never part of a toolchain generation. It is installed outside
+            // generations, under the extension installer's developer policy.
+            AuthenticationTag::Developer => Err(inconsistent(
+                auth.path(),
+                "an unsigned developer artifact is never part of a locked toolchain generation; label the bytes by how the manager authenticated them",
+            )),
             AuthenticationTag::External => Ok(Authentication::ExternalOwner),
         }
     })?;
-    if authentication == Authentication::LocalDeveloper && ownership != Ownership::ManagerOwned {
-        return Err(inconsistent(
-            object.member_path("ownership"),
-            "a developer artifact is admitted only into manager-owned storage",
-        ));
-    }
     if authentication == Authentication::ExternalOwner && ownership == Ownership::ManagerOwned {
         return Err(inconsistent(
             object.member_path("authentication"),

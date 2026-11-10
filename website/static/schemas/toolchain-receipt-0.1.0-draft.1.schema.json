@@ -392,6 +392,7 @@
       }
     },
     "authentication": {
+      "description": "How the manager authenticated the installed bytes. An unsigned developer artifact (local-developer) is never part of a locked generation, so a receipt never records one",
       "type": "object",
       "allOf": [
         {
@@ -417,29 +418,12 @@
           "then": {
             "required": [ "repositoryId", "recipeTarget", "recipeSha256" ]
           }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "local-developer"
-              }
-            }
-          },
-          "then": {
-            "required": [ "policy" ]
-          }
         }
       ],
       "required": [ "kind" ],
       "properties": {
         "kind": {
-          "enum": [
-            "repository-target",
-            "recipe-digest",
-            "local-developer",
-            "external-owner"
-          ]
+          "enum": [ "repository-target", "recipe-digest", "external-owner" ]
         },
         "repositoryId": {
           "$ref": "#/$defs/sha256"
@@ -453,9 +437,6 @@
         },
         "recipeSha256": {
           "$ref": "#/$defs/sha256"
-        },
-        "policy": {
-          "const": "developer"
         }
       }
     },

@@ -218,6 +218,14 @@ impl TargetPath {
         let bounded = value.len() <= 512
             && value.encode_utf16().count() <= 240
             && !value.contains(['\u{2028}', '\u{2029}']);
+        // Target paths are object keys of signed targets metadata, and the
+        // canonical encoder normalizes keys to NFC. A path that is not already
+        // NFC would therefore be signed under another spelling.
+        if !unicode_normalization::is_nfc(value) {
+            return Err(format!(
+                "'{value}' is not in Unicode Normalization Form C; a target path must be NFC so canonical encoding never changes it"
+            ));
+        }
         match RelativeArtifactPath::parse(value) {
             Ok(path) if bounded => Ok(Self(path)),
             _ => Err(format!(
