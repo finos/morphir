@@ -3,6 +3,7 @@ package "finos/morphir-engine/config"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "moonrockz/ion/ion",
   "moonrockz/moon-lander-config",
 }
@@ -14,7 +15,7 @@ pub fn environment(Map[String, String]) -> Document raise
 
 pub fn from_framework(@moon-lander-config.Config) -> Document
 
-pub fn from_json(Json, origin? : String) -> Document raise
+pub fn from_json(@json.Json, origin? : String) -> Document raise
 
 pub fn merge(Document, Document) -> Document raise
 
@@ -34,7 +35,7 @@ pub fn Document::boolean(Self, String, Bool) -> Bool raise
 pub fn Document::encode(Self) -> String raise
 pub fn Document::framework(Self) -> @moon-lander-config.Config
 pub fn Document::get(Self, String) -> @ion.Ion?
-pub fn Document::json(Self, String) -> Json? raise
+pub fn Document::json(Self, String) -> @json.Json? raise
 pub fn Document::metadata_provider_request(Self) -> MetadataProviderRequest raise
 pub fn Document::shared(Self) -> Self raise
 pub fn Document::sources(Self, @moon-lander-config.FileRole, Int32, String) -> Array[@moon-lander-config.ConfigSource] raise @moon-lander-config.ConfigError
@@ -43,22 +44,25 @@ pub fn Document::text(Self, String, String) -> String raise
 pub fn Document::validate(Self) -> Unit raise
 pub fn Document::value(Self) -> @moon-lander-config.ConfigValue
 
+#derive(Eq, @debug.Debug)
 pub(all) struct MetadataPath {
   path : String
   origin : String
-} derive(Eq, @debug.Debug)
+}
 pub fn MetadataPath::equal(Self, Self) -> Bool
 pub fn MetadataPath::not_equal(Self, Self) -> Bool
 pub fn MetadataPath::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum MetadataProviderRequest {
   Disabled
   SharedLocalRestore(MetadataRestoreConfig)
-} derive(Eq, @debug.Debug)
+}
 pub fn MetadataProviderRequest::equal(Self, Self) -> Bool
 pub fn MetadataProviderRequest::not_equal(Self, Self) -> Bool
 pub fn MetadataProviderRequest::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct MetadataRestoreConfig {
   service : MetadataPath
   policy : MetadataPath
@@ -67,7 +71,7 @@ pub(all) struct MetadataRestoreConfig {
   state : MetadataPath
   release : String
   assurance : String
-} derive(Eq, @debug.Debug)
+}
 pub fn MetadataRestoreConfig::equal(Self, Self) -> Bool
 pub fn MetadataRestoreConfig::not_equal(Self, Self) -> Bool
 pub fn MetadataRestoreConfig::to_repr(Self) -> @debug.Repr

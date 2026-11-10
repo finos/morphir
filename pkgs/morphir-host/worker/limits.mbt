@@ -46,8 +46,8 @@ pub struct Limits {
   response_bytes : Int32
   model : ModelLimits
   /// The instruction budget of one guest call, where the engine meters
-  /// instructions: from 1 to `max_call_instructions`.
-  call_instructions : Int64
+  /// instructions.
+  call_instructions : InstructionBudget
 }
 
 ///|
@@ -61,13 +61,13 @@ pub fn Limits::new(
   request_bytes~ : Int32,
   response_bytes~ : Int32,
   model~ : ModelLimits,
-  call_instructions~ : Int64 = model_call_instructions,
+  call_instructions~ : Int64 = model_call_instructions.count,
 ) -> Limits raise ValueError {
   {
     request_bytes: positive("request_bytes", request_bytes),
     response_bytes: positive("response_bytes", response_bytes),
     model,
-    call_instructions: call_budget(call_instructions),
+    call_instructions: InstructionBudget::new(call_instructions),
   }
 }
 
@@ -85,17 +85,64 @@ let call_frame_bytes : Int32 = 4 * 1024 * 1024
 pub let max_call_instructions : Int64 = 9007199254740991L
 
 ///|
-fn call_budget(value : Int64) -> Int64 raise ValueError {
-  guard value > 0L && value <= max_call_instructions else {
-    raise InvalidLimit("call_instructions=\{value}")
-  }
-  value
+/// The instruction budget of one guest call, where the engine meters
+/// instructions: a count from 1 to `max_call_instructions`. Only
+/// `InstructionBudget::new` and `InstructionBudget::parse` make a budget
+/// outside this package, so each budget is in that range.
+#derive(Eq, Compare, Debug)
+pub struct InstructionBudget {
+  count : Int64
 }
+
+///|
+pub extend InstructionBudget with Eq::{equal, not_equal}
+
+///|
+pub extend InstructionBudget with Compare::{compare, op_lt, op_le, op_ge, op_gt}
+
+///|
+pub extend InstructionBudget with @debug.Debug::{to_repr}
+
+///|
+/// A budget of `count` instructions. Raises `InvalidLimit` for a count outside
+/// 1 to `max_call_instructions`.
+pub fn InstructionBudget::new(
+  count : Int64,
+) -> InstructionBudget raise ValueError {
+  guard count > 0L && count <= max_call_instructions else {
+    raise InvalidLimit("call_instructions=\{count}")
+  }
+  { count, }
+}
+
+///|
+/// A budget from its decimal text: digits only, with no sign, prefix,
+/// separator or space. Raises `InvalidLimit` for other text and for a count
+/// outside 1 to `max_call_instructions`.
+pub fn InstructionBudget::parse(
+  text : StringView,
+) -> InstructionBudget raise ValueError {
+  let refused = InvalidLimit("call_instructions=\{text}")
+  guard text != "" && text.iter().all(c => c >= '0' && c <= '9') else {
+    raise refused
+  }
+  let count = @string.parse_int64(text, base=10) catch { _ => raise refused }
+  InstructionBudget::new(count)
+}
+
+///|
+/// The decimal text of the count, as `InstructionBudget::parse` reads it.
+pub impl Show for InstructionBudget with fn output(self, logger) {
+  logger.write_string(self.count.to_string())
+}
+
+///|
+pub extend InstructionBudget with Show::{to_string, output}
 
 ///|
 /// The instruction budget of one guest call on the model line. A call on
 /// MEP 0.1, and a probe, keep the budget of the restricted Extism profile.
-let model_call_instructions : Int64 = 5000000000L
+let model_call_instructions : InstructionBudget = { count: 5000000000L, }
 
 ///|
 /// The host's own limits: a 6 MiB framed request, a 16 MiB response and model

@@ -15,39 +15,43 @@ pub let themes : Array[ThemePreference]
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum Appearance {
   Light
   Dark
-} derive(Eq, @debug.Debug)
+}
 pub fn Appearance::equal(Self, Self) -> Bool
 pub fn Appearance::label(Self) -> String
 pub fn Appearance::not_equal(Self, Self) -> Bool
 pub fn Appearance::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum EditorLayout {
   SideBySide
   Tabs
-} derive(Eq, @debug.Debug)
+}
 pub fn EditorLayout::equal(Self, Self) -> Bool
 pub fn EditorLayout::id(Self) -> String
 pub fn EditorLayout::label(Self) -> String
 pub fn EditorLayout::not_equal(Self, Self) -> Bool
 pub fn EditorLayout::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum FilesView {
   Folders
   Projects
-} derive(Eq, @debug.Debug)
+}
 pub fn FilesView::equal(Self, Self) -> Bool
 pub fn FilesView::not_equal(Self, Self) -> Bool
 pub fn FilesView::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Settings {
   theme : ThemePreference
   workspace_sidebar : WorkspaceSidebar
   editor_layout : EditorLayout
   files_view : FilesView
-} derive(Eq, @debug.Debug)
+}
 pub fn Settings::decode(String) -> Self
 pub fn Settings::default() -> Self
 pub fn Settings::encode(Self) -> String
@@ -55,11 +59,12 @@ pub fn Settings::equal(Self, Self) -> Bool
 pub fn Settings::not_equal(Self, Self) -> Bool
 pub fn Settings::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ThemePreference {
   System
   Light
   Dark
-} derive(Eq, @debug.Debug)
+}
 pub fn ThemePreference::data_theme(Self) -> String?
 pub fn ThemePreference::equal(Self, Self) -> Bool
 pub fn ThemePreference::id(Self) -> String
@@ -70,10 +75,11 @@ pub fn ThemePreference::parse(String) -> Self?
 pub fn ThemePreference::resolve(Self, system~ : Appearance) -> Appearance
 pub fn ThemePreference::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum WorkspaceSidebar {
   Collapsed
   Expanded
-} derive(Eq, @debug.Debug)
+}
 pub fn WorkspaceSidebar::equal(Self, Self) -> Bool
 pub fn WorkspaceSidebar::not_equal(Self, Self) -> Bool
 pub fn WorkspaceSidebar::to_repr(Self) -> @debug.Repr

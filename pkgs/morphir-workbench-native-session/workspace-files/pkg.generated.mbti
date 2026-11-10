@@ -1,30 +1,34 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "finos/morphir-workbench-native-session/workspace-files"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
-pub const CHUNK_LIMIT : Int = 196608
+pub const CHUNK_LIMIT : Int32 = 196608
 
-pub const CONNECTED_FRAME_LIMIT : Int = 2162688
+pub const CONNECTED_FRAME_LIMIT : Int32 = 2162688
 
-pub const FRAME_LIMIT : Int = 1048576
+pub const FRAME_LIMIT : Int32 = 1048576
 
 pub const PROFILE : String = "morphir/workbench/workspace-files"
 
-pub const TRANSFER_LIMIT : Int = 25165824
+pub const TRANSFER_LIMIT : Int32 = 25165824
 
 pub const VERSION : String = "0.1.0-draft.1"
 
-pub fn decode_connected_reply(Int, Bytes) -> Json raise Invalid
+pub fn decode_connected_reply(Int32, Bytes) -> @json.Json raise Invalid
 
 pub fn decode_reply(Request, Bytes) -> Reply raise Invalid
 
 pub fn decode_request(Bytes) -> Request raise Invalid
 
-pub fn descriptor() -> Json
+pub fn descriptor() -> @json.Json
 
 pub fn failure(Request, Failure) -> Bytes raise Invalid
 
-pub fn success(Request, SessionId, Json) -> Bytes raise Invalid
+pub fn success(Request, SessionId, @json.Json) -> Bytes raise Invalid
 
 // Errors
 pub(all) suberror Invalid {
@@ -37,13 +41,13 @@ pub(all) enum Command {
   CloseSession
   ChooseWrite
   CancelPicker
-  Snapshot(GrantId, Int)
-  Read(GrantId, Int, Int)
-  BeginEdit(GrantId, Int, Int, Int)
-  Write(GrantId, Int, Int, Bytes)
-  Commit(GrantId, Int)
-  Status(GrantId, Int)
-  Release(GrantId, Int)
+  Snapshot(GrantId, Int32)
+  Read(GrantId, Int32, Int32)
+  BeginEdit(GrantId, Int32, Int32, Int32)
+  Write(GrantId, Int32, Int32, Bytes)
+  Commit(GrantId, Int32)
+  Status(GrantId, Int32)
+  Release(GrantId, Int32)
   Revoke(GrantId)
 }
 
@@ -59,7 +63,8 @@ pub struct FileChanges {
   remove_directories : Array[String]
 }
 
-pub struct GrantId(String) derive(Eq)
+#derive(Eq)
+pub struct GrantId(String)
 pub fn GrantId::equal(Self, Self) -> Bool
 pub fn GrantId::not_equal(Self, Self) -> Bool
 pub fn GrantId::parse(String) -> Self raise Invalid
@@ -74,7 +79,8 @@ pub fn Inventory::encode(Self) -> Bytes raise Invalid
 pub fn Inventory::files(Self) -> Map[String, Bytes]
 pub fn Inventory::new(Map[String, Bytes]) -> Self raise Invalid
 
-pub struct RelativePath(String) derive(Eq)
+#derive(Eq)
+pub struct RelativePath(String)
 pub fn RelativePath::equal(Self, Self) -> Bool
 pub fn RelativePath::not_equal(Self, Self) -> Bool
 pub fn RelativePath::parse(String) -> Self raise Invalid
@@ -83,7 +89,7 @@ pub fn RelativePath::to_string(Self) -> String
 pub struct Reply {
   // private fields
 }
-pub fn Reply::to_json(Self) -> Json
+pub fn Reply::to_json(Self) -> @json.Json
 
 pub enum Request {
   OpenSession
@@ -93,7 +99,8 @@ pub fn Request::command(Self) -> Command?
 pub fn Request::operation(Self) -> String
 pub fn Request::session_id(Self) -> SessionId?
 
-pub struct SessionId(String) derive(Eq)
+#derive(Eq)
+pub struct SessionId(String)
 pub fn SessionId::equal(Self, Self) -> Bool
 pub fn SessionId::not_equal(Self, Self) -> Bool
 pub fn SessionId::parse(String) -> Self raise Invalid

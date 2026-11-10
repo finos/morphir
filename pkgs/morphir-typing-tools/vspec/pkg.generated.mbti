@@ -15,9 +15,10 @@ pub fn elm_name(String) -> @common.Name
 pub fn parse_vspec(String) -> (String, Array[(String, @v4.Type)], @v4.Type) raise VSpecError
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror VSpecError {
   VSpecError(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn VSpecError::equal(Self, Self) -> Bool
 pub fn VSpecError::not_equal(Self, Self) -> Bool
 pub fn VSpecError::to_repr(Self) -> @debug.Repr

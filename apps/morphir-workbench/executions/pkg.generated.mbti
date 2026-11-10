@@ -3,14 +3,15 @@ package "finos/morphir-workbench/executions"
 
 import {
   "finos/morphir-engine/execution/workbench",
+  "moonbitlang/core/json",
 }
 
 // Values
-pub fn decode(String) -> Json raise
+pub fn decode(String) -> @json.Json raise
 
-pub fn decode_reply(String) -> Json
+pub fn decode_reply(String) -> @json.Json
 
-pub fn evaluate_scheme_claim(Json) -> Json raise
+pub fn evaluate_scheme_claim(@json.Json) -> @json.Json raise
 
 // Errors
 
@@ -18,7 +19,7 @@ pub fn evaluate_scheme_claim(Json) -> Json raise
 pub struct Client {
   // private fields
 }
-pub fn Client::handle(Self, String) -> Json
+pub fn Client::handle(Self, String) -> @json.Json
 pub fn Client::new() -> Self
 
 // Type aliases

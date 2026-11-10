@@ -1,12 +1,16 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "finos/morphir-engine/execution/workbench"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
-pub fn decode(String) -> Json raise
+pub fn decode(String) -> @json.Json raise
 
-pub fn decode_reply(String) -> Json
+pub fn decode_reply(String) -> @json.Json
 
-pub fn evaluate_scheme_claim(Json, project_result? : (Json) -> Json) -> Json raise
+pub fn evaluate_scheme_claim(@json.Json, project_result? : (@json.Json) -> @json.Json) -> @json.Json raise
 
 // Errors
 pub(all) suberror Invalid {
@@ -17,21 +21,21 @@ pub(all) suberror Invalid {
 pub struct Client {
   // private fields
 }
-pub fn Client::handle(Self, String) -> Json
-pub fn Client::new(project_result? : (Json) -> Json) -> Self
+pub fn Client::handle(Self, String) -> @json.Json
+pub fn Client::new(project_result? : (@json.Json) -> @json.Json) -> Self
 
 pub struct Host {
   // private fields
 }
-pub fn Host::claim_selected(Self, SchemeSelection) -> Json raise
-pub fn Host::handle(Self, String) -> Json
+pub fn Host::claim_selected(Self, SchemeSelection) -> @json.Json raise
+pub fn Host::handle(Self, String) -> @json.Json
 pub fn Host::new(String) -> Self raise
-pub fn Host::scheme_selection(Self, Json) -> SchemeSelection raise
+pub fn Host::scheme_selection(Self, @json.Json) -> SchemeSelection raise
 
 pub struct SchemeSelection {
   // private fields
 }
-pub fn SchemeSelection::projection(Self) -> Json raise
+pub fn SchemeSelection::projection(Self) -> @json.Json raise
 
 // Type aliases
 

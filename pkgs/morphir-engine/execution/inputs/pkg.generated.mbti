@@ -1,12 +1,16 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "finos/morphir-engine/execution/inputs"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
-pub fn convert_inputs(Json, String, Bool, Bool, Bool) -> String raise
+pub fn convert_inputs(@json.Json, String, Bool, Bool, Bool) -> String raise
 
 pub fn input_error(Error) -> String
 
-pub fn ion_arguments(Json, String, Bool) -> Json raise
+pub fn ion_arguments(@json.Json, String, Bool) -> @json.Json raise
 
 // Errors
 

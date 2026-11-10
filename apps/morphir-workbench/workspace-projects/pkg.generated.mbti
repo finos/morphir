@@ -7,6 +7,7 @@ import {
   "finos/morphir-engine/workspace",
   "finos/morphir-workbench/project",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -17,9 +18,10 @@ pub fn migrate(Array[@project.Project], String, intent? : String?, concept? : St
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub struct Files {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn Files::add_project(Self, @workspace.ProjectPath, @workspace.NewProject) -> Self raise
 pub fn Files::apply(Self, @workspace.Edit) -> Self raise
 pub fn Files::configure(Self, @workspace.ProjectPath, Setting, String?) -> Self raise
@@ -29,7 +31,7 @@ pub fn Files::convert_legacy(Self, @workspace.ProjectPath) -> Self raise
 pub fn Files::current(Self) -> @workspace.ProjectPath? raise
 pub fn Files::discover(Self) -> @workspace.Workspace raise
 pub fn Files::equal(Self, Self) -> Bool
-pub fn Files::from_json(Json) -> Self raise
+pub fn Files::from_json(@json.Json) -> Self raise
 pub fn Files::new(Map[String, String], binary_files? : Map[String, Bytes], open_file? : String?, current_project? : @workspace.ProjectPath?) -> Self raise
 pub fn Files::not_equal(Self, Self) -> Bool
 pub fn Files::open(Self, String) -> Self raise
@@ -43,13 +45,14 @@ pub fn Files::replace_project(Self, @workspace.ProjectPath, @project.Project, Ar
 pub fn Files::same_contents(Self, Self) -> Bool
 pub fn Files::save(Self, String, String, (String) -> String?, (String, String) -> Bool) -> Bool
 pub fn Files::setting(Self, @workspace.ProjectPath, Setting) -> SettingValue raise
-pub fn Files::to_json(Self) -> Json
+pub fn Files::to_json(Self) -> @json.Json
 pub fn Files::to_repr(Self) -> @debug.Repr
 pub fn Files::tree(Self) -> @workspace.Tree raise
 pub fn Files::write(Self, String, String) -> Self raise
 pub fn Files::write_all(Self, Map[String, @data.Content]) -> Self raise
 pub fn Files::write_content(Self, String, @data.Content) -> Self raise
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Setting {
   Name
   SourceDirectory
@@ -58,16 +61,17 @@ pub(all) enum Setting {
   Provider
   Generation
   DefaultMember
-} derive(Eq, @debug.Debug)
+}
 pub fn Setting::equal(Self, Self) -> Bool
 pub fn Setting::not_equal(Self, Self) -> Bool
 pub fn Setting::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct SettingValue {
   effective : String?
   override_value : String?
   origin : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn SettingValue::equal(Self, Self) -> Bool
 pub fn SettingValue::not_equal(Self, Self) -> Bool
 pub fn SettingValue::to_repr(Self) -> @debug.Repr

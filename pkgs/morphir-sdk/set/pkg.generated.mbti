@@ -36,7 +36,7 @@ pub fn[A] remove(A, Set[A]) -> Set[A] raise @morphir-sdk.SdkError
 
 pub fn[A] singleton((A, A) -> @morphir-sdk.Order raise @morphir-sdk.SdkError, A) -> Set[A]
 
-pub fn[A] size(Set[A]) -> Int
+pub fn[A] size(Set[A]) -> Int32
 
 pub fn[A] to_list(Set[A]) -> @list.List[A]
 

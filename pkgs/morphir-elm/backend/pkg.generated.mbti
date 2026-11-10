@@ -6,6 +6,7 @@ import {
   "finos/morphir-ir/common",
   "finos/morphir-ir/versions/v4",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -17,52 +18,57 @@ pub fn module_name(@common.Path, @common.Path) -> Array[String]
 
 pub fn type_name(@common.Name) -> String
 
-pub fn validate_options(Json) -> Unit raise
+pub fn validate_options(@json.Json) -> Unit raise
 
 pub fn value_name(@common.Name) -> String
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror ElmGenerationError {
   Refused(Problem)
   Failed(Array[Problem])
-} derive(Eq, @debug.Debug)
+}
 pub fn ElmGenerationError::equal(Self, Self) -> Bool
 pub fn ElmGenerationError::not_equal(Self, Self) -> Bool
 pub fn ElmGenerationError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct ElmDependency {
   name : String
   range : String
-} derive(Eq, @debug.Debug)
+}
 pub fn ElmDependency::equal(Self, Self) -> Bool
 pub fn ElmDependency::not_equal(Self, Self) -> Bool
 pub fn ElmDependency::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ElmPackageRef {
   name : String
   version : String
-} derive(Eq, @debug.Debug)
+}
 pub fn ElmPackageRef::equal(Self, Self) -> Bool
 pub fn ElmPackageRef::not_equal(Self, Self) -> Bool
 pub fn ElmPackageRef::parse(String, String) -> Self raise ElmGenerationError
 pub fn ElmPackageRef::range(Self) -> String
 pub fn ElmPackageRef::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum FileRole {
   Source
   ElmManifest
   MorphirManifest
-} derive(Eq, @debug.Debug)
+}
 pub fn FileRole::equal(Self, Self) -> Bool
 pub fn FileRole::not_equal(Self, Self) -> Bool
 pub fn FileRole::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct GeneratedFile {
   path : String
   role : FileRole
   content : String
-} derive(Eq, @debug.Debug)
+}
 pub fn GeneratedFile::equal(Self, Self) -> Bool
 pub fn GeneratedFile::not_equal(Self, Self) -> Bool
 pub fn GeneratedFile::to_repr(Self) -> @debug.Repr
@@ -79,14 +85,14 @@ pub fn Mapping::with_overrides(Self, Map[String, @mapping.MappingEntry]) -> Self
 pub(all) struct Options {
   profile : Profile
   placeholders : Placeholders
-  width : Int
+  width : Int32
   elm_package : ElmPackageRef
   mapping : Mapping
   packages : Map[String, ElmPackageRef]
   warnings : Array[String]
 }
 pub fn Options::default() -> Self
-pub fn Options::from_json(Json) -> Self raise ElmGenerationError
+pub fn Options::from_json(@json.Json) -> Self raise ElmGenerationError
 
 pub(all) struct Output {
   package_name : String
@@ -95,27 +101,30 @@ pub(all) struct Output {
   warnings : Array[String]
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Placeholders {
   Refuse
   DebugTodo
-} derive(Eq, @debug.Debug)
+}
 pub fn Placeholders::equal(Self, Self) -> Bool
 pub fn Placeholders::not_equal(Self, Self) -> Bool
 pub fn Placeholders::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Problem {
   code : String
   node_path : String
   detail : String
-} derive(Eq, @debug.Debug)
+}
 pub fn Problem::equal(Self, Self) -> Bool
 pub fn Problem::not_equal(Self, Self) -> Bool
 pub fn Problem::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Profile {
   Model
   Literal
-} derive(Eq, @debug.Debug)
+}
 pub fn Profile::equal(Self, Self) -> Bool
 pub fn Profile::not_equal(Self, Self) -> Bool
 pub fn Profile::to_repr(Self) -> @debug.Repr

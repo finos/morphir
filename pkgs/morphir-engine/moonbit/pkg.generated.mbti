@@ -11,9 +11,9 @@ import {
 // Values
 pub const PROVIDER : String = "finos/morphir-moonbit-frontend"
 
-pub fn provider(library_limits? : @morphir-moonbit-frontend.LibraryLimits, max_string_code_units? : Int, unit_limits? : @data.Limits, observer? : @observability.Observer) -> @morphir-engine.SourceProvider raise
+pub fn provider(library_limits? : @morphir-moonbit-frontend.LibraryLimits, max_string_code_units? : Int32, unit_limits? : @data.Limits, observer? : @observability.Observer) -> @morphir-engine.SourceProvider raise
 
-pub fn register(@morphir-engine.Engine, library_limits? : @morphir-moonbit-frontend.LibraryLimits, max_string_code_units? : Int, unit_limits? : @data.Limits, observer? : @observability.Observer) -> Unit raise
+pub fn register(@morphir-engine.Engine, library_limits? : @morphir-moonbit-frontend.LibraryLimits, max_string_code_units? : Int32, unit_limits? : @data.Limits, observer? : @observability.Observer) -> Unit raise
 
 // Errors
 

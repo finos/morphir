@@ -134,7 +134,7 @@ async test "runaway guest: the session deadline stops the worker's process group
   // A call deadline and a budget beyond the session deadline.
   let call = @guest.CallBounds::new(
     deadline_ms=60000,
-    instructions=Some(2147483647),
+    instructions=Some(@worker.InstructionBudget::new(2147483647)),
   )
   with_host(path, call~, host => {
     // The budget ends the call after about 2 s on a developer machine, so the
@@ -356,7 +356,7 @@ async test "runaway guest on the model line: a budget above 2^31 stops a call of
   // keeps the limits of the model line.
   let call = @guest.CallBounds::new(
     deadline_ms=60000,
-    instructions=Some(2147483648L),
+    instructions=Some(@worker.InstructionBudget::new(2147483648L)),
   )
   with_host(path, call~, host => {
     for
@@ -368,7 +368,7 @@ async test "runaway guest on the model line: a budget above 2^31 stops a call of
         is Some((Failed(Host(code=BudgetExhausted, ..)), report)) else {
         fail("a runaway guest did not end at its budget")
       }
-      assert_eq(report.limits.call_instructions, 5000000000L)
+      assert_eq(report.limits.call_instructions.count, 5000000000L)
     }
   })
 }
@@ -378,7 +378,7 @@ async test "runaway guest on the model line: the call deadline stops a call of e
   guard cli() is Some(path) else { return }
   let call = @guest.CallBounds::new(
     deadline_ms=300,
-    instructions=Some(2147483647),
+    instructions=Some(@worker.InstructionBudget::new(2147483647)),
   )
   with_host(path, call~, host => {
     for

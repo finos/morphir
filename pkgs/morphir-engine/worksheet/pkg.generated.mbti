@@ -5,6 +5,7 @@ import {
   "finos/morphir-execution",
   "finos/morphir-scheme",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -12,32 +13,35 @@ pub const CONTRACT_VERSION : String = "0.1.0-draft.1"
 
 pub const PROFILE : String = "morphir/workbench/worksheet"
 
-pub fn browser_command(String) -> Json
+pub fn browser_command(String) -> @json.Json
 
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub struct CapturedWorksheetSource {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn CapturedWorksheetSource::equal(Self, Self) -> Bool
-pub fn CapturedWorksheetSource::from_json(Json) -> Self raise
+pub fn CapturedWorksheetSource::from_json(@json.Json) -> Self raise
 pub fn CapturedWorksheetSource::new(WorksheetId, SourceRevision, String) -> Self raise
 pub fn CapturedWorksheetSource::not_equal(Self, Self) -> Bool
 pub fn CapturedWorksheetSource::text(Self) -> String
-pub fn CapturedWorksheetSource::to_json(Self) -> Json
+pub fn CapturedWorksheetSource::to_json(Self) -> @json.Json
 pub fn CapturedWorksheetSource::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct FormId {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn FormId::equal(Self, Self) -> Bool
 pub fn FormId::not_equal(Self, Self) -> Bool
 pub fn FormId::to_repr(Self) -> @debug.Repr
 
+#derive(Eq)
 pub struct Observation {
   // private fields
-} derive(Eq)
+}
 pub fn Observation::equal(Self, Self) -> Bool
 pub fn Observation::expression(Self) -> String
 pub fn Observation::not_equal(Self, Self) -> Bool
@@ -45,29 +49,32 @@ pub fn Observation::outcome(Self) -> @morphir-execution.TerminalOutcome
 pub fn Observation::preview(Self) -> String
 pub fn Observation::range(Self) -> Utf16Range
 
+#derive(Eq, @debug.Debug)
 pub struct SourceRevision {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn SourceRevision::equal(Self, Self) -> Bool
-pub fn SourceRevision::new(Int) -> Self raise
+pub fn SourceRevision::new(Int32) -> Self raise
 pub fn SourceRevision::not_equal(Self, Self) -> Bool
 pub fn SourceRevision::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct Utf16Offset {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn Utf16Offset::equal(Self, Self) -> Bool
 pub fn Utf16Offset::not_equal(Self, Self) -> Bool
 pub fn Utf16Offset::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct Utf16Range {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn Utf16Range::equal(Self, Self) -> Bool
-pub fn Utf16Range::new(CapturedWorksheetSource, Int, Int) -> Self raise
+pub fn Utf16Range::new(CapturedWorksheetSource, Int32, Int32) -> Self raise
 pub fn Utf16Range::not_equal(Self, Self) -> Bool
 pub fn Utf16Range::slice(Self, CapturedWorksheetSource) -> String raise
-pub fn Utf16Range::to_json(Self) -> Json
+pub fn Utf16Range::to_json(Self) -> @json.Json
 pub fn Utf16Range::to_repr(Self) -> @debug.Repr
 
 pub(all) enum WorkerTermination {
@@ -76,17 +83,19 @@ pub(all) enum WorkerTermination {
   WorkerFailed
 }
 
+#derive(Eq, @debug.Debug)
 pub struct WorksheetId {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WorksheetId::equal(Self, Self) -> Bool
 pub fn WorksheetId::not_equal(Self, Self) -> Bool
 pub fn WorksheetId::parse(String) -> Self raise
 pub fn WorksheetId::to_repr(Self) -> @debug.Repr
 
+#derive(Eq)
 pub struct WorksheetReport {
   // private fields
-} derive(Eq)
+}
 pub fn WorksheetReport::completion(Self) -> @morphir-execution.TerminalOutcome
 pub fn WorksheetReport::decode(WorksheetRequest, String) -> Self raise
 pub fn WorksheetReport::equal(Self, Self) -> Bool
@@ -94,11 +103,12 @@ pub fn WorksheetReport::not_equal(Self, Self) -> Bool
 pub fn WorksheetReport::observations(Self) -> Array[Observation]
 pub fn WorksheetReport::source(Self) -> CapturedWorksheetSource
 pub fn WorksheetReport::successful(Self) -> Bool
-pub fn WorksheetReport::to_json(Self) -> Json
+pub fn WorksheetReport::to_json(Self) -> @json.Json
 
+#derive(Eq)
 pub struct WorksheetRequest {
   // private fields
-} derive(Eq)
+}
 pub fn WorksheetRequest::decode(String) -> Self raise
 pub fn WorksheetRequest::equal(Self, Self) -> Bool
 pub fn WorksheetRequest::evaluate(Self, interrupted? : () -> WorkerTermination?, prepare? : (@morphir-scheme.Runtime) -> Unit raise) -> WorksheetReport raise
@@ -106,7 +116,7 @@ pub fn WorksheetRequest::new(CapturedWorksheetSource) -> Self raise
 pub fn WorksheetRequest::not_equal(Self, Self) -> Bool
 pub fn WorksheetRequest::source(Self) -> CapturedWorksheetSource
 pub fn WorksheetRequest::terminated(Self, WorkerTermination) -> WorksheetReport
-pub fn WorksheetRequest::to_json(Self) -> Json
+pub fn WorksheetRequest::to_json(Self) -> @json.Json
 
 // Type aliases
 

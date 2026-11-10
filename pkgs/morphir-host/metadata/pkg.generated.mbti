@@ -6,9 +6,9 @@ import {
 }
 
 // Values
-pub const MAX_REQUEST_BYTES : Int = 4194304
+pub const MAX_REQUEST_BYTES : Int32 = 4194304
 
-pub const MAX_RESPONSE_BYTES : Int = 16777216
+pub const MAX_RESPONSE_BYTES : Int32 = 16777216
 
 pub const SERVICE_ID : String = "morphir-package/provider-snapshot/0.1.0-draft.1"
 

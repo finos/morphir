@@ -22,9 +22,9 @@ pub fn cons(@morphir-sdk.Character, @morphir-sdk.Text) -> @morphir-sdk.Text
 
 pub fn contains(@morphir-sdk.Text, @morphir-sdk.Text) -> Bool
 
-pub fn drop_left(Int, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn drop_left(Int32, @morphir-sdk.Text) -> @morphir-sdk.Text
 
-pub fn drop_right(Int, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn drop_right(Int32, @morphir-sdk.Text) -> @morphir-sdk.Text
 
 pub fn ends_with(@morphir-sdk.Text, @morphir-sdk.Text) -> Bool
 
@@ -42,37 +42,37 @@ pub fn from_int(@integer.Integer) -> @morphir-sdk.Text
 
 pub fn from_list(@list.List[@morphir-sdk.Character]) -> @morphir-sdk.Text
 
-pub fn indexes(@morphir-sdk.Text, @morphir-sdk.Text) -> @list.List[Int]
+pub fn indexes(@morphir-sdk.Text, @morphir-sdk.Text) -> @list.List[Int32]
 
-pub fn indices(@morphir-sdk.Text, @morphir-sdk.Text) -> @list.List[Int]
+pub fn indices(@morphir-sdk.Text, @morphir-sdk.Text) -> @list.List[Int32]
 
 pub fn is_empty(@morphir-sdk.Text) -> Bool
 
 pub fn join(@morphir-sdk.Text, @list.List[@morphir-sdk.Text]) -> @morphir-sdk.Text
 
-pub fn left(Int, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn left(Int32, @morphir-sdk.Text) -> @morphir-sdk.Text
 
-pub fn length(@morphir-sdk.Text) -> Int
+pub fn length(@morphir-sdk.Text) -> Int32
 
 pub fn lines(@morphir-sdk.Text) -> @list.List[@morphir-sdk.Text]
 
 pub fn map((@morphir-sdk.Character) -> @morphir-sdk.Character raise?, @morphir-sdk.Text) -> @morphir-sdk.Text raise?
 
-pub fn pad(Int, @morphir-sdk.Character, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn pad(Int32, @morphir-sdk.Character, @morphir-sdk.Text) -> @morphir-sdk.Text
 
-pub fn pad_left(Int, @morphir-sdk.Character, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn pad_left(Int32, @morphir-sdk.Character, @morphir-sdk.Text) -> @morphir-sdk.Text
 
-pub fn pad_right(Int, @morphir-sdk.Character, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn pad_right(Int32, @morphir-sdk.Character, @morphir-sdk.Text) -> @morphir-sdk.Text
 
-pub fn repeat(Int, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn repeat(Int32, @morphir-sdk.Text) -> @morphir-sdk.Text
 
 pub fn replace(@morphir-sdk.Text, @morphir-sdk.Text, @morphir-sdk.Text) -> @morphir-sdk.Text
 
 pub fn reverse(@morphir-sdk.Text) -> @morphir-sdk.Text
 
-pub fn right(Int, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn right(Int32, @morphir-sdk.Text) -> @morphir-sdk.Text
 
-pub fn slice(Int, Int, @morphir-sdk.Text) -> @morphir-sdk.Text
+pub fn slice(Int32, Int32, @morphir-sdk.Text) -> @morphir-sdk.Text
 
 pub fn split(@morphir-sdk.Text, @morphir-sdk.Text) -> @list.List[@morphir-sdk.Text]
 

@@ -12,6 +12,7 @@ import {
   "finos/morphir-scheme",
   "finos/morphir-typing",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -46,26 +47,29 @@ pub(all) struct BoundarySelection {
   write_bytes : Bool
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum BuildPolicy {
   SourceOnly
   Required(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn BuildPolicy::equal(Self, Self) -> Bool
 pub fn BuildPolicy::not_equal(Self, Self) -> Bool
 pub fn BuildPolicy::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum CompileKind {
   EachFile
   WholeProject
-} derive(Eq, @debug.Debug)
+}
 pub fn CompileKind::equal(Self, Self) -> Bool
 pub fn CompileKind::not_equal(Self, Self) -> Bool
 pub fn CompileKind::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct CompiledUnit {
   source : String
   unit : @data.IRUnit
-} derive(@debug.Debug)
+}
 pub fn CompiledUnit::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Component {
@@ -91,7 +95,7 @@ pub(all) struct ContentReport {
   projects : Array[LibraryProject]
   diagnostics : Array[Diagnostic]
   warnings : Array[Diagnostic]
-  processed : Int
+  processed : Int32
 }
 pub fn ContentReport::successful(Self) -> Bool
 pub fn ContentReport::text_report(Self) -> Report
@@ -103,13 +107,14 @@ pub(all) struct DataFormat {
   binary : Bool
 }
 
+#derive(@debug.Debug)
 pub(all) struct Diagnostic {
   path : String
   stage : String
   message : String
   details : @diagnostics.Warning?
   problem : Problem?
-} derive(@debug.Debug)
+}
 pub fn Diagnostic::code(Self) -> String?
 pub fn Diagnostic::location(Self) -> @v4.SourceLocation?
 pub fn Diagnostic::to_repr(Self) -> @debug.Repr
@@ -123,7 +128,7 @@ pub fn Engine::languages(Self) -> Array[LanguageOffer]
 pub fn Engine::list_projects(Self, Host, @workspace.Workspace, script? : String, cancelled? : () -> Bool, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise) -> Array[ProjectInfo] raise
 pub fn Engine::new(limits? : @morphir-scheme.Limits, metadata_capabilities? : @morphir-metadata.Capabilities) -> Self
 pub fn Engine::plan(Self, Host, @workspace.Workspace, Request, cancelled? : () -> Bool, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise, codecs? : @data.Registry?) -> Plan raise
-pub fn Engine::plan_retained_generation(Self, @data.IRUnit, String, String, options? : Json, policy? : BuildPolicy, project? : String) -> Plan raise
+pub fn Engine::plan_retained_generation(Self, @data.IRUnit, String, String, options? : @json.Json, policy? : BuildPolicy, project? : String) -> Plan raise
 pub fn Engine::register_backend(Self, String, String, (@v4.IRFile) -> String raise, rich_units? : Bool) -> Unit
 pub fn Engine::register_component(Self, String, Component) -> Unit raise
 pub fn Engine::register_data_format(Self, String, DataFormat) -> Unit raise
@@ -153,9 +158,9 @@ pub(all) struct GeneratedProject {
 }
 
 pub(all) struct GenerationBackend {
-  generate : (@data.IRUnit, Json, () -> Bool) -> GenerationBatch raise
+  generate : (@data.IRUnit, @json.Json, () -> Bool) -> GenerationBatch raise
   write_bytes : Bool
-  validate_options : (Json) -> Unit raise
+  validate_options : (@json.Json) -> Unit raise
   targets : Array[String]
 }
 
@@ -166,11 +171,12 @@ pub(all) struct GenerationBatch {
   projects : Array[GeneratedProject]
 }
 
+#derive(@debug.Debug)
 pub(all) struct GenerationProblem {
   code : String
   node_path : String
   detail : String
-} derive(@debug.Debug)
+}
 pub fn GenerationProblem::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Host {
@@ -222,10 +228,11 @@ pub fn Plan::requires_byte_write(Self) -> Bool
 pub fn Plan::source_frontends(Self) -> Array[SourceFrontendSelection]
 pub fn Plan::sources(Self) -> Array[String]
 
+#derive(@debug.Debug)
 pub(all) enum Problem {
   Source(SourceProblem)
   Generation(GenerationProblem)
-} derive(@debug.Debug)
+}
 pub fn Problem::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProfileOffer {
@@ -250,14 +257,15 @@ pub(all) struct ProjectInfo {
   target : String?
   error : String?
 }
-pub fn ProjectInfo::to_json(Self) -> Json
+pub fn ProjectInfo::to_json(Self) -> @json.Json
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ProjectMetadataScope {
   workspace_root : String
   project_root : String
   project_name : String
   request : @config.MetadataProviderRequest
-} derive(Eq, @debug.Debug)
+}
 pub fn ProjectMetadataScope::equal(Self, Self) -> Bool
 pub fn ProjectMetadataScope::not_equal(Self, Self) -> Bool
 pub fn ProjectMetadataScope::to_repr(Self) -> @debug.Repr
@@ -271,7 +279,7 @@ pub(all) struct ProjectSources {
 pub(all) struct Report {
   artifacts : Array[Artifact]
   diagnostics : Array[Diagnostic]
-  processed : Int
+  processed : Int32
 }
 pub fn Report::successful(Self) -> Bool
 
@@ -298,9 +306,9 @@ pub(all) struct SourceCapabilities {
   summary : String
   supported : Array[String]
   excluded : Array[String]
-  max_documents : Int?
+  max_documents : Int32?
   incremental : Bool
-  limits : Map[String, Int]
+  limits : Map[String, Int32]
 }
 
 pub(all) enum SourceCompile {
@@ -336,12 +344,13 @@ pub(all) struct SourceLanguage {
   profiles : Array[SourceProfile]
 }
 
+#derive(@debug.Debug)
 pub(all) struct SourceProblem {
   code : String
   detail : String
   path : String
   location : @v4.SourceLocation?
-} derive(@debug.Debug)
+}
 pub fn SourceProblem::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SourceProfile {

@@ -11,7 +11,10 @@ test "per-call budget: a runaway guest stops at its call deadline" {
 test "per-call budget: an exhausted instruction budget is not a deadline" {
   let guest = load(
     @fixtures.runaway_guest(),
-    call=@guest.CallBounds::new(deadline_ms=10000, instructions=Some(100000)),
+    call=@guest.CallBounds::new(
+      deadline_ms=10000,
+      instructions=Some(@worker.InstructionBudget::new(100000)),
+    ),
   )
   assert_eq(exchange(guest, b"{}"), "budget-exhausted")
 }

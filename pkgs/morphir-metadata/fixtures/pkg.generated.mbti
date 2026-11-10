@@ -10,7 +10,7 @@ import {
 // Values
 pub const REVISION : String = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-pub fn adapter(String, context? : String, document? : String) -> @ion.IonValue raise
+pub fn adapter(String, context? : String, document? : String) -> @ion.Ion raise
 
 pub fn capabilities() -> @morphir-metadata.Capabilities
 

@@ -67,13 +67,13 @@ test "monotonic clock: a clock that moves backwards gives no smaller time" {
 test "call bounds: a budget above 2^31 goes to the engine with the same count" {
   let (budget, deadline) = CallBounds::new(
     deadline_ms=10000,
-    instructions=Some(5000000000L),
+    instructions=Some(@worker.InstructionBudget::new(5000000000L)),
   ).engine()
   assert_eq(budget.map(b => b.instructions()), Some(5000000000L))
   assert_eq(deadline.milliseconds(), 10000)
   let (largest, _) = CallBounds::new(
     deadline_ms=10000,
-    instructions=Some(9007199254740991L),
+    instructions=Some(@worker.InstructionBudget::new(9007199254740991L)),
   ).engine()
   assert_eq(largest.map(b => b.instructions()), Some(9007199254740991L))
 }

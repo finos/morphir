@@ -41,7 +41,7 @@ pub fn[K, V] remove(K, Dict[K, V]) -> Dict[K, V] raise @morphir-sdk.SdkError
 
 pub fn[K, V] singleton((K, K) -> @morphir-sdk.Order raise @morphir-sdk.SdkError, K, V) -> Dict[K, V]
 
-pub fn[K, V] size(Dict[K, V]) -> Int
+pub fn[K, V] size(Dict[K, V]) -> Int32
 
 pub fn[K, V] to_list(Dict[K, V]) -> @list.List[(K, V)]
 

@@ -750,7 +750,7 @@ test "limits: a MEP 0.1 WASM guest also has the restricted Extism profile" {
   assert_eq(host.for_session(Model([ion_tuple]), Wasm(abi=None)), host)
   let profile = @worker.ExtismProfile::restricted()
   assert_eq(profile.memory_bytes, 256 * 1024 * 1024)
-  assert_eq(profile.instructions, 1000000000L)
+  assert_eq(profile.instructions.count, 1000000000L)
   let wasm = host.for_session(Legacy, Wasm(abi=Some(ExtismKernelV1)))
   assert_eq(wasm.request_bytes, profile.input_bytes)
   assert_eq(wasm.response_bytes, profile.output_bytes)

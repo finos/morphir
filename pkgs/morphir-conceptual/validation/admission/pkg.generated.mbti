@@ -28,9 +28,9 @@ pub(all) enum Exhaustion {
 }
 
 pub(all) struct Limits {
-  max_depth : Int
-  max_value_nodes : Int
-  max_int_digits : Int
+  max_depth : Int32
+  max_value_nodes : Int32
+  max_int_digits : Int32
 }
 pub fn Limits::default() -> Self
 
@@ -45,7 +45,7 @@ pub(all) enum Refinement {
   NonEmptyString
   PositiveInt
   NonNegativeInt
-  MaxLength(Int)
+  MaxLength(Int32)
   NamedRefinement(String)
 }
 

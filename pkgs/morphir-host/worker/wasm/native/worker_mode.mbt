@@ -145,20 +145,19 @@ fn positive(
 
 ///|
 /// The value of `--instructions`: decimal digits only, from 1 to
-/// `@worker.max_call_instructions`.
-fn instruction_budget(matches : @argparse.Matches) -> Int64? raise UsageError {
+/// `@worker.max_call_instructions`, as `@worker.InstructionBudget::parse`
+/// reads it.
+fn instruction_budget(
+  matches : @argparse.Matches,
+) -> @worker.InstructionBudget? raise UsageError {
   guard single(matches, "instructions") is Some(text) else { return None }
-  let refused = UsageError(
-    "--instructions must be an integer from 1 to \{@worker.max_call_instructions}",
-  )
-  guard text != "" && text.iter().all(c => c >= '0' && c <= '9') else {
-    raise refused
+  let budget = @worker.InstructionBudget::parse(text) catch {
+    _ =>
+      raise UsageError(
+        "--instructions must be an integer from 1 to \{@worker.max_call_instructions}",
+      )
   }
-  let value = @strconv.parse_int64(text, base=10) catch { _ => raise refused }
-  guard value > 0L && value <= @worker.max_call_instructions else {
-    raise refused
-  }
-  Some(value)
+  Some(budget)
 }
 
 ///|
@@ -197,7 +196,7 @@ pub fn WorkerInvocation::parse(
       @guest.CallBounds::new(
         deadline_ms=call_ms.unwrap_or(defaults.deadline_ms),
         instructions=match instructions {
-          Some(count) => Some(count)
+          Some(budget) => Some(budget)
           None => defaults.instructions
         },
       ),
@@ -237,8 +236,8 @@ pub fn WorkerOptions::to_args(self : WorkerOptions) -> Array[String] {
   ]
   if self.call is Some(call) {
     args.append(["--call-ms", call.deadline_ms.to_string()])
-    if call.instructions is Some(count) {
-      args.append(["--instructions", count.to_string()])
+    if call.instructions is Some(budget) {
+      args.append(["--instructions", budget.to_string()])
     }
   }
   if self.memory_pages is Some(pages) {

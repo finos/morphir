@@ -22,9 +22,10 @@ pub fn valid_language_id(String) -> Bool
 pub fn value_uri(@v4.IRFile, @common.FQName) -> String raise
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror MetadataError {
   Invalid(String, String, String)
-} derive(Eq, @debug.Debug)
+}
 pub fn MetadataError::equal(Self, Self) -> Bool
 pub fn MetadataError::not_equal(Self, Self) -> Bool
 pub fn MetadataError::to_repr(Self) -> @debug.Repr
@@ -62,7 +63,7 @@ pub(all) struct Interpretation {
 
 pub(all) struct MetadataEntry {
   node_id : String
-  data : @ion.IonValue
+  data : @ion.Ion
 }
 
 pub(all) struct NamingFact {
@@ -77,12 +78,13 @@ pub(all) struct ProviderObserver {
 }
 pub fn ProviderObserver::noop() -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ProviderSignal {
   Started
   Succeeded
   Refused(String)
   Cancelled
-} derive(Eq, @debug.Debug)
+}
 pub fn ProviderSignal::equal(Self, Self) -> Bool
 pub fn ProviderSignal::not_equal(Self, Self) -> Bool
 pub fn ProviderSignal::to_repr(Self) -> @debug.Repr
@@ -92,15 +94,16 @@ pub(all) struct RestoredLibrary {
   format : String
   revision : String
   document : String
-  document_metadata : @ion.IonValue
+  document_metadata : @ion.Ion
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct TargetNames {
   frontend : Map[String, String]
   backend : Map[String, String]
-} derive(Eq, @debug.Debug)
+}
 pub fn TargetNames::equal(Self, Self) -> Bool
-pub fn TargetNames::from_ion(@ion.IonValue, owner? : String, language_ids? : Bool) -> Self raise
+pub fn TargetNames::from_ion(@ion.Ion, owner? : String, language_ids? : Bool) -> Self raise
 pub fn TargetNames::not_equal(Self, Self) -> Bool
 pub fn TargetNames::to_repr(Self) -> @debug.Repr
 

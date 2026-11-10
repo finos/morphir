@@ -1,12 +1,16 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "finos/morphir-workbench/mck/workspace-files"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub const SUITE : String = "workbench-workspace-files"
 
 pub const VERSION : String = "0.1.0-draft.1"
 
-pub fn handle_line(String) -> Json?
+pub fn handle_line(String) -> @json.Json?
 
 // Errors
 

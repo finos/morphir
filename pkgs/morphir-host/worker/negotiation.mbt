@@ -269,7 +269,7 @@ pub impl ToJson for ModelTuple with fn to_json(self) {
 #derive(Eq, Debug)
 pub struct ExtismProfile {
   memory_bytes : Int32
-  instructions : Int64
+  instructions : InstructionBudget
   call_ms : Int32
   input_bytes : Int32
   output_bytes : Int32
@@ -285,7 +285,7 @@ pub extend ExtismProfile with @debug.Debug::{to_repr}
 pub fn ExtismProfile::restricted() -> ExtismProfile {
   {
     memory_bytes: 256 * 1024 * 1024,
-    instructions: 1000000000L,
+    instructions: { count: 1000000000L, },
     call_ms: 30000,
     input_bytes: 4 * 1024 * 1024,
     output_bytes: 16 * 1024 * 1024,
@@ -297,7 +297,7 @@ pub fn ExtismProfile::restricted() -> ExtismProfile {
 fn ExtismProfile::call_instructions(
   self : ExtismProfile,
   limits : Limits,
-) -> Int64 {
+) -> InstructionBudget {
   @cmp.minimum(limits.call_instructions, self.instructions)
 }
 
@@ -308,7 +308,7 @@ pub extend ExtismProfile with ToJson::{to_json}
 pub impl ToJson for ExtismProfile with fn to_json(self) {
   {
     "memoryBytes": self.memory_bytes,
-    "instructions": self.instructions.to_double(),
+    "instructions": self.instructions.count.to_double(),
     "callMs": self.call_ms,
     "inputBytes": self.input_bytes,
     "outputBytes": self.output_bytes,

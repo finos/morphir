@@ -65,9 +65,9 @@ pub fn one() -> Decimal
 
 pub fn round(Decimal) -> Decimal
 
-pub fn shift_decimal_left(Int, Decimal) -> Decimal
+pub fn shift_decimal_left(Int32, Decimal) -> Decimal
 
-pub fn shift_decimal_right(Int, Decimal) -> Decimal
+pub fn shift_decimal_right(Int32, Decimal) -> Decimal
 
 pub fn sub(Decimal, Decimal) -> Decimal
 
@@ -86,21 +86,23 @@ pub fn truncate(Decimal) -> Decimal
 pub fn zero() -> Decimal
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror DecimalError {
   DivisionByZero
   Underflow
   PrecisionLoss
   InvalidLiteral
-} derive(Eq, @debug.Debug)
+}
 pub fn DecimalError::equal(Self, Self) -> Bool
 pub fn DecimalError::not_equal(Self, Self) -> Bool
 pub fn DecimalError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub struct Decimal {
   coefficient : @bigint.BigInt
-  exponent : Int
-} derive(Eq, @debug.Debug)
+  exponent : Int32
+}
 pub fn Decimal::equal(Self, Self) -> Bool
 pub fn Decimal::not_equal(Self, Self) -> Bool
 pub fn Decimal::to_repr(Self) -> @debug.Repr

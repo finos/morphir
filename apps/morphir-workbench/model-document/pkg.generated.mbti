@@ -20,13 +20,23 @@ pub using @finos/morphir-engine/model-document {type DocumentRevision}
 
 pub using @finos/morphir-engine/model-document {type HostRetention}
 
+pub using @finos/morphir-engine/model-document {type InventoryPathProfile}
+
+pub using @finos/morphir-engine/model-document {type InventoryRevision}
+
 pub using @finos/morphir-engine/model-document {type OpenAttempt}
 
 pub using @finos/morphir-engine/model-document {type OriginalFile}
 
 pub using @finos/morphir-engine/model-document {type OriginalFilename}
 
+pub using @finos/morphir-engine/model-document {type OriginalInventory}
+
 pub using @finos/morphir-engine/model-document {type OriginalPath}
+
+pub using @finos/morphir-engine/model-document {type OriginalRelease}
+
+pub using @finos/morphir-engine/model-document {type OriginalSourceHeader}
 
 pub using @finos/morphir-engine/model-document {type OriginalTree}
 

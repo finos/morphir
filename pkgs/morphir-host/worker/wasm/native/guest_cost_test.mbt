@@ -89,7 +89,7 @@ async fn generate_within(
 ) -> Ending {
   let call = @guest.CallBounds::new(
     deadline_ms=600000,
-    instructions=Some(instructions),
+    instructions=Some(@worker.InstructionBudget::new(instructions)),
   )
   let mut ending = OverBudget
   with_host(path, call~, host => {

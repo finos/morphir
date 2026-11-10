@@ -20,7 +20,7 @@ pub fn from_bigint(@bigint.BigInt) -> Integer
 
 pub fn from_float_truncated(Double) -> Integer raise @morphir-sdk.SdkError
 
-pub fn from_int(Int) -> Integer
+pub fn from_int(Int32) -> Integer
 
 pub fn from_int64(Int64) -> Integer
 
@@ -44,7 +44,7 @@ pub fn to_bigint(Integer) -> @bigint.BigInt
 
 pub fn to_float(Integer) -> Double
 
-pub fn to_int(Integer) -> Int?
+pub fn to_int(Integer) -> Int32?
 
 pub fn to_int64(Integer) -> Int64?
 
@@ -53,10 +53,11 @@ pub fn to_string(Integer) -> String
 // Errors
 
 // Types and methods
+#derive(Compare, Eq, @debug.Debug)
 pub struct Integer {
   value : @bigint.BigInt
-} derive(Compare, Eq, @debug.Debug)
-pub fn Integer::compare(Self, Self) -> Int
+}
+pub fn Integer::compare(Self, Self) -> Int32
 pub fn Integer::equal(Self, Self) -> Bool
 pub fn Integer::not_equal(Self, Self) -> Bool
 pub fn Integer::op_ge(Self, Self) -> Bool

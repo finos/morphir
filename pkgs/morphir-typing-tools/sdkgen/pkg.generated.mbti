@@ -6,6 +6,8 @@ package "finos/morphir-typing-tools/sdkgen"
 // Errors
 
 // Types and methods
+#derive(Eq)
+type SdkCommand
 
 // Type aliases
 

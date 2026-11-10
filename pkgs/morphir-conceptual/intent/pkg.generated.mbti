@@ -16,9 +16,10 @@ pub fn inspect(Model) -> Inspection
 pub fn prd_view(Model) -> PrdView
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror InvalidInput {
   InvalidInput(String)
-} derive(@debug.Debug)
+}
 pub fn InvalidInput::to_repr(Self) -> @debug.Repr
 
 // Types and methods
@@ -34,7 +35,8 @@ pub(all) struct AdaptedSource {
   intent : Entity
 }
 
-pub struct Category(String) derive(Eq, @debug.Debug)
+#derive(Eq, @debug.Debug)
+pub struct Category(String)
 pub fn Category::equal(Self, Self) -> Bool
 pub fn Category::not_equal(Self, Self) -> Bool
 pub fn Category::parse(String) -> Self raise InvalidInput
@@ -45,7 +47,7 @@ pub(all) struct Claim {
   subject : ResolvedRef
   proposition : String
   author : Id
-  scope : @ion.IonValue
+  scope : @ion.Ion
   context : RevisionContext
 }
 
@@ -81,11 +83,11 @@ pub(all) struct ClauseResult {
 
 pub(all) enum Content {
   Intent(String, String?)
-  Requirement(Category, String, @ion.IonValue?)
+  Requirement(Category, String, @ion.Ion?)
   SourceFragment(SourceRef)
   Declaration(DeclarationRole, ResolvedRef?)
   Contract(ResolvedRef, ClauseKind, Expression)
-  Scenario(@ion.IonValue)
+  Scenario(@ion.Ion)
   Implementation(Snapshot)
   Claim(Claim)
   Evidence(Evidence)
@@ -105,6 +107,7 @@ pub(all) struct Diagnostic {
   path : String
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum DiagnosticCode {
   DuplicateIdentity
   RelationshipKind
@@ -121,15 +124,16 @@ pub(all) enum DiagnosticCode {
   InconclusiveEvidence
   ImplementationUnbound
   UnsupportedSemantics
-} derive(Eq, @debug.Debug)
+}
 pub fn DiagnosticCode::equal(Self, Self) -> Bool
 pub fn DiagnosticCode::not_equal(Self, Self) -> Bool
 pub fn DiagnosticCode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Document {
   id : Id
   revision : Revision?
-} derive(Eq, @debug.Debug)
+}
 pub fn Document::equal(Self, Self) -> Bool
 pub fn Document::not_equal(Self, Self) -> Bool
 pub fn Document::to_repr(Self) -> @debug.Repr
@@ -139,9 +143,10 @@ pub(all) struct Entity {
   name : String
   source_refs : Array[SourceRef]
   content : Content
-  descriptive : @ion.IonValue?
+  descriptive : @ion.Ion?
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum EntityKind {
   IntentKind
   RequirementKind
@@ -152,7 +157,7 @@ pub(all) enum EntityKind {
   ImplementationKind
   ClaimKind
   EvidenceKind
-} derive(Eq, @debug.Debug)
+}
 pub fn EntityKind::equal(Self, Self) -> Bool
 pub fn EntityKind::not_equal(Self, Self) -> Bool
 pub fn EntityKind::to_repr(Self) -> @debug.Repr
@@ -178,18 +183,19 @@ pub(all) struct EvidenceAssessment {
   freshness : Freshness
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum EvidenceAvailability {
   Unknown
   Present
   InvalidClaim
-} derive(Eq, @debug.Debug)
+}
 pub fn EvidenceAvailability::equal(Self, Self) -> Bool
 pub fn EvidenceAvailability::not_equal(Self, Self) -> Bool
 pub fn EvidenceAvailability::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Expression {
   UnresolvedExpression(NonemptyText)
-  ResolvedExpression(Id, @ion.IonValue)
+  ResolvedExpression(Id, @ion.Ion)
 }
 
 pub(all) struct Fragment {
@@ -197,16 +203,18 @@ pub(all) struct Fragment {
   text : String
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Freshness {
   Current
   Stale
   Inconclusive
-} derive(Eq, @debug.Debug)
+}
 pub fn Freshness::equal(Self, Self) -> Bool
 pub fn Freshness::not_equal(Self, Self) -> Bool
 pub fn Freshness::to_repr(Self) -> @debug.Repr
 
-pub struct Id(String) derive(Eq, @debug.Debug)
+#derive(Eq, @debug.Debug)
+pub struct Id(String)
 pub fn Id::equal(Self, Self) -> Bool
 pub fn Id::not_equal(Self, Self) -> Bool
 pub fn Id::parse(String) -> Self raise InvalidInput
@@ -233,9 +241,10 @@ pub(all) struct KbSnapshot {
   name : String
   locator : String
   fragment : Fragment
-  descriptive : @ion.IonValue?
+  descriptive : @ion.Ion?
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum KbState {
   Backlog
   Refinement
@@ -243,7 +252,7 @@ pub(all) enum KbState {
   Released
   Cancelled
   Superseded
-} derive(Eq, @debug.Debug)
+}
 pub fn KbState::equal(Self, Self) -> Bool
 pub fn KbState::not_equal(Self, Self) -> Bool
 pub fn KbState::to_repr(Self) -> @debug.Repr
@@ -256,7 +265,8 @@ pub(all) struct Model {
   dependencies : Array[Model]
 }
 
-pub struct NonemptyText(String) derive(Eq, @debug.Debug)
+#derive(Eq, @debug.Debug)
+pub struct NonemptyText(String)
 pub fn NonemptyText::equal(Self, Self) -> Bool
 pub fn NonemptyText::not_equal(Self, Self) -> Bool
 pub fn NonemptyText::parse(String) -> Self raise InvalidInput
@@ -265,14 +275,15 @@ pub fn NonemptyText::value(Self) -> String
 
 pub(all) enum Observation {
   Run(RunObservation)
-  Analysis(Producer, @ion.IonValue, @ion.IonValue)
+  Analysis(Producer, @ion.Ion, @ion.Ion)
   Review(Id, ReviewDecision, String)
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Polarity {
   Supporting
   Contradicting
-} derive(Eq, @debug.Debug)
+}
 pub fn Polarity::equal(Self, Self) -> Bool
 pub fn Polarity::not_equal(Self, Self) -> Bool
 pub fn Polarity::to_repr(Self) -> @debug.Repr
@@ -282,7 +293,7 @@ pub(all) struct PrdRow {
   name : String
   category : Category
   text : String
-  notation : @ion.IonValue?
+  notation : @ion.Ion?
   source_refs : Array[SourceRef]
   intents : Array[ResolvedRef]
   sources : Array[ResolvedRef]
@@ -298,6 +309,7 @@ pub(all) struct PrdView {
   inspection : Inspection
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Predicate {
   DerivedFrom
   Refines
@@ -307,7 +319,7 @@ pub(all) enum Predicate {
   Implements
   Supports
   Contradicts
-} derive(Eq, @debug.Debug)
+}
 pub fn Predicate::equal(Self, Self) -> Bool
 pub fn Predicate::not_equal(Self, Self) -> Bool
 pub fn Predicate::to_repr(Self) -> @debug.Repr
@@ -324,13 +336,14 @@ pub(all) struct Relationship {
   subject : ResolvedRef
   target : EntityRef
   source_refs : Array[SourceRef]
-  descriptive : @ion.IonValue?
+  descriptive : @ion.Ion?
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ResolvedRef {
   model : Snapshot
   entity : Snapshot
-} derive(Eq, @debug.Debug)
+}
 pub fn ResolvedRef::equal(Self, Self) -> Bool
 pub fn ResolvedRef::not_equal(Self, Self) -> Bool
 pub fn ResolvedRef::to_repr(Self) -> @debug.Repr
@@ -340,7 +353,8 @@ pub(all) enum ReviewDecision {
   Rejected
 }
 
-pub struct Revision(String) derive(Eq, @debug.Debug)
+#derive(Eq, @debug.Debug)
+pub struct Revision(String)
 pub fn Revision::equal(Self, Self) -> Bool
 pub fn Revision::not_equal(Self, Self) -> Bool
 pub fn Revision::parse(String) -> Self raise InvalidInput
@@ -357,33 +371,34 @@ pub fn RevisionContext::new(Snapshot, entities~ : Array[Snapshot], sources~ : Ar
 pub fn RevisionContext::sources(Self) -> Array[Snapshot]
 
 pub struct RunLimits {
-  steps : Int
-  depth : Int
+  steps : Int32
+  depth : Int32
 }
-pub fn RunLimits::new(Int, Int) -> Self raise InvalidInput
+pub fn RunLimits::new(Int32, Int32) -> Self raise InvalidInput
 
 pub(all) struct RunObservation {
   value_profile : Id
-  input : @ion.IonValue
+  input : @ion.Ion
   output : RunOutput
   clauses : Array[ClauseResult]
   evaluator : Producer
   target : String
-  configuration : @ion.IonValue
+  configuration : @ion.Ion
   limits : RunLimits
-  generated_case : @ion.IonValue?
-  type_arguments : @ion.IonValue?
+  generated_case : @ion.Ion?
+  type_arguments : @ion.Ion?
 }
 
 pub(all) enum RunOutput {
-  Observed(@ion.IonValue)
+  Observed(@ion.Ion)
   Absent(AbsentReason)
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Snapshot {
   id : Id
   revision : Revision
-} derive(Eq, @debug.Debug)
+}
 pub fn Snapshot::equal(Self, Self) -> Bool
 pub fn Snapshot::not_equal(Self, Self) -> Bool
 pub fn Snapshot::to_repr(Self) -> @debug.Repr
@@ -394,13 +409,14 @@ pub(all) struct Source {
   locator : String
   resolution : SourceResolution
   fragments : Array[Fragment]
-  descriptive : @ion.IonValue?
+  descriptive : @ion.Ion?
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct SourceRef {
   source_id : Id
   anchor : Id
-} derive(Eq, @debug.Debug)
+}
 pub fn SourceRef::equal(Self, Self) -> Bool
 pub fn SourceRef::not_equal(Self, Self) -> Bool
 pub fn SourceRef::to_repr(Self) -> @debug.Repr

@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "finos/morphir-host/platform"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn architecture() -> String
 
@@ -46,7 +50,7 @@ pub fn monotonic_seconds() -> Double
 
 pub fn observation_id() -> String raise
 
-pub fn process(String, Array[String], String, String, Int32) -> Json raise
+pub fn process(String, Array[String], String, String, Int32) -> @json.Json raise
 
 pub fn process_started(String) -> Unit
 

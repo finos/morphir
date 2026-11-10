@@ -35,11 +35,13 @@ pub(open) trait Guest {
 
 ///|
 /// The bounds of one guest call: a deadline, and an instruction budget where
-/// the engine meters instructions.
+/// the engine meters instructions. The budget is an
+/// `@worker.InstructionBudget`, so it is always from 1 to
+/// `@worker.max_call_instructions`.
 #derive(Eq, Debug)
 pub struct CallBounds {
   deadline_ms : Int32
-  instructions : Int64?
+  instructions : @worker.InstructionBudget?
 }
 
 ///|
@@ -51,7 +53,7 @@ pub extend CallBounds with @debug.Debug::{to_repr}
 ///|
 pub fn CallBounds::new(
   deadline_ms~ : Int32,
-  instructions~ : Int64?,
+  instructions~ : @worker.InstructionBudget?,
 ) -> CallBounds {
   { deadline_ms, instructions, }
 }
@@ -82,7 +84,7 @@ fn CallBounds::engine(
 ) -> (@engine.Budget?, @engine.Deadline) raise @worker.LaunchError {
   try {
     let budget = match self.instructions {
-      Some(count) => Some(@engine.Budget::parse(count))
+      Some(budget) => Some(@engine.Budget::parse(budget.count))
       None => None
     }
     (budget, @engine.Deadline::parse(self.deadline_ms))

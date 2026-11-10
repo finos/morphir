@@ -31,18 +31,20 @@ pub fn recognize_projection_header(Bytes, Limits) -> @version.FormatVersion rais
 pub fn semantic_json(IRUnit) -> String raise
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror BoundaryError {
   Invalid(String, String)
-} derive(Eq, @debug.Debug)
+}
 pub fn BoundaryError::equal(Self, Self) -> Bool
 pub fn BoundaryError::not_equal(Self, Self) -> Bool
 pub fn BoundaryError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(@debug.Debug)
 pub struct CheckpointInspection {
   unit : IRUnit
   original_format_version : @version.FormatVersion
-} derive(@debug.Debug)
+}
 pub fn CheckpointInspection::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Codec {
@@ -50,21 +52,23 @@ pub(all) struct Codec {
   encode : (IRUnit, Limits) -> Content raise
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Content {
   Text(String)
   Binary(Bytes)
-} derive(Eq, @debug.Debug)
+}
 pub fn Content::equal(Self, Self) -> Bool
 pub fn Content::not_equal(Self, Self) -> Bool
 pub fn Content::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct IRUnit {
   id : String
   distribution : @v4.IRFile
   metadata : Array[NodeMetadata]
   annotations : Array[@ion.SymbolToken]
-  provenance : Array[@ion.IonValue]
-} derive(@debug.Debug)
+  provenance : Array[@ion.Ion]
+}
 pub fn IRUnit::conceptual_graph(Self) -> @model.Graph? raise
 pub fn IRUnit::conceptual_specification(Self) -> Self raise
 pub fn IRUnit::new(String, @v4.IRFile, metadata? : Array[NodeMetadata]) -> Self
@@ -72,11 +76,12 @@ pub fn IRUnit::to_repr(Self) -> @debug.Repr
 pub fn IRUnit::validate(Self, limits? : Limits) -> Unit raise
 pub fn IRUnit::with_conceptual_graph(Self, @model.Graph) -> Self raise
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Limits {
   max_bytes : Int32
   max_depth : Int32
   max_values : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn Limits::default() -> Self
 pub fn Limits::equal(Self, Self) -> Bool
 pub fn Limits::not_equal(Self, Self) -> Bool
@@ -90,18 +95,19 @@ pub(all) struct Lineage {
 pub fn Lineage::identity(IRUnit) -> Self raise
 
 pub(all) struct MetadataPolicy {
-  propagate : (String, Array[NodeMetadata]) -> @ion.IonValue? raise
+  propagate : (String, Array[NodeMetadata]) -> @ion.Ion? raise
 }
 pub fn MetadataPolicy::copy_single_origin() -> Self
 pub fn MetadataPolicy::no_derived() -> Self
 pub fn MetadataPolicy::retain() -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ModelFormat {
   JSON
   YAML
   IonText
   IonBinary
-} derive(Eq, @debug.Debug)
+}
 pub fn ModelFormat::codec_id(Self) -> String
 pub fn ModelFormat::equal(Self, Self) -> Bool
 pub fn ModelFormat::from_control(String) -> Self raise BoundaryError
@@ -110,10 +116,11 @@ pub fn ModelFormat::is_binary(Self) -> Bool
 pub fn ModelFormat::not_equal(Self, Self) -> Bool
 pub fn ModelFormat::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct NodeMetadata {
   node_id : String
-  data : @ion.IonValue
-} derive(@debug.Debug)
+  data : @ion.Ion
+}
 pub fn NodeMetadata::to_repr(Self) -> @debug.Repr
 
 pub struct Registry {
@@ -133,10 +140,11 @@ pub(all) struct Rewrite {
   lineage : Lineage?
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct SourceSnapshot {
   unit_id : String
   content : Content
-} derive(Eq, @debug.Debug)
+}
 pub fn SourceSnapshot::equal(Self, Self) -> Bool
 pub fn SourceSnapshot::not_equal(Self, Self) -> Bool
 pub fn SourceSnapshot::to_repr(Self) -> @debug.Repr

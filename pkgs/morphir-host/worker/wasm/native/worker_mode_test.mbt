@@ -337,7 +337,7 @@ test "worker arguments: --instructions takes 1 to 9007199254740991" {
       is Serve({ call: Some(call), .. }) else {
       fail("no call bounds for --instructions \{text}")
     }
-    call.instructions
+    call.instructions.map(b => b.count)
   }
   assert_eq(instructions("1"), Some(1L))
   assert_eq(instructions("2147483648"), Some(2147483648L))

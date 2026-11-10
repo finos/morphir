@@ -14,6 +14,7 @@ import {
   "finos/morphir-ir/versions/v3",
   "finos/morphir-metadata",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "moonrockz/ion/ion",
   "moonrockz/moon-lander-config",
 }
@@ -33,13 +34,13 @@ pub fn metadata_helper_bundle_sha256(String) -> String raise
 
 pub fn native_telemetry_endpoint(String) -> Bool
 
-pub fn process_execution(String, String, String, Map[String, String], timeout? : Int32, toolchain_pin? : Json?, build_mode? : String, cancel_file? : String, payload_capture? : @observability.PayloadCapture, observer? : @observability.Observer) -> @execution.Provider raise
+pub fn process_execution(String, String, String, Map[String, String], timeout? : Int32, toolchain_pin? : @json.Json?, build_mode? : String, cancel_file? : String, payload_capture? : @observability.PayloadCapture, observer? : @observability.Observer) -> @execution.Provider raise
 
 pub fn run_configuration(Location, Map[String, String], @workspace.ConfigurationOptions, overlay? : @config.Document) -> @config.Document raise
 
 pub fn rust_classic_ir(@data.IRUnit) -> @v3.IRFile raise
 
-pub fn rust_evaluator_lane(String, String, Json?, node? : String, required? : Bool, timeout? : Int32, cancel_file? : String) -> @conformance.EvaluatorLane raise
+pub fn rust_evaluator_lane(String, String, @json.Json?, node? : String, required? : Bool, timeout? : Int32, cancel_file? : String) -> @conformance.EvaluatorLane raise
 
 pub fn verify_and_publish(Array[@execution.Plan], @execution.Provider, @execution.Evaluator, ContentPublisher, String, cancelled? : () -> Bool, observer? : @observability.Observer) -> VerificationResult raise
 
@@ -104,11 +105,11 @@ pub fn Host::register_project_metadata_provider(Self, @morphir-engine.Engine, (@
 pub fn Host::run(Self, @morphir-engine.Engine, @morphir-engine.Plan) -> Result raise
 pub fn Host::run_content(Self, @morphir-engine.Engine, @morphir-engine.Plan, ContentPublisher, read_bytes? : ((String) -> Bytes raise)?) -> ContentResult raise
 pub fn Host::snapshot(Self) -> Snapshot raise
-pub fn Host::toolchain_request(Self, Json) -> Json raise
+pub fn Host::toolchain_request(Self, @json.Json) -> @json.Json raise
 
 pub(all) struct LibraryBuildLease {
   id : String
-  build : (LibraryBuildRequest) -> Json raise
+  build : (LibraryBuildRequest) -> @json.Json raise
   dispose : () -> Unit raise
 }
 
@@ -153,6 +154,7 @@ pub(all) struct MetadataAuditEvidence {
   profile_verified : Bool
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum MetadataAuditPhase {
   Acquire
   Probe
@@ -161,7 +163,7 @@ pub(all) enum MetadataAuditPhase {
   Context
   Admission
   Cleanup
-} derive(Eq, @debug.Debug)
+}
 pub fn MetadataAuditPhase::equal(Self, Self) -> Bool
 pub fn MetadataAuditPhase::name(Self) -> String
 pub fn MetadataAuditPhase::not_equal(Self, Self) -> Bool
@@ -179,7 +181,7 @@ pub(all) struct MetadataAuditRecord {
   duration_seconds : Double
 }
 pub fn MetadataAuditRecord::to_ion(Self) -> @ion.Ion raise
-pub fn MetadataAuditRecord::to_json(Self) -> Json
+pub fn MetadataAuditRecord::to_json(Self) -> @json.Json
 
 pub(all) struct MetadataAuditSink {
   enabled : () -> Bool
@@ -211,7 +213,7 @@ pub fn Mount::memory(Map[String, String]) -> Self raise
 pub struct NativeTelemetry {
   // private fields
 }
-pub fn NativeTelemetry::new(String, String, String, String, Json, timeout? : Int32) -> Self raise
+pub fn NativeTelemetry::new(String, String, String, String, @json.Json, timeout? : Int32) -> Self raise
 
 pub(all) struct Publication {
   stage : (@morphir-engine.Artifact) -> Unit raise
@@ -256,7 +258,7 @@ pub fn TelemetrySession::flush_to_process(Self, String, String, String, Array[St
 #alias(local)
 pub fn TelemetrySession::for_project(String, String?, enabled? : Bool, kind? : String, format? : String) -> Self raise
 pub fn TelemetrySession::metadata_audit_sink(Self) -> MetadataAuditSink
-pub fn TelemetrySession::metrics(Self) -> Json
+pub fn TelemetrySession::metrics(Self) -> @json.Json
 pub fn TelemetrySession::new(String?, format? : String, record_traces? : Bool) -> Self raise
 pub fn TelemetrySession::observer(Self) -> @observability.Observer
 
@@ -266,7 +268,7 @@ pub(all) struct ValidatedProject {
   target : String
   source_identity : String
   receipt : String
-  evidence : Json
+  evidence : @json.Json
 }
 
 pub(all) struct VerificationResult {

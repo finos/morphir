@@ -53,7 +53,10 @@ test "worker options: each protocol line gives its budget, its frame and the dea
 ///|
 test "worker options: the bounds of the launcher replace the bounds of the session" {
   let identity = BuildIdentity::parse("a".repeat(64))
-  let call = @guest.CallBounds::new(deadline_ms=300, instructions=Some(1000))
+  let call = @guest.CallBounds::new(
+    deadline_ms=300,
+    instructions=Some(@worker.InstructionBudget::new(1000)),
+  )
   let args = worker_options(
     MorphirBytesV1,
     "guest.wasm",

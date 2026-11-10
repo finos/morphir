@@ -19,21 +19,24 @@ pub fn types_equivalent(@v4.Type, @v4.Type) -> Bool
 pub fn unknown_type(@common.Name) -> @v4.Type
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror InferenceFailed {
   InferenceFailed(Array[InferenceProblem])
-} derive(Eq, @debug.Debug)
+}
 pub fn InferenceFailed::equal(Self, Self) -> Bool
 pub fn InferenceFailed::not_equal(Self, Self) -> Bool
 pub fn InferenceFailed::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub suberror TypeSubstitutionError {
   AttributeConflict
-} derive(Eq, @debug.Debug)
+}
 pub fn TypeSubstitutionError::equal(Self, Self) -> Bool
 pub fn TypeSubstitutionError::not_equal(Self, Self) -> Bool
 pub fn TypeSubstitutionError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct InferenceProblem {
   code : String
   node : String
@@ -41,20 +44,22 @@ pub(all) struct InferenceProblem {
   expected : @v4.Type?
   found : @v4.Type?
   source : @v4.SourceLocation?
-} derive(Eq, @debug.Debug)
+}
 pub fn InferenceProblem::display(Self) -> String
 pub fn InferenceProblem::equal(Self, Self) -> Bool
 pub fn InferenceProblem::not_equal(Self, Self) -> Bool
 pub fn InferenceProblem::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Mode {
   Fill
   Check
-} derive(Eq, @debug.Debug)
+}
 pub fn Mode::equal(Self, Self) -> Bool
 pub fn Mode::not_equal(Self, Self) -> Bool
 pub fn Mode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum RelationReason {
   UnresolvedVariable
   UnsupportedConstraint
@@ -62,7 +67,7 @@ pub(all) enum RelationReason {
   CyclicAlias
   LimitExceeded
   UnsupportedShape
-} derive(Eq, @debug.Debug)
+}
 pub fn RelationReason::equal(Self, Self) -> Bool
 pub fn RelationReason::not_equal(Self, Self) -> Bool
 pub fn RelationReason::to_repr(Self) -> @debug.Repr
@@ -74,11 +79,12 @@ pub fn TypeContext::assignable(Self, @v4.Type, @v4.Type) -> TypeRelation
 pub fn TypeContext::equivalent(Self, @v4.Type, @v4.Type) -> TypeRelation
 pub fn TypeContext::from(@v4.IRFile, Map[@common.Path, @v4.PackageSpecification]) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum TypeRelation {
   Proven
   Refuted
   Unknown(RelationReason)
-} derive(Eq, @debug.Debug)
+}
 pub fn TypeRelation::equal(Self, Self) -> Bool
 pub fn TypeRelation::not_equal(Self, Self) -> Bool
 pub fn TypeRelation::to_repr(Self) -> @debug.Repr

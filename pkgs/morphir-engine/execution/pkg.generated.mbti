@@ -8,6 +8,7 @@ import {
   "finos/morphir-ir/versions/v4",
   "finos/morphir-moonbit",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "moonrockz/ion/ion",
 }
 
@@ -47,10 +48,11 @@ pub(all) struct CallResult {
 }
 
 #alias(AdmissionPolicy)
+#derive(Eq, @debug.Debug)
 pub(all) enum CapabilityPolicy {
   Strict
   Permissive
-} derive(Eq, @debug.Debug)
+}
 pub fn CapabilityPolicy::equal(Self, Self) -> Bool
 pub fn CapabilityPolicy::not_equal(Self, Self) -> Bool
 pub fn CapabilityPolicy::to_repr(Self) -> @debug.Repr
@@ -67,11 +69,11 @@ pub(all) struct Failure {
   cleanup : Error?
 }
 pub fn Failure::cancelled(Self) -> Bool
-pub fn Failure::to_json(Self) -> Json
+pub fn Failure::to_json(Self) -> @json.Json
 
 pub(all) struct InvocationResults {
   values : Array[@morphir-execution.Value]
-  evidence : Json
+  evidence : @json.Json
 }
 
 pub(all) struct Plan {
@@ -89,8 +91,8 @@ pub(all) struct Provider {
 
 pub(all) struct Report {
   calls : Array[CallResult]
-  evidence : Json
-  invocation_evidence : Json
+  evidence : @json.Json
+  invocation_evidence : @json.Json
   evaluator : String?
   target : String
   comparison : @morphir-execution.ComparisonPolicy
@@ -101,12 +103,12 @@ pub(all) struct Report {
 pub fn Report::status(Self) -> String
 pub fn Report::successful(Self) -> Bool
 pub fn Report::to_ion(Self) -> @ion.Ion raise
-pub fn Report::to_json(Self) -> Json
+pub fn Report::to_json(Self) -> @json.Json
 
 pub struct SchemePlan {
   // private fields
 }
-pub fn SchemePlan::boundary_json(Self) -> Json
+pub fn SchemePlan::boundary_json(Self) -> @json.Json
 pub fn SchemePlan::evaluate(Self) -> Array[@morphir-execution.Value] raise
 pub fn SchemePlan::evaluate_outcomes(Self, cancelled? : () -> Bool) -> @morphir-execution.Outcomes raise
 pub fn SchemePlan::policy(Self) -> CapabilityPolicy
@@ -117,7 +119,7 @@ pub fn SchemePlan::validate_outputs(Self, Array[@morphir-execution.Value]) -> Un
 
 pub(all) struct Session {
   id : String
-  build : (Plan, @observability.TraceContext?) -> Json raise
+  build : (Plan, @observability.TraceContext?) -> @json.Json raise
   invoke : (@morphir-execution.Suite, @observability.TraceContext?) -> InvocationResults raise
   dispose : () -> Unit raise
 }

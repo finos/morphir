@@ -5,6 +5,7 @@ import {
   "finos/morphir-engine/config",
   "finos/morphir-engine/ids",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "moonrockz/moon-lander-config",
   "moonrockz/moon-lander-config/conventions",
 }
@@ -18,7 +19,7 @@ pub fn configuration_formats() -> Array[@moon-lander-config.Format]
 
 pub fn discover(Tree, root? : String, system? : @config.Document, global? : @config.Document, environment? : Map[String, String], overlay? : @config.Document, options? : ConfigurationOptions) -> Workspace raise
 
-pub fn discover_request(Json) -> Workspace raise
+pub fn discover_request(@json.Json) -> Workspace raise
 
 pub fn init_workspace(Tree, project? : NewProject?, members? : Array[String]) -> Edit raise
 
@@ -75,7 +76,8 @@ pub(all) struct Project {
   error : String?
 }
 
-pub struct ProjectPath(String) derive(Compare, Eq, Hash, @debug.Debug)
+#derive(Compare, Eq, Hash, @debug.Debug)
+pub struct ProjectPath(String)
 pub fn ProjectPath::compare(Self, Self) -> Int32
 pub fn ProjectPath::equal(Self, Self) -> Bool
 pub fn ProjectPath::hash(Self) -> Int32
@@ -96,7 +98,7 @@ pub(all) struct Tree {
   directories : Array[String]
 }
 pub fn Tree::from_files(Map[String, String]) -> Self raise
-pub fn Tree::from_json(Json) -> Self raise
+pub fn Tree::from_json(@json.Json) -> Self raise
 
 pub(all) struct Workspace {
   root : String
@@ -107,7 +109,7 @@ pub(all) struct Workspace {
   warnings : Array[String]
 }
 pub fn Workspace::select(Self, selector? : String, all? : Bool, invocation? : String) -> Array[Project] raise
-pub fn Workspace::to_json(Self) -> Json raise
+pub fn Workspace::to_json(Self) -> @json.Json raise
 
 // Type aliases
 

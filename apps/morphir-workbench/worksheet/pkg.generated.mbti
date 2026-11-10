@@ -1,12 +1,16 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "finos/morphir-workbench/worksheet"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub const CONTRACT_VERSION : String = "0.1.0-draft.1"
 
 pub const PROFILE : String = "morphir/workbench/worksheet"
 
-pub fn browser_command(String) -> Json
+pub fn browser_command(String) -> @json.Json
 
 // Errors
 

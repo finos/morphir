@@ -184,7 +184,7 @@ test "call instructions: Limits::new accepts 1 to 9007199254740991 and refuses 0
       response_bytes=1,
       model~,
       call_instructions=count,
-    ).call_instructions
+    ).call_instructions.count
   }
   assert_eq(@worker.max_call_instructions, 9007199254740991L)
   assert_eq(make(1L), 1L)

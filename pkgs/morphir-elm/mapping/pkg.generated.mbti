@@ -30,20 +30,22 @@ pub fn ElmCore::is_core_module(Self, String) -> Bool
 pub fn ElmCore::type_of(Self, String, String) -> @common.FQName?
 pub fn ElmCore::value_of(Self, String, String) -> @common.FQName?
 
+#derive(Eq, @debug.Debug)
 pub(all) enum MappingEntry {
   Operator(String)
   Function(String, String?)
   Type(String, String?)
   Removed
-} derive(Eq, @debug.Debug)
+}
 pub fn MappingEntry::equal(Self, Self) -> Bool
 pub fn MappingEntry::not_equal(Self, Self) -> Bool
 pub fn MappingEntry::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Namespace {
   TypeSpace
   ValueSpace
-} derive(Eq, @debug.Debug)
+}
 pub fn Namespace::equal(Self, Self) -> Bool
 pub fn Namespace::not_equal(Self, Self) -> Bool
 pub fn Namespace::to_repr(Self) -> @debug.Repr

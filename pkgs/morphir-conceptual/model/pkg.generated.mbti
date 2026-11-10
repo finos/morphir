@@ -15,17 +15,19 @@ pub const RECORD_VERSION : String = "0.1.0-draft.1"
 pub const TRAITS_PROFILE : String = "morphir-traits/0.1.0-draft.1"
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror ModelError {
   Invalid(Diagnostic)
-} derive(@debug.Debug)
+}
 pub fn ModelError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct Diagnostic {
   code : String
   path : String
   related_path : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn Diagnostic::equal(Self, Self) -> Bool
 pub fn Diagnostic::not_equal(Self, Self) -> Bool
 pub fn Diagnostic::to_repr(Self) -> @debug.Repr
@@ -34,12 +36,13 @@ pub struct Entity {
   // private fields
 }
 pub fn Entity::concern(Self, String) -> Record? raise ModelError
-pub fn Entity::content(Self) -> @ion.IonValue
-pub fn Entity::content_field(Self, String) -> @ion.IonValue?
+pub fn Entity::content(Self) -> @ion.Ion
+pub fn Entity::content_field(Self, String) -> @ion.Ion?
 pub fn Entity::identity(Self) -> @intent.Snapshot
 pub fn Entity::kind(Self) -> EntityKind
 pub fn Entity::record(Self) -> Record
 
+#derive(Eq, @debug.Debug)
 pub(all) enum EntityKind {
   Intent
   Requirement
@@ -53,7 +56,7 @@ pub(all) enum EntityKind {
   Claim
   Evidence
   Unknown(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn EntityKind::equal(Self, Self) -> Bool
 pub fn EntityKind::not_equal(Self, Self) -> Bool
 pub fn EntityKind::to_repr(Self) -> @debug.Repr
@@ -67,7 +70,7 @@ pub struct Graph {
   // private fields
 }
 pub fn Graph::capabilities(Self) -> Array[Record]
-pub fn Graph::decode(@ion.IonValue) -> Self raise ModelError
+pub fn Graph::decode(@ion.Ion) -> Self raise ModelError
 pub fn Graph::entities(Self) -> Array[Entity]
 pub fn Graph::entity(Self, String) -> Entity?
 pub fn Graph::identity(Self) -> @intent.Snapshot
@@ -76,7 +79,7 @@ pub fn Graph::record(Self) -> Record
 pub fn Graph::relationships(Self) -> Array[Relationship]
 pub fn Graph::require_interpretation(Self, Interpretation) -> Unit raise ModelError
 pub fn Graph::sources(Self) -> Array[Source]
-pub fn Graph::to_ion(Self) -> @ion.IonValue
+pub fn Graph::to_ion(Self) -> @ion.Ion
 pub fn Graph::trait_applications(Self) -> Array[TraitApplication]
 pub fn Graph::trait_definitions(Self) -> Array[TraitDefinition]
 
@@ -106,13 +109,14 @@ pub(all) enum Origin {
 pub struct Record {
   // private fields
 }
-pub fn Record::field(Self, String) -> @ion.IonValue?
-pub fn Record::to_ion(Self) -> @ion.IonValue
+pub fn Record::field(Self, String) -> @ion.Ion?
+pub fn Record::to_ion(Self) -> @ion.Ion
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Reference {
   Resolved(@intent.ResolvedRef)
   Unresolved(String, String, String)
-} derive(Eq, @debug.Debug)
+}
 pub fn Reference::equal(Self, Self) -> Bool
 pub fn Reference::not_equal(Self, Self) -> Bool
 pub fn Reference::to_repr(Self) -> @debug.Repr
@@ -140,7 +144,7 @@ pub fn TraitApplication::definition(Self) -> Reference
 pub fn TraitApplication::identity(Self) -> @intent.Snapshot
 pub fn TraitApplication::interpretation(Self) -> TraitInterpretation raise ModelError
 pub fn TraitApplication::origin(Self) -> Origin raise ModelError
-pub fn TraitApplication::payload(Self) -> @ion.IonValue
+pub fn TraitApplication::payload(Self) -> @ion.Ion
 pub fn TraitApplication::provenance(Self) -> Record
 pub fn TraitApplication::record(Self) -> Record
 pub fn TraitApplication::target(Self) -> TraitTarget raise ModelError
@@ -166,6 +170,7 @@ pub(all) enum TraitTarget {
   UnknownTarget(Record)
 }
 
+#derive(Eq)
 pub(all) enum TraitTargetKind {
   ConceptTarget
   TypeTarget
@@ -173,7 +178,7 @@ pub(all) enum TraitTargetKind {
   FunctionTarget
   OperationTarget
   ServiceBindingTarget
-} derive(Eq)
+}
 pub fn TraitTargetKind::equal(Self, Self) -> Bool
 pub fn TraitTargetKind::not_equal(Self, Self) -> Bool
 

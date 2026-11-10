@@ -20,7 +20,7 @@ pub fn[A, B] concat_map((A) -> List[B] raise?, List[A]) -> List[B] raise?
 
 pub fn[A] cons(A, List[A]) -> List[A]
 
-pub fn[A] drop(Int, List[A]) -> List[A]
+pub fn[A] drop(Int32, List[A]) -> List[A]
 
 pub fn[A] empty() -> List[A]
 
@@ -36,7 +36,7 @@ pub fn[A] from_array(Array[A]) -> List[A]
 
 pub fn[A] head(List[A]) -> A?
 
-pub fn[A, B] indexed_map((Int, A) -> B raise?, List[A]) -> List[B] raise?
+pub fn[A, B] indexed_map((Int32, A) -> B raise?, List[A]) -> List[B] raise?
 
 pub fn[A, B] inner_join(List[B], (A, B) -> Bool raise?, List[A]) -> List[(A, B)] raise?
 
@@ -46,7 +46,7 @@ pub fn[A] is_empty(List[A]) -> Bool
 
 pub fn[A, B] left_join(List[B], (A, B) -> Bool raise?, List[A]) -> List[(A, B?)] raise?
 
-pub fn[A] length(List[A]) -> Int
+pub fn[A] length(List[A]) -> Int32
 
 pub fn[A, B] map((A) -> B raise?, List[A]) -> List[B] raise?
 
@@ -72,7 +72,7 @@ pub fn product_float(List[Double]) -> Double
 
 pub fn range(@integer.Integer, @integer.Integer) -> List[@integer.Integer]
 
-pub fn[A] repeat(Int, A) -> List[A]
+pub fn[A] repeat(Int32, A) -> List[A]
 
 pub fn[A] reverse(List[A]) -> List[A]
 
@@ -90,7 +90,7 @@ pub fn sum_float(List[Double]) -> Double
 
 pub fn[A] tail(List[A]) -> List[A]?
 
-pub fn[A] take(Int, List[A]) -> List[A]
+pub fn[A] take(Int32, List[A]) -> List[A]
 
 pub fn[A] to_array(List[A]) -> Array[A]
 
@@ -99,9 +99,10 @@ pub fn[A, B] unzip(List[(A, B)]) -> (List[A], List[B])
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub struct List[A] {
   items : @moonbitlang/core/list.List[A]
-} derive(Eq, @debug.Debug)
+}
 pub fn[A : Eq] List::equal(Self[A], Self[A]) -> Bool
 pub fn[A : Eq] List::not_equal(Self[A], Self[A]) -> Bool
 pub fn[A : @debug.Debug] List::to_repr(Self[A]) -> @debug.Repr

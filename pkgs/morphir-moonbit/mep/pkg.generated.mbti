@@ -5,6 +5,7 @@ import {
   "finos/morphir-metadata",
   "finos/morphir-moonbit",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "moonrockz/ion/ion",
 }
 
@@ -16,17 +17,18 @@ pub fn decode_morphir_model(@ion.Ion) -> @morphir-moonbit.Input raise
 pub fn encode_frame(String) -> Bytes raise FrameError
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror FrameError {
   InvalidFrame(String)
   FrameTooLarge(declared~ : Int64, limit~ : Int32)
-} derive(@debug.Debug)
+}
 pub fn FrameError::message(Self) -> String
 pub fn FrameError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) enum Compilation {
-  Compiled(@morphir-moonbit.Input, Array[String], Array[Json])
-  CompilationFailed(Array[Json])
+  Compiled(@morphir-moonbit.Input, Array[String], Array[@json.Json])
+  CompilationFailed(Array[@json.Json])
 }
 
 pub(all) struct CompileInput {
@@ -36,7 +38,7 @@ pub(all) struct CompileInput {
   root : String?
   package_name : String
   exposed_modules : Array[String]?
-  options : Json
+  options : @json.Json
   context_digest : String
 }
 
@@ -50,7 +52,7 @@ pub fn Decoder::new(max_body? : Int32) -> Self
 pub(all) struct Frontend {
   language_id : String
   file_extensions : Array[String]
-  profiles : Array[Json]
+  profiles : Array[@json.Json]
   compile : (CompileInput, () -> Bool) -> Compilation raise
 }
 
@@ -58,9 +60,9 @@ pub struct Session {
   // private fields
 }
 pub fn Session::exited(Self) -> Bool
-pub fn Session::handle(Self, Json) -> Json?
+pub fn Session::handle(Self, @json.Json) -> @json.Json?
 pub fn Session::new(metadata_capabilities? : @morphir-metadata.Capabilities, frontend? : Frontend?, cancelled? : () -> Bool) -> Self
-pub fn Session::receive(Self, Bytes) -> Json?
+pub fn Session::receive(Self, Bytes) -> @json.Json?
 
 // Type aliases
 

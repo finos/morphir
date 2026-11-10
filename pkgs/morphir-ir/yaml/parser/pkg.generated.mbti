@@ -8,33 +8,36 @@ import {
 // Values
 
 // Errors
+#derive(@debug.Debug)
 pub suberror YamlError {
   YamlError(mark~ : Marker, info~ : String)
-} derive(@debug.Debug)
+}
 pub fn YamlError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub enum Event {
   StreamStart
   StreamEnd
   DocumentStart
   DocumentEnd
-  Alias(id~ : Int)
-  Scalar(value~ : String, style~ : TScalarStyle, id~ : Int, tag~ : Tag?)
-  SequenceStart(id~ : Int, tag~ : Tag?)
+  Alias(id~ : Int32)
+  Scalar(value~ : String, style~ : TScalarStyle, id~ : Int32, tag~ : Tag?)
+  SequenceStart(id~ : Int32, tag~ : Tag?)
   SequenceEnd
-  MappingStart(id~ : Int, tag~ : Tag?)
+  MappingStart(id~ : Int32, tag~ : Tag?)
   MappingEnd
-} derive(Eq, @debug.Debug)
+}
 pub fn Event::equal(Self, Self) -> Bool
 pub fn Event::not_equal(Self, Self) -> Bool
 pub fn Event::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct Marker {
-  index : Int
-  line : Int
-  col : Int
-} derive(Eq, @debug.Debug)
+  index : Int32
+  line : Int32
+  col : Int32
+}
 pub fn Marker::equal(Self, Self) -> Bool
 pub fn Marker::not_equal(Self, Self) -> Bool
 pub fn Marker::to_repr(Self) -> @debug.Repr
@@ -42,26 +45,28 @@ pub fn Marker::to_repr(Self) -> @debug.Repr
 type Parser
 #alias(new, deprecated)
 pub fn Parser::Parser(StringView, lenient_quoted_scalar_indentation? : Bool) -> Self
-pub fn Parser::bounded(StringView, max_depth~ : Int, max_tokens~ : Int, max_scalar_units~ : Int) -> Self
+pub fn Parser::bounded(StringView, max_depth~ : Int32, max_tokens~ : Int32, max_scalar_units~ : Int32) -> Self
 pub fn Parser::keep_tags(Self, Bool) -> Unit
 pub fn[R : MarkedEventReceiver] Parser::load(Self, R, Bool) -> Unit raise YamlError
 pub fn Parser::next_event(Self) -> (Event, Marker) raise YamlError
 
+#derive(Eq, @debug.Debug)
 pub enum TScalarStyle {
   Plain
   SingleQuoted
   DoubleQuoted
   Literal
   Folded
-} derive(Eq, @debug.Debug)
+}
 pub fn TScalarStyle::equal(Self, Self) -> Bool
 pub fn TScalarStyle::not_equal(Self, Self) -> Bool
 pub fn TScalarStyle::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct Tag {
   handle : String
   suffix : String
-} derive(Eq, @debug.Debug)
+}
 pub fn Tag::equal(Self, Self) -> Bool
 pub fn Tag::not_equal(Self, Self) -> Bool
 pub fn Tag::to_repr(Self) -> @debug.Repr

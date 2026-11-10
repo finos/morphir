@@ -11,12 +11,14 @@ pub fn parse(String) -> Document raise Diagnostic
 pub fn parse_bytes(Bytes) -> Document raise Diagnostic
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror Diagnostic {
   Diagnostic(DiagnosticKind, String, Position)
-} derive(@debug.Debug)
+}
 pub fn Diagnostic::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum DiagnosticKind {
   InvalidToml
   UnsupportedDottedKey
@@ -24,7 +26,7 @@ pub(all) enum DiagnosticKind {
   MissingPath
   WrongKind
   InvalidIndex
-} derive(Eq, @debug.Debug)
+}
 pub fn DiagnosticKind::equal(Self, Self) -> Bool
 pub fn DiagnosticKind::not_equal(Self, Self) -> Bool
 pub fn DiagnosticKind::to_repr(Self) -> @debug.Repr
@@ -35,20 +37,21 @@ pub struct Document {
 pub fn Document::add_table(Self, Array[String]) -> Self raise Diagnostic
 pub fn Document::append(Self, Array[String], String) -> Self raise Diagnostic
 pub fn Document::append_table(Self, Array[String], Array[(Array[String], String)]) -> Self raise Diagnostic
-pub fn Document::element(Self, Array[String], Int) -> TableElement raise Diagnostic
+pub fn Document::element(Self, Array[String], Int32) -> TableElement raise Diagnostic
 pub fn Document::encode(Self) -> String
 pub fn Document::encode_bytes(Self) -> Bytes
 pub fn Document::get(Self, Array[String]) -> String?
 pub fn Document::remove(Self, Array[String]) -> Self raise Diagnostic
-pub fn Document::remove_item(Self, Array[String], Int) -> Self raise Diagnostic
+pub fn Document::remove_item(Self, Array[String], Int32) -> Self raise Diagnostic
 pub fn Document::remove_table(Self, Array[String]) -> Self raise Diagnostic
 pub fn Document::set(Self, Array[String], String) -> Self raise Diagnostic
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Position {
-  offset : Int
-  line : Int
-  column : Int
-} derive(Eq, @debug.Debug)
+  offset : Int32
+  line : Int32
+  column : Int32
+}
 pub fn Position::equal(Self, Self) -> Bool
 pub fn Position::not_equal(Self, Self) -> Bool
 pub fn Position::to_repr(Self) -> @debug.Repr
@@ -60,10 +63,10 @@ pub fn TableElement::add_table(Self, Array[String]) -> Document raise Diagnostic
 pub fn TableElement::append(Self, Array[String], String) -> Document raise Diagnostic
 pub fn TableElement::append_table(Self, Array[String], Array[(Array[String], String)]) -> Document raise Diagnostic
 pub fn TableElement::delete(Self) -> Document raise Diagnostic
-pub fn TableElement::element(Self, Array[String], Int) -> Self raise Diagnostic
+pub fn TableElement::element(Self, Array[String], Int32) -> Self raise Diagnostic
 pub fn TableElement::get(Self, Array[String]) -> String?
 pub fn TableElement::remove(Self, Array[String]) -> Document raise Diagnostic
-pub fn TableElement::remove_item(Self, Array[String], Int) -> Document raise Diagnostic
+pub fn TableElement::remove_item(Self, Array[String], Int32) -> Document raise Diagnostic
 pub fn TableElement::remove_table(Self, Array[String]) -> Document raise Diagnostic
 pub fn TableElement::set(Self, Array[String], String) -> Document raise Diagnostic
 

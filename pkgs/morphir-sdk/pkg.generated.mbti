@@ -6,30 +6,32 @@ import {
 }
 
 // Values
-pub fn order(Int) -> Order
+pub fn order(Int32) -> Order
 
-pub fn order_int(Order) -> Int
+pub fn order_int(Order) -> Int32
 
 pub fn string_order(String, String) -> Order
 
 pub fn text_order(Text, Text) -> Order
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror SdkError {
   DivisionByZero
   InvalidNumber(String)
   OutOfRange(String)
   InvalidComparison(String)
   UnrepresentableText(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn SdkError::equal(Self, Self) -> Bool
 pub fn SdkError::not_equal(Self, Self) -> Bool
 pub fn SdkError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub struct Character {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn Character::equal(Self, Self) -> Bool
 pub fn Character::from_char(Char) -> Self
 pub fn Character::from_text(Text) -> Self
@@ -40,22 +42,24 @@ pub fn Character::to_string(Self) -> String raise SdkError
 pub fn Character::to_text(Self) -> Text
 pub fn Character::to_units(Self) -> Array[UInt16]
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Order {
   LT
   EQ
   GT
-} derive(Eq, @debug.Debug)
+}
 pub fn Order::equal(Self, Self) -> Bool
 pub fn Order::not_equal(Self, Self) -> Bool
 pub fn Order::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct Text {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn Text::equal(Self, Self) -> Bool
 pub fn Text::from_string(String) -> Self
 pub fn Text::from_units(Array[UInt16]) -> Self
-pub fn Text::length(Self) -> Int
+pub fn Text::length(Self) -> Int32
 pub fn Text::not_equal(Self, Self) -> Bool
 pub fn Text::to_repr(Self) -> @debug.Repr
 pub fn Text::to_string(Self) -> String raise SdkError

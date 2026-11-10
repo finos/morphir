@@ -210,14 +210,20 @@ test "call bounds: the budget follows the session limits, and the deadlines stay
   )
   assert_eq(
     @guest.CallBounds::for_abi(ExtismKernelV1, limits=legacy),
-    @guest.CallBounds::new(deadline_ms=30000, instructions=Some(1000000000L)),
+    @guest.CallBounds::new(
+      deadline_ms=30000,
+      instructions=Some(@worker.InstructionBudget::new(1000000000L)),
+    ),
   )
   assert_eq(
     @guest.CallBounds::for_abi(MorphirBytesV1, limits=legacy),
-    @guest.CallBounds::new(deadline_ms=10000, instructions=Some(1000000000L)),
+    @guest.CallBounds::new(
+      deadline_ms=10000,
+      instructions=Some(@worker.InstructionBudget::new(1000000000L)),
+    ),
   )
   assert_eq(
-    @guest.CallBounds::for_abi(MorphirBytesV1).instructions,
+    @guest.CallBounds::for_abi(MorphirBytesV1).instructions.map(b => b.count),
     Some(5000000000L),
   )
 }

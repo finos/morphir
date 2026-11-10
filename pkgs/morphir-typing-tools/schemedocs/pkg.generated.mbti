@@ -24,21 +24,26 @@ pub(all) suberror DocError {
 // Types and methods
 pub(all) struct Chapter {
   examples : Array[Example]
-  skipped : Int
+  skipped : Int32
   procedures : Array[String]
 }
 
+#derive(Eq)
+type DocCommand
+
+#derive(Eq, @debug.Debug)
 pub(all) struct Example {
   files : Array[(String, String)]
   expect : Expect
-  line : Int
-} derive(Eq, @debug.Debug)
+  line : Int32
+}
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Expect {
   Value(String)
   Fails(String)
   Runs
-} derive(Eq, @debug.Debug)
+}
 
 type Plan
 

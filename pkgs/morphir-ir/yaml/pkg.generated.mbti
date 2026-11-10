@@ -5,10 +5,11 @@ import {
   "finos/morphir-ir/versioned",
   "finos/morphir-ir/versions/v4",
   "finos/morphir-ir/wire",
+  "moonbitlang/core/json",
 }
 
 // Values
-pub fn parse(String, limits? : Limits) -> Json raise @wire.CodecError
+pub fn parse(String, limits? : Limits) -> @json.Json raise @wire.CodecError
 
 pub fn read(String, limits? : Limits) -> @v4.IRFile raise
 
@@ -22,12 +23,12 @@ pub fn read_versioned(String, limits? : Limits) -> @versioned.IRFile raise
 
 // Types and methods
 pub(all) struct Limits {
-  max_bytes : Int
-  max_events : Int
-  max_nodes : Int
-  max_depth : Int
-  max_scalar_units : Int
-  max_assembly_nodes : Int
+  max_bytes : Int32
+  max_events : Int32
+  max_nodes : Int32
+  max_depth : Int32
+  max_scalar_units : Int32
+  max_assembly_nodes : Int32
 }
 pub fn Limits::default() -> Self
 
