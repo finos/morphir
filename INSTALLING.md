@@ -12,12 +12,31 @@ The first official release under `cli/v*` has not been published yet. Until it i
 
 | Offering | What you get | Needs |
 | --- | --- | --- |
-| `native-aot` | One native `morphir` executable | Nothing else. No in-process F# frontend. |
-| `self-contained` | A folder with the `morphir` apphost and its own .NET runtime | Nothing else. Includes the F# frontend. |
-| `framework-dependent` | A folder with the `morphir` apphost | An installed .NET 10 runtime. Includes the F# frontend. |
+| `native-aot` | One native `morphir` executable | No .NET installation; the operating system libraries below. No in-process F# frontend. |
+| `self-contained` | A folder with the `morphir` apphost and its own .NET runtime | No .NET installation; the operating system libraries below. Includes the F# frontend. |
+| `framework-dependent` | A folder with the `morphir` apphost | An installed .NET 10 runtime and its prerequisites. Includes the F# frontend. |
 | `dotnet-tool` | The `Morphir.Tool` package, command `dotnet-morphir` | The .NET 10 SDK to install it. |
 
-Platforms: Windows x64 and ARM64, macOS x64 and ARM64, and Linux (glibc) x64 and ARM64.
+Platforms: Windows x64 and ARM64, macOS x64 and ARM64, and Linux (glibc) x64 and ARM64. No offering is
+production-qualified yet: the official release workflow has not run, and the pinned source is an unreleased
+candidate.
+
+### Operating system prerequisites
+
+What is known, and what is not measured yet, for the pinned source (from finos/morphir-dotnet's own analysis in
+[#584](https://github.com/finos/morphir-dotnet/pull/584)):
+
+- **Linux.** The executables use ICU for globalization (the pinned build does not set invariant mode), so expect to
+  need `libicu`. They reach OpenSSL (`libssl`, `libcrypto`) for SHA-256 hashing and for HTTPS, and HTTPS also needs CA
+  certificates. Whether each offering starts without these in a clean image has not been measured for the pinned
+  source.
+- **glibc floor: unqualified.** No floor is stated for these artifacts. A probe of a build without the WASM engine,
+  linked in `ubuntu:22.04`, measured glibc 2.34; a separate branch with the WASM engine, linked on Ubuntu 24.04,
+  measured 2.38. Neither measured the artifacts of the pinned source, and the release workflow links on its
+  runners. musl-based Linux is not supported.
+- **macOS.** The artifacts are not signed with a Developer ID and not notarized; the pinned build has no signing
+  step. Gatekeeper may refuse a downloaded executable until you allow it. The minimum macOS version is not measured.
+- **Windows.** The executables are not Authenticode-signed, so SmartScreen may warn on first run.
 
 ## Install a release archive
 

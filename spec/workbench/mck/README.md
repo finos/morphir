@@ -1,6 +1,6 @@
 # Workbench codec compatibility slice
 
-Contract version: `0.1.0-draft.1`. The shared Rust `morphir mck` runner owns this
+Contract version: `0.1.0-draft.1`. The shared runner `morphir-mck` (`crates/morphir-mck-cli`; reached as `morphir mck` through the Morphir CLI) owns this
 corpus, transport validation and verdict calculation. Implementations provide an
 explicit adapter. The runner never loads an implementation's codec to calculate
 expected values, and never sends case IDs or expectations to the adapter.
@@ -98,11 +98,11 @@ A well-formed unqualified report remains failure evidence and returns exit code 
 Checking is evidence consistency validation, not proof of who produced a report.
 
 ```sh
-cargo build --locked -p morphir
-target/debug/morphir --no-banner mck workbench run \
+cargo build --locked -p morphir-mck-cli
+target/debug/morphir-mck workbench run \
   --kit spec/workbench/mck --adapter /path/to/adapter \
   --report .dev/workbench-report.json
-target/debug/morphir --no-banner mck workbench check \
+target/debug/morphir-mck workbench check \
   --kit spec/workbench/mck --report .dev/workbench-report.json
 ```
 
@@ -113,7 +113,7 @@ qualification/operational failures return 1; qualified runs/checks return 0.
 
 Run `mise run workbench:schema-check` for schemas, structural fixtures and corpus
 structure, and `cargo test --locked -p morphir-mck workbench` plus
-`cargo test --locked -p morphir --test mck_workbench` for the engine/CLI boundaries.
+`cargo test --locked -p morphir-mck-cli --test mck_workbench` for the engine/CLI boundaries. The Morphir CLI's `morphir mck workbench ...` delegates to the same runner.
 The MoonBit repository owns its adapter and the opt-in `test:workbench-mck` gate,
 which requires explicitly selected parent runner/corpus paths and exercises Node
 and native debug/release lanes. The pure protocol component runs on JS, native,

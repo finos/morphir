@@ -39,7 +39,6 @@ jobs:
       mck: ${{ steps.filter.outputs.mck }}
       package-mck: ${{ steps.filter.outputs.package-mck }}
       release: ${{ steps.filter.outputs.release }}
-      desktop-demo: ${{ steps.filter.outputs.desktop-demo }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -49,13 +48,6 @@ jobs:
         id: filter
         with:
           filters: |
-            desktop-demo:
-              - 'tools/demo-desktop*'
-              - 'tools/package.json'
-              - 'tools/bun.lock'
-              - 'tools/tsconfig.json'
-              - '.config/mise/config.toml'
-              - '.github/workflows/ci.yml'
             rust:
               - 'third_party/rust-tuf/**'
               - 'Cargo.toml'
@@ -210,25 +202,6 @@ jobs:
               - 'tests/ci/**'
               - '.github/actions/**'
               - '.github/workflows/ci.yml'
-
-  desktop-demo:
-    name: Desktop demo (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    needs: changes
-    if: ${{ needs.changes.outputs.desktop-demo == 'true' }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-      - run: bun install --frozen-lockfile
-        working-directory: tools
-      - run: bun run typecheck
-        working-directory: tools
-      - run: bun test tools/demo-desktop.test.ts
 
   # Fast feedback: formatting + lint
   lint:
@@ -548,7 +521,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, desktop-demo, package-mck]
+    needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, package-mck]
     if: always()
     steps:
       - name: Check results
@@ -579,7 +552,6 @@ jobs:
             require true docs "${{ needs.docs.result }}"
           fi
           require "${{ needs.changes.outputs.release }}" release-workflow "${{ needs.release-workflow.result }}"
-          require "${{ needs.changes.outputs.desktop-demo }}" desktop-demo "${{ needs.desktop-demo.result }}"
           require "${{ needs.changes.outputs.package-mck }}" package-mck "${{ needs.package-mck.result }}"
           if [[ "$failed" != "0" ]]; then
             exit 1

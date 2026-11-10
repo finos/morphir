@@ -3,7 +3,15 @@ title: Migrating MCK IR checks to the native CLI
 sidebar_label: MCK native migration
 ---
 
-The shared MCK IR runner now lives in the Rust `morphir` CLI. Each binding still
+:::note Where the runner is now
+This guide was written when the runner was part of the Rust `morphir` CLI. That CLI was deleted on 10 November
+2026. The runner is now `morphir-mck` (`crates/morphir-mck-cli`, a development tool that is not released), and the
+Morphir CLI from finos/morphir-dotnet delegates `morphir mck ARGS` to it. The `morphir mck ...` commands below keep
+working through that delegation, or as `morphir-mck ...` with the same arguments. Version numbers below are the
+Rust CLI releases they shipped in.
+:::
+
+The shared MCK IR runner originally lived in the Rust `morphir` CLI. Each binding still
 owns its adapter. This guide covers migrating IR checks from the TypeScript
 `mck` driver to `morphir mck`, including consumers of `@finos/morphir-mck`.
 
@@ -195,7 +203,7 @@ Use the same explicit adapter with the native runner. For example, after buildin
 `mck-adapter-rust`, a source checkout can run:
 
 ```sh
-cargo run --locked --package morphir -- mck package run \
+cargo run --locked --package morphir-mck-cli -- package run \
   --kit spec/package/mck --contract 0.1.0-draft.2 \
   --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust \
   --adapter-arg --suite --adapter-arg package \
@@ -211,10 +219,10 @@ HTML renderer currently accepts the consolidated IR report only.
 
 ### Inspecting candidate restore definitions
 
-The source CLI can inspect the draft.3 corpus and its pending assets:
+The runner can inspect the draft.3 corpus and its pending assets:
 
 ```sh
-cargo run --locked -p morphir -- mck package inspect \
+cargo run --locked -p morphir-mck-cli -- package inspect \
   --source . --contract 0.1.0-draft.3
 ```
 

@@ -67,3 +67,46 @@ The release SHALL be created only after every offering is qualified on every pla
 #### Scenario: One platform failed qualification
 - **WHEN** any offering's launch scenario fails on any platform
 - **THEN** no release is created
+
+### Requirement: The tool package is installed only from its own bytes
+Qualification SHALL install the produced tool package through a generated NuGet configuration that clears every other source, with fresh global packages, HTTP and plugin caches, so no feed or cache with the same id and version can supply it. Every package copy NuGet keeps, in the tool store and in the packages folder, SHALL have the artifact's SHA-256; otherwise qualification fails.
+
+#### Scenario: A conflicting package of the same id and version
+- **WHEN** the working directory's NuGet configuration names a feed with another `Morphir.Tool` of the same version, and the environment's packages folder already holds it
+- **THEN** both installs take the produced package and every kept copy has its SHA-256
+
+#### Scenario: A kept copy differs
+- **WHEN** a package copy in the tool store has another SHA-256 than the produced package
+- **THEN** qualification fails and names the copy
+
+### Requirement: Only the source's own release is published under its version
+A release SHALL be created only when the pin is not a marked candidate, the pinned CHANGELOG has no entry under `Unreleased`, and the source repository's tag `v<version>` names exactly the pinned commit. Otherwise publication SHALL be refused, so unreleased source bytes are never published under a version the source already released. This repository SHALL NOT choose, bump or override the version.
+
+#### Scenario: Unreleased source under an already released version
+- **WHEN** the pin is `8c15df5`, its CHANGELOG has unreleased entries and the source's `v0.4.0-alpha.4` is `bec7df3`
+- **THEN** publication is refused and the reasons are recorded
+
+### Requirement: A run is bound to its tag, its commit and the pin
+The release SHALL run only from `refs/tags/<tag>` with the checkout at the tag's commit, and the workflow's literal source commit in `uses` and `ref` SHALL equal the pin. Every later job SHALL check out that commit, and the manifest SHALL record it as read from the checkout. Every artifact's build contents SHALL name the pinned commit and a clean working tree, and SHALL match its launch metadata.
+
+#### Scenario: A dispatch from a branch
+- **WHEN** the workflow is dispatched from `main` with the input `cli/v0.4.0-alpha.4`
+- **THEN** release-info refuses before any build
+
+#### Scenario: An artifact packed from another commit
+- **WHEN** an artifact's build contents record a commit other than the pin
+- **THEN** qualification and the manifest refuse it
+
+### Requirement: A dry run validates everything and creates nothing
+A dispatched run SHALL default to a dry run. A dry run SHALL perform every validation a publication performs, record the publication blockers, and write the manifest, the notes and the list of files it would attach as evidence, but SHALL NOT create a release. A validation failure SHALL fail a dry run as well.
+
+#### Scenario: Dry run of the candidate pin
+- **WHEN** the candidate pin is released as a dry run with every qualification passing
+- **THEN** the evidence records `publishable: false` with the candidate as a blocker, and no release exists
+
+### Requirement: Qualification records match the artifacts exactly
+The manifest SHALL require exactly one qualification for each deployment and platform. Its release, artifact and SHA-256 SHALL equal the launch metadata of the artifact it launched. A missing, repeated, unexpected or mismatched record SHALL be refused.
+
+#### Scenario: A qualification of other bytes
+- **WHEN** a qualification records a SHA-256 other than its artifact's
+- **THEN** no manifest is written
