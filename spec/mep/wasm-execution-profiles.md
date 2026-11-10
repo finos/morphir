@@ -246,8 +246,9 @@ The budget unit is engine-defined. The same number is not the same amount of wor
 
 The memory rules:
 
-- A call that ends in a `trap` or a `failure` while the guest's memory, or the Extism kernel's memory, is at its ceiling is `memory-limit`. A call that the host stopped for the instruction budget, the call deadline or a cancellation keeps that result: the host knows why it ended, and this rule is for when it does not. An Extism guest's input and output live in the kernel's memory, which is why that memory counts.
-- A host that observes refused growth, of the guest's memory or of the kernel's, reports `memory-limit` for any failing call in which growth was refused. Another host reports the guest's own failure, usually `trap`. The MoonBit host observes it: its engine flags every refused growth.
+- A call that ends in a `trap` while the guest's memory, or the Extism kernel's memory, is at its ceiling is `memory-limit`. A trap says nothing about its cause, so the host infers it from the memory. An Extism guest's input and output live in the kernel's memory, which is why that memory counts.
+- Every other end keeps its own result, also at the ceiling and after a refused growth. A call that the guest ended itself, with an Extism error, a non-zero result or no output, is `failure`. So is a failure the host detected, such as a response over its limit. A call that the host stopped for the instruction budget, the call deadline or a cancellation keeps that result.
+- A host that observes refused growth, of the guest's memory or of the kernel's, reports `memory-limit` for a trap in a call in which growth was refused, also below the ceiling. Another host reports the `trap`. The MoonBit host observes it: its engine flags every refused growth.
 - An `extism-kernel-v1` guest that has a growth refused and still answers has succeeded.
 - On `morphir-bytes-v1` a refused growth fails the session with `memory-limit`, also when `handle` returns.
 - A module whose initial memory is above the ceiling fails with `memory-limit` before any request. This is a fault, not a refusal: a worker reports no `started` event and exits with 1.

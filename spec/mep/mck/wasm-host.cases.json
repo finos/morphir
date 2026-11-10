@@ -54,6 +54,7 @@
 		"extism-notify-accept": { "wat": "fixtures/wasm/extism-notify-accept.wat", "wasm": "fixtures/wasm/extism-notify-accept.wasm", "sha256": "2fbe22665b6eab79245310e984287891305b372252995928a6a354c59b547826" },
 		"extism-notify-answer": { "wat": "fixtures/wasm/extism-notify-answer.wat", "wasm": "fixtures/wasm/extism-notify-answer.wasm", "sha256": "6c343f491df44d43516b2711da486f77f164cb987209220ef1d7fbc7309f14da" },
 		"extism-notify-unlisted": { "wat": "fixtures/wasm/extism-notify-unlisted.wat", "wasm": "fixtures/wasm/extism-notify-unlisted.wasm", "sha256": "7dfce08dcf370b9550dc36e03d03ce30f4fe666f76a82261e9abcf95fd9f5414" },
+		"extism-grow-then-error": { "wat": "fixtures/wasm/extism-grow-then-error.wat", "wasm": "fixtures/wasm/extism-grow-then-error.wasm", "sha256": "51cc22230dcdd741d725f32f297fde0b4f616eedcd3d74adfda264aa2763fcb2" },
 		"extism-trap": { "wat": "fixtures/wasm/extism-trap.wat", "wasm": "fixtures/wasm/extism-trap.wasm", "sha256": "bfc9709481aa4d8a5ae6109c5a7ecb0c61eac230384b9971c3524976155ecf6b" },
 		"bytes-spin": { "wat": "fixtures/wasm/bytes-spin.wat", "wasm": "fixtures/wasm/bytes-spin.wasm", "sha256": "69768991322b8dc01561b9d8c7952cf9c8bcfe3e30ca7239513919088e91e5cc" },
 		"extism-spin": { "wat": "fixtures/wasm/extism-spin.wat", "wasm": "fixtures/wasm/extism-spin.wasm", "sha256": "013df84b7cdecce0386f1b20b6395d663df1533c01fcac16141019ce87d3e11e" },
@@ -990,6 +991,28 @@
 						"exitCode": 1,
 						"stdoutBytes": 0,
 						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "memory-limit" }]
+					}
+				}
+			]
+		},
+		{
+			"caseId": "bounds/error-at-ceiling",
+			"appliesTo": "extism-kernel-v1",
+			"module": "extism-grow-then-error",
+			"declaredAbi": "extism-kernel-v1",
+			"bounds": ["memoryCeiling"],
+			"tests": {
+				"requirements": ["Memory ceiling"],
+				"scenarios": ["Guest reports its own error at the ceiling"],
+				"contract": ["memory:guest-reported"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "failure" }]
 					}
 				}
 			]

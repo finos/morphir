@@ -143,7 +143,7 @@ When the user cancels a command or its session deadline passes, the host SHALL s
 - **THEN** the call stops, the outcome is `cancelled` and the exit status is 130
 
 ### Requirement: Failures report memory use
-The engine cannot tell the host that a growth was refused, so the host SHALL report `extension.memory_limit` when a call ends in a trap or failure with the guest's or the kernel's memory at its ceiling. Every call failure diagnostic SHALL state the guest's memory size, the kernel's memory size and the ceiling.
+The engine cannot tell the host that a growth was refused, so the host SHALL report `extension.memory_limit` when a call ends in a trap with the guest's or the kernel's memory at its ceiling. Every call failure diagnostic SHALL state the guest's memory size, the kernel's memory size and the ceiling.
 
 #### Scenario: Large allocation refused below the ceiling
 - **WHEN** a guest at 100 MiB asks for 200 MiB more, is refused and aborts

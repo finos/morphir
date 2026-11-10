@@ -348,16 +348,18 @@ are the notification rule that MoonBit does not have yet
 (finos/morphir-moonbit#329). One was a runaway case that required the budget
 to win; it now accepts either bound. Two were memory cases whose modules grew
 one page at a time and reached the call deadline before the ceiling on a slow
-engine; those modules now grow in halving steps. That run used an x64 binary
-under emulation, so the timings need a run on native hardware. The evidence
-is in finos/morphir-dotnet#570.
+engine; those modules now grow in halving steps. A rerun with the
+corpus at `48d10706f` passed 56 of 58; the two failures are the notification
+cases, and both memory cases ended with `memory-limit` after about a second.
+Both runs used an x64 binary under emulation, so the timings need a run on
+native hardware. The evidence is in finos/morphir-dotnet#570.
 
 Each module is a `.wat` file of a few lines that does one thing, with the
 `.wasm` built from it committed beside it. The leading comment says what the
 module does, and its `;; Cases:` line names the cases that use it. The kit
 records each binary's SHA-256.
 
-Every case has an `appliesTo` profile. The 48 cases for `extism-kernel-v1`
+Every case has an `appliesTo` profile. The 49 cases for `extism-kernel-v1`
 apply to every host, because every host must run that profile. The 10 cases
 for `morphir-bytes-v1`, a transitional profile, apply only to a host that
 declares it, and a runner records them as `not_applicable` for any other. One
@@ -373,7 +375,7 @@ must serve it. The runner takes the profiles a host declares as an input.
 | `bytes/` (6) | The `morphir-bytes-v1` handle results: a response, 0 for a request, a consumed notification, -2 for a request, -1, and a response that is not UTF-8. |
 | `extism/` (9) | The Extism handle results: a response, an error, a non-zero result, no output, and a response that is not an object. Notifications: not delivered to a guest that advertises nothing, delivered to one that advertises `call` delivery, not delivered to one that advertises a value the contract does not list, and a failure when the guest answers one. |
 | `limits/` (2) | A request over `--request-bytes` and a response over `--response-bytes`, both far from the limit. |
-| `bounds/` (9) | Runaway guests on both profiles, a runaway guest under a small instruction budget, memory growth to the ceiling, a refused growth an Extism guest survives, a refused growth on the byte profile, a refused growth below the ceiling, a trap, and an initial memory above the ceiling. |
+| `bounds/` (10) | Runaway guests on both profiles, a runaway guest under a small instruction budget, memory growth to the ceiling followed by a trap and followed by an error the guest reports, a refused growth an Extism guest survives, a refused growth on the byte profile, a refused growth below the ceiling, a trap, and an initial memory above the ceiling. |
 | `sandbox/` (16) | The host function and WASI policy: HTTP with and without a request, `path_open` on fd 3, unsupported WASI functions, `proc_exit(0)`, stdout and stderr, arguments, environment, stdin and preopens, clocks and random bytes, configuration, vars, the IR cache and its limits, workspace info, and logging. |
 
 The expectations are written by hand from the contract and the profile spec.

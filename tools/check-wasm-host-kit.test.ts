@@ -492,6 +492,9 @@ test("memory guests stop at the ceiling the model gives them", () => {
 	const trapping = plainGuest(withCeiling(wasm("extism-grow-then-trap"), 8));
 	expect(() => trapping.call()).toThrow(WebAssembly.RuntimeError);
 	expect(trapping.memoryPages()).toBe(8);
+	const reporting = extismGuest(withCeiling(wasm("extism-grow-then-error"), 8));
+	expect(reporting.call(frame("initialize"))).toEqual({ result: 1, output: undefined, error: "boom" });
+	expect(reporting.memoryPages()).toBe(8);
 	const recovering = extismGuest(withCeiling(wasm("extism-grow-then-respond"), 8));
 	expect(recovering.call(frame("initialize")).output).toEqual(frame("initialize"));
 	expect(recovering.memoryPages()).toBe(1);

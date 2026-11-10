@@ -265,7 +265,7 @@ A guest that imports WASI preview 1 SHALL see no preopened directory, no argumen
 - **AND** it never appears in a MEP response
 
 ### Requirement: Memory ceiling
-A host SHALL cap each linear memory of a session at 256 MiB and SHALL NOT grant growth past it. A call that ends in a trap or failure while the guest's or the Extism kernel's memory is at its ceiling SHALL fail with `extension.memory_limit`. A host that observes refused growth SHALL report the same for any failing call in which growth was refused. An initial memory above the ceiling SHALL fail with `extension.memory_limit` before any request.
+A host SHALL cap each linear memory of a session at 256 MiB and SHALL NOT grant growth past it. A call that ends in a trap while the guest's or the Extism kernel's memory is at its ceiling SHALL fail with `extension.memory_limit`. A host that observes refused growth SHALL report the same for a trap in a call in which growth was refused. An initial memory above the ceiling SHALL fail with `extension.memory_limit` before any request.
 
 #### Scenario: Module without a maximum
 - **WHEN** a module that declares no memory maximum grows until it reaches 256 MiB and then traps
@@ -274,6 +274,10 @@ A host SHALL cap each linear memory of a session at 256 MiB and SHALL NOT grant 
 #### Scenario: Budget exhausted at the ceiling
 - **WHEN** a guest whose memory is at 256 MiB runs past its instruction budget on a host that cannot observe refused growth
 - **THEN** the session fails with `extension.budget_exhausted`, because the host knows why the call ended
+
+#### Scenario: Guest reports its own error at the ceiling
+- **WHEN** an Extism guest grows its memory to 256 MiB, then sets an Extism error and returns 1
+- **THEN** the session fails with `extension.incomplete_session` and not with `extension.memory_limit`, because the guest ended the call itself
 
 #### Scenario: Kernel memory at its ceiling
 - **WHEN** an Extism guest traps while the kernel's memory, which holds its input and output, is at its ceiling
@@ -286,7 +290,7 @@ A host SHALL cap each linear memory of a session at 256 MiB and SHALL NOT grant 
 #### Scenario: Large allocation refused below the ceiling
 - **WHEN** a guest at 100 MiB asks for 200 MiB more, is refused and aborts
 - **THEN** the session fails
-- **AND** a host that observes refused growth reports `extension.memory_limit`, while another host reports the guest's own failure
+- **AND** a host that observes refused growth reports `extension.memory_limit`, while another host reports the trap
 
 ### Requirement: Call deadline
 Each `handle` call SHALL have a deadline of 30 seconds for `extism-kernel-v1` and 10 seconds for `morphir-bytes-v1`, inside any session deadline. At the deadline the host SHALL stop the guest, discard the instance and end the session with outcome `deadline`. Time spent in host functions SHALL count toward the deadline.
