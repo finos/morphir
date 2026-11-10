@@ -967,7 +967,7 @@
       }
     },
     {
-      "name": "a target with a non-ASCII NFC path is signed, served and read",
+      "name": "a target with a non-ASCII NFC path is signed, served and read (version 1 rule: target paths are NFC)",
       "metadata": "metadata",
       "mutations": [],
       "action": {
@@ -998,7 +998,29 @@
       }
     },
     {
-      "name": "signed custom text in NFC loads",
+      "name": "a target path served decomposed under the original targets signature is refused (version 1 rule: target paths are NFC)",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "replace-role-text",
+          "role": "targets",
+          "find": "\"extensions/fsharp-frontend/0.6.0/notes/café-naïve-字.txt\"",
+          "replace": "\"extensions/fsharp-frontend/0.6.0/notes/café-naïve-字.txt\""
+        },
+        {
+          "op": "relink"
+        }
+      ],
+      "action": {
+        "op": "load"
+      },
+      "expected": {
+        "code": "non_portable_path",
+        "path": ""
+      }
+    },
+    {
+      "name": "signed custom text in NFC loads (version 1 rule: signed text is NFC)",
       "metadata": "customText",
       "mutations": [],
       "action": {
@@ -1007,7 +1029,7 @@
       "expected": "valid"
     },
     {
-      "name": "signed custom text served decomposed under the original targets signature is refused",
+      "name": "signed custom text served decomposed under the original targets signature is refused (version 1 rule: signed text is NFC)",
       "metadata": "customText",
       "mutations": [
         {
@@ -1029,7 +1051,7 @@
       }
     },
     {
-      "name": "a member that differs from a defined member only in letter case is refused",
+      "name": "a member that differs from a defined member only in letter case is refused (toolchain reader rule, not version 1)",
       "metadata": "caseVariantMember",
       "mutations": [],
       "action": {
@@ -1041,7 +1063,7 @@
       }
     },
     {
-      "name": "a timestamp version at the integer bound, 2^53 - 1, loads",
+      "name": "a timestamp version at the integer bound, 2^53 - 1, loads (toolchain reader rule, not version 1)",
       "metadata": "metadata",
       "mutations": [
         {
@@ -1060,7 +1082,7 @@
       "expected": "valid"
     },
     {
-      "name": "a timestamp version one past the integer bound is refused",
+      "name": "a timestamp version one past the integer bound is refused (toolchain reader rule, not version 1)",
       "metadata": "metadata",
       "mutations": [
         {

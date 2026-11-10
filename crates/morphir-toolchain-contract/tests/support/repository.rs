@@ -1587,8 +1587,9 @@ pub fn fixture() -> Value {
         "metadata": metadata(&keys, &targets, 1, NEVER),
         "learnedRevocation": metadata(&keys, &revoked(&targets), 2, NEVER),
         "recipeRevocation": metadata(&keys, &recipe_revoked(&targets), 2, NEVER),
-        // Signed text the profile accepts, and variants it refuses. Each puts
-        // its members into the non-ASCII notes target's entry.
+        // NFC signed text, which loads, and a case variant of a defined
+        // member, which a toolchain reader refuses. Each puts its members
+        // into the non-ASCII notes target's entry.
         "customText": metadata_with(&keys, &targets, 2, NEVER, &|signed| {
             signed["targets"][NON_ASCII_TARGET]["custom"] = json!({ "morphir": { "label": "café" } });
         }, canonical),

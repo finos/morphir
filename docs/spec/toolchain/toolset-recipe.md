@@ -84,6 +84,17 @@ A recipe is published as a TUF target at `toolchains/recipes/<preset>/<version>.
 
 The manager's TUF client is decided (9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6760090078)). It is project-owned, in `Morphir.Toolchain` in finos/morphir-dotnet, implements only the subset of TUF that the tool release metadata profile uses, and has BouncyCastle's Ed25519 as its only cryptographic dependency. It is tested against the signed fixtures in this repository, the cases of the evaluation in finos/morphir-dotnet#568 and the upstream `tuf-conformance` suite, and it needs the maintainer's security review before any production use. This repository's reference checker uses tough 0.24 instead; the cases do not depend on which client runs them.
 
+### Metadata rules for toolchain readers
+
+A reader under these contracts, a manager or this repository's checker, loads a repository by the tool release metadata v1 rules, including its [signed text](../tool-release-metadata/index.md#signed-text) rules for NFC text and target paths. It then applies two more rules to the text of every role's `signed` object, as served, in every repository it loads, and refuses each with `metadata_signature_invalid`. These rules belong to these contracts, not to version 1 (maintainer decision of 10 November 2026, [Decision 12](https://github.com/finos/morphir/issues/1146#issuecomment-6772788150)), so a version 1 client outside them may accept such metadata:
+
+- **A case variant of a defined member.** A member whose name differs only in ASCII letter case from a member that TUF 1.0 or the profile defines for that object, such as `Version` beside `version`, or `Length` in a target entry. A case-sensitive reader ignores it as an unknown member, as TUF says, but a reader that binds JSON names without case reads it instead of the real member. Other unknown members are still ignored.
+- **An integer past 2<sup>53</sup> − 1**, the [integer bound](./index.md#numbers) of these documents, so that every reader language holds a metadata integer exactly. Versions, thresholds and lengths are all integers.
+
+The defined members are those of TUF 1.0 for each role, key, role entry, meta entry, hashes object and target entry, and for `custom.morphir`. For `custom.morphir` they are `schemaVersion`, `kind`, `toolId`, `version`, `channels`, `status`, `compatibility` (`morphirCli`), `platforms` and `platform` (`os`, `arch`), and `preset`.
+
+The signed set `caseVariantMember` pins the first rule. Trust cases at a timestamp version of 2<sup>53</sup> − 1, which loads, and 2<sup>53</sup>, which is refused, pin the second.
+
 The recipe's `custom.morphir` object is:
 
 ```json

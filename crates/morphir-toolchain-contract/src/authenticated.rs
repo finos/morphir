@@ -173,12 +173,14 @@ fn data_keyed(role: &str, place: &[&str]) -> bool {
     )
 }
 
-/// Refuse served role bytes whose `signed` object the profile does not
-/// accept as signed text. Canonical encoding normalizes strings to NFC, so a
-/// string that is not already NFC would be authenticated by a signature over
-/// other text; a member that differs from a defined one only in ASCII case
-/// would be read as that member by a case-insensitive reader; and an integer
-/// past 2^53 - 1 cannot be held exactly by every reader language.
+/// Refuse served role bytes whose `signed` object is not accepted signed
+/// text. Canonical encoding normalizes strings to NFC, so a string that is
+/// not already NFC would be authenticated by a signature over other text:
+/// that is a tool release metadata v1 rule for every client (Decision 12).
+/// A toolchain reader also refuses a member that differs from a defined one
+/// only in ASCII case, which a case-insensitive reader would read as that
+/// member, and an integer past 2^53 - 1, which not every reader language
+/// holds exactly; those two are rules of the toolchain contracts only.
 fn check_signed_text(role: &str, bytes: &[u8]) -> Result<()> {
     let refuse = |message: String| {
         Diagnostic::new(
@@ -325,9 +327,9 @@ impl AuthenticatedTargets {
         let root: Value = serde_json::from_slice(trusted_root).map_err(|error| {
             invalid_metadata("", format!("the trusted root is not JSON: {error}"))
         })?;
-        // The profile's rules on the text of `signed`, which the client checks
-        // on the bytes it was served: every string and member name already
-        // NFC, no case variant of a member the profile defines, and every
+        // The rules on the text of `signed`, checked on the bytes served:
+        // every string and member name already NFC (version 1), and, for a
+        // toolchain reader, no case variant of a defined member and every
         // integer at most 2^53 - 1.
         let trusted_version = root["signed"]["version"].as_u64().unwrap_or(1);
         check_signed_text("root", trusted_root)?;
