@@ -56,6 +56,8 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li><a href="#trust-1">TRUST-1. A name is not a credential</a></li>
 <li><a href="#ver-1">VER-1. Release, index and catalog versions</a></li>
 <li><a href="#ver-2">VER-2. Local lock version</a></li>
+<li><a href="#state-1">STATE-1. Dotted extensions get their own home partition</a></li>
+<li><a href="#idx-1">IDX-1. Dotted histories get their own index directory</a></li>
 <li><a href="#cfg-1">CFG-1. Project configuration quotes dotted ids</a></li>
 <li><a href="#conf-1">CONF-1. Shared conformance cases</a></li>
 <li><a href="#repo-1">REPO-1. Delivery order and submodule pins</a></li>
@@ -80,6 +82,10 @@ svg .edge { stroke: var(--muted); fill: none; }
 <tr><td><span class="tag">observed</span> Names derived from an id</td><td>The repository index uses <code>extensions/&lt;id&gt;.jsonl</code>, and a reader takes the id from the file stem and refuses a history whose records name another id. The extension lock is <code>locks/extensions/&lt;id&gt;.json</code>, journaled as <code>&lt;id&gt;.json.transaction</code>. The installed catalog keys entries by id. The Rust CLI's compile cache uses a sanitized id segment plus a short hash. The artifact store is content-addressed, <code>store/extensions/sha256/&lt;digest&gt;/…</code>, and does not use the id.</td></tr>
 <tr><td><span class="tag">observed</span> Project configuration (<code>morphir-common</code> <code>config/model.rs</code>)</td><td><code>[extensions.&lt;id&gt;]</code> tables are read into a map from string keys. The Rust CLI prints <code>[extensions.{id}].command</code> in diagnostics.</td></tr>
 <tr><td><span class="tag">observed</span> Version readers (<code>extension_format/version.rs</code>)</td><td>Accept legacy <code>"1.0"</code>, released major 1, and exactly <code>2.0.0-draft.1</code> and <code>2.0.0-draft.2</code>. Any other version is refused as an unsupported extension schema version. The lock reader accepts <code>"1.0"</code>.</td></tr>
+<tr><td><span class="tag">observed</span> The installed catalog is read whole (<code>state.rs</code> <code>InstalledCatalog::load</code>)</td><td>One shared file, <code>catalog/extensions.json</code>. Every extension command loads all of it before looking up any id: install, update, uninstall, list, and activation. The Rust CLI's install and update paths call <code>InstalledCatalog::load(&amp;home)</code> in <code>crates/morphir/src/commands/extension.rs</code>. Loading checks the file's version, then parses every entry's id. An unknown version or one unparsable id fails the whole load.<br>The catalog's version is already chosen home-wide: it becomes <code>2.0.0-draft.2</code> as soon as any entry carries a supplied claim set (<code>catalog_schema_version</code>). That is why <code>distribution-and-acquisition.md</code> says hosts <code>0.4.0-beta.6</code> and earlier cannot read draft.2.</td></tr>
+<tr><td><span class="tag">observed</span> Locks, journals and the state lock (<code>state.rs</code>, <code>state_io.rs</code>)</td><td>A lock is read only for an id the catalog names, so it is isolated per id.<br>Every state operation first takes the state lock <code>locks/extensions.state.lock</code>, which is an OS lock on a file with no content. It then replays every <code>*.json.transaction</code> journal in <code>locks/extensions/</code>, writing each journal's saved bytes to that lock path and to the one catalog path. The journal (<code>StatePairJournal</code>, version 1) records bytes, not the catalog's path, and no id is parsed while replaying.</td></tr>
+<tr><td><span class="tag">observed</span> Repository reads (<code>repository.rs</code>, <code>local.rs</code>, <code>repository_authoring.rs</code>)</td><td>Resolving and publishing an id read only <code>extensions/&lt;id&gt;.jsonl</code>.<br><code>extension search</code> and <code>extension repository verify</code> read every history in <code>extensions/</code>, take each id from its file stem, and stop at the first error. Search does this for every enabled repository in turn, so one unreadable history in one repository fails the whole search.</td></tr>
+<tr><td><span class="tag">observed</span> The artifact store</td><td>Shared and content-addressed. No cleanup that reads the catalog deletes store bytes; cache maintenance covers only disposable caches.</td></tr>
 <tr><td><span class="tag">observed</span> morphir-dotnet <code>openspec/specs/extension-registry</code></td><td>"An extension id is a dotted portable token": segments as above joined by <code>.</code>, at most 238 characters, no per-segment limit and no device-name rule. It describes a one-segment id as valid upstream and a dotted id as its superset. Its guests use <code>org.finos.morphir.fsharp-frontend</code> and <code>…-backend</code>, and its built-ins <code>morphir.csharp</code> and <code>morphir.fsharp</code>.</td></tr>
 <tr><td><span class="tag">observed</span> Toolchain contracts (draft PR finos/morphir#1147)</td><td>Their provider <code>extensionId</code> already allows dotted ids, but limits each segment to 64 characters. Their signed fixtures use <code>morphir-fsharp-frontend</code> because a descriptor cannot be dotted, and <code>toolset-recipe.md</code> records this as an open question.</td></tr>
 <tr><td><span class="tag">observed</span> Ids in the wild</td><td>All single tokens: <code>morphir-rust</code>, <code>morphir-elm-native</code> (<code>ecosystem/morphir-rust/.github/extensions.toml</code>); <code>morphir-elm</code>, <code>morphir-elm-classic</code>, <code>morphir-python</code>, <code>morphir-avro</code>, <code>morphir-openapi</code>, <code>morphir-scala-elm</code> (the bundles pinned in <code>.config/published-extension-bundles.toml</code> and the host tests that name them). <span class="tag">assumption</span> The catalogs those pins point at are release assets that are not vendored here; a task checks every id in them.</td></tr>
@@ -90,7 +96,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <p>Package paths in <code>spec/package/</code> use their own "dotted authority" grammar for package names. That grammar is not shared with extension ids and is not changed.</p>
 
 <h2 id="goals">Goals and non-goals</h2>
-<p><strong>Goals.</strong> One id grammar for every host and contract. Dotted ids are published, installed, locked and bound end to end. Every existing extension, store, lock, catalog and index works byte-for-byte as before. Hosts that predate the change refuse a dotted id cleanly instead of misreading it.</p>
+<p><strong>Goals.</strong> One id grammar for every host and contract. Dotted ids are published, installed, locked and bound end to end. Every existing extension, store, lock, catalog and index works byte-for-byte as before. A host that predates the change keeps working with every single-segment extension in a home or repository that also holds dotted ones, and never reads a dotted id.</p>
 <p><strong>Non-goals.</strong> No namespace registry, reservation or verification of reverse-DNS prefixes. No renaming of any existing extension. No change to <code>shortId</code>, to release tag conventions, or to the content-addressed store. No change to the MEP protocol or the claims version. Binding providers from several repositories in one recipe stays later work.</p>
 
 <h2 id="decisions">Decisions</h2>
@@ -124,23 +130,23 @@ svg .edge { stroke: var(--muted); fill: none; }
 <p>The repository publishes the release, and later a host installs it. Each of them writes files named after the id.</p>
 <svg viewBox="0 0 900 270" role="img" aria-labelledby="path-title path-desc">
 <title id="path-title">Names derived from one dotted extension id</title>
-<desc id="path-desc">The id org.finos.morphir.fsharp-frontend becomes four names by appending a fixed suffix or using it as a key: the repository history file, the lock file, the lock journal and the catalog key. The artifact store path uses only the digest and is unchanged.</desc>
+<desc id="path-desc">The id org.finos.morphir.fsharp-frontend becomes four names by appending a fixed suffix or using it as a key, each in the dotted partition: the repository history file, the lock file, the lock journal and the catalog key. The artifact store path uses only the digest and is unchanged.</desc>
 <rect class="box" x="300" y="10" width="300" height="44" rx="6"/>
 <text x="450" y="37" text-anchor="middle">org.finos.morphir.fsharp-frontend</text>
 <path class="edge" d="M450 54 L130 120 M450 54 L340 120 M450 54 L560 120 M450 54 L770 120"/>
 <rect class="box" x="10" y="120" width="240" height="56" rx="6"/>
-<text x="20" y="143">repository index</text><text x="20" y="163">extensions/&lt;id&gt;.jsonl</text>
+<text x="20" y="143">repository index</text><text x="20" y="163">extensions-dotted/&lt;id&gt;.jsonl</text>
 <rect class="box" x="260" y="120" width="200" height="56" rx="6"/>
-<text x="270" y="143">extension lock</text><text x="270" y="163">locks/extensions/&lt;id&gt;.json</text>
+<text x="270" y="143">extension lock</text><text x="270" y="163">locks/extensions-dotted/&lt;id&gt;.json</text>
 <rect class="box" x="470" y="120" width="200" height="56" rx="6"/>
 <text x="480" y="143">lock journal</text><text x="480" y="163">&lt;id&gt;.json.transaction</text>
 <rect class="box" x="680" y="120" width="210" height="56" rx="6"/>
-<text x="690" y="143">installed catalog</text><text x="690" y="163">key "&lt;id&gt;"</text>
+<text x="690" y="143">dotted catalog</text><text x="690" y="163">key "&lt;id&gt;"</text>
 <rect class="box" x="10" y="200" width="880" height="56" rx="6"/>
 <text x="20" y="223">artifact store, unchanged: store/extensions/sha256/&lt;digest&gt;/&lt;filename&gt;</text>
 <text x="20" y="243">the digest names the content, so no id reaches this path</text>
 </svg>
-<p><strong>Decision.</strong> Keep every derivation as it is: the whole id followed by a fixed suffix, or the whole id as a key. No layout or index key changes.</p>
+<p><strong>Decision.</strong> Keep every derivation as it is: the whole id followed by a fixed suffix, or the whole id as a key. No existing layout or index key changes. The directory a dotted id's names live in is the dotted partition of <a href="#state-1">STATE-1</a> and <a href="#idx-1">IDX-1</a>; this decision only settles the names inside it.</p>
 <p><strong>Why it is safe.</strong> Appending a fixed suffix is injective, so two different ids can never derive the same name. Ids are lowercase ASCII, so case-insensitive file systems do not fold them together.</p>
 <ul>
 <li><code>acme.tools.json</code> and <code>acme-tools.json</code> are different files.</li>
@@ -148,7 +154,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li><span class="tag">observed</span> The index reader uses <code>Path::file_stem</code>, which removes only the last extension, so <code>org.finos.morphir.fsharp-frontend.jsonl</code> yields the full id.</li>
 <li>The compile cache keeps dots in its sanitized segment and appends a hash, so it needs no change.</li>
 </ul>
-<p>Existing installed stores, locks and catalogs therefore keep working unchanged, because nothing about a single-token id's names changes.</p>
+<p>Nothing about a single-token id's names changes. That alone does not keep existing homes working: an older host reads some shared files whole, which is what <a href="#state-1">STATE-1</a> addresses.</p>
 
 <h3 id="bind-1">BIND-1. Descriptor, claims and session ids stay equal</h3>
 <p>At publication and installation the host probes the guest, and at first use it initializes a session. Each of these compares the guest's reported id with the descriptor's.</p>
@@ -177,7 +183,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <path class="edge" stroke-dasharray="5 4" d="M280 150 L620 50"/>
 <text x="400" y="95">refused: unsupported schema version</text>
 </svg>
-<p><strong>Decision.</strong> Add an exact draft, <code>2.0.0-draft.3</code>, to the release descriptor, the repository index record and the installed catalog. It differs from <code>2.0.0-draft.2</code> only in the id grammar.</p>
+<p><strong>Decision.</strong> Add an exact draft, <code>2.0.0-draft.3</code>, to the release descriptor, the repository index record and the dotted installed catalog of <a href="#state-1">STATE-1</a>. It differs from <code>2.0.0-draft.2</code> only in the id grammar. A version refusal protects a document an older host is handed directly, such as a bundle directory. It does not protect a file the older host shares with dotted entries, because such a file then fails as a whole; the partitions of <a href="#state-1">STATE-1</a> and <a href="#idx-1">IDX-1</a> keep dotted entries out of those files.</p>
 <ul>
 <li>A writer uses it when the id is dotted. For a single-segment id it keeps writing <code>2.0.0-draft.2</code> until the oldest host it targets reads draft.3, so the bytes it writes do not change.</li>
 <li>A draft.3 reader also reads <code>1.0</code>, draft.1 (converted as today) and draft.2.</li>
@@ -188,9 +194,65 @@ svg .edge { stroke: var(--muted); fill: none; }
 
 <h3 id="ver-2">VER-2. Local lock version</h3>
 <p>The host installs the frontend and writes <code>locks/extensions/org.finos.morphir.fsharp-frontend.json</code>. A user may later run an older host against the same Morphir home, for example after a downgrade.</p>
-<p><strong>Decision.</strong> An extension lock that names a dotted id is written at <code>2.0.0-draft.1</code>, the first draft of the lock's next major under the rule in <code>AGENTS.md</code>. A lock for a single-segment id stays at <code>"1.0"</code>. The installed catalog follows <a href="#ver-1">VER-1</a>, writing <code>2.0.0-draft.3</code> as soon as any entry is dotted.</p>
-<p><strong>Why.</strong> An older host must refuse a lock it cannot read before acting on it. A version it does not list gives that refusal. A <code>"1.0"</code> lock with a dotted id would fail later, as a parse error, and possibly after other locks had been read.</p>
-<p><strong>Recovery.</strong> The older host refuses only the dotted extension's lock and catalog, with its unsupported-version message. Installing the newer host again restores normal use. Nothing is rewritten.</p>
+<p><strong>Decision.</strong> A dotted extension's lock is written at <code>2.0.0-draft.1</code>, the first draft of the lock's next major under the rule in <code>AGENTS.md</code>, in <code>locks/extensions-dotted/</code>. A lock for a single-segment id stays at <code>"1.0"</code> in <code>locks/extensions/</code>.</p>
+<p><strong>Why.</strong> <span class="tag">observed</span> A lock is per id, and an older host reads only the locks of ids its catalog names, so a dotted lock is isolated by its file name alone. Its directory matters for its journal, not for the lock (<a href="#state-1">STATE-1</a>). The version still says what the lock contains, so a dotted lock copied or restored into the wrong place is refused by version rather than misread.</p>
+
+<h3 id="state-1">STATE-1. Dotted extensions get their own home partition</h3>
+<p>Ada's home already holds <code>morphir-elm</code>. She installs the frontend with a new host, and later runs a host released before this change on the same home. This is the ordinary case once morphir-dotnet's installer (finos/morphir-dotnet#567) writes the same home files as the Rust CLI. A user then has <code>dotnet-morphir</code> and <code>morphir</code> of different ages sharing one <code>MORPHIR_HOME</code>, and the dotted extensions are exactly the .NET ones.</p>
+<p>Under the first draft of this design, that install promoted the shared <code>catalog/extensions.json</code> to <code>2.0.0-draft.3</code>. The older host then could not install, update, list or run <code>morphir-elm</code>, because every one of those operations loads the whole catalog first. The table lists what an older host reads in a home, and what each read does on meeting a dotted entry.</p>
+<table>
+<thead><tr><th>Shared file</th><th>When an older host reads it</th><th>On meeting a dotted entry or a newer draft</th><th>With this decision</th></tr></thead>
+<tbody>
+<tr><td><code>catalog/extensions.json</code></td><td>Every install, update, uninstall, list and activation, in full</td><td>Refuses the version, or fails to parse the id. Every extension command in the home fails.</td><td>Never holds a dotted id</td></tr>
+<tr><td><code>locks/extensions/&lt;id&gt;.json</code></td><td>Only for ids in the catalog</td><td>Never read for a dotted id</td><td>Isolated already; dotted locks also move to their own directory</td></tr>
+<tr><td><code>locks/extensions/*.json.transaction</code></td><td>Every state operation, all of them</td><td>Replays the journal's bytes into the lock and into the one catalog path without parsing ids. A dotted install's journal would write a catalog holding a dotted entry.</td><td>Dotted journals live in <code>locks/extensions-dotted/</code>, which an older host does not scan</td></tr>
+<tr><td><code>locks/extensions.state.lock</code></td><td>Every state operation</td><td>An OS lock with no content; unaffected</td><td>Shared by both partitions</td></tr>
+<tr><td><code>store/extensions/sha256/…</code></td><td>Activation, by digest</td><td>Never read through an id; no cleanup decides from the catalog what to prune</td><td>Shared, unchanged</td></tr>
+</tbody>
+</table>
+<p><strong>Decision.</strong> Dotted extensions live in their own partition of the home:</p>
+<pre><code class="language-console">MORPHIR_HOME/
+  catalog/extensions.json                  single-segment ids only, unchanged versions
+  catalog/extensions-dotted.json           dotted ids only, 2.0.0-draft.3
+  locks/extensions.state.lock              one state lock for both partitions
+  locks/extensions/&lt;id&gt;.json               single-segment locks and their journals, unchanged
+  locks/extensions-dotted/&lt;id&gt;.json        dotted locks (2.0.0-draft.1) and their journals
+  store/extensions/sha256/&lt;digest&gt;/…       shared, content-addressed, unchanged</code></pre>
+<p>A new host:</p>
+<ul>
+<li>takes the one state lock, then recovers each lock directory's journals into that directory's own catalog;</li>
+<li>loads both catalogs and lists their union in id order;</li>
+<li>changes exactly one partition per install, update or removal, chosen by the id's form;</li>
+<li>never writes a dotted id into the single-segment partition.</li>
+</ul>
+<p><strong>What it costs.</strong> There are two catalogs and two lock directories to keep consistent, under one state lock. Their only shared invariant is the partition itself, because a dotted id and a single-segment id can never be the same id. No transaction spans both, so there is no cross-file atomicity to get right.</p>
+<p><strong>When the two disagree.</strong> The only possible disagreement is an id of the wrong form in a partition, which a correct writer never produces. A new host then refuses the offending file and names it, and keeps using the other partition. A lock and its catalog entry that disagree within a partition are refused as today.</p>
+<p><strong>The .NET installer.</strong> finos/morphir-dotnet#567 adds one catalog file and one lock directory to the layout it must match byte for byte. Its dotted F# guests go into the dotted partition, so the Rust host it shares a home with is never affected. The partition rule and the layout belong in the shared cases (<a href="#conf-1">CONF-1</a>), so the two installers are tested against the same expectations.</p>
+<p><strong>Recovery.</strong> None is needed for a downgrade. The older host sees and uses only the single-segment partition, and the dotted partition is still there when a new host returns. An interrupted dotted transaction is completed or rolled back by the next new host, from its own directory.</p>
+
+<details>
+<summary>Alternative worked out: a stated home-wide restriction</summary>
+<p>Keep one catalog and accept that, once a dotted extension is installed, the home needs hosts that read <code>2.0.0-draft.3</code>. This is how the catalog already behaves for claim sets, which made it unreadable to hosts <code>0.4.0-beta.6</code> and earlier. Implementing it means:</p>
+<ul>
+<li><strong>A refusal before the first such change.</strong> A new host refuses the first install that would put a dotted id into a catalog that older hosts can read. Its message would be: "Installing <code>org.finos.morphir.fsharp-frontend</code> makes this Morphir home usable only by hosts that read extension catalog <code>2.0.0-draft.3</code>. Hosts released before <var>version</var>, including other Morphir tools that share this home, will refuse every extension command here. Run again with <code>--allow-home-upgrade</code> to continue." With the flag, it writes the catalog at draft.3.</li>
+<li><strong>A version that follows the entries.</strong> When the last dotted entry is removed, the catalog is written at the version its remaining entries need (<code>"1.0"</code> or <code>2.0.0-draft.2</code>), as <code>catalog_schema_version</code> already does for claim sets.</li>
+<li><strong>Recovery that keeps the single-segment extensions.</strong> With a host that reads draft.3:
+<ol>
+<li>run <code>morphir extension list</code> and note each dotted id;</li>
+<li>run <code>morphir extension uninstall &lt;id&gt;</code> for each. Each removal deletes <code>locks/extensions/&lt;id&gt;.json</code> and the catalog entry in one journaled pair, and the last one rewrites the catalog at its earlier version;</li>
+<li>check that no <code>*.json.transaction</code> remains in <code>locks/extensions/</code>;</li>
+<li>then install or run the older host.</li>
+</ol>
+The single-segment locks, their catalog entries and the store are untouched. If the newer host is already gone, install it again first; editing the catalog by hand is not supported.</li>
+</ul>
+<p><strong>Why it is not recommended.</strong> It breaks the case this change exists for. Installing the .NET F# guests into a home shared with an older Rust CLI would stop that CLI for every extension, and the user would discover this from another tool's refusal. It is simpler to build, and it is the fallback if the maintainer prefers one catalog.</p>
+</details>
+
+<h3 id="idx-1">IDX-1. Dotted histories get their own index directory</h3>
+<p>Chen publishes the frontend to a team repository that already holds <code>morphir-elm</code>. Colleagues run hosts of different ages against it, and the publisher does not control when they upgrade.</p>
+<p><span class="tag">observed</span> An older client resolves and publishes by id, reading only <code>extensions/&lt;id&gt;.jsonl</code>, so those paths are unaffected. But <code>extension search</code> and <code>extension repository verify</code> read every file in <code>extensions/</code> and stop at the first id they cannot parse. Search does this across every enabled repository, so one dotted history in one repository would fail an older client's search entirely.</p>
+<p><strong>Decision.</strong> A repository index keeps dotted histories in <code>extensions-dotted/&lt;id&gt;.jsonl</code>, with records at <code>2.0.0-draft.3</code>, and only single-segment histories in <code>extensions/</code>. A new client resolves an id from the directory its form names, and searches and verifies both directories. Publication writes to the directory the id's form names.</p>
+<p><strong>Why.</strong> A repository's readers are not one user's hosts, so no home-wide opt-in could cover them. The partition costs one more directory, and it gives older clients exactly the view they had before.</p>
 
 <h3 id="cfg-1">CFG-1. Project configuration quotes dotted ids</h3>
 <p>Ada configures the frontend in her project's <code>morphir.toml</code>.</p>
@@ -215,7 +277,9 @@ command = ["morphir-fsharp-frontend"]</code></pre>
 <tr><td>Device names</td><td><code>con</code>, <code>nul.tools</code>, <code>com1.lint</code>, <code>lpt9</code> refused; <code>console.tools</code>, <code>acme.nul.tools</code> accepted</td></tr>
 <tr><td>Comparison and derived names</td><td>Pairs that must stay distinct: <code>acme.tools</code> / <code>acme-tools</code>, <code>x</code> / <code>x.json</code>, <code>x.json</code> / <code>x.json.transaction</code>, with their derived names</td></tr>
 <tr><td>Binding</td><td>A descriptor whose claims name the hyphenated spelling; a session that reports another id</td></tr>
-<tr><td>Versions</td><td>A dotted id at <code>2.0.0-draft.2</code> refused; a draft.3 document an earlier reader refuses by version; a draft.2 single-segment document read unchanged</td></tr>
+<tr><td>Home partitions</td><td>For a sequence of installs and removals of <code>morphir-elm</code> and <code>org.finos.morphir.fsharp-frontend</code>, the expected bytes of <code>catalog/extensions.json</code> and the expected set of files in each partition. The single-segment files must equal what an earlier host writes without the dotted extension. Also: a dotted id in the single-segment catalog and a single-segment id in the dotted catalog, each refused by naming the file; a dotted journal left in <code>locks/extensions-dotted/</code>, recovered into the dotted catalog only.</td></tr>
+<tr><td>Repository partition</td><td>A mixed index whose <code>extensions/</code> directory an earlier client reads unchanged, and whose search results for a new client include both partitions</td></tr>
+<tr><td>Versions</td><td>A dotted id at <code>2.0.0-draft.2</code> refused; a draft.3 descriptor that an earlier reader refuses by version; a draft.2 single-segment document read unchanged</td></tr>
 <tr><td>Configuration</td><td>Quoted dotted key accepted; unquoted dotted key refused with the quoted suggestion</td></tr>
 </tbody>
 </table>
@@ -234,10 +298,10 @@ command = ["morphir-fsharp-frontend"]</code></pre>
 </svg>
 <ol>
 <li><strong>finos/morphir.</strong> This change is approved. Its contract half lands: the normative extension id page, the case manifest and the updated design pages.</li>
-<li><strong>finos/morphir-rust.</strong> <code>morphir-distribution</code> adopts the grammar and the drafts in its readers and writers (<a href="#ver-1">VER-1</a>, <a href="#ver-2">VER-2</a>). <code>morphir-common</code> adds the configuration refusal (<a href="#cfg-1">CFG-1</a>). Their tests run the shared cases, and the change ships in a release.</li>
+<li><strong>finos/morphir-rust.</strong> <code>morphir-distribution</code> adopts the grammar and the drafts in its readers and writers (<a href="#ver-1">VER-1</a>, <a href="#ver-2">VER-2</a>), plus the home and repository partitions (<a href="#state-1">STATE-1</a>, <a href="#idx-1">IDX-1</a>). <code>morphir-common</code> adds the dotted home paths and the configuration refusal (<a href="#cfg-1">CFG-1</a>). Their tests run the shared cases, and the change ships in a release.</li>
 <li><strong>finos/morphir.</strong> One pull request moves the <code>ecosystem/morphir-rust</code> pin to that release and updates the Rust CLI's quoted diagnostics. This proposal covers exactly that pin move. The CLI path-depends on <code>morphir-distribution</code>, so the pin move and the CLI change must land together. The host compatibility suite must still pass every bundle in <code>.config/published-extension-bundles.toml</code> unchanged.</li>
 <li><strong>MoonBit host.</strong> Its owning repository adopts the rule and runs the cases. <code>ecosystem/morphir-moonbit</code> moves only if that repository is the submodule; at its current pin it has no id code, so no move is expected.</li>
-<li><strong>finos/morphir-dotnet.</strong> It already accepts dotted ids. It adopts the device-name refinement, runs the shared cases through its conformance runner, and its task that waits on dotted descriptor ids unblocks.</li>
+<li><strong>finos/morphir-dotnet.</strong> It already accepts dotted ids. It adopts the device-name refinement and runs the shared cases through its conformance runner. Its installer (finos/morphir-dotnet#567) writes dotted extensions only into the dotted home partition. Its task that waits on dotted descriptor ids unblocks.</li>
 <li><strong>Toolchain contracts in finos/morphir</strong>, after finos/morphir#1147 or within it if it has not merged. Their provider identity grammar drops its 64-character segment limit to match <a href="#id-2">ID-2</a>. The TEST-ONLY signed F# fixtures move from <code>morphir-fsharp-frontend</code> and <code>morphir-fsharp-backend</code> to the dotted ids, and the open question on dotted provider identities in <code>toolset-recipe.md</code> closes.</li>
 </ol>
 <p>No other submodule moves. The Elm, Python, Gleam, Scala, TypeScript and examples submodules are guests or bindings whose ids are single tokens.</p>
@@ -248,6 +312,7 @@ command = ["morphir-fsharp-frontend"]</code></pre>
 <tbody>
 <tr><td>Keep single tokens and have morphir-dotnet publish hyphenated ids such as <code>org-finos-morphir-fsharp-frontend</code></td><td>The guest would need two names, one in the store and one in MEP, and the equality rule (<a href="#bind-1">BIND-1</a>) would force the guest to report the hyphenated one. That contradicts the maintainer's decision and morphir-dotnet's registry, where the dotted id is the identity.</td></tr>
 <tr><td>Let the descriptor id differ from the claims id (a single-token descriptor id, dotted claims)</td><td>It weakens binding. A recipe or lock binds a descriptor by its id; if the claims could name something else, a descriptor could be filed under any name, and the check that the bytes that run are the bytes that were bound would lose its anchor.</td></tr>
+<tr><td>One catalog for every id, at <code>2.0.0-draft.3</code> once a dotted extension is installed, with an explicit opt-in and a recovery procedure</td><td>Worked out in full under <a href="#state-1">STATE-1</a>. Not chosen, because it stops older hosts on a shared home for every extension, including the Rust CLI on a home where the .NET installer added its F# guests. It remains the fallback if one catalog is preferred.</td></tr>
 <tr><td>Refine <code>2.0.0-draft.2</code> in place</td><td>Released hosts read draft.2 and would fail on a dotted id with a parse error instead of a version refusal (<a href="#ver-1">VER-1</a>).</td></tr>
 <tr><td>A next major, <code>3.0.0-draft.1</code></td><td>Works, but marks a reshaped format for a grammar widening and would ask every writer to move. Draft.3 keeps single-segment documents byte-identical.</td></tr>
 <tr><td>A per-segment limit of 64 characters</td><td>Would invalidate single-token ids of 65 to 238 characters that are valid today (<a href="#id-2">ID-2</a>).</td></tr>
@@ -262,7 +327,10 @@ command = ["morphir-fsharp-frontend"]</code></pre>
 <tbody>
 <tr><td>Look-alike ids such as <code>morphir.elm</code> and <code>morphir-elm</code> confuse users or invite impersonation.</td><td>Ids are distinct by rule, listings show both, and <a href="#trust-1">TRUST-1</a> says no id carries trust. Authentication decides what a user installs from where.</td></tr>
 <tr><td>Readers apply the grammar differently, for example morphir-dotnet accepting <code>con.example</code>.</td><td>The shared cases in <a href="#conf-1">CONF-1</a>, run by every host; morphir-dotnet adopts the refinement.</td></tr>
-<tr><td>A host downgrade meets dotted locks and catalogs.</td><td>The older host refuses them by version (<a href="#ver-2">VER-2</a>); reinstalling the newer host recovers. Single-segment extensions keep working on the older host.</td></tr>
+<tr><td>An older host shares a home with dotted extensions, after a downgrade or because another tool installed them.</td><td>It never reads them: dotted state is in its own partition (<a href="#state-1">STATE-1</a>), so its single-segment extensions keep working and the dotted ones are invisible to it.</td></tr>
+<tr><td>An older client searches or verifies a repository that holds dotted releases.</td><td>Dotted histories are in their own directory (<a href="#idx-1">IDX-1</a>), so it sees the repository it saw before.</td></tr>
+<tr><td>Two partitions drift, for example a buggy writer puts an id in the wrong one.</td><td>A new host refuses the offending file and names it, and keeps the other partition usable. The shared cases pin the layout for every installer, including finos/morphir-dotnet#567.</td></tr>
+<tr><td>The partition is permanent layout.</td><td>Accepted. Merging the partitions later would need a new catalog major and a migration that only hosts reading both could perform; nothing in this change depends on doing so.</td></tr>
 <tr><td>Long ids push derived paths past Windows <code>MAX_PATH</code> when long paths are disabled.</td><td>Unchanged from today: 238-character ids already exist in the grammar. The design pages repeat the long-path note.</td></tr>
 <tr><td>A user writes an unquoted dotted key in <code>morphir.toml</code>.</td><td>The reader refuses it and shows the quoted spelling (<a href="#cfg-1">CFG-1</a>).</td></tr>
 <tr><td>A catalog or index that this repository does not vendor contains an id that is not a single token.</td><td>A task reads every id in the pinned bundles' catalogs. Any such id would already be refused by today's reader.</td></tr>
@@ -270,11 +338,11 @@ command = ["morphir-fsharp-frontend"]</code></pre>
 </table>
 
 <h2 id="migration">Migration plan</h2>
-<p>Nothing existing migrates. Single-segment extensions, their descriptors, index histories, locks, catalogs and configuration keys stay byte-identical, and writers keep their current versions for them. A dotted extension can be published once its repository's tooling writes draft.3. It can be installed by hosts that read draft.3, and hosts that do not refuse it by version.</p>
-<p><strong>Rollback.</strong> Removing draft.3 support from a host makes it refuse dotted documents by version, the same behavior as today's hosts. Single-segment use is unaffected. The toolchain fixtures stay on hyphenated ids until <a href="#repo-1">REPO-1</a> step 6, so they never depend on a host that has not shipped.</p>
+<p>Nothing existing migrates. Single-segment extensions, their descriptors, index histories, locks, catalogs and configuration keys stay byte-identical, and writers keep their current versions for them, also in homes and repositories that later gain dotted extensions. A dotted extension can be published once its repository's tooling writes draft.3 into <code>extensions-dotted/</code>. Hosts that read draft.3 install it into the dotted partition. Older hosts never see it, and they refuse its descriptor by version if handed it directly.</p>
+<p><strong>Rollback.</strong> Running an older host, or removing draft.3 support from a host, leaves the dotted partitions in place and unused. Single-segment use is unaffected, because no file an older host reads changes. A new host picks the dotted partitions up again. The toolchain fixtures stay on hyphenated ids until <a href="#repo-1">REPO-1</a> step 6, so they never depend on a host that has not shipped.</p>
 
 <h2 id="open-questions">Open questions</h2>
-<p>None that change the specs or the task breakdown. The questions this design needs the maintainer to confirm are in the report that accompanies it: the draft numbers, the device-name refinement, and the per-segment limit.</p>
+<p>None that change the specs or the task breakdown. The questions this design needs the maintainer to confirm are in the pull request description: the draft numbers, the device-name refinement, the per-segment limit, and the home partition of <a href="#state-1">STATE-1</a> against the home-wide restriction worked out beside it.</p>
 
 </main>
 </body>

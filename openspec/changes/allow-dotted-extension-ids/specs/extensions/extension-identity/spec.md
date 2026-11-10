@@ -81,32 +81,82 @@ Wherever a host or repository derives a file name or a key from an extension id,
 
 #### Scenario: Derived names do not collide
 - **WHEN** a host installs `acme.tools` and `acme-tools` and records their locks
-- **THEN** it writes `acme.tools.json` and `acme-tools.json`, two different files, on every first-delivery platform including case-insensitive file systems
+- **THEN** it writes the two locks as `acme.tools.json` and `acme-tools.json`, in their partitions' lock directories, and no name it derives for one equals a name it derives for the other on any first-delivery platform, including case-insensitive file systems
 
 #### Scenario: A repository history is found by its full id
-- **WHEN** a repository index holds `extensions/org.finos.morphir.fsharp-frontend.jsonl`
+- **WHEN** a repository index holds `extensions-dotted/org.finos.morphir.fsharp-frontend.jsonl`
 - **THEN** a reader takes the id `org.finos.morphir.fsharp-frontend` from the file name and refuses the file if its records name another id
 
+### Requirement: A home keeps dotted extensions apart from the state older hosts read
+A Morphir home SHALL record a dotted extension only in the dotted partition: the catalog `catalog/extensions-dotted.json` and the lock directory `locks/extensions-dotted/`, which holds its locks and their transaction journals. The catalog `catalog/extensions.json` and the directory `locks/extensions/` SHALL hold only single-segment ids.
+
+#### Scenario: A dotted install leaves the existing files alone
+- **WHEN** a new host installs `org.finos.morphir.fsharp-frontend` into a home that holds `morphir-elm`
+- **THEN** it writes `catalog/extensions-dotted.json` and `locks/extensions-dotted/org.finos.morphir.fsharp-frontend.json`
+- **AND** `catalog/extensions.json` and every file in `locks/extensions/` keep their bytes
+
+#### Scenario: A host lists both partitions
+- **WHEN** a new host lists the installed extensions of that home
+- **THEN** it lists `morphir-elm` and `org.finos.morphir.fsharp-frontend` together, in id order
+
+### Requirement: Both home partitions share one state lock
+A host SHALL change either partition only while holding the one state lock `locks/extensions.state.lock`. One install, update or removal SHALL change exactly one partition, and a host SHALL recover each partition's journals into that partition's own catalog.
+
+#### Scenario: Concurrent hosts
+- **WHEN** an older host updates `morphir-elm` while a new host installs `org.finos.morphir.fsharp-frontend` in the same home
+- **THEN** one waits for the other's state lock, and each partition ends in the state its own transaction wrote
+
+### Requirement: An older host keeps working on a home that holds dotted extensions
+A host that predates this rule SHALL be able to install, update, list, remove and run single-segment extensions in a home that also holds dotted extensions, exactly as in a home that does not. No file such a host reads or recovers SHALL name a dotted id.
+
+#### Scenario: Downgrade after a dotted install
+- **WHEN** a home holds `morphir-elm` and `org.finos.morphir.fsharp-frontend`, and a host released before this change runs `extension update morphir-elm`, `extension list` and a compile with `morphir-elm`
+- **THEN** each succeeds as it would without the dotted extension, and the list does not show the dotted extension
+
+#### Scenario: An interrupted dotted install
+- **WHEN** a new host is interrupted while installing `org.finos.morphir.fsharp-frontend` and an older host then runs any extension command in that home
+- **THEN** the older host finds no journal of that install in `locks/extensions/` and writes nothing to `catalog/extensions.json` on its behalf
+- **AND** the next new host to take the state lock completes or rolls back the install from `locks/extensions-dotted/`
+
+### Requirement: A new host refuses state in the wrong partition
+A new host SHALL refuse a dotted id found in `catalog/extensions.json` or `locks/extensions/`, and a single-segment id found in `catalog/extensions-dotted.json` or `locks/extensions-dotted/`. The refusal SHALL name the file. It SHALL NOT stop the other partition from being read and used.
+
+#### Scenario: A dotted id in the existing catalog
+- **WHEN** `catalog/extensions.json` holds an entry for `org.finos.morphir.fsharp-frontend`
+- **THEN** a new host refuses that catalog and names it
+- **AND** it still lists and runs the extensions recorded in the dotted partition
+
+### Requirement: A repository index keeps dotted histories apart
+A repository index SHALL keep the history of a dotted id in `extensions-dotted/<id>.jsonl`, and SHALL keep only single-segment ids in `extensions/`. A reader resolves an id from the directory its form names. A search or verification by a new reader SHALL read both directories.
+
+#### Scenario: An older client searches a mixed repository
+- **WHEN** a repository holds `extensions/morphir-elm.jsonl` and `extensions-dotted/org.finos.morphir.fsharp-frontend.jsonl`, and a client released before this change runs `extension search elm` and `extension repository verify`
+- **THEN** both succeed, and they see only `morphir-elm`
+
+#### Scenario: A new client sees both
+- **WHEN** a new client runs `extension search fsharp` against that repository
+- **THEN** the results include `org.finos.morphir.fsharp-frontend`
+
 ### Requirement: A dotted id uses the drafts that introduce it
-A writer SHALL write a release descriptor, repository index record or installed catalog that names a dotted id at `2.0.0-draft.3`, and an extension lock that names one at `2.0.0-draft.1`. For a single-segment id it SHALL keep writing the version it writes today, until the oldest host it targets reads the new draft. A reader of the new drafts SHALL also read every version it read before.
+A writer SHALL write a release descriptor, repository index record or dotted installed catalog that names a dotted id at `2.0.0-draft.3`, and a dotted extension's lock at `2.0.0-draft.1`. For a single-segment id it SHALL keep writing the version it writes today, until the oldest host it targets reads the new draft. A reader of the new drafts SHALL also read every version it read before.
 
 #### Scenario: A dotted release is written at the new draft
 - **WHEN** a publisher authors a release with the id `org.finos.morphir.fsharp-frontend`
 - **THEN** its descriptor has `schemaVersion` `2.0.0-draft.3`
 
 #### Scenario: Existing documents stay byte-identical
-- **WHEN** a new host installs `morphir-elm` from a `2.0.0-draft.2` descriptor
-- **THEN** the index record, catalog and lock it writes have the versions and bytes an earlier host writes
+- **WHEN** a new host installs `morphir-elm` from a `2.0.0-draft.2` descriptor into a home that also holds a dotted extension
+- **THEN** the index record, `catalog/extensions.json` and lock it writes have the versions and bytes an earlier host writes in the same home without the dotted extension
 
 #### Scenario: A new reader reads the earlier drafts
 - **WHEN** a new host reads `2.0.0-draft.1` and `2.0.0-draft.2` descriptors and a `1.0` lock
 - **THEN** it reads them as before
 
-### Requirement: An earlier reader refuses a dotted id by version
-A document that names a dotted id SHALL be one that a reader of only the earlier drafts refuses with its unsupported-version error, before it reads the id. A dotted id SHALL never reach a reader that does not understand it.
+### Requirement: An earlier reader refuses a dotted descriptor by version
+A release descriptor that names a dotted id SHALL be one that a reader of only the earlier drafts refuses with its unsupported-version error, before it reads the id. Together with the partitions, this means a dotted id never reaches a reader that does not understand it.
 
-#### Scenario: An old host meets a dotted release
-- **WHEN** a host that reads only `2.0.0-draft.1` and `2.0.0-draft.2` reads a `2.0.0-draft.3` descriptor
+#### Scenario: An old host is handed a dotted bundle
+- **WHEN** a host that reads only `2.0.0-draft.1` and `2.0.0-draft.2` reads a `2.0.0-draft.3` descriptor, for example from a bundle directory
 - **THEN** it refuses the descriptor as an unsupported extension schema version and changes nothing
 
 ### Requirement: Project configuration quotes a dotted id
@@ -121,7 +171,7 @@ A dotted id SHALL appear in project configuration as one quoted TOML key, such a
 - **THEN** the reader reads it as before
 
 ### Requirement: Hosts prove the rule against shared cases
-The id grammar, the device-name rule, the length boundary, exact comparison, derived names, the version rule and configuration quoting SHALL be published as language-neutral cases. Each case names an input and the expected acceptance or refusal. Every host that reads extension ids SHALL run them and report the same outcome for every case.
+The id grammar, the device-name rule, the length boundary, exact comparison, derived names, the home and repository partitions, the version rule and configuration quoting SHALL be published as language-neutral cases. Each case names an input and the expected acceptance or refusal. Every host that reads extension ids SHALL run them and report the same outcome for every case.
 
 #### Scenario: Two hosts agree on every case
 - **WHEN** the Rust host and the .NET host run the shared extension id cases
