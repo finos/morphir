@@ -23,7 +23,14 @@ A receipt describes one installed toolchain generation on one machine. It lives 
 `host` has:
 
 - `identity`: `implementation`, `version`, `deployment`, `target`, `sha256`, equal to the lock's host and the platform closure's `hostTarget` and `hostSha256`;
-- `execution`: `mode` (`native-aot` or `jit`) and `runtime`, which is `{ "kind": "none" }` for Native AOT and `bundled` or `system` with the runtime `version` otherwise;
+- `execution`: `mode` (`native-aot` or `jit`) and `runtime`. Native AOT has `{ "kind": "none" }`; JIT has `bundled` or `system` with the runtime `version`. Any other combination is `inconsistent_document` at `host.execution.runtime`. For the `dotnet` implementation the deployment fixes the execution, and a mismatch is `inconsistent_document` at `host.execution`:
+
+  | Deployment | Execution |
+  | --- | --- |
+  | `native-aot` | `native-aot`, runtime `none` |
+  | `self-contained` | `jit`, runtime `bundled` |
+  | `framework-dependent`, `dotnet-tool` | `jit`, runtime `system` |
+
 - `installation`, `readiness` and `checks`.
 
 Each provider has `identity`, the lock's provider entry exactly, and `readiness` and `checks`. Every provider except a built-in also has `installation`; a built-in is part of the host and has none.
@@ -33,8 +40,8 @@ Each provider has `identity`, the lock's provider entry exactly, and `readiness`
 | Member | Cases |
 | --- | --- |
 | `ownership.kind` | `manager-owned`; `direct-archive`; `dotnet-tool` with `packageId` and `scope` (`global`, `tool-path`, `local-manifest`); `system-package` with `manager` |
-| `authentication.kind` | `repository-target` with `repositoryId` and `targetsVersion`; `recipe-digest` with `repositoryId`, `recipeTarget`, `recipeSha256`; `local-developer` with `policy: "developer"`; `external-owner` |
-| `launch` | `program`, an absolute path for the receipt's platform, and fixed `args` |
+| `authentication.kind` | `repository-target` with `repositoryId` and `targetsVersion`; `recipe-digest` with `repositoryId`, `recipeTarget`, `recipeSha256`, which must equal the receipt's own `recipe` (otherwise `inconsistent_document` at the authentication member); `local-developer` with `policy: "developer"`; `external-owner` |
+| `launch` | `program`, an absolute [local path](./index.md#local-paths) in the receipt platform's syntax, and fixed `args` |
 | `claimCheck` (providers) | `probed` with `probeSource` (`describe` or `session-fallback`), or `unchecked` without one |
 
 The manager updates or removes only `manager-owned` installations. For another owner it reports the owner's update mechanism.
@@ -44,6 +51,8 @@ Publisher authentication and the claim check are separate facts. `authentication
 ### Readiness
 
 Readiness is ordered: `acquired`, `integrity-verified`, `capability-checked`, `workflow-qualified`. A component records exactly one `integrity` and one `capability` check. A generation records exactly one `workflow` check, naming its `workflow`. A check's `status` is `passed`, `failed`, `skipped` or `unsupported`; anything other than `passed` states its `reason`, so a skipped or unsupported check stays visible.
+
+A component records exactly one `integrity` and one `capability` check, and only a workflow check names a `workflow`. A built-in provider is part of the host's bytes, so its integrity check has the same outcome as the host's; a different outcome is `inconsistent_document` at the provider's `checks`.
 
 Readiness is derived, never asserted:
 
@@ -60,4 +69,12 @@ Given the lock bytes, a receipt is refused with `lock_changed` when their SHA-25
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/receipt/` holds a workflow-qualified Windows generation bound to `lock/two-platforms-bound.json`, a generation whose frontend failed negotiation, a probed unsigned developer frontend, and an externally owned global .NET tool host with an unchecked frontend. `receipt/binding/` holds valid receipts whose provider artifact or host deployment differs from the lock. `receipt/negative/` covers a later draft, an unknown critical member, readiness above its checks, a qualified generation with a failed workflow, a provider without a claim check, a probe source on an unchecked claim set, relative and wrong-platform launch paths, an unknown owner, a built-in with an installation, a developer artifact outside manager-owned storage, a credential member, an invalid generation id and an unknown readiness state.
+`fixtures/0.1.0-draft.1/receipt/` holds a workflow-qualified Windows generation bound to `lock/two-platforms-bound.json`, a generation whose frontend failed negotiation, a probed unsigned developer frontend, and an externally owned global .NET tool host bound to `lock/dotnet-tool-host.json`. `receipt/binding/` holds valid receipts that do not bind their lock: a substituted provider artifact, a substituted host release, and a platform the lock does not record. `receipt/negative/` covers:
+
+- a later draft and an unknown critical member;
+- readiness above its checks, a qualified generation with a failed workflow, an unknown readiness state, a non-passed check without a reason, a workflow name on a component check, two workflow checks, and a built-in whose integrity differs from its host's;
+- a provider without a claim check and a probe source on an unchecked claim set;
+- Native AOT with a bundled runtime, and a deployment whose execution disagrees;
+- an unknown owner, a built-in with an installation, a developer artifact outside manager-owned storage, a developer policy other than `developer`, an external owner for a manager-owned installation, and `recipe-digest` authentication naming another recipe;
+- relative, wrong-platform, traversing and drive-root launch paths;
+- credential members (`authorization`, `apiKey`) and an invalid generation id.

@@ -183,9 +183,9 @@ A [toolset recipe](../toolchain/toolset-recipe.md) maps each offering to its imp
 
 A recipe binding is accepted only when the target is authenticated, its digest equals the authenticated digest, the offering's release descriptor `releases/<tool-id>/<version>.json` lists that target, and the artifact's version 1 platform is the bound platform. Version 1 platforms do not state a C library, so an offering's Linux artifacts bind only to glibc platforms (`linux-x64`, `linux-arm64`); a musl machine is told that no artifact matches.
 
-Version 1 requires `compatibility.morphirCli`. An offering the Morphir CLI does not launch publishes `>=0.0.0`; the recipe, not this field, states which manager and host combinations are supported.
+Version 1 requires `compatibility.morphirCli`, and its resolver filters releases by the acquiring Morphir CLI's version. A manager acquiring an offering through a recipe is not the Morphir CLI and does not use version 1 channel resolution for it; it checks the recipe's exact bindings against the authenticated release instead. What an offering should publish in `morphirCli` is an [open question](../toolchain/toolset-recipe.md#open-questions-for-the-maintainer). The test fixtures publish `>=0.0.0`, which matches no prerelease CLI.
 
-Recipe targets are a separate target kind. Their `custom.morphir` object is `{ "kind": "toolset-recipe", "schemaVersion": "0.1.0-draft.1", "preset", "version", "channels", "status" }`, versioned by the recipe contract. A version 1 tool client selects only `tool-release` targets and ignores them. Channel and status follow the [release states](#release-states) and [channel resolution](#channel-and-exact-version-resolution) above.
+Recipe targets are a separate target kind. Their `custom.morphir` object is `{ "kind": "toolset-recipe", "schemaVersion": "0.1.0-draft.1", "preset", "version", "channels", "status" }`, versioned by the recipe contract. This profile does not say how a client treats target kinds it does not define. The reference tool client in `morphir-distribution` resolves only `tool-release` targets, and its tests select offerings correctly from a repository that also publishes recipe and extension targets. Channel and status follow the [release states](#release-states) and [channel resolution](#channel-and-exact-version-resolution) above.
 
 ## Mirrors
 
