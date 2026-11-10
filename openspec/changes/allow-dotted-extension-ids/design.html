@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>allow-dotted-extension-ids: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; --ok: #1f7a3a; --bad: #a3271f; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; --ok: #6fd391; --bad: #ff8b80; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; vertical-align: top; }
+svg { max-width: 100%; height: auto; }
+svg text { fill: var(--fg); font: 13px system-ui, sans-serif; }
+svg .box { fill: var(--panel); stroke: var(--line); }
+svg .edge { stroke: var(--muted); fill: none; }
+.tag { font-size: .8rem; border: 1px solid var(--line); border-radius: .3rem; padding: 0 .3rem; color: var(--muted); }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>allow-dotted-extension-ids: design</h1>
+<p class="meta">OpenSpec change | 9 November 2026 | proposed for maintainer review, nothing implemented</p>
+
+<p>The reasons are in <a href="proposal.md">proposal.md</a>; the normative rules are in <a href="specs/extensions/extension-identity/spec.md">the extension identity spec</a>; the work is in <a href="tasks.md">tasks.md</a>. Facts marked <span class="tag">observed</span> were read from this repository on <code>origin/main</code> at <code>04143a238</code>, with its pinned submodules, and from morphir-dotnet's <code>origin/main</code> at <code>e8837c3e</code>. Everything else is a proposed interface unless it is marked <span class="tag">assumption</span>.</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a>
+<ul>
+<li><a href="#id-1">ID-1. The grammar</a></li>
+<li><a href="#id-2">ID-2. Lengths and device names</a></li>
+<li><a href="#path-1">PATH-1. Names derived from an id</a></li>
+<li><a href="#bind-1">BIND-1. Descriptor, claims and session ids stay equal</a></li>
+<li><a href="#trust-1">TRUST-1. A name is not a credential</a></li>
+<li><a href="#ver-1">VER-1. Release, index and catalog versions</a></li>
+<li><a href="#ver-2">VER-2. Local lock version</a></li>
+<li><a href="#cfg-1">CFG-1. Project configuration quotes dotted ids</a></li>
+<li><a href="#conf-1">CONF-1. Shared conformance cases</a></li>
+<li><a href="#repo-1">REPO-1. Delivery order and submodule pins</a></li>
+<li><a href="#alternatives">Alternatives not chosen</a></li>
+</ul></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+
+<p>Today one rule, in one place, decides what an extension id may be. The table below says where ids live and what each place enforces.</p>
+
+<table>
+<thead><tr><th>Where</th><th>What it does with an id</th></tr></thead>
+<tbody>
+<tr><td><span class="tag">observed</span> <code>morphir-distribution</code> <code>ExtensionId</code> (<code>ecosystem/morphir-rust/crates/morphir-distribution/src/domain/identity.rs</code>)</td><td>The only grammar. One lowercase portable token: a letter, then letters, digits and <code>-</code>, ending in a letter or digit. At most 238 bytes (255 minus <code>.json.transaction</code>). It must also pass the portable file name check, which refuses Windows device names by the part before the first <code>.</code>. The release descriptor, repository index, installed catalog and extension lock all parse ids with it.</td></tr>
+<tr><td><span class="tag">observed</span> Release descriptor <code>2.0.0-draft.2</code> (<code>docs/design/draft/extensions/distribution-and-acquisition.md</code>)</td><td>Has <code>extensionId</code> and a separate <code>shortId</code> used for tags and file names. Neither the page nor any published schema states the grammar; the code is the rule. There is no extension descriptor schema under <code>website/static/schemas/</code>.</td></tr>
+<tr><td><span class="tag">observed</span> Capability claims <code>0.1.0-draft.2</code> and the MEP record</td><td><code>extension.id</code> is a free string in the SDK types. Bundle authoring and the host's probe require it to equal the descriptor id. <code>docs/design/draft/extensions/protocol.md</code> already shows <code>org.finos.morphir.frontend.elm</code> in its <code>morphir.initialize</code> example.</td></tr>
+<tr><td><span class="tag">observed</span> Names derived from an id</td><td>The repository index uses <code>extensions/&lt;id&gt;.jsonl</code>, and a reader takes the id from the file stem and refuses a history whose records name another id. The extension lock is <code>locks/extensions/&lt;id&gt;.json</code>, journaled as <code>&lt;id&gt;.json.transaction</code>. The installed catalog keys entries by id. The Rust CLI's compile cache uses a sanitized id segment plus a short hash. The artifact store is content-addressed, <code>store/extensions/sha256/&lt;digest&gt;/…</code>, and does not use the id.</td></tr>
+<tr><td><span class="tag">observed</span> Project configuration (<code>morphir-common</code> <code>config/model.rs</code>)</td><td><code>[extensions.&lt;id&gt;]</code> tables are read into a map from string keys. The Rust CLI prints <code>[extensions.{id}].command</code> in diagnostics.</td></tr>
+<tr><td><span class="tag">observed</span> Version readers (<code>extension_format/version.rs</code>)</td><td>Accept legacy <code>"1.0"</code>, released major 1, and exactly <code>2.0.0-draft.1</code> and <code>2.0.0-draft.2</code>. Any other version is refused as an unsupported extension schema version. The lock reader accepts <code>"1.0"</code>.</td></tr>
+<tr><td><span class="tag">observed</span> morphir-dotnet <code>openspec/specs/extension-registry</code></td><td>"An extension id is a dotted portable token": segments as above joined by <code>.</code>, at most 238 characters, no per-segment limit and no device-name rule. It describes a one-segment id as valid upstream and a dotted id as its superset. Its guests use <code>org.finos.morphir.fsharp-frontend</code> and <code>…-backend</code>, and its built-ins <code>morphir.csharp</code> and <code>morphir.fsharp</code>.</td></tr>
+<tr><td><span class="tag">observed</span> Toolchain contracts (draft PR finos/morphir#1147)</td><td>Their provider <code>extensionId</code> already allows dotted ids, but limits each segment to 64 characters. Their signed fixtures use <code>morphir-fsharp-frontend</code> because a descriptor cannot be dotted, and <code>toolset-recipe.md</code> records this as an open question.</td></tr>
+<tr><td><span class="tag">observed</span> Ids in the wild</td><td>All single tokens: <code>morphir-rust</code>, <code>morphir-elm-native</code> (<code>ecosystem/morphir-rust/.github/extensions.toml</code>); <code>morphir-elm</code>, <code>morphir-elm-classic</code>, <code>morphir-python</code>, <code>morphir-avro</code>, <code>morphir-openapi</code>, <code>morphir-scala-elm</code> (the bundles pinned in <code>.config/published-extension-bundles.toml</code> and the host tests that name them). <span class="tag">assumption</span> The catalogs those pins point at are release assets that are not vendored here; a task checks every id in them.</td></tr>
+<tr><td><span class="tag">observed</span> <code>ecosystem/morphir-moonbit</code> at its pin</td><td>Holds IR core, bindings and the SDK. It has no extension registry or id parsing. <span class="tag">assumption</span> The MoonBit host that installs extensions lives in another repository; a task locates it.</td></tr>
+</tbody>
+</table>
+
+<p>Package paths in <code>spec/package/</code> use their own "dotted authority" grammar for package names. That grammar is not shared with extension ids and is not changed.</p>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals.</strong> One id grammar for every host and contract. Dotted ids are published, installed, locked and bound end to end. Every existing extension, store, lock, catalog and index works byte-for-byte as before. Hosts that predate the change refuse a dotted id cleanly instead of misreading it.</p>
+<p><strong>Non-goals.</strong> No namespace registry, reservation or verification of reverse-DNS prefixes. No renaming of any existing extension. No change to <code>shortId</code>, to release tag conventions, or to the content-addressed store. No change to the MEP protocol or the claims version. Binding providers from several repositories in one recipe stays later work.</p>
+
+<h2 id="decisions">Decisions</h2>
+
+<p>The journey below follows one extension from release to use: morphir-dotnet's F# frontend, <code>org.finos.morphir.fsharp-frontend</code> 0.6.0, whose guest already reports that id. Each decision appears at the step where it first matters.</p>
+
+<h3 id="id-1">ID-1. The grammar</h3>
+<p>The release job writes <code>release.json</code>. The first question is whether <code>org.finos.morphir.fsharp-frontend</code> is a well-formed id at all.</p>
+<p><strong>Decision.</strong> Adopt morphir-dotnet's rule as is: one or more segments joined by <code>.</code>. Each segment starts with a lowercase ASCII letter, contains only lowercase ASCII letters, digits and <code>-</code>, and ends with a letter or digit. A single-token id is the one-segment case, so every id valid today stays valid and means the same extension.</p>
+<p><strong>Why.</strong> It is the rule the guests already use. It only adds the <code>.</code> separator, and every character an id can contain is safe in a file name on all first-delivery platforms. Lowercase-only ASCII means case-insensitive file systems cannot fold two ids together. The rule is also the toolchain contracts' grammar.</p>
+<pre><code class="language-json">{
+  "schemaVersion": "2.0.0-draft.3",
+  "extensionId": "org.finos.morphir.fsharp-frontend",
+  "shortId": "fsharp-frontend",
+  "version": "0.6.0",
+  "platformDifferences": "none",
+  "artifacts": [ { "platform": "x86_64-pc-windows-msvc", "runtime": "process",
+    "filename": "win-x64.zip", "sha256": "&lt;64 hexadecimal digits&gt;",
+    "claims": { "extension": { "id": "org.finos.morphir.fsharp-frontend", "version": "0.6.0" } } } ]
+}</code></pre>
+
+<h3 id="id-2">ID-2. Lengths and device names</h3>
+<p>Before the release is accepted, its id must be safe to turn into file names on Windows, macOS and Linux.</p>
+<p><strong>Decision.</strong> The total limit stays at 238 characters, dots included, and there is no per-segment limit. The first segment must not be <code>con</code>, <code>prn</code>, <code>aux</code>, <code>nul</code>, <code>com1</code>–<code>com9</code> or <code>lpt1</code>–<code>lpt9</code>.</p>
+<p><strong>Why.</strong> 238 is the existing budget: the longest name derived from an id is <code>&lt;id&gt;.json.transaction</code>, which must fit a 255-unit file name component. Dots do not change that arithmetic. A per-segment limit, for example the 64 characters the toolchain contracts apply, would make valid single-token ids of 65 to 238 characters invalid. That would be a breaking change, so the toolchain contracts align to this rule instead (<a href="#repo-1">REPO-1</a>).</p>
+<p>The device-name rule is what upstream already enforces for single tokens: <code>con</code> is refused today. Windows treats the part of a file name before its first dot as the device stem, which is why the rule applies to the first segment only. <code>acme.con</code> is a valid id, and <code>con.example</code> is not.</p>
+<p>morphir-dotnet's rule lacks this check, so as written it accepts <code>con.example</code>. That id would then fail on a Windows store, so morphir-dotnet adopts the refinement (<a href="#repo-1">REPO-1</a>).</p>
+<p><strong>Path budget.</strong> <code>docs/spec/draft/names.md</code> budgets IR distribution trees, not Morphir home, but its warning about Windows <code>MAX_PATH</code> applies. Derived names sit under <code>MORPHIR_HOME/locks/extensions/</code> and <code>extensions/</code> in a repository. A 238-character id is already possible today, so dotted ids add no new path length risk; <a href="#risks">Risks</a> keeps the long-path note.</p>
+
+<h3 id="path-1">PATH-1. Names derived from an id</h3>
+<p>The repository publishes the release, and later a host installs it. Each of them writes files named after the id.</p>
+<svg viewBox="0 0 900 270" role="img" aria-labelledby="path-title path-desc">
+<title id="path-title">Names derived from one dotted extension id</title>
+<desc id="path-desc">The id org.finos.morphir.fsharp-frontend becomes four names by appending a fixed suffix or using it as a key: the repository history file, the lock file, the lock journal and the catalog key. The artifact store path uses only the digest and is unchanged.</desc>
+<rect class="box" x="300" y="10" width="300" height="44" rx="6"/>
+<text x="450" y="37" text-anchor="middle">org.finos.morphir.fsharp-frontend</text>
+<path class="edge" d="M450 54 L130 120 M450 54 L340 120 M450 54 L560 120 M450 54 L770 120"/>
+<rect class="box" x="10" y="120" width="240" height="56" rx="6"/>
+<text x="20" y="143">repository index</text><text x="20" y="163">extensions/&lt;id&gt;.jsonl</text>
+<rect class="box" x="260" y="120" width="200" height="56" rx="6"/>
+<text x="270" y="143">extension lock</text><text x="270" y="163">locks/extensions/&lt;id&gt;.json</text>
+<rect class="box" x="470" y="120" width="200" height="56" rx="6"/>
+<text x="480" y="143">lock journal</text><text x="480" y="163">&lt;id&gt;.json.transaction</text>
+<rect class="box" x="680" y="120" width="210" height="56" rx="6"/>
+<text x="690" y="143">installed catalog</text><text x="690" y="163">key "&lt;id&gt;"</text>
+<rect class="box" x="10" y="200" width="880" height="56" rx="6"/>
+<text x="20" y="223">artifact store, unchanged: store/extensions/sha256/&lt;digest&gt;/&lt;filename&gt;</text>
+<text x="20" y="243">the digest names the content, so no id reaches this path</text>
+</svg>
+<p><strong>Decision.</strong> Keep every derivation as it is: the whole id followed by a fixed suffix, or the whole id as a key. No layout or index key changes.</p>
+<p><strong>Why it is safe.</strong> Appending a fixed suffix is injective, so two different ids can never derive the same name. Ids are lowercase ASCII, so case-insensitive file systems do not fold them together.</p>
+<ul>
+<li><code>acme.tools.json</code> and <code>acme-tools.json</code> are different files.</li>
+<li>An id may end in a segment that looks like a suffix. <code>x.json</code>'s lock is <code>x.json.json</code>, distinct from the lock and journal of <code>x</code>.</li>
+<li><span class="tag">observed</span> The index reader uses <code>Path::file_stem</code>, which removes only the last extension, so <code>org.finos.morphir.fsharp-frontend.jsonl</code> yields the full id.</li>
+<li>The compile cache keeps dots in its sanitized segment and appends a hash, so it needs no change.</li>
+</ul>
+<p>Existing installed stores, locks and catalogs therefore keep working unchanged, because nothing about a single-token id's names changes.</p>
+
+<h3 id="bind-1">BIND-1. Descriptor, claims and session ids stay equal</h3>
+<p>At publication and installation the host probes the guest, and at first use it initializes a session. Each of these compares the guest's reported id with the descriptor's.</p>
+<p><strong>Decision.</strong> The rule that the descriptor id equals the claims id, and that both equal the session id, stays exactly as it is: byte equality, no mapping, no normalization. A dotted id is never shortened to a single token anywhere.</p>
+<p><strong>Why.</strong> This equality is what lets a recipe or lock bind an extension. The descriptor filed under a name is the one whose artifacts claim that name and report it when they run. The failure paths stay as they are: authoring, publication and installation refuse a release whose claims name another id, and the host rejects a session that reports another id before calling the extension.</p>
+
+<h3 id="trust-1">TRUST-1. A name is not a credential</h3>
+<p>A user installing <code>org.finos.morphir.fsharp-frontend</code> might read the prefix as a statement about who published it.</p>
+<p><strong>Decision.</strong> A requirement states that an id is a name only. Nothing verifies domain ownership, and an id grants no trust, permission, precedence or built-in status. Publisher authentication, by authenticated repository targets and recipe digests, and the claim check stay separate facts that a receipt records beside each other.</p>
+<p><strong>Why.</strong> Reverse-DNS ids invite exactly this misreading. Writing it down as a requirement, with a scenario, gives reviewers and implementers something to test against: an unsigned developer artifact named <code>org.finos.…</code> is still <code>local-developer</code>. Reserving or verifying namespaces would need a registry, keys and a policy that do not exist; that is out of scope.</p>
+
+<h3 id="ver-1">VER-1. Release, index and catalog versions</h3>
+<p>The descriptor reaches hosts of different ages. A host released before this change must not misread it.</p>
+<svg viewBox="0 0 900 200" role="img" aria-labelledby="ver-title ver-desc">
+<title id="ver-title">Which hosts read which descriptor drafts</title>
+<desc id="ver-desc">A single-segment release stays at draft 2, which old and new hosts read. A dotted release is written at draft 3. An old host refuses it as an unsupported schema version before reading the id; a new host reads drafts 1, 2 and 3.</desc>
+<rect class="box" x="10" y="20" width="270" height="60" rx="6"/>
+<text x="20" y="45">morphir-elm 0.6.0</text><text x="20" y="65">schemaVersion 2.0.0-draft.2</text>
+<rect class="box" x="10" y="120" width="270" height="60" rx="6"/>
+<text x="20" y="145">org.finos.morphir.fsharp-frontend</text><text x="20" y="165">schemaVersion 2.0.0-draft.3</text>
+<rect class="box" x="620" y="20" width="270" height="60" rx="6"/>
+<text x="630" y="45">earlier host</text><text x="630" y="65">reads 1.0, draft.1, draft.2</text>
+<rect class="box" x="620" y="120" width="270" height="60" rx="6"/>
+<text x="630" y="145">new host</text><text x="630" y="165">reads 1.0, draft.1, draft.2, draft.3</text>
+<path class="edge" d="M280 50 L620 50 M280 50 L620 150 M280 150 L620 150"/>
+<path class="edge" stroke-dasharray="5 4" d="M280 150 L620 50"/>
+<text x="400" y="95">refused: unsupported schema version</text>
+</svg>
+<p><strong>Decision.</strong> Add an exact draft, <code>2.0.0-draft.3</code>, to the release descriptor, the repository index record and the installed catalog. It differs from <code>2.0.0-draft.2</code> only in the id grammar.</p>
+<ul>
+<li>A writer uses it when the id is dotted. For a single-segment id it keeps writing <code>2.0.0-draft.2</code> until the oldest host it targets reads draft.3, so the bytes it writes do not change.</li>
+<li>A draft.3 reader also reads <code>1.0</code>, draft.1 (converted as today) and draft.2.</li>
+<li>The capability claims (<code>0.1.0-draft.2</code>) and MEP versions stay. Both already carry the id as an unconstrained string, and only the equality with the descriptor id binds them.</li>
+</ul>
+<p><strong>Why.</strong> <code>AGENTS.md</code> allows refining a draft in place, because drafts promise no compatibility with each other. Here, though, released hosts already read <code>2.0.0-draft.2</code>. Refined in place, a dotted draft.2 document would reach those hosts and fail deep in parsing as an "invalid extension id". With a new draft number they refuse it at the version check, with the message that names the supported versions.</p>
+<p><span class="tag">observed</span> Today's reader refuses any version other than the listed exact drafts, so draft.3 is refused cleanly by every existing host. This is the same path the draft.1 to draft.2 rename took. A next major (<code>3.0.0-draft.1</code>) would also work, but it signals a reshaped format for what is a grammar widening.</p>
+
+<h3 id="ver-2">VER-2. Local lock version</h3>
+<p>The host installs the frontend and writes <code>locks/extensions/org.finos.morphir.fsharp-frontend.json</code>. A user may later run an older host against the same Morphir home, for example after a downgrade.</p>
+<p><strong>Decision.</strong> An extension lock that names a dotted id is written at <code>2.0.0-draft.1</code>, the first draft of the lock's next major under the rule in <code>AGENTS.md</code>. A lock for a single-segment id stays at <code>"1.0"</code>. The installed catalog follows <a href="#ver-1">VER-1</a>, writing <code>2.0.0-draft.3</code> as soon as any entry is dotted.</p>
+<p><strong>Why.</strong> An older host must refuse a lock it cannot read before acting on it. A version it does not list gives that refusal. A <code>"1.0"</code> lock with a dotted id would fail later, as a parse error, and possibly after other locks had been read.</p>
+<p><strong>Recovery.</strong> The older host refuses only the dotted extension's lock and catalog, with its unsupported-version message. Installing the newer host again restores normal use. Nothing is rewritten.</p>
+
+<h3 id="cfg-1">CFG-1. Project configuration quotes dotted ids</h3>
+<p>Ada configures the frontend in her project's <code>morphir.toml</code>.</p>
+<pre><code class="language-toml"># Correct: one quoted key
+[extensions."org.finos.morphir.fsharp-frontend"]
+command = ["morphir-fsharp-frontend"]
+
+# Refused: TOML reads this as nested tables named org, finos, morphir …
+[extensions.org.finos.morphir.fsharp-frontend]
+command = ["morphir-fsharp-frontend"]</code></pre>
+<p><strong>Decision.</strong> A dotted id in configuration is one quoted key. A configuration reader refuses an <code>extensions</code> entry whose value nests tables in place of extension settings, and its message shows the quoted spelling. Diagnostics that print a configuration key for a dotted id print it quoted.</p>
+<p><strong>Why.</strong> TOML gives an unquoted dotted key a different meaning: nested tables. <span class="tag">observed</span> The configuration model reads <code>extensions</code> as a map from string keys, so the unquoted form above would be read as an extension named <code>org</code>. <span class="tag">assumption</span> Whether the nested tables are then ignored or refused depends on how the extension settings treat unknown members. The task checks this and adds the refusal.</p>
+
+<h3 id="conf-1">CONF-1. Shared conformance cases</h3>
+<p>The Rust host, the .NET host and the MoonBit host must reach the same answer for every id.</p>
+<p><strong>Decision.</strong> Publish the rule as language-neutral data in finos/morphir: a case manifest beside a normative extension id page, each case naming an input and an expected outcome. The runner lives in morphir-dotnet (<code>src/Morphir.Conformance</code>), following the maintainer's decision of 9 November 2026. The Rust crates run the same data in their own tests, and no new runner code goes into this repository.</p>
+<table>
+<thead><tr><th>Group</th><th>Cases</th></tr></thead>
+<tbody>
+<tr><td>Valid</td><td><code>a</code>, <code>morphir-elm</code>, <code>morphir.csharp</code>, <code>acme.tools.lint-2</code>, <code>org.finos.morphir.fsharp-frontend</code>, <code>acme.con</code>, a 238-character id</td></tr>
+<tr><td>Invalid grammar</td><td><code>""</code>, <code>.</code>, <code>..</code>, <code>a..b</code>, <code>.a</code>, <code>a.</code>, <code>A</code>, <code>a.B</code>, <code>1a</code>, <code>a.1b</code>, <code>a-</code>, <code>a.b-</code>, <code>a_b</code>, <code>a b</code>, <code>a/b</code>, a 239-character id</td></tr>
+<tr><td>Device names</td><td><code>con</code>, <code>nul.tools</code>, <code>com1.lint</code>, <code>lpt9</code> refused; <code>console.tools</code>, <code>acme.nul.tools</code> accepted</td></tr>
+<tr><td>Comparison and derived names</td><td>Pairs that must stay distinct: <code>acme.tools</code> / <code>acme-tools</code>, <code>x</code> / <code>x.json</code>, <code>x.json</code> / <code>x.json.transaction</code>, with their derived names</td></tr>
+<tr><td>Binding</td><td>A descriptor whose claims name the hyphenated spelling; a session that reports another id</td></tr>
+<tr><td>Versions</td><td>A dotted id at <code>2.0.0-draft.2</code> refused; a draft.3 document an earlier reader refuses by version; a draft.2 single-segment document read unchanged</td></tr>
+<tr><td>Configuration</td><td>Quoted dotted key accepted; unquoted dotted key refused with the quoted suggestion</td></tr>
+</tbody>
+</table>
+
+<h3 id="repo-1">REPO-1. Delivery order and submodule pins</h3>
+<svg viewBox="0 0 900 230" role="img" aria-labelledby="repo-title repo-desc">
+<title id="repo-title">Delivery order across repositories</title>
+<desc id="repo-desc">First finos/morphir publishes the rule and its cases. Then finos/morphir-rust implements it and releases. Then finos/morphir moves the morphir-rust pin and updates the CLI. In parallel, morphir-dotnet adopts the device-name refinement and the MoonBit host adopts the rule. Last, the toolchain contracts move their signed fixtures to dotted ids.</desc>
+<rect class="box" x="10" y="80" width="170" height="70" rx="6"/><text x="20" y="105">1. finos/morphir</text><text x="20" y="125">rule page, cases,</text><text x="20" y="142">design pages</text>
+<rect class="box" x="220" y="80" width="170" height="70" rx="6"/><text x="230" y="105">2. morphir-rust</text><text x="230" y="125">grammar, drafts,</text><text x="230" y="142">config; release</text>
+<rect class="box" x="430" y="80" width="170" height="70" rx="6"/><text x="440" y="105">3. finos/morphir</text><text x="440" y="125">move morphir-rust pin,</text><text x="440" y="142">CLI diagnostics</text>
+<rect class="box" x="430" y="10" width="170" height="55" rx="6"/><text x="440" y="33">4. MoonBit host</text><text x="440" y="52">adopt rule, cases</text>
+<rect class="box" x="430" y="165" width="170" height="55" rx="6"/><text x="440" y="188">5. morphir-dotnet</text><text x="440" y="207">device names, cases</text>
+<rect class="box" x="650" y="80" width="240" height="70" rx="6"/><text x="660" y="105">6. toolchain contracts</text><text x="660" y="125">dotted signed fixtures,</text><text x="660" y="142">open question closes</text>
+<path class="edge" d="M180 115 L220 115 M390 115 L430 115 M600 115 L650 115 M180 100 L430 37 M180 130 L430 192 M600 37 L650 100 M600 192 L650 130"/>
+</svg>
+<ol>
+<li><strong>finos/morphir.</strong> This change is approved. Its contract half lands: the normative extension id page, the case manifest and the updated design pages.</li>
+<li><strong>finos/morphir-rust.</strong> <code>morphir-distribution</code> adopts the grammar and the drafts in its readers and writers (<a href="#ver-1">VER-1</a>, <a href="#ver-2">VER-2</a>). <code>morphir-common</code> adds the configuration refusal (<a href="#cfg-1">CFG-1</a>). Their tests run the shared cases, and the change ships in a release.</li>
+<li><strong>finos/morphir.</strong> One pull request moves the <code>ecosystem/morphir-rust</code> pin to that release and updates the Rust CLI's quoted diagnostics. This proposal covers exactly that pin move. The CLI path-depends on <code>morphir-distribution</code>, so the pin move and the CLI change must land together. The host compatibility suite must still pass every bundle in <code>.config/published-extension-bundles.toml</code> unchanged.</li>
+<li><strong>MoonBit host.</strong> Its owning repository adopts the rule and runs the cases. <code>ecosystem/morphir-moonbit</code> moves only if that repository is the submodule; at its current pin it has no id code, so no move is expected.</li>
+<li><strong>finos/morphir-dotnet.</strong> It already accepts dotted ids. It adopts the device-name refinement, runs the shared cases through its conformance runner, and its task that waits on dotted descriptor ids unblocks.</li>
+<li><strong>Toolchain contracts in finos/morphir</strong>, after finos/morphir#1147 or within it if it has not merged. Their provider identity grammar drops its 64-character segment limit to match <a href="#id-2">ID-2</a>. The TEST-ONLY signed F# fixtures move from <code>morphir-fsharp-frontend</code> and <code>morphir-fsharp-backend</code> to the dotted ids, and the open question on dotted provider identities in <code>toolset-recipe.md</code> closes.</li>
+</ol>
+<p>No other submodule moves. The Elm, Python, Gleam, Scala, TypeScript and examples submodules are guests or bindings whose ids are single tokens.</p>
+
+<h3 id="alternatives">Alternatives not chosen</h3>
+<table>
+<thead><tr><th>Alternative</th><th>Why not</th></tr></thead>
+<tbody>
+<tr><td>Keep single tokens and have morphir-dotnet publish hyphenated ids such as <code>org-finos-morphir-fsharp-frontend</code></td><td>The guest would need two names, one in the store and one in MEP, and the equality rule (<a href="#bind-1">BIND-1</a>) would force the guest to report the hyphenated one. That contradicts the maintainer's decision and morphir-dotnet's registry, where the dotted id is the identity.</td></tr>
+<tr><td>Let the descriptor id differ from the claims id (a single-token descriptor id, dotted claims)</td><td>It weakens binding. A recipe or lock binds a descriptor by its id; if the claims could name something else, a descriptor could be filed under any name, and the check that the bytes that run are the bytes that were bound would lose its anchor.</td></tr>
+<tr><td>Refine <code>2.0.0-draft.2</code> in place</td><td>Released hosts read draft.2 and would fail on a dotted id with a parse error instead of a version refusal (<a href="#ver-1">VER-1</a>).</td></tr>
+<tr><td>A next major, <code>3.0.0-draft.1</code></td><td>Works, but marks a reshaped format for a grammar widening and would ask every writer to move. Draft.3 keeps single-segment documents byte-identical.</td></tr>
+<tr><td>A per-segment limit of 64 characters</td><td>Would invalidate single-token ids of 65 to 238 characters that are valid today (<a href="#id-2">ID-2</a>).</td></tr>
+<tr><td>Allow uppercase or <code>_</code>, as in Java packages</td><td>Uppercase would let two ids fold together on case-insensitive file systems, and <code>_</code> adds a spelling that is visually close to <code>-</code> without enabling anything new.</td></tr>
+<tr><td>Encode dots in derived names, for example <code>org%2Efinos…</code></td><td>Unnecessary, because <code>.</code> is safe in file names on every first-delivery platform. It would also make every derived name harder to read and add a decoding step that each host could get wrong.</td></tr>
+</tbody>
+</table>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Look-alike ids such as <code>morphir.elm</code> and <code>morphir-elm</code> confuse users or invite impersonation.</td><td>Ids are distinct by rule, listings show both, and <a href="#trust-1">TRUST-1</a> says no id carries trust. Authentication decides what a user installs from where.</td></tr>
+<tr><td>Readers apply the grammar differently, for example morphir-dotnet accepting <code>con.example</code>.</td><td>The shared cases in <a href="#conf-1">CONF-1</a>, run by every host; morphir-dotnet adopts the refinement.</td></tr>
+<tr><td>A host downgrade meets dotted locks and catalogs.</td><td>The older host refuses them by version (<a href="#ver-2">VER-2</a>); reinstalling the newer host recovers. Single-segment extensions keep working on the older host.</td></tr>
+<tr><td>Long ids push derived paths past Windows <code>MAX_PATH</code> when long paths are disabled.</td><td>Unchanged from today: 238-character ids already exist in the grammar. The design pages repeat the long-path note.</td></tr>
+<tr><td>A user writes an unquoted dotted key in <code>morphir.toml</code>.</td><td>The reader refuses it and shows the quoted spelling (<a href="#cfg-1">CFG-1</a>).</td></tr>
+<tr><td>A catalog or index that this repository does not vendor contains an id that is not a single token.</td><td>A task reads every id in the pinned bundles' catalogs. Any such id would already be refused by today's reader.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>Nothing existing migrates. Single-segment extensions, their descriptors, index histories, locks, catalogs and configuration keys stay byte-identical, and writers keep their current versions for them. A dotted extension can be published once its repository's tooling writes draft.3. It can be installed by hosts that read draft.3, and hosts that do not refuse it by version.</p>
+<p><strong>Rollback.</strong> Removing draft.3 support from a host makes it refuse dotted documents by version, the same behavior as today's hosts. Single-segment use is unaffected. The toolchain fixtures stay on hyphenated ids until <a href="#repo-1">REPO-1</a> step 6, so they never depend on a host that has not shipped.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<p>None that change the specs or the task breakdown. The questions this design needs the maintainer to confirm are in the report that accompanies it: the draft numbers, the device-name refinement, and the per-segment limit.</p>
+
+</main>
+</body>
+</html>
