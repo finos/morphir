@@ -46,7 +46,7 @@ async fn run(arguments : ArrayView[String], structured : Bool) -> Unit {
           fn() raise {
             @session.Caller::admit("main", "app", Some("acceptance-page"))
           },
-          async fn() { Some(folder) },
+          fn() { Some(folder) },
         )
         @stdio.stdout.write(reply + "\n")
         pending.clear()

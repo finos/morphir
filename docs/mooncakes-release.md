@@ -44,13 +44,22 @@ and the compiler pin must be clean. Plan additionally requires a clean checkout
 and an exact tag/version/SHA match. It saves `.dev/mooncakes-release/plan.json`.
 An optional `--output` chooses another file below `.dev/mooncakes-release/`.
 Inventory performs the cheap identity and declared-file checks without a build.
+It also refuses a public module whose `supported_targets` excludes Moon's
+default backend (`wasm`) when the module declares no `preferred_target`, and a
+`preferred_target` that is unknown or outside `supported_targets`. `moon publish`
+has no target option: it checks each module on its preferred target or on the
+default backend, and refuses a native-only module with exit 255. In v0.1.0 this
+stopped `finos/morphir-workbench-native` after 20 modules were published.
 The existing CI configuration job always runs it, including README-only changes.
 The Linux JS Build leg runs the archive check once after CLI acceptance.
 
 Packaging starts from a Git snapshot containing only the selected public
 modules. Each archive must contain its manifest, README, license and required
 native assets. A second isolated workspace unpacks only the produced archives
-and builds Wasm, Wasm GC, JavaScript and native. Moon children receive an explicit
+and builds Wasm, Wasm GC, JavaScript and native. It then runs `moon package`
+without a target in each unpacked module, the same step that `moon publish` runs,
+so a module that the registry upload would refuse fails here, before credentials
+exist. Moon children receive an explicit
 owned `MOON_WORK`, so an ambient workspace override cannot supply hidden inputs.
 Registry executable installation explicitly disables workspace discovery instead
 of inheriting the library consumer's workspace.
@@ -354,6 +363,16 @@ version and worksheet result `42`. Its receipt records the candidate, compiler,
 resolved modules and actual checks. This is distinct from archive-only builds.
 Verification persists `.dev/mooncakes-release/consumer.json` before emitting
 success. `--output` can choose another receipt below the release directory.
+
+`--defer NAME` (repeatable) verifies a release in which a public module was not
+published, for example `mise run release:verify -- 0.1.0 --defer
+finos/morphir-workbench-native --json` for v0.1.0. The deferred module must be a
+public inventory module, absent from the registry at that version, and no
+verified module may depend on it. The consumer then requests only the other
+public modules, and the receipt lists the deferral under `deferredModules`. The
+inventory itself does not change: the deferred module stays public and ships in
+a later release. A deferral never replaces publication of a module that the
+release needs.
 
 After the workflow succeeds, verify every module's registry URL and publish the
 GitHub release for the existing tag with the reviewed release notes. Report the

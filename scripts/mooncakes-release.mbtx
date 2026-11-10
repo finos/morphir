@@ -747,6 +747,8 @@ struct Manifest {
   readme : String?
   license : String?
   visibility : Visibility
+  supported_targets : Array[String]?
+  preferred_target : String?
 }
 
 ///|
@@ -2002,6 +2004,8 @@ fn fixture_manifest(
   readme~ : String? = Some("README.md"),
   license~ : String? = Some("Apache-2.0"),
   visibility~ : Visibility = Open,
+  supported_targets~ : Array[String]? = None,
+  preferred_target~ : String? = None,
 ) -> Manifest raise Refusal {
   {
     path: ModulePath::parse(path),
@@ -2011,6 +2015,8 @@ fn fixture_manifest(
     readme,
     license,
     visibility,
+    supported_targets,
+    preferred_target,
   }
 }
 
@@ -2374,6 +2380,63 @@ fn decode_manifest(
     version: string_field(value, "version").unwrap_or(""),
     readme: string_field(value, "readme"),
     license: string_field(value, "license"),
+    supported_targets: string_field(value, "supported-targets").map(text => {
+      text.split("+").map(target => target.to_owned()).to_array()
+    }),
+    preferred_target: string_field(value, "preferred-target"),
+  }
+}
+
+///|
+/// The backend that Moon 0.10.20 selects when a command names no target.
+/// `moon publish` has no target option, so it checks a module on this backend
+/// unless the module declares `preferred_target`.
+let default_backend = "wasm"
+
+///|
+let known_backends : ReadOnlyArray[String] = [
+  "wasm", "wasm-gc", "js", "native", "llvm",
+]
+
+///|
+/// Refuse a module that `moon publish` cannot check: its supported targets
+/// exclude the default backend and it names no preferred target, or it names
+/// an unknown or unsupported target.
+fn require_default_backend(manifest : Manifest) -> Unit raise Refusal {
+  let ModulePath(directory) = manifest.path
+  if manifest.supported_targets is Some(targets) {
+    if targets.is_empty() ||
+      targets.any(target => !known_backends.contains(target)) {
+      raise Refusal(
+        ManifestSyntax(
+          directory + ": supported_targets names an unknown backend",
+        ),
+      )
+    }
+  }
+  match (manifest.preferred_target, manifest.supported_targets) {
+    (Some(preferred), _) if !known_backends.contains(preferred) =>
+      raise Refusal(
+        ManifestSyntax(
+          directory + ": preferred_target names an unknown backend",
+        ),
+      )
+    (Some(preferred), Some(targets)) if !targets.contains(preferred) =>
+      raise Refusal(
+        ManifestSyntax(
+          directory + ": preferred_target is not in supported_targets",
+        ),
+      )
+    (None, Some(targets)) if !targets.contains(default_backend) =>
+      raise Refusal(
+        ManifestSyntax(
+          directory +
+          ": supported_targets excludes the default backend " +
+          default_backend +
+          "; declare preferred_target so moon publish can check the module",
+        ),
+      )
+    _ => ()
   }
 }
 
@@ -3229,6 +3292,26 @@ async fn verify_archive_graph(
     if status != 0 {
       raise Refusal(
         ArchiveInvalid("Isolated archive graph failed on " + target),
+      )
+    }
+  }
+  // moon publish packages each module with no target option, so it checks the
+  // module on the default backend unless the manifest prefers another. Run the
+  // same step here, before any credential exists.
+  for record in packages {
+    let (status, stdout, stderr) = @process.collect_output(
+      moon,
+      ["-C", join_host(stage, record.manifest.path.0), "package"],
+      extra_env=environment,
+    )
+    write_diagnostic(stdout.text())
+    write_diagnostic(stderr.text())
+    if status != 0 {
+      raise Refusal(
+        ArchiveInvalid(
+          "Isolated archive cannot be packaged as moon publish does: " +
+          record.manifest.name,
+        ),
       )
     }
   }
@@ -5599,6 +5682,59 @@ async test "minimum public consumer rejects missing or nonstock source before re
 }
 
 ///|
+/// Remove deferred public modules from verification. A deferred module is a
+/// public module of this release that was not published. Refuse an unknown or
+/// repeated name, a module that another verified module depends on, and a
+/// selection that leaves nothing to verify.
+fn deferred_inspection(
+  inspection : Inspection,
+  deferred : Array[String],
+) -> Inspection raise Refusal {
+  let names = inspection.ordered.map(manifest => manifest.name)
+  let seen : Map[String, Bool] = Map([])
+  for name in deferred {
+    if !names.contains(name) || seen.contains(name) {
+      raise Refusal(
+        CandidateMismatch("Deferred module is not one public module: " + name),
+      )
+    }
+    seen[name] = true
+  }
+  let kept = inspection.ordered.filter(manifest => !seen.contains(manifest.name))
+  if kept.is_empty() {
+    raise Refusal(CandidateMismatch("Every public module is deferred"))
+  }
+  for manifest in kept {
+    for dependency, _ in manifest.dependencies {
+      if seen.contains(dependency) {
+        raise Refusal(
+          CandidateMismatch(
+            manifest.name + " depends on deferred module " + dependency,
+          ),
+        )
+      }
+    }
+  }
+  { ..inspection, ordered: kept, }
+}
+
+///|
+/// A deferred module must be absent from the registry at the release version,
+/// so deferral cannot hide a published module from verification.
+fn require_deferred_absent(
+  name : String,
+  state : RegistryState,
+) -> Unit raise Refusal {
+  guard state is Absent else {
+    raise Refusal(
+      CandidateMismatch(
+        "Deferred module must be absent from the registry: " + name,
+      ),
+    )
+  }
+}
+
+///|
 async fn verify_consumer(
   root : String,
   inspection : Inspection,
@@ -5886,6 +6022,7 @@ async fn inspect(root : String) -> Inspection {
   let version = ReleaseVersion::parse(first_manifest.version)
   let ordered = publish_order(inventory, manifests, discovered, version)
   for manifest in ordered {
+    require_default_backend(manifest)
     let directory = @fs.realpath(join_host(root, manifest.path.0))
     confined_file(
       directory,
@@ -5995,6 +6132,11 @@ fn command(name : String) -> @argparse.Command {
         "output",
         about="Receipt path; defaults to consumer.json, or consumer-minimum.json with --minimum-home, under .dev/mooncakes-release/",
       ),
+      @argparse.OptionArg(
+        "defer",
+        action=Append,
+        about="Public module of this release that was not published; repeat for each. It must be absent from the registry at VERSION and no verified module may depend on it. The receipt lists it under deferredModules.",
+      ),
     ]
   } else if name == "workflow" {
     [@argparse.OptionArg("mode")]
@@ -6081,7 +6223,7 @@ fn cli() -> @argparse.Command {
     disable_help_flag=true,
     disable_help_subcommand=true,
     disable_version_flag=true,
-    about="Check public Mooncakes packages, plan a fixed candidate, or publish a qualified tag candidate in dependency order. Workflow validates actual GitHub event/ref/SHA and optionally writes --github-output. Gate-ci requires successful exact main-push CI and ci-ok, polling at most 20 minutes. Gate-qualification checks --receipt Ion against --sha, the current workflow run/attempt, v2 profile, macos:run and every required job. Gate commands emit version 0.1.0 morphir/mooncakes-ci-gate or morphir/mooncakes-qualification-gate evidence. Unavailable, skipped, cancelled, failed or stale evidence refuses publication. Check and plan never read credentials or upload. Identity regenerates the tracked apps/morphir/cli/release_identity.mbt after a version change; check refuses stale identity. Verify takes X.Y.Z and resolves every public version with fresh dependency/build caches outside any repository workspace, then exercises Scheme and long-decimal parsing on four targets, moonx help/version and an installed native CLI worksheet. Verify --minimum-home PATH selects exact stock 0.10.20 after checking its core source bytes and actual compiler; the invoking producer still must match the release pin. Each consumer owns a fresh credential-free Moon home, registry index and dependency/build caches. Default receipts are consumer.json or consumer-minimum.json; --output overrides the owned path. Minimum receipts add producerCompilerVersion and consumerCoreSourceSha256/consumerCoreSourceFiles while compilerVersion reports the selected consumer. Consumer results use morphir/mooncakes-consumer 0.1.0. Publication and consumer hosts are qualified on Linux. They require the default registry without Moon home config.json or MOONCAKES_REGISTRY overrides. Plan writes --output, default .dev/mooncakes-release/plan.json. Check-artifacts consumes --plan, verifies every retained archive against the candidate/toolchain/minimum-compiler proof, and requires byte-identical repackaging in an owned workspace without credentials or uploads. Its result is the package evidence object with sha, compilerVersion, corePinSha256, isolatedTargets and modules. Publish consumes those same qualified ZIPs and --plan and persists --report after each module; missing or changed archives refuse before upload. Result files must be under .dev/mooncakes-release/. Dry-run plans cannot publish. Existing versions require a downloaded archive SHA-256 equal to the planned candidate. Only read-only transient/index visibility checks retry, at most six reads and 31 seconds of backoff per poll. Upload errors stop without retrying. --json emits one morphir/command-result 0.1.0 document on stdout; progress and child diagnostics use stderr. Success has state=succeeded, exitCode=0, diagnostics and result; failure has state=failed, exitCode and error{code,message}. Partial publication outcomes remain in the report on failure. Help returns result.help without file or subprocess effects. Exit 2 is argument syntax; exit 1 is validation/child failure. Check gives inventory and package/toolchain evidence; plan adds tag, commit and mode. Publication records published, verified-existing, failed and not-attempted modules.",
+    about="Check public Mooncakes packages, plan a fixed candidate, or publish a qualified tag candidate in dependency order. Workflow validates actual GitHub event/ref/SHA and optionally writes --github-output. Gate-ci requires successful exact main-push CI and ci-ok, polling at most 20 minutes. Gate-qualification checks --receipt Ion against --sha, the current workflow run/attempt, v2 profile, macos:run and every required job. Gate commands emit version 0.1.0 morphir/mooncakes-ci-gate or morphir/mooncakes-qualification-gate evidence. Unavailable, skipped, cancelled, failed or stale evidence refuses publication. Check and plan never read credentials or upload. Identity regenerates the tracked apps/morphir/cli/release_identity.mbt after a version change; check refuses stale identity. Verify takes X.Y.Z and resolves every public version with fresh dependency/build caches outside any repository workspace, then exercises Scheme and long-decimal parsing on four targets, moonx help/version and an installed native CLI worksheet. Verify --defer NAME (repeatable) leaves out a public module that this release did not publish; it must be absent from the registry at X.Y.Z and no verified module may depend on it, and the receipt lists it under deferredModules. Inventory and check refuse a public module whose supported_targets excludes the default backend wasm without preferred_target, and check runs moon package without a target in each unpacked archive, as moon publish does. Verify --minimum-home PATH selects exact stock 0.10.20 after checking its core source bytes and actual compiler; the invoking producer still must match the release pin. Each consumer owns a fresh credential-free Moon home, registry index and dependency/build caches. Default receipts are consumer.json or consumer-minimum.json; --output overrides the owned path. Minimum receipts add producerCompilerVersion and consumerCoreSourceSha256/consumerCoreSourceFiles while compilerVersion reports the selected consumer. Consumer results use morphir/mooncakes-consumer 0.1.0. Publication and consumer hosts are qualified on Linux. They require the default registry without Moon home config.json or MOONCAKES_REGISTRY overrides. Plan writes --output, default .dev/mooncakes-release/plan.json. Check-artifacts consumes --plan, verifies every retained archive against the candidate/toolchain/minimum-compiler proof, and requires byte-identical repackaging in an owned workspace without credentials or uploads. Its result is the package evidence object with sha, compilerVersion, corePinSha256, isolatedTargets and modules. Publish consumes those same qualified ZIPs and --plan and persists --report after each module; missing or changed archives refuse before upload. Result files must be under .dev/mooncakes-release/. Dry-run plans cannot publish. Existing versions require a downloaded archive SHA-256 equal to the planned candidate. Only read-only transient/index visibility checks retry, at most six reads and 31 seconds of backoff per poll. Upload errors stop without retrying. --json emits one morphir/command-result 0.1.0 document on stdout; progress and child diagnostics use stderr. Success has state=succeeded, exitCode=0, diagnostics and result; failure has state=failed, exitCode and error{code,message}. Partial publication outcomes remain in the report on failure. Help returns result.help without file or subprocess effects. Exit 2 is argument syntax; exit 1 is validation/child failure. Check gives inventory and package/toolchain evidence; plan adds tag, commit and mode. Publication records published, verified-existing, failed and not-attempted modules.",
     flags=[
       @argparse.FlagArg("json", global=true),
       @argparse.FlagArg("help", short='h', global=true),
@@ -6338,12 +6480,24 @@ async fn main {
         root,
         args.values.get("output").unwrap_or([consumer_output(toolchain)])[0],
       )
-      let receipt = verify_consumer(
-        root,
-        inspection,
-        ReleaseVersion::parse(args.values["version"][0]),
-        toolchain~,
-      )
+      let version = ReleaseVersion::parse(args.values["version"][0])
+      let deferred = args.values.get("defer").unwrap_or([])
+      let verified = deferred_inspection(inspection, deferred)
+      for manifest in inspection.ordered {
+        if deferred.contains(manifest.name) {
+          require_deferred_absent(
+            manifest.name,
+            registry_archive(
+              { ..manifest, version: version.0, },
+              check=EvidenceOnly,
+            ),
+          )
+        }
+      }
+      let receipt = verify_consumer(root, verified, version, toolchain~)
+      if receipt is Object(fields) {
+        fields["deferredModules"] = Json(deferred)
+      }
       write_owned_json(file, receipt, "morphir/mooncakes-consumer")
       receipt
     } else if name == "publish" {
@@ -6836,5 +6990,135 @@ test "conditional imports retain strict package and native asset checks" {
       error => raise error
     }
     assert_true(refused, msg=invalid)
+  }
+}
+
+///|
+test "public modules must select a target when the default backend is unsupported" {
+  let path = ModulePath::parse("pkgs/native")
+  let header = "name = \"finos/morphir-native\"\nversion = \"0.1.0\"\n"
+  // The v0.1.0 workbench-native manifest: moon publish checks it on the
+  // default backend and Moon refuses the native-only module.
+  let native_only = decode_manifest(
+    path,
+    header + "supported_targets = \"native\"\n",
+  )
+  assert_eq(native_only.supported_targets, Some(["native"]))
+  assert_eq(native_only.preferred_target, None)
+  assert_true(
+    refused(() => require_default_backend(native_only))
+    is Some(ManifestSyntax(_)),
+  )
+  for
+    accepted in [
+      "", "supported_targets = \"js+native+wasm+wasm-gc\"\n", "preferred_target = \"native\"\nsupported_targets = \"native\"\n",
+      "preferred_target = \"native\"\nsupported_targets = \"native+wasm\"\n",
+    ] {
+    require_default_backend(decode_manifest(path, header + accepted))
+  }
+  for
+    invalid in [
+      "preferred_target = \"js\"\nsupported_targets = \"native\"\n", "supported_targets = \"\"\n",
+      "supported_targets = \"native+riscv\"\n", "preferred_target = \"riscv\"\n",
+    ] {
+    assert_true(
+      refused(() => {
+        require_default_backend(decode_manifest(path, header + invalid))
+      })
+      is Some(ManifestSyntax(_)),
+      msg=invalid,
+    )
+  }
+}
+
+///|
+async test "isolated archive check runs the default-backend package step of moon publish" {
+  let root = @fs.tmpdir(prefix="morphir default backend ")
+  defer @fs.rmdir(root, recursive=true)
+  let native_only = fixture_archive_files().map(entry => {
+    if entry.0 == "moon.mod" {
+      (
+        entry.0,
+        @utf8.encode(
+          "name = \"finos/morphir-core\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nlicense = \"Apache-2.0\"\nsupported_targets = \"native\"\n",
+        ),
+      )
+    } else {
+      entry
+    }
+  })
+  native_only.push(("answer.mbt", b"pub fn answer() -> Int { 42 }\n"))
+  let bytes = fixture_archive(native_only)
+  @fs.write_file(join_host(root, "archive.zip"), bytes)
+  let manifest = fixture_manifest(
+    "pkgs/core",
+    "finos/morphir-core",
+    supported_targets=Some(["native"]),
+  )
+  let record : PackagedModule = {
+    manifest,
+    archive_path: "archive.zip",
+    evidence: inspect_archive(manifest, bytes),
+  }
+  let message = try {
+    ignore(verify_archive_graph(root, [record]))
+    ""
+  } catch {
+    Refusal(ArchiveInvalid(message)) => message
+    error => raise error
+  }
+  assert_eq(
+    message, "Isolated archive cannot be packaged as moon publish does: finos/morphir-core",
+  )
+}
+
+///|
+test "verification defers only absent public modules that nothing verified needs" {
+  let version = ReleaseVersion::parse("0.1.0")
+  let session = fixture_manifest("pkgs/session", "finos/morphir-session")
+  let workbench = fixture_manifest(
+    "apps/workbench",
+    "finos/morphir-workbench",
+    dependencies={ "finos/morphir-session": "0.1.0" },
+  )
+  let native = fixture_manifest("pkgs/native", "finos/morphir-native", dependencies={
+    "finos/morphir-workbench": "0.1.0",
+  })
+  let inspection : Inspection = {
+    version,
+    ordered: [session, workbench, native],
+    inventory: [],
+  }
+  assert_eq(
+    deferred_inspection(inspection, []).ordered.map(manifest => manifest.name),
+    ["finos/morphir-session", "finos/morphir-workbench", "finos/morphir-native"],
+  )
+  assert_eq(
+    deferred_inspection(inspection, ["finos/morphir-native"]).ordered.map(manifest => {
+      manifest.name
+    }),
+    ["finos/morphir-session", "finos/morphir-workbench"],
+  )
+  for
+    invalid in [
+      ["finos/morphir-workbench"],
+      ["finos/morphir-unknown"],
+      ["finos/morphir-native", "finos/morphir-native"],
+      [
+        "finos/morphir-session", "finos/morphir-workbench", "finos/morphir-native",
+      ],
+    ] {
+    assert_true(
+      refused(() => ignore(deferred_inspection(inspection, invalid)))
+      is Some(CandidateMismatch(_)),
+      msg=invalid.join(","),
+    )
+  }
+  require_deferred_absent("finos/morphir-native", Absent)
+  for state in [Present("abc"), Transient(503), Rejected(403), Unavailable] {
+    assert_true(
+      refused(() => require_deferred_absent("finos/morphir-native", state))
+      is Some(CandidateMismatch(_)),
+    )
   }
 }

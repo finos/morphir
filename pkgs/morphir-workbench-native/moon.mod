@@ -10,6 +10,8 @@ readme = "README.md"
 
 description = "Owned native workers for the Morphir Workbench"
 
+preferred_target = "native"
+
 supported_targets = "native"
 
 import {
