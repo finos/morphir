@@ -128,7 +128,7 @@ A case whose module never returns SHALL pass when the host ends the call no late
 - **THEN** the call ends with fault `call-deadline` between 30 and 32 seconds and the case passes
 
 ### Requirement: Report identity
-A host qualification report SHALL identify the runner, the corpus digest, the profile contract version, the host executable's path and digest, its declared offering, platform and engine, and each module's digest. `report-check` SHALL recompute the verdict from the recorded observations.
+A host qualification report SHALL identify the runner, the corpus digest, the profile contract version, the host executable's path and digest, its declared offering, platform and engine, and each module's digest. The offering, platform and engine are inputs to the runner, because a worker reports none of them. `report-check` SHALL refuse a report without them and SHALL recompute the verdict from the recorded observations.
 
 #### Scenario: Edited verdict
 - **WHEN** a report's verdict is changed to qualified while a recorded observation fails

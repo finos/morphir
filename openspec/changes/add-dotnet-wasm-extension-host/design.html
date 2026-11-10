@@ -189,7 +189,7 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <li>The guest for sessions is Python <code>0.6.0</code>. Python <code>0.4.2</code> answers <code>0.1</code> only.</li>
 <li>The host's <code>morphir.initialize</code> carries a model transport offer. Measured on the pinned bundles (Python <code>0.6.0</code>, Avro <code>0.4.0</code>, OpenAPI <code>0.5.0</code>, Rust <code>0.4.0</code>): each answers <code>0.2.0-draft.1</code> only to a request that has one. To a bare <code>0.2.0-draft.1</code> request each replies with error -32011, and the message wrongly says the extension supports only <code>0.1</code>.</li>
 </ul>
-<p>The generic guest kit still requires a tier that negotiates <code>0.1</code>. The .NET runner runs the kit's model tier only. Whether the kit drops its legacy tier is an open question below.</p>
+<p>The generic guest kit still requires a tier that negotiates <code>0.1</code>, and the Rust <code>guest-run</code> command cannot skip it. A run against the .NET host can cover the kit's model tier only. Which runner does that, a model-tier runner in morphir-dotnet or the Rust command once the kit changes, is not settled. Whether the kit drops its legacy tier is an open question below.</p>
 
 <p class="stage">Stage 6. The host has something to tell the guest that is not a request</p>
 <h3 id="ntf-1">NTF-1. Deliver notifications to an Extism guest that asks for them</h3>
@@ -309,7 +309,7 @@ $ morphir mck mep guest-run \
 <tr><td>Classification</td><td>A byte-profile module on a host without that profile</td><td><code>extension.abi_unsupported</code>, profile named</td></tr>
 <tr><td>Bounds</td><td>Loops forever</td><td>Stopped by the budget or the deadline on a metering host, by the deadline otherwise, and never later than the deadline</td></tr>
 <tr><td>Bounds</td><td>Loops forever, with a budget of 1,000,000</td><td>Stopped by the budget on a metering host</td></tr>
-<tr><td>Bounds</td><td>Grows one page at a time, then traps</td><td><code>extension.memory_limit</code></td></tr>
+<tr><td>Bounds</td><td>Grows to the ceiling in halving steps, then traps</td><td><code>extension.memory_limit</code></td></tr>
 <tr><td>Sandbox</td><td>Calls <code>http_request</code>, returns the result</td><td>URL recorded as guest output, call stopped, session fails</td></tr>
 <tr><td>Sandbox</td><td>Calls WASI <code>path_open</code> on <code>/etc/passwd</code></td><td>Error code, session continues</td></tr>
 </tbody></table></div>

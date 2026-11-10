@@ -338,8 +338,19 @@ runner declares, any worker options, the frames the runner sends, and the
 observation it expects. A runner drives the host through its worker mode,
 `<host> extension worker --abi <abi> --module <wasm> --build-identity <id> --json`,
 so the same cases apply to the MoonBit host, the .NET host and any later one.
-The runner reads `<id>` from `<host> extension worker --help --json`. This
-corpus has no runner yet.
+The runner reads `<id>` from `<host> extension worker --help --json`, member
+`result.buildIdentity`. The runner is `morphir mck wasm-host run` in
+finos/morphir-dotnet, which is experimental.
+
+The first run was against the MoonBit native CLI built from `89f8924`, with
+the corpus as it stood at `7b049c223`: 51 of 56 cases passed. Two failures
+are the notification rule that MoonBit does not have yet
+(finos/morphir-moonbit#329). One was a runaway case that required the budget
+to win; it now accepts either bound. Two were memory cases whose modules grew
+one page at a time and reached the call deadline before the ceiling on a slow
+engine; those modules now grow in halving steps. That run used an x64 binary
+under emulation, so the timings need a run on native hardware. The evidence
+is in finos/morphir-dotnet#570.
 
 Each module is a `.wat` file of a few lines that does one thing, with the
 `.wasm` built from it committed beside it. The leading comment says what the

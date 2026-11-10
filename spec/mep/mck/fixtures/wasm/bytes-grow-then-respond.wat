@@ -1,6 +1,8 @@
 ;; The bytes-echo guest with one change: before it answers a request, it
-;; grows its memory one page at a time until the host refuses a growth, and
-;; then answers as usual. The memory declares a maximum of 65536 pages, above
+;; grows its memory until the host refuses a growth of one page, and then
+;; answers as usual. It asks for 2048 pages at a time and halves the request
+;; after each refusal, so it stops exactly at the ceiling after about a dozen
+;; growths. The memory declares a maximum of 65536 pages, above
 ;; the 256 MiB ceiling. On the byte profile the refused growth fails the
 ;; session although handle returns.
 ;; Cases: bounds/bytes-grow-refused
@@ -31,7 +33,7 @@
       (br $start))
     (i32.const 0))
   (func (export "handle") (result i32)
-    (local $len i32) (local $i i32)
+    (local $len i32) (local $i i32) (local $step i32)
     (local.set $len (call $input_len))
     (block $copied
       (loop $copy
@@ -44,8 +46,11 @@
         (return
           (select (i32.const 0) (i32.const -2)
             (call $contains (i32.const 8) (i32.const 12) (local.get $len))))))
+    (local.set $step (i32.const 2048))
     (loop $grow
-      (br_if $grow (i32.ne (memory.grow (i32.const 1)) (i32.const -1))))
+      (if (i32.eq (memory.grow (local.get $step)) (i32.const -1))
+        (then (local.set $step (i32.shr_u (local.get $step) (i32.const 1)))))
+      (br_if $grow (local.get $step)))
     (local.set $i (i32.const 0))
     (block $written
       (loop $write
