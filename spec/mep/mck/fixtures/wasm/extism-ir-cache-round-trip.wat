@@ -1,19 +1,25 @@
-;; An extism-kernel-v1 guest that reads the IR cache entry "k". When it holds
-;; the 46 bytes {"jsonrpc":"2.0","id":2,"result":"from-cache"} it answers with
-;; them. Otherwise it stores them under "k" with morphir_cache_ir and answers
-;; {"jsonrpc":"2.0","id":1,"result":"stored"}.
+;; An extism-kernel-v1 guest that reads the IR cache entry "k".
+;; - The 4 bytes null, a missing key: it stores the 46 bytes
+;;   {"jsonrpc":"2.0","id":2,"result":"from-cache"} under "k" with
+;;   morphir_cache_ir and answers {"jsonrpc":"2.0","id":1,"result":"stored"}.
+;; - A block of 46 bytes: it answers with them.
+;; - Anything else: it answers {"jsonrpc":"2.0","id":0,"result":"unexpected"}.
 ;; Cases: sandbox/ir-cache-round-trip
 (module
   (import "extism:host/env" "alloc" (func $alloc (param i64) (result i64)))
   (import "extism:host/env" "store_u8" (func $store_u8 (param i64 i32)))
+  (import "extism:host/env" "load_u8" (func $load_u8 (param i64) (result i32)))
   (import "extism:host/env" "output_set" (func $output_set (param i64 i64)))
   (import "extism:host/env" "length" (func $length (param i64) (result i64)))
   (import "extism:host/user" "morphir_cache_ir" (func $cache_ir (param i64 i64)))
   (import "extism:host/user" "morphir_get_cached_ir" (func $get_cached_ir (param i64) (result i64)))
   (memory 1)
   (data (i32.const 0) "k")
+  (data (i32.const 8) "null")
   (data (i32.const 64) "{\22jsonrpc\22:\222.0\22,\22id\22:1,\22result\22:\22stored\22}")
   (data (i32.const 128) "{\22jsonrpc\22:\222.0\22,\22id\22:2,\22result\22:\22from-cache\22}")
+  ;; 46 bytes.
+  (data (i32.const 192) "{\22jsonrpc\22:\222.0\22,\22id\22:0,\22result\22:\22unexpected\22}")
   ;; Copies $len bytes of guest memory at $ptr into a new kernel block.
   (func $block (param $ptr i32) (param $len i32) (result i64)
     (local $h i64) (local $i i32)
@@ -27,15 +33,32 @@
         (local.set $i (i32.add (local.get $i) (i32.const 1)))
         (br $copy)))
     (local.get $h))
+  ;; 1 when the block at $h is the 4 bytes null.
+  (func $is_null (param $h i64) (result i32)
+    (local $i i32)
+    (if (i64.ne (call $length (local.get $h)) (i64.const 4)) (then (return (i32.const 0))))
+    (loop $compare
+      (if (i32.eq (local.get $i) (i32.const 4)) (then (return (i32.const 1))))
+      (if (i32.ne
+            (call $load_u8 (i64.add (local.get $h) (i64.extend_i32_u (local.get $i))))
+            (i32.load8_u (i32.add (i32.const 8) (local.get $i))))
+        (then (return (i32.const 0))))
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (br $compare))
+    (i32.const 0))
   (func (export "handle") (result i32)
     (local $value i64)
     (local.set $value (call $get_cached_ir (call $block (i32.const 0) (i32.const 1))))
     (if (i64.ne (local.get $value) (i64.const 0))
       (then
+        (if (call $is_null (local.get $value))
+          (then
+            (call $cache_ir (call $block (i32.const 0) (i32.const 1)) (call $block (i32.const 128) (i32.const 46)))
+            (call $output_set (call $block (i32.const 64) (i32.const 42)) (i64.const 42))
+            (return (i32.const 0))))
         (if (i64.eq (call $length (local.get $value)) (i64.const 46))
           (then
             (call $output_set (local.get $value) (i64.const 46))
             (return (i32.const 0))))))
-    (call $cache_ir (call $block (i32.const 0) (i32.const 1)) (call $block (i32.const 128) (i32.const 46)))
-    (call $output_set (call $block (i32.const 64) (i32.const 42)) (i64.const 42))
+    (call $output_set (call $block (i32.const 192) (i32.const 46)) (i64.const 46))
     (i32.const 0)))

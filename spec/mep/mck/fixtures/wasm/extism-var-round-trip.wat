@@ -1,7 +1,11 @@
-;; An extism-kernel-v1 guest that reads the Extism var "k". When "k" holds the
-;; 44 bytes {"jsonrpc":"2.0","id":2,"result":"from-var"} it answers with them.
-;; Otherwise it stores them in "k" and answers
-;; {"jsonrpc":"2.0","id":1,"result":"stored"}.
+;; An extism-kernel-v1 guest that reads the Extism var "k".
+;; - Handle 0, a missing key: it stores the 44 bytes
+;;   {"jsonrpc":"2.0","id":2,"result":"from-var"} in "k" and answers
+;;   {"jsonrpc":"2.0","id":1,"result":"stored"}.
+;; - A block of 44 bytes: it deletes "k" with var_set and value handle 0, and
+;;   answers with the 44 bytes when var_get then gives handle 0.
+;; - Anything else, or a key that survives the delete: it answers
+;;   {"jsonrpc":"2.0","id":0,"result":"unexpected"}.
 ;; Cases: sandbox/var-round-trip
 (module
   (import "extism:host/env" "alloc" (func $alloc (param i64) (result i64)))
@@ -14,6 +18,8 @@
   (data (i32.const 0) "k")
   (data (i32.const 64) "{\22jsonrpc\22:\222.0\22,\22id\22:1,\22result\22:\22stored\22}")
   (data (i32.const 128) "{\22jsonrpc\22:\222.0\22,\22id\22:2,\22result\22:\22from-var\22}")
+  ;; 46 bytes.
+  (data (i32.const 192) "{\22jsonrpc\22:\222.0\22,\22id\22:0,\22result\22:\22unexpected\22}")
   ;; Copies $len bytes of guest memory at $ptr into a new kernel block.
   (func $block (param $ptr i32) (param $len i32) (result i64)
     (local $h i64) (local $i i32)
@@ -30,12 +36,17 @@
   (func (export "handle") (result i32)
     (local $value i64)
     (local.set $value (call $var_get (call $block (i32.const 0) (i32.const 1))))
-    (if (i64.ne (local.get $value) (i64.const 0))
+    (if (i64.eqz (local.get $value))
       (then
-        (if (i64.eq (call $length (local.get $value)) (i64.const 44))
+        (call $var_set (call $block (i32.const 0) (i32.const 1)) (call $block (i32.const 128) (i32.const 44)))
+        (call $output_set (call $block (i32.const 64) (i32.const 42)) (i64.const 42))
+        (return (i32.const 0))))
+    (if (i64.eq (call $length (local.get $value)) (i64.const 44))
+      (then
+        (call $var_set (call $block (i32.const 0) (i32.const 1)) (i64.const 0))
+        (if (i64.eqz (call $var_get (call $block (i32.const 0) (i32.const 1))))
           (then
             (call $output_set (local.get $value) (i64.const 44))
             (return (i32.const 0))))))
-    (call $var_set (call $block (i32.const 0) (i32.const 1)) (call $block (i32.const 128) (i32.const 44)))
-    (call $output_set (call $block (i32.const 64) (i32.const 42)) (i64.const 42))
+    (call $output_set (call $block (i32.const 192) (i32.const 46)) (i64.const 46))
     (i32.const 0)))

@@ -1,6 +1,6 @@
 ;; An extism-kernel-v1 guest that copies the Extism input into a new kernel
 ;; block and sets it as the output, so each request is answered with itself.
-;; Cases: extism/echo, classification/declared-abi-mismatch
+;; Cases: extism/echo, classification/declared-abi-mismatch, worker/other-build-identity, limits/response-over-limit
 (module
   (import "extism:host/env" "input_length" (func $input_length (result i64)))
   (import "extism:host/env" "input_load_u8" (func $input_load_u8 (param i64) (result i32)))

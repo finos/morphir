@@ -1,6 +1,8 @@
 // Checks the WASM host qualification kit in spec/mep/mck/wasm-host.cases.json
 // against the execution profile contract in
-// spec/mep/wasm-execution-profiles.json and the profile spec.
+// spec/mep/wasm-execution-profiles.json, the contract's document
+// spec/mep/wasm-execution-profiles.md, and the profile and qualification
+// specs.
 //
 // Usage (from the parent repository root):
 //
@@ -13,15 +15,21 @@
 //    sha256 differs from the file, or a module file is missing;
 // 2. a fixture has no leading `;;` comment, or its `;; Cases:` line does not
 //    name exactly the cases that use it;
-// 3. a refusal code, fault kind, handle result, classification rule, bound,
-//    profile property, policy entry, known deviation or import of the
-//    contract has no case;
-// 4. a case names a requirement or scenario that the profile spec lacks,
-//    claims a contract element that does not exist, or claims a refusal or
-//    fault that none of its expectations shows;
-// 5. a module meant to be accepted imports something outside the contract's
-//    import table, or with another signature, or lacks `handle () -> i32`;
-// 6. a timing range does not follow from the contract's call deadlines.
+// 3. an element of the contract (a refusal code, fault kind, host outcome,
+//    handle result, profile status, notification or memory rule,
+//    classification rule, bound, policy entry, host-session or worker rule,
+//    known deviation or import) has no case and is not listed in the kit's
+//    withoutCase with a reason, or is listed there although a case covers it;
+// 4. a case names a requirement or scenario that the specs lack, claims a
+//    contract element that does not exist, or claims a refusal or fault that
+//    none of its expectations shows;
+// 5. a case's appliesTo does not follow from its module's profile, or a case
+//    lacks the --abi the worker requires;
+// 6. a module meant to load imports something outside the contract's import
+//    table, or with another signature, or lacks `handle () -> i32`;
+// 7. a timing range does not follow from the contract's call deadlines;
+// 8. the document does not state an import, code, bound value, policy value or
+//    worker argument of the contract.
 //
 // The check reads and assembles modules. It never runs one, and it never
 // writes an expectation.
@@ -35,8 +43,9 @@ export const KIT = "spec/mep/mck/wasm-host.cases.json";
 export const KIT_DIR = "spec/mep/mck";
 export const FIXTURES = "spec/mep/mck/fixtures/wasm";
 export const CONTRACT = "spec/mep/wasm-execution-profiles.json";
-export const MAIN_SPEC = "openspec/specs/mep/wasm-execution-profiles/spec.md";
-export const CHANGE_SPEC = "specs/mep/wasm-execution-profiles/spec.md";
+export const DOCUMENT = "spec/mep/wasm-execution-profiles.md";
+export const PROFILE_SPEC = "mep/wasm-execution-profiles/spec.md";
+export const QUALIFICATION_SPEC = "mck/wasm-host-qualification/spec.md";
 
 /** Features that wabt needs to assemble the refusal fixtures. Enabling them
  * does not change the encoding of an MVP module. */
@@ -55,6 +64,8 @@ export const WASI_PREVIEW1: Record<string, Signature> = {
 	fd_read: { params: ["i32", "i32", "i32", "i32"], results: ["i32"] },
 	fd_write: { params: ["i32", "i32", "i32", "i32"], results: ["i32"] },
 	path_open: { params: ["i32", "i32", "i32", "i32", "i32", "i64", "i64", "i32", "i32"], results: ["i32"] },
+	poll_oneoff: { params: ["i32", "i32", "i32", "i32"], results: ["i32"] },
+	proc_exit: { params: ["i32"], results: [] },
 	random_get: { params: ["i32", "i32"], results: ["i32"] },
 };
 
@@ -159,35 +170,59 @@ export const signatureText = (signature: Signature | undefined) =>
 
 const sameSignature = (a: Signature | undefined, b: Signature | undefined) => signatureText(a) === signatureText(b);
 
+export type Rule = { id: string; rule: string };
 export type ContractImport = Signature & { module: string; name: string };
 export type Profile = {
+	status: string;
 	namespaces: string[];
 	imports: ContractImport[];
 	wasi: string | false;
-	notificationsDelivered: boolean;
+	notifications: Rule[];
+	memory?: Rule[];
 	callDeadlineSeconds: number;
 	handleResults: { result: string }[];
+	notificationAdvertisement?: { provisional: boolean; illustrativeMember: string };
 };
+export type WorkerArgument = { name: string; required?: boolean; flag?: boolean; default?: number | Record<string, number> };
 export type Contract = {
 	contract: string;
 	version: string;
 	handleExport: Signature & { name: string };
+	statuses: Record<string, string>;
 	profiles: Record<string, Profile>;
-	classification: { order: string[]; defaultProfile: string };
-	bounds: { requiredForQualification: string[]; optionalForQualification: string[] };
+	classification: { rules: Rule[]; defaultProfile: string };
+	bounds: {
+		memoryCeilingBytes: number;
+		kernelMemoryCeilingBytes: number;
+		instructionBudget: Record<string, number>;
+		requiredForQualification: string[];
+		optionalForQualification: string[];
+	};
+	memory: Rule[];
 	policy: Record<string, unknown>;
 	refusals: { code: string }[];
-	faults: { kind: string }[];
+	faults: { kind: string; hostCode?: string; hostOutcome?: string }[];
+	hostSession: { frameLimits: { requestBytes: number; responseBytes: number }; rules: (Rule & { code?: string })[] };
+	worker: {
+		arguments: WorkerArgument[];
+		startedBounds: { members: string[]; notEnforcedReasons: string[] };
+		refusals: { code: string }[];
+		rules: Rule[];
+	};
 	knownDeviations?: { import: string }[];
 };
 
-/** The profile that the contract's classification order gives a module. The
- * first rule is the byte profile's namespace, the second the Extism
- * profile's namespaces, the third the declaration or the default. */
+/** The profile whose status is `required`: the one every host runs. */
+export const requiredProfile = (contract: Contract) =>
+	Object.entries(contract.profiles).find(([, profile]) => profile.status === "required")?.[0] ?? contract.classification.defaultProfile;
+
+/** The profile that the contract's classification gives a module: the first
+ * import from a profile namespace decides it; a module with none takes the
+ * declaration, or the default. */
 export function classify(imports: Import[], declared: string | undefined, contract: Contract): string {
-	const used = new Set(imports.map((entry) => entry.module));
-	for (const profile of ["morphir-bytes-v1", "extism-kernel-v1"]) {
-		if (contract.profiles[profile]?.namespaces.some((namespace) => used.has(namespace))) return profile;
+	for (const entry of imports) {
+		const named = Object.entries(contract.profiles).find(([, profile]) => profile.namespaces.includes(entry.module));
+		if (named) return named[0];
 	}
 	return declared ?? contract.classification.defaultProfile;
 }
@@ -218,28 +253,105 @@ export function surfaceProblems(shape: ModuleShape, profile: string, contract: C
 	return problems;
 }
 
-function leaves(value: unknown, prefix: string): string[] {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) return [prefix];
+/** The leaves of a JSON object as dotted paths with their values. Arrays are
+ * leaves. */
+export function leaves(value: unknown, prefix = ""): [string, unknown][] {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return [[prefix, value]];
 	return Object.entries(value).flatMap(([key, member]) => leaves(member, prefix ? `${prefix}.${key}` : key));
 }
 
+/** All refusal codes a worker can report: the profile refusals and the
+ * worker's own. */
+export const refusalCodes = (contract: Contract) => [...contract.refusals, ...contract.worker.refusals].map((entry) => entry.code);
+
 /** Every element of the contract that the kit must cover, as an id. A case
  * claims an id in `tests.contract`; `import:` ids are covered by the imports
- * of the accepted modules instead. */
+ * of the modules that load instead. */
 export function contractElements(contract: Contract): string[] {
 	const profiles = Object.entries(contract.profiles);
 	return [
-		...contract.refusals.map((entry) => `refusal:${entry.code}`),
+		...refusalCodes(contract).map((code) => `refusal:${code}`),
 		...contract.faults.map((entry) => `fault:${entry.kind}`),
+		...contract.faults.map((entry) => `hostOutcome:${entry.kind}`),
+		...profiles.map(([name]) => `status:${name}`),
 		...profiles.flatMap(([name, profile]) => profile.handleResults.map((entry) => `handleResult:${name}:${entry.result}`)),
-		...contract.classification.order.map((_, index) => `classification:${index}`),
-		"classification:default",
+		...profiles.flatMap(([name, profile]) => profile.notifications.map((entry) => `notifications:${name}:${entry.id}`)),
+		...profiles.flatMap(([name, profile]) => (profile.memory ?? []).map((entry) => `memory:${name}:${entry.id}`)),
+		...contract.memory.map((entry) => `memory:${entry.id}`),
+		...contract.classification.rules.map((entry) => `classification:${entry.id}`),
 		...[...contract.bounds.requiredForQualification, ...contract.bounds.optionalForQualification].map((name) => `bound:${name}`),
-		...profiles.flatMap(([name]) => [`notifications:${name}`, `deadline:${name}`, `wasi:${name}`]),
-		...leaves(contract.policy, "").map((key) => `policy:${key}`),
+		...profiles.flatMap(([name]) => [`deadline:${name}`, `wasi:${name}`]),
+		...leaves(contract.policy).map(([key]) => `policy:${key}`),
+		...contract.hostSession.rules.map((entry) => `hostSession:${entry.id}`),
+		...contract.worker.rules.map((entry) => `worker:${entry.id}`),
 		...(contract.knownDeviations ?? []).map((entry) => `deviation:${entry.import}`),
 		...profiles.flatMap(([, profile]) => profile.imports.map((entry) => `import:${entry.module}.${entry.name}`)),
 	];
+}
+
+/** The forms in which a document may write a number: plain digits, with
+ * thousands separators, and in MiB, KiB or seconds where they divide. */
+export function numberForms(value: number, unit?: "seconds"): string[] {
+	if (unit === "seconds") return [`${value} seconds`, `${value} s`];
+	const forms = [String(value), value.toLocaleString("en-US")];
+	if (value >= 1048576 && value % 1048576 === 0) forms.push(`${value / 1048576} MiB`);
+	else if (value >= 1024 && value % 1024 === 0) forms.push(`${value / 1024} KiB`);
+	return forms;
+}
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const mentionsNumber = (text: string, value: number, unit?: "seconds") =>
+	numberForms(value, unit).some((form) => new RegExp(`(^|[^\\d,.])${escapeRegExp(form)}(?![\\d]|,\\d)`).test(text));
+const code = (text: string) => `\`${text}\``;
+
+/** What the contract's document fails to state: each import with its
+ * signature on one line, each code, fault kind, status, bound value, policy
+ * value and worker argument. Empty when the document agrees with the JSON. */
+export function documentProblems(contract: Contract, markdown: string): string[] {
+	const problems: string[] = [];
+	const lines = markdown.split(/\r?\n/);
+	const line = (...parts: string[]) => lines.some((text) => parts.every((part) => text.includes(part)));
+	const need = (part: string, what: string) => {
+		if (!markdown.includes(part)) problems.push(`the document does not mention ${what} ${part}`);
+	};
+	for (const [name, profile] of Object.entries(contract.profiles)) {
+		need(code(name), "the profile");
+		need(code(profile.status), `the status of ${name}`);
+		for (const entry of profile.imports) {
+			if (!line(code(entry.name), code(signatureText(entry)))) problems.push(`the document has no line with ${code(entry.name)} and ${code(signatureText(entry))}`);
+		}
+		if (!mentionsNumber(markdown, profile.callDeadlineSeconds, "seconds")) problems.push(`the document does not state the ${name} call deadline of ${profile.callDeadlineSeconds} seconds`);
+		if (profile.notificationAdvertisement) need(code(profile.notificationAdvertisement.illustrativeMember), "the advertisement member");
+	}
+	for (const entry of refusalCodes(contract)) need(code(entry), "the refusal code");
+	for (const entry of contract.faults) {
+		need(code(entry.kind), "the fault kind");
+		if (entry.hostCode) need(code(entry.hostCode), "the host code");
+		if (entry.hostOutcome) need(code(entry.hostOutcome), "the host outcome");
+	}
+	for (const entry of contract.hostSession.rules) if (entry.code) need(code(entry.code), "the host-session code");
+	const bounds = contract.bounds;
+	const numbers: [string, number][] = [
+		["the memory ceiling", bounds.memoryCeilingBytes],
+		["the kernel memory ceiling", bounds.kernelMemoryCeilingBytes],
+		...Object.entries(bounds.instructionBudget).map(([line, value]): [string, number] => [`the ${line} instruction budget`, value]),
+		["the request byte limit", contract.hostSession.frameLimits.requestBytes],
+		["the response byte limit", contract.hostSession.frameLimits.responseBytes],
+	];
+	for (const [what, value] of numbers) if (!mentionsNumber(markdown, value)) problems.push(`the document does not state ${what}, ${value}`);
+	for (const key of Object.keys(bounds.instructionBudget)) need(code(key), "the instruction budget line");
+	for (const [key, value] of leaves(contract.policy)) {
+		// A string is written bare, except the empty string, which is written "".
+		const rendered = Array.isArray(value) ? value.map((item) => code(String(item))) : [code(typeof value === "string" && value !== "" ? value : JSON.stringify(value))];
+		if (!line(code(key), ...rendered)) problems.push(`the document has no line with ${code(key)} and ${rendered.join(" ")}`);
+	}
+	for (const argument of contract.worker.arguments) {
+		const defaults = typeof argument.default === "number" ? [argument.default] : Object.values(argument.default ?? {});
+		const found = lines.some((text) => text.includes(code(argument.name)) && defaults.every((value) => mentionsNumber(text, value)));
+		if (!found) problems.push(`the document has no line with ${code(argument.name)}${defaults.length ? ` and its default ${defaults.join(", ")}` : ""}`);
+	}
+	for (const member of [...contract.worker.startedBounds.members, ...contract.worker.startedBounds.notEnforcedReasons]) need(code(member), "the started.bounds entry");
+	return problems;
 }
 
 /** The requirement and scenario names of a spec in OpenSpec Markdown. */
@@ -269,16 +381,19 @@ export type Expectation = {
 	stdoutFrames?: FrameMatcher[];
 	events?: EventMatcher[];
 	noEvents?: string[];
-	eventText?: string[];
 	guestOutput?: string[];
+	guestOutputIncludes?: string[];
+	noGuestOutput?: string[];
 	withinSeconds?: { until: "fault" | "exit"; range: [number, number] };
 };
-export type Run = { frames: string[]; expect?: Expectation; alternatives?: { when: { bound: string; enforced: boolean }; expect: Expectation }[] };
+export type When = { bound: string; enforced: boolean; hostRuns?: undefined } | { hostRuns: string; runs: boolean; bound?: undefined };
+export type Run = { frames: string[]; expect?: Expectation; alternatives?: { when: When; expect: Expectation }[] };
 export type Case = {
 	caseId: string;
+	appliesTo: string;
 	module: string;
 	declaredAbi?: string;
-	worker?: { requestBytes?: number; responseBytes?: number };
+	worker?: { requestBytes?: number; responseBytes?: number; omit?: string[]; buildIdentity?: "other" };
 	bounds?: string[];
 	tests: { requirements: string[]; scenarios?: string[]; contract?: string[] };
 	runs: Run[];
@@ -292,13 +407,17 @@ export type Kit = {
 	deadlineMarginSeconds: number;
 	frames: Record<string, Record<string, unknown>>;
 	modules: Record<string, { wat: string; wasm: string; sha256: string }>;
+	withoutCase: { element: string; reason: string }[];
 	cases: Case[];
 };
 
 export type KitInput = {
 	kit: Kit;
 	contract: Contract;
+	/** The profile spec and the qualification spec, joined. */
 	spec: string;
+	/** The contract's Markdown document. */
+	document: string;
 	/** A file of the kit directory, by its path relative to spec/mep/mck. */
 	read: (relative: string) => Uint8Array | undefined;
 	/** The names of the files in the fixture directory. */
@@ -323,16 +442,25 @@ export function checkKit(input: KitInput): string[] {
 	const spec = specNames(input.spec);
 	const elements = new Set(contractElements(contract));
 	const profiles = Object.keys(contract.profiles);
-	const refusalCodes = new Set(contract.refusals.map((entry) => entry.code));
+	const required = requiredProfile(contract);
+	const refusals = new Set(refusalCodes(contract));
 	const faultKinds = new Set(contract.faults.map((entry) => entry.kind));
 	const bounds = new Set([...contract.bounds.requiredForQualification, ...contract.bounds.optionalForQualification]);
-	const covered = new Set<string>();
+	const argumentNames = new Set(contract.worker.arguments.map((entry) => entry.name));
+	const covered = new Map<string, string>();
+	const cover = (element: string, by: string) => {
+		if (!covered.has(element)) covered.set(element, by);
+	};
 
 	if (kit.contract.id !== contract.contract || kit.contract.version !== contract.version) {
 		fail(`the kit targets ${kit.contract.id} ${kit.contract.version}, the contract is ${contract.contract} ${contract.version}`);
 	}
 	if (kit.assembler.package !== "wabt" || kit.assembler.version !== input.assemblerVersion) {
 		fail(`the kit names ${kit.assembler.package} ${kit.assembler.version}, tools/package.json pins wabt ${input.assemblerVersion}`);
+	}
+	if (profiles.filter((name) => contract.profiles[name]?.status === "required").length !== 1) fail("the contract needs exactly one required profile");
+	for (const [name, profile] of Object.entries(contract.profiles)) {
+		if (!(profile.status in contract.statuses)) fail(`profile ${name} has the status ${profile.status}, which the contract does not define`);
 	}
 
 	const shapes = new Map<string, ModuleShape>();
@@ -386,38 +514,57 @@ export function checkKit(input: KitInput): string[] {
 		const shape = shapes.get(entry.module);
 		if (!kit.modules[entry.module]) fail(`${at}: there is no module ${entry.module}`);
 		if (entry.declaredAbi !== undefined && !profiles.includes(entry.declaredAbi)) fail(`${at}: the declared ABI ${entry.declaredAbi} is not a profile`);
+		const omitted = entry.worker?.omit ?? [];
+		for (const name of omitted) if (!argumentNames.has(name)) fail(`${at}: the worker has no argument ${name} to omit`);
+		if (entry.declaredAbi === undefined && !omitted.includes("--abi")) fail(`${at}: it declares no ABI, which the worker requires; omit --abi on purpose with worker.omit`);
+		if (entry.declaredAbi !== undefined && omitted.includes("--abi")) fail(`${at}: it declares an ABI and omits --abi`);
+		if (entry.worker?.buildIdentity !== undefined && entry.worker.buildIdentity !== "other") fail(`${at}: worker.buildIdentity must be other`);
 		if (entry.tests.requirements.length === 0) fail(`${at}: it names no requirement`);
-		for (const name of entry.tests.requirements) if (!spec.requirements.has(name)) fail(`${at}: the profile spec has no requirement "${name}"`);
-		for (const name of entry.tests.scenarios ?? []) if (!spec.scenarios.has(name)) fail(`${at}: the profile spec has no scenario "${name}"`);
+		for (const name of entry.tests.requirements) if (!spec.requirements.has(name)) fail(`${at}: the specs have no requirement "${name}"`);
+		for (const name of entry.tests.scenarios ?? []) if (!spec.scenarios.has(name)) fail(`${at}: the specs have no scenario "${name}"`);
 		for (const name of entry.bounds ?? []) if (!bounds.has(name)) fail(`${at}: the contract has no bound ${name}`);
 		const all = entry.runs.flatMap(expectations);
 		for (const claim of entry.tests.contract ?? []) {
 			if (!elements.has(claim) || claim.startsWith("import:")) fail(`${at}: ${claim} is not a claimable contract element`);
-			covered.add(claim);
+			cover(claim, entry.caseId);
 			const [family, value] = [claim.split(":")[0], claim.slice(claim.indexOf(":") + 1)];
 			const shows = (event: string, key: "code" | "kind") => all.some((expect) => (expect.events ?? []).some((matcher) => matcher.event === event && matcher[key] === value));
 			if (family === "refusal" && !shows("refused", "code")) fail(`${at}: it claims ${claim} but no expectation shows that refusal`);
 			if (family === "fault" && !shows("fault", "kind")) fail(`${at}: it claims ${claim} but no expectation shows that fault`);
 		}
-		for (const name of entry.bounds ?? []) covered.add(`bound:${name}`);
+		for (const name of entry.bounds ?? []) cover(`bound:${name}`, entry.caseId);
 		const profile = shape ? classify(shape.imports, entry.declaredAbi, contract) : undefined;
 		const deadline = profile ? (contract.profiles[profile]?.callDeadlineSeconds ?? 0) : 0;
+		const byHost = entry.runs.some((run) => (run.alternatives ?? []).some((alternative) => alternative.when.hostRuns !== undefined));
+		if (!profiles.includes(entry.appliesTo)) fail(`${at}: appliesTo ${entry.appliesTo} is not a profile`);
+		else if (profile) {
+			const expected = byHost || profile === required ? required : profile;
+			if (entry.appliesTo !== expected) {
+				fail(`${at}: it applies to ${entry.appliesTo}, but its module is ${profile}${byHost ? " and it selects by the host's profiles" : ""}, so it applies to ${expected}`);
+			}
+		}
 		if (entry.runs.length === 0) fail(`${at}: it has no run`);
 		entry.runs.forEach((run, index) => {
 			const where = `${at} run ${index}`;
 			for (const frame of run.frames) if (!kit.frames[frame]) fail(`${where}: there is no frame ${frame}`);
 			if (!!run.expect === !!run.alternatives) fail(`${where}: it needs exactly one of expect and alternatives`);
 			for (const alternative of run.alternatives ?? []) {
-				if (!bounds.has(alternative.when.bound)) fail(`${where}: the contract has no bound ${alternative.when.bound}`);
-				covered.add(`bound:${alternative.when.bound}`);
+				const when = alternative.when;
+				if (when.hostRuns !== undefined) {
+					if (!profiles.includes(when.hostRuns) || when.hostRuns === required) fail(`${where}: hostRuns ${when.hostRuns} is not a profile that a host may leave out`);
+				} else {
+					if (!bounds.has(when.bound)) fail(`${where}: the contract has no bound ${when.bound}`);
+					cover(`bound:${when.bound}`, entry.caseId);
+				}
 			}
 			for (const expect of expectations(run)) {
 				if (expect.exitCode !== undefined && ![0, 1, 2, 3].includes(expect.exitCode)) fail(`${where}: exit status ${expect.exitCode} is not a worker status`);
 				const refused = (expect.events ?? []).some((matcher) => matcher.event === "refused");
 				if (expect.exitCode === 3 && !refused) fail(`${where}: exit status 3 needs a refused event`);
+				if (refused && !(expect.noEvents ?? []).includes("started")) fail(`${where}: a refusal comes instead of started, so noEvents must name started`);
 				for (const matcher of expect.events ?? []) {
 					if (!MATCHED_EVENTS.has(matcher.event)) fail(`${where}: ${matcher.event} is not a matched worker event (guest output goes in guestOutput)`);
-					if (matcher.event === "refused" && !refusalCodes.has(matcher.code ?? "")) fail(`${where}: ${matcher.code} is not a contract refusal code`);
+					if (matcher.event === "refused" && !refusals.has(matcher.code ?? "")) fail(`${where}: ${matcher.code} is not a contract refusal code`);
 					if (matcher.event === "fault" && matcher.kind !== undefined && !faultKinds.has(matcher.kind)) fail(`${where}: ${matcher.kind} is not a contract fault kind`);
 					if (matcher.event === "started" && matcher.abi !== profile) fail(`${where}: started.abi ${matcher.abi} differs from the classified profile ${profile}`);
 				}
@@ -434,11 +581,11 @@ export function checkKit(input: KitInput): string[] {
 				}
 			}
 		});
-		const accepted = all.length > 0 && all.every((expect) => expect.exitCode !== 3);
-		if (shape && profile && accepted) {
+		const loads = all.length > 0 && all.every((expect) => (expect.events ?? []).some((matcher) => matcher.event === "started"));
+		if (shape && profile && loads) {
 			if (entry.declaredAbi !== undefined && entry.declaredAbi !== profile) fail(`${at}: the module is ${profile} but the case declares ${entry.declaredAbi}`);
-			for (const problem of surfaceProblems(shape, profile, contract)) fail(`${at}: module ${entry.module} is meant to be accepted, but ${problem}`);
-			for (const imported of shape.imports) covered.add(`import:${imported.module}.${imported.name}`);
+			for (const problem of surfaceProblems(shape, profile, contract)) fail(`${at}: module ${entry.module} is meant to load, but ${problem}`);
+			for (const imported of shape.imports) cover(`import:${imported.module}.${imported.name}`, entry.caseId);
 		}
 	}
 
@@ -452,7 +599,15 @@ export function checkKit(input: KitInput): string[] {
 		}
 	}
 	for (const name of Object.keys(kit.modules)) if (!users.has(name)) fail(`module ${name} is used by no case`);
-	for (const element of elements) if (!covered.has(element)) fail(`the contract element ${element} has no case`);
+	const exempt = new Set<string>();
+	for (const entry of kit.withoutCase ?? []) {
+		if (!elements.has(entry.element)) fail(`withoutCase lists ${entry.element}, which is not a contract element`);
+		if (!entry.reason?.trim()) fail(`withoutCase lists ${entry.element} without a reason`);
+		if (covered.has(entry.element)) fail(`withoutCase lists ${entry.element}, but case ${covered.get(entry.element)} covers it`);
+		exempt.add(entry.element);
+	}
+	for (const element of elements) if (!covered.has(element) && !exempt.has(element)) fail(`the contract element ${element} has no case`);
+	for (const problem of documentProblems(contract, input.document)) fail(problem);
 	return failures;
 }
 
@@ -472,14 +627,16 @@ export async function assembler(): Promise<(name: string, wat: string) => Uint8A
 	};
 }
 
-/** The profile spec: the main spec once the change is archived, otherwise
- * the delta of the one active change that has it. */
-export function findProfileSpec(root: string): string {
-	if (existsSync(path.join(root, MAIN_SPEC))) return MAIN_SPEC;
+/** A spec under openspec/specs once its change is archived, otherwise the
+ * delta of the one active change that has it. `relative` is its path below
+ * the specs directory, such as mep/wasm-execution-profiles/spec.md. */
+export function findSpec(root: string, relative: string): string {
+	const main = `openspec/specs/${relative}`;
+	if (existsSync(path.join(root, main))) return main;
 	const changes = readdirSync(path.join(root, "openspec/changes"))
-		.filter((name) => name !== "archive" && existsSync(path.join(root, "openspec/changes", name, CHANGE_SPEC)))
-		.map((name) => `openspec/changes/${name}/${CHANGE_SPEC}`);
-	if (changes.length !== 1) throw new Error(`expected one profile spec, found ${changes.length}: ${changes.join(", ")}`);
+		.filter((name) => name !== "archive" && existsSync(path.join(root, "openspec/changes", name, "specs", relative)))
+		.map((name) => `openspec/changes/${name}/specs/${relative}`);
+	if (changes.length !== 1) throw new Error(`expected one ${relative}, found ${changes.length}: ${changes.join(", ")}`);
 	return changes[0] as string;
 }
 
@@ -498,10 +655,12 @@ export function withDigests(text: string, digests: Record<string, string>): stri
 export async function loadKit(root: string): Promise<KitInput> {
 	const kitDir = path.join(root, KIT_DIR);
 	const packageJson = JSON.parse(readFileSync(path.join(root, "tools/package.json"), "utf8")) as { devDependencies?: Record<string, string> };
+	const specs = [PROFILE_SPEC, QUALIFICATION_SPEC].map((relative) => readFileSync(path.join(root, findSpec(root, relative)), "utf8"));
 	return {
 		kit: JSON.parse(readFileSync(path.join(root, KIT), "utf8")) as Kit,
 		contract: JSON.parse(readFileSync(path.join(root, CONTRACT), "utf8")) as Contract,
-		spec: readFileSync(path.join(root, findProfileSpec(root)), "utf8"),
+		spec: specs.join("\n"),
+		document: readFileSync(path.join(root, DOCUMENT), "utf8"),
 		read: (relative) => {
 			const file = path.join(kitDir, relative);
 			return existsSync(file) ? new Uint8Array(readFileSync(file)) : undefined;
@@ -534,8 +693,11 @@ async function main(): Promise<void> {
 		console.error(`\nThe WASM host kit has ${failures.length} failures.`);
 		process.exit(1);
 	}
+	const applying = (profile: string) => input.kit.cases.filter((entry) => entry.appliesTo === profile).length;
 	console.error(
-		`WASM host kit: ${input.kit.cases.length} cases and ${Object.keys(input.kit.modules).length} modules check against ${input.contract.contract} ${input.contract.version}.`,
+		`WASM host kit: ${input.kit.cases.length} cases (${Object.keys(input.contract.profiles)
+			.map((profile) => `${applying(profile)} for ${profile}`)
+			.join(", ")}) and ${Object.keys(input.kit.modules).length} modules check against ${input.contract.contract} ${input.contract.version}.`,
 	);
 }
 

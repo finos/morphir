@@ -1,7 +1,9 @@
 ;; The bytes-echo guest with one change: before it answers a request, it
-;; grows its memory one page at a time until the host refuses a growth. The
-;; memory declares a maximum of 65536 pages, above the 256 MiB ceiling.
-;; Cases: bounds/grow-refused-then-respond
+;; grows its memory one page at a time until the host refuses a growth, and
+;; then answers as usual. The memory declares a maximum of 65536 pages, above
+;; the 256 MiB ceiling. On the byte profile the refused growth fails the
+;; session although handle returns.
+;; Cases: bounds/bytes-grow-refused
 (module
   (import "morphir_bytes_v1" "input_len" (func $input_len (result i32)))
   (import "morphir_bytes_v1" "input_byte" (func $input_byte (param i32) (result i32)))

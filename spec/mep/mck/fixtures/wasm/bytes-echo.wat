@@ -2,7 +2,7 @@
 ;; A message that contains "id" is a request and is answered with its own
 ;; bytes; a message that contains morphir.exit returns 0; any other message
 ;; is a notification and returns -2.
-;; Cases: bytes/echo, bytes/notification-consumed
+;; Cases: bytes/echo, bytes/notification-consumed, classification/bytes-profile-unsupported
 (module
   (import "morphir_bytes_v1" "input_len" (func $input_len (result i32)))
   (import "morphir_bytes_v1" "input_byte" (func $input_byte (param i32) (result i32)))

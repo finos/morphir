@@ -1,6 +1,7 @@
 ;; An extism-kernel-v1 guest that calls WASI path_open for /etc/passwd on
-;; fd 3 and answers {"jsonrpc":"2.0","id":1,"result":"t"} when the call
-;; returned a non-zero errno, "f" otherwise.
+;; fd 3, where a preopened directory would be, and answers
+;; {"jsonrpc":"2.0","id":1,"result":"t"} when the call returned errno 8
+;; (badf), "f" otherwise.
 ;; Cases: sandbox/path-open
 (module
   (import "extism:host/env" "alloc" (func $alloc (param i64) (result i64)))
@@ -26,8 +27,10 @@
         (br $copy)))
     (local.get $h))
   (func (export "handle") (result i32)
-    (if (call $path_open (i32.const 3) (i32.const 0) (i32.const 0) (i32.const 11) (i32.const 0)
-          (i64.const 0) (i64.const 0) (i32.const 0) (i32.const 64))
+    (if (i32.eq
+          (call $path_open (i32.const 3) (i32.const 0) (i32.const 0) (i32.const 11) (i32.const 0)
+            (i64.const 0) (i64.const 0) (i32.const 0) (i32.const 64))
+          (i32.const 8))
       (then (i32.store8 (i32.const 1058) (i32.const 116))))
     (call $output_set (call $block (i32.const 1024) (i32.const 37)) (i64.const 37))
     (i32.const 0)))

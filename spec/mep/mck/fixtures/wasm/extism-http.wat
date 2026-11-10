@@ -1,5 +1,6 @@
 ;; An extism-kernel-v1 guest that calls http_request for GET
-;; https://example.org/, ignores what it returns, and answers with
+;; https://example.org/. The host stops the call there, so the guest never
+;; answers; a host that let http_request return would get the answer
 ;; {"jsonrpc":"2.0","id":1,"result":"done"}.
 ;; Cases: sandbox/http-request
 (module

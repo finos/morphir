@@ -288,7 +288,7 @@ $ morphir mck mep guest-run \
 <tr><td>Classification</td><td>A byte-profile module on a host without that profile</td><td><code>extension.abi_unsupported</code>, profile named</td></tr>
 <tr><td>Bounds</td><td>Loops forever</td><td>Stopped by the budget on a metering host, by the deadline otherwise, and in either case no later than the deadline</td></tr>
 <tr><td>Bounds</td><td>Grows one page at a time, then traps</td><td><code>extension.memory_limit</code></td></tr>
-<tr><td>Sandbox</td><td>Calls <code>http_request</code>, returns the result</td><td>Failure returned to the guest, URL recorded, session continues</td></tr>
+<tr><td>Sandbox</td><td>Calls <code>http_request</code>, returns the result</td><td>URL recorded as guest output, call stopped, session fails</td></tr>
 <tr><td>Sandbox</td><td>Calls WASI <code>path_open</code> on <code>/etc/passwd</code></td><td>Error code, session continues</td></tr>
 </tbody></table></div>
 <p>One limit is worth stating. A module that only computes cannot tell the budget from the deadline: on a metering host the budget always ends a busy loop first. The corpus therefore checks the property users depend on, that a runaway guest is stopped no later than its deadline, and records which bound stopped it. A metering host's deadline is observed only where the budget is not enforced.</p>
