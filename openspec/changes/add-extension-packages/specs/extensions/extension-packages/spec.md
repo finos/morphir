@@ -25,26 +25,26 @@ Terms used on this page:
 | entry point | The tree path of the file a host starts. |
 | tree manifest | The canonical text that lists the tree. |
 | tree digest | The SHA-256 of the tree manifest's bytes. |
-| package drafts | The first versions of the descriptor, index record, catalog and extension lock that carry `package`. |
+| package version | The first version of the extension state family whose schemas carry `package`. |
 | published package | A tree at its place in the store, `store/extensions/packages/sha256/<tree digest>/`. |
 
-Entry names are ASCII in this draft. That removes Unicode normalization, unassigned code points and Unicode case mapping from the unpacking rules. The maintainer may lift the limit in a later draft.
+Entry names are ASCII in this version. That removes Unicode normalization, unassigned code points and Unicode case mapping from the unpacking rules. The maintainer may lift the limit in a later version.
 
-The package drafts depend on the order in which this change and finos/morphir#1149 are delivered. Task 1.1 fixes them by this rule:
+The descriptor, index record, catalog and extension lock belong to the extension state family, which has one version carried by a `$schema` URL (maintainer, Decision 15, 10 November 2026). The package version depends on the order in which this change and finos/morphir#1149 are delivered. Task 1.1 fixes it by this rule:
 
-| Outcome | When | Descriptor, index record, catalog | Extension lock |
+| Outcome | When | Package version | Its schema URLs |
 | --- | --- | --- | --- |
-| `PKGVER-A` | No released host, publisher or tool reads or writes #1149's drafts, and no repository outside TEST-ONLY fixtures holds a document at them, when this change is approved | `2.0.0-draft.3`, refined in place | `2.0.0-draft.1`, refined in place |
-| `PKGVER-B` | Otherwise | `2.0.0-draft.4` | `2.0.0-draft.2` |
+| `PKGVER-A` | The family's `0.1.0-preview.1` schemas are not yet published, and no released host, publisher or tool reads or writes `0.1.0-preview.1`, when this change is approved | `0.1.0-preview.1`, defined together with #1149 | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/<file>.schema.json` |
+| `PKGVER-B` | Otherwise | `0.1.0-preview.2` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/<file>.schema.json` |
 
-A host built against #1149's drafts without this change refuses a package under either outcome, because `package` is always listed in `critical`.
+A host built against #1149 without this change refuses a package under either outcome, because `package` is always listed in `critical`.
 
 A worked example: morphir-dotnet's F# frontend `org.finos.morphir.fsharp-frontend` 0.6.0 for `x86_64-pc-windows-msvc` is a self-contained .NET program of about 239 files and 121 MB. It is published as `fsharp-frontend-0.6.0-win-x64.zip`, a package with entry point `morphir-fsharp-frontend.exe`.
 
 ## ADDED Requirements
 
 ### Requirement: A package is declared by its descriptor artifact
-A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of the package drafts SHALL refuse a `package` member on any other runtime with `package.runtime`.
+A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of the package version SHALL refuse a `package` member on any other runtime with `package.runtime`.
 
 #### Scenario: A process package
 - **WHEN** a descriptor artifact has `runtime` `process`, `filename` `fsharp-frontend-0.6.0-win-x64.zip` and a `package` member with `format` `zip`, `entryPoint` `morphir-fsharp-frontend.exe` and a `treeSha256`
@@ -54,19 +54,26 @@ A release descriptor artifact SHALL be a package when it has a `package` member,
 - **WHEN** a descriptor artifact has `runtime` `wasm` and a `package` member
 - **THEN** the reader refuses the descriptor with `package.runtime`
 
+### Requirement: The family's published schemas carry the package member
+The published schemas of the release descriptor, index record, catalog and extension lock at the package version SHALL define the `package` member, its members and their types. A document that carries `package` SHALL be valid against them.
+
+#### Scenario: A package descriptor validates
+- **WHEN** an editor validates the F# frontend's `release.json` against the schema its `$schema` names
+- **THEN** the schema accepts its `package` member with `format`, `root`, `entryPoint` and `treeSha256`
+
 ### Requirement: A document that carries a package lists it as critical
-A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of the package drafts SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
+A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of the package version SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
 
 #### Scenario: A host built without this change meets a package
-- **WHEN** a host that reads #1149's `2.0.0-draft.3` without this change reads a draft.3 descriptor whose artifact has `package` and whose `critical` lists `artifacts.package`
+- **WHEN** a host that implements the family version without this change reads a descriptor at that version whose artifact has `package` and whose `critical` lists `artifacts.package`
 - **THEN** it refuses the descriptor as naming a critical member it does not understand, and stores and starts nothing
 
 #### Scenario: A package that is not marked critical
-- **WHEN** a reader of the package drafts reads a descriptor with a `package` member and no `artifacts.package` in `critical`
+- **WHEN** a reader of the package version reads a descriptor with a `package` member and no `artifacts.package` in `critical`
 - **THEN** it refuses the descriptor with `package.not_critical`
 
 ### Requirement: A single-file artifact is the executable itself
-An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of the package drafts SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
+An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of the package version SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
 
 #### Scenario: A raw executable is unchanged
 - **WHEN** a descriptor lists the process artifact `morphir-scala-elm-linux-amd64-0.5.0-M13`, a raw executable, with no `package` member
@@ -167,8 +174,8 @@ Before the entry rules, a host SHALL ignore an entry whose name is exactly `./`,
 - **WHEN** a `tar.gz` archive made by `tar -C dist -czf x.tgz .` holds `./`, `./run` and `./lib/a.dll`
 - **THEN** the host reads the entries `run` and `lib/a.dll`
 
-### Requirement: Entry names are ASCII in this draft
-Every byte of an entry name SHALL be from `0x20` to `0x7E`. A host SHALL refuse a name with a byte of `0x80` or more with `package.non_ascii_name`, whatever the archive's flags say about its encoding. This is a limit of this draft, not of Morphir paths in general.
+### Requirement: Entry names are ASCII in this version
+Every byte of an entry name SHALL be from `0x20` to `0x7E`. A host SHALL refuse a name with a byte of `0x80` or more with `package.non_ascii_name`, whatever the archive's flags say about its encoding. This is a limit of this version, not of Morphir paths in general.
 
 #### Scenario: A non-ASCII name
 - **WHEN** an archive holds `notes/café.txt`
@@ -189,7 +196,7 @@ A host SHALL refuse a component that contains a byte below `0x20`, `0x7F`, or on
 - **THEN** the host refuses them with `package.device_name`, `package.device_name`, `package.trailing_dot_or_space`, `package.trailing_dot_or_space` and `package.reserved_character`
 
 ### Requirement: Entry paths are bounded
-An entry name SHALL have at most 240 bytes, and each component at most 255. A tree path SHALL have at most 120 bytes and 16 components. A host SHALL refuse a longer name or tree path with `package.path_length`, and a deeper tree path with `package.nesting_depth`. In this draft a byte and a UTF-16 code unit are the same count.
+An entry name SHALL have at most 240 bytes, and each component at most 255. A tree path SHALL have at most 120 bytes and 16 components. A host SHALL refuse a longer name or tree path with `package.path_length`, and a deeper tree path with `package.nesting_depth`. With ASCII names a byte and a UTF-16 code unit are the same count.
 
 #### Scenario: A tree path one past the limit
 - **WHEN** an archive holds a file whose tree path has 121 bytes, and another whose tree path has 17 components
@@ -263,11 +270,11 @@ The artifact's `sha256` SHALL be the SHA-256 of the archive's bytes. `package.tr
 - **THEN** its extension lock records the archive's SHA-256 as the artifact digest and the descriptor's `package` member, including `treeSha256`
 
 ### Requirement: The tree manifest is canonical text
-The tree manifest SHALL be ASCII text without a byte order mark: the line `morphir-package-tree 1`, then one line per file in ascending byte order of its tree path. Each file line SHALL be its kind (`x` for executable, `f` otherwise), its size in decimal without leading zeros (`0` for an empty file), its SHA-256 in lowercase hexadecimal and its tree path, separated by one space. Every line SHALL end with one LF. A reader SHALL split a line at its first three spaces only.
+The tree manifest SHALL be ASCII text without a byte order mark: the line `morphir-package-tree <package version>`, then one line per file in ascending byte order of its tree path. Each file line SHALL be its kind (`x` for executable, `f` otherwise), its size in decimal without leading zeros (`0` for an empty file), its SHA-256 in lowercase hexadecimal and its tree path, separated by one space. Every line SHALL end with one LF. A reader SHALL split a line at its first three spaces only.
 
 #### Scenario: A tree with an empty file and a space in a name
 - **WHEN** a tree holds `run` (5 bytes, executable), `lib/a.dll` (3 bytes) and `docs/read me.txt` (0 bytes)
-- **THEN** its manifest is `morphir-package-tree 1`, then `f 0 <sha256 of empty> docs/read me.txt`, then `f 3 <sha256 of a.dll> lib/a.dll`, then `x 5 <sha256 of run> run`, each followed by LF
+- **THEN** its manifest is `morphir-package-tree 0.1.0-preview.1`, then `f 0 <sha256 of empty> docs/read me.txt`, then `f 3 <sha256 of a.dll> lib/a.dll`, then `x 5 <sha256 of run> run`, each followed by LF
 
 ### Requirement: The tree digest covers paths, bytes and executable flags only
 A file's kind SHALL be `x` when its tree path is the entry point or is listed in `package.executables`, and `f` otherwise. A file's SHA-256 SHALL be computed over its bytes after decompression, with line endings and encodings untouched. No owner, group, timestamp, permission bit or extended attribute from the archive SHALL affect the manifest.
@@ -393,7 +400,7 @@ A package SHALL NOT change who is trusted. A host MAY conclude from a verified p
 - **THEN** the host treats the release as unauthenticated developer content, and the signature grants nothing
 
 ### Requirement: A host that cannot install packages refuses them
-A host that reads the package drafts but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
+A host that reads the package version but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
 
 #### Scenario: A host without package support
 - **WHEN** a host without package support selects the F# frontend's package artifact

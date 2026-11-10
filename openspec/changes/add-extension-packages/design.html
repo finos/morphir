@@ -55,12 +55,17 @@ svg .edge { stroke: var(--muted); fill: none; }
 <p>Maintainer decisions of 9 November 2026 that bind this design:</p>
 <ul>
 <li>the shared extension contract is extended so that an extension can be a multi-file package (<a href="https://github.com/finos/morphir/issues/1146">finos/morphir#1146</a>, the comment on the installed form of a multi-file extension);</li>
-<li>the Rust CLI is legacy: work goes to the morphir-dotnet and morphir-moonbit hosts, and Rust is optional later work that gates nothing;</li>
+<li>the Rust CLI is legacy: work goes to the morphir-dotnet and morphir-moonbit hosts (on 10 November the maintainer went further, below);</li>
 <li>transient pre-1.0 document formats are not read or converted;</li>
 <li>one installed catalog for every extension id (finos/morphir#1149);</li>
 <li>MEP <code>0.1</code> is not supported; the supported protocol is the 0.2 line;</li>
 <li>publisher authentication and claim checks are separate facts, and a checksum is integrity, not authentication;</li>
-<li>NFC in the toolchain contracts is Unicode Normalization Form C as defined by Unicode 17.0.0 (<a href="https://github.com/finos/morphir/issues/1146#issuecomment-6760173619">finos/morphir#1146</a>). This draft keeps package entry names ASCII, so that decision says how a later draft would normalize, not something this one needs (<a href="#ext-1">EXT-1</a>).</li>
+<li>NFC in the toolchain contracts is Unicode Normalization Form C as defined by Unicode 17.0.0 (<a href="https://github.com/finos/morphir/issues/1146#issuecomment-6760173619">finos/morphir#1146</a>). This version keeps package entry names ASCII, so that decision says how a later version would normalize, not something this one needs (<a href="#ext-1">EXT-1</a>).</li>
+</ul>
+<p>Maintainer decisions of 10 November 2026 (<a href="https://github.com/finos/morphir/issues/1146">finos/morphir#1146</a>):</p>
+<ul>
+<li>Decision 15: one preview version per contract family, <code>0.1.0-preview.1</code>, carried by a required <code>$schema</code> member whose value is the URL of the file's published schema, <code>https://morphir.finos.org/schemas/&lt;family&gt;/&lt;version&gt;/&lt;file&gt;.schema.json</code>. No document has a <code>schemaVersion</code>, a reader matches the URL exactly, and a change takes the next <code>preview.N</code> (<a href="#ver-1">VER-1</a>);</li>
+<li>Decision 16: the Rust CLI is to be deleted from finos/morphir. This change plans no Rust reader or writer (<a href="#repo-1">REPO-1</a>).</li>
 </ul>
 
 <nav class="toc" aria-label="Contents">
@@ -70,7 +75,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li><a href="#decisions">Decisions</a>
 <ul>
 <li><a href="#pkg-1">PKG-1. A package is an artifact with a package member</a></li>
-<li><a href="#ver-1">VER-1. Which drafts carry packages</a></li>
+<li><a href="#ver-1">VER-1. Which version carries packages</a></li>
 <li><a href="#tree-1">TREE-1. The tree manifest and two digests</a></li>
 <li><a href="#rd-1">RD-1. How an archive's entries are read</a></li>
 <li><a href="#ext-1">EXT-1. Safe unpacking, as refusals with stable codes</a></li>
@@ -141,7 +146,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li>Non-ASCII entry names, symbolic links inside a package, and archive formats other than ZIP and gzip-compressed tar.</li>
 <li>Sharing files between packages, deduplicating them, or applying patches between versions.</li>
 <li>Any change to who is trusted, to how a repository or recipe is authenticated, or to the claim check.</li>
-<li>Keeping the released Rust CLI working, or reading earlier drafts.</li>
+<li>Keeping the released Rust CLI working, or reading earlier versions.</li>
 <li>Edits to the toolchain contracts. <a href="#tc-1">TC-1</a> lists their follow-up as tasks.</li>
 </ul>
 
@@ -152,7 +157,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <h3 id="pkg-1">PKG-1. A package is an artifact with a package member</h3>
 <p>The release job has a published folder and must describe it in <code>release.json</code>.</p>
 <pre><code class="language-json">{
-  "schemaVersion": "&lt;the package draft&gt;",
+  "$schema": "https://morphir.finos.org/schemas/extensions/&lt;the package version&gt;/release.schema.json",
   "extensionId": "org.finos.morphir.fsharp-frontend",
   "critical": ["artifacts.package"],
   "artifacts": [ {
@@ -173,51 +178,52 @@ svg .edge { stroke: var(--muted); fill: none; }
 <p><strong>Decision.</strong></p>
 <ul>
 <li><strong>The member.</strong> An artifact is a package when it has a <code>package</code> member, and a single-file artifact otherwise. <code>package</code> has <code>format</code>, <code>entryPoint</code> and <code>treeSha256</code>, and optionally <code>root</code> and <code>executables</code>.</li>
-<li><strong>Always critical.</strong> A descriptor or index record with a package lists <code>artifacts.package</code> in <code>critical</code>, and a catalog with a package entry lists <code>extensions.package</code>. A reader of the package drafts refuses a package that is not marked critical (<code>package.not_critical</code>).</li>
+<li><strong>Always critical.</strong> A descriptor or index record with a package lists <code>artifacts.package</code> in <code>critical</code>, and a catalog with a package entry lists <code>extensions.package</code>. A reader of the package version refuses a package that is not marked critical (<code>package.not_critical</code>).</li>
 <li><strong>Formats.</strong> <code>format</code> is <code>zip</code> or <code>tar.gz</code>, and the file name ends in <code>.zip</code>, or in <code>.tar.gz</code> or <code>.tgz</code>, to match. Only <code>process</code> artifacts can be packages.</li>
 <li><strong>Single files.</strong> An artifact without <code>package</code> is the executable itself, read, stored, recorded and started as before. A process artifact without <code>package</code> whose name ends in <code>.zip</code>, <code>.tar.gz</code>, <code>.tgz</code> or <code>.tar</code> is refused (<code>package.archive_without_package</code>): it was never something a host could run.</li>
-<li><strong>Hosts without package support.</strong> A host that reads the package drafts but cannot install packages refuses a package with <code>package.unsupported</code>.</li>
+<li><strong>Hosts without package support.</strong> A host that reads the package version but cannot install packages refuses a package with <code>package.unsupported</code>.</li>
 </ul>
-<p><strong>Why <code>critical</code> is required.</strong> This closes the most serious gap of the first revision. The descriptor, record and catalog are must-ignore-unless-critical documents. Under <code>PKGVER-A</code> the package drafts are #1149's drafts refined in place, and finos/morphir-dotnet#567 is being built against those drafts now. Without <code>critical</code>, a build that implements #1149 but not this change would read a draft.3 descriptor and ignore <code>package</code>. It would then take <code>fsharp-frontend-0.6.0-win-x64.zip</code> as a single-file process artifact, store it, and start the archive as the program. With <code>critical</code>, that host refuses the document by rule 1, under either version outcome, before it stores anything. Rule 3 already uses the same mechanism for <code>requires.host</code>.</p>
+<p><strong>Why <code>critical</code> is required.</strong> This closes the most serious gap of the first revision. The descriptor, record and catalog are must-ignore-unless-critical documents. Under <code>PKGVER-A</code> the package version is the family's <code>0.1.0-preview.1</code>, which #1149 also defines, and finos/morphir-dotnet#567 is being built against #1149 now. Without <code>critical</code>, a build that implements #1149 but not this change would read a descriptor at that version and ignore <code>package</code>. It would then take <code>fsharp-frontend-0.6.0-win-x64.zip</code> as a single-file process artifact, store it, and start the archive as the program. With <code>critical</code>, that host refuses the document by rule 1, under either version outcome, before it stores anything. Rule 3 already uses the same mechanism for <code>requires.host</code>.</p>
 <p><strong>The two existing single-file shapes.</strong> Both are named in <code>.config/published-extension-bundles.toml</code>:</p>
 <ul>
 <li><strong>A raw executable</strong>, such as morphir-scala-elm. It needs no change, and a recipe binds the executable file itself.</li>
-<li><strong>One executable shipped inside an archive</strong>, such as morphir-elm 0.4.1's <code>.tgz</code>. It had no runnable meaning before: publication refused it, and a host that stored it would have started the archive. To be installed by a current host it is published with a <code>package</code> member naming its one executable, a one-file package. Under #1149 it must be published again at a new draft anyway. #1150's Decision 13 makes morphir-dotnet's bundle authoring the publisher of that republication, so the <code>package</code> member travels with it rather than adding a second one, and that publisher writes it.</li>
+<li><strong>One executable shipped inside an archive</strong>, such as morphir-elm 0.4.1's <code>.tgz</code>. It had no runnable meaning before: publication refused it, and a host that stored it would have started the archive. To be installed by a current host it is published with a <code>package</code> member naming its one executable, a one-file package. Under #1149 it must be published again at the family version anyway. #1150's Decision 13 makes morphir-dotnet's bundle authoring the publisher of that republication, so the <code>package</code> member travels with it rather than adding a second one, and that publisher writes it.</li>
 </ul>
 <p><strong>Why these formats.</strong> They are the two forms the toolchain recipes already bind (<code>.zip</code> on Windows, <code>.tgz</code> elsewhere), and the forms both the Rust tool extractor and the .NET base class library read. A third format would add a reader to every host for no artifact that needs it.</p>
 <p><strong>Why an explicit member, not the file name.</strong> With the member, a host reading the descriptor knows exactly what to do. With only a name, a host would have to guess.</p>
 
-<h3 id="ver-1">VER-1. Which drafts carry packages</h3>
-<p>The descriptor, the index record, the catalog and the extension lock all gain the <code>package</code> member. finos/morphir#1149 has already moved the same four documents to new drafts: the descriptor, record and catalog to <code>2.0.0-draft.3</code>, and the lock to <code>2.0.0-draft.1</code>. It merged on 10 November 2026 as an approved proposal (<code>9690dfc37</code>), but its tasks have not run.</p>
+<h3 id="ver-1">VER-1. Which version carries packages</h3>
+<p>The descriptor, the index record, the catalog and the extension lock all gain the <code>package</code> member. Under the maintainer's Decision 15 (10 November 2026) they belong to the extension state family, which has one version, carried by each document's required <code>$schema</code> URL. finos/morphir#1149, with the review fixes of finos/morphir#1150, defines that family's first version, <code>0.1.0-preview.1</code>, and publishes its seven schemas under <code>website/static/schemas/extensions/0.1.0-preview.1/</code> (#1150's task 1.7). #1149 merged on 10 November 2026 as an approved proposal (<code>9690dfc37</code>), but its tasks have not run.</p>
 <table>
-<thead><tr><th>Outcome</th><th>Drafts</th><th>Cost</th></tr></thead>
+<thead><tr><th>Outcome</th><th>Version</th><th>Cost</th></tr></thead>
 <tbody>
-<tr><td><code>PKGVER-A</code>: one bump covering both changes</td><td>Refine #1149's <code>2.0.0-draft.3</code> and lock <code>2.0.0-draft.1</code> in place to add <code>package</code></td><td>
+<tr><td><code>PKGVER-A</code>: one version covering both changes</td><td><code>0.1.0-preview.1</code>, with <code>package</code> in its definition and in its schemas from the first publication</td><td>
 <ul>
-<li>#1149's sentence "<code>2.0.0-draft.3</code> differs from <code>2.0.0-draft.2</code> only in the id grammar" gains "and the <code>package</code> member".</li>
-<li>#1149's page work (its task 1.4) and this change's (task 1.2) land together.</li>
-<li>The .NET installer builds against one set of drafts once, and the F# guests are published once.</li>
+<li>#1149's id grammar and this change's <code>package</code> member define one version together.</li>
+<li>#1149's page work (its task 1.4) and schemas (#1150's task 1.7) land with this change's (tasks 1.2 and 1.5).</li>
+<li>The .NET installer builds against one version once, and the F# guests are published once.</li>
 </ul></td></tr>
-<tr><td><code>PKGVER-B</code>: a following draft</td><td>Descriptor, record and catalog at <code>2.0.0-draft.4</code>; lock at <code>2.0.0-draft.2</code></td><td>
+<tr><td><code>PKGVER-B</code>: the next preview</td><td><code>0.1.0-preview.2</code> for the whole family, with all seven schemas published again under <code>0.1.0-preview.2/</code></td><td>
 <ul>
 <li>#1149 proceeds alone.</li>
-<li>Readers read only the current drafts, so everything written at draft.3 is written again at draft.4, and every host implements two successive drafts.</li>
-<li>Every home a current host has written then holds old state. Under #1150's Decision 10 a host offers to move it to a marked backup, or the user runs <code>morphir doctor --fix</code>, so every user of a draft.3 host reinstalls once.</li>
+<li>Readers match the schema URL exactly, so everything written at preview.1 is written again at preview.2, and every host implements two successive versions.</li>
+<li>Every home a current host has written then holds old state. Under #1150's Decision 10 a host offers to move it to a marked backup, or the user runs <code>morphir doctor --fix</code>, so every user of a preview.1 host reinstalls once.</li>
 </ul></td></tr>
 </tbody>
 </table>
 <p><strong>Decision.</strong> Choose by a fact that can be checked. <code>PKGVER-A</code> applies when this change is approved only if both of these hold:</p>
 <ul>
-<li>no released host, publisher or tool reads or writes #1149's drafts;</li>
-<li>no repository outside TEST-ONLY fixtures holds a document at them.</li>
+<li>the family's <code>0.1.0-preview.1</code> schemas are not yet published, that is, not yet merged under <code>website/static/schemas/extensions/0.1.0-preview.1/</code>;</li>
+<li>no released host, publisher or tool reads or writes <code>0.1.0-preview.1</code>.</li>
 </ul>
-<p>Otherwise <code>PKGVER-B</code> applies. "Released" means a tagged release, a published package (NuGet included) or a release asset. Test fixtures, merged examples and unreleased builds do not count. Task 1.1 lists the release pages and repositories it checks and what it found. The spec says "the package drafts" throughout, so it holds in either order.</p>
-<p><strong>Why this rule is now about cost only.</strong> Before <code>critical</code> was required, the outcome decided safety: a released reader of unrefined draft.3 would have run an archive. That hazard came from a released reader, not from a published document, which is why "released" is part of the definition. With <code>package</code> always critical, a reader that does not understand it refuses it under either outcome. The rule only decides whether hosts implement one draft or two. Refining a draft before anything released reads it is what <code>AGENTS.md</code> allows.</p>
+<p>Otherwise <code>PKGVER-B</code> applies. "Released" means a tagged release, a published package (NuGet included) or a release asset. Test fixtures, merged examples and unreleased builds do not count. Task 1.1 lists the release pages and the schema directory it checks and what it found. The spec says "the package version" throughout, so it holds in either order.</p>
+<p><strong>Why publication is the test.</strong> Under Decision 15 a document names its version by a URL, and a reader matches the URL exactly. Once a schema is served at its URL, any document anywhere may cite it, so changing what that URL defines would change the meaning of documents already written. That is why <code>AGENTS.md</code> sends a change to the next <code>preview.N</code>. Before publication nothing can cite the URL, so #1149 and this change can still define <code>0.1.0-preview.1</code> together. The earlier rule's check for documents in repositories outside test fixtures is covered by the same test, because such a document would cite a URL that does not yet resolve.</p>
+<p><strong>Why this rule is about cost only.</strong> Before <code>critical</code> was required, the outcome decided safety: a released reader of the version without <code>package</code> would have run an archive. That hazard came from a released reader, which is why "released" is part of the definition. With <code>package</code> always critical, a reader that does not understand it refuses it under either outcome. The rule only decides whether hosts implement one version or two.</p>
 
 <h3 id="tree-1">TREE-1. The tree manifest and two digests</h3>
 <p>The release job now needs the value of <code>treeSha256</code>, and every installer must compute the same bytes from the same archive.</p>
 <p><strong>Decision.</strong> The tree manifest is ASCII text without a byte order mark. It has a header line, then one line per file in ascending byte order of its tree path. Each file line holds the kind, the size, the SHA-256 and the path, separated by single spaces, and every line ends with one LF:</p>
-<pre><code class="language-console">morphir-package-tree 1
+<pre><code class="language-console">morphir-package-tree 0.1.0-preview.1
 f 1153536 4a1f…e2 FSharp.Compiler.Service.dll
 f 1062912 9bc0…7d FSharp.Core.dll
 …
@@ -225,6 +231,7 @@ x 152576 07d3…a9 morphir-fsharp-frontend.exe
 …
 f 4096 c51e…10 zh-Hant/FSharp.Core.resources.dll</code></pre>
 <ul>
+<li><strong>Header.</strong> <code>morphir-package-tree</code>, one space, and the package version, which is the extension state family version (<a href="#ver-1">VER-1</a>): <code>0.1.0-preview.1</code> under <code>PKGVER-A</code>, as shown, or <code>0.1.0-preview.2</code> under <code>PKGVER-B</code>. The manifest has no version of its own. So each new family version changes every tree digest, which costs nothing extra, because every document is written again at a new version anyway.</li>
 <li><strong>Kind.</strong> <code>x</code> when the path is the entry point or is listed in <code>executables</code>, otherwise <code>f</code>. It comes from the descriptor, never from the archive, so the digest is the same on every platform and for archives made on Windows, which carry no Unix modes.</li>
 <li><strong>Size.</strong> Decimal without leading zeros; an empty file is <code>0</code>.</li>
 <li><strong>Digest.</strong> The SHA-256 is lowercase hexadecimal, over the file's bytes after decompression, with line endings and encodings untouched.</li>
@@ -345,7 +352,7 @@ f 4096 c51e…10 zh-Hant/FSharp.Core.resources.dll</code></pre>
 <li><code>package.tree_changed</code>, at activation (<a href="#vfy-1">VFY-1</a>).</li>
 </ul>
 <p>The first revision had a <code>file_count</code> code. It could never be the first refusal: every file is an entry, both limits were 4096, and <code>entry_count</code> came first. So it is gone.</p>
-<p><strong>ASCII names, as a limit of this draft.</strong> Entry names are ASCII from <code>0x20</code> to <code>0x7E</code>, and case collision is ASCII case folding, as the table defines it. The pinned Unicode version says how to normalize. It does not require non-ASCII names in packages, and the F# frontend has none (<span class="tag">assumption</span>, task 2.1). Without Unicode in the security core, three things disappear, along with the Unicode data every host would ship:</p>
+<p><strong>ASCII names, as a limit of this version.</strong> Entry names are ASCII from <code>0x20</code> to <code>0x7E</code>, and case collision is ASCII case folding, as the table defines it. The pinned Unicode version says how to normalize. It does not require non-ASCII names in packages, and the F# frontend has none (<span class="tag">assumption</span>, task 2.1). Without Unicode in the security core, three things disappear, along with the Unicode data every host would ship:</p>
 <ul>
 <li>normalization, and with it the question of names that are not NFC;</li>
 <li>code points that Unicode 17.0.0 leaves unassigned, which a later file system could fold;</li>
@@ -558,16 +565,16 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <h3 id="repo-1">REPO-1. Delivery order</h3>
 <svg viewBox="0 0 900 200" role="img" aria-labelledby="repo-title repo-desc">
 <title id="repo-title">Delivery order across repositories</title>
-<desc id="repo-desc">First finos/morphir publishes the rule page, the cases and the shared-file definitions. Then morphir-dotnet implements the installer and publishes the F# frontend as a package. Then the MoonBit host adopts the rules. Then the toolchain contracts bind packages. Rust is optional later work.</desc>
+<desc id="repo-desc">First finos/morphir publishes the rule page, the cases and the shared-file definitions. Then morphir-dotnet implements the installer and publishes the F# frontend as a package. Then the MoonBit host adopts the rules. Then the toolchain contracts bind packages. There is no Rust work: the Rust CLI is to be deleted.</desc>
 <rect class="box" x="10" y="20" width="190" height="70" rx="6"/><text x="20" y="45">1. finos/morphir</text><text x="20" y="65">rule page, cases,</text><text x="20" y="82">shared files</text>
 <rect class="box" x="235" y="20" width="190" height="70" rx="6"/><text x="245" y="45">2. morphir-dotnet</text><text x="245" y="65">installer, F# frontend</text><text x="245" y="82">as a package</text>
 <rect class="box" x="460" y="20" width="190" height="70" rx="6"/><text x="470" y="45">3. MoonBit host</text><text x="470" y="65">rules and cases</text>
 <rect class="box" x="685" y="20" width="205" height="70" rx="6"/><text x="695" y="45">4. toolchain contracts</text><text x="695" y="65">binding final,</text><text x="695" y="82">fixtures as packages</text>
-<rect class="box" x="685" y="120" width="205" height="55" rx="6"/><text x="695" y="143">optional, gates nothing:</text><text x="695" y="162">Rust library and CLI</text>
+<rect class="box" x="685" y="120" width="205" height="55" rx="6"/><text x="695" y="143">no Rust work:</text><text x="695" y="162">Rust CLI to be deleted</text>
 <path class="edge" d="M200 55 L235 55 M425 55 L460 55 M650 55 L685 55"/>
 </svg>
 <ol>
-<li><strong>finos/morphir.</strong> This change is approved. The normative package page and its cases land, and <code>distribution-and-acquisition.md</code> defines the <code>package</code> member in the descriptor, record, catalog and lock at the package drafts (<a href="#ver-1">VER-1</a>).</li>
+<li><strong>finos/morphir.</strong> This change is approved. The normative package page and its cases land, and <code>distribution-and-acquisition.md</code> defines the <code>package</code> member in the descriptor, record, catalog and lock at the package version, and the family's published schemas carry it (<a href="#ver-1">VER-1</a>).</li>
 <li><strong>finos/morphir-dotnet.</strong> The installer of finos/morphir-dotnet#567 installs, verifies, starts and collects packages, and runs the cases. The F# frontend is published as a package for each platform, the installer plan's adoption task 3.3.
 <ul>
 <li>The plan's ARC-1 ASCII rule stays.</li>
@@ -577,7 +584,7 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <li><strong>MoonBit host.</strong> Its owning repository adopts the rules and runs the cases. Until then it refuses packages with <code>package.unsupported</code>.</li>
 <li><strong>Toolchain contracts in finos/morphir</strong> (<a href="#tc-1">TC-1</a>).</li>
 </ol>
-<p><strong>Optional later work, gating nothing.</strong> finos/morphir-rust's <code>morphir-distribution</code> could reuse its tool extractor for extension packages, with this change's rules, so that the Rust CLI could install them. Its publication path is not extended: under #1150's Decision 13 morphir-dotnet's bundle authoring publishes every extension at the new drafts, packages included, and the Rust writers stay as they are. No <code>ecosystem/morphir-rust</code> pin move is planned.</p>
+<p><strong>No Rust work.</strong> Under the maintainer's Decision 16 (10 November 2026) the Rust CLI is to be deleted from finos/morphir, so this change plans no Rust reader, installer or writer, and no <code>ecosystem/morphir-rust</code> pin move. Under #1150's Decision 13 morphir-dotnet's bundle authoring publishes every extension at the family version, packages included.</p>
 
 <h3 id="alternatives">Alternatives not chosen</h3>
 <table>
@@ -585,11 +592,11 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <tbody>
 <tr><td>A self-unpacking single-file F# frontend (<code>PublishSingleFile</code> with <code>IncludeAllContentForSelfExtract</code>), the installer plan's Option A</td><td>Not taken by the maintainer. It needs a second publish profile and a qualification task, plus an extraction directory outside the verified store whose files are never rehashed. It writes about 121 MB at the first start of each extraction directory, and it fixes one guest only.</td></tr>
 <tr><td>Leave the Native AOT offering without an installable F# frontend</td><td>Not taken by the maintainer. That offering has no built-in F# frontend, so it could not compile F# at all.</td></tr>
-<tr><td>Leave <code>package</code> optional to mark as critical</td><td>A host built against #1149's drafts without this change would start the archive as the program (<a href="#pkg-1">PKG-1</a>).</td></tr>
+<tr><td>Leave <code>package</code> optional to mark as critical</td><td>A host built against #1149 without this change would start the archive as the program (<a href="#pkg-1">PKG-1</a>).</td></tr>
 <tr><td>Archive digest only</td><td>An unpacked tree could not be checked without keeping or re-downloading the archive (<a href="#tree-1">TREE-1</a>).</td></tr>
 <tr><td>Tree digest only</td><td>Repositories and recipes authenticate the archive as a TUF target; dropping its digest would break that binding.</td></tr>
 <tr><td>A per-file list in the descriptor</td><td>The same information as the manifest, but it makes the descriptor large and defines the hashed bytes twice.</td></tr>
-<tr><td>Non-ASCII NFC entry names, with Unicode 17.0.0 case-folding and uppercase collision keys</td><td>The first revision's rule. It puts normalization, unassigned code points and two Unicode case mappings into the security core, and requires every host to ship that data, for names no known package needs (<a href="#ext-1">EXT-1</a>). A later draft can add it (<a href="#later-names">below</a>).</td></tr>
+<tr><td>Non-ASCII NFC entry names, with Unicode 17.0.0 case-folding and uppercase collision keys</td><td>The first revision's rule. It puts normalization, unassigned code points and two Unicode case mappings into the security core, and requires every host to ship that data, for names no known package needs (<a href="#ext-1">EXT-1</a>). A later version can add it (<a href="#later-names">below</a>).</td></tr>
 <tr><td>Read ZIP entries in local-header order, or streaming</td><td>A crafted file can order its local headers differently from its central directory, and two readers would then report different first faults. The central directory is the only order every reader can find (<a href="#rd-1">RD-1</a>).</td></tr>
 <tr><td>Refuse zip64</td><td>Some writers emit zip64 records below 4 GiB, so validity would depend on the writer.</td></tr>
 <tr><td>Verify every file at every launch (<code>VERIFY-A</code>)</td><td>A fraction of a second to seconds on every compile, against a threat it does not stop (<a href="#vfy-1">VFY-1</a>). Kept as an option in <a href="#q-verify">Q-VERIFY</a>.</td></tr>
@@ -605,7 +612,8 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <tr><td>More formats (<code>tar.xz</code>, <code>tar.zst</code>, 7z)</td><td>A reader in every host for no artifact that needs it.</td></tr>
 <tr><td>Infer a package from the file name</td><td>A host would have to guess what an archive-named artifact means (<a href="#pkg-1">PKG-1</a>).</td></tr>
 <tr><td>Delete a package at uninstall</td><td>Unsafe while the package runs, and on Windows it fails on open files (<a href="#rem-1">REM-1</a>).</td></tr>
-<tr><td>A following draft regardless of timing (<code>PKGVER-B</code> always)</td><td>Costs a second draft in every host and a republication even when nothing released reads #1149's drafts (<a href="#ver-1">VER-1</a>).</td></tr>
+<tr><td>The next preview regardless of timing (<code>PKGVER-B</code> always)</td><td>Costs a second version in every host and a republication even when the family's preview.1 schemas are not yet published (<a href="#ver-1">VER-1</a>).</td></tr>
+<tr><td>A version of the tree manifest of its own, such as <code>morphir-package-tree 1</code></td><td>The manifest is part of the family's format, so under Decision 15 it carries the family version and changes with it (<a href="#tree-1">TREE-1</a>).</td></tr>
 </tbody>
 </table>
 
@@ -613,10 +621,10 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <table>
 <thead><tr><th>From</th><th>File and section</th><th>What it says</th><th>What this change needs</th></tr></thead>
 <tbody>
-<tr><td>finos/morphir#1149</td><td><code>openspec/changes/allow-dotted-extension-ids/specs/extensions/extension-identity/spec.md</code>, "The documents that can carry a dotted id are at new exact drafts"</td><td>"A writer SHALL write every release descriptor, repository index record and installed catalog at <code>2.0.0-draft.3</code>, and every extension lock at <code>2.0.0-draft.1</code> … <code>2.0.0-draft.3</code> differs from <code>2.0.0-draft.2</code> only in the id grammar"</td><td>Under <code>PKGVER-A</code>, "only in the id grammar" becomes "in the id grammar and the <code>package</code> member". Under <code>PKGVER-B</code>, nothing.</td></tr>
+<tr><td>finos/morphir#1149, as #1150 revises it for Decision 15</td><td><code>openspec/changes/allow-dotted-extension-ids/specs/extensions/extension-identity/spec.md</code>, "Every document of the family carries its current schema URL"</td><td>The extension state family has one version, <code>0.1.0-preview.1</code>, carried by a required <code>$schema</code> URL under <code>https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/</code>; readers match it exactly; #1150's task 1.7 publishes the seven schemas.</td><td>Under <code>PKGVER-A</code>, the definition of <code>0.1.0-preview.1</code> and its release, index-record, catalog and lock schemas include the <code>package</code> member before they are published. Under <code>PKGVER-B</code>, nothing in #1149; this change defines <code>0.1.0-preview.2</code>.</td></tr>
 <tr><td>finos/morphir#1149</td><td>the same spec, "Names derived from an id"</td><td>"The content-addressed artifact store SHALL NOT use the id in its paths."</td><td>The package store follows the same rule; nothing to change.</td></tr>
 <tr><td>finos/morphir#1149</td><td><code>tasks.md</code>, task 1.4</td><td>"Update <code>docs/design/draft/extensions/distribution-and-acquisition.md</code> so it defines, as the authority, the members and values of … the installed catalog …, the extension lock …, the transaction journal, the state lock …"</td><td>The <code>package</code> member is added to the catalog and lock that this task defines (this change's task 1.2). The lock is a closed document, so <code>package</code> must be in its definition.</td></tr>
-<tr><td>Review fixes to #1149 (finos/morphir#1150, <code>7f22dfea2</code>, <code>f7f53f14a</code>, <code>c4a683ce8</code>, <code>bc5a22cc8</code>, <code>e02238125</code>, <code>9e4474d70</code>, not merged)</td><td>spec "The lock primitive is a whole-file exclusive operating-system lock", "A lock file is opened so that a second host waits rather than fails", "Shared files are replaced through temporary files that readers ignore", "Old state is detected before recovery"; design DEF-3 and DEF-4</td><td>The state lock is <code>flock(LOCK_EX)</code> or a full-range <code>LockFileEx</code>, opened so a second host waits. Temporary files start with <code>.stage-</code>, and readers ignore entries starting with <code>.</code>.</td><td>The owner and lease files are opened and locked by the same rules, in shared form for the lease. The <code>.stage-</code> and <code>.trash-</code> names follow the dot rule. If #1150 is not merged, this change's task 1.2 states the calls and the opening rules itself.</td></tr>
+<tr><td>Review fixes to #1149 (finos/morphir#1150, <code>7f22dfea2</code>, <code>f7f53f14a</code>, <code>c4a683ce8</code>, <code>bc5a22cc8</code>, <code>e02238125</code>, <code>9e4474d70</code>, <code>6e1565019</code>, not merged)</td><td>spec "The lock primitive is a whole-file exclusive operating-system lock", "A lock file is opened so that a second host waits rather than fails", "Shared files are replaced through temporary files that readers ignore", "Old state is detected before recovery"; design DEF-3 and DEF-4</td><td>The state lock is <code>flock(LOCK_EX)</code> or a full-range <code>LockFileEx</code>, opened so a second host waits. Temporary files start with <code>.stage-</code>, and readers ignore entries starting with <code>.</code>.</td><td>The owner and lease files are opened and locked by the same rules, in shared form for the lease. The <code>.stage-</code> and <code>.trash-</code> names follow the dot rule. If #1150 is not merged, this change's task 1.2 states the calls and the opening rules itself.</td></tr>
 <tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/toolset-recipe.md</code> at <code>9e1f853b7</code>, the item "A multi-file extension is a package form that a separate change defines"</td><td>"the recipe's binding of the Native AOT offering's process frontend, one archive per platform in <code>artifactTarget</code>, is <strong>provisional</strong> on that change"</td><td>That binding becomes final, with the target being the artifact's file in either shape (<a href="#tc-1">TC-1</a>, task 4.1). The question M2 the first revision quoted was replaced by this item in <code>89f43a057</code>.</td></tr>
 <tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/index.md</code>, "Target paths"</td><td>The component rules and the Windows device names</td><td>The entry rules reuse the device-name rule, in its ASCII form.</td></tr>
 <tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/installation-receipt.md</code>, members table, <code>launch</code></td><td>"<code>program</code>, an absolute local path in the receipt platform's syntax, and fixed <code>args</code>"</td><td>For a package, <code>program</code> names the entry point in the published tree, and the receipt names the package for collection (task 4.2).</td></tr>
@@ -638,13 +646,13 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <tr><td>A guest descendant on Unix closes inherited descriptors, leaves its process group and outlives a killed host. Or, on Windows, a collection runs in the instant after a host crash.</td><td>Stated in <a href="#life-1">LIFE-1</a>. Both need an explicit collection at that moment, against a package no lock names.</td></tr>
 <tr><td>A real-time scanner holds a new file open during publication.</td><td>A bounded retry, then <code>package.publish_busy</code>, leaving the staging directory for cleanup.</td></tr>
 <tr><td>Unused packages fill the disk.</td><td>An explicit collection command; uninstall reports that the files stay until collection. A home with a toolchain receipt collects nothing until task 4.2.</td></tr>
-<tr><td>A real package needs a symbolic link or a non-ASCII name.</td><td>Refused with a clear code. A later draft can allow either.</td></tr>
-<tr><td>The F# guests are published at <code>PKGVER-B</code> after all.</td><td>The timing rule picks A whenever it is still possible (<a href="#ver-1">VER-1</a>).</td></tr>
+<tr><td>A real package needs a symbolic link or a non-ASCII name.</td><td>Refused with a clear code. A later version can allow either.</td></tr>
+<tr><td>The family's preview.1 schemas are published before this change is approved, so <code>PKGVER-B</code> applies.</td><td>The timing rule picks A whenever it is still possible (<a href="#ver-1">VER-1</a>). Under B every preview.1 home holds old state once, which Decision 10's backup handles.</td></tr>
 </tbody>
 </table>
 
 <h2 id="migration">Migration plan</h2>
-<p>Nothing is converted. Raw-executable single-file artifacts are unchanged. Process extensions that ship one executable inside an archive, such as morphir-elm, are published with a <code>package</code> member when they are next released at the new drafts, which #1149's republication requires anyway, by morphir-dotnet's bundle authoring (#1150's Decision 13). Publishers start writing packages at the package drafts once a host can install them; the first is the F# frontend. A host that reads the package drafts but does not yet install packages refuses them with <code>package.unsupported</code>, and a host that does not read them refuses them by <code>critical</code>. Rolling back a host leaves published packages in the store, where they occupy disk until a collection by a host that knows them. No existing home holds a package, so no home needs a migration step.</p>
+<p>Nothing is converted. Raw-executable single-file artifacts are unchanged. Process extensions that ship one executable inside an archive, such as morphir-elm, are published with a <code>package</code> member when they are next released at the family version, which #1149's republication requires anyway, by morphir-dotnet's bundle authoring (#1150's Decision 13). Publishers start writing packages at the package version once a host can install them; the first is the F# frontend. A host that reads the package version but does not yet install packages refuses them with <code>package.unsupported</code>, and a host that does not know <code>package</code> refuses it by <code>critical</code>. Rolling back a host leaves published packages in the store, where they occupy disk until a collection by a host that knows them. No existing home holds a package, so no home needs a migration step.</p>
 
 <h2 id="assumed">Assumed</h2>
 <table>
@@ -681,14 +689,14 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <p><strong>Recommendation:</strong> <code>LAUNCH-A</code>. Depends on it: the spec's "A host starts a package's entry point from the store", the lease and collection requirements, and tasks 2.2, 2.3 and 2.6.</p>
 
 <h3 id="later-names">Later: non-ASCII entry names</h3>
-<p>Not a question to answer now. This draft limits entry names to ASCII (<a href="#ext-1">EXT-1</a>). The maintainer may lift that in a later draft. Lifting it would need:</p>
+<p>Not a question to answer now. This version limits entry names to ASCII (<a href="#ext-1">EXT-1</a>). The maintainer may lift that in a later preview. Lifting it would need:</p>
 <ul>
 <li>names required to be NFC under Unicode 17.0.0;</li>
 <li>a collision rule defined in the text: for example two keys per prefix, one from full case folding and one from full uppercase mapping, because the two disagree on letters such as the dotless i;</li>
 <li>a decision on code points that 17.0.0 leaves unassigned;</li>
 <li>normalization and case data shipped by every host, MoonBit included;</li>
 <li>a C1-control rule, and cases for all of it;</li>
-<li>a new draft of the descriptor, because the change narrows what a reader may refuse.</li>
+<li>a new version of the family, because the change narrows what a reader may refuse.</li>
 </ul>
 
 </main>

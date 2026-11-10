@@ -6,14 +6,15 @@ Tracking: [finos/morphir#1146](https://github.com/finos/morphir/issues/1146). Be
 
 Depends on: maintainer approval of this change, and the approval of finos/morphir#1149 (merged as a proposal at `9690dfc37`).
 
-- [ ] 1.1 Record which outcome of [VER-1](design.html#ver-1) applies. `PKGVER-A` applies if, when this change is approved, no released host, publisher or tool reads or writes #1149's drafts, and no repository outside TEST-ONLY fixtures holds a document at them; otherwise `PKGVER-B`. "Released" means a tagged release, a published package or a release asset. Check at least:
+- [ ] 1.1 Record which outcome of [VER-1](design.html#ver-1) applies. `PKGVER-A` applies if, when this change is approved, the extension state family's `0.1.0-preview.1` schemas are not yet published under `website/static/schemas/extensions/0.1.0-preview.1/` on `main`, and no released host, publisher or tool reads or writes `0.1.0-preview.1`; otherwise `PKGVER-B`. "Released" means a tagged release, a published package or a release asset. Check at least:
+  - the schema directory on `main`, and whether #1150's task 1.7 has been delivered;
   - the releases and tags of finos/morphir, finos/morphir-dotnet (and the `Morphir.Tool` NuGet package), finos/morphir-rust and the MoonBit host's repository;
   - the release assets of every repository named in `.config/published-extension-bundles.toml`;
   - any extension repository the morphir-dotnet documentation names.
 
-  Replace "the package drafts" in this change's spec with the chosen version strings. Under `PKGVER-A`, also amend #1149's sentence that `2.0.0-draft.3` "differs from `2.0.0-draft.2` only in the id grammar". Verify by listing each place checked and what it held.
+  Replace "the package version" in this change's spec with the chosen version, `0.1.0-preview.1` or `0.1.0-preview.2`, and under `PKGVER-B` change the examples that show `0.1.0-preview.1`, such as the tree manifest header. Under `PKGVER-A`, also add the `package` member to #1149's definition of `0.1.0-preview.1`, so that #1150's task 1.7 publishes it in the first schemas. Verify by listing each place checked and what it held.
 - [ ] 1.2 In `docs/design/draft/extensions/distribution-and-acquisition.md`, as part of or after #1149's task 1.4:
-  - define the `package` member (`format`, `root`, `entryPoint`, `executables`, `treeSha256`) in the release descriptor, the index record, the installed catalog entry and the extension lock at the package drafts, with the rule that `artifacts.package` or `extensions.package` is listed in `critical`;
+  - define the `package` member (`format`, `root`, `entryPoint`, `executables`, `treeSha256`) in the release descriptor, the index record, the installed catalog entry and the extension lock at the package version, with the rule that `artifacts.package` or `extensions.package` is listed in `critical`, and with the family's `$schema` URLs in every example;
   - give the package store layout of [STORE-1](design.html#store-1), with the owner and lease files beside their directories;
   - replace the page's `.tgz` process example with a package, and state the refusal of an archive-named single-file artifact;
   - if #1150 is not merged, state the lock calls and opening rules in full.
@@ -27,11 +28,16 @@ Depends on: maintainer approval of this change, and the approval of finos/morphi
 
   Verify its examples match the spec scenarios and its links resolve.
 - [ ] 1.4 Add the case data of [CONF-1](design.html#conf-1) beside that page. It comprises a deterministic generator script under `tools/` (TypeScript run by Bun) that writes each archive's bytes, the checked-in archives, and a JSON manifest of cases with the expected outcome, code and entry name. The `archive_too_large` case states a length without bytes. Verify with a data-integrity test that regenerating changes no byte, that every refusal code except `install_path_too_long`, `publish_busy` and `store_not_one_volume` has a case, and that every spec scenario is covered by a case or named as a host test.
-- [ ] 1.5 Run `mise exec -- openspec validate add-extension-packages --strict` and `mise run openspec:verify`, and `python -B -m unittest discover -s tests/ci` if a path filter changes; verify each passes.
+- [ ] 1.5 Publish the `package` member in the family's JSON Schemas ([VER-1](design.html#ver-1)), following the member definitions of 1.2:
+  - under `PKGVER-A`, add it to `release.schema.json`, `index-record.schema.json`, `catalog.schema.json` and `lock.schema.json` under `website/static/schemas/extensions/0.1.0-preview.1/` as part of #1150's task 1.7, before those schemas are first published;
+  - under `PKGVER-B`, publish all seven schemas of the family again under `website/static/schemas/extensions/0.1.0-preview.2/`, each with its `$id` under `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/` and requiring that exact `$schema`, the four above with `package`; leave the `0.1.0-preview.1/` files unchanged.
+
+  A schema states the `package` members and their types; the rules a schema cannot express, such as `critical` listing `artifacts.package`, stay in the page and the cases. Verify that every valid descriptor, catalog and lock of 1.4's cases validates against its schema, and that the site build serves each file at its URL.
+- [ ] 1.6 Run `mise exec -- openspec validate add-extension-packages --strict` and `mise run openspec:verify`, and `python -B -m unittest discover -s tests/ci` if a path filter changes; verify each passes.
 
 ## 2. finos/morphir-dotnet
 
-Depends on: 1.2, 1.3 and 1.4.
+Depends on: 1.2, 1.3, 1.4 and 1.5.
 
 - [ ] 2.1 List the F# frontend's self-contained publish output for each first-delivery platform: file count, total size, longest tree path, any symbolic link or non-ASCII name, and which files carry an executable bit. Record it in this change. Verify the counts against the publish directory of `SelfContainedProcess.pubxml`, confirming or correcting the design's assumptions: about 239 files and 121 MB, a longest path near 70 units, and only ASCII names.
 - [ ] 2.2 In the installer of finos/morphir-dotnet#567, install packages:
@@ -68,7 +74,7 @@ Depends on: 1.2, 1.3 and 1.4.
 
 Depends on: 1.3 and 1.4.
 
-- [ ] 3.1 In the repository that holds the MoonBit host's extension installation (located by finos/morphir#1149's task 3.1), refuse package artifacts with `package.unsupported` until 3.2 is delivered. Also refuse a document that lists `artifacts.package` in `critical` if the host does not read the package drafts. Verify with the single-file, `package.unsupported` and critical cases.
+- [ ] 3.1 In the repository that holds the MoonBit host's extension installation (located by finos/morphir#1149's task 3.1), refuse package artifacts with `package.unsupported` until 3.2 is delivered. Also refuse a document that lists `artifacts.package` in `critical` if the host does not read the package version. Verify with the single-file, `package.unsupported` and critical cases.
 - [ ] 3.2 Adopt the package rules and run the shared cases and the operating-system tests of 2.3; verify every case reports its expected outcome.
 
 ## 4. finos/morphir: toolchain contracts
@@ -84,13 +90,9 @@ Depends on: 2.6. These pages are in `docs/spec/toolchain/`, on `origin/feat/morp
 - [ ] 4.2 In `docs/spec/toolchain/installation-receipt.md`, say that a package's `launch.program` names the entry point in the published tree, and how a receipt names the package, so that extension collection can stop keeping every package in a home with a receipt; verify with a receipt case.
 - [ ] 4.3 Regenerate the TEST-ONLY signed F# frontend fixtures as packages with a `treeSha256`; verify the contract task passes.
 
-## Optional later work
+## No Rust work
 
-This work does not gate the change or any task above, and no `ecosystem/morphir-rust` pin move is planned for it:
-
-- finos/morphir-rust `morphir-distribution`: reuse the tool extractor so that the Rust CLI can install extension packages with this change's rules. Its publication path is not extended (#1150's Decision 13). The rules to apply are in particular the reading rules, ASCII names, the executable set from the descriptor, the bounds, read-only modes and the lease;
-- the Rust CLI: install and start packages;
-- each would run the shared cases.
+The maintainer decided on 10 November 2026 that the Rust CLI is to be deleted from finos/morphir (Decision 16). This change plans no Rust reader, installer or writer, and no `ecosystem/morphir-rust` pin move.
 
 ## Workflow follow-up
 
