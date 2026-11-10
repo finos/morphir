@@ -72,6 +72,7 @@
         { "module": "extism:host/user", "name": "morphir_log", "params": ["i64", "i64"], "results": [], "group": "morphir" }
       ],
       "wasi": "wasi_snapshot_preview1",
+      "wasiSurface": { "functions": 46, "signatures": "wasi_snapshot_preview1.witx", "note": "Every function of WASI preview 1 is accepted, with the core WASM signature its witx definition gives. The policy says what each one answers." },
       "notifications": [
         { "id": "advertised", "rule": "A notification is delivered only after the guest's morphir.initialize result gave capabilities.notificationDelivery the value call. Each delivered notification is one handle call that gives no output. morphir.exit is delivered, and then the instance ends." },
         { "id": "output-fails", "rule": "Output for a delivered notification fails the session." },
@@ -108,22 +109,25 @@
     "rules": [
       { "id": "first-import", "rule": "The first import from a profile namespace decides the profile: morphir_bytes_v1 makes the module morphir-bytes-v1; extism:host/env, extism:host/user or wasi_snapshot_preview1 makes it extism-kernel-v1." },
       { "id": "declared", "rule": "A module that imports from no profile namespace takes the declared profile." },
-      { "id": "default", "rule": "A module that imports from no profile namespace, with no profile declared, is extism-kernel-v1.", "scope": "host-session" }
+      { "id": "default", "rule": "A module that imports from no profile namespace, with no profile declared, is extism-kernel-v1.", "scope": "host-session" },
+      { "id": "order", "rule": "A host makes the checks in the order given by order and reports the first that fails." }
     ],
+    "order": ["profile", "imports", "handle-export", "declared-abi", "host-runs-profile"],
+    "orderNote": "A host makes these checks in this order and reports the first that fails. A byte-profile module with an import outside the table is therefore refused naming the import, also by a host that does not run the profile. The WASM feature check has no fixed place: an engine may validate a module before the host classifies it.",
     "defaultProfile": "extism-kernel-v1"
   },
   "bounds": {
     "memoryCeilingBytes": 268435456,
     "memoryCeilingScope": "each-linear-memory",
     "kernelMemoryCeilingBytes": 268435456,
-    "instructionBudget": { "0.2.0-draft.1": 5000000000, "0.1": 1000000000, "probe": 1000000000 },
+    "instructionBudget": { "session": 5000000000, "probe": 1000000000 },
     "instructionBudgetUnit": "engine-defined",
     "requiredForQualification": ["memoryCeiling", "callDeadline"],
     "optionalForQualification": ["instructionBudget"]
   },
   "memory": [
-    { "id": "at-ceiling", "rule": "A call that fails while the guest's memory is at the ceiling is memory-limit." },
-    { "id": "observed-refusal", "rule": "A host that observes refused growth reports memory-limit for any failing call in which growth was refused. Another host reports the guest's own failure." },
+    { "id": "at-ceiling", "rule": "A call that ends in a trap or a failure while the guest's memory, or the Extism kernel's memory, is at its ceiling is memory-limit. A call that the host stopped for the instruction budget, the call deadline or a cancellation keeps that result." },
+    { "id": "observed-refusal", "rule": "A host that observes refused growth, of the guest's memory or of the Extism kernel's, reports memory-limit for any failing call in which growth was refused. Another host reports the guest's own failure." },
     { "id": "initial-above-ceiling", "rule": "A module whose initial memory is above the ceiling fails with memory-limit before any request. This is a fault, not a refusal." }
   ],
   "policy": {
@@ -163,7 +167,7 @@
     { "kind": "memory-limit", "hostCode": "extension.memory_limit", "when": "A memory rule applies: a call failed at the ceiling, a call failed after an observed refused growth, a refused growth on the byte profile, or an initial memory above the ceiling." },
     { "kind": "budget-exhausted", "hostCode": "extension.budget_exhausted", "when": "The guest ran past its per-call instruction budget on a metering engine." },
     { "kind": "call-deadline", "hostOutcome": "deadline", "when": "The call did not return before its deadline." },
-    { "kind": "failure", "hostCode": "extension.incomplete_session", "when": "Any other end of a session that the guest caused: -1, a misused -2 or a 0 with output on the byte profile; an Extism error, a non-zero result or no output for a request; output for a notification; a message that is not UTF-8 text holding one JSON object; a request or response frame over its limit; a host function that stops the call; proc_exit with a code that is not 0." }
+    { "kind": "failure", "hostCode": "extension.incomplete_session", "when": "Any other end of a session that the guest caused: -1, a misused -2 or a 0 with output on the byte profile; an Extism error, a non-zero result or no output for a request; output for a notification; a message that is not UTF-8 text holding one JSON object; a response frame over its limit; a request frame over a worker's --request-bytes; a host function that stops the call; proc_exit with a code that is not 0." }
   ],
   "hostSession": {
     "frameLimits": { "counted": "whole-frame", "requestBytes": 6291456, "responseBytes": 16777216 },
@@ -171,7 +175,8 @@
       { "id": "request-limit", "code": "extension.request_limit", "rule": "A request frame over the session's request byte limit is refused before the guest is called, and the session ends. The diagnostic names the limit and the frame's size." },
       { "id": "response-limit", "code": "extension.incomplete_session", "rule": "A response over the session's response byte limit fails the session, and no part of it reaches the MEP session." },
       { "id": "jsonrpc", "code": "extension.unexpected_response", "rule": "The host session checks the JSON-RPC version of a response and that its id answers the request." },
-      { "id": "profiles-reported", "rule": "A host states in its runtime report which profiles it runs." }
+      { "id": "profiles-reported", "rule": "A host states in its runtime report which profiles it runs." },
+      { "id": "cancelled", "rule": "A call that the host stops because the user cancelled the command is not a guest fault and has no fault kind. The session outcome is cancelled." }
     ]
   },
   "worker": {
@@ -219,7 +224,8 @@
       { "id": "refusal-names", "rule": "A refusal names an import as module.name, and reports a missing or mistyped handle as not exporting handle as () -> i32." },
       { "id": "message-checks", "rule": "The worker checks that each request and response is UTF-8 text holding one JSON object, and reports anything else as fault failure. It does not check the JSON-RPC version or ids." },
       { "id": "request-frame-limit", "rule": "A request frame over --request-bytes is fault failure and the worker exits with 1. The guest is not called." },
-      { "id": "response-frame-limit", "rule": "A response over --response-bytes is fault failure and the worker exits with 1. No part of it reaches stdout." }
+      { "id": "response-frame-limit", "rule": "A response over --response-bytes is fault failure and the worker exits with 1. No part of it reaches stdout." },
+      { "id": "load-failure", "rule": "A module file that cannot be read, or that is not a well-formed WASM module, is fault failure before started, and the worker exits with 1." }
     ]
   },
   "knownDeviations": [

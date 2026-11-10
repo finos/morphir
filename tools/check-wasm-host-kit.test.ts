@@ -205,7 +205,7 @@ test("the document states every import, code, bound, policy value and worker arg
 	expect(documentProblems(input.contract, input.document)).toEqual([]);
 	const without = (text: string) => input.document.split(text).join("");
 	expect(documentProblems(input.contract, without("`extension.worker_runtime_mismatch`"))).toContain("the document does not mention the refusal code `extension.worker_runtime_mismatch`");
-	expect(documentProblems(input.contract, without("5,000,000,000"))).toContain("the document does not state the 0.2.0-draft.1 instruction budget, 5000000000");
+	expect(documentProblems(input.contract, without("5,000,000,000"))).toContain("the document does not state the session instruction budget, 5000000000");
 	expect(documentProblems(input.contract, input.document.replace("| `var.storeBytes` | `1048576` |", "| `var.storeBytes` | `1048575` |"))).toContain(
 		"the document has no line with `var.storeBytes` and `1048576`",
 	);

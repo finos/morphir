@@ -89,6 +89,8 @@
 		{ "element": "hostSession:response-limit", "reason": "Not observable through a worker: the worker applies --response-bytes before the host session sees the frame. limits/response-over-limit covers the worker's own check." },
 		{ "element": "hostSession:jsonrpc", "reason": "Not observable through a worker: the worker does not check the JSON-RPC version or ids, and the runner reads its frames directly." },
 		{ "element": "hostSession:profiles-reported", "reason": "Not observable through a worker: the profiles a host runs are in its runtime report, which the runner takes as an input." },
+		{ "element": "hostSession:cancelled", "reason": "Not observable through a worker: cancellation is a host-session outcome, and the contract does not say what an interrupted worker does." },
+		{ "element": "worker:load-failure", "reason": "No case covers it: every module of the corpus is assembled from text, so the corpus has no file that is unreadable or not a well-formed WASM module." },
 		{ "element": "worker:help", "reason": "No case needs it: the runner reads the build identity from --help --json before any run, so a worker without it cannot be qualified at all." }
 	],
 	"cases": [
@@ -117,25 +119,40 @@
 		},
 		{
 			"caseId": "classification/known-name-other-signature",
-			"appliesTo": "morphir-bytes-v1",
+			"appliesTo": "extism-kernel-v1",
 			"module": "bytes-input-byte-i64",
 			"declaredAbi": "morphir-bytes-v1",
 			"tests": {
-				"requirements": ["Classification before instantiation", "Byte profile import surface"],
-				"scenarios": ["Known name with another signature"],
-				"contract": ["refusal:extension.abi_unsupported"]
+				"requirements": ["Classification before instantiation", "Byte profile import surface", "Order of classification checks"],
+				"scenarios": ["Known name with another signature", "Byte-profile module with a bad import on an Extism-only host"],
+				"contract": ["refusal:extension.abi_unsupported", "classification:order"]
 			},
 			"runs": [
 				{
 					"frames": ["initialize"],
-					"expect": {
-						"exitCode": 3,
-						"stdoutBytes": 0,
-						"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["morphir_bytes_v1.input_byte"] }],
-						"noEvents": ["started", "fault"]
-					}
+					"alternatives": [
+						{
+							"when": { "hostRuns": "morphir-bytes-v1", "runs": true },
+							"expect": {
+								"exitCode": 3,
+								"stdoutBytes": 0,
+								"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["morphir_bytes_v1.input_byte"] }],
+								"noEvents": ["started", "fault"]
+							}
+						},
+						{
+							"when": { "hostRuns": "morphir-bytes-v1", "runs": false },
+							"expect": {
+								"exitCode": 3,
+								"stdoutBytes": 0,
+								"events": [{ "event": "refused", "code": "extension.abi_unsupported", "messageIncludes": ["morphir_bytes_v1.input_byte"] }],
+								"noEvents": ["started", "fault"]
+							}
+						}
+					]
 				}
-			]
+			],
+			"gaps": ["A host that does not run the byte profile must still name the import, because the import check comes before the host-profile check. The expectation cannot require that the profile's name is absent from the message."]
 		},
 		{
 			"caseId": "classification/byte-module-imports-wasi",

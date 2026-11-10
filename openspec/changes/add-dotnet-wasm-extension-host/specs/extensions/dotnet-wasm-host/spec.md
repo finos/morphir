@@ -110,11 +110,22 @@ The host SHALL load a WASM extension from the path in `extensions.<name>.path` a
 - **THEN** the host fails with a diagnostic that names the path and states that it is not a WASM module
 
 ### Requirement: Module identity in every report
-The host SHALL compute the SHA-256 digest of the module bytes it runs and SHALL include that digest, the classified profile and the engine identity in session diagnostics and worker reports. When a digest is declared for the module, the host SHALL refuse different bytes before classification.
+The host SHALL compute the SHA-256 digest of the module file it loads and SHALL include that digest, the classified profile and the engine identity in session diagnostics and worker reports. When a digest is declared for the module, the host SHALL refuse different bytes before classification.
 
 #### Scenario: Replaced module
 - **WHEN** a declared digest differs from the digest of the file at the configured path
 - **THEN** the host refuses the module and reports both digests
+
+### Requirement: Protocol line
+The host SHALL offer MEP versions of the `0.2` line only and SHALL NOT offer or bridge MEP `0.1`. Its `morphir.initialize` request SHALL carry a model transport offer, because the published guests answer `0.2.0-draft.1` only to a request that has one.
+
+#### Scenario: Published guest
+- **WHEN** the host starts a session with the Python extension `0.6.0`
+- **THEN** the guest answers `0.2.0-draft.1`
+
+#### Scenario: Guest that speaks only MEP 0.1
+- **WHEN** the host starts a session with the Python extension `0.4.2`
+- **THEN** the handshake fails and the diagnostic states the versions each side supports
 
 ### Requirement: In-process execution with isolation per session
 The host SHALL run each WASM session in its own instance with its own memory and session state. Two sessions of the same module SHALL NOT share memory, stores or caches. A failed session SHALL NOT end the host process or affect another session.
@@ -132,12 +143,20 @@ When the user cancels a command or its session deadline passes, the host SHALL s
 - **THEN** the call stops, the outcome is `cancelled` and the exit status is 130
 
 ### Requirement: Failures report memory use
-The engine cannot tell the host that a growth was refused, so the host SHALL report `extension.memory_limit` when a call fails with the guest's memory at the ceiling, and SHALL state the guest's memory size and the ceiling in every call failure diagnostic.
+The engine cannot tell the host that a growth was refused, so the host SHALL report `extension.memory_limit` when a call ends in a trap or failure with the guest's or the kernel's memory at its ceiling. Every call failure diagnostic SHALL state the guest's memory size, the kernel's memory size and the ceiling.
 
 #### Scenario: Large allocation refused below the ceiling
 - **WHEN** a guest at 100 MiB asks for 200 MiB more, is refused and aborts
 - **THEN** the session fails with the guest's own failure
 - **AND** the diagnostic reports a memory size of 100 MiB against a ceiling of 256 MiB
+
+### Requirement: Reading a memory the module does not export
+To read the size of a memory that a module does not export, the host MAY compile a copy of the module with one added export of that memory. The copy SHALL differ from the module in that export entry only. The reported digest, the classification and every diagnostic SHALL be those of the original file. A module that exports its memory SHALL run unchanged.
+
+#### Scenario: Crafted module without a memory export
+- **WHEN** a module that declares a memory and exports only `handle` grows to the ceiling and traps
+- **THEN** the session fails with `extension.memory_limit`
+- **AND** the reported digest is the digest of the file at the configured path
 
 ### Requirement: Guest output stays out of results
 The host SHALL keep guest log messages and guest stdout and stderr separate from command results. It SHALL write them to the host's stderr or diagnostics, bounded to a fixed size per session with a truncation marker, and SHALL NOT write them to stdout.
@@ -148,11 +167,15 @@ The host SHALL keep guest log messages and guest stdout and stderr separate from
 - **AND** stderr holds a bounded tail that states how much was dropped
 
 ### Requirement: Worker mode
-The host SHALL provide `morphir extension worker`, taking `--abi`, `--module`, `--build-identity`, `--request-bytes`, `--response-bytes` and `--json`. It SHALL answer Content-Length framed MEP messages on stdin with frames on stdout. Stdout SHALL carry only MEP frames. Startup, refusal and fault reports SHALL go to stderr as one JSON object per line.
+The host SHALL provide `morphir extension worker`, taking every worker argument the profile contract lists: `--abi`, `--module`, `--build-identity`, `--request-bytes`, `--response-bytes`, `--call-ms`, `--instructions`, `--memory-pages`, `--json` and `--help`. It SHALL answer Content-Length framed MEP messages on stdin with frames on stdout. Stdout SHALL carry only MEP frames. Startup, refusal and fault reports SHALL go to stderr as one JSON object per line.
 
 #### Scenario: Conformance runner drives a guest
 - **WHEN** a conformance runner starts the worker mode with the Python module and runs the generic guest kit
 - **THEN** every kit case completes over stdio with no .NET-specific runner code
+
+#### Scenario: Small instruction budget
+- **WHEN** the worker mode is started with `--instructions 1000000` and a module whose `handle` loops forever
+- **THEN** stderr carries a `fault` event with kind `budget-exhausted` and the exit status is 1
 
 #### Scenario: Refused module
 - **WHEN** the worker mode is started with a module that imports `env.open_socket`
@@ -175,6 +198,14 @@ With `--json` the worker SHALL write `started`, `output`, `fault`, `refused` and
 #### Scenario: Unknown argument
 - **WHEN** the worker is started with an argument it does not know
 - **THEN** it exits with status 2 and writes no frame to stdout
+
+### Requirement: Worker interruption
+When the worker process is interrupted while a guest is inside `handle`, it SHALL stop the guest within one second and exit with status 130. It SHALL NOT write a `fault` event, because the guest did not fail.
+
+#### Scenario: Ctrl+C in worker mode
+- **WHEN** the user presses Ctrl+C while the worker runs a module whose `handle` loops forever
+- **THEN** the worker exits with status 130 within one second
+- **AND** stderr carries no `fault` event
 
 ### Requirement: Packaged engine is qualified
 A release SHALL claim the WASM runtime for an offering and platform only after the released artifact, on a clean machine of that platform, has run one published Extism guest and one crafted module for each bound. A run from the build directory SHALL NOT count.

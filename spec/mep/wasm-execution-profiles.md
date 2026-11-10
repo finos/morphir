@@ -58,6 +58,8 @@ A host classifies a module before it instantiates it. The imports choose the pro
 
 Every import must then be a function of the classified profile's import surface, with the surface's exact signature. The first that is not is refused with `extension.abi_unsupported`, and the message names it as `module.name`, for example `morphir_bytes_v1.input_len` in a module whose first import was `extism:host/env.input_length`. The module must export `handle` as `() -> i32`; a module that does not is refused with the same code and a message that says it does not export `handle` as `() -> i32`.
 
+A host makes the checks in this order and reports the first that fails: the profile, the imports, the `handle` export, the declared ABI, and last whether the host runs the profile. A byte-profile module with an import outside the table is therefore refused naming the import, also by a host that does not run the profile. The WASM feature check below has no fixed place, because an engine may validate a module before the host classifies it.
+
 A descriptor, configuration entry or command argument may declare an ABI. The declaration only confirms: when it differs from the classified profile, the host refuses with `extension.abi_mismatch` and names both profiles. It never allows an import the classified profile excludes. A host that does not run `morphir-bytes-v1` still compares a byte-profile declaration with the classified profile.
 
 A module that needs a WASM feature the engine lacks, or that has a shared, 64-bit or second memory, is refused with `extension.wasm_feature_unsupported`, naming the feature when the engine reports it.
@@ -149,7 +151,7 @@ Session stores and caches start empty and do not outlive the session.
 
 ### WASI preview 1, `wasi_snapshot_preview1`
 
-A guest may import any WASI preview 1 function with its standard type. The sandbox gives it almost nothing, and no call can block:
+A guest may import any of the 46 functions of WASI preview 1, with the core WASM signature that the preview 1 definition (`wasi_snapshot_preview1.witx`) gives it. The contract names that definition and does not repeat its table. The sandbox gives the guest almost nothing, and no call can block:
 
 | The guest calls | It gets |
 | --- | --- |
@@ -238,14 +240,14 @@ The host functions and WASI above, as the JSON's `policy` object states them. Ea
 | --- | --- | --- |
 | Memory ceiling | 256 MiB for each linear memory, including a memory that declares no maximum or a larger one. The Extism kernel's memory has its own ceiling of 256 MiB | Growth is not granted. The memory rules below say when that fails the session |
 | Call deadline | 30 seconds for `extism-kernel-v1`, 10 seconds for `morphir-bytes-v1`, inside any session deadline | The host stops the guest, discards the instance and ends the session with outcome `deadline`. Time in host functions counts |
-| Instruction budget | 5,000,000,000 units per call on MEP `0.2.0-draft.1`; 1,000,000,000 on MEP `0.1` and for a `probe` | The session fails with `budget-exhausted` |
+| Instruction budget | 5,000,000,000 units per call in a `session`; 1,000,000,000 for a `probe` | The session fails with `budget-exhausted` |
 
 The budget unit is engine-defined. The same number is not the same amount of work under two engines, so the budget guards against a busy loop and is not a portable measure of cost. A host whose engine does not meter applies no budget and says so. A host reports which bounds it enforces and the engine that enforces them, and cannot qualify without the memory ceiling and the call deadline.
 
 The memory rules:
 
-- A call that fails while the guest's memory is at the ceiling is `memory-limit`.
-- A host that observes refused growth reports `memory-limit` for any failing call in which growth was refused. Another host reports the guest's own failure, usually `trap`. The MoonBit host observes it: its engine flags every refused growth.
+- A call that ends in a `trap` or a `failure` while the guest's memory, or the Extism kernel's memory, is at its ceiling is `memory-limit`. A call that the host stopped for the instruction budget, the call deadline or a cancellation keeps that result: the host knows why it ended, and this rule is for when it does not. An Extism guest's input and output live in the kernel's memory, which is why that memory counts.
+- A host that observes refused growth, of the guest's memory or of the kernel's, reports `memory-limit` for any failing call in which growth was refused. Another host reports the guest's own failure, usually `trap`. The MoonBit host observes it: its engine flags every refused growth.
 - An `extism-kernel-v1` guest that has a growth refused and still answers has succeeded.
 - On `morphir-bytes-v1` a refused growth fails the session with `memory-limit`, also when `handle` returns.
 - A module whose initial memory is above the ceiling fails with `memory-limit` before any request. This is a fault, not a refusal: a worker reports no `started` event and exits with 1.
@@ -269,16 +271,17 @@ A worker reports a fault by its kind. The host session that reads the report tur
 | `memory-limit` | `extension.memory_limit` | A memory rule applies |
 | `budget-exhausted` | `extension.budget_exhausted` | The guest ran past its per-call instruction budget on a metering engine |
 | `call-deadline` | outcome `deadline` | The call did not return before its deadline |
-| `failure` | `extension.incomplete_session` | Any other end the guest caused: `-1`, a misused `-2` or a `0` with output on the byte profile; an Extism error, a non-zero result or no output for a request; output for a notification; a message that is not UTF-8 text holding one JSON object; a request or response frame over its limit; a host function that stops the call; `proc_exit` with a code that is not 0 |
+| `failure` | `extension.incomplete_session` | Any other end the guest caused: `-1`, a misused `-2` or a `0` with output on the byte profile; an Extism error, a non-zero result or no output for a request; output for a notification; a message that is not UTF-8 text holding one JSON object; a response frame over its limit; a request frame over a worker's `--request-bytes`; a host function that stops the call; `proc_exit` with a code that is not 0 |
 
 ## The host session
 
 Some rules belong to the host session that drives the guest, in process or through a worker, and not to the worker:
 
-- A request frame over the request byte limit is refused with `extension.request_limit` before the guest is called, and the session ends. The diagnostic names the limit and the frame's size.
+- A request frame over the request byte limit is refused with `extension.request_limit` before the guest is called, and the session ends. The diagnostic names the limit and the frame's size. The host session makes this check before any worker reads the frame, so a session never reports `extension.incomplete_session` for a request over its own limit. A worker reports `failure` only for a frame over its `--request-bytes`.
 - A response over the response byte limit fails the session with `extension.incomplete_session`, since a worker reports it as `failure`. No part of it reaches the MEP session.
 - The host session checks the JSON-RPC version of each response and that its id answers the request, and fails the session with `extension.unexpected_response` otherwise.
 - A host states in its runtime report which profiles it runs.
+- A call that the host stops because the user cancelled the command is not a guest fault and has no fault kind. The session outcome is `cancelled`. The contract does not say what a worker process does when it is interrupted; the MoonBit worker at `89f8924` handles no signal.
 
 ## Worker mode
 
@@ -313,6 +316,8 @@ The `extension.*` fault codes and the outcome `deadline` exist only in the host 
 
 The worker checks that each request and response is UTF-8 text holding one JSON object, and reports anything else as `failure`. It does not check the JSON-RPC version or ids; those are host-session checks. A request frame over `--request-bytes` is `failure` and the guest is not called. A response over `--response-bytes` is `failure` and nothing of it reaches stdout. Either way the worker exits with 1.
 
+A module file that cannot be read, or that is not a well-formed WASM module, is `failure` before `started`, and the worker exits with 1. These are loading errors, not refusals. In a host session they happen before any session exists, and the contract gives them no `extension.*` code: a host reports them with a diagnostic that names the path. The same holds for a declared digest that differs from the file's.
+
 | Exit status | Meaning |
 | --- | --- |
 | 0 | The guest served until its instance ended |
@@ -333,6 +338,8 @@ Each rule was read from these places, and the import tables were compared entry 
 - finos/morphir-moonbit at `89f8924`: `pkgs/morphir-host/worker/wasm/profile.mbt` (classifier and import surfaces), `wasm/guest/bytes.mbt` and `wasm/guest/extism.mbt` (the adapters and host functions), `wasm/guest/guest.mbt` and `limits.mbt` (call bounds and byte limits), `wasm/native/worker_mode.mbt` and `wasm/guest/report.mbt` (worker arguments, events and exit status), `bounds.mbt` (`started.bounds`), `session.mbt` and `README.mbt.md` (host-session codes).
 - moonrockz/extism at `v0.3.0`, the version morphir-moonbit pins: `pkgs/extism/kernel/kernel.mbt` (the 20 kernel functions and their types), `pkgs/extism/plugin.mbt` (call results, `config_get`, `var_*`, logging, HTTP), `pkgs/extism/policy.mbt` (log level codes, the kernel memory ceiling) and `pkgs/extism/wasi/sandbox.mbt` (WASI answers and errnos).
 - finos/morphir-rust at `extension/rust/v0.4.0-2`: `crates/morphir-extension-sdk/src/host.rs` (Morphir host function declarations).
+
+Three rules are not MoonBit's. The MoonBit host also applies a budget of 1,000,000,000 to MEP `0.1` sessions; MEP `0.1` is not supported, so the contract does not carry that value. The at-ceiling memory rule, and the last place of the host-profile check in the classification order, are for a host that cannot observe refused growth or that does not run both profiles, which MoonBit can and does.
 
 The notification rule for Extism guests is new in this draft. The MoonBit host at `89f8924` delivers no notification to an Extism guest, also one that advertises `call`. finos/morphir-moonbit#329 tracks the change.
 

@@ -6,16 +6,19 @@ Defines how any Morphir host runs a WASM extension: the two ABI profiles a modul
 
 ### One module, from bytes to an answered request
 
-Take the published Python extension `0.4.2`. It is one `.wasm` file that imports Extism kernel functions and exports `handle`. A host that has never seen Python runs it in four steps, and can refuse it at each one.
+Take the published Python extension `0.6.0`. It is one `.wasm` file that imports Extism kernel functions and exports `handle`. A host that has never seen Python runs it in four steps, and can refuse it at each one.
 
 ```mermaid
 flowchart LR
-  A[Module bytes] --> B{Classify imports}
-  B -->|only morphir_bytes_v1| C[morphir-bytes-v1]
-  B -->|extism:host/env| D[extism-kernel-v1]
-  B -->|anything else| X[Refuse: extension.abi_unsupported]
-  C --> E[Instantiate under bounds]
-  D --> E
+  A[Module bytes] --> B{First import from a profile namespace}
+  B -->|morphir_bytes_v1| C[morphir-bytes-v1]
+  B -->|extism:host/env, extism:host/user or WASI| D[extism-kernel-v1]
+  B -->|none| N[The declared profile, or extism-kernel-v1]
+  C --> V{Every import in the profile table, and handle exported?}
+  D --> V
+  N --> V
+  V -->|no| X[Refuse: extension.abi_unsupported]
+  V -->|yes| E[Instantiate under bounds]
   E --> F[One handle call per MEP message]
   F -->|trap, budget, memory, deadline| Y[Session fails, instance discarded]
   F --> G[Response bytes]
@@ -104,7 +107,7 @@ A host SHALL contain no behavior specific to an extension, language or publisher
 A host SHALL read a module's imports and exports before instantiating it and SHALL classify it as exactly one of `morphir-bytes-v1` or `extism-kernel-v1`. An import outside the classified profile's surface, or with a different signature, SHALL be refused with `extension.abi_unsupported`, naming the import. No guest code SHALL run before classification succeeds.
 
 #### Scenario: Python extension
-- **WHEN** a host reads the Python extension `0.4.2` module
+- **WHEN** a host reads the Python extension `0.6.0` module
 - **THEN** it classifies the module as `extism-kernel-v1`
 
 #### Scenario: Import from an unknown namespace
@@ -120,6 +123,13 @@ A host SHALL read a module's imports and exports before instantiating it and SHA
 #### Scenario: Known name with another signature
 - **WHEN** a module imports `morphir_bytes_v1.input_byte` as `(i64) -> i32`
 - **THEN** the host refuses it with `extension.abi_unsupported`, naming that import
+
+### Requirement: Order of classification checks
+A host SHALL make the classification checks in this order and SHALL report the first that fails: the profile, the imports, the `handle` export, the declared ABI, and last whether the host runs the profile. The WASM feature check has no fixed place in that order.
+
+#### Scenario: Byte-profile module with a bad import on an Extism-only host
+- **WHEN** a host that runs only `extism-kernel-v1` reads a module that imports `morphir_bytes_v1.input_byte` as `(i64) -> i32`
+- **THEN** it refuses the module with `extension.abi_unsupported`, naming the import and not the profile
 
 ### Requirement: Declared ABI confirms and never widens
 When a descriptor, configuration entry or command argument declares an ABI, the host SHALL require the classified profile to equal it and SHALL refuse a difference with `extension.abi_mismatch`. A declaration SHALL NOT allow an import that the classified profile excludes.
@@ -163,7 +173,7 @@ For `morphir-bytes-v1` the host SHALL treat a positive `handle` result as the re
 - **THEN** the call fails and no partial response reaches the MEP session
 
 ### Requirement: Extism profile import surface
-An `extism-kernel-v1` module SHALL import only the Extism kernel and host functions of `extism:host/env`, the Morphir functions of `extism:host/user`, and WASI preview 1 functions with their standard types. The contract SHALL list every accepted name and signature for one pinned Extism kernel version.
+An `extism-kernel-v1` module SHALL import only the Extism kernel and host functions of `extism:host/env`, the Morphir functions of `extism:host/user`, and WASI preview 1 functions with their standard types. The contract SHALL list every accepted `extism:host` name and signature for one pinned Extism kernel version, and SHALL name the WASI preview 1 definition whose 46 functions and signatures it accepts.
 
 #### Scenario: Module built with the Morphir extension SDK
 - **WHEN** a module imports `morphir_cache_ir` and `morphir_log` from `extism:host/user`
@@ -185,7 +195,7 @@ For `extism-kernel-v1` the host SHALL keep one instance for the session and call
 A host SHALL deliver a notification to an `extism-kernel-v1` guest only when the guest's `morphir.initialize` result gives the string `capabilities.notificationDelivery` the value `call`. Each delivered notification SHALL be one `handle` call that returns no output; output SHALL fail the session. When the member is absent, is `none` or holds a value the contract does not list, the guest SHALL receive no notification.
 
 #### Scenario: Published guest that advertises nothing
-- **WHEN** the host completes the handshake with the Python `0.4.2` guest and later ends the session
+- **WHEN** the host completes the handshake with the Python `0.6.0` guest and later ends the session
 - **THEN** `morphir.initialized` and `morphir.exit` are not delivered to the guest
 - **AND** the instance ends without a further call
 
@@ -255,10 +265,18 @@ A guest that imports WASI preview 1 SHALL see no preopened directory, no argumen
 - **AND** it never appears in a MEP response
 
 ### Requirement: Memory ceiling
-A host SHALL cap each linear memory of a session at 256 MiB, including one that declares no maximum or a larger one, and SHALL NOT grant growth past it. A call that fails while the guest's memory is at the ceiling SHALL fail the session with `extension.memory_limit`. A host that observes refused growth SHALL report the same for any failing call in which growth was refused. An initial memory above the ceiling SHALL fail with `extension.memory_limit` before any request.
+A host SHALL cap each linear memory of a session at 256 MiB and SHALL NOT grant growth past it. A call that ends in a trap or failure while the guest's or the Extism kernel's memory is at its ceiling SHALL fail with `extension.memory_limit`. A host that observes refused growth SHALL report the same for any failing call in which growth was refused. An initial memory above the ceiling SHALL fail with `extension.memory_limit` before any request.
 
 #### Scenario: Module without a maximum
 - **WHEN** a module that declares no memory maximum grows until it reaches 256 MiB and then traps
+- **THEN** the session fails with `extension.memory_limit`
+
+#### Scenario: Budget exhausted at the ceiling
+- **WHEN** a guest whose memory is at 256 MiB runs past its instruction budget on a host that cannot observe refused growth
+- **THEN** the session fails with `extension.budget_exhausted`, because the host knows why the call ended
+
+#### Scenario: Kernel memory at its ceiling
+- **WHEN** an Extism guest traps while the kernel's memory, which holds its input and output, is at its ceiling
 - **THEN** the session fails with `extension.memory_limit`
 
 #### Scenario: Guest recovers from a refused growth
@@ -278,7 +296,7 @@ Each `handle` call SHALL have a deadline of 30 seconds for `extism-kernel-v1` an
 - **THEN** the call stops at its deadline, the outcome is `deadline` and the instance is discarded
 
 ### Requirement: Instruction budget where the engine meters
-Where a host's engine meters execution, the host SHALL apply a per-call budget of 5,000,000,000 units on MEP `0.2.0-draft.1` and 1,000,000,000 on MEP `0.1`, and SHALL fail an exhausted call with `extension.budget_exhausted`. The unit is engine-defined. A host SHALL report which bounds it enforced and the engine that enforced them.
+Where a host's engine meters execution, the host SHALL apply a per-call budget of 5,000,000,000 units, and SHALL fail an exhausted call with `extension.budget_exhausted`. The unit is engine-defined. A host SHALL report which bounds it enforced and the engine that enforced them.
 
 #### Scenario: Budget exhausted
 - **WHEN** a guest runs past its per-call budget on a metering engine

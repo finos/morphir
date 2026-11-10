@@ -51,6 +51,10 @@ Illustrative record. Field names are fixed with the report contract.
 
 A report covers one host executable on one platform. It makes no claim about another offering of the same release.
 
+### How a runner reads the corpus
+
+The corpus is authored as one JSON file with its modules beside it. A runner may execute it in another form, as long as that form is derived from the JSON and checked against it. The .NET runner generates Gherkin features from the corpus, one scenario per case and per alternative, and a test requires the JSON and the features to give the same cases. The maintainer decided on 9 November 2026 that the compatibility kit as a whole moves from JSON to Gherkin. Until then the JSON in this repository is the source.
+
 ## ADDED Requirements
 
 ### Requirement: Crafted fault corpus

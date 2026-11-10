@@ -346,8 +346,8 @@ Each module is a `.wat` file of a few lines that does one thing, with the
 module does, and its `;; Cases:` line names the cases that use it. The kit
 records each binary's SHA-256.
 
-Every case has an `appliesTo` profile. The 47 cases for `extism-kernel-v1`
-apply to every host, because every host must run that profile. The 11 cases
+Every case has an `appliesTo` profile. The 48 cases for `extism-kernel-v1`
+apply to every host, because every host must run that profile. The 10 cases
 for `morphir-bytes-v1`, a transitional profile, apply only to a host that
 declares it, and a runner records them as `not_applicable` for any other. One
 Extism case, `classification/bytes-profile-unsupported`, offers a byte-profile
@@ -357,7 +357,7 @@ must serve it. The runner takes the profiles a host declares as an input.
 
 | Group | What its cases check |
 | --- | --- |
-| `classification/` (14) | Refusals before any guest code runs: an unknown namespace, a known import with another signature, WASI in a byte module, a missing or mistyped `handle`, a wrong declaration, the workspace-info signature, the first import deciding the profile, a byte-profile module on a host that does not run it, and shared, 64-bit and second memories. Also the profile a declaration gives a module with no profile imports, and a module that imports the whole Extism table. |
+| `classification/` (14) | Refusals before any guest code runs: an unknown namespace, a known import with another signature, which every host must report before it checks whether it runs the profile, WASI in a byte module, a missing or mistyped `handle`, a wrong declaration, the workspace-info signature, the first import deciding the profile, a byte-profile module on a host that does not run it, and shared, 64-bit and second memories. Also the profile a declaration gives a module with no profile imports, and a module that imports the whole Extism table. |
 | `worker/` (2) | The worker's own rules: a missing `--abi` and another build identity. |
 | `bytes/` (6) | The `morphir-bytes-v1` handle results: a response, 0 for a request, a consumed notification, -2 for a request, -1, and a response that is not UTF-8. |
 | `extism/` (9) | The Extism handle results: a response, an error, a non-zero result, no output, and a response that is not an object. Notifications: not delivered to a guest that advertises nothing, delivered to one that advertises `call` delivery, not delivered to one that advertises a value the contract does not list, and a failure when the guest answers one. |
