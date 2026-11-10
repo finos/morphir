@@ -89,6 +89,9 @@ jobs:
               - 'website/static/schemas/toolset-recipe-*.schema.json'
               - 'website/static/schemas/toolchain-*.schema.json'
               - 'website/static/schemas/morphirup-result-*.schema.json'
+              # the fixed F# readiness workflow case and the IR schema its expected IR is checked against
+              - 'spec/toolchain/**'
+              - 'website/static/schemas/morphir-ir-v4.json'
               # the narrative's examples, links and diagrams are checked by that crate's tests
               - 'docs/design/proposals/toolchain-acquisition.md'
               - 'docs/design/proposals/index.md'

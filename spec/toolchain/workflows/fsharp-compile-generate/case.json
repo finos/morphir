@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "workflow": "fsharp-compile-generate",
+  "preset": "fsharp",
+  "basis": {
+    "kind": "corpus-case",
+    "repository": "finos/morphir-dotnet",
+    "commit": "3f226a086220a45a3926a69e2093d53b86730ca5",
+    "case": "frontend-fsharp-0100",
+    "feature": "conformance/suites/frontend-fsharp/records.feature",
+    "featureBlob": "d3e67b692b4d04baba3e76a1bdc5609d1538c626",
+    "vocabulary": "1.1",
+    "variant": {
+      "input": "files",
+      "version": "4"
+    }
+  },
+  "package": {
+    "name": "acme/demo",
+    "exposedModules": ["Pricing"]
+  },
+  "sources": [
+    {
+      "uri": "Pricing.fs",
+      "file": "source/Pricing.fs",
+      "sha256": "f924e05d37b0517ac8777b495691ad86207f2b1dc7f5b6e038e6f6e370817d6c"
+    }
+  ],
+  "steps": [
+    {
+      "id": "compile",
+      "operation": "compile",
+      "language": "fsharp",
+      "input": "files",
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.frontend.compileModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "expected": {
+        "outcome": "success-without-error-diagnostics",
+        "ir": {
+          "file": "expected/ir-4.0.0.json",
+          "sha256": "b1035d065ecfddc557476d7203afe29c83a9340abc27300aaeeb911490c30cb7",
+          "formatVersion": 4,
+          "comparison": "json-member-order-insensitive",
+          "provenance": {
+            "kind": "hand-authored",
+            "repository": "finos/morphir-dotnet",
+            "commit": "3f226a086220a45a3926a69e2093d53b86730ca5",
+            "path": "conformance/suites/frontend-fsharp/expected/0100/ir-4.json",
+            "blob": "2dd743ba9853b65194c071d63ffa966c0f3e2643"
+          }
+        }
+      }
+    },
+    {
+      "id": "generate-built-in",
+      "operation": "generate",
+      "target": "fsharp",
+      "input": {
+        "step": "compile",
+        "model": "expected-ir"
+      },
+      "provider": {
+        "delivery": "built-in",
+        "extensionId": "morphir.fsharp"
+      },
+      "modelInput": {
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "irVersion": "4.0.0"
+      },
+      "expected": {
+        "status": "pending",
+        "reason": "The expected generated F# files are not frozen. The Native AOT host skips the Fantomas formatting pass, so its built-in backend emits different bytes from the managed hosts and the process guest, and how frozen files treat that is a maintainer decision. Candidate files come from morphir-dotnet and are reviewed before they are frozen.",
+        "sets": []
+      }
+    },
+    {
+      "id": "generate-external",
+      "operation": "generate",
+      "target": "fsharp",
+      "input": {
+        "step": "compile",
+        "model": "expected-ir"
+      },
+      "provider": {
+        "delivery": "process"
+      },
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.backend.generateModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "expected": {
+        "status": "pending",
+        "reason": "The expected generated F# files are not frozen. Candidate files come from morphir-dotnet and are reviewed before they are frozen, together with the decision on the Native AOT formatting difference.",
+        "sets": []
+      }
+    }
+  ]
+}

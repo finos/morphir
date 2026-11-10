@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/toolchain-workflow-case-0.1.0-draft.1.schema.json",
+  "title": "Morphir toolchain readiness workflow case 0.1.0-draft.1",
+  "description": "A fixed compile-and-generate case with fixed expectations that a conformance runner executes through its adapters. Unknown members are ignored unless critical names them",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "workflow",
+    "preset",
+    "basis",
+    "package",
+    "sources",
+    "steps"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "schemaVersion",
+          "critical",
+          "workflow",
+          "preset",
+          "basis",
+          "package",
+          "sources",
+          "steps"
+        ]
+      }
+    },
+    "workflow": {
+      "$ref": "#/$defs/token"
+    },
+    "preset": {
+      "$ref": "#/$defs/token"
+    },
+    "basis": {
+      "type": "object",
+      "required": [
+        "kind",
+        "repository",
+        "commit",
+        "case",
+        "feature",
+        "featureBlob",
+        "vocabulary",
+        "variant"
+      ],
+      "properties": {
+        "kind": {
+          "const": "corpus-case"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$"
+        },
+        "commit": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "case": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*-[0-9]{4}$"
+        },
+        "feature": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "featureBlob": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "vocabulary": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "variant": {
+          "type": "object",
+          "required": [ "input", "version" ],
+          "properties": {
+            "input": {
+              "$ref": "#/$defs/input"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          }
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "required": [ "name", "exposedModules" ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)+$"
+        },
+        "exposedModules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*$"
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "uri", "file", "sha256" ],
+        "properties": {
+          "uri": {
+            "$ref": "#/$defs/relativePath"
+          },
+          "file": {
+            "$ref": "#/$defs/relativePath"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/compileStep"
+        }
+      ],
+      "items": {
+        "$ref": "#/$defs/generateStep"
+      }
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "extensionIdentity": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?)*$",
+      "maxLength": 238
+    },
+    "gitObject": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 240,
+      "minLength": 1
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "input": {
+      "enum": [ "files", "directory", "project file" ]
+    },
+    "comparison": {
+      "enum": [ "json-member-order-insensitive", "exact-bytes" ]
+    },
+    "modelTuple": {
+      "type": "object",
+      "required": [
+        "operation",
+        "profile",
+        "codec",
+        "envelopeVersion",
+        "irVersion"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "morphir.frontend.compileModel",
+            "morphir.backend.generateModel"
+          ]
+        },
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "envelopeVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "modelInput": {
+      "type": "object",
+      "required": [ "profile", "codec", "irVersion" ],
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/token"
+        },
+        "codec": {
+          "$ref": "#/$defs/token"
+        },
+        "irVersion": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [ "kind", "repository", "commit", "path", "blob" ],
+      "properties": {
+        "kind": {
+          "enum": [ "hand-authored", "spec-derived", "reviewed-candidate" ]
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$"
+        },
+        "commit": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "blob": {
+          "$ref": "#/$defs/gitObject"
+        }
+      }
+    },
+    "compileStep": {
+      "type": "object",
+      "required": [
+        "id",
+        "operation",
+        "language",
+        "input",
+        "protocolVersion",
+        "modelTuple",
+        "expected"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/token"
+        },
+        "operation": {
+          "const": "compile"
+        },
+        "language": {
+          "$ref": "#/$defs/token"
+        },
+        "input": {
+          "$ref": "#/$defs/input"
+        },
+        "protocolVersion": {
+          "const": "0.2.0-draft.1"
+        },
+        "modelTuple": {
+          "$ref": "#/$defs/modelTuple"
+        },
+        "expected": {
+          "type": "object",
+          "required": [ "outcome", "ir" ],
+          "properties": {
+            "outcome": {
+              "const": "success-without-error-diagnostics"
+            },
+            "ir": {
+              "type": "object",
+              "required": [
+                "file",
+                "sha256",
+                "formatVersion",
+                "comparison",
+                "provenance"
+              ],
+              "properties": {
+                "file": {
+                  "$ref": "#/$defs/relativePath"
+                },
+                "sha256": {
+                  "$ref": "#/$defs/sha256"
+                },
+                "formatVersion": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "comparison": {
+                  "const": "json-member-order-insensitive"
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "generatedSet": {
+      "type": "object",
+      "required": [ "files", "comparison", "provenance" ],
+      "properties": {
+        "appliesTo": {
+          "type": "object"
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "path", "file", "sha256" ],
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/relativePath"
+              },
+              "file": {
+                "$ref": "#/$defs/relativePath"
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          }
+        },
+        "comparison": {
+          "$ref": "#/$defs/comparison"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      }
+    },
+    "generateStep": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "provider": {
+            "properties": {
+              "delivery": {
+                "const": "built-in"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [ "modelInput" ],
+        "properties": {
+          "provider": {
+            "required": [ "extensionId" ]
+          }
+        }
+      },
+      "else": {
+        "required": [ "protocolVersion", "modelTuple" ]
+      },
+      "required": [
+        "id",
+        "operation",
+        "target",
+        "input",
+        "provider",
+        "expected"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/token"
+        },
+        "operation": {
+          "const": "generate"
+        },
+        "target": {
+          "$ref": "#/$defs/token"
+        },
+        "input": {
+          "type": "object",
+          "required": [ "step", "model" ],
+          "properties": {
+            "step": {
+              "$ref": "#/$defs/token"
+            },
+            "model": {
+              "const": "expected-ir"
+            }
+          }
+        },
+        "provider": {
+          "type": "object",
+          "required": [ "delivery" ],
+          "properties": {
+            "delivery": {
+              "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
+            },
+            "extensionId": {
+              "$ref": "#/$defs/extensionIdentity"
+            }
+          }
+        },
+        "protocolVersion": {
+          "const": "0.2.0-draft.1"
+        },
+        "modelTuple": {
+          "$ref": "#/$defs/modelTuple"
+        },
+        "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        },
+        "expected": {
+          "type": "object",
+          "if": {
+            "properties": {
+              "status": {
+                "const": "pending"
+              }
+            }
+          },
+          "then": {
+            "required": [ "reason" ],
+            "properties": {
+              "sets": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "sets": {
+                "minItems": 1
+              }
+            }
+          },
+          "required": [ "status", "sets" ],
+          "properties": {
+            "status": {
+              "enum": [ "pending", "frozen" ]
+            },
+            "reason": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "sets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/generatedSet"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
