@@ -23,7 +23,7 @@ in the deleted Rust CLI; the standalone spelling drops the space and nothing els
 | Spelling | Program |
 | --- | --- |
 | `morphir-mck <command> ARGS` | The runner itself. |
-| `morphir mck <command> ARGS` | The Morphir CLI (finos/morphir-dotnet) starts `morphir-mck <command> ARGS` with the same arguments, standard streams, working directory and exit status. It carries no second implementation; a command it cannot delegate fails with a message that names `morphir-mck`. |
+| `morphir mck <command> ARGS` | The Morphir CLI (finos/morphir-dotnet) finds `morphir-mck` (the absolute path in `MORPHIR_MCK`, otherwise `PATH`) and starts `morphir-mck <command> ARGS` with the same arguments, standard streams, working directory and exit status. It carries no second implementation; a command it cannot delegate fails with a message that names `morphir-mck`. |
 | `cargo run --locked -p morphir-mck-cli -- <command> ARGS` | How this repository's tasks run it from source (`mise run mck -- <command>`). |
 
 The commands, options, adapters, exit codes, output routing and report formats below are unchanged by the move

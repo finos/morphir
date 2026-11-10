@@ -9,18 +9,23 @@ import {
 	type CliReleaseConfig,
 	type LaunchMetadata,
 	changelogReleaseVersion,
+	expectedLaunches,
+	extractCommand,
 	gitlinkCommit,
 	gitmodulesUrl,
 	launchPlan,
 	legacyAliasNames,
 	legacyPlatforms,
+	offeringMatrix,
 	type Qualification,
 	parseReleaseTag,
+	prepareRelease,
 	pinnedSourceOfferings,
 	readConfig,
 	readKitStatus,
 	releaseManifest,
 	releaseMatrix,
+	releaseBlocker,
 	releaseTag,
 	scenarioStatus,
 	verifySource,
@@ -32,7 +37,7 @@ const config = readConfig(root);
 const read = (file: string) => readFileSync(path.join(root, file), "utf8");
 
 type Step = { name?: string; run?: string; uses?: string; if?: string; with?: Record<string, unknown>; shell?: string };
-type Job = { needs?: string | string[]; if?: string; "runs-on"?: string; strategy?: { matrix?: unknown }; steps: Step[]; permissions?: Record<string, string> };
+type Job = { needs?: string | string[]; if?: string; uses?: string; with?: Record<string, unknown>; "runs-on"?: string; strategy?: { matrix?: unknown }; steps: Step[]; permissions?: Record<string, string> };
 type Workflow = { on: Record<string, unknown>; jobs: Record<string, Job>; permissions?: Record<string, string> };
 const release = Bun.YAML.parse(read(".github/workflows/release.yml")) as Workflow;
 const ci = Bun.YAML.parse(read(".github/workflows/ci.yml")) as Workflow;
@@ -107,37 +112,69 @@ describe("release workflow routing", () => {
 		expect(text).not.toContain("select_release_assets");
 	});
 
-	test("every platform builds and qualifies the pinned source with its own build", () => {
-		const build = release.jobs["build-platform"];
-		expect(build?.["runs-on"]).toBe("${{ matrix.runner }}");
-		expect(build?.strategy?.matrix).toBe("${{ fromJSON(needs.release-info.outputs.matrix) }}");
-		const steps = runs(build);
+	test("every offering is built by the source's reusable workflow at exactly the pinned commit", () => {
+		const offering = release.jobs.offering as Job & { uses?: string; with?: Record<string, string> };
+		expect(offering.uses).toBe(`finos/morphir-dotnet/.github/workflows/cli-offering.yml@${config.source.commit}`);
+		expect(offering.with).toEqual({
+			repository: "finos/morphir-dotnet",
+			ref: config.source.commit,
+			deployment: "${{ matrix.deployment }}",
+			rid: "${{ matrix.rid }}",
+			os: "${{ matrix.runner }}",
+			configuration: "Release",
+		});
+		expect(offering.strategy?.matrix).toBe("${{ fromJSON(needs.release-info.outputs.offerings) }}");
+		const matrix = offeringMatrix(config).include;
+		expect(matrix).toHaveLength(3 * config.platforms.length + 1);
+		expect(matrix).toContainEqual({ deployment: "dotnet-tool", rid: "", runner: "ubuntu-24.04" });
+		expect(matrix).toContainEqual({ deployment: "native-aot", rid: "win-arm64", runner: "windows-11-arm" });
+		expect(read(".github/workflows/release.yml")).not.toContain("PackRelease");
+	});
+
+	test("each platform qualifies its own and the tool's artifacts, and uploads only the reports", () => {
+		const qualifyJob = release.jobs["qualify-platform"];
+		expect(qualifyJob?.needs).toEqual(["release-info", "offering"]);
+		expect(qualifyJob?.["runs-on"]).toBe("${{ matrix.runner }}");
+		expect(qualifyJob?.strategy?.matrix).toBe("${{ fromJSON(needs.release-info.outputs.matrix) }}");
+		const steps = runs(qualifyJob);
 		expect(steps).toContain("bun run tools/cli-release.ts verify-source");
-		expect(steps).toContain("--target PackRelease --deployment native-aot --rid ${{ matrix.rid }}");
-		expect(steps).toContain("--target PackRelease --deployment self-contained --rid ${{ matrix.rid }}");
-		expect(steps).toContain("--target PackRelease --deployment framework-dependent --rid ${{ matrix.rid }}");
-		expect(steps).toMatch(/bun run tools\/cli-release\.ts qualify[^\n]*--deployment dotnet-tool/);
-		const tool = release.jobs["pack-tool"];
-		expect(runs(tool)).toContain("--target PackRelease --deployment dotnet-tool");
-		const setup = build?.steps.find(step => step.uses?.startsWith("actions/setup-dotnet@"));
+		expect(steps).toMatch(/qualify --release-dir \.dev\/out\/cli-release\/offerings --deployment "\$deployment"/);
+		expect(steps).toMatch(/qualify --release-dir \.dev\/out\/cli-release\/tool --deployment dotnet-tool/);
+		const downloads = qualifyJob!.steps.filter(step => step.uses?.startsWith("actions/download-artifact@"));
+		expect(downloads.map(step => step.with)).toEqual([
+			{ pattern: "morphir-dotnet-*-${{ matrix.rid }}", path: ".dev/out/cli-release/offerings", "merge-multiple": true },
+			{ name: "morphir-dotnet-dotnet-tool-any", path: ".dev/out/cli-release/tool" },
+		]);
+		// upload-artifact leaves out hidden folders such as .dev unless told; the glob names only the reports.
+		const upload = qualifyJob!.steps.find(step => step.uses?.startsWith("actions/upload-artifact@"));
+		expect(upload?.with).toMatchObject({ path: ".dev/out/cli-release/qualification/*.qualification.json", "include-hidden-files": true, "if-no-files-found": "error" });
+		const setup = qualifyJob!.steps.find(step => step.uses?.startsWith("actions/setup-dotnet@"));
 		expect(setup?.with?.["global-json-file"]).toBe("ecosystem/morphir-dotnet/global.json");
 		expect(releaseMatrix(config)).toEqual({ include: config.platforms.map(p => ({ rid: p.rid, runner: p.runner })) });
 	});
 
-	test("publishing needs every qualification and never replaces a release", () => {
+	test("publishing needs every qualification, attaches the listed assets and never replaces a release", () => {
 		const publish = release.jobs["publish-release"];
-		expect(publish?.needs).toEqual(["release-info", "pack-tool", "build-platform"]);
+		expect(publish?.needs).toEqual(["release-info", "offering", "qualify-platform"]);
 		expect(publish?.permissions).toEqual({ contents: "write" });
 		const steps = runs(publish);
 		expect(steps).not.toContain("--clobber");
 		expect(steps).not.toContain("gh release upload");
 		expect(steps).not.toContain("gh release edit");
+		expect(steps).not.toContain("nullglob");
+		expect(steps).not.toMatch(/assets\/\*\//);
 		expect(steps).toContain("already exists");
 		expect(steps).toContain("bun run tools/cli-release.ts manifest");
-		expect(steps).toMatch(/gh release create "\$TAG"[^\n]*--verify-tag/);
+		expect(steps).toContain("mapfile -t ASSETS < .dev/out/cli-release/publish/release-assets.txt");
+		expect(steps).toMatch(/gh release create "\$TAG"[^\n]*--verify-tag[^\n]*"\$\{ASSETS\[@\]\}"/);
+	});
+
+	test("a candidate pin builds and qualifies but cannot publish", () => {
+		expect(config.source.candidate?.pullRequest).toBe("https://github.com/finos/morphir-dotnet/pull/590");
+		expect(releaseBlocker(config)).toContain("unmerged candidate");
+		expect(releaseBlocker({ ...config, source: { ...config.source, candidate: undefined } })).toBeUndefined();
 	});
 });
-
 describe("qualification launches what ships", () => {
 	const archive: LaunchMetadata = {
 		release: "0.4.0-alpha.4",
@@ -194,6 +231,7 @@ describe("CI after the Rust CLI", () => {
 });
 
 describe("release manifest", () => {
+	const publishable: CliReleaseConfig = { ...config, source: { ...config.source, candidate: undefined } };
 	const kitText = (overrides: Record<string, unknown> = {}) =>
 		JSON.stringify({ mode: "local", revision: "a".repeat(40), modified: false, algorithm: "mck-file-map-sha256/1", corpusHash: `sha256-${"b".repeat(64)}`, errors: 0, ...overrides });
 	const kit = readKitStatus(kitText(), "spec/ir/mck");
@@ -204,7 +242,7 @@ describe("release manifest", () => {
 		runnerPlatform: rid,
 		artifact: `${deployment}-${rid}`,
 		sha256: "c".repeat(64),
-		invocations: [{ invocation: "morphir", scenarios: [{ scenario: "launch", status: "passed", exitCode: 0 }, ...pending.map(scenario => ({ scenario, status: "pending-triage" as const, exitCode: 1 }))] }],
+		invocations: [{ invocation: "morphir", reportedVersion: "0.4.0-alpha.4", scenarios: [{ scenario: "launch", status: "passed", exitCode: 0 }, ...pending.map(scenario => ({ scenario, status: "pending-triage" as const, exitCode: 1 }))] }],
 		qualified: pending.length === 0,
 		pending,
 	});
@@ -218,8 +256,9 @@ describe("release manifest", () => {
 	});
 
 	test("it names the source, kit and every artifact digest, and keeps pending triage visible", () => {
-		const manifest = releaseManifest(config, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", "d".repeat(40), kit, [], all());
-		expect(manifest.source).toEqual(config.source);
+		const manifest = releaseManifest(publishable, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", "d".repeat(40), kit, [], all());
+		expect(manifest.source).toEqual(publishable.source);
+		expect(() => releaseManifest(config, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", "d", kit, [], all())).toThrow("unmerged candidate");
 		expect(manifest.kit).toEqual(kit);
 		const mac = manifest.qualification.find(q => q.deployment === "native-aot" && q.platform === "osx-arm64");
 		expect(mac).toMatchObject({ qualified: false, pending: ["packaged-input"] });
@@ -227,11 +266,11 @@ describe("release manifest", () => {
 	});
 
 	test("a missing or failed qualification, or a mismatched tag, publishes nothing", () => {
-		expect(() => releaseManifest(config, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", "d", kit, [], all().slice(1))).toThrow("no qualification");
+		expect(() => releaseManifest(publishable, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", "d", kit, [], all().slice(1))).toThrow("no qualification");
 		const failed = all();
-		failed[0] = { ...failed[0]!, invocations: [{ invocation: "morphir", scenarios: [{ scenario: "launch", status: "failed", exitCode: 1 }] }], qualified: false };
-		expect(() => releaseManifest(config, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", "d", kit, [], failed)).toThrow("qualification failed");
-		expect(() => releaseManifest(config, "cli/v0.4.0-alpha.5", "0.4.0-alpha.4", "d", kit, [], all())).toThrow("does not name");
+		failed[0] = { ...failed[0]!, invocations: [{ invocation: "morphir", reportedVersion: "0.4.0-alpha.3", scenarios: [{ scenario: "launch", status: "failed", exitCode: 1 }] }], qualified: false };
+		expect(() => releaseManifest(publishable, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", "d", kit, [], failed)).toThrow("qualification failed");
+		expect(() => releaseManifest(publishable, "cli/v0.4.0-alpha.5", "0.4.0-alpha.4", "d", kit, [], all())).toThrow("does not name");
 	});
 });
 describe("legacy release names", () => {
@@ -250,7 +289,7 @@ describe("legacy release names", () => {
 		const steps = runs(release.jobs["publish-release"]);
 		expect(steps).toContain("bun run tools/cli-release.ts legacy-aliases");
 		expect(steps.indexOf("legacy-aliases")).toBeLessThan(steps.indexOf("cli-release.ts manifest"));
-		expect(steps).toContain("ASSETS+=(.dev/out/cli-release/legacy/morphir-*)");
+		expect(steps).toContain("--legacy .dev/out/cli-release/legacy/legacy-aliases.json");
 	});
 });
 test("legacy-aliases copies each packed Native AOT executable byte for byte", () => {
@@ -280,19 +319,106 @@ test("legacy-aliases copies each packed Native AOT executable byte for byte", ()
 	expect(recorded.find(a => a.asset === "morphir-win-x64.exe")?.aliasOf).toBe("morphir-dotnet-1.0.0-native-aot-win-x64.tar.gz");
 });
 describe("reported version", () => {
-	const commit = "7c263485547598085ea83d7d12bf6328056affba";
-	test("the release alone, or the release with the source commit as build metadata", () => {
-		expect(versionReported("0.4.0-alpha.4\n", "0.4.0-alpha.4", commit)).toBe(true);
-		expect(versionReported(`0.4.0-alpha.4+${commit}\n`, "0.4.0-alpha.4", commit)).toBe(true);
-		expect(versionReported("0.4.0-alpha.4+7c26348", "0.4.0-alpha.4", commit)).toBe(true);
+	test("the part before + is the release from the launch metadata; build metadata is evidence", () => {
+		expect(versionReported("0.4.0-alpha.4\n", "0.4.0-alpha.4")).toBe(true);
+		expect(versionReported("0.4.0-alpha.4+8c15df59ce902c3ec06bb2df0c8ab4a88445a39d\n", "0.4.0-alpha.4")).toBe(true);
+		expect(versionReported("0.4.0-alpha.4+7c26348", "0.4.0-alpha.4")).toBe(true);
 	});
 
-	test("another release, another commit or other output is refused", () => {
-		expect(versionReported("0.4.0-alpha.3", "0.4.0-alpha.4", commit)).toBe(false);
-		expect(versionReported("0.4.0-alpha.4+e439701", "0.4.0-alpha.4", commit)).toBe(false);
-		expect(versionReported("0.4.0-alpha.4+7c26", "0.4.0-alpha.4", commit)).toBe(false);
-		expect(versionReported("0.4.0-alpha.4+build.1", "0.4.0-alpha.4", commit)).toBe(false);
-		expect(versionReported("morphir 0.4.0-alpha.4", "0.4.0-alpha.4", commit)).toBe(false);
-		expect(versionReported("0.4.0-alpha.4\nextra", "0.4.0-alpha.4", commit)).toBe(false);
+	test("another release, an empty suffix or other output is refused", () => {
+		expect(versionReported("0.4.0-alpha.3+8c15df5", "0.4.0-alpha.4")).toBe(false);
+		expect(versionReported("0.4.0-alpha.4.1", "0.4.0-alpha.4")).toBe(false);
+		expect(versionReported("0.4.0-alpha.4+", "0.4.0-alpha.4")).toBe(false);
+		expect(versionReported("morphir 0.4.0-alpha.4", "0.4.0-alpha.4")).toBe(false);
+		expect(versionReported("0.4.0-alpha.4\nextra", "0.4.0-alpha.4")).toBe(false);
+		expect(versionReported("", "0.4.0-alpha.4")).toBe(false);
+	});
+});
+
+describe("archives are read wherever the command runs", () => {
+	test("extraction uses absolute paths and a program that reads the archive's format", () => {
+		const windows = extractCommand("rel/a.zip", "out", "win32", "C:\\Windows");
+		expect(windows[0]).toBe("C:\\Windows\\System32\\tar.exe");
+		expect(path.isAbsolute(windows[2]!)).toBe(true);
+		expect(extractCommand("rel/a.zip", "out", "linux")).toEqual(["unzip", "-q", path.resolve("rel/a.zip"), "-d", path.resolve("out")]);
+		expect(extractCommand("rel/a.tar.gz", "out", "darwin")).toEqual(["tar", "-xzf", path.resolve("rel/a.tar.gz"), "-C", path.resolve("out")]);
+	});
+
+	test("qualify, legacy-aliases and manifest take relative paths from an unrelated working directory", () => {
+		const work = mkdtempSync(path.join(os.tmpdir(), "cli-relative-"));
+		const assets = path.join(work, "assets");
+		mkdirSync(assets);
+		const sha = (file: string) => new Bun.CryptoHasher("sha256").update(readFileSync(file)).digest("hex");
+		const launches: LaunchMetadata[] = [];
+		// A tiny controlled "executable": a script that prints the release with build metadata. It is the only
+		// program qualification starts here, and only on platforms where a script runs directly.
+		for (const d of config.deployments) {
+			for (const rid of d.portable ? ["any"] : config.platforms.map(p => p.rid)) {
+				const folder = path.join(work, `publish-${d.id}-${rid}`);
+				mkdirSync(folder);
+				const exe = rid.startsWith("win-") ? "morphir.exe" : "morphir";
+				writeFileSync(path.join(folder, exe), "#!/bin/sh\necho 1.0.0+abc1234\n", { mode: 0o755 });
+				const artifact = d.portable ? "Morphir.Tool.1.0.0.nupkg" : `morphir-dotnet-1.0.0-${d.id}-${rid}.tar.gz`;
+				const dir = path.join(assets, `morphir-dotnet-${d.id}-${rid}`);
+				mkdirSync(dir);
+				expect(Bun.spawnSync(["tar", "-czf", path.join(dir, artifact), "-C", folder, exe], { windowsHide: true }).exitCode).toBe(0);
+				const launch: LaunchMetadata = { release: "1.0.0", deployment: d.id, platform: rid, artifact, sha256: sha(path.join(dir, artifact)), launchPath: d.portable ? "dotnet-morphir" : exe, layout: d.portable ? "tool-package" : d.id === "native-aot" ? "single-file" : "folder" };
+				writeFileSync(path.join(dir, `${artifact}.build-launch.json`), JSON.stringify(launch));
+				launches.push(launch);
+			}
+		}
+		const qualificationDir = path.join(assets, "cli-qualification-all");
+		mkdirSync(qualificationDir);
+		for (const d of config.deployments) for (const p of config.platforms) {
+			writeFileSync(path.join(qualificationDir, `${d.id}-${p.rid}.qualification.json`), JSON.stringify({ release: "1.0.0", deployment: d.id, platform: p.rid, runnerPlatform: p.rid, artifact: "x", sha256: "y", invocations: [{ invocation: "morphir", reportedVersion: "1.0.0+abc1234", scenarios: [{ scenario: "launch", status: "passed", exitCode: 0 }] }], qualified: true, pending: [] }));
+		}
+		const kit = path.join(work, "kit.json");
+		writeFileSync(kit, JSON.stringify({ revision: "a".repeat(40), modified: false, algorithm: "mck-file-map-sha256/1", corpusHash: `sha256-${"b".repeat(64)}`, errors: 0 }));
+		const tool = path.join(root, "tools/cli-release.ts");
+		const runTool = (args: string[], cwd: string) => Bun.spawnSync(["bun", "run", tool, ...args], { cwd, stdout: "pipe", stderr: "pipe", windowsHide: true });
+
+		// Every path is relative to `work`, and every command runs from there.
+		const legacy = runTool(["legacy-aliases", "--assets", "assets", "--version", "1.0.0", "--out", "legacy"], work);
+		expect(legacy.exitCode, legacy.stderr.toString()).toBe(0);
+		expect(readFileSync(path.join(work, "legacy/morphir-win-x64.exe"), "utf8")).toContain("echo 1.0.0+abc1234");
+
+		// The candidate pin refuses the manifest; the same inputs pass once the pin is a main commit.
+		const refused = runTool(["manifest", "--tag", "cli/v1.0.0", "--version", "1.0.0", "--assets", "assets", "--kit-status", "kit.json", "--legacy", "legacy/legacy-aliases.json", "--out", "publish"], work);
+		expect(refused.exitCode).toBe(1);
+		expect(refused.stderr.toString()).toContain("unmerged candidate");
+		const listed = prepareRelease({ ...config, source: { ...config.source, candidate: undefined } }, work, { tag: "cli/v1.0.0", version: "1.0.0", assets: "assets", kitStatus: "kit.json", legacy: "legacy/legacy-aliases.json", out: "publish", commit: "c".repeat(40) });
+		expect(readFileSync(path.join(work, "publish/release-assets.txt"), "utf8").trim().split("\n")).toEqual(listed);
+		const names = listed.map(file => path.basename(file)).sort();
+		expect(names).toHaveLength(launches.length + 8 + 1);
+		for (const launch of launches) expect(names).toContain(launch.artifact);
+		expect(names).toContain("morphir-linux-arm64-v1.0.0.tar.gz");
+		expect(names).toContain("release-manifest.json");
+		for (const file of listed) expect(path.isAbsolute(file)).toBe(true);
+
+		// qualify from the same unrelated directory, with a relative release dir. The launched program is this
+		// test's own Bun executable under the name morphir: a real binary that prints a bare version.
+		const rid = process.platform === "win32" ? "win-x64" : process.platform === "darwin" ? "osx-arm64" : "linux-x64";
+		const exe = process.platform === "win32" ? "morphir.exe" : "morphir";
+		const packed = path.join(work, "packed");
+		mkdirSync(packed);
+		Bun.spawnSync([process.platform === "win32" ? "cmd" : "cp", ...(process.platform === "win32" ? ["/c", "copy", "/b", process.execPath, path.join(packed, exe)] : [process.execPath, path.join(packed, exe)])], { windowsHide: true });
+		const real = path.join(work, "real");
+		mkdirSync(real);
+		const archive = `morphir-dotnet-${Bun.version}-native-aot-${rid}.tar.gz`;
+		expect(Bun.spawnSync(["tar", "-czf", path.join(real, archive), "-C", packed, exe], { windowsHide: true }).exitCode).toBe(0);
+		writeFileSync(path.join(real, `${archive}.build-launch.json`), JSON.stringify({ release: Bun.version, deployment: "native-aot", platform: rid, artifact: archive, sha256: sha(path.join(real, archive)), launchPath: exe, layout: "single-file" }));
+		runTool(["qualify", "--release-dir", "real", "--deployment", "native-aot", "--rid", rid, "--platform", rid, "--version", Bun.version, "--out", "q/native.json"], work);
+		const result = JSON.parse(readFileSync(path.join(work, "q/native.json"), "utf8")) as Qualification;
+		expect(result.invocations[0]?.reportedVersion).toBe(Bun.version);
+		expect(result.invocations[0]?.scenarios.find(s => s.scenario === "launch")?.status).toBe("passed");
+		expect(result.sha256).toBe(sha(path.join(real, archive)));	});
+
+	test("a repeated or missing artifact fails instead of being merged or dropped", () => {
+		const launch = (deployment: string, platform: string, artifact = `${deployment}-${platform}`): LaunchMetadata => ({ release: "1.0.0", deployment, platform, artifact, sha256: "0", launchPath: "morphir", layout: "folder" });
+		const all = config.deployments.flatMap(d => (d.portable ? [launch(d.id, "any")] : config.platforms.map(p => launch(d.id, p.rid))));
+		expect(expectedLaunches(config, all)).toHaveLength(all.length);
+		expect(() => expectedLaunches(config, all.slice(1))).toThrow("no artifact for native-aot win-x64");
+		expect(() => expectedLaunches(config, [...all, launch("native-aot", "win-x64", "other.zip")])).toThrow("2 artifacts for native-aot win-x64");
+		expect(() => expectedLaunches(config, [...all, launch("native-aot", "freebsd-x64")])).toThrow("unexpected artifact");
 	});
 });

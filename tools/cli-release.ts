@@ -24,7 +24,7 @@ export type Deployment = { id: string; portable: boolean; package?: string; invo
 export type Platform = { rid: string; runner: string };
 export type PendingTriage = { scenario: string; platforms: string[]; reason: string; evidence: string[] };
 export type CliReleaseConfig = {
-	source: { repository: string; submodule: string; commit: string };
+	source: { repository: string; submodule: string; commit: string; candidate?: { pullRequest: string; reason: string } };
 	tagPrefix: string;
 	kit: string;
 	deployments: Deployment[];
@@ -194,22 +194,52 @@ export function launchPlan(launch: LaunchMetadata, extracted: string, toolPath: 
 }
 
 /**
- * Whether `--version` output names the release. The executable prints the release, optionally with the source
- * commit it was built from as SemVer build metadata (`0.4.0-alpha.4+<sha>`); the launch metadata carries the release
- * alone. Metadata counts only when it is at least 7 hex digits of the pinned commit: any other commit or text fails.
+ * Whether `--version` output names the release. The executable prints the release, optionally followed by `+` and
+ * build metadata (the commit it was built from, for example `0.4.0-alpha.4+<sha>`); the launch metadata's
+ * `release` is the authority and carries the release alone. The part before the first `+` must equal it exactly, on
+ * one line. The build metadata is kept as evidence, not compared (as finos/morphir-dotnet#590's cli-offering.yml
+ * does).
  */
-export function versionReported(output: string, version: string, commit: string): boolean {
+export function versionReported(output: string, release: string): boolean {
 	const text = output.trim();
-	if (text === version) return true;
-	if (!text.startsWith(`${version}+`)) return false;
-	const metadata = text.slice(version.length + 1);
-	return /^[0-9a-f]{7,40}$/.test(metadata) && commit.startsWith(metadata);
+	if (text.length === 0 || /\s/.test(text)) return false;
+	const plus = text.indexOf("+");
+	const reported = plus < 0 ? text : text.slice(0, plus);
+	return reported === release && (plus < 0 || text.length > plus + 1);
 }
-
 /** A scenario's status. A result under a recorded pending triage is kept but never counted as qualified. */
 export function scenarioStatus(config: CliReleaseConfig, rid: string, scenario: string, exitCode: number): ScenarioStatus {
 	if (config.pendingTriage.some(entry => entry.scenario === scenario && entry.platforms.includes(rid))) return "pending-triage";
 	return exitCode === 0 ? "passed" : "failed";
+}
+
+/**
+ * The command that extracts an archive into a folder on this machine. A zip needs a reader of zip: Windows'
+ * own bsdtar (Git for Windows puts GNU tar first on PATH, which reads no zip), and `unzip` elsewhere. A tar.gz uses
+ * the system tar. Both paths are absolute so the command does not depend on the working directory.
+ */
+export function extractCommand(archive: string, destination: string, platform: NodeJS.Platform = process.platform, systemRoot = process.env.SystemRoot ?? "C:\\Windows"): string[] {
+	const source = path.resolve(archive);
+	const target = path.resolve(destination);
+	if (platform === "win32") return [path.win32.join(systemRoot, "System32", "tar.exe"), "-xf", source, "-C", target];
+	if (source.endsWith(".zip")) return ["unzip", "-q", source, "-d", target];
+	return ["tar", "-xzf", source, "-C", target];
+}
+
+/** The reusable-workflow matrix: every deployment on every platform, and the portable tool once. */
+export function offeringMatrix(config: CliReleaseConfig): { include: { deployment: string; rid: string; runner: string }[] } {
+	const include = config.deployments.flatMap(deployment =>
+		deployment.portable
+			? [{ deployment: deployment.id, rid: "", runner: "ubuntu-24.04" }]
+			: config.platforms.map(platform => ({ deployment: deployment.id, rid: platform.rid, runner: platform.runner })),
+	);
+	return { include };
+}
+
+/** Why a release cannot run from this pin, or undefined when it can. */
+export function releaseBlocker(config: CliReleaseConfig): string | undefined {
+	const candidate = config.source.candidate;
+	return candidate === undefined ? undefined : `the CLI source pin is an unmerged candidate (${candidate.pullRequest}); ${candidate.reason}`;
 }
 
 function sha256(file: string): string {
@@ -256,7 +286,7 @@ export type Qualification = {
 	runnerPlatform: string;
 	artifact: string;
 	sha256: string;
-	invocations: { invocation: string; scenarios: { scenario: string; status: ScenarioStatus; exitCode: number }[] }[];
+	invocations: { invocation: string; reportedVersion: string; scenarios: { scenario: string; status: ScenarioStatus; exitCode: number }[] }[];
 	qualified: boolean;
 	pending: string[];
 };
@@ -293,7 +323,7 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		check(run(["dotnet", "tool", "install", pkg, "--version", version, "--add-source", feed, "--local"], { cwd: work }), "dotnet tool install --local");
 	} else {
 		// bsdtar (Windows, macOS) reads zip and tar.gz; Linux archives are tar.gz.
-		check(run(["tar", "-xf", artifact, "-C", extracted], { cwd: work }), `extract ${launch.artifact}`);
+		check(run(extractCommand(artifact, extracted), { cwd: work }), `extract ${launch.artifact}`);
 		if (deployment !== "framework-dependent") env = withoutDotnet();
 	}
 
@@ -306,7 +336,7 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		if (!existsSync(step.command[0]!) && step.command[0] !== "dotnet") throw new Error(`${launch.artifact} has no ${step.command[0]}`);
 		const scenarios: Qualification["invocations"][number]["scenarios"] = [];
 		const version_ = run([...step.command, "--version"], { cwd: work, env });
-		const versionMatches = version_.exitCode === 0 && versionReported(version_.stdout, version, config.source.commit);
+		const versionMatches = version_.exitCode === 0 && versionReported(version_.stdout, launch.release);
 		scenarios.push({ scenario: "launch", status: scenarioStatus(config, launch.platform === "any" ? platform : launch.platform, "launch", versionMatches ? 0 : 1), exitCode: version_.exitCode });
 		const help = run([...step.command, "--help"], { cwd: work, env });
 		scenarios.push({ scenario: "help", status: help.exitCode === 0 ? "passed" : "failed", exitCode: help.exitCode });
@@ -315,7 +345,7 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		for (const [name, result] of [["--version", version_], ["--help", help], ["ir verify", verify]] as const) {
 			console.error(`${step.invocation} ${name}: exit ${result.exitCode}\n${result.stdout}${result.stderr}`);
 		}
-		return { invocation: step.invocation, scenarios };
+		return { invocation: step.invocation, reportedVersion: version_.stdout.trim(), scenarios };
 	});
 	const all = invocations.flatMap(i => i.scenarios);
 	return {
@@ -333,12 +363,36 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 
 // ---- Release manifest ----------------------------------------------------
 
+/**
+ * The launch metadata of exactly the expected artifacts: one per deployment and platform, and one for each portable
+ * deployment. A missing, repeated or unexpected artifact is an error, never dropped or merged silently.
+ */
+export function expectedLaunches(config: CliReleaseConfig, launches: LaunchMetadata[]): LaunchMetadata[] {
+	const key = (deployment: string, platform: string) => `${deployment} ${platform}`;
+	const expected = config.deployments.flatMap(d => (d.portable ? [key(d.id, "any")] : config.platforms.map(p => key(d.id, p.rid))));
+	const byKey = new Map<string, LaunchMetadata[]>();
+	for (const launch of launches) byKey.set(key(launch.deployment, launch.platform), [...(byKey.get(key(launch.deployment, launch.platform)) ?? []), launch]);
+	const problems: string[] = [];
+	for (const wanted of expected) {
+		const found = byKey.get(wanted) ?? [];
+		if (found.length === 0) problems.push(`no artifact for ${wanted}`);
+		if (new Set(found.map(l => l.artifact)).size > 1 || found.length > 1) problems.push(`${found.length} artifacts for ${wanted}`);
+	}
+	for (const extra of byKey.keys()) if (!expected.includes(extra)) problems.push(`unexpected artifact for ${extra}`);
+	if (problems.length > 0) throw new Error(problems.join("; "));
+	return expected.map(wanted => byKey.get(wanted)![0]!);
+}
+
 /** The kit identity `morphir-mck kit status --json` reports, as the manifest records it. */
 export type KitStatus = { path: string; algorithm: string; corpusHash: string; revision: string };
 
 /** The release manifest: release evidence that names the exact source, kit and artifact digests. Not a contract. */
 export function releaseManifest(config: CliReleaseConfig, tag: string, version: string, commit: string, kit: KitStatus, launches: LaunchMetadata[], qualifications: Qualification[], legacy: LegacyAlias[] = []) {
 	if (parseReleaseTag(config, tag) !== version) throw new Error(`${tag} does not name release ${version}`);
+	const blocker = releaseBlocker(config);
+	if (blocker !== undefined) throw new Error(`no release manifest: ${blocker}`);
+	const stray = launches.filter(launch => launch.release !== version);
+	if (stray.length > 0) throw new Error(`artifacts of another release: ${stray.map(launch => `${launch.artifact} (${launch.release})`).join(", ")}`);
 	const failed = qualifications.filter(q => q.invocations.some(i => i.scenarios.some(s => s.status === "failed")));
 	if (failed.length > 0) throw new Error(`qualification failed: ${failed.map(q => `${q.deployment} ${q.runnerPlatform}`).join(", ")}`);
 	for (const deployment of config.deployments) {
@@ -385,6 +439,48 @@ function releaseNotes(manifest: ReturnType<typeof releaseManifest>): string {
 	];
 	for (const entry of manifest.pendingTriage) lines.push("", `Pending triage, ${entry.scenario} on ${entry.platforms.join(", ")}: ${entry.reason} Evidence: ${entry.evidence.join("; ")}.`);
 	return `${lines.join("\n")}\n`;
+}
+
+export type ReleaseInputs = { tag: string; version: string; assets: string; kitStatus: string; legacy?: string; out: string; commit: string };
+
+/**
+ * Verifies the downloaded artifacts and writes the release manifest, the notes and `release-assets.txt`: the exact
+ * files the release attaches, one absolute path per line. Relative paths resolve against `cwd`, the directory the
+ * command was started from. Returns that list.
+ */
+export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: ReleaseInputs): string[] {
+	const assets = path.resolve(cwd, inputs.assets);
+	const launches = files(assets, ".build-launch.json").map(file => JSON.parse(readFileSync(file, "utf8")) as LaunchMetadata);
+	const expected = expectedLaunches(config, launches);
+	const releaseFiles: string[] = [];
+	for (const launch of expected) {
+		const found = files(assets, launch.artifact).filter(file => path.basename(file) === launch.artifact);
+		if (found.length === 0) throw new Error(`${launch.artifact} is missing from ${assets}`);
+		if (found.length > 1) throw new Error(`${launch.artifact} appears ${found.length} times under ${assets}`);
+		const artifact = found[0]!;
+		if (sha256(artifact) !== launch.sha256) throw new Error(`${launch.artifact} does not match its recorded SHA-256`);
+		releaseFiles.push(artifact);
+	}
+	const qualifications = files(assets, ".qualification.json").map(file => JSON.parse(readFileSync(file, "utf8")) as Qualification);
+	const kit = readKitStatus(readFileSync(path.resolve(cwd, inputs.kitStatus), "utf8"), config.kit);
+	const legacyFile = inputs.legacy === undefined ? undefined : path.resolve(cwd, inputs.legacy);
+	const legacy = legacyFile === undefined ? [] : (JSON.parse(readFileSync(legacyFile, "utf8")) as LegacyAlias[]);
+	for (const alias of legacy) {
+		const file = path.join(path.dirname(legacyFile!), alias.asset);
+		if (!existsSync(file) || sha256(file) !== alias.sha256) throw new Error(`${alias.asset} is missing or does not match its recorded SHA-256`);
+		releaseFiles.push(file);
+	}
+	const manifest = releaseManifest(config, inputs.tag, inputs.version, inputs.commit, kit, expected, qualifications, legacy);
+	const out = path.resolve(cwd, inputs.out);
+	mkdirSync(out, { recursive: true });
+	writeFileSync(path.join(out, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+	writeFileSync(path.join(out, "release-notes.md"), releaseNotes(manifest));
+	releaseFiles.push(path.join(out, "release-manifest.json"));
+	const names = releaseFiles.map(file => path.basename(file));
+	const repeated = names.filter((name, index) => names.indexOf(name) !== index);
+	if (repeated.length > 0) throw new Error(`release asset names repeat: ${[...new Set(repeated)].join(", ")}`);
+	writeFileSync(path.join(out, "release-assets.txt"), `${releaseFiles.join("\n")}\n`);
+	return releaseFiles;
 }
 
 // ---- Command line --------------------------------------------------------
@@ -448,13 +544,19 @@ function main(args: string[]): number {
 			output("version", version);
 			output("prerelease", (parse(version).prerelease ?? []).length > 0 ? "true" : "false");
 			output("matrix", JSON.stringify(releaseMatrix(config)));
+			output("offerings", JSON.stringify(offeringMatrix(config)));
+			// Building and qualifying may run from a candidate pin, so the interface can be exercised; the
+			// manifest, and so publication, refuses it.
+			const blocker = releaseBlocker(config);
+			if (blocker !== undefined) console.error(`::warning::${blocker}. Building and qualifying only; publication will refuse.`);
+			output("publishable", blocker === undefined ? "true" : "false");
 			return 0;
 		}
 		case "qualify": {
 			const deployment = required(rest, "--deployment");
 			const platform = required(rest, "--platform");
-			const result = qualify(root, config, required(rest, "--release-dir"), deployment, option(rest, "--rid"), required(rest, "--version"), platform);
-			const out = required(rest, "--out");
+			const result = qualify(root, config, path.resolve(required(rest, "--release-dir")), deployment, option(rest, "--rid"), required(rest, "--version"), platform);
+			const out = path.resolve(required(rest, "--out"));
 			mkdirSync(path.dirname(out), { recursive: true });
 			writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);
 			const failed = result.invocations.flatMap(i => i.scenarios.filter(s => s.status === "failed").map(s => `${i.invocation} ${s.scenario}`));
@@ -462,9 +564,9 @@ function main(args: string[]): number {
 			return failed.length === 0 ? 0 : 1;
 		}
 		case "legacy-aliases": {
-			const assets = required(rest, "--assets");
+			const assets = path.resolve(required(rest, "--assets"));
 			const version = required(rest, "--version");
-			const out = required(rest, "--out");
+			const out = path.resolve(required(rest, "--out"));
 			mkdirSync(out, { recursive: true });
 			const platforms = legacyPlatforms(readFileSync(path.join(root, config.source.submodule, "build/Helpers/ReleaseProfiles.cs"), "utf8"));
 			const launches = files(assets, ".build-launch.json").map(file => JSON.parse(readFileSync(file, "utf8")) as LaunchMetadata);
@@ -476,7 +578,7 @@ function main(args: string[]): number {
 				if (archive === undefined || sha256(archive) !== launch.sha256) throw new Error(`${launch.artifact} is missing or does not match its SHA-256`);
 				const names = legacyAliasNames(rid, version);
 				const staging = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), `legacy-${rid}-`));
-				check(run(["tar", "-xf", archive, "-C", staging], { cwd: staging }), `extract ${launch.artifact}`);
+				check(run(extractCommand(archive, staging), { cwd: staging }), `extract ${launch.artifact}`);
 				const executable = path.join(staging, launch.launchPath);
 				const digest = sha256(executable);
 				copyFileSync(executable, path.join(out, names.executable));
@@ -493,26 +595,17 @@ function main(args: string[]): number {
 			return 0;
 		}
 		case "manifest": {
-			const assets = required(rest, "--assets");
-			const launches = files(assets, ".build-launch.json").map(file => JSON.parse(readFileSync(file, "utf8")) as LaunchMetadata);
-			const unique = [...new Map(launches.map(launch => [launch.artifact, launch])).values()];
-			for (const launch of unique) {
-				const [artifact] = files(assets, launch.artifact).filter(file => path.basename(file) === launch.artifact);
-				if (artifact === undefined) throw new Error(`${launch.artifact} is missing from ${assets}`);
-				if (sha256(artifact) !== launch.sha256) throw new Error(`${launch.artifact} does not match its recorded SHA-256`);
-			}
-			const qualifications = files(assets, ".qualification.json").map(file => JSON.parse(readFileSync(file, "utf8")) as Qualification);
-			const kit = readKitStatus(readFileSync(required(rest, "--kit-status"), "utf8"), config.kit);
-			const legacyFile = option(rest, "--legacy");
-			const legacy = legacyFile === undefined ? [] : (JSON.parse(readFileSync(legacyFile, "utf8")) as LegacyAlias[]);
-			const manifest = releaseManifest(config, required(rest, "--tag"), required(rest, "--version"), process.env.GITHUB_SHA ?? "unknown", kit, unique, qualifications, legacy);
-			const out = required(rest, "--out");
-			mkdirSync(out, { recursive: true });
-			writeFileSync(path.join(out, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-			writeFileSync(path.join(out, "release-notes.md"), releaseNotes(manifest));
+			prepareRelease(config, process.cwd(), {
+				tag: required(rest, "--tag"),
+				version: required(rest, "--version"),
+				assets: required(rest, "--assets"),
+				kitStatus: required(rest, "--kit-status"),
+				legacy: option(rest, "--legacy"),
+				out: required(rest, "--out"),
+				commit: process.env.GITHUB_SHA ?? "unknown",
+			});
 			return 0;
-		}
-		default:
+		}		default:
 			console.error("usage: cli-release.ts verify-source | release-info | qualify | manifest (see the header of tools/cli-release.ts)");
 			return 2;
 	}

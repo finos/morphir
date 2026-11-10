@@ -1,16 +1,20 @@
 name: Release
 
 # The official Morphir CLI release. The CLI source is finos/morphir-dotnet,
-# pinned as ecosystem/morphir-dotnet; that source's own build produces every
-# artifact (`--target PackRelease`). This workflow orchestrates it, launches
-# each produced artifact on its own platform, and publishes one release whose
-# manifest names the exact source commit, kit digest and artifact digests.
-# .config/cli-release.json holds the expectations; tools/cli-release.ts does
-# the checks; tools/cli-release.test.ts tests both and this workflow.
+# pinned as ecosystem/morphir-dotnet. That source's own reusable workflow
+# (cli-offering.yml, at the pinned commit) builds each offering with its
+# maintained release profiles and starts the produced executable. This
+# workflow then launches every artifact again on each platform as users do,
+# and publishes one release whose manifest names the exact source commit, kit
+# digest and artifact digests. .config/cli-release.json holds the
+# expectations; tools/cli-release.ts does the checks; tools/cli-release.test.ts
+# tests both and this workflow.
 #
 # Releases of the deleted Rust CLI used `v*` tags. Those tags and their
 # releases stay as they are: this workflow only runs for `cli/v*`, refuses a
-# tag whose release already exists, and never uploads into a release.
+# tag whose release already exists, and never uploads into a release. While
+# the pin is an unmerged candidate (source.candidate in the config), it builds
+# and qualifies but refuses to publish.
 
 on:
   push:
@@ -46,6 +50,8 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       prerelease: ${{ steps.release.outputs.prerelease }}
       matrix: ${{ steps.release.outputs.matrix }}
+      offerings: ${{ steps.release.outputs.offerings }}
+      publishable: ${{ steps.release.outputs.publishable }}
     steps:
       - name: Check out the tag
         uses: actions/checkout@v7
@@ -68,56 +74,33 @@ jobs:
         id: release
         run: bun run tools/cli-release.ts release-info --tag "$RELEASE_TAG"
 
-  pack-tool:
-    name: Pack Morphir.Tool
+  # The source's own build, one job per offering and platform. `uses` must name
+  # the commit literally, and `ref` passes the same commit; the release tests
+  # check both against .config/cli-release.json. Native AOT compiles only on
+  # its own operating system, so each runner is the platform's own.
+  offering:
+    name: Build ${{ matrix.deployment }} ${{ matrix.rid }}
     needs: release-info
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out the tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.release-info.outputs.tag }}
-          persist-credentials: false
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.release-info.outputs.offerings) }}
+    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@8c15df59ce902c3ec06bb2df0c8ab4a88445a39d
+    with:
+      repository: finos/morphir-dotnet
+      ref: 8c15df59ce902c3ec06bb2df0c8ab4a88445a39d
+      deployment: ${{ matrix.deployment }}
+      rid: ${{ matrix.rid }}
+      os: ${{ matrix.runner }}
+      configuration: Release
 
-      - name: Check out the pinned CLI source
-        run: git submodule update --init --recursive --depth 1 ecosystem/morphir-dotnet
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-
-      - name: Install tooling dependencies
-        run: bun install --frozen-lockfile
-        working-directory: tools
-
-      - name: Verify the source pin
-        run: bun run tools/cli-release.ts verify-source
-
-      - uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: ecosystem/morphir-dotnet/global.json
-
-      # The source's own release profile: the same pack as its PackTool
-      # target, so the package id, the dotnet-morphir command and `dotnet
-      # morphir` stay what they are.
-      - name: Pack the tool package
-        working-directory: ecosystem/morphir-dotnet
-        run: dotnet run --project build/_build.csproj -- --target PackRelease --deployment dotnet-tool
-
-      - name: Upload the tool package
-        uses: actions/upload-artifact@v7
-        with:
-          name: cli-dotnet-tool
-          path: |
-            ecosystem/morphir-dotnet/artifacts/release/*.nupkg
-            ecosystem/morphir-dotnet/artifacts/release/*.build-launch.json
-            ecosystem/morphir-dotnet/artifacts/release/*.build-contents.json
-          if-no-files-found: error
-          retention-days: 7
-
-  build-platform:
-    name: Build and qualify (${{ matrix.rid }})
-    needs: [release-info, pack-tool]
+  # Each artifact is launched as users launch it, on its platform: the
+  # extracted executable or apphost itself (never `dotnet exec`), and the tool
+  # as `dotnet-morphir` and `dotnet morphir`. Standalone offerings run with no
+  # .NET on the search path. This is the parent's qualification; the source
+  # workflow's start check is not.
+  qualify-platform:
+    name: Qualify (${{ matrix.rid }})
+    needs: [release-info, offering]
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-info.outputs.matrix) }}
@@ -137,7 +120,7 @@ jobs:
           persist-credentials: false
 
       - name: Check out the pinned CLI source
-        run: git submodule update --init --recursive --depth 1 ecosystem/morphir-dotnet
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -154,27 +137,21 @@ jobs:
         with:
           global-json-file: ecosystem/morphir-dotnet/global.json
 
-      # Native AOT compiles only on the operating system it targets, so each
-      # platform builds on its own runner. The source's build checks that each
-      # publish folder matches its launch metadata before it packs.
-      - name: Build the platform offerings
-        working-directory: ecosystem/morphir-dotnet
-        run: |
-          set -euo pipefail
-          dotnet run --project build/_build.csproj -- --target PackRelease --deployment native-aot --rid ${{ matrix.rid }}
-          dotnet run --project build/_build.csproj -- --target PackRelease --deployment self-contained --rid ${{ matrix.rid }}
-          dotnet run --project build/_build.csproj -- --target PackRelease --deployment framework-dependent --rid ${{ matrix.rid }}
+      # Each offering's artifact is flat: the archive or package, its launch
+      # metadata, its contents listing and its .sha256.
+      - name: Download this platform's offerings
+        uses: actions/download-artifact@v8
+        with:
+          pattern: morphir-dotnet-*-${{ matrix.rid }}
+          path: .dev/out/cli-release/offerings
+          merge-multiple: true
 
       - name: Download the tool package
         uses: actions/download-artifact@v8
         with:
-          name: cli-dotnet-tool
+          name: morphir-dotnet-dotnet-tool-any
           path: .dev/out/cli-release/tool
 
-      # Each artifact is launched as users launch it: the extracted executable
-      # or apphost itself (never `dotnet exec`), and the tool as
-      # `dotnet-morphir` and `dotnet morphir`. Standalone offerings run with no
-      # .NET on the search path.
       - name: Qualify the produced artifacts
         env:
           VERSION: ${{ needs.release-info.outputs.version }}
@@ -182,32 +159,27 @@ jobs:
         run: |
           set -euo pipefail
           OUT=.dev/out/cli-release/qualification
-          RELEASE=ecosystem/morphir-dotnet/artifacts/release
           for deployment in native-aot self-contained framework-dependent; do
-            bun run tools/cli-release.ts qualify --release-dir "$RELEASE" --deployment "$deployment" --rid "$RID" \
+            bun run tools/cli-release.ts qualify --release-dir .dev/out/cli-release/offerings --deployment "$deployment" --rid "$RID" \
               --platform "$RID" --version "$VERSION" --out "$OUT/$deployment-$RID.qualification.json"
           done
           bun run tools/cli-release.ts qualify --release-dir .dev/out/cli-release/tool --deployment dotnet-tool \
             --platform "$RID" --version "$VERSION" --out "$OUT/dotnet-tool-$RID.qualification.json"
 
-      - name: Upload the platform artifacts and their qualification
+      # .dev is a hidden folder, which upload-artifact leaves out unless told.
+      - name: Upload the qualification
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: cli-${{ matrix.rid }}
-          path: |
-            ecosystem/morphir-dotnet/artifacts/release/*.zip
-            ecosystem/morphir-dotnet/artifacts/release/*.tar.gz
-            ecosystem/morphir-dotnet/artifacts/release/*.build-launch.json
-            ecosystem/morphir-dotnet/artifacts/release/*.build-contents.json
-            ecosystem/morphir-dotnet/artifacts/release/size-report.md
-            .dev/out/cli-release/qualification/*.qualification.json
+          name: cli-qualification-${{ matrix.rid }}
+          path: .dev/out/cli-release/qualification/*.qualification.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
   publish-release:
     name: Publish the GitHub release
-    needs: [release-info, pack-tool, build-platform]
+    needs: [release-info, offering, qualify-platform]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -248,11 +220,12 @@ jobs:
           mkdir -p .dev/out/cli-release
           cargo +1.98.1 run --locked -q -p morphir-mck-cli -- kit status --kit spec/ir/mck --json > .dev/out/cli-release/kit-status.json
 
-      - name: Download the artifacts
+      # Every artifact of this run, each in a folder of its own name: the
+      # offerings (morphir-dotnet-*) and the qualification (cli-qualification-*).
+      - name: Download the offerings and their qualification
         uses: actions/download-artifact@v8
         with:
           path: .dev/out/cli-release/assets
-          pattern: cli-*
 
       # Maintainer decision of 9 November 2026: future legacy names
       # (morphir-<rid>[.exe], morphir-<rid>-v<version>.tar.gz) carry the same
@@ -263,22 +236,25 @@ jobs:
           bun run tools/cli-release.ts legacy-aliases --assets .dev/out/cli-release/assets \
             --version "$VERSION" --out .dev/out/cli-release/legacy
 
+      # Refuses a candidate pin, a missing or failed qualification, or an
+      # artifact whose bytes or release differ from its launch metadata. It
+      # writes the exact asset list the create step attaches.
       - name: Write the release manifest
         run: |
           bun run tools/cli-release.ts manifest --tag "$TAG" --version "$VERSION" \
             --assets .dev/out/cli-release/assets --kit-status .dev/out/cli-release/kit-status.json \
             --legacy .dev/out/cli-release/legacy/legacy-aliases.json --out .dev/out/cli-release/publish
 
-      # One create call with every asset, the legacy names among them. The tag
-      # must already exist (it is never created here), and nothing is uploaded
-      # into a release afterwards.
+      # One create call with every listed asset. The tag must already exist (it
+      # is never created here), and nothing is uploaded into a release afterwards.
       - name: Create the release
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          ASSETS=(.dev/out/cli-release/assets/*/*.zip .dev/out/cli-release/assets/*/*.tar.gz .dev/out/cli-release/assets/*/*.nupkg)
-          ASSETS+=(.dev/out/cli-release/legacy/morphir-*)
-          ASSETS+=(.dev/out/cli-release/publish/release-manifest.json)
+          mapfile -t ASSETS < .dev/out/cli-release/publish/release-assets.txt
+          if [ "${#ASSETS[@]}" -eq 0 ]; then
+            echo "::error::The release manifest listed no assets."
+            exit 1
+          fi
           PRERELEASE=()
           if [ "${{ needs.release-info.outputs.prerelease }}" = "true" ]; then PRERELEASE=(--prerelease); fi
           gh release create "$TAG" --verify-tag --title "Morphir CLI $VERSION" --notes-file .dev/out/cli-release/publish/release-notes.md "${PRERELEASE[@]}" "${ASSETS[@]}"
