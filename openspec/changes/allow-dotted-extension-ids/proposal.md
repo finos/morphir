@@ -10,8 +10,8 @@ For example, after this change the frontend's `release.json` can say `"extension
 
 The same day the maintainer made three decisions that shape this change:
 
-- the Rust CLI is legacy, and work goes to the morphir-dotnet and morphir-moonbit hosts first;
-- transient pre-1.0 document formats are not read or converted, so readers take the current exact drafts only;
+- the Rust CLI is legacy, and work goes to the morphir-dotnet and morphir-moonbit hosts first; on 10 November the maintainer went further and decided it is to be deleted (Decision 16);
+- transient pre-1.0 document formats are not read or converted, so readers take the current exact versions only;
 - one installed catalog is chosen over a separate partition for dotted ids.
 
 ## What Changes
@@ -20,14 +20,15 @@ The same day the maintainer made three decisions that shape this change:
 - **One catalog, one lock directory, one history directory.** Ids keep mapping to repository, lock and catalog names by appending fixed suffixes. A dotted id lives in the same `catalog/extensions.json`, `locks/extensions/` and repository `extensions/` as a single-segment one. The content-addressed artifact store does not use the id.
 - **Equality.** The descriptor id, the claims id and the id an extension reports in a session stay byte-for-byte equal.
 - **No trust from names.** A reverse-DNS style id is a naming convention. Nothing verifies domain ownership, and an id grants no trust, permission or precedence. Publisher authentication stays a separate mechanism.
-- **Versioning.** The descriptor, the repository index record and the installed catalog move to a new exact draft, `2.0.0-draft.3`. It differs from `2.0.0-draft.2` only in the id grammar. The extension lock moves to `2.0.0-draft.1`, which differs from `"1.0"` only in the id grammar. The transaction journal moves from version `1` to `2.0.0-draft.1`, so that a current host can tell an older CLI's journal from its own.
-  - Writers write the new drafts for every id.
-  - Readers read the new drafts and SHALL NOT read earlier ones, so every host gives the same outcome.
+- **Versioning (Decision 15, 10 November 2026).** The extension state family (release descriptor, repository index record, installed catalog, extension lock, transaction journal, repositories configuration and capability claim set) has one version, `0.1.0-preview.1`. Each JSON document carries it in a required `$schema` member, the URL of that file's published schema, such as `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json`. No document has a `schemaVersion`. Each line of a JSONL history carries its own `$schema`.
+  - Writers write the family's URLs for every id.
+  - Readers match the URL exactly and SHALL NOT read other documents, so every host gives the same outcome.
   - No conversion between versions is part of the contract.
-  - A repository history is read whole: one line at an earlier version refuses the file, and a publisher does not append to such a file.
-- **Older hosts are not protected (a non-goal).** A host that reads only the earlier versions refuses every document a current writer produces, with its existing unsupported-version error. That includes the released Rust CLI. Once a current host has written a home's catalog, every extension command of an older CLI in that home is refused. The maintainer accepted this cost: "we don't have users to support the cost of maintaining 2 versions". A user who needs an older CLI again gives it its own Morphir home (`MORPHIR_HOME`), re-adds its repositories there, and uses repositories that no current writer has published to.
+  - A repository history is read whole: one line without the current URL refuses the file, and a publisher does not append to such a file.
+  - Each file's JSON Schema is published under `website/static/schemas/extensions/0.1.0-preview.1/` (task 1.7).
+- **Older hosts are not protected (a non-goal).** A host that reads only the earlier versions refuses every document a current writer produces, with its existing unsupported-version error. That includes released copies of the Rust CLI, which is to be deleted. Once a current host has written a home's catalog, every extension command of an older CLI in that home is refused. The maintainer accepted this cost: "we don't have users to support the cost of maintaining 2 versions". A user who needs an older CLI again gives it its own Morphir home (`MORPHIR_HOME`), re-adds its repositories there, and uses repositories that no current writer has published to.
 - **A home that an older CLI wrote (decided 10 November 2026, Decision 10).** A current host does not read or convert it. When a command meets it, the host shows what it would move and asks; on acceptance it moves the old state to a marked backup and goes on with the command. `--yes` skips the question, and `morphir doctor --fix` makes the same move by hand. This change introduces `morphir doctor` only for that. The maintainer confirmed four readings of it the same day (Decision 11): with no terminal and no `--yes`, or when the user declines, the command is refused and changes nothing; `morphir doctor` without `--fix` only reports; `morphir doctor --fix` shows what it will move and asks unless `--yes` is given.
-- **The contract pages define the shared files.** Two installers that share a home must agree on every file in it: the catalog, the locks, the transaction journal, the repositories configuration and its lock, the state lock, and, in a repository, the index record and the publish lock. This change fixes for each its version, encoding (I-JSON, compared by parsed value), unknown-member rule, locking, recovery and path spelling. That includes how a lock file is opened so a second host waits, and that a home on a network file system is not supported. The member tables of a catalog entry, a lock and the repositories file come from task 1.4's page. **So an installer cannot be built from this change alone**; task 1.4 unblocks it. Today the Rust source is the only definition of those members.
+- **The contract pages define the shared files.** Two installers that share a home must agree on every file in it: the catalog, the locks, the transaction journal, the repositories configuration and its lock, the state lock, and, in a repository, the index record and the publish lock. This change fixes for each its schema URL, encoding (I-JSON, compared by parsed value), unknown-member rule, locking, recovery and path spelling. That includes how a lock file is opened so a second host waits, and that a home on a network file system is not supported. The member tables of a catalog entry, a lock and the repositories file come from task 1.4's page. **So an installer cannot be built from this change alone**; task 1.4 unblocks it. Today the Rust source is the only definition of those members.
 - **Configuration.** A dotted id in project configuration is a quoted TOML key, `[extensions."org.finos.morphir.fsharp-frontend"]`. The settings members are named, so `[extensions.acme.config]` stays extension `acme`'s settings table, and an unquoted dotted key is refused with the quoted spelling in the message.
 - **Conformance data.** Language-neutral cases for:
   - valid and invalid ids, device names, length boundaries and the rule order;
@@ -37,8 +38,8 @@ The same day the maintainer made three decisions that shape this change:
   - quoting.
 
   Every host runs them, and a two-process test proves the state lock.
-- **Follow-up in the toolchain contracts.** Once the .NET guests are published under their dotted ids, the toolchain contracts align their identity grammar with this rule, including the device-name rule, and reference the descriptor at `2.0.0-draft.3`. The signed F# fixtures move to the dotted ids, and the open question on dotted provider identities closes.
-- **Republishing the existing extensions (decided 10 November 2026, Decision 13).** Existing releases carry draft.2 `release.json` files, so they stay uninstallable by current hosts; only new releases at draft.3 can be installed. morphir-dotnet's bundle authoring publishes those for every extension, and the Rust writers are not extended. Two readings are provisional on the maintainer's confirmation: until that publisher exists, a current host installs only the F# guests; and the Rust writers stay as they are for the legacy CLI.
+- **Follow-up in the toolchain contracts.** Once the .NET guests are published under their dotted ids, the toolchain contracts align their identity grammar with this rule, including the device-name rule, and reference the descriptor by its `$schema` URL at `0.1.0-preview.1`; the toolchain documents get their own family version in their own change. The signed F# fixtures move to the dotted ids, and the open question on dotted provider identities closes.
+- **Republishing the existing extensions (decided 10 November 2026, Decision 13).** Existing releases carry `release.json` files at earlier versions, so they stay uninstallable by current hosts; only new releases at the family version can be installed. morphir-dotnet's bundle authoring publishes those for every extension. One reading is provisional on the maintainer's confirmation: until that publisher exists, a current host installs only the F# guests. The Rust tooling writes nothing, because it is to be deleted (Decision 16).
 
 **BREAKING** for hosts that predate this change: they cannot read a home or repository after a current writer has written it. No valid id becomes invalid.
 
@@ -46,7 +47,7 @@ The same day the maintainer made three decisions that shape this change:
 
 ### New Capabilities
 
-- `extensions/extension-identity`: the grammar of an extension id, how it is compared, what it does and does not mean, the names derived from it, and the contract versions that carry the new grammar.
+- `extensions/extension-identity`: the grammar of an extension id, how it is compared, what it does and does not mean, the names derived from it, the extension state family's version and schema URLs, and the shared files.
 
 ### Modified Capabilities
 
@@ -63,9 +64,10 @@ The owning issue is [finos/morphir#1146](https://github.com/finos/morphir/issues
   - a normative extension id page and its conformance data;
   - later, the toolchain contracts and their signed fixtures.
 - **finos/morphir-dotnet:** its registry already accepts dotted ids. It adopts the device-name refinement and runs the shared cases.
-  - Its installer (finos/morphir-dotnet#567) writes the one catalog, the lock and the journal at the new drafts, with the members, values, lock primitive and path spelling the design pages define.
+  - Its installer (finos/morphir-dotnet#567) writes the one catalog, the lock and the journal with the family's `$schema` URLs, with the members, values, lock primitive and path spelling the design pages define.
   - Its task that waits on dotted descriptor ids then unblocks.
-  - Its bundle authoring becomes the publisher of every extension's draft.3 releases (Decision 13).
+  - Its bundle authoring becomes the publisher of every extension's releases at the family version (Decision 13).
 - **MoonBit host:** the pinned `ecosystem/morphir-moonbit` holds no extension registry code. The host that reads extension ids adopts the rule in its own repository, and its pin moves only if that repository is a submodule here.
-- **Optional later work, gating nothing:** finos/morphir-rust (`morphir-distribution`, `morphir-common`) and the Rust CLI would need the grammar, the new drafts and configuration quoting to read homes and repositories that current hosts write. Its writers are not extended (Decision 13). No `ecosystem/morphir-rust` pin move is planned.
-- **No change:** the MEP protocol versions and the capability claim set version. Both already carry the id as a string, and their equality rules stay.
+- **No Rust work.** The Rust CLI is to be deleted from finos/morphir (Decision 16); this change plans no Rust reader or writer and no `ecosystem/morphir-rust` pin move.
+- **Published schemas:** one JSON Schema per family file under `website/static/schemas/extensions/0.1.0-preview.1/`, served at `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/`.
+- **No change:** the MEP protocol versions (the 0.2 line). The capability claim set joins the family, so a claim set that `describe` returns carries the claims `$schema` in place of `claimsVersion`.
