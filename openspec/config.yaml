@@ -13,3 +13,13 @@ context: |
   pinned ecosystem submodules unless a proposal explicitly covers that update.
   Use the html-design workflow for new changes; repository review, tests and
   approval rules still apply. Keep project policy here, outside managed files.
+
+rules:
+  proposal:
+    - Explain the user's problem and intended outcome with a short concrete example when helpful. Keep implementation decisions in the design.
+  specs:
+    - Keep requirements normative and testable. Use a short running example or diagram to explain unfamiliar behavior without replacing SHALL requirements and scenarios. Put durable explanatory context under Purpose so it survives archive.
+  design:
+    - Use a narrative organized around a concrete user or system journey. Introduce the relevant constraints as the journey reaches each decision, then explain the choice, why it fits, and the alternatives considered.
+    - Carry a consistent worked example through the relevant stages. Include diagrams where they clarify boundaries or flow, and explain significant failure and recovery paths. Distinguish observed behavior, proposed interfaces, and unresolved assumptions.
+    - Scale the narrative to the change. A small change can use one paragraph and one example. Preserve decision identifiers and required sections; avoid repeated motivation, invented personas, and stories that obscure technical facts.

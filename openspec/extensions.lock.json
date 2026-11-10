@@ -2,12 +2,12 @@
   "format": 2,
   "extension": "html-design",
   "tool": "moonrockz/mission-control-tools",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "files": {
-    "openspec/schemas/html-design/schema.yaml": "fc6b5efe9c43f7dbb3ca37aa1056f2a884b0906677ba425a08f7e408253fe2a9",
-    "openspec/schemas/html-design/templates/proposal.md": "4c06280738dad6e95c756698e9d65f1e9074efba429b31451478c0b5ce50e24f",
-    "openspec/schemas/html-design/templates/spec.md": "1cccfb573f031c6352bed2a879b7035ff710bc909112fc23d10bdcfcdd8d4318",
-    "openspec/schemas/html-design/templates/design.html": "b17033afa4c424919b3a81735782a8aa6138e7491d10c6b794e78b27deb7dde6",
+    "openspec/schemas/html-design/schema.yaml": "6b23631b4b1f0801f52450f855c5d390b9e0c3201cf4883fc64a4a00fa8d402e",
+    "openspec/schemas/html-design/templates/proposal.md": "c2ffdfe074a0df4bddeddaba8243884d0a23806cd5913ad85e4b6dc881efd0ae",
+    "openspec/schemas/html-design/templates/spec.md": "275ca1d702ba642f4e0f91f7495d4bd47706c1b0207e92aaea6adc1e6b83dabd",
+    "openspec/schemas/html-design/templates/design.html": "7d34d5d37b74967d9f5afea31b8d087276726e76395852d18ca79af4e48fbae1",
     "openspec/schemas/html-design/templates/tasks.md": "5849d2f13f59526d201f227208db76ea9cf0e2abdb353f2e3c58a5ac6dfafb1c",
     "openspec/schemas/html-design/NOTICE": "d119910b35bfb38ab3a4482478150f7bac3442fd8f84348b014f92fa5c18e980",
     "openspec/schemas/html-design/LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"

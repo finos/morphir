@@ -2,7 +2,7 @@
 
 ## Why
 
-<!-- Explain the motivation for this change. What problem does this solve? Why now? -->
+<!-- Explain the observable user or system problem and intended outcome. Add a short concrete example when helpful. Why now? -->
 
 ## What Changes
 

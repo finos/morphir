@@ -1,0 +1,92 @@
+<!doctype html>
+<!-- Copyright 2026 FINOS; SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>adopt-openspec-narrative-guidance</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>adopt-openspec-narrative-guidance</h1>
+<p class="meta">OpenSpec docs/tooling adoption | 2026-11-09 | scoped implementation reviewed, pending GitHub approval and CI</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+</ul></nav>
+<h2 id="context">Context</h2>
+<p>See <a href="proposal.md">the proposal</a> for motivation. Morphir already uses
+html-design and an installer-owned format-2 lock. Mission Control published
+<a href="https://github.com/moonrockz/mission-control/releases/tag/tools-v0.1.2">tools-v0.1.2</a>
+from <code>17305df4d80f01d0db3e584976ee0423a2cc3574</code>; its release verification
+passed ten jobs, archive hashes, attestations and a fresh Windows consumer install.</p>
+<h2 id="goals">Goals and non-goals</h2>
+<p>Contributors should receive the published shared instructions together with
+Morphir's authoring policy. Keep shared files reproducible from the released
+binary and preserve the existing project context. This adoption changes no
+runtime contracts, language implementations or other proposals.</p>
+<h2 id="decisions">Decisions</h2>
+<h3 id="tool-1">TOOL-1. Install the published bundle</h3>
+<p>A contributor updates the tools pin from 0.1.0 to 0.1.2, installs it through
+mise, then runs <code>mission-control-tools openspec install</code>. The installer
+writes the schema, templates and lock from its embedded bundle. This uses the
+existing release path instead of a local build or edits to generated snapshots.
+If a managed file has local edits, the installer refuses the update; inspect and
+preserve those edits before retrying. Bundle verification catches a pin update
+without a matching installation.</p>
+<h3 id="docs-1">DOCS-1. Keep Morphir policy outside generated files</h3>
+<p>When that contributor requests design instructions, OpenSpec combines the
+shared narrative guidance with the existing project context and the new artifact
+rules in <code>openspec/config.yaml</code>. The developer guide illustrates an
+acquisition journey as an authoring example, not an implemented feature. Keeping
+those examples and rules local avoids changing the shared snapshot for Morphir
+policy. <code>skip_specs: true</code> records that this adoption introduces no
+behavior contract; inventing a runtime requirement would misrepresent its scope.</p>
+<h2 id="risks">Risks and trade-offs</h2>
+<table><thead><tr><th>Risk</th><th>Mitigation</th></tr></thead><tbody>
+<tr><td>Generated files drift or project context is overwritten.</td><td>Run the
+released bundle check, verify all seven locked hashes, compare context with the
+base revision and inspect the complete changed-file list.</td></tr>
+<tr><td>Guidance appears in files but not in instructions.</td><td>Check proposal,
+specs and design instruction output for shared guidance, local rules and preserved
+context. Check apply output separately for task state.</td></tr>
+</tbody></table>
+<h2 id="migration">Migration plan</h2>
+<p>Run the installer, verify instructions and <code>mise run openspec:verify</code>,
+check formatting and submit the scoped adoption PR. Parent review verifies the
+adoption before archiving its completed record. GitHub approval and CI still gate landing. Rollback restores the previous tools
+pin and matching installer-owned files together. Reverting only the pin would
+leave the bundle check failing. See <a href="tasks.md">the verification tasks</a>.</p>
+</main>
+</body>
+</html>
