@@ -46,17 +46,20 @@ A scenario result on a platform under a recorded pending triage SHALL be kept wi
 - **WHEN** the packaged-input scenario exits 0 on `osx-arm64`
 - **THEN** its status is `pending-triage` and the offering's `qualified` flag is false on that platform
 
-### Requirement: Official CLI releases have their own tag namespace
-An official CLI release SHALL be started only by a tag `cli/v<version>` or an explicit existing tag of that form, where `<version>` is exact canonical SemVer without build metadata and equals the latest released version in the pinned source's CHANGELOG. Tags of the deleted Rust CLI (`v*`) SHALL NOT start a release.
-
-#### Scenario: A Rust CLI tag is pushed
-- **WHEN** a tag `v0.4.0-beta.13` is pushed
-- **THEN** the release workflow does not run
+### Requirement: Official CLI releases use v<version> and only ever move forward
+An official CLI release SHALL be started only by a tag `v<version>`, or an explicit existing tag of that form. `<version>` SHALL be exact canonical SemVer without build metadata and equal the latest released version in the pinned CHANGELOG. The namespace is shared with the deleted Rust CLI's `v*` releases, which SHALL stay unchanged; publication SHALL be refused unless `<version>` is newer than every other `v*` tag in finos/morphir.
 
 #### Scenario: The tag and the pinned CHANGELOG disagree
-- **WHEN** `cli/v0.4.0-alpha.5` is pushed while the pinned CHANGELOG's latest release is `0.4.0-alpha.4`
+- **WHEN** `v0.4.0-beta.13` is pushed while the pinned CHANGELOG's latest release is `0.4.0-alpha.4`
 - **THEN** the release stops before any build
 
+#### Scenario: A version below the Rust CLI's releases
+- **WHEN** the pinned source releases `0.4.0-alpha.4` and finos/morphir already has `v0.4.0-beta.12`
+- **THEN** publication is refused because `v0.4.0-alpha.4` is not newer than `v0.4.0-beta.12`
+
+#### Scenario: Another namespace
+- **WHEN** a tag `cli/v0.4.0` or `extension/python/v0.4.0` is pushed
+- **THEN** the release workflow does not run, or refuses the tag
 ### Requirement: A release is published once, with its evidence, and never replaced
 The release SHALL be created only after every offering is qualified on every platform, in one step that attaches every artifact and a release manifest naming the tag, the finos/morphir commit, the source commit, the kit's corpus hash and revision from the shared runner, and each artifact's SHA-256. A tag whose release already exists SHALL be refused; nothing SHALL be uploaded into or replace an existing release, and no tag SHALL be created by the workflow.
 
@@ -90,7 +93,7 @@ A release SHALL be created only when the pin is not a marked candidate, the pinn
 The release SHALL run only from `refs/tags/<tag>` with the checkout at the tag's commit, and the workflow's literal source commit in `uses` and `ref` SHALL equal the pin. Every later job SHALL check out that commit, and the manifest SHALL record it as read from the checkout. Every artifact's build contents SHALL name the pinned commit and a clean working tree, and SHALL match its launch metadata.
 
 #### Scenario: A dispatch from a branch
-- **WHEN** the workflow is dispatched from `main` with the input `cli/v0.4.0-alpha.4`
+- **WHEN** the workflow is dispatched from `main` with the input `v0.4.0-beta.13`
 - **THEN** release-info refuses before any build
 
 #### Scenario: An artifact packed from another commit

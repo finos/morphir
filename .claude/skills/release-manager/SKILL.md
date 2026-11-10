@@ -19,8 +19,9 @@ The Rust CLI that this skill used to release was deleted on 10 November 2026. It
   non-dry run on your own.
 - Never move, delete or reuse a tag, and never replace or upload into a published release. The workflow refuses
   both.
-- The official tag form `cli/v<version>` is a proposal under review (design REL-1 of
-  `openspec/changes/move-cli-delivery-to-umbrella`), not an approved convention.
+- Official tags are `v<version>` (maintainer decision, 10 November 2026; design REL-1 of
+  `openspec/changes/move-cli-delivery-to-umbrella`). The namespace is shared with the Rust CLI's releases, so a new
+  version must be newer than every existing `v*` tag (the last is `v0.4.0-beta.12`) and never reuse one.
 - The version is the latest release in the pinned source's CHANGELOG. Do not bump, override or jump it; that is a
   morphir-dotnet decision.
 
@@ -30,6 +31,7 @@ The Rust CLI that this skill used to release was deleted on 10 November 2026. It
 
 - `.config/cli-release.json` has no `source.candidate` entry: the pin is a commit on the source's `main`.
 - The pinned CHANGELOG has nothing under `## [Unreleased]`.
+- `v<version>` is newer than every other `v*` tag in finos/morphir.
 - The source's own tag `v<version>` names exactly the pinned commit, so the release is the source's release.
 - The run is dispatched from, or pushed as, `refs/tags/<tag>`, and the checkout is the tag's commit; the literal
   `cli-offering.yml@<commit>` and its `ref` equal the pin.
@@ -48,7 +50,7 @@ mise run openspec:verify
 
 ## Running the release workflow
 
-1. The maintainer creates the tag `cli/v<version>` on the commit to release, once the gates above hold.
+1. The maintainer creates the tag `v<version>` on the commit to release, once the gates above hold.
 2. Dispatch `Release` **from that tag** with `dry-run: true`. It builds through the source's `cli-offering.yml`,
    launches every artifact on its platform and uploads `cli-release-evidence` (manifest, notes and
    `dry-run-assets.txt`) without creating a release.

@@ -68,7 +68,7 @@ svg path { stroke: var(--muted); fill: none; }
 
 <svg viewBox="0 0 880 170" role="img" aria-labelledby="flow-title">
 <title id="flow-title">Release flow: tag, pin check, per-platform build and launch, manifest, one release</title>
-<rect x="10" y="20" width="150" height="56" rx="6"/><text x="22" y="44">cli/v0.4.0-alpha.4</text><text x="22" y="64">tag pushed</text>
+<rect x="10" y="20" width="150" height="56" rx="6"/><text x="22" y="44">v&lt;version&gt;</text><text x="22" y="64">tag pushed</text>
 <rect x="190" y="20" width="160" height="56" rx="6"/><text x="202" y="44">release-info</text><text x="202" y="64">pin + CHANGELOG</text>
 <rect x="380" y="10" width="200" height="76" rx="6"/><text x="392" y="34">build-platform x 6</text><text x="392" y="54">source's PackRelease</text><text x="392" y="74">launch what it produced</text>
 <rect x="380" y="100" width="200" height="56" rx="6"/><text x="392" y="124">pack-tool</text><text x="392" y="144">Morphir.Tool .nupkg</text>
@@ -77,7 +77,7 @@ svg path { stroke: var(--muted); fill: none; }
 </svg>
 
 <h2 id="decisions">Decisions</h2>
-<p>The journey follows the maintainer who pushes <code>cli/v0.4.0-alpha.4</code>, then the contributor who runs a compatibility gate after the Rust CLI is gone.</p>
+<p>The journey follows the maintainer who pushes a tag <code>v&lt;version&gt;</code>, then the contributor who runs a compatibility gate after the Rust CLI is gone.</p>
 
 <h3 id="src-1">SRC-1. The source is a submodule pin with a recorded commit</h3>
 <p>The workflow first establishes what it is building. <code>ecosystem/morphir-dotnet</code> is a submodule (first at <code>7c26348</code>, now at the candidate <code>8c15df5</code>, see <a href="#src-2">SRC-2</a>), and <code>.config/cli-release.json</code> records the same commit and repository. <code>tools/cli-release.ts verify-source</code> reads the gitlink from the index and <code>.gitmodules</code>, and every release job runs it. The recorded copy turns an accidental submodule bump into a failing check instead of a silent change of product. Alternatives: the gitlink alone (a bump would change the release without a reviewed expectation), or a branch reference (not reproducible).</p>
@@ -108,9 +108,8 @@ svg path { stroke: var(--muted); fill: none; }
 <h3 id="dry-1">DRY-1. A dry run validates everything and creates nothing</h3>
 <p>A dispatch defaults to <code>dry-run: true</code>; a tag push is a publication. A dry run builds, qualifies and runs every validation of the manifest step: artifacts, origins, qualification records, kit, legacy names and asset names. It records the publication blockers in the manifest (<code>publication: {dryRun, publishable, blockers}</code>) and writes <code>dry-run-assets.txt</code>, and the evidence is uploaded. It never writes <code>release-assets.txt</code>, and the create step runs only when the run is not dry and release-info found the pin publishable. A publication with blockers fails after writing its evidence. Neither a dry run nor its evidence is production qualification. No fork, dispatch or tag has been made.</p>
 
-<h3 id="rel-1">REL-1. Official CLI tags are <code>cli/v&lt;version&gt;</code></h3>
-<p>The .NET version line restarts below the Rust one, and <code>v0.4.0-alpha.4</code> already names a Rust release here, so reusing <code>v*</code> would collide with or overwrite history. Official releases use <code>cli/v&lt;version&gt;</code>, like <code>extension/python/v*</code>. <code>release-info</code> requires exact canonical SemVer without build metadata that equals the pinned CHANGELOG's latest release. Existing <code>v*</code> tags and releases are not touched. This is a proposal for review, not a decision: no tag or version-number decision has been made, and nothing here tags. The host release version must not silently jump to clear the Rust numbers; the version stays whatever the pinned CHANGELOG releases (see <a href="#open-questions">Open questions</a>).</p>
-
+<h3 id="rel-1">REL-1. Official CLI tags are <code>v&lt;version&gt;</code>, and only ever move forward</h3>
+<p>Decided by the maintainer on 10 November 2026: official CLI releases use <code>v&lt;version&gt;</code>, the namespace the deleted Rust CLI's releases used. The first version of this change proposed <code>cli/v&lt;version&gt;</code>; that was not taken. The Rust tags and releases (<code>v0.4.0-alpha.1</code> to <code>v0.4.0-beta.12</code>) stay as they are. Because the namespace is shared, a release must be newer than every other <code>v*</code> tag in finos/morphir and never reuse one. <code>versionCollisionBlockers</code> compares the version with every other <code>v&lt;semver&gt;</code> tag (read with <code>git ls-remote --tags</code>; the release's own tag is left out), and the publication gate refuses a version that is not newer. Reusing an existing tag itself is refused twice: by the existing-release step, and by the binding check, since that tag's commit is the old release and never the new checkout. The version is still the pinned CHANGELOG's, and nothing here chooses or bumps it. Today the source releases <code>0.4.0-alpha.4</code>, below <code>v0.4.0-beta.12</code> and already published, so publication is blocked until the source releases a version that passes. <code>release-info</code> still requires exact canonical SemVer without build metadata that equals the pinned CHANGELOG's latest release.</p>
 <h3 id="rel-2">REL-2. Publish once, with a manifest, never replace</h3>
 <p><code>publish-release</code> needs every qualification job, refuses a tag whose release exists and a candidate pin, writes <code>release-manifest.json</code> and release notes, and creates the release with every asset in one <code>gh release create --verify-tag</code>. The manifest step collects artifacts recursively from the downloaded folders and requires exactly one artifact for each deployment and platform: a missing, repeated or unexpected artifact, or a repeated asset name, is an error. It requires exactly one qualification for each deployment and platform, matching its artifact's release, file name and SHA-256: a missing, repeated, unexpected or mismatched record is an error. It writes <code>release-assets.txt</code>, the exact absolute paths to attach, and the create step reads that list instead of globbing. Qualification reports are uploaded from the hidden <code>.dev</code> folder with <code>include-hidden-files</code> and a glob that names only the reports. The workflow never uploads into or edits a release and never creates a tag. The manifest names the tag, the finos/morphir commit, the source repository and commit, the kit's <code>corpusHash</code>, algorithm and revision from <code>morphir-mck kit status</code> (the runner's own identity, not a second hash scheme), every artifact's SHA-256 and each qualification. The old incremental <code>--clobber</code> upload and <code>select_release_assets.py</code> go.</p>
 
@@ -146,7 +145,7 @@ svg path { stroke: var(--muted); fill: none; }
 <table>
 <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
 <tbody>
-<tr><td>The new <code>release.yml</code> has not run; a first real tag could fail late.</td><td>Its routing, matrix, refusal rules and manifest are unit-tested in <code>tools/cli-release.test.ts</code>; any failure happens before <code>gh release create</code>, which runs once at the end. A <code>workflow_dispatch</code> on a throwaway <code>cli/v*</code> tag in a fork exercises it without publishing here.</td></tr>
+<tr><td>The new <code>release.yml</code> has not run; a first real tag could fail late.</td><td>Its routing, matrix, refusal rules and manifest are unit-tested in <code>tools/cli-release.test.ts</code>; any failure happens before <code>gh release create</code>, which runs once at the end. A dry-run dispatch from a tag (<a href="#dry-1">DRY-1</a>) exercises it without creating a release; none has been made.</td></tr>
 <tr><td>The <code>ir verify</code> input may fail on a platform for a reason unrelated to packaging.</td><td>The qualification JSON keeps each exit code and output; the release stops rather than claiming qualification.</td></tr>
 <tr><td>Examples and user guides still describe Rust CLI commands.</td><td>Explicitly listed as pending; <code>test:examples</code> says so instead of passing.</td></tr>
 <tr><td>Until the .NET source delegates <code>morphir mck</code>, the Morphir CLI's <code>morphir mck run</code> is not this runner.</td><td>The contract states the rule; the final delivery pin is chosen after the adoption worker's dispatch change lands.</td></tr>
@@ -159,13 +158,12 @@ svg path { stroke: var(--muted); fill: none; }
 <li>Merge after #1147 (this branch is stacked on it).</li>
 <li>When finos/morphir-dotnet #590 is merged, move the pin to the merged commit on its <code>main</code>, update <code>uses</code> and <code>ref</code> to the same commit, and remove <code>source.candidate</code> (<a href="#src-2">SRC-2</a>).</li>
 <li>Choose the final delivery pin once the source-side MCK dispatch lands; update <code>.config/cli-release.json</code> and the gitlink together.</li>
-<li>Tag <code>cli/v&lt;version&gt;</code> from <code>main</code> only when the maintainer decides to release. Rollback is deleting the new tag before any release exists; an existing release is never replaced.</li>
+<li>Tag <code>v&lt;version&gt;</code> from <code>main</code> only when the maintainer decides to release, with a version newer than every existing <code>v*</code> tag. Rollback is deleting the new tag before any release exists; an existing release is never replaced.</li>
 </ol>
 
 <h2 id="open-questions">Open questions</h2>
 <ul>
-<li>Tag prefix: <code>cli/v*</code> (<a href="#rel-1">REL-1</a>) or another spelling. Changing it touches one config value and the workflow trigger.</li>
-<li>The first .NET release numbers below the last Rust release (<code>0.4.0-alpha.4</code> after <code>0.4.0-beta.12</code>). Whether the .NET line jumps ahead is a morphir-dotnet versioning choice.</li>
+<li>The first official version is not decided. It must be newer than <code>v0.4.0-beta.12</code> (<a href="#rel-1">REL-1</a>), and it is the source's release: morphir-dotnet chooses it, and this repository's gate only refuses a version that does not move forward.</li>
 </ul>
 
 </main>

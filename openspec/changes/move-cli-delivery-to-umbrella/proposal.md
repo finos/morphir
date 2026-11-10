@@ -6,17 +6,17 @@ finos/morphir builds and releases a Rust `morphir` CLI, but the Morphir CLI is t
 
 ## What Changes
 
-A maintainer pushes the tag `cli/v0.4.0-alpha.4`. The release workflow checks that `ecosystem/morphir-dotnet` is pinned at the recorded commit and that the pinned CHANGELOG releases `0.4.0-alpha.4`, runs that source's own reusable build workflow at that commit for each offering and platform, launches each produced executable, apphost and tool package as a user would, and publishes one release whose manifest names the source commit, the kit digest and every artifact digest.
+A maintainer pushes a tag `v<version>`, newer than every `v*` release so far. The release workflow checks that `ecosystem/morphir-dotnet` is pinned at the recorded commit, that the pinned CHANGELOG releases `<version>` and that the source's own tag `v<version>` is that commit, runs that source's own reusable build workflow at that commit for each offering and platform, launches each produced executable, apphost and tool package as a user would, and publishes one release whose manifest names the source commit, the kit digest and every artifact digest.
 
 ```text
-cli/v<version> tag -> verify pin + CHANGELOG -> source's cli-offering.yml (PackRelease) x 19
+v<version> tag -> verify pin + CHANGELOG + newer than every v* -> source's cli-offering.yml (PackRelease) x 19
   -> launch each artifact (morphir, apphost, dotnet-morphir, dotnet morphir)
   -> manifest(source, kit, artifacts, qualification) -> new release, never replaced
 ```
 
 - Pin finos/morphir-dotnet as `ecosystem/morphir-dotnet`. The first pin was `7c263485547598085ea83d7d12bf6328056affba` (its `main`, with #574). To wire the source's reusable `cli-offering.yml`, the pin is now the head of draft, unmerged finos/morphir-dotnet#590, `8c15df59ce902c3ec06bb2df0c8ab4a88445a39d`, marked as a candidate: the release builds and qualifies from it but refuses to publish. The final pin follows #590's merge. The CLI source stays in that repository.
 - **BREAKING** Delete the Rust product CLI (`crates/morphir`) and the crates only it used: `integration-tests`, `morphir-decoration`, `morphir-evaluator`, `morphir-opa`. Delete its generated reference (`docs/cli`, the man page, shell completions).
-- **BREAKING** Replace the Rust CLI release jobs. Official CLI releases use `cli/v*` tags (proposed for review; see design REL-1) and the four .NET offerings: Native AOT, self-contained managed and framework-dependent `morphir`, and the `Morphir.Tool` package with `dotnet-morphir` and `dotnet morphir`. Existing `v*` releases and tags are left as they are.
+- **BREAKING** Replace the Rust CLI release jobs. Official CLI releases use `v<version>` tags (maintainer decision, 10 November 2026; design REL-1), continuing the Rust CLI's namespace and the four .NET offerings: Native AOT, self-contained managed and framework-dependent `morphir`, and the `Morphir.Tool` package with `dotnet-morphir` and `dotnet morphir`. Existing `v*` releases and tags are left as they are, and a new release must be newer than all of them.
 - Move the shared MCK command tree to the standalone, development-only program `morphir-mck` (`crates/morphir-mck-cli`) with the same commands, adapters, expectations and exit codes. The .NET CLI's `morphir mck ARGS` delegates to it.
 - Move `kb` and the library-level repository gates (MEP contract IR, tool release metadata, package runtime vectors) to the internal development tool `morphir-dev` (`crates/morphir-dev-tools`), which is never released.
 - Retire, by name, the gates that tested the deleted CLI's own behavior, and say where each one goes.

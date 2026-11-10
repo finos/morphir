@@ -156,7 +156,7 @@ gh pr create
 
 ### Building a CLI release
 
-Releases are built by `.github/workflows/release.yml` from a `cli/v<version>` tag; see [INSTALLING.md](INSTALLING.md).
+Releases are built by `.github/workflows/release.yml` from a `v<version>` tag; see [INSTALLING.md](INSTALLING.md).
 Nothing in this repository builds the CLI by hand.
 
 ### Adding Dependencies

@@ -24,7 +24,7 @@ For the Go-based Morphir CLI (including WIT pipeline commands), see **[Morphir G
 ## Installation
 
 See [Installing Morphir](https://github.com/finos/morphir/blob/main/INSTALLING.md). Official releases from this
-repository use tags `cli/v<version>`; the first one has not been published yet.
+repository use tags `v<version>`, after the Rust CLI's `v*` releases; the first one has not been published yet.
 
 ## Verify installation
 

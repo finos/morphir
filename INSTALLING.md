@@ -2,10 +2,10 @@
 
 The Morphir CLI comes from [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet). This repository
 builds it from a pinned commit of that source, launches every produced artifact on its own platform, and publishes
-official releases under tags `cli/v<version>`. Each release carries a `release-manifest.json` that names the
+official releases under tags `v<version>`, the namespace the Rust CLI's releases used; a new release must be newer than every existing `v*` release. Each release carries a `release-manifest.json` that names the
 source commit, the compatibility kit and the SHA-256 of every asset.
 
-The first official release under `cli/v*` has not been published yet. Until it is, install from the
+The first official .NET release has not been published yet, and its version is not decided. Until it is, install from the
 [finos/morphir-dotnet releases](https://github.com/finos/morphir-dotnet/releases) or the `Morphir.Tool` package.
 
 ## Choose an offering
