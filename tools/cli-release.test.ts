@@ -760,6 +760,24 @@ describe("the tool package installs through the source's helper, and only its ow
 		expect(helperResultProblems({ ...good, stored: [] }, "tool-path", sha(copy)).join()).toContain("no stored package");
 		expect(helperResultProblems({ ...good, invocation: { ...good.invocation, arguments: "--version" as unknown as string[] } }, "tool-path", sha(copy)).join()).toContain("argument array");
 		expect(helperResultProblems({ ...good, mode: "local", invocation: { file: path.join(store, "dotnet-morphir.dll"), arguments: [], workingDirectory: work, environment: {} } }, "local", sha(copy)).join()).toContain("not `dotnet <command>`");
+		const siblingCommand = path.join(work, "tool-sibling", path.basename(command));
+		mkdirSync(path.dirname(siblingCommand));
+		writeFileSync(siblingCommand, "another shim");
+		expect(helperResultProblems({ ...good, invocation: { ...good.invocation, file: siblingCommand } }, "tool-path", sha(copy)).join()).toContain("not the installed command");
+		const local: HelperResult = {
+			...good,
+			mode: "local",
+			caches: { ...good.caches, packagesFolder: path.join(work, "tool", ".store"), cliHome: path.join(work, "cli-home") },
+			invocation: {
+				file: "dotnet", arguments: ["morphir"], workingDirectory: good.toolPath,
+				environment: { NUGET_PACKAGES: path.join(work, "tool", ".store"), DOTNET_CLI_HOME: path.join(work, "cli-home") },
+			},
+		};
+		expect(helperResultProblems(local, "local", sha(copy))).toEqual([]);
+		expect(helperResultProblems({ ...local, invocation: { ...local.invocation, arguments: ["other-tool"] } }, "local", sha(copy)).join()).toContain("not `dotnet <command>`");
+		expect(helperResultProblems({ ...local, invocation: { ...local.invocation, workingDirectory: work } }, "local", sha(copy)).join()).toContain("not `dotnet <command>`");
+		expect(helperResultProblems({ ...local, invocation: { ...local.invocation, environment: { ...local.invocation.environment, NUGET_PACKAGES: work } } }, "local", sha(copy)).join()).toContain("isolated caches");
+		expect(helperResultProblems({ ...local, invocation: { ...local.invocation, environment: { ...local.invocation.environment, DOTNET_CLI_HOME: work } } }, "local", sha(copy)).join()).toContain("isolated caches");
 	});
 });
 describe("real zip archives", () => {

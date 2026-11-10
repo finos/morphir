@@ -311,10 +311,12 @@ export function helperResultProblems(result: HelperResult, mode: HelperMode, art
 	const invocation = result.invocation;
 	if (invocation === undefined || typeof invocation.file !== "string" || !Array.isArray(invocation.arguments) || typeof invocation.environment !== "object" || invocation.environment === null) problems.push("the helper's invocation is not a command, an argument array and an environment object");
 	else if (mode === "tool-path") {
-		if (!path.isAbsolute(invocation.file) || !existsSync(invocation.file) || invocation.arguments.length !== 0) problems.push(`the tool-path invocation is not the installed command itself: ${invocation.file}`);
-		else if (!path.resolve(invocation.file).startsWith(path.resolve(result.toolPath))) problems.push(`the tool-path command ${invocation.file} is outside the tool path`);
-	} else if (invocation.file !== "dotnet" || invocation.arguments.length !== 1 || typeof invocation.workingDirectory !== "string" || !path.isAbsolute(invocation.workingDirectory)) {
+		const expectedCommand = path.join(path.resolve(result.toolPath), process.platform === "win32" ? "dotnet-morphir.exe" : "dotnet-morphir");
+		if (!path.isAbsolute(invocation.file) || !existsSync(invocation.file) || invocation.arguments.length !== 0 || path.resolve(invocation.file) !== expectedCommand) problems.push(`the tool-path invocation is not the installed command itself: ${invocation.file}`);
+	} else if (invocation.file !== "dotnet" || invocation.arguments.length !== 1 || invocation.arguments[0] !== "morphir" || typeof invocation.workingDirectory !== "string" || !path.isAbsolute(invocation.workingDirectory) || path.resolve(invocation.workingDirectory) !== path.resolve(result.toolPath)) {
 		problems.push(`the local invocation is not \`dotnet <command>\` from the manifest folder: ${invocation.file} ${invocation.arguments.join(" ")}`);
+	} else if (invocation.environment.NUGET_PACKAGES !== result.caches.packagesFolder || typeof result.caches.cliHome !== "string" || !path.isAbsolute(result.caches.cliHome) || invocation.environment.DOTNET_CLI_HOME !== result.caches.cliHome) {
+		problems.push("the local invocation does not use the helper's isolated caches");
 	}
 	return problems;
 }

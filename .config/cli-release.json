@@ -33,7 +33,7 @@
 		{
 			"scenario": "packaged-input",
 			"platforms": ["osx-x64", "osx-arm64"],
-			"reason": "The head of draft, unmerged finos/morphir-dotnet#590 (MCK dispatch, the reusable cli-offering.yml and the shared install-tool-package.ps1), pinned to wire and test the interface after its CI run 42898613660 passed on Ubuntu, Windows and macOS. That is build evidence, not qualification. A release refuses to publish while this entry exists; remove it only when the pin is a commit on the source's main that the publication gates accept.",
+			"reason": "A packaged input scenario fails on macOS where /var resolves to /private/var. Its result is recorded but never counted as qualified until the failure is triaged.",
 			"evidence": ["https://github.com/finos/morphir-dotnet/pull/570", "finos/morphir-dotnet workflow wasm-offerings.yml, run 42851276092"]
 		}
 	]
