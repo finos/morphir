@@ -334,7 +334,7 @@ Each rule was read from these places, and the import tables were compared entry 
 - moonrockz/extism at `v0.3.0`, the version morphir-moonbit pins: `pkgs/extism/kernel/kernel.mbt` (the 20 kernel functions and their types), `pkgs/extism/plugin.mbt` (call results, `config_get`, `var_*`, logging, HTTP), `pkgs/extism/policy.mbt` (log level codes, the kernel memory ceiling) and `pkgs/extism/wasi/sandbox.mbt` (WASI answers and errnos).
 - finos/morphir-rust at `extension/rust/v0.4.0-2`: `crates/morphir-extension-sdk/src/host.rs` (Morphir host function declarations).
 
-The notification rule for Extism guests is new in this draft. The MoonBit host at `89f8924` delivers no notification to an Extism guest, also one that advertises `call`.
+The notification rule for Extism guests is new in this draft. The MoonBit host at `89f8924` delivers no notification to an Extism guest, also one that advertises `call`. finos/morphir-moonbit#329 tracks the change.
 
 ## Qualification
 
