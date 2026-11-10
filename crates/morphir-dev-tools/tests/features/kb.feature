@@ -7,13 +7,13 @@ Feature: Manage the knowledge base
     Given an empty repository
 
   Scenario: kb list fails when no knowledge base can be located
-    When I run "morphir kb list"
+    When I run "morphir-dev kb list"
     Then the command fails
     And stderr contains "error: could not locate a kb/ directory — pass --kb"
 
   Scenario: kb list succeeds against an empty knowledge base
     Given a knowledge base at "kb"
-    When I run "morphir kb list --kb kb"
+    When I run "morphir-dev kb list --kb kb"
     Then the command succeeds
     And stdout contains "0 bundle(s), 0 concept(s)"
 
@@ -21,19 +21,19 @@ Feature: Manage the knowledge base
     Given a knowledge base at "kb"
     When I run the command:
       """
-      morphir kb new-bundle --kb kb --name test-bundle --title "Test Bundle" --description "A bundle for testing."
+      morphir-dev kb new-bundle --kb kb --name test-bundle --title "Test Bundle" --description "A bundle for testing."
       """
     Then the command succeeds
     And stdout contains "created"
     And stdout contains "test-bundle/index.md"
-    When I run "morphir kb list --kb kb"
+    When I run "morphir-dev kb list --kb kb"
     Then the command succeeds
     And stdout contains "test-bundle"
     And stdout contains "1 bundle(s), 0 concept(s)"
-    When I run "morphir kb list --kb kb --bundle test-bundle"
+    When I run "morphir-dev kb list --kb kb --bundle test-bundle"
     Then the command succeeds
     And stdout contains "Test Bundle"
-    When I run "morphir kb show --kb kb --path /index.md --bundle test-bundle"
+    When I run "morphir-dev kb show --kb kb --path /index.md --bundle test-bundle"
     Then the command succeeds
     And stdout contains "Test Bundle"
     And stdout contains "RootIndex"
@@ -42,17 +42,17 @@ Feature: Manage the knowledge base
     Given a knowledge base at "kb"
     When I run the command:
       """
-      morphir kb new-bundle --kb kb --name test-bundle --title "Test Bundle" --description "A bundle for testing."
+      morphir-dev kb new-bundle --kb kb --name test-bundle --title "Test Bundle" --description "A bundle for testing."
       """
     Then the command succeeds
     When I run the command:
       """
-      morphir kb add-concept --kb kb --bundle test-bundle --path naming.md --type "Design Note" --title Naming --description "How names work."
+      morphir-dev kb add-concept --kb kb --bundle test-bundle --path naming.md --type "Design Note" --title Naming --description "How names work."
       """
     Then the command succeeds
     And stdout contains "created"
     And stdout contains "naming.md"
-    When I run "morphir kb check --kb kb --no-provenance"
+    When I run "morphir-dev kb check --kb kb --no-provenance"
     Then the command succeeds
     And stdout contains "0 error(s), 0 warning(s)"
 
@@ -81,7 +81,7 @@ Feature: Manage the knowledge base
 
       # Broken
       """
-    When I run "morphir kb check --kb kb --no-provenance"
+    When I run "morphir-dev kb check --kb kb --no-provenance"
     Then the command fails
     And stdout contains "concept-missing-type"
     And stdout contains "1 error(s)"
@@ -114,11 +114,11 @@ Feature: Manage the knowledge base
 
       How names work.
       """
-    When I run "morphir kb search --kb kb --query naming"
+    When I run "morphir-dev kb search --kb kb --query naming"
     Then the command succeeds
     And stdout contains "/naming.md"
     And stdout contains "1 match(es)"
-    When I run "morphir kb search --kb kb --query naming --json"
+    When I run "morphir-dev kb search --kb kb --query naming --json"
     Then the command succeeds
     And stdout is valid JSON
     And the JSON value at "/matches" is 1
@@ -137,19 +137,19 @@ Feature: Manage the knowledge base
 
       ## Orientation
       """
-    When I run "morphir kb index --kb kb"
+    When I run "morphir-dev kb index --kb kb"
     Then the command succeeds
     And stdout contains "built"
     When I run the command:
       """
-      morphir kb query --kb kb --sql "SELECT count(*) AS docs FROM doc"
+      morphir-dev kb query --kb kb --sql "SELECT count(*) AS docs FROM doc"
       """
     Then the command succeeds
     And stdout contains "docs"
     And stdout contains "1 row(s)"
     When I run the command:
       """
-      morphir kb query --kb kb --sql "DELETE FROM doc"
+      morphir-dev kb query --kb kb --sql "DELETE FROM doc"
       """
     Then the command fails
     And stderr contains "error: refusing to run `delete`: kb query is read-only (SELECT, WITH, PRAGMA, EXPLAIN)"
@@ -168,48 +168,48 @@ Feature: Manage the knowledge base
 
       ## Orientation
       """
-    When I run "morphir kb refresh --dry-run --kb kb"
+    When I run "morphir-dev kb refresh --dry-run --kb kb"
     Then the command succeeds
     And stdout contains "would rebuild"
     And stdout contains "0 description(s) to fix"
 
   Scenario: intent lifecycle from init to the release guard
     Given a knowledge base at "kb"
-    When I run "morphir kb intent init --kb kb"
+    When I run "morphir-dev kb intent init --kb kb"
     Then the command succeeds
     And stdout contains "created"
     And stdout contains "intent/index.md"
     When I run the command:
       """
-      morphir kb intent new --kb kb --title "Ship the port" --description "Port the kb CLI." --kind feature
+      morphir-dev kb intent new --kb kb --title "Ship the port" --description "Port the kb CLI." --kind feature
       """
     Then the command succeeds
     And stdout contains "created"
-    When I run "morphir kb intent list --kb kb"
+    When I run "morphir-dev kb intent list --kb kb"
     Then the command succeeds
     And stdout contains "0001"
     And stdout contains "Ship the port"
-    When I run "morphir kb intent start 0001 --kb kb"
+    When I run "morphir-dev kb intent start 0001 --kb kb"
     Then the command succeeds
     And stdout contains "intent 0001 → InProgress"
-    When I run "morphir kb intent release 0001 --kb kb"
+    When I run "morphir-dev kb intent release 0001 --kb kb"
     Then the command fails
     And stderr contains "error: releasing needs --capability"
 
   Scenario: intent check reports and exits by severity
     Given a knowledge base at "kb"
-    When I run "morphir kb intent init --kb kb"
+    When I run "morphir-dev kb intent init --kb kb"
     Then the command succeeds
-    When I run "morphir kb intent check --kb kb"
+    When I run "morphir-dev kb intent check --kb kb"
     Then the command succeeds
     And stdout contains "0 error(s)"
-    When I run "morphir kb intent check --kb kb --strict"
+    When I run "morphir-dev kb intent check --kb kb --strict"
     Then the command fails
     And stdout contains "intent-no-system"
 
   Scenario: decision list on an empty knowledge base
     Given a knowledge base at "kb"
-    When I run "morphir kb decision list --kb kb"
+    When I run "morphir-dev kb decision list --kb kb"
     Then the command succeeds
     And stdout is exactly "no decision records"
 
@@ -254,14 +254,14 @@ Feature: Manage the knowledge base
 
       How naming rules work.
       """
-    When I run "morphir kb index --kb kb"
+    When I run "morphir-dev kb index --kb kb"
     Then the command succeeds
-    When I run "morphir kb search --kb kb --index --query naming"
+    When I run "morphir-dev kb search --kb kb --index --query naming"
     Then the command succeeds
     And stdout contains "/naming.md"
     And stdout contains "/rules.md"
     And stdout contains "3 row(s)"
-    When I run "morphir kb search --kb kb --index --query naming --type Reference"
+    When I run "morphir-dev kb search --kb kb --index --query naming --type Reference"
     Then the command succeeds
     And stdout contains "/rules.md"
     And stdout does not contain "/naming.md"
@@ -269,17 +269,17 @@ Feature: Manage the knowledge base
 
   Scenario: sync diff with no argument diffs the whole mirror
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff --kb kb"
+    When I run "morphir-dev kb sync diff --kb kb"
     Then the command succeeds
     And stdout contains "=== docs/types.md ==="
     And stdout contains "1 of 3 file(s) differ"
 
   Scenario: sync diff with one literal path keeps its single-file rendering
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff docs/index.md --kb kb"
+    When I run "morphir-dev kb sync diff docs/index.md --kb kb"
     Then the command succeeds
     And stdout is exactly "docs/index.md: identical"
-    When I run "morphir kb sync diff docs/types.md --kb kb"
+    When I run "morphir-dev kb sync diff docs/types.md --kb kb"
     Then the command succeeds
     And stdout contains "+Local edit."
     And stdout does not contain "==="
@@ -287,21 +287,21 @@ Feature: Manage the knowledge base
 
   Scenario: sync diff takes several patterns at once
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff docs/types.md schemas/thing.yaml --kb kb"
+    When I run "morphir-dev kb sync diff docs/types.md schemas/thing.yaml --kb kb"
     Then the command succeeds
     And stdout contains "=== docs/types.md ==="
     And stdout contains "1 of 2 file(s) differ"
 
   Scenario: sync diff takes a glob in the sync.yaml dialect
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff docs/** --kb kb"
+    When I run "morphir-dev kb sync diff docs/** --kb kb"
     Then the command succeeds
     And stdout contains "=== docs/types.md ==="
     And stdout contains "1 of 2 file(s) differ"
 
   Scenario: sync diff --json emits a parseable envelope
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff --json --kb kb"
+    When I run "morphir-dev kb sync diff --json --kb kb"
     Then the command succeeds
     And stdout is valid JSON
     And the JSON value at "/summary/differing" is 1
@@ -309,7 +309,7 @@ Feature: Manage the knowledge base
 
   Scenario: sync diff --raw emits the patch and nothing else
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff --raw --kb kb"
+    When I run "morphir-dev kb sync diff --raw --kb kb"
     Then the command succeeds
     And stdout contains "diff --git a/docs/types.md b/docs/types.md"
     And stdout does not contain "==="
@@ -317,7 +317,7 @@ Feature: Manage the knowledge base
 
   Scenario: sync diff refuses --json together with --raw
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff --json --raw --kb kb"
+    When I run "morphir-dev kb sync diff --json --raw --kb kb"
     Then the command fails
     And stderr contains "cannot be used with"
 
@@ -329,7 +329,7 @@ Feature: Manage the knowledge base
       docs/index.md
 
       """
-    When I run "morphir kb sync diff - --kb kb"
+    When I run "morphir-dev kb sync diff - --kb kb"
     Then the command succeeds
     And stdout contains "=== docs/types.md ==="
     And stdout contains "1 of 2 file(s) differ"
@@ -340,7 +340,7 @@ Feature: Manage the knowledge base
       """
       docs/types.md
       """
-    When I run "morphir kb sync diff schemas/thing.yaml - --kb kb"
+    When I run "morphir-dev kb sync diff schemas/thing.yaml - --kb kb"
     Then the command succeeds
     And stdout contains "=== docs/types.md ==="
     And stdout contains "1 of 2 file(s) differ"
@@ -353,13 +353,13 @@ Feature: Manage the knowledge base
       docs/index.md
 
       """
-    When I run "morphir kb sync diff - -z --kb kb"
+    When I run "morphir-dev kb sync diff - -z --kb kb"
     Then the command succeeds
     And stdout contains "=== docs/types.md ==="
     And stdout contains "1 of 2 file(s) differ"
 
   Scenario: sync diff refuses -z when nothing is being read from stdin
     Given a mirror whose local copy of "docs/types.md" has been edited
-    When I run "morphir kb sync diff -z --kb kb"
+    When I run "morphir-dev kb sync diff -z --kb kb"
     Then the command fails
     And stderr contains "error: -z/--null says how to split what stdin holds"

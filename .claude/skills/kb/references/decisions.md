@@ -1,4 +1,4 @@
-# `morphir kb decision` — Decision Records
+# `morphir-dev kb decision` — Decision Records
 
 A **Decision Record** is an architectural decision recorded as prose: what was decided, which alternatives were
 rejected, and under what condition it should be revisited. It is the knowledge base's third register.
@@ -55,26 +55,26 @@ document.
 ## Commands
 
 ```bash
-morphir kb decision list                  # all records, grouped by state
-morphir kb decision list --in-force       # excludes Superseded and Withdrawn
-morphir kb decision list --state Accepted
-morphir kb decision list --bundle morphir-scala
-morphir kb decision list --json
+morphir-dev kb decision list                  # all records, grouped by state
+morphir-dev kb decision list --in-force       # excludes Superseded and Withdrawn
+morphir-dev kb decision list --state Accepted
+morphir-dev kb decision list --bundle morphir-scala
+morphir-dev kb decision list --json
 
-morphir kb decision show 0005             # id, slug, or bare number
-morphir kb decision show 0005 --body
-morphir kb decision show 0005 --json
-morphir kb decision show 0001 --bundle morphir-scala
+morphir-dev kb decision show 0005             # id, slug, or bare number
+morphir-dev kb decision show 0005 --body
+morphir-dev kb decision show 0005 --json
+morphir-dev kb decision show 0001 --bundle morphir-scala
 ```
 
 Ids are unique within a bundle, not across the knowledge base, so `0001` may name a record in more than one. When it
 does, `show` lists the candidates and exits non-zero rather than picking one; `--bundle` narrows it.
 
-There is no `morphir kb decision new`. Use `morphir kb add-concept`, which already handles the file, the frontmatter
+There is no `morphir-dev kb decision new`. Use `morphir-dev kb add-concept`, which already handles the file, the frontmatter
 and the index entry:
 
 ```bash
-morphir kb add-concept \
+morphir-dev kb add-concept \
   --bundle morphir/morphir-scala \
   --path decisions/0011-some-decision.md \
   --type "Decision Record" \
@@ -113,7 +113,7 @@ Its decision 0015 shows the same shape where the opening decision statement is i
 
 ## Checks
 
-Run as part of `morphir kb check`. See [checks.md](./checks.md) for the full catalogue.
+Run as part of `morphir-dev kb check`. See [checks.md](./checks.md) for the full catalogue.
 
 | Check | Severity | Means |
 | ----- | -------- | ----- |
@@ -144,4 +144,4 @@ in the author's head where it belongs.
 2. On the old record, set `state: Superseded` and `superseded_by: "MMMM"`.
 3. Leave the old record's body alone. Do not "fix" it to match the new conclusion — the stale reasoning is the
    artifact.
-4. Run `morphir kb check`; `decision-supersede-not-mutual` catches step 2 if you forget it.
+4. Run `morphir-dev kb check`; `decision-supersede-not-mutual` catches step 2 if you forget it.

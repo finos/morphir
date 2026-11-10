@@ -1,4 +1,4 @@
-//! `morphir kb` — knowledge base management over OKF bundles.
+//! `morphir-dev kb` — knowledge base management over OKF bundles.
 //!
 //! Ported from the morphir-scala `kb` CLI (`.claude/skills/kb/kb.scala`),
 //! matching its command surface so playbooks carry over. Faults in that
@@ -15,8 +15,8 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::AppResult;
 use chrono::{Local, NaiveDate, Utc};
-use starbase::AppResult;
 
 use morphir_kb::error::{Error, Result as KbResult};
 use morphir_kb::scaffold::ScaffoldResult;

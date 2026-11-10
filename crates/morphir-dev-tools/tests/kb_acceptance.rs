@@ -1,4 +1,4 @@
-//! Acceptance tests for the `morphir kb` subcommand tree.
+//! Acceptance tests for the `morphir-dev kb` subcommand tree.
 //!
 //! Each scenario drives the real binary end to end inside a temporary
 //! repository, mirroring the style of `config_acceptance.rs`.
@@ -51,30 +51,30 @@ impl KbWorld {
     fn run_cli(&mut self, command_line: &str) {
         let arguments: Vec<String> = split_command_line(command_line)
             .into_iter()
-            .skip_while(|argument| argument == "morphir")
+            .skip_while(|argument| argument == "morphir-dev")
             .collect();
-        let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_morphir-dev"));
         command
             .args(&arguments)
             .current_dir(self.root())
             .env("MORPHIR_LOG_FILE", "false")
             .env("NO_COLOR", "1");
         let output = match self.stdin.take() {
-            None => command.output().expect("failed to run morphir CLI"),
+            None => command.output().expect("failed to run morphir-dev"),
             Some(text) => {
                 // Spawned rather than `output()`ed because the pipe has to be
                 // written and closed before the child can finish reading it.
                 command.stdin(Stdio::piped());
                 command.stdout(Stdio::piped());
                 command.stderr(Stdio::piped());
-                let mut child = command.spawn().expect("failed to run morphir CLI");
+                let mut child = command.spawn().expect("failed to run morphir-dev");
                 child
                     .stdin
                     .take()
                     .expect("stdin was piped")
                     .write_all(text.as_bytes())
                     .expect("failed to write stdin");
-                child.wait_with_output().expect("failed to run morphir CLI")
+                child.wait_with_output().expect("failed to run morphir-dev")
             }
         };
         self.output = Some(output);
@@ -194,7 +194,7 @@ fn edited_mirror(world: &mut KbWorld) {
         &upstream.join("schemas/thing.yaml"),
         "$id: thing\ntype: object\n",
     );
-    world.run_cli("morphir kb sync pull --kb kb");
+    world.run_cli("morphir-dev kb sync pull --kb kb");
     assert!(
         world.output().status.success(),
         "seeding the mirror failed\nstdout:\n{}\nstderr:\n{}",

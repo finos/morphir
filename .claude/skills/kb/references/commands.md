@@ -1,4 +1,4 @@
-# `morphir kb` Command Reference
+# `morphir-dev kb` Command Reference
 
 All commands take `--kb <path>` (auto-detected by walking up from the working directory to a directory containing
 `kb/bundles`; the resolved root is its `kb/`) and `--json`.
@@ -7,7 +7,7 @@ All commands take `--kb <path>` (auto-detected by walking up from the working di
 freely:
 
 ```bash
-morphir kb check --json | jq '.findings[] | select(.severity=="error")'
+morphir-dev kb check --json | jq '.findings[] | select(.severity=="error")'
 ```
 
 ---
@@ -21,7 +21,7 @@ Bundles, their OKF version, concept count and title.
 | `--bundle <name>` | List that bundle's concepts instead. Accepts `morphir-ir-v3` or `morphir/morphir-ir-v3` |
 
 ```bash
-morphir kb list --bundle morphir-ir-v3
+morphir-dev kb list --bundle morphir-ir-v3
 ```
 
 JSON gives `{root, bundles[{label, name, group, okfVersion, title, description, concepts, subIndexes, hasLog}]}`, or
@@ -40,7 +40,7 @@ One document: frontmatter, outbound links, heading outline.
 | `--body` | Include the document body |
 
 ```bash
-morphir kb show --path /naming.md --bundle morphir-ir-v3
+morphir-dev kb show --path /naming.md --bundle morphir-ir-v3
 ```
 
 ---
@@ -64,11 +64,11 @@ apply to the indexed search too, so `--index --query naming --bundle platform` r
 bundle. The one thing `--index` insists on is a `--query`; it refuses without one.
 
 ```bash
-morphir kb search --tag v4 --status draft
+morphir-dev kb search --tag v4 --status draft
 ```
 
 ```bash
-morphir kb search --query "format version" --body
+morphir-dev kb search --query "format version" --body
 ```
 
 ---
@@ -87,11 +87,11 @@ Runs every check and exits non-zero when there are errors.
 | `--out <path>` | Write the report to a file instead of stdout. Put these under `.dev/` |
 
 ```bash
-morphir kb check --verbose
+morphir-dev kb check --verbose
 ```
 
 ```bash
-morphir kb check --json --out .dev/kb/out/check.json
+morphir-dev kb check --json --out .dev/kb/out/check.json
 ```
 
 → [checks.md](checks.md) for what each finding means.
@@ -108,11 +108,11 @@ Builds the SQLite index over the knowledge base.
 | `--db <path>` | Database location (default `<repo>/.dev/kb/index.db`) |
 
 ```bash
-morphir kb index
+morphir-dev kb index
 ```
 
 ```bash
-morphir kb index --status
+morphir-dev kb index --status
 ```
 
 → [index-db.md](index-db.md) for the schema and worked queries.
@@ -121,16 +121,16 @@ morphir kb index --status
 
 ## `refresh`
 
-Brings derived state back in line with the markdown. There are two kinds of it, and `morphir kb refresh` on its own
+Brings derived state back in line with the markdown. There are two kinds of it, and `morphir-dev kb refresh` on its own
 does both: rewrites index bullets that have drifted from their concept's `description`, then rebuilds the SQLite
 index if anything changed.
 
 ```bash
-morphir kb refresh
+morphir-dev kb refresh
 ```
 
 ```bash
-morphir kb refresh --dry-run
+morphir-dev kb refresh --dry-run
 ```
 
 ### Narrowing it
@@ -139,9 +139,9 @@ Either a subcommand or a flag. They are the same operation; the subcommands just
 
 | Form | Does |
 | ---- | ---- |
-| `morphir kb refresh` | Both halves |
-| `morphir kb refresh markdown` (alias `md`) | Index bullets only — same as `morphir kb refresh --no-db` |
-| `morphir kb refresh db` (alias `index`) | SQLite index only — same as `morphir kb refresh --no-markdown` |
+| `morphir-dev kb refresh` | Both halves |
+| `morphir-dev kb refresh markdown` (alias `md`) | Index bullets only — same as `morphir-dev kb refresh --no-db` |
+| `morphir-dev kb refresh db` (alias `index`) | SQLite index only — same as `morphir-dev kb refresh --no-markdown` |
 
 ### Flags
 
@@ -155,11 +155,11 @@ Either a subcommand or a flag. They are the same operation; the subcommands just
 | `--no-markdown` / `--no-db` — narrow the scope | ✓ | | |
 
 ```bash
-morphir kb refresh markdown --add-missing --section "Design rationale"
+morphir-dev kb refresh markdown --add-missing --section "Design rationale"
 ```
 
 ```bash
-morphir kb refresh db --force
+morphir-dev kb refresh db --force
 ```
 
 Description drift is fixed automatically because the repair is purely mechanical — the bullet is *supposed* to mirror
@@ -184,7 +184,7 @@ Read-only SQL over the index.
 | `--db <path>` | Database location |
 
 ```bash
-morphir kb query --sql "SELECT type, count(*) FROM v_concept GROUP BY type ORDER BY 2 DESC"
+morphir-dev kb query --sql "SELECT type, count(*) FROM v_concept GROUP BY type ORDER BY 2 DESC"
 ```
 
 ---
@@ -201,7 +201,7 @@ morphir kb query --sql "SELECT type, count(*) FROM v_concept GROUP BY type ORDER
 | `--date <YYYY-MM-DD>` | Override today's date in the log entry |
 
 ```bash
-morphir kb new-bundle --group morphir --name morphir-ir-v5 \
+morphir-dev kb new-bundle --group morphir --name morphir-ir-v5 \
   --title "Morphir IR v5" --description "The v5 IR specification."
 ```
 
@@ -229,7 +229,7 @@ Creates the concept, inserts an index bullet, and appends a log entry.
 | `--date <YYYY-MM-DD>` | Override today's date |
 
 ```bash
-morphir kb add-concept --bundle morphir/morphir-ir-v3 --path naming.md \
+morphir-dev kb add-concept --bundle morphir/morphir-ir-v3 --path naming.md \
   --type "Specification Section" --title Naming \
   --description "Name, Path, QName and FQName." \
   --tag morphir --tag ir --status stable --section "Identity and structure" \
@@ -274,7 +274,7 @@ and is counted separately in the summary. That comparison needs no upstream chec
 it.
 
 ```bash
-morphir kb sync status
+morphir-dev kb sync status
 ```
 
 JSON gives `{files[{path, kind, state, detail, injectionStale}], summary{<state>: <count>}}`.
@@ -296,11 +296,11 @@ bytes an export would send are unchanged.
 | `--date <YYYY-MM-DD>` | Override today's date in `imported_at` and the generated index |
 
 ```bash
-morphir kb sync pull --dry-run
+morphir-dev kb sync pull --dry-run
 ```
 
 ```bash
-morphir kb sync pull --theirs --prune
+morphir-dev kb sync pull --theirs --prune
 ```
 
 ### `sync push`
@@ -319,7 +319,7 @@ reads upstream, so a file that moved on both sides presents to it as a local cha
 `--include-diverged`. Run `sync status` first when that distinction matters.
 
 ```bash
-morphir kb sync push --dry-run
+morphir-dev kb sync push --dry-run
 ```
 
 ### `sync diff`
@@ -344,19 +344,19 @@ One literal path prints what it always has: the diff, or `<path>: identical`. An
 several patterns — prints one `=== <path> ===` section per differing file and then a tally.
 
 ```bash
-morphir kb sync diff docs/spec/draft/types.md
+morphir-dev kb sync diff docs/spec/draft/types.md
 ```
 
 ```bash
-morphir kb sync diff 'docs/**'
+morphir-dev kb sync diff 'docs/**'
 ```
 
 ```bash
-morphir kb sync diff --raw > /tmp/mirror.patch
+morphir-dev kb sync diff --raw > /tmp/mirror.patch
 ```
 
 ```bash
-find . -name '*.md' -print0 | morphir kb sync diff - -z
+find . -name '*.md' -print0 | morphir-dev kb sync diff - -z
 ```
 
 ---
@@ -384,18 +384,18 @@ Kinds: `feature`, `bug`, `performance`, `security`, `deprecation`, `removal`, `r
 `spike`. `--breaking` marks a compatibility break — orthogonal to kind. `--open` lists only open intent, excluding
 Released, Cancelled and Superseded.
 
-Ids are positional — `morphir kb intent start 0007`, not `--id 0007`. All commands take `--json` and `--date`.
+Ids are positional — `morphir-dev kb intent start 0007`, not `--id 0007`. All commands take `--json` and `--date`.
 
 ```bash
-morphir kb intent new --title "WASM linking" --description "Link Scala.js output as a WASM module." --kind feature
+morphir-dev kb intent new --title "WASM linking" --description "Link Scala.js output as a WASM module." --kind feature
 ```
 
 ```bash
-morphir kb intent release 0007 --capability morphir/morphir-scala:/wasm-linking.md
+morphir-dev kb intent release 0007 --capability morphir/morphir-scala:/wasm-linking.md
 ```
 
 The transition verbs refuse up front when the target state's obligation is unmet, rather than letting `check` catch
-it later. Run `morphir kb refresh` afterwards to regenerate the intent index.
+it later. Run `morphir-dev kb refresh` afterwards to regenerate the intent index.
 
 ---
 
@@ -415,9 +415,9 @@ candidates, and `--bundle` narrows it. There is no `decision new` — use `add-c
 hand-edit the register fields.
 
 ```bash
-morphir kb decision list --in-force
+morphir-dev kb decision list --in-force
 ```
 
 ```bash
-morphir kb decision show 0004 --body
+morphir-dev kb decision show 0004 --body
 ```
