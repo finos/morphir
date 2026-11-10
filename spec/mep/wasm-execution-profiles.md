@@ -192,7 +192,7 @@ A host's worker mode reports a fault with one of five kinds: `trap`, `memory-lim
 
 | Host | Observed at | Difference | Tracking |
 | --- | --- | --- | --- |
-| finos/morphir-rust `morphir-host-native` | `extension/rust/v0.4.0-2` | Declares `morphir_get_workspace_info` as `(i64) -> i64`. The contract, the Rust extension SDK and the MoonBit host use `() -> i64` | Not yet filed |
+| finos/morphir-rust `morphir-host-native` | `extension/rust/v0.4.0-2` | Declares `morphir_get_workspace_info` as `(i64) -> i64`. The contract, the Rust extension SDK and the MoonBit host use `() -> i64` | [finos/morphir-rust#330](https://github.com/finos/morphir-rust/issues/330) |
 
 ## Sources
 

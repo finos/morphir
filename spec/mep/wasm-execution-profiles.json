@@ -124,7 +124,7 @@
       "import": "extism:host/user morphir_get_workspace_info",
       "contract": "() -> i64",
       "hostDeclares": "(i64) -> i64",
-      "tracking": null
+      "tracking": "https://github.com/finos/morphir-rust/issues/330"
     }
   ]
 }

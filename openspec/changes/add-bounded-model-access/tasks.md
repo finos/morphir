@@ -4,7 +4,7 @@ This is the OpenSpec implementation breakdown, not a completed-work ledger. Bead
 
 Dependencies: group 1 establishes the contract and fixed corpus; groups 2 and 3 implement independent readers against it; group 4 establishes the shared session exchange; groups 5 and 6 integrate each host after its reader and group 4; group 7 consolidates qualification after both integrations. Group 8 is an independent experiment and does not block the bounded-generation gate. Keep implementation changes in their owning repositories.
 
-Runner home: the kit's runner is the Rust `morphir mck` today, and the maintainer intends to move it to the .NET or MoonBit host. That choice is not made. Cases, expectations and receipts are data and do not depend on it. Tasks that touch runner code (1.5, 2.5, 3.5 and group 7) use whichever runner hosts the kit when they start; confirm its home with the maintainer first, and do not add code to `crates/morphir-mck` without that confirmation.
+Runner home: the kit's runner is moving from the Rust `morphir mck` to the .NET host in morphir-dotnet (decided 9 November 2026). Cases, expectations and receipts stay here as data. Tasks that touch runner code (1.5, 2.5, 3.5 and group 7) add it in morphir-dotnet, not in `crates/morphir-mck`.
 
 ## 1. Shared contracts and fixed examples, finos/morphir
 
@@ -51,9 +51,9 @@ Runner home: the kit's runner is the Rust `morphir mck` today, and the maintaine
 - [ ] 6.2 Run the same shared neutral WASM guest through the existing worker/byte-call abstraction. Verify fixed artifact equality with the .NET-hosted execution, enforced guest limits and bounded frame/chunk sizes; document the exact engine and ABI profile qualified.
 - [ ] 6.3 Integrate artifact staging, task records and install through the shared host boundary. Verify producer contention, cancellation, late errors, member isolation and tombstones using observable native runs; update the workflow examples with the actual descriptor-based paths.
 
-## 7. Kit runner and first-delivery evidence, finos/morphir and the runner's home
+## 7. Kit runner and first-delivery evidence, finos/morphir and morphir-dotnet
 
-- [ ] 7.1 Extend only the kit runner's orchestration and observation checks needed for the new adapter profile, in the runner home confirmed above. Verify both adapters' small cases, deliberate malformed observations and separate correctness/resource outcomes through fixed expectations, without linking either implementation's IR codec into expected results.
+- [ ] 7.1 Extend only the kit runner's orchestration and observation checks needed for the new adapter profile, in the .NET runner. Verify both adapters' small cases, deliberate malformed observations and separate correctness/resource outcomes through fixed expectations, without linking either implementation's IR codec into expected results.
 - [ ] 7.2 Add deterministic scale fixtures with bounded documents, growing inventory and final-page dependencies; run at two scales with fixed resident budgets. Verify actual aggregate input sizes exceed the declared host/guest ceilings and that resident decoded bodies, contexts and artifact buffers stay within their bounds; freeze expected outputs independently.
 - [ ] 7.3 Collect native .NET and MoonBit host receipts plus each WASM generation path with external peak-memory measurements and runtime-enforced limits. Verify report replay identifies source/kit digests, revisions, target, selected tuple, measured scopes and mandatory missing-data failures; keep large runs manual rather than adding new per-PR jobs.
 - [ ] 7.4 Update the narrative adoption/support table with the qualified revisions and exact contract/profile matrix. Verify the complete first-delivery cases and parent documentation/spec gates, recording Rust runtime adoption as deferred and leaving the generic guest qualification contract intact.

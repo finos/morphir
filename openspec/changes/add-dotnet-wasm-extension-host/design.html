@@ -265,7 +265,7 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <p class="stage">Stage 10. Someone has to check all of this</p>
 <h3 id="wrk-1">WRK-1. A worker mode with MoonBit's command shape</h3>
 <p>A conformance runner starts a host executable and speaks Content-Length framed MEP over stdio. The .NET host gains <code>morphir extension worker</code> with the arguments MoonBit's worker takes, so one invocation serves both hosts by changing the host path.</p>
-<p>The runner itself is the Rust <code>morphir mck</code> today, and the maintainer intends to move it to the .NET or MoonBit host. This decision does not depend on that choice: the worker mode is a stdio contract, and any runner that can start a process can use it. The example shows today's runner:</p>
+<p>The runner itself is the Rust <code>morphir mck</code> today, and it is moving to the .NET host in morphir-dotnet. This decision does not depend on where the runner lives: the worker mode is a stdio contract, and any runner that can start a process can use it. The example shows today's runner:</p>
 <pre><code class="language-console"># Proposed worker arguments, shown with today's runner. Identical to the MoonBit invocation except for the host path.
 $ morphir mck mep guest-run \
     --kit spec/mep/mck/guest-generic-json.json \

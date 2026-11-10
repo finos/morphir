@@ -19,7 +19,7 @@ flowchart TD
   F --> G
 ```
 
-The runner is the Rust `morphir mck` today and is intended to move to the .NET or MoonBit host. The cases and expectations are data, so they are written to be consumed unchanged by whichever host runs them.
+The runner is moving from the Rust `morphir mck` to the .NET host in morphir-dotnet. The cases and expectations are data, so they are written to be consumed unchanged by whichever host runs them.
 
 For each implementation and target, compare its single-file baseline, plain tree, contextual tree and expanded contextual tree. Cross-host runs of the same WASM generator also compare their fixed artifacts. Different target languages do not need byte-identical output.
 

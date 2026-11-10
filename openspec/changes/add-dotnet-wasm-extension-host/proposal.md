@@ -53,7 +53,7 @@ Adoption changes two morphir-dotnet specs in that repository's own change: `exte
 
 ## Impact
 
-This repository owns the profile contract, the crafted qualification modules and their fixed expectations. These are data and do not depend on where the conformance runner lives; that home (Rust today, the .NET or MoonBit host intended) is decided outside this change. morphir-dotnet owns the runtime, the worker mode and the packaging. No submodule pin or implementation changes are part of this proposal.
+This repository owns the profile contract, the crafted qualification modules and their fixed expectations. These are data and do not depend on where the conformance runner lives; it is moving from the Rust CLI to the .NET host in morphir-dotnet. morphir-dotnet owns the runtime, the worker mode and the packaging. No submodule pin or implementation changes are part of this proposal.
 
 morphir-dotnet gains its first native dependency. The Wasmtime engine adds about 10.6 MB to the Native AOT executable, measured on macOS arm64 only, and `dotnet-morphir` changes from one platform-neutral tool package to a set of platform-specific packages. Both are user-visible and need release notes and updated installation guidance.
 

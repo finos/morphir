@@ -4,7 +4,7 @@ This is the OpenSpec implementation breakdown, not a completed-work ledger. Bead
 
 Dependencies: group 1 fixes the contract and the crafted corpus. Group 2 builds the engine layer and proves the kernel approach. Group 3 adds the Extism profile on group 2. Group 4 needs a working profile and starts after group 3. Group 5 needs group 2 for something to package and can run beside groups 3 and 4. Group 6 consolidates after all of them. `add-bounded-model-access` task 5.2 can start after groups 3 and 4. Keep implementation changes in their owning repositories.
 
-Runner home: the conformance runner is the Rust `morphir mck` today, and the maintainer intends to move it to the .NET or MoonBit host. That choice is not made. The corpus, expectations and report contract in group 1 are data and do not depend on it. Tasks 1.5 and 4.3 run on whichever runner hosts the kit when they start; confirm its home with the maintainer first, and do not add code to `crates/morphir-mck` without that confirmation.
+Runner home: the conformance runner is moving from the Rust `morphir mck` to the .NET host in morphir-dotnet (decided 9 November 2026). The corpus, expectations and report contract in group 1 stay here as data. Tasks 1.5 and 4.3 add runner code in morphir-dotnet, not in `crates/morphir-mck`.
 
 ## 1. Shared contract and crafted corpus, finos/morphir
 
@@ -12,7 +12,7 @@ Runner home: the conformance runner is the Rust `morphir mck` today, and the mai
 - [x] 1.2 Add the crafted modules as WebAssembly text under `spec/mep/mck/fixtures/wasm`, one fault each, with a pinned assembler and the SHA-256 of each built binary. Verify a clean rebuild reproduces every digest and that the build needs no guest language toolchain.
 - [x] 1.3 Write each crafted case's expected observation by hand and link it to the contract requirement it tests. Verify a kit self-check fails when a contract failure code or outcome has no case, by removing one case and seeing the check fail.
 - [ ] 1.4 Define the host qualification report alongside the existing MCK report contract: runner, corpus digest, contract version, host executable digest, declared offering, platform and engine, per-bound enforcement and per-case observations. Verify fixed valid and invalid reports through `report-check`, including an edited verdict and a bound recorded as `not_enforced`.
-- [ ] 1.5 Add to the kit's runner only what is needed to run crafted cases through a stdio worker and to read its stderr reports, in the runner home confirmed above. Verify the complete corpus against the MoonBit native CLI's worker mode first, since that host already exists, and record each difference as a contract question or a MoonBit issue before any .NET result is compared.
+- [ ] 1.5 Add to the kit's runner only what is needed to run crafted cases through a stdio worker and to read its stderr reports, in the .NET runner in morphir-dotnet. Verify the complete corpus against the MoonBit native CLI's worker mode first, since that host already exists, and record each difference as a contract question or a MoonBit issue before any .NET result is compared.
 - [ ] 1.6 Document the two profiles for extension authors and host implementers in the published extension docs, with the classification diagram, the result-code table and the policy table. Verify `openspec validate add-dotnet-wasm-extension-host --strict`, the MEP spec checks and `mise run openspec:verify` pass.
 
 ## 2. Engine layer and the kernel proof, morphir-dotnet
