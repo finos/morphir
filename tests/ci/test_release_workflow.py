@@ -4,25 +4,27 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "release.yml"
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
-CARGO_TOML_PATH = REPO_ROOT / "crates" / "morphir" / "Cargo.toml"
 WORKSPACE_TOML_PATH = REPO_ROOT / "Cargo.toml"
 CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
+MCK_RUN_PATH = REPO_ROOT / "crates" / "morphir-mck-cli" / "tests" / "mck_run.rs"
 
 
+# The official CLI release (.github/workflows/release.yml) is tested in
+# tools/cli-release.test.ts. These tests cover the historical acceptance of
+# released Rust CLI tags (mck-release-acceptance.yml) and the CI gate.
 class ReleaseWorkflowTests(unittest.TestCase):
-    def test_package_acceptance_baselines_trigger_cli_tests(self) -> None:
+    def test_package_acceptance_baselines_trigger_runner_tests(self) -> None:
         rust_filter = self.ci_workflow.split("            rust:\n", 1)[1].split(
             "            rust-conformance:\n", 1
         )[0]
         self.assertIn("- 'spec/mck/baseline/package/**'", rust_filter)
-        cli_job = self.ci_workflow.split("    name: morphir CLI (test + integration)", 1)[1].split(
-            "\n  check-cli-docs:", 1
+        job = self.ci_workflow.split("    name: Rust development tools (test)", 1)[1].split(
+            "\n  docs:", 1
         )[0]
-        self.assertIn("needs.changes.outputs.rust == 'true'", cli_job)
-        self.assertIn("cargo test --locked --package morphir", cli_job)
-
+        self.assertIn("needs.changes.outputs.rust == 'true'", job)
+        self.assertIn("cargo test --locked --package morphir-mck-cli", job)
+        self.assertIn("cargo test --locked --package morphir-dev-tools", job)
     def test_linux_offline_evidence_is_readable_by_the_artifact_uploader(self) -> None:
         workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
         self.assertIn("name: Restore Linux evidence ownership", workflow)
@@ -90,7 +92,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('network probe unavailable before isolation', prepare)
         self.assertLess(prepare.index('await rm(acquisition,'), prepare.index('const environment ='))
         self.assertIn('MORPHIR_MCK_PREACQUIRED_KIT: kit', prepare)
-        runtime = (REPO_ROOT / "crates/morphir/tests/mck_run.rs").read_text()
+        runtime = MCK_RUN_PATH.read_text()
         self.assertIn('copy the pre-acquired kit', runtime)
         self.assertIn('network isolation unavailable: direct outbound TCP succeeded', runtime)
         self.assertIn('actual["kit"]["snapshotDigest"]', runtime)
@@ -99,7 +101,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_package_mvp_acceptance_uses_published_binary_with_prepared_native_adapter(self) -> None:
         workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
         prepare = (REPO_ROOT / "tools/mck-release-acceptance.mjs").read_text()
-        runtime = (REPO_ROOT / "crates/morphir/tests/mck_run.rs").read_text()
+        runtime = MCK_RUN_PATH.read_text()
         self.assertIn('entry.name === "mck_package_mvp"', prepare)
         self.assertIn('"--package", "morphir-mck-adapter"', prepare)
         self.assertIn('MORPHIR_MCK_MVP_REQUIRED: "1"', prepare)
@@ -111,183 +113,62 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
-        cls.cargo_toml = CARGO_TOML_PATH.read_text(encoding="utf-8")
 
     def test_workspace_uses_release_prerelease_version(self) -> None:
         workspace = tomllib.loads(WORKSPACE_TOML_PATH.read_text(encoding="utf-8"))
         self.assertEqual("0.4.0-beta.12", workspace["workspace"]["package"]["version"])
 
         lockfile = tomllib.loads(CARGO_LOCK_PATH.read_text(encoding="utf-8"))
+        names = {package["name"] for package in lockfile["package"]}
+        self.assertNotIn("morphir", names, "the Rust product CLI was deleted")
         workspace_packages = {
             package["name"]: package["version"]
             for package in lockfile["package"]
-            if package["name"] in {"morphir", "morphir-mck"}
+            if package["name"] in {"morphir-mck", "morphir-mck-cli", "morphir-dev-tools"}
         }
         self.assertEqual(
-            {"morphir": "0.4.0-beta.12", "morphir-mck": "0.4.0-beta.12"},
+            {
+                "morphir-mck": "0.4.0-beta.12",
+                "morphir-mck-cli": "0.4.0-beta.12",
+                "morphir-dev-tools": "0.4.0-beta.12",
+            },
             workspace_packages,
         )
 
-    def test_manual_release_checks_out_requested_tag(self) -> None:
-        self.assertIn("release-info:", self.workflow)
-        self.assertIn(
-            "ref: ${{ github.event_name == 'workflow_dispatch' "
-            "&& inputs.tag || github.ref }}",
-            self.workflow,
-        )
-        self.assertIn("ref: ${{ needs.release-info.outputs.tag }}", self.workflow)
-
-    def test_release_tag_matches_workspace_version(self) -> None:
-        self.assertIn("Validate release tag", self.workflow)
-        self.assertIn('EXPECTED_TAG="v${VERSION}"', self.workflow)
-        self.assertIn('if [ "$TAG" != "$EXPECTED_TAG" ]; then', self.workflow)
-
     def test_windows_git_long_paths_are_enabled_before_submodule_checkout(self) -> None:
         acceptance = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
-        for workflow, checkout in (
-            (self.workflow.split("  package-cli:", 1)[1], "name: Checkout code"),
-            (acceptance.split("  qualify:", 1)[1], "name: Check out the published source tag"),
-        ):
-            with self.subTest(workflow=workflow.splitlines()[0]):
-                self.assertIn("name: Configure Windows Git paths", workflow)
-                setup = workflow.split("name: Configure Windows Git paths", 1)[1].split("\n      - name:", 1)[0]
-                self.assertIn("if: runner.os == 'Windows'", setup)
-                self.assertIn("git config --global core.longpaths true", setup)
-                self.assertIn("CARGO_NET_GIT_FETCH_WITH_CLI=true", setup)
-                self.assertIn("$env:GITHUB_ENV", setup)
-                self.assertLess(workflow.index("name: Configure Windows Git paths"), workflow.index(checkout))
-
-    def test_cli_build_covers_supported_targets(self) -> None:
-        targets = {
-            "x86_64-unknown-linux-gnu",
-            "aarch64-unknown-linux-gnu",
-            "x86_64-apple-darwin",
-            "aarch64-apple-darwin",
-            "x86_64-pc-windows-msvc",
-            "aarch64-pc-windows-msvc",
-        }
-
-        self.assertIn("package-cli:", self.workflow)
-        self.assertIn("name: Package Morphir CLI (${{ matrix.target }})", self.workflow)
-        self.assertIn("fail-fast: false", self.workflow)
-        for target in targets:
-            self.assertIn(f"target: {target}", self.workflow)
-
-    def test_cli_archives_match_cargo_binstall_metadata(self) -> None:
-        self.assertIn(
-            'pkg-url = "{ repo }/releases/download/v{ version }/'
-            '{ name }-{ version }-{ target }.{ archive-format }"',
-            self.cargo_toml,
-        )
-        self.assertIn(
-            'ARCHIVE="morphir-${{ needs.release-info.outputs.version }}-'
-            '${{ matrix.target }}.${{ matrix.archive }}"',
-            self.workflow,
-        )
-        self.assertIn(
-            '$archive = "morphir-${{ needs.release-info.outputs.version }}-'
-            '${{ matrix.target }}.${{ matrix.archive }}"',
-            self.workflow,
-        )
-
-    def test_packaging_jobs_support_independent_retries(self) -> None:
-        self.assertIn("name: morphir-cli-${{ matrix.target }}", self.workflow)
-        self.assertIn("overwrite: true", self.workflow)
-        self.assertIn("retention-days: 7", self.workflow)
-
-    def test_extracted_cli_passes_mck_smoke_before_artifact_upload(self) -> None:
-        package_job = self.workflow.split("  package-cli:\n", maxsplit=1)[1]
-        package_job = package_job.split("  publish-release:\n", maxsplit=1)[0]
-        self.assertIn("tar -xzf", package_job)
-        self.assertIn("Expand-Archive", package_job)
-        self.assertIn("MORPHIR_MCK_INSTALLED_CLI", package_job)
-        self.assertIn("installed_cli_runs_vendored_kit_without_tool_runtimes", package_job)
-        self.assertIn("--release --package morphir --target ${{ matrix.target }}", package_job)
+        workflow = acceptance.split("  qualify:", 1)[1]
+        self.assertIn("name: Configure Windows Git paths", workflow)
+        setup = workflow.split("name: Configure Windows Git paths", 1)[1].split("\n      - name:", 1)[0]
+        self.assertIn("if: runner.os == 'Windows'", setup)
+        self.assertIn("git config --global core.longpaths true", setup)
+        self.assertIn("CARGO_NET_GIT_FETCH_WITH_CLI=true", setup)
+        self.assertIn("$env:GITHUB_ENV", setup)
         self.assertLess(
-            package_job.index("name: Verify packaged MCK CLI"),
-            package_job.index("name: Upload CLI artifact"),
+            workflow.index("name: Configure Windows Git paths"),
+            workflow.index("name: Check out the published source tag"),
         )
 
-    def test_release_pipeline_packages_only_the_cli(self) -> None:
-        self.assertNotIn("package-live:", self.workflow)
-        self.assertNotIn("dioxus-cli", self.workflow)
-        self.assertNotIn("morphir-live", self.workflow)
-
-    def test_release_download_selects_cli_artifacts(self) -> None:
-        publish_job = self.workflow.split("  publish-release:\n", maxsplit=1)[1]
-        self.assertIn("pattern: morphir-*", publish_job)
-
-    def test_cli_checksum_uses_archive_basename(self) -> None:
-        self.assertIn("cd release-assets", self.workflow)
-        self.assertIn(
-            'shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"',
-            self.workflow,
-        )
-        self.assertNotIn(
-            'shasum -a 256 "release-assets/${ARCHIVE}"',
-            self.workflow,
-        )
-
-    def test_workspace_version_files_trigger_release_validation(self) -> None:
+    def test_release_validation_runs_for_the_official_cli_inputs(self) -> None:
         release_filter = self.ci_workflow.split("            release:\n", maxsplit=1)[1]
         release_filter = release_filter.split("\n\n", maxsplit=1)[0]
-        self.assertNotIn("deploy-release-pages.yml", release_filter)
-        self.assertIn("- 'Cargo.toml'", release_filter)
-        self.assertIn("- 'Cargo.lock'", release_filter)
+        for path in (
+            "- '.github/workflows/release.yml'",
+            "- '.config/cli-release.json'",
+            "- 'tools/cli-release*'",
+            "- 'ecosystem/morphir-dotnet'",
+        ):
+            self.assertIn(path, release_filter)
+        self.assertNotIn("select_release_assets", release_filter)
 
-    def test_publish_job_only_collects_release_artifacts(self) -> None:
-        self.assertRegex(
-            self.workflow,
-            r"publish-release:\n(?:.|\n)*?needs: "
-            r"\[release-info, package-cli\]",
-        )
-        self.assertIn("merge-multiple: true", self.workflow)
-
-        publish_job = self.workflow.split("  publish-release:\n", maxsplit=1)[1]
-        publish_job = publish_job.split("\n  deploy-pages:\n", maxsplit=1)[0]
-        self.assertIn("permissions:\n      contents: write", publish_job)
-        self.assertNotIn("cargo build", publish_job)
-        self.assertNotIn("dx build", publish_job)
-
-    def test_publish_job_skips_artifacts_with_matching_hashes(self) -> None:
-        publish_job = self.workflow.split("  publish-release:\n", maxsplit=1)[1]
-        publish_job = publish_job.split("\n  deploy-pages:\n", maxsplit=1)[0]
-
-        self.assertIn('gh release view "$TAG"', publish_job)
-        self.assertIn('gh release download "$TAG"', publish_job)
-        self.assertIn("select_release_assets.py", publish_job)
-        self.assertIn('gh release upload "$TAG"', publish_job)
-        self.assertIn("--clobber", publish_job)
-        self.assertNotIn("softprops/action-gh-release", publish_job)
-
-    def test_ci_requires_selected_rust_jobs(self) -> None:
-        self.assertNotIn("\n  morphir-live:\n", self.ci_workflow)
-        # The shared gate also requires the macOS publication qualification.
+    def test_ci_requires_selected_jobs(self) -> None:
         self.assertIn(
-            "needs: [changes, lint, morphir-cli-test, library-publish-macos, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]",
+            "needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, desktop-demo, package-mck]",
             self.ci_workflow,
         )
-        self.assertNotIn(
-            "needs: [changes, morphir-cli, docs, release-workflow]",
-            self.ci_workflow,
-        )
-
-    def test_cli_docs_job_runs_in_parallel_with_integration_tests(self) -> None:
-        cli_docs_job = self.ci_workflow.split(
-            "  check-cli-docs:\n", maxsplit=1
-        )[1].split("  docs:\n", maxsplit=1)[0]
-        cli_test_job = self.ci_workflow.split(
-            "  morphir-cli-test:\n", maxsplit=1
-        )[1].split("  check-cli-docs:\n", maxsplit=1)[0]
-
-        self.assertIn("needs: changes", cli_docs_job)
-        self.assertNotIn("needs: [changes, lint", cli_docs_job)
-        self.assertIn("mise run docs:cli", cli_docs_job)
-        self.assertIn("git status --porcelain --ignored=matching", cli_docs_job)
-        self.assertNotIn("Generate CLI docs", cli_test_job)
-        self.assertNotIn("Check CLI docs are up to date", cli_test_job)
+        for retired in ("\n  morphir-cli-test:\n", "\n  library-publish-macos:\n", "\n  check-cli-docs:\n"):
+            self.assertNotIn(retired, self.ci_workflow)
 
 
 if __name__ == "__main__":
