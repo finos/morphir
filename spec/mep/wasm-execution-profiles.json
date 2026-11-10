@@ -1,0 +1,130 @@
+{
+  "contract": "morphir/mep-wasm-execution-profiles",
+  "version": "0.1.0-draft.1",
+  "handleExport": { "name": "handle", "params": [], "results": ["i32"] },
+  "profiles": {
+    "morphir-bytes-v1": {
+      "namespaces": ["morphir_bytes_v1"],
+      "imports": [
+        { "module": "morphir_bytes_v1", "name": "input_len", "params": [], "results": ["i32"] },
+        { "module": "morphir_bytes_v1", "name": "input_byte", "params": ["i32"], "results": ["i32"] },
+        { "module": "morphir_bytes_v1", "name": "output_byte", "params": ["i32"], "results": [] }
+      ],
+      "wasi": false,
+      "notificationsDelivered": true,
+      "callDeadlineSeconds": 10,
+      "handleResults": [
+        { "result": "positive", "meaning": "response", "detail": "The guest pushed a response of that many bytes." },
+        { "result": "0", "meaning": "exit", "detail": "The guest handled morphir.exit; the instance ends." },
+        { "result": "-2", "meaning": "notification", "detail": "The guest consumed a notification. For a message with an id this is a failure." },
+        { "result": "-1", "meaning": "failure", "detail": "The guest failed; the session fails." }
+      ]
+    },
+    "extism-kernel-v1": {
+      "namespaces": ["extism:host/env", "extism:host/user", "wasi_snapshot_preview1"],
+      "imports": [
+        { "module": "extism:host/env", "name": "alloc", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "free", "params": ["i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "length_unsafe", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "length", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "load_u8", "params": ["i64"], "results": ["i32"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "load_u64", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_load_u8", "params": ["i64"], "results": ["i32"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_load_u64", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "store_u8", "params": ["i64", "i32"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "store_u64", "params": ["i64", "i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_set", "params": ["i64", "i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "output_set", "params": ["i64", "i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_length", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_offset", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "output_length", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "output_offset", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "reset", "params": [], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "error_set", "params": ["i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "error_get", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "memory_bytes", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "config_get", "params": ["i64"], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/env", "name": "var_get", "params": ["i64"], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/env", "name": "var_set", "params": ["i64", "i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_trace", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_debug", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_info", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_warn", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_error", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "get_log_level", "params": [], "results": ["i32"], "group": "host" },
+        { "module": "extism:host/env", "name": "http_request", "params": ["i64", "i64"], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/env", "name": "http_status_code", "params": [], "results": ["i32"], "group": "host" },
+        { "module": "extism:host/env", "name": "http_headers", "params": [], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/user", "name": "morphir_get_workspace_info", "params": [], "results": ["i64"], "group": "morphir" },
+        { "module": "extism:host/user", "name": "morphir_cache_ir", "params": ["i64", "i64"], "results": [], "group": "morphir" },
+        { "module": "extism:host/user", "name": "morphir_get_cached_ir", "params": ["i64"], "results": ["i64"], "group": "morphir" },
+        { "module": "extism:host/user", "name": "morphir_log", "params": ["i64", "i64"], "results": [], "group": "morphir" }
+      ],
+      "wasi": "wasi_snapshot_preview1",
+      "notificationsDelivered": false,
+      "callDeadlineSeconds": 30,
+      "handleResults": [
+        { "result": "0", "meaning": "response", "detail": "The response is the Extism output." },
+        { "result": "error set", "meaning": "failure", "detail": "The guest set an Extism error; the session fails." }
+      ]
+    }
+  },
+  "classification": {
+    "order": [
+      "A module that imports from morphir_bytes_v1 is morphir-bytes-v1.",
+      "Otherwise a module that imports from extism:host/env, extism:host/user or wasi_snapshot_preview1 is extism-kernel-v1.",
+      "A module that imports from none of these takes the declared profile, or extism-kernel-v1 when none is declared."
+    ],
+    "defaultProfile": "extism-kernel-v1"
+  },
+  "bounds": {
+    "memoryCeilingBytes": 268435456,
+    "instructionBudget": { "0.2.0-draft.1": 2147483647, "0.1": 1000000000 },
+    "instructionBudgetUnit": "engine-defined",
+    "requiredForQualification": ["memoryCeiling", "callDeadline"],
+    "optionalForQualification": ["instructionBudget"]
+  },
+  "policy": {
+    "varStoreBytes": 1048576,
+    "irCacheBytes": 16777216,
+    "irCacheEntries": 1024,
+    "logLevel": "info",
+    "httpRequest": "refused",
+    "config": "empty",
+    "wasi": {
+      "preopens": 0,
+      "arguments": 0,
+      "environment": 0,
+      "stdin": "empty",
+      "clocks": "available",
+      "random": "available",
+      "stdout": "guest-output",
+      "stderr": "guest-output",
+      "other": "error-code"
+    }
+  },
+  "refusals": [
+    { "code": "extension.abi_unsupported", "when": "An import is outside the classified profile's surface or has another signature, or handle is missing or has another type." },
+    { "code": "extension.abi_mismatch", "when": "A declared ABI differs from the classified profile." },
+    { "code": "extension.wasm_feature_unsupported", "when": "The module needs a WASM feature the engine lacks, or has a shared, 64-bit or second memory." },
+    { "code": "extension.memory_limit", "when": "The module's initial memory is above the ceiling." },
+    { "code": "extension.request_limit", "when": "A request is larger than the session's request byte limit. The guest is not called." }
+  ],
+  "faults": [
+    { "kind": "trap", "code": "extension.guest_trap", "when": "The guest trapped for a reason that is not a bound." },
+    { "kind": "memory-limit", "code": "extension.memory_limit", "when": "A call failed while the guest's memory was at the ceiling." },
+    { "kind": "budget-exhausted", "code": "extension.budget_exhausted", "when": "The guest ran past its per-call instruction budget on a metering engine." },
+    { "kind": "call-deadline", "outcome": "deadline", "when": "The call did not return before its deadline." },
+    { "kind": "failure", "when": "The guest reported failure: -1 or a misused -2 on the byte profile, an Extism error, a response over the response byte limit (extension.response_limit) or bytes that are not UTF-8." }
+  ],
+  "knownDeviations": [
+    {
+      "host": "finos/morphir-rust morphir-host-native",
+      "observedAt": "extension/rust/v0.4.0-2",
+      "import": "extism:host/user morphir_get_workspace_info",
+      "contract": "() -> i64",
+      "hostDeclares": "(i64) -> i64",
+      "tracking": null
+    }
+  ]
+}

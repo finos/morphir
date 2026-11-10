@@ -31,6 +31,8 @@ The capability claims format has its own version, separate from MEP. Writers sen
 spec/mep/
   README.md                 this file
   model-transport.md        rich-model wire and admission rules
+  wasm-execution-profiles.md    how a host runs a WASM extension: the two ABI profiles
+  wasm-execution-profiles.json  the same tables as data
   contract/                 Gleam project, the source of truth
     morphir.toml
     gleam.toml
