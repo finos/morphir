@@ -195,11 +195,15 @@ The `action` is `load` (load the repository), `read` (read `target` through the 
 
 Every key in the signed repository is the Ed25519 key whose 32-byte seed is the SHA-256 of a public UTF-8 label recorded in `testOnlyKeys`. Anyone can therefore sign with it, which is what makes the `relink` mutation reproducible in any language and why the keys can never serve as a production root. A production configuration must refuse that `repositoryId` and those keys.
 
+The [F# readiness workflow case](./readiness-workflow.md) in `spec/toolchain/workflows/fsharp-compile-generate/` is the fixed compile-and-generate case behind the `workflow` readiness check. It has its own manifest schema, [`toolchain-workflow-case-0.1.0-draft.1.schema.json`](/schemas/toolchain-workflow-case-0.1.0-draft.1.schema.json), and its source and expected IR are real corpus data, not synthetic.
+
 Digests and versions in these fixtures are synthetic. A repeated-character digest (`aaaa…`) or the SHA-256 of a `synthetic:<label>` string names no released artifact, and version `1.2.3` is illustrative.
 
 ## The reference reader
 
-This repository checks the cases with the `morphir-toolchain-contract` crate. It is this repository's reference reader for these document contracts: it parses each document into domain types and runs the cases above. It is ordinary schema and conformance testing, not a compatibility runner, and it implements no acquisition. IR and MEP behavior is qualified separately; where that shared kit will live is being decided.
+This repository checks the cases with the `morphir-toolchain-contract` crate. It is this repository's reference reader for these document contracts: it parses each document into domain types and runs the cases above. It is ordinary schema and conformance testing, not a compatibility runner, and it implements no acquisition.
+
+IR and MEP behavior is qualified by the compatibility kit. Following the maintainer's decision of 9 November 2026, the kit's runner lives in finos/morphir-dotnet (`src/Morphir.Conformance`, with the `cli`, `library` and `mep-guest` adapters), and its cases, fixed expectations and report contracts stay in this repository as data. The [F# readiness workflow case](./readiness-workflow.md) is one of them. AGENTS.md still describes the earlier arrangement, in which the runner was the Rust `morphir-mck` crate here.
 
 Resolution (`resolve_closure`), recipe selection and the authenticated-target checks make resolution behavior normative. Each rule they apply is therefore stated on the [toolset recipe](./toolset-recipe.md) page and pinned by fixtures, so an implementation never has to read the Rust code. Whether the reference reader stays in Rust is a maintainer decision.
 

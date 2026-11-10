@@ -15,7 +15,7 @@ A toolset recipe is an ordinary authenticated TUF target in a tool repository, f
 | `schemaVersion`, `critical` | As for every toolchain document |
 | `preset` | Preset token, such as `fsharp` |
 | `version` | Recipe release |
-| `operations` | Required operations, in workflow order, at least one: `{ "operation": "compile", "language": "fsharp" }`, `{ "operation": "generate", "target": "fsharp" }` |
+| `operations` | Required operations, in workflow order, at least one: `{ "operation": "compile", "language": "fsharp" }`, `{ "operation": "generate", "target": "fsharp" }`. The `fsharp` preset's readiness workflow runs these operations on the [F# readiness workflow case](./readiness-workflow.md) |
 | `hosts` | Host offerings, at least one |
 | `providers` | Independently released providers, in preference order |
 

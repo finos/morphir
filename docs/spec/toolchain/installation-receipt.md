@@ -59,6 +59,8 @@ Readiness is derived, never asserted:
 - a component is `integrity-verified` when its integrity check passed and `capability-checked` when both checks passed;
 - a generation is `workflow-qualified` when every component is `capability-checked` and the workflow check passed, and otherwise has the lowest component readiness.
 
+For the `fsharp` preset the workflow is `fsharp-compile-generate`, the fixed case described in [F# readiness workflow case](./readiness-workflow.md).
+
 A receipt whose `readiness` differs from the derived value is `inconsistent_document`. A valid archive whose frontend shares no tuple with its host is therefore `integrity-verified`, installed but not ready.
 
 Understood critical paths: `schemaVersion`, `critical`, `generationId`, `platform`, `lockSha256`, `recipe`, `host`, `host.identity`, `host.execution`, `host.installation`, `host.readiness`, `host.checks`, `providers`, `providers.identity`, `providers.installation`, `providers.readiness`, `providers.checks`, `readiness`, `checks`.

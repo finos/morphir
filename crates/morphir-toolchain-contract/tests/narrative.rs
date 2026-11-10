@@ -21,6 +21,7 @@ const PAGES: &[&str] = &[
     "docs/spec/toolchain/toolchain-lock.md",
     "docs/spec/toolchain/installation-receipt.md",
     "docs/spec/toolchain/manager-result.md",
+    "docs/spec/toolchain/readiness-workflow.md",
     "docs/spec/tool-release-metadata/index.md",
 ];
 
@@ -260,6 +261,6 @@ fn the_narrative_says_prominently_that_nothing_is_implemented() {
     }
     assert!(
         !markdown.contains("morphir mck"),
-        "the narrative names no compatibility runner"
+        "the narrative does not present the retired Rust command as the kit's runner"
     );
 }

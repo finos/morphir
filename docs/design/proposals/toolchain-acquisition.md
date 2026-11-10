@@ -369,7 +369,7 @@ A WASM recipe names the ABI its guest needs. The public runtime name stays `wasm
 
 ![This change and the separate WASM host change both lead to packaged WASM qualification. That, together with the bounded-access readers and sessions, leads to the bounded generation large-package gate. F# process acquisition can ship before the WASM engine.](../../assets/toolchain-delivery-dependencies.svg)
 
-The fixed compile and generate expectations are product data, independent of whichever implementation is under test. Implementations take part through explicit adapters. Where that shared compatibility kit will live is being decided and is not part of this proposal. Acquisition, crash and ownership behavior is covered by ordinary integration tests, not by a compatibility runner.
+The fixed compile and generate expectations are product data, independent of whichever implementation is under test. Implementations take part through explicit adapters. Following the maintainer's decision of 9 November 2026, the compatibility kit's runner lives in finos/morphir-dotnet (`src/Morphir.Conformance`, with the `cli`, `library` and `mep-guest` adapters), and the cases, fixed expectations and report contracts stay in finos/morphir as data. The fixed F# case is the [readiness workflow case](../../spec/toolchain/readiness-workflow.md). AGENTS.md still describes the earlier arrangement, with the runner in this repository. Acquisition, crash and ownership behavior is covered by ordinary integration tests, not by a compatibility runner.
 
 ## Lifecycle after the first install
 
