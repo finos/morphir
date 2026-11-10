@@ -155,7 +155,7 @@ fn pending_generation_steps_record_no_expected_files() {
         expected["reason"]
             .as_str()
             .unwrap()
-            .starts_with("Maintainer question M1")
+            .starts_with("Pending: the expected generated F# files come from morphir-dotnet")
     );
 }
 

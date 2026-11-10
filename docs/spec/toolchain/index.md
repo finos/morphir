@@ -175,7 +175,7 @@ A target path names an authenticated TUF target. It is relative, uses `/` as its
 
 A path that breaks any of these rules is `non_portable_path`. This page defines the rules. A target that passes them can be stored on every first-delivery platform, and a manager's tool and extension stores apply the same rules to every path they store.
 
-A target path is also in Unicode Normalization Form C. Canonical encoding normalizes the keys of signed targets metadata to NFC, so a path in another form would be signed under one key and looked up under another. The rule is applied in three places:
+A target path is also in Unicode Normalization Form C, by the Unicode 17.0.0 rule stated with the [plan digest](./manager-result.md#the-plan-digest). Canonical encoding normalizes the keys of signed targets metadata to NFC, so a path in another form would be signed under one key and looked up under another. The rule is applied in three places:
 
 - a publisher refuses to publish a target whose path is not NFC;
 - a reader refuses a document member that names a non-NFC target path with `non_portable_path` at that member (`lock/negative/target-path-nfd.json`);
@@ -275,6 +275,7 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 | `resolve` | `recipe`, `request`, `platform` | [Resolution](./toolset-recipe.md#selecting-a-closure) gives the listed providers, or the code and path |
 | `plan-canonical` | `result`, `canonical` | The plan's canonical bytes are exactly `canonical`, and `planSha256` is their SHA-256 |
 | `plan-lock` | `result`, `lock` | The plan's `lock` equals `lock` as a parsed value |
+| `nfc` | `input`, `expected` | The canonical encoder writes the string `input` as `"`, then `expected`, then `"`: `expected` is the Unicode 17.0.0 NFC of `input` ([the plan digest](./manager-result.md#the-plan-digest)). The inputs hold no `"` or `\` |
 | `mep-version` | `version` | Read as a `protocolVersion` value, the string is `valid`, or refused with `invalid_value` or `unsupported_case` ([MEP versions](#mep-versions)). It is the one kind that checks a bare string; `path` is empty because the member's path belongs to the document that holds it. The string is also checked against the schemas' shared `$defs.mepVersion`, and a refused string the pattern accepts says so with `"schema": "accepts"` and a `schemaGap` |
 | `discover` | `files`, `boundary`, `start` | [Discovery](./toolchain-request.md#discovery) from `start` finds `expected.request`, or no request when it is `null`. Paths are relative, `/`-separated, and name files under one synthetic root |
 
@@ -351,6 +352,22 @@ cargo test --locked --package morphir-toolchain-contract
 ```
 
 CI runs the same command through `mise run ci:validate-toolchain-contracts`, and checks the schemas with `mise run fmt-check:schema` and `mise run lint:schema`.
+
+## Decided
+
+The maintainer's decisions that these pages depend on, each recorded on finos/morphir#1146. The rule each one sets is stated on the page linked.
+
+| Date | Decision | Where the rule is stated |
+| --- | --- | --- |
+| 9 November 2026 | [MEP `0.1` is not supported; the whole 0.2 line is](https://github.com/finos/morphir/issues/1146#issuecomment-6759463703) | [MEP versions](#mep-versions) |
+| 9 November 2026 | [Transient pre-1.0 document formats are not read or converted](https://github.com/finos/morphir/issues/1146#issuecomment-6759463703) | [Version authorities](#version-authorities) |
+| 9 November 2026 | [The expected generated F# files are one unformatted set with LF line endings, produced with formatting explicitly off; a formatter hook is a separate later change](https://github.com/finos/morphir/issues/1146#issuecomment-6759989025) (finos/morphir-dotnet#575) | [Readiness workflow](./readiness-workflow.md#generation-expectations) |
+| 9 November 2026 | [The TUF client is project-owned, in morphir-dotnet, for the subset the profile uses, with BouncyCastle Ed25519 as its only cryptographic dependency, subject to the maintainer's security review before production use](https://github.com/finos/morphir/issues/1146#issuecomment-6760090078) | [Toolset recipe](./toolset-recipe.md#authenticated-recipe-targets) |
+| 9 November 2026 | [The legacy `morphir-{rid}` names carry the Native AOT executable and report `native-aot`; there are four deployment values](https://github.com/finos/morphir/issues/1146#issuecomment-6759878937) | [Installation receipt](./installation-receipt.md#members) |
+| 9 November 2026 | [Setup activates a staged generation when no check failed and every component is capability-checked](https://github.com/finos/morphir/issues/1146#issuecomment-6760284288) | [Installation receipt](./installation-receipt.md#readiness) |
+| 9 November 2026 | [Managers ship their own NFC data, with no dependency on the machine's ICU, and the contract pins the Unicode version](https://github.com/finos/morphir/issues/1146#issuecomment-6760173619) | [The plan digest](./manager-result.md#the-plan-digest) |
+| 9 November 2026 | [The shared extension contract is extended so an extension can be a multi-file package; no self-unpacking single-file frontend](https://github.com/finos/morphir/issues/1146#issuecomment-6760228228) | [Toolset recipe limits](./toolset-recipe.md#limits-of-this-contract-version) |
+| 10 November 2026 | [A program named by project configuration does not start until the user has allowed that project](https://github.com/finos/morphir/issues/1146#issuecomment-6760321629) (finos/morphir-dotnet#577) | [Toolchain request](./toolchain-request.md) |
 
 ## Open questions
 

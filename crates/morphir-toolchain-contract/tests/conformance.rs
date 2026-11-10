@@ -190,6 +190,20 @@ fn every_binding_case_matches_the_reference_checks() {
     let mep_version_schema = jsonschema::validator_for(&mep_version).expect("mepVersion compiles");
     for case in cases()["bindings"].as_array().expect("binding cases") {
         let name = case["name"].as_str().unwrap();
+        if case["kind"] == "nfc" {
+            // The canonical encoder writes a string as its NFC form between
+            // quotation marks; the inputs hold no `"` or `\`.
+            let input = case["input"].as_str().unwrap();
+            let wanted = format!("\"{}\"", case["expected"].as_str().unwrap());
+            let actual = canonical_json(&Value::String(input.to_owned())).unwrap();
+            if actual != wanted.as_bytes() {
+                failures.push(format!(
+                    "{name}: encoded {:?}, expected {wanted:?}",
+                    String::from_utf8_lossy(&actual)
+                ));
+            }
+            continue;
+        }
         if case["kind"] == "mep-version" {
             // A MEP version on its own has no document path; a reader reports
             // a refused one at the member that holds it, so the case's path is

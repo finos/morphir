@@ -99,7 +99,23 @@ The canonical form is defined by the rules below, and this page is their authori
 - A number is an integer written in plain decimal. A number with a fraction or an exponent cannot be encoded, and a plan with one is invalid; the reader refuses it before the digest is computed, because every integer member of a result is written that way (see [numbers](./index.md#numbers)).
 - `true`, `false` and `null` are written as such.
 
-**Unicode normalization is a dependency, and a decision in waiting.** The NFC rule needs Unicode normalization data. On .NET on Linux, `string.Normalize` uses ICU: with `InvariantGlobalization` on, or without libicu, it does not normalize, and the digest of a plan with non-NFC text differs. A .NET manager therefore needs ICU on Linux, or its own NFC tables. Whether the canonical form keeps NFC is a maintainer decision that has not been taken; until it is, the rule above stands, and an implementation that cannot normalize must fail rather than produce another digest.
+**Unicode normalization (decided 9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6760173619)).** NFC here is Unicode Normalization Form C as defined by **Unicode 17.0.0**: its canonical decompositions, canonical combining classes and composition exclusions, and the Hangul algorithm. A manager ships its own normalization data of that version. It does not use the machine's ICU, which a Native AOT executable may not find, which may silently skip normalization, and whose version varies, so a digest is the same on every machine.
+
+- A code point that Unicode 17.0.0 does not assign passes through unchanged with combining class 0. It is a starter, so no mark is reordered across it and nothing composes with it.
+- U+FFFE, a noncharacter but a valid scalar value, is the same: it passes through unchanged and is never refused. .NET's `string.Normalize` throws on it, so an implementation built on that method must normalize around it.
+- A later Unicode version is adopted only by a new draft of these contracts.
+
+The `nfc` binding cases pin the version. They cover:
+
+- compositions that exist only since Unicode 16.0 (Kirat Rai `U+16D67 U+16D67`, and Todhri `U+105D2 U+0307`);
+- reorderings by marks first assigned in Unicode 16.0 (Garay `U+10D69`) and 17.0 (Tai Yo `U+1E6E3`);
+- Hangul jamo, and a Hangul syllable with a trailing jamo;
+- a string already in NFC, a decomposed `é`, and an unassigned code point;
+- U+FFFE.
+
+An implementation with older data treats the 16.0 and 17.0 characters as unassigned and fails those cases. The 17.0 case is a reordering, because a mark first assigned in 17.0 is observable under NFC through its combining class.
+
+This repository's reference checker normalizes with the `unicode-normalization` crate 0.1.25 (in `Cargo.lock`), whose tables are Unicode 17.0.0 (`UNICODE_VERSION = (17, 0, 0)` in its `tables.rs`).
 
 Many JSON libraries escape by default: .NET's `System.Text.Json` writes `>` as `>` and a line feed as `\n`, and .NET's ordinal string comparison orders by UTF-16 code units. An implementation must configure or write its own encoder. `fixtures/0.1.0-draft.1/result/setup-plan-escaping.json` has a plan whose strings contain `>`, `<`, `&`, `+`, a precomposed `é`, a decomposed `e` followed by U+0301, a line feed, `"` and `\`, and an unknown `keyOrder` member whose keys (`a`, `a!`, a decomposed `é`, U+FF76, U+1D11E and `Z`) pin the key order. `setup-plan-escaping.plan.canonical.json` holds its exact canonical bytes, and `planSha256` is their SHA-256.
 

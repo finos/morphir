@@ -31,6 +31,8 @@ A receipt describes one installed toolchain generation on one machine. It lives 
   | `self-contained` | `jit`, runtime `bundled` |
   | `framework-dependent`, `dotnet-tool` | `jit`, runtime `system` |
 
+  These are the only four deployment values. The legacy `morphir-{rid}` release names carry the Native AOT executable, so a host installed under one of them reports `native-aot` (decided 9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6759878937)).
+
 - `installation`, `readiness` and `checks`.
 
 Each provider has `identity`, the lock's provider entry exactly, and `readiness` and `checks`. Every provider except a built-in also has `installation`; a built-in is part of the host and has none.
@@ -49,6 +51,7 @@ The manager updates or removes only `manager-owned` installations. For another o
 Publisher authentication and the claim check are separate facts. `authentication` says how the manager authenticated the bytes: directly by TUF target metadata, by a digest in an authenticated recipe, or not at all, because an external owner installed them. `claimCheck` says whether the installed artifact was run to compare its capability claims. An authenticated artifact installed with `--no-probe` is still `unchecked`, and a manager-owned installation always says how the manager authenticated it.
 
 **Developer artifacts are never part of a generation.** A receipt always binds a lock, and a lock names only artifacts that an authenticated recipe binds by digest. So bytes whose digest equals a locked digest were authenticated by that recipe digest, and are labelled `recipe-digest`, whoever built them. An unsigned developer artifact cannot equal a locked digest, so it is never part of a toolchain generation. It is installed outside generations, under the extension installer's explicit developer policy, and a receipt that labels a provider `local-developer` is refused (`receipt/negative/developer-artifact-in-generation.json`).
+
 ### Readiness
 
 Readiness is ordered: `acquired`, `integrity-verified`, `capability-checked`, `workflow-qualified`. A component records exactly one `integrity` and one `capability` check. A generation records exactly one `workflow` check, naming its `workflow`. A check's `status` is `passed`, `failed`, `skipped` or `unsupported`; anything other than `passed` states its `reason`, so a skipped or unsupported check stays visible.
@@ -63,7 +66,7 @@ The capability check differs by delivery:
 
 All three run the staged host with the user's rights, which is why the plan's host component has `probe` `process-with-user-rights` ([manager result](./manager-result.md#plans)).
 
-> **Maintainer question M5: what readiness must a staged generation reach before setup activates it?** **Recommended default:** no check `failed`, and every component `capability-checked`. A `skipped` or `unsupported` workflow check is allowed, `show` and `doctor` report it, and the generation is never called qualified. While the readiness workflow's generate step is pending (M1), every workflow check is `skipped`, so this default is what lets setup activate anything. The activation rule is **provisional** until M5 is answered: setup publishes a staged generation only when no check failed and every component is `capability-checked`.
+**Activation (decided 9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6760284288)).** Setup activates a staged generation when no check failed and every component is `capability-checked`. The workflow check runs whenever it can. When it is `skipped`, because the toolset has no fixed case or the case has pending steps, the receipt and `show` say `skipped`, and the generation is never reported as `workflow-qualified`. A failed check at any level, including a workflow check that ran and failed, prevents activation and leaves the prior selection in place. `receipt/workflow-skipped.json` is a generation that activates as `capability-checked` with a skipped workflow check; `receipt/negotiation-failed.json` is one that does not activate.
 
 Readiness is derived, never asserted:
 

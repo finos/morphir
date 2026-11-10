@@ -114,7 +114,7 @@
       ],
       "expected": {
         "status": "pending",
-        "reason": "Maintainer question M1: how the expected generated F# files are frozen. The Native AOT built-in cannot run the Fantomas formatter, and formatted output follows platform line endings. The recommended default is one unformatted set with LF line endings, produced by every delivery under an explicit format switch. Candidate files come from morphir-dotnet and are reviewed before they are frozen.",
+        "reason": "Pending: the expected generated F# files come from morphir-dotnet and are reviewed before they are frozen. Decided on 9 November 2026: one unformatted set with LF line endings, which every offering and both backends produce with formatting explicitly off.",
         "sets": []
       }
     }

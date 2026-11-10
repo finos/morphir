@@ -531,6 +531,11 @@
     },
     {
       "contract": "receipt",
+      "document": "receipt/workflow-skipped.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
       "document": "receipt/negotiation-failed.json",
       "expected": "valid"
     },
@@ -2410,6 +2415,72 @@
         "code": "unsupported_artifact",
         "path": "toolset"
       }
+    },
+    {
+      "name": "nfc: a Kirat Rai vowel sign pair composes (Unicode 16.0)",
+      "kind": "nfc",
+      "input": "𖵨",
+      "expected": "𖵨"
+    },
+    {
+      "name": "nfc: a Todhri letter and U+0307 compose (Unicode 16.0)",
+      "kind": "nfc",
+      "input": "𐗉",
+      "expected": "𐗉"
+    },
+    {
+      "name": "nfc: a Tai Yo mark of class 230 is reordered after U+0323 (Unicode 17.0)",
+      "kind": "nfc",
+      "input": "x𞛣̣",
+      "expected": "x̣𞛣"
+    },
+    {
+      "name": "nfc: a Garay mark of class 230 is reordered after U+0323 (Unicode 16.0)",
+      "kind": "nfc",
+      "input": "x̣𐵩",
+      "expected": "x̣𐵩"
+    },
+    {
+      "name": "nfc: conjoining Hangul jamo L, V and T compose to one syllable",
+      "kind": "nfc",
+      "input": "각",
+      "expected": "각"
+    },
+    {
+      "name": "nfc: a Hangul LV syllable and a trailing jamo compose",
+      "kind": "nfc",
+      "input": "각",
+      "expected": "각"
+    },
+    {
+      "name": "nfc: a string already in NFC is unchanged",
+      "kind": "nfc",
+      "input": "café-naïve-字",
+      "expected": "café-naïve-字"
+    },
+    {
+      "name": "nfc: a decomposed e and U+0301 compose",
+      "kind": "nfc",
+      "input": "é",
+      "expected": "é"
+    },
+    {
+      "name": "nfc: an unassigned code point is a starter of class 0 and blocks reordering",
+      "kind": "nfc",
+      "input": "x́͸̣",
+      "expected": "x́͸̣"
+    },
+    {
+      "name": "nfc: two marks with no starter between them are reordered",
+      "kind": "nfc",
+      "input": "x̣́",
+      "expected": "x̣́"
+    },
+    {
+      "name": "nfc: U+FFFE passes through unchanged and blocks composition",
+      "kind": "nfc",
+      "input": "a￾́",
+      "expected": "a￾́"
     }
   ]
 }

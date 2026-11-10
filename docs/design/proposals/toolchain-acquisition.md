@@ -356,7 +356,7 @@ Setup does not call a toolchain ready because archives extracted. Each component
 | Capability-checked | The host and provider agree on the selected operation and model tuple. |
 | Workflow-qualified | A fixed small F# source package compiled to the expected semantic IR and generated the expected F# files with the selected providers. This state belongs to the whole generation. |
 
-Skipped or unsupported checks stay visible in the receipt. A valid archive whose frontend shares no tuple with the host is installed but not ready, and the candidate is not activated. A process probe runs with Ada's rights, under the existing launch controls, and plan-only mode never runs one.
+Skipped or unsupported checks stay visible in the receipt. Setup activates the candidate when no check failed and every component is capability-checked: a skipped workflow check does not stop it, but the generation is then never called workflow-qualified, and a workflow check that ran and failed does stop it (maintainer decision, 9 November 2026). A valid archive whose frontend shares no tuple with the host is installed but not ready, and the candidate is not activated. A process probe runs with Ada's rights, under the existing launch controls, and plan-only mode never runs one.
 
 Two facts that are easy to confuse stay separate:
 

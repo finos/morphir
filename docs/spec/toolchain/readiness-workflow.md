@@ -72,22 +72,20 @@ The corpus case also checks a call (`Pricing.seats` with a car of two seats retu
 
 The comparison is the corpus rule: the produced IR document equals the expected one when they are equal JSON values, ignoring the order of object members. Arrays, strings, scalar kinds and number spellings are compared exactly, so `1` and `1.0` differ. No other normalization is applied. The manifest names this rule `json-member-order-insensitive`.
 
-## Generation expectations are pending
+## Generation expectations
 
-The expected generated F# files are not frozen yet.
+**Decided (9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6759989025)).** The workflow check compares one unformatted set of generated files with LF line endings on every platform. It runs `generate` with formatting explicitly off, so all four offerings and both backends, the built-in and the external one, must produce byte-identical files. Formatted output is not part of a fixed expectation. A formatter hook around the generate phase is a separate, later change with its own design (finos/morphir-dotnet#575), and readiness never runs a hook.
 
-> **Maintainer question M1: how are the expected generated files frozen?** The Native AOT built-in cannot run the Fantomas formatter, because Fantomas is built on the F# compiler's parser, which the Native AOT composition excludes. Formatted output also follows the platform's line endings. **Recommended default:** one unformatted set with LF line endings, produced by every delivery under an explicit format switch (a backend option, not a protocol member), and readiness runs with formatting off. A formatter hook is later, separate work, and readiness never runs hooks. Everything below about sets is **provisional** until M1 is answered.
+The Native AOT built-in cannot run the Fantomas formatter, because Fantomas is built on the F# compiler's parser, which the Native AOT composition excludes; that is why the fixed set is unformatted.
 
-Candidate files have to come from morphir-dotnet and be reviewed before they are frozen. They are never recorded here from a backend run.
-
-The generate step therefore has `status: "pending"`, a `reason` that names M1 and an empty `sets` array. A frozen step lists one or more sets. Each set has:
+The files themselves come from morphir-dotnet, which adds the explicit formatting switch and LF output, and they are reviewed before they are frozen. They are never recorded here from a backend run. Until they arrive, the generate step has `status: "pending"`, a `reason` that says so, and an empty `sets` array. A frozen step lists one or more sets. Each set has:
 
 - `files`: the generated path, the committed file and its SHA-256;
 - a `comparison`: `exact-bytes` or `json-member-order-insensitive`;
 - a `provenance`;
 - an optional `appliesTo`, keyed by delivery: `{ "delivery": ["built-in", "process"] }` names the deliveries of the selected provider it covers.
 
-A set without `appliesTo` covers every delivery and must be the step's only set. Otherwise each delivery appears in at most one set, and only deliveries the step lists under `providers`. The recommended default for M1 is one set without `appliesTo`.
+A set without `appliesTo` covers every delivery and must be the step's only set. Otherwise each delivery appears in at most one set, and only deliveries the step lists under `providers`. Under the decision above, the F# generate step has exactly one set, without `appliesTo`.
 
 ## Case manifest
 
@@ -118,9 +116,9 @@ A runner in morphir-dotnet reads the case as follows:
 2. For each step, take the generation's selected provider for the step's operation from its lock. If the step does not list that provider's delivery under `providers`, or the provider's identity, protocol or model differs from the listed entry, the case does not cover this generation: the workflow check is `unsupported`, naming the step.
 3. Compile `sources` through the selected frontend, using the adapter that fits its delivery: `cli` for a built-in, run through the `morphir` command line, `library` in process, or `mep-guest` for a process or .NET tool guest. Compare the produced IR with `expected/ir-4.0.0.json` using the stated comparison rule.
 4. Give `expected/ir-4.0.0.json` to the selected backend, and compare its output with the generate step's set for that delivery.
-5. Report the outcome as the generation's `workflow` check. It is `passed` only when every step passed with the selected providers against frozen files. While the generate step is `pending` the check cannot pass: it is `skipped`, with a reason naming the pending step and M1.
+5. Report the outcome as the generation's `workflow` check. It is `passed` only when every step passed with the selected providers against frozen files. While the generate step is `pending` the check cannot pass: it is `skipped`, with a reason naming the pending step.
 
-Whether a generation whose workflow check is `skipped` may be activated is maintainer question M5, stated with its recommended default on the [receipt page](./installation-receipt.md#readiness). Under that default it is activated as `capability-checked` and never called qualified.
+The workflow check runs whenever it can. A `skipped` check does not prevent activation, and a generation whose check is skipped is never reported as `workflow-qualified`; a check that ran and failed prevents activation ([activation](./installation-receipt.md#readiness)).
 
 ## Checks in this repository
 
