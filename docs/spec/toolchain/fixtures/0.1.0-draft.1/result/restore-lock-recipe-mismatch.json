@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "restore",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "lock-binding",
+      "severity": "error",
+      "code": "lock_recipe_mismatch",
+      "message": "The lock records a win-x64 frontend the recipe does not bind.",
+      "document": "lock",
+      "path": "platforms.win-x64.providers[0]"
+    }
+  ]
+}

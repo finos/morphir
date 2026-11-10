@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "preset": "fsharp",
+  "version": "1.0.0",
+  "operations": [
+    {
+      "operation": "compile",
+      "language": "fsharp"
+    },
+    {
+      "operation": "generate",
+      "target": "fsharp"
+    }
+  ],
+  "hosts": [
+    {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "native-aot",
+      "execution": "native-aot",
+      "source": {
+        "kind": "tool-release",
+        "toolId": "morphir-dotnet-native-aot"
+      },
+      "protocolVersions": [
+        "0.1",
+        "0.2.0-draft.1"
+      ],
+      "wasmAbis": [],
+      "prerequisites": [
+        {
+          "kind": "native",
+          "name": "glibc",
+          "versions": [
+            ">=2.28.0"
+          ],
+          "platforms": [
+            "linux-x64",
+            "linux-arm64"
+          ]
+        }
+      ],
+      "builtIns": [
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ],
+      "platforms": {
+        "win-x64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+          "sha256": "6944e383ec3ba68670822417ce485fc4f2706752753bec33958c04d6e08df3d8"
+        },
+        "osx-arm64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.zip",
+          "sha256": "ef457e0de23368cfa730a93d435030c8932869a88527c44b8b694cb2c39aa729"
+        }
+      }
+    }
+  ],
+  "providers": [
+    {
+      "operation": "compile",
+      "language": "fsharp",
+      "delivery": "process",
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "version": "0.6.0",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+      "descriptorSha256": "af16efdc13f1abb21af3a23a18ecbdad914a6ee3d325e98bd91a0ed89e530bd2",
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.frontend.compileModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "prerequisites": [
+        {
+          "kind": "native",
+          "name": "glibc",
+          "versions": [
+            ">=2.28.0"
+          ],
+          "platforms": [
+            "linux-x64",
+            "linux-arm64"
+          ]
+        }
+      ],
+      "platforms": {
+        "linux-x64": {
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/linux-x64.zip",
+          "artifactSha256": "f366b90fd92fc16812eb988cff0035085e9edd6fe5bde6437b14acaff3919518"
+        }
+      }
+    }
+  ]
+}

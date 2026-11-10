@@ -57,7 +57,7 @@
         "prerequisites": [
           {
             "kind": "native",
-            "name": "ICU \"International Components for Unicode\" \\ café & co+",
+            "name": "ICU \"International Components for Unicode\" \\ café & café co+\nsecond line",
             "versions": [
               ">=72.0.0",
               "<80.0.0"
@@ -98,8 +98,16 @@
         "prerequisites": [],
         "probe": "in-host"
       }
-    ]
+    ],
+    "keyOrder": {
+      "a": 1,
+      "a!": 2,
+      "é": 3,
+      "ｶ": 4,
+      "𝄞": 5,
+      "Z": 6
+    }
   },
-  "planSha256": "752ae03f1f201a6c44912aa5e0942f37653965bd2eb2258982e4dc97d4aabe68",
+  "planSha256": "5d4e4779706cc887c83cf3042285b71c6c1ef0cada1dee41634828e4f287a801",
   "diagnostics": []
 }

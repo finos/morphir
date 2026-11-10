@@ -185,17 +185,33 @@ impl<'a> Obj<'a> {
         Node { value, path: &path }.case(cases)
     }
     /// Visit every entry of a map-valued object with its keyed path.
-    pub(crate) fn map<K, T>(
+    ///
+    /// The visiting order does not depend on the order of the document's
+    /// members. Every key is parsed first, and the first invalid key in UTF-8
+    /// byte order is refused. The entries are then read in key order, which
+    /// for platform keys is the order of the platform table.
+    pub(crate) fn map<K: Ord, T>(
         &self,
         mut key: impl FnMut(&str) -> std::result::Result<K, String>,
         mut read: impl FnMut(&K, Node<'_>) -> Result<T>,
     ) -> Result<Vec<(K, T)>> {
-        self.map
-            .iter()
+        let mut names = self.map.iter().collect::<Vec<_>>();
+        names.sort_by(|(left, _), (right, _)| left.as_bytes().cmp(right.as_bytes()));
+        let mut entries = names
+            .into_iter()
             .map(|(name, value)| {
+                key(name)
+                    .map(|parsed| (parsed, name, value))
+                    .map_err(|message| {
+                        Diagnostic::new(Code::InvalidValue, self.member_path(name), message)
+                    })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        entries.sort_by(|(left, _, _), (right, _, _)| left.cmp(right));
+        entries
+            .into_iter()
+            .map(|(parsed, name, value)| {
                 let path = self.member_path(name);
-                let parsed = key(name)
-                    .map_err(|message| Diagnostic::new(Code::InvalidValue, &path, message))?;
                 let item = read(&parsed, Node { value, path: &path })?;
                 Ok((parsed, item))
             })
@@ -224,24 +240,30 @@ pub(crate) const CREDENTIAL_MEMBERS: &[&str] = &[
 ];
 
 /// Refuse a credential-shaped member at any depth, including inside members
-/// a reader otherwise ignores.
+/// a reader otherwise ignores. The scan is depth first; an object's members
+/// are visited in UTF-8 byte order of their names and array elements in index
+/// order, so the reported member does not depend on member order.
 pub(crate) fn refuse_credentials(value: &Value, path: &str) -> Result<()> {
     match value {
-        Value::Object(map) => map.iter().try_for_each(|(key, value)| {
-            let member = join(path, key);
-            if CREDENTIAL_MEMBERS
-                .iter()
-                .any(|name| name.eq_ignore_ascii_case(key))
-            {
-                Err(Diagnostic::new(
-                    Code::CredentialInDocument,
-                    member,
-                    "toolchain documents never carry credentials",
-                ))
-            } else {
-                refuse_credentials(value, &member)
-            }
-        }),
+        Value::Object(map) => {
+            let mut members = map.iter().collect::<Vec<_>>();
+            members.sort_by(|(left, _), (right, _)| left.as_bytes().cmp(right.as_bytes()));
+            members.into_iter().try_for_each(|(key, value)| {
+                let member = join(path, key);
+                if CREDENTIAL_MEMBERS
+                    .iter()
+                    .any(|name| name.eq_ignore_ascii_case(key))
+                {
+                    Err(Diagnostic::new(
+                        Code::CredentialInDocument,
+                        member,
+                        "toolchain documents never carry credentials",
+                    ))
+                } else {
+                    refuse_credentials(value, &member)
+                }
+            })
+        }
         Value::Array(values) => values
             .iter()
             .enumerate()

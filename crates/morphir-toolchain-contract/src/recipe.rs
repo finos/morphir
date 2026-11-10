@@ -569,34 +569,42 @@ fn validate(recipe: &ToolsetRecipe) -> Result<()> {
             ));
         }
     }
+    // Each rule is checked over its whole array before the next rule, in the
+    // order of the consistency table on the toolset recipe page.
     for (position, host) in recipe.hosts.iter().enumerate() {
-        let path = index("hosts", position);
         if recipe.hosts[..position].iter().any(|other| {
             other.implementation == host.implementation && other.deployment == host.deployment
         }) {
             return Err(inconsistent(
-                path,
+                index("hosts", position),
                 format!(
                     "a second offering for {} {}",
                     host.implementation, host.deployment
                 ),
             ));
         }
+    }
+    for (position, host) in recipe.hosts.iter().enumerate() {
         model::unique_operations(
-            &join(&path, "builtIns"),
+            &join(&index("hosts", position), "builtIns"),
             host.built_ins.iter().map(|built_in| &built_in.operation),
         )?;
     }
     for (position, provider) in recipe.providers.iter().enumerate() {
-        let path = index("providers", position);
         if recipe.providers[..position].iter().any(|other| {
             other.operation == provider.operation
                 && other.extension_id == provider.extension_id
                 && other.delivery.kind() == provider.delivery.kind()
                 && other.version == provider.version
         }) {
-            return Err(inconsistent(path, "a duplicate provider delivery"));
+            return Err(inconsistent(
+                index("providers", position),
+                "a duplicate provider delivery",
+            ));
         }
+    }
+    for (position, provider) in recipe.providers.iter().enumerate() {
+        let path = index("providers", position);
         if recipe.hosts.iter().any(|host| {
             host.built_ins
                 .iter()

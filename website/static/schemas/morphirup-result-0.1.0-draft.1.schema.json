@@ -497,6 +497,21 @@
           },
           "then": {
             "required": [ "platform" ]
+          },
+          "else": {
+            "if": {
+              "required": [ "kind" ],
+              "properties": {
+                "kind": {
+                  "const": "lock-binding"
+                }
+              }
+            },
+            "then": {
+              "not": {
+                "required": [ "platform" ]
+              }
+            }
           }
         }
       ],

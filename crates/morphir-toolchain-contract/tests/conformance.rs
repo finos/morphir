@@ -104,6 +104,16 @@ fn every_document_case_matches_its_reader_and_schema() {
             case["schema"]
                 .as_str()
                 .unwrap_or(if wanted.is_ok() { "accepts" } else { "rejects" });
+        // Where the schema is looser than the reader, the case says why.
+        let looser = wanted.is_err() && schema_expectation == "accepts";
+        let gap = case["schemaGap"]
+            .as_str()
+            .is_some_and(|text| !text.trim().is_empty());
+        if looser != gap {
+            failures.push(format!(
+                "{document}: a refusal the schema accepts states a schemaGap, and no other case does"
+            ));
+        }
         if schema_expectation == "unparsable" {
             assert!(instance(contract, &bytes).is_none(), "{document} parses");
             continue;

@@ -158,17 +158,17 @@ fn read_lock_value(value: &Value) -> Result<ToolchainLock> {
         }
         Ok(closures.into_iter().collect::<BTreeMap<_, _>>())
     })?;
-    let mut closures = platforms.iter();
-    if let Some((_, first)) = closures.next() {
-        let operations = first.operations();
-        if let Some((platform, _)) =
-            closures.find(|(_, closure)| closure.operations() != operations)
-        {
-            return Err(inconsistent(
-                join(&join("platforms", platform.as_str()), "providers"),
-                "every recorded platform has a complete closure for the same operations",
-            ));
-        }
+    // The rule relates every closure to every other, so no single platform is
+    // the faulty one: the refusal names `platforms`.
+    let operations = platforms
+        .values()
+        .map(PlatformClosure::operations)
+        .collect::<BTreeSet<_>>();
+    if operations.len() > 1 {
+        return Err(inconsistent(
+            "platforms",
+            "every recorded platform has a complete closure for the same operations",
+        ));
     }
     Ok(ToolchainLock {
         request_sha256,

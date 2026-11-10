@@ -273,7 +273,8 @@
         "code": "inconsistent_document",
         "path": "platforms.win-x64.providers[1]"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
     },
     {
       "contract": "lock",
@@ -328,7 +329,8 @@
         "code": "inconsistent_document",
         "path": "hosts[0].platforms.linux-musl-x64"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the allowed platform keys depend on the host's source kind."
     },
     {
       "contract": "recipe",
@@ -337,7 +339,8 @@
         "code": "inconsistent_document",
         "path": "hosts[1]"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
     },
     {
       "contract": "recipe",
@@ -364,7 +367,8 @@
         "code": "inconsistent_document",
         "path": "providers[0].modelTuple.operation"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the tuple's operation depends on the provider's operation."
     },
     {
       "contract": "recipe",
@@ -373,7 +377,8 @@
         "code": "inconsistent_document",
         "path": "operations[2]"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Fit compares each operation with every host offering and provider, which JSON Schema cannot express."
     },
     {
       "contract": "recipe",
@@ -409,7 +414,8 @@
         "code": "inconsistent_document",
         "path": "providers[2].extensionId"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The rule compares each provider with every host's built-ins, which JSON Schema cannot express."
     },
     {
       "contract": "receipt",
@@ -466,7 +472,8 @@
         "code": "inconsistent_document",
         "path": "providers[0].readiness"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Readiness is derived from the checks' statuses, which JSON Schema cannot compute."
     },
     {
       "contract": "receipt",
@@ -475,7 +482,8 @@
         "code": "inconsistent_document",
         "path": "readiness"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Readiness is derived from the checks' statuses, which JSON Schema cannot compute."
     },
     {
       "contract": "receipt",
@@ -511,7 +519,8 @@
         "code": "invalid_value",
         "path": "host.installation.launch.program"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the launch path syntax depends on the receipt's platform."
     },
     {
       "contract": "receipt",
@@ -529,7 +538,8 @@
         "code": "inconsistent_document",
         "path": "providers[1].installation"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: whether a provider has an installation depends on its identity's delivery."
     },
     {
       "contract": "receipt",
@@ -538,7 +548,8 @@
         "code": "inconsistent_document",
         "path": "providers[0].installation.ownership"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the allowed ownership depends on the authentication kind."
     },
     {
       "contract": "receipt",
@@ -547,7 +558,8 @@
         "code": "credential_in_document",
         "path": "host.installation.authorization"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
     },
     {
       "contract": "receipt",
@@ -621,7 +633,8 @@
         "code": "credential_in_document",
         "path": "diagnostics[2].mirror"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The schema's uri format does not refuse user information, a query or a fragment."
     },
     {
       "contract": "result",
@@ -630,7 +643,8 @@
         "code": "credential_in_document",
         "path": "diagnostics[2].mirror"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The schema's uri format does not refuse user information, a query or a fragment."
     },
     {
       "contract": "result",
@@ -639,7 +653,8 @@
         "code": "inconsistent_document",
         "path": "outcome"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the outcome depends on every diagnostic's severity."
     },
     {
       "contract": "result",
@@ -675,7 +690,8 @@
         "code": "inconsistent_document",
         "path": "diagnostics[5].readiness"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the readiness bound depends on the failed check."
     },
     {
       "contract": "result",
@@ -684,7 +700,8 @@
         "code": "inconsistent_document",
         "path": "planSha256"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "planSha256 is the digest of the plan's canonical bytes, which JSON Schema cannot compute."
     },
     {
       "contract": "request",
@@ -703,7 +720,8 @@
         "code": "inconsistent_document",
         "path": "toolset.providers[1]"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
     },
     {
       "contract": "request",
@@ -721,7 +739,8 @@
         "code": "credential_in_document",
         "path": "host.token"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
     },
     {
       "contract": "request",
@@ -780,7 +799,8 @@
         "code": "inconsistent_document",
         "path": "hosts[0].builtIns[1]"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
     },
     {
       "contract": "recipe",
@@ -789,7 +809,8 @@
         "code": "credential_in_document",
         "path": "providers[0].apiKey"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
     },
     {
       "contract": "recipe",
@@ -833,9 +854,10 @@
       "document": "lock/negative/incomplete-closure.json",
       "expected": {
         "code": "inconsistent_document",
-        "path": "platforms.osx-arm64.providers"
+        "path": "platforms"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The rule compares closures with each other, which the schema checks one at a time."
     },
     {
       "contract": "lock",
@@ -844,7 +866,8 @@
         "code": "credential_in_document",
         "path": "authorization"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
     },
     {
       "contract": "lock",
@@ -903,7 +926,8 @@
         "code": "inconsistent_document",
         "path": "host.execution"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the execution depends on the host identity's deployment."
     },
     {
       "contract": "receipt",
@@ -912,7 +936,8 @@
         "code": "inconsistent_document",
         "path": "host.installation.authentication"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the authentication kind depends on the ownership kind."
     },
     {
       "contract": "receipt",
@@ -957,7 +982,8 @@
         "code": "inconsistent_document",
         "path": "providers[0].installation.authentication"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The recipe-digest members must equal the receipt's own recipe, which JSON Schema cannot compare."
     },
     {
       "contract": "receipt",
@@ -966,7 +992,8 @@
         "code": "credential_in_document",
         "path": "host.installation.apiKey"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
     },
     {
       "contract": "receipt",
@@ -993,7 +1020,8 @@
         "code": "inconsistent_document",
         "path": "providers[1].checks"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "A built-in's integrity status must equal the host's, which JSON Schema cannot compare."
     },
     {
       "contract": "result",
@@ -1030,7 +1058,8 @@
         "code": "inconsistent_document",
         "path": "outcome"
       },
-      "schema": "accepts"
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the outcome depends on every diagnostic's severity."
     },
     {
       "contract": "result",
@@ -1103,6 +1132,280 @@
         "path": "platforms.win-x64.hostTarget"
       },
       "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/critical-concrete-platform-key.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "platforms.win-x64.hostTarget"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/critical-duplicate-path.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "critical"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-version-before-credential.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-critical-before-credential.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "platforms.*.unknownMember"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-duplicate-before-unknown-critical.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "critical"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-credential-before-body.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "apiKey"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-credential-byte-order.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "Authorization"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-platform-table-order.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.win-x64.hostSha256"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-platform-keys-first.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.zz-unknown"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/closure-operations-differ.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares closures with each other, which the schema checks one at a time."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/target-path-512-utf8-bytes.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-path-513-utf8-bytes.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema's maxLength counts code points, and no schema keyword counts UTF-8 bytes or UTF-16 code units."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/target-path-240-utf16-units.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-path-241-utf16-units.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema's maxLength counts code points, and no schema keyword counts UTF-8 bytes or UTF-16 code units."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-component-256-utf8-bytes.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema's maxLength counts code points, and no schema keyword counts UTF-8 bytes or UTF-16 code units."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/dotnet-tool-without-descriptor.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].descriptorTarget"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/precedence-body-before-consistency.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[0].version"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/precedence-consistency-table-order.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "Both rules compare array elements with each other, which the schema checks one at a time."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/credential-apikey-uppercase.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "providers[0].APIKEY"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/dotnet-tool-without-descriptor.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[1].descriptorTarget"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/provider-misfit.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/operation-without-candidate-no-shared-platform.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "Fit compares a provider with each host offering, which the schema checks one at a time."
+    },
+    {
+      "contract": "request",
+      "document": "request/other-preset.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/choice-unknown-provider.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/choice-process-frontend.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/wasm-example-extism-abi.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/recipe-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/recipe-and-host-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/provider-missing.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-platform-not-locked.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/repair-lock-changed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/repair-receipt-lock-mismatch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-lock-recipe-mismatch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/platform-on-other-lock-binding-code.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].platform"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/diagnostic-without-code.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[0].code"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/download-bytes-fraction.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.components[0].downloadBytes"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema's integer type accepts any number whose value is an integer, whatever its spelling."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/download-bytes-exponent.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.components[0].downloadBytes"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema's integer type accepts any number whose value is an integer, whatever its spelling."
     }
   ],
   "bindings": [
@@ -1115,6 +1418,7 @@
     },
     {
       "name": "a changed request is refused",
+      "rule": "lock-request",
       "kind": "lock-request",
       "lock": "lock/two-platforms-bound.json",
       "request": "request/exact-host-version.toml",
@@ -1142,6 +1446,7 @@
     },
     {
       "name": "frozen restore refuses an unlocked platform",
+      "rule": "lock-platform",
       "kind": "lock-platform",
       "lock": "lock/two-platforms-bound.json",
       "platform": "linux-x64",
@@ -1169,6 +1474,7 @@
     },
     {
       "name": "a receipt refuses different lock bytes",
+      "rule": "receipt-lock-bytes",
       "kind": "receipt-lock",
       "receipt": "receipt/win-x64-qualified.json",
       "lock": "lock/approved-fragment.json",
@@ -1179,6 +1485,7 @@
     },
     {
       "name": "a receipt refuses a substituted provider artifact",
+      "rule": "receipt-lock-provider",
       "kind": "receipt-lock",
       "receipt": "receipt/binding/provider-substituted.json",
       "lock": "lock/two-platforms-bound.json",
@@ -1189,6 +1496,7 @@
     },
     {
       "name": "a receipt refuses a substituted host release",
+      "rule": "receipt-lock-host",
       "kind": "receipt-lock",
       "receipt": "receipt/binding/host-version-substituted.json",
       "lock": "lock/two-platforms-bound.json",
@@ -1213,6 +1521,7 @@
     },
     {
       "name": "a receipt for a platform the lock does not record is refused",
+      "rule": "receipt-lock-platform",
       "kind": "receipt-lock",
       "receipt": "receipt/binding/platform-not-locked.json",
       "lock": "lock/two-platforms-bound.json",
@@ -1248,6 +1557,7 @@
     },
     {
       "name": "a missing WASM ABI is reported, not substituted",
+      "rule": "resolve-preferred-abi",
       "kind": "resolve",
       "recipe": "recipe/wasm-abi-alternatives.json",
       "request": "request/wasm-example-default.toml",
@@ -1281,6 +1591,124 @@
       "result": "result/setup-plan-escaping.json",
       "canonical": "result/setup-plan-escaping.plan.canonical.json",
       "expected": "valid"
+    },
+    {
+      "name": "a recipe for another preset is refused",
+      "rule": "resolve-preset",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/other-preset.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.preset"
+      }
+    },
+    {
+      "name": "a provider that fits on one platform resolves there",
+      "kind": "resolve",
+      "recipe": "recipe/provider-misfit.json",
+      "request": "request/approved.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "compile",
+            "language": "fsharp",
+            "delivery": "process",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0"
+          },
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp",
+            "version": "1.2.3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a preferred provider without an artifact for the platform is refused, not substituted",
+      "rule": "resolve-preferred-misfit",
+      "kind": "resolve",
+      "recipe": "recipe/provider-misfit.json",
+      "request": "request/approved.toml",
+      "platform": "osx-arm64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset"
+      }
+    },
+    {
+      "name": "a choice that no built-in or provider matches is refused",
+      "rule": "resolve-choice-unmatched",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/choice-unknown-provider.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "a chosen provider whose ABI the host lacks is refused",
+      "rule": "resolve-choice-abi",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-alternatives.json",
+      "request": "request/wasm-example-extism-abi.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "abi_unavailable",
+        "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "a chosen provider without an artifact for the platform is refused",
+      "rule": "resolve-choice-misfit",
+      "kind": "resolve",
+      "recipe": "recipe/provider-misfit.json",
+      "request": "request/choice-process-frontend.toml",
+      "platform": "osx-arm64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "a receipt that repeats another recipe is refused",
+      "rule": "receipt-lock-recipe",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/recipe-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "recipe"
+      }
+    },
+    {
+      "name": "the recipe is compared before the host",
+      "rule": "receipt-lock-recipe",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/recipe-and-host-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "recipe"
+      }
+    },
+    {
+      "name": "a receipt missing a locked provider is refused",
+      "rule": "receipt-lock-provider-count",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/provider-missing.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "providers"
+      }
     }
   ]
 }
