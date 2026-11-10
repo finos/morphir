@@ -63,7 +63,7 @@ The capability check differs by delivery:
 
 All three run the staged host with the user's rights, which is why the plan's host component has `probe` `process-with-user-rights` ([manager result](./manager-result.md#plans)).
 
-> **Maintainer question M5: what readiness must a staged generation reach before setup activates it?** **Recommended default:** no check `failed`, and every component `capability-checked`. A `skipped` or `unsupported` workflow check is allowed, `show` and `doctor` report it, and the generation is never called qualified. The activation rule in this paragraph is **provisional** until M5 is answered: setup publishes a staged generation only when no check failed and every component is `capability-checked`.
+> **Maintainer question M5: what readiness must a staged generation reach before setup activates it?** **Recommended default:** no check `failed`, and every component `capability-checked`. A `skipped` or `unsupported` workflow check is allowed, `show` and `doctor` report it, and the generation is never called qualified. While the readiness workflow's generate step is pending (M1), every workflow check is `skipped`, so this default is what lets setup activate anything. The activation rule is **provisional** until M5 is answered: setup publishes a staged generation only when no check failed and every component is `capability-checked`.
 
 Readiness is derived, never asserted:
 

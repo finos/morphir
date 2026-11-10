@@ -10,6 +10,7 @@ use morphir_distribution::Channel;
 use semver::Version;
 use serde_json::Value;
 use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 
 /// Member paths a `0.1.0-draft.1` request reader understands.
 pub const UNDERSTOOD_PATHS: &[&str] = &[
@@ -98,6 +99,28 @@ impl ToolchainRequest {
     pub fn providers(&self) -> &[ProviderSelection] {
         &self.providers
     }
+}
+
+/// The project request a command started in `start` uses: the
+/// `.morphir/toolchain.toml` of `start` or of its nearest ancestor that has
+/// one, searching no higher than the host's discovery `boundary`. A
+/// workspace root's request therefore applies to every member without one of
+/// its own, and requests are never merged. A `start` outside `boundary` has
+/// no project request. `exists` says whether a file exists, so the rule is
+/// testable without a filesystem.
+pub fn discover_request(
+    start: &Path,
+    boundary: &Path,
+    exists: impl Fn(&Path) -> bool,
+) -> Option<PathBuf> {
+    if !start.starts_with(boundary) {
+        return None;
+    }
+    start
+        .ancestors()
+        .take_while(|directory| directory.starts_with(boundary))
+        .map(|directory| directory.join(".morphir").join("toolchain.toml"))
+        .find(|candidate| exists(candidate))
 }
 
 /// Read a request from its exact UTF-8 bytes.

@@ -582,6 +582,11 @@
     },
     {
       "contract": "result",
+      "document": "result/show-environment-selection.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
       "document": "result/restore-offline-missing.json",
       "expected": "valid"
     },
@@ -2032,6 +2037,68 @@
       "expected": {
         "code": "request_changed",
         "path": "requestSha256"
+      }
+    },
+    {
+      "name": "a member's own request wins over the workspace root's",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml",
+        "workspace/loans/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace/loans/src",
+      "expected": {
+        "request": "workspace/loans/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "a member without a request uses the workspace root's",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml",
+        "workspace/loans/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace/pricing/src",
+      "expected": {
+        "request": "workspace/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "the boundary directory's own request is found",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace",
+      "expected": {
+        "request": "workspace/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "a request above the discovery boundary is never used",
+      "kind": "discover",
+      "files": [
+        ".morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace/loans/src",
+      "expected": {
+        "request": null
+      }
+    },
+    {
+      "name": "a directory outside the discovery boundary has no project request",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace/loans",
+      "start": "workspace/pricing",
+      "expected": {
+        "request": null
       }
     }
   ]

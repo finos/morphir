@@ -309,10 +309,10 @@ When a command needs a toolchain, the first source that names one wins:
 
 1. an explicit selector on the command line;
 2. the `MORPHIRUP_TOOLCHAIN` environment variable;
-3. the nearest project toolchain file, within the host's established discovery boundary;
+3. the nearest project toolchain file, searching from the current directory up to and including the host's established discovery boundary, so a workspace root's request applies to members without their own ([discovery](../../spec/toolchain/toolchain-request.md#discovery));
 4. the user default.
 
-An override selects an installed complete generation. `morphirup show` explains which source won:
+An override selects an installed complete generation: the selector and `MORPHIRUP_TOOLCHAIN` take a generation id, such as `gen-0002`. `morphirup show` explains which source won:
 
 ```json title="docs/spec/toolchain/fixtures/0.1.0-draft.1/result/show-project-selection.json"
 {

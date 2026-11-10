@@ -24,6 +24,31 @@ The exit status is `0` when the outcome is `planned` or `succeeded`, and `1` whe
 
 `selection.source.kind` is `cli`, `environment` (`MORPHIRUP_TOOLCHAIN`), `project` with the absolute [local path](./index.md#local-paths) of the request, or `user-default`, in that precedence order.
 
+The command-line selector (`--toolchain <value>`) and `MORPHIRUP_TOOLCHAIN` both take a generation id, the receipt's `generationId`: they select an installed complete generation and never name a channel, a version or a request. `selection.generationId` is that value. A value that is not a valid generation id, or names no installed complete generation for the current platform, fails the command; it does not fall through to the next source. With `MORPHIRUP_TOOLCHAIN=gen-0002`, `show` reports:
+
+```json title="docs/spec/toolchain/fixtures/0.1.0-draft.1/result/show-environment-selection.json"
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "show",
+  "outcome": "succeeded",
+  "selection": {
+    "source": {
+      "kind": "environment"
+    },
+    "generationId": "gen-0002",
+    "platform": "win-x64",
+    "host": {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "self-contained"
+    }
+  },
+  "diagnostics": []
+}
+```
+
+A `project` source is found by [discovery](./toolchain-request.md#discovery).
+
 Understood critical paths: `schemaVersion`, `critical`, `command`, `outcome`, `plan`, `planSha256`, `selection`, `diagnostics`.
 
 ## Plans
@@ -111,7 +136,7 @@ Only `platform_not_locked` has `platform`. A `lock-binding` diagnostic with `pla
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, a `show` result explaining a project selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, one failed result for each `lock-binding` code in the table above, a `request_changed` naming CRLF line endings as its cause, and a restore whose lock is absent (`document_unavailable`). Both plans carry `lock/two-platforms-bound.json` as their `lock`. `result/negative/` covers:
+`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, two `show` results explaining a project selection and a `MORPHIRUP_TOOLCHAIN` selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, one failed result for each `lock-binding` code in the table above, a `request_changed` naming CRLF line endings as its cause, and a restore whose lock is absent (`document_unavailable`). Both plans carry `lock/two-platforms-bound.json` as their `lock`. `result/negative/` covers:
 
 - a plan without `lock`, a lock that does not record the plan's platform, a lock for another recipe, a provider component that is not the locked provider, a source from another repository, a host and a built-in whose `probe` is `none`, and a plan prerequisite that names platforms;
 - `cause` on a code other than `request_changed`;

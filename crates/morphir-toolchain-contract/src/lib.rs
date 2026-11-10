@@ -70,7 +70,8 @@ pub use recipe::{
     read_recipe,
 };
 pub use request::{
-    HostSelection, ProviderSelection, RequestedHost, ToolchainRequest, read_request,
+    HostSelection, ProviderSelection, RequestedHost, ToolchainRequest, discover_request,
+    read_request,
 };
 pub use resolve::resolve_closure;
 pub use result::{

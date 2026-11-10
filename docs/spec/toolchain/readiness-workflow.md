@@ -120,7 +120,7 @@ A runner in morphir-dotnet reads the case as follows:
 4. Give `expected/ir-4.0.0.json` to the selected backend, and compare its output with the generate step's set for that delivery.
 5. Report the outcome as the generation's `workflow` check. It is `passed` only when every step passed with the selected providers against frozen files. While the generate step is `pending` the check cannot pass: it is `skipped`, with a reason naming the pending step and M1.
 
-> **Maintainer question M5: what readiness must a staged generation reach before setup activates it?** **Recommended default:** no check `failed`, and every component `capability-checked`. A `skipped` or `unsupported` workflow check is allowed, `show` and `doctor` report it, and the generation is never called qualified. Under this default a generation whose workflow check is `skipped` is activated as `capability-checked`. The activation rule on the [receipt page](./installation-receipt.md#readiness) is **provisional** until M5 is answered.
+Whether a generation whose workflow check is `skipped` may be activated is maintainer question M5, stated with its recommended default on the [receipt page](./installation-receipt.md#readiness). Under that default it is activated as `capability-checked` and never called qualified.
 
 ## Checks in this repository
 

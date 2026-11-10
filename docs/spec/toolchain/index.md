@@ -237,10 +237,13 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 | `kind` | Inputs | Check |
 | --- | --- | --- |
 | `lock-request` | `lock`, `request` | The lock binds the exact request bytes |
+| `lock-request-bytes` | `lock`, `request` | As `lock-request`, from the request's bytes alone; a refusal's `expected.cause` names CRLF line endings, a byte order mark, or both, and is absent for other changes |
 | `lock-platform` | `lock`, `platform` | Frozen restore finds the platform's closure |
 | `receipt-lock` | `receipt`, `lock` | The receipt binds the exact lock bytes and repeats its closure |
 | `resolve` | `recipe`, `request`, `platform` | [Resolution](./toolset-recipe.md#selecting-a-closure) gives the listed providers, or the code and path |
 | `plan-canonical` | `result`, `canonical` | The plan's canonical bytes are exactly `canonical`, and `planSha256` is their SHA-256 |
+| `plan-lock` | `result`, `lock` | The plan's `lock` equals `lock` as a parsed value |
+| `discover` | `files`, `boundary`, `start` | [Discovery](./toolchain-request.md#discovery) from `start` finds `expected.request`, or no request when it is `null`. Paths are relative, `/`-separated, and name files under one synthetic root |
 
 `fixtures/0.1.0-draft.1/signed/` holds a TEST-ONLY repository in the tool release metadata v1 profile. Its `cases.json` has these sections:
 

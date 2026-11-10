@@ -6,8 +6,8 @@
 //! `valid` or the exact diagnostic code and member path a reader reports.
 
 use morphir_toolchain_contract::{
-    Code, Operation, PlatformId, canonical_json, canonical_sha256, read_lock, read_receipt,
-    read_recipe, read_request, read_result, resolve_closure, understood,
+    Code, Operation, PlatformId, canonical_json, canonical_sha256, discover_request, read_lock,
+    read_receipt, read_recipe, read_request, read_result, resolve_closure, understood,
 };
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -187,6 +187,27 @@ fn every_binding_case_matches_the_reference_checks() {
             (bytes, lock)
         };
         let actual = match case["kind"].as_str().unwrap() {
+            "discover" => {
+                // Paths in the case are relative and `/`-separated; they
+                // name directories and files under one synthetic root.
+                let path = |text: &str| -> PathBuf { text.split('/').collect() };
+                let files: BTreeSet<PathBuf> = case["files"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|file| path(file.as_str().unwrap()))
+                    .collect();
+                let found = discover_request(
+                    &path(case["start"].as_str().unwrap()),
+                    &path(case["boundary"].as_str().unwrap()),
+                    |candidate| files.contains(candidate),
+                );
+                let wanted = case["expected"]["request"].as_str().map(path);
+                if found != wanted {
+                    failures.push(format!("{name}: found {found:?}, expected {wanted:?}"));
+                }
+                Ok(())
+            }
             "lock-request" => {
                 let request = read_request(&file("request"))
                     .unwrap_or_else(|error| panic!("{name}: {error}"));
@@ -249,7 +270,11 @@ fn every_binding_case_matches_the_reference_checks() {
         }
         .map_err(|diagnostic| (diagnostic.code.as_str().to_owned(), diagnostic.path));
         let wanted = match &case["expected"] {
-            Value::Object(object) if object.contains_key("providers") => Ok(()),
+            Value::Object(object)
+                if object.contains_key("providers") || object.contains_key("request") =>
+            {
+                Ok(())
+            }
             _ => expected(case),
         };
         if actual != wanted {
