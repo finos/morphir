@@ -4,6 +4,16 @@
 
 Defines what the .NET Morphir host adds to the shared WASM execution profiles: which offerings and platforms can run a WASM extension, how a user points the host at a module, how a run is cancelled, and how the host proves that its packaged engine works.
 
+### Why the runtime can be unavailable
+
+The host probes for its engine at most once per process, and only when something first needs it: the runtime report, loading a module, or listing a WASM extension. `--version`, `--help` and the worker's argument and build-identity checks never load the engine.
+
+| Reason | When |
+| --- | --- |
+| `platform_unsupported` | The platform is not one the engine ships a native library for, such as Linux musl. The engine is not started |
+| `engine_missing` | Starting the engine fails because its native library is not found, and no library file is present |
+| `engine_load_failed` | Any other failure to start the engine, including a library file that is present and cannot be loaded, such as one built for another architecture |
+
 ### The same module on four executables
 
 The .NET distribution has four offerings, and a user should not have to know which one they hold to predict whether a WASM extension runs.
@@ -28,7 +38,6 @@ Proposed output. The command and field names are fixed with the implementation.
 $ morphir extension runtimes --json
 {
   "result": {
-    "offering": "native-aot",
     "platform": "linux-x64",
     "runtimes": [
       {
@@ -42,6 +51,8 @@ $ morphir extension runtimes --json
   }
 }
 ```
+
+The report does not name the offering. A .NET executable does not know at run time which offering it is, so a runner that needs the offering is given it as an input.
 
 On Linux musl the same command reports `"available": false` with reason `platform_unsupported`. The user learns this when they ask, or when setup checks readiness. They do not learn it from a missing-library error in the middle of a build.
 
@@ -83,12 +94,21 @@ The host SHALL report, without loading a module, whether its WASM runtime is ava
 - **THEN** the report lists `wasm` as unavailable with reason `platform_unsupported`
 
 ### Requirement: Unavailable runtime fails by name
-When a command needs a WASM extension and the runtime is unavailable, the host SHALL fail before reading the module with `extension.runtime_unavailable`, naming the offering, the platform and the reason. It SHALL NOT surface a native library loading error as the diagnostic.
+When a command needs a WASM extension and the runtime is unavailable, the host SHALL fail before reading the module with `extension.runtime_unavailable`, naming the host, the platform and the reason: `platform_unsupported`, `engine_missing` or `engine_load_failed`. It SHALL NOT surface a native library loading error as the diagnostic.
 
 #### Scenario: Engine library missing
 - **WHEN** a framework-dependent host starts without its engine library and a command needs a WASM extension
 - **THEN** the command fails with `extension.runtime_unavailable` and reason `engine_missing`
 - **AND** commands that need no WASM extension still work
+
+#### Scenario: Engine library cannot be loaded
+- **WHEN** the engine library beside the host is one built for another architecture
+- **THEN** the command fails with `extension.runtime_unavailable` and reason `engine_load_failed`
+
+#### Scenario: Worker without an engine
+- **WHEN** the worker mode is started in a host whose engine library is missing
+- **THEN** stderr carries a `refused` event with `extension.runtime_unavailable`, stdout carries no bytes and the exit status is 3
+- **AND** the module file is not read
 
 ### Requirement: Tool installation is preserved off the supported platforms
 The `dotnet-tool` offering SHALL remain installable on a platform without a WASM engine package. There it SHALL report the WASM runtime as unavailable and keep every other capability.

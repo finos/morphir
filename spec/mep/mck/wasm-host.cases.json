@@ -93,6 +93,8 @@
 		{ "element": "hostSession:profiles-reported", "reason": "Not observable through a worker: the profiles a host runs are in its runtime report, which the runner takes as an input." },
 		{ "element": "hostSession:cancelled", "reason": "Not observable through a worker: cancellation is a host-session outcome, and the contract does not say what an interrupted worker does." },
 		{ "element": "worker:load-failure", "reason": "No case covers it: every module of the corpus is assembled from text, so the corpus has no file that is unreadable or not a well-formed WASM module." },
+		{ "element": "refusal:extension.runtime_unavailable", "reason": "No case can show it: a host that can be qualified has an engine, so the corpus cannot start a worker without one." },
+		{ "element": "worker:start-order", "reason": "No case can show it: the order matters only when two start-up checks fail at once, and one of them is the missing engine." },
 		{ "element": "worker:help", "reason": "No case needs it: the runner reads the build identity from --help --json before any run, so a worker without it cannot be qualified at all." }
 	],
 	"cases": [

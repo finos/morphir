@@ -263,6 +263,7 @@ A refusal happens before any request, and the module is never instantiated. A fa
 | `extension.abi_mismatch` | A declared ABI differs from the classified profile |
 | `extension.wasm_feature_unsupported` | The module needs a WASM feature the engine lacks, or has a shared, 64-bit or second memory |
 | `extension.worker_runtime_mismatch` | Worker mode only: `--build-identity` is not the worker's own |
+| `extension.runtime_unavailable` | The host has no usable WASM engine. The message gives the reason |
 
 A worker reports a fault by its kind. The host session that reads the report turns the kind into the code or outcome of the session:
 
@@ -302,6 +303,8 @@ A runner qualifies a host through `<host> extension worker`. stdout carries only
 | `--help` | No | A flag: write the help to stdout and serve nothing |
 
 Without `--abi`, `--module` or `--build-identity` the worker serves nothing and exits with 2. A worker started with another build identity refuses with `extension.worker_runtime_mismatch` and exits with 3. `--help --json` writes one `morphir/command-result` whose `result.buildIdentity` is the identity to pass.
+
+Before any request a worker checks its arguments, then the build identity, then that the host has a usable engine, then the module, and reports the first that fails. A worker whose host has no usable engine refuses with `extension.runtime_unavailable`, exits with 3 and does not read the module. The MoonBit host always has its engine, so it never gives this refusal.
 
 | Event | Members |
 | --- | --- |

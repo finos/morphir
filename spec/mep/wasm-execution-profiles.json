@@ -212,7 +212,8 @@
       "notEnforcedReasons": ["no-memory-ceiling", "no-instruction-metering", "no-call-interruption"]
     },
     "refusals": [
-      { "code": "extension.worker_runtime_mismatch", "when": "--build-identity is not the worker's own build identity." }
+      { "code": "extension.worker_runtime_mismatch", "when": "--build-identity is not the worker's own build identity." },
+      { "code": "extension.runtime_unavailable", "when": "The host has no usable WASM engine. The message gives the reason." }
     ],
     "rules": [
       { "id": "required-arguments", "rule": "--abi, --module and --build-identity are required. Without one the worker serves nothing and exits with 2." },
@@ -226,6 +227,7 @@
       { "id": "message-checks", "rule": "The worker checks that each request and response is UTF-8 text holding one JSON object, and reports anything else as fault failure. It does not check the JSON-RPC version or ids." },
       { "id": "request-frame-limit", "rule": "A request frame over --request-bytes is fault failure and the worker exits with 1. The guest is not called." },
       { "id": "response-frame-limit", "rule": "A response over --response-bytes is fault failure and the worker exits with 1. No part of it reaches stdout." },
+      { "id": "start-order", "rule": "Before any request a worker checks its arguments, then the build identity, then that the host has a usable engine, then the module, and reports the first that fails. A worker without a usable engine refuses with extension.runtime_unavailable, exits with 3 and does not read the module." },
       { "id": "load-failure", "rule": "A module file that cannot be read, or that is not a well-formed WASM module, is fault failure before started, and the worker exits with 1." }
     ]
   },
