@@ -445,6 +445,13 @@ description = "Check the MEP Smithy model with the moonrockz/smithy CLI: model, 
 # version. See spec/mep/smithy/README.md.
 run = "bun run tools/spec-mep-smithy.ts"
 
+[tasks."spec:mep-wasm-check"]
+description = "Check the WASM host qualification corpus: fixtures against their .wat, digests, and coverage of the execution profile contract"
+# The pinned wabt devDependency in tools/package.json assembles the .wat
+# files. See spec/mep/mck/README.md.
+run = "bun run tools/check-wasm-host-kit.ts"
+depends = ["tools:install"]
+
 [tasks."mck:vocabulary-check"]
 description = "Check vocabulary generation against the pinned TypeScript IR model"
 # Keep the semantic vocabulary authoring check; compatibility validation is native.
