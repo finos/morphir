@@ -255,6 +255,18 @@ fn every_binding_case_matches_the_reference_checks() {
             }
             continue;
         }
+        if case["kind"] == "canonical-json" {
+            // The plan digest's and the signature input's canonical bytes.
+            let actual = canonical_json(&case["value"]).unwrap();
+            let wanted = case["expected"].as_str().unwrap();
+            if actual != wanted.as_bytes() {
+                failures.push(format!(
+                    "{name}: encoded {:?}, expected {wanted:?}",
+                    String::from_utf8_lossy(&actual)
+                ));
+            }
+            continue;
+        }
         if case["kind"] == "nfc" {
             // The canonical encoder writes a string as its NFC form between
             // quotation marks; the inputs hold no `"` or `\`.

@@ -427,14 +427,11 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
         execution: host.case("execution", Execution::CASES)?,
         source,
         protocol_versions: host.req("protocolVersions", |node| {
-            unique_entries(
-                node.path(),
-                node.array(|item| item.parse_coded(ProtocolVersion::parse))?,
-            )
+            unique_array(node, |item| item.parse_coded(ProtocolVersion::parse))
         })?,
         wasm_abis: host
             .opt("wasmAbis", |node| {
-                unique_entries(node.path(), node.array(model::token(WasmAbi::parse))?)
+                unique_array(node, model::token(WasmAbi::parse))
             })?
             .unwrap_or_default(),
         prerequisites: model::prerequisites(&host)?,
@@ -456,17 +453,22 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
     })
 }
 
-/// Refuse an array that repeats an entry, at the first repetition.
-fn unique_entries<T: PartialEq>(path: &str, entries: Vec<T>) -> Result<Vec<T>> {
-    if let Some(position) =
-        (1..entries.len()).find(|&position| entries[..position].contains(&entries[position]))
-    {
-        return Err(inconsistent(
-            index(path, position),
-            "an entry repeats an earlier one",
-        ));
-    }
-    Ok(entries)
+/// Read an array whose entries are unique. Each element is read and then
+/// compared with the earlier ones before the next element is read, so a
+/// repetition is reported before any failure in a later element.
+fn unique_array<T: PartialEq + Clone>(
+    node: Node<'_>,
+    read: impl Fn(Node<'_>) -> Result<T>,
+) -> Result<Vec<T>> {
+    let mut seen: Vec<T> = Vec::new();
+    node.array(|item| {
+        let entry = read(item)?;
+        if seen.contains(&entry) {
+            return Err(inconsistent(item.path(), "an entry repeats an earlier one"));
+        }
+        seen.push(entry.clone());
+        Ok(entry)
+    })
 }
 
 fn provider(node: Node<'_>) -> Result<RecipeProvider> {

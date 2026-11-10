@@ -67,7 +67,7 @@ A reader checks the bound on the text before any SemVer parser runs, because par
 
 This bound is the one the released `morphirup` (finos/morphir-dotnet `v0.4.0-alpha.4`) ships as provisional. No maintainer decision records it yet; the maintainer has been told of it and may still change it.
 
-The schemas' patterns are ECMA-262 regular expressions. In ECMA-262, `$` matches only at the end of the string, so `"0.2.0\n"` is refused; some engines, .NET's among them, also let `$` match before a final line feed, and a validator built on one must anchor at the end of the string instead.
+**A note for anyone validating the schemas.** Their patterns are ECMA-262 regular expressions, as JSON Schema requires, and a validator must apply ECMA-262 semantics to them. In ECMA-262, `$` matches only at the end of the string, so `"0.2.0\n"` is refused by `$defs.mepVersion`. .NET's `$` also matches before a final line feed, and validators built on .NET regular expressions inherit that. JsonSchema.Net does, so it accepts `"0.2.0\n"` against `$defs.mepVersion`, and a trailing line feed in every patterned string. The schemas are right and such a validator is not. Run it with patterns anchored by `\z`, or check the end of the string yourself. The .NET host hit this trap twice, once in its schema tests and once in its TUF reader.
 
 ### MEP versions
 
@@ -104,14 +104,14 @@ A reader reports the first failure it finds, and the order is part of the contra
 
 Within the body:
 
-- array elements are read in index order, so a failure in an earlier element is reported first;
+- array elements are read in index order, and each element is read completely, with every rule that concerns it and the elements before it, before the next element is read. So a failure in an earlier element is reported first, and a rule that compares an element with the earlier ones, such as a repetition, is checked as that element is read. For `"protocolVersions": ["0.2.0", "0.2.0", "not-a-version"]` the refusal is the repetition at index 1, not the invalid entry at index 2 (`recipe/negative/precedence-repetition-before-invalid-entry.json`);
 - in a map keyed by data, every key is checked first. The first invalid key in UTF-8 byte order is `invalid_value` at that key. The entries are then read in key order, whatever order the document lists them in. For platform keys, key order is the order of the [platform table](#platforms): `win-x64`, `win-arm64`, `osx-x64`, `osx-arm64`, `linux-x64`, `linux-arm64`, `linux-musl-x64`, `linux-musl-arm64`;
 - the checks that compare one document with another, on the recipe, lock and receipt pages, visit platforms in the same order;
 - a rule that relates several platforms or elements to each other names their common parent, such as `platforms`, never one of them.
 
 Failures in two different members of one object are not ordered by this contract, with one exception: a reader may report either. The fixtures are written so that no case depends on that order.
 
-The exception is a provider's delivery members. An external provider is checked `protocolVersion` first (its type, then the line), then the members it must not have (`modelInput`, then `modelOutput`), then `modelTuple`. A built-in is checked for the members it must not have (`protocolVersion`, then `modelTuple`), then for its model member. So a provider with an off-line `protocolVersion` and a `modelInput` is refused at `protocolVersion`.
+The exception is a provider's delivery members. An external provider is checked `protocolVersion` first (its type, then the line), then the members it must not have (`modelInput`, then `modelOutput`), then `modelTuple`. A built-in is checked for the members it must not have (`protocolVersion`, then `modelTuple`), then for the model member of the other operation (`modelInput` on a `compile` built-in, `modelOutput` on a `generate` one), then for its own model member. So a provider with an off-line `protocolVersion` and a `modelInput` is refused at `protocolVersion`.
 
 These fixtures each break two rules and pin the order between them:
 
@@ -125,6 +125,7 @@ These fixtures each break two rules and pin the order between them:
 | `lock/negative/precedence-platform-table-order.json` | A bad digest in `osx-arm64`, listed first, and in `win-x64` | `invalid_value` at `platforms.win-x64.hostSha256` |
 | `lock/negative/precedence-platform-keys-first.json` | A bad digest in `win-x64`; an unknown key `zz-unknown` | `invalid_value` at `platforms.zz-unknown` |
 | `lock/negative/precedence-protocol-version-before-model-member.json` | An external provider at MEP `0.3.0` that also has `modelInput` | `unsupported_case` at `platforms.win-x64.providers[0].protocolVersion` |
+| `recipe/negative/precedence-repetition-before-invalid-entry.json` | `protocolVersions` repeats its first entry, and its third is not a version | `inconsistent_document` at `hosts[0].protocolVersions[1]` |
 | `recipe/negative/precedence-body-before-consistency.json` | No operations; a non-SemVer host version | `invalid_value` at `hosts[0].version` |
 | `recipe/negative/precedence-consistency-table-order.json` | A second built-in in `hosts[0]`; `hosts[1]` repeats the offering | `inconsistent_document` at `hosts[1]` |
 | `receipt/binding/recipe-and-host-substituted.json` (against `lock/two-platforms-bound.json`) | Another recipe; another host release | `receipt_lock_mismatch` at `recipe` |
@@ -132,6 +133,10 @@ These fixtures each break two rules and pin the order between them:
 ### Numbers
 
 Every number in these documents' known members, and every number anywhere inside a plan, is a non-negative integer, such as `downloadBytes`, `installedBytes` and `targetsVersion`. A plan is the exception among unknown members because its digest covers all of it. A number in an unknown member elsewhere is ignored with the member: `lock/unknown-member-fraction.json`, with `"weight": 1.5` at its root, is valid. The integers are written in plain decimal, with no sign, fraction or exponent. `41943040.0` and `1e3` are refused with `invalid_document` at the member, although their values are integers (`result/negative/download-bytes-fraction.json` and `download-bytes-exponent.json`). JSON Schema's `integer` type accepts both, so the schemas are looser here.
+
+**The integer bound.** Every integer in these documents is at most 2<sup>53</sup> − 1 (9007199254740991), the I-JSON (RFC 7493) range: it is exact in a JavaScript number and in any 64-bit integer, so every reader language holds every integer exactly. A larger integer is `invalid_value` at the member (`result/setup-plan-integer-at-bound.json` is valid at the bound, and `result/negative/download-bytes-past-bound.json`, one past it, is refused). The schemas give every integer the same `maximum`. The same bound applies to every integer of the TUF metadata of tool release metadata v1, where past it is `metadata_signature_invalid` ([signed text](../tool-release-metadata/index.md#signed-text)). No fixture valid before the bound was stated is refused by it.
+
+This repository's reference reader parses JSON with 64-bit integers. It reports a plain decimal integer past 2<sup>64</sup> − 1 as `invalid_document`, because its JSON parser reads such a number as floating point and cannot tell its spelling from an exponent's. The page's rule is `invalid_value` for every integer past the bound, so that is a defect of the reader, recorded here; no fixture depends on it.
 
 ### Tagged cases
 
@@ -289,6 +294,7 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 | `plan-lock` | `result`, `lock` | The plan's `lock` equals `lock` as a parsed value |
 | `setup-platforms` | `request`, `platform` | A setup of `request` on `platform` locks exactly `expected.platforms`, in platform table order ([plans](./manager-result.md#plans)) |
 | `prerequisite-versions` | `versions`, `installed` | An installed version `installed` meets the comparator list `versions` exactly when `expected.met` is `true` ([tagged cases](#tagged-cases)) |
+| `canonical-json` | `value`, `expected`, `referenceTuf` | The canonical bytes of the JSON `value`, by the [plan digest](./manager-result.md#the-plan-digest) rules, are exactly the UTF-8 of `expected`. That is also the signature input of the TUF profile. `referenceTuf` records what securesystemslib 1.6.0's `encode_canonical` writes for the same value, for comparison |
 | `nfc` | `input`, `expected` | The canonical encoder writes the string `input` as `"`, then `expected`, then `"`: `expected` is the Unicode 17.0.0 NFC of `input` ([the plan digest](./manager-result.md#the-plan-digest)). The inputs hold no `"` or `\` |
 | `mep-version` | `version` | Read as a `protocolVersion` value, the string is `valid`, or refused with `invalid_value` or `unsupported_case` ([MEP versions](#mep-versions)). This kind and `version` check a bare string; `path` is empty because the member's path belongs to the document that holds it. The string is also checked against the schemas' shared `$defs.mepVersion`, and a refused string the pattern accepts says so with `"schema": "accepts"` and a `schemaGap` |
 | `version` | `version`, optional `comparator` | Read as a version member, or with `"comparator": true` as one comparator, the string is `valid` or `invalid_value` ([the bound on a version](#versions)); it is also checked against the schemas' `semanticVersion` or comparator pattern, which must agree |
@@ -318,7 +324,8 @@ A trust case starts from the committed `repository.json`, takes the named metada
 | Mutation `op` | Effect |
 | --- | --- |
 | `set-signed-member` | Set the member at the RFC 6901 `pointer` inside `role`'s `signed` object to `value`, without signing again |
-| `relink` | Recompute the snapshot's `targets.json` and the timestamp's `snapshot.json` length, SHA-256 and version over their canonical bytes, and sign the snapshot and timestamp again with the fixture keys |
+| `relink` | Recompute the snapshot's `targets.json` and the timestamp's `snapshot.json` length, SHA-256 and version over the bytes served for those roles, and sign the snapshot and timestamp again with the fixture keys. The targets role is not signed again |
+| `replace-role-text` | Serve `role`'s canonical bytes with the first `find` replaced by `replace`. The served bytes then differ from the canonical bytes the role was signed over, as a server that alters them would serve them. A later `relink` links the bytes as served |
 | `replace-role` | Replace `role`'s envelope with the one at the dotted path `from` in `repository.json` |
 | `replace-target-bytes` | Serve the bytes of target `with` in place of target `target` |
 | `replace-target-text` | Serve `target` with the first `find` replaced by `replace` |
@@ -327,7 +334,11 @@ The metadata sets are:
 
 - `metadata`: the published repository, version 1 of every role;
 - `learnedRevocation`: version 2, in which the host offering release `morphir-dotnet-native-aot` 1.2.3 has release status `revoked`;
-- `recipeRevocation`: version 2, in which the recipe target `toolchains/recipes/fsharp/1.0.0.json` has status `revoked` and no channels, which reaches every generation bound to that recipe.
+- `recipeRevocation`: version 2, in which the recipe target `toolchains/recipes/fsharp/1.0.0.json` has status `revoked` and no channels, which reaches every generation bound to that recipe;
+- `customText`: version 2, in which the non-ASCII notes target's entry has `custom.morphir.label` `café`, signed text in NFC;
+- `caseVariantMember`: version 2, in which that entry also has `Length` beside `length`;
+- `keyOrder`: version 2, in which that entry's `custom.morphir` holds `{"a b":2,"a":1}` and `{"a#":1,"a\"":2}`, signed over this profile's canonical bytes;
+- `keyOrderReferenceTuf`: the same targets, signed over the bytes the reference TUF encoder writes for them ([canonical JSON](../tool-release-metadata/index.md#canonical-json-and-the-reference-tuf-implementations)).
 
 The `action` is one of:
 
@@ -389,3 +400,22 @@ The maintainer's decisions that these pages depend on, each recorded on finos/mo
 These are the questions still open for the maintainer. Each rule that depends on one is marked provisional where it is stated.
 
 - **Q1. Does supporting the MEP 0.2 line mean any version on it may be named, or that peers on the line work together?** Today a provider fits a host only when the host lists the provider's exact `protocolVersion` ([MEP versions](#mep-versions)). **(A)** Keep exact membership: simple, and it matches MEP negotiation, but a guest released at `0.2.1` fits no host that lists only `0.2.0` until the host releases. **(B)** Compatibility within the line: a host speaking any final `0.2.x` fits a provider at any final `0.2.y`, with prereleases still exact. Patch releases then interoperate, but the contract must define which changes a `0.2.x` release may make, and the claims check changes too. Recommendation: A.
+- **Q2. Should target paths refuse invisible, bidirectional and look-alike characters?**
+  - **What exists.** The [target path rules](#target-paths) refuse control characters, U+2028 and U+2029, device names and Windows-reserved characters, and require NFC. They admit:
+    - a zero-width space (U+200B) and a right-to-left override (U+202E);
+    - no-break and ideographic spaces (U+00A0, U+3000);
+    - fullwidth full stops (U+FF0E) and the division slash (U+2215).
+  - **Why it matters.** Every target path is signed by the targets key, so this cannot break authentication. It is a display and spoofing risk: `a/‮gpj.exe` displays as `a/exe.jpg`, and `a/．．/b` looks like a traversal that it is not.
+  - **2A. Leave the rule as it is.** No cost. A tool that shows a target path must escape such characters itself.
+  - **2B. Refuse Unicode format characters (General Category Cf) and non-ASCII look-alikes of `.` and `/` in target paths**, as `non_portable_path`. The rule is shared by recipes, locks, results and TUF metadata, so it changes the contract in place. Every reader needs a small category table beside its NFC tables. The non-ASCII fixtures (`lock/target-path-non-ascii-nfc.json`, the signed `café-naïve-字.txt` target, `target-path-512-utf8-bytes.json` and `target-path-240-utf16-units.json`) must be checked again, though none of them uses such a character.
+  - **2C. Refuse every non-ASCII character in target paths.** Simplest to state and to check, but it reverses the decision to allow non-ASCII NFC paths, and those four fixtures become negative.
+  - **Recommendation:** 2B. It closes the spoofing cases at the cost of one table, and keeps the non-ASCII paths the contract already allows.
+- **Q3. Should the canonical JSON of these contracts be the TUF reference implementations' encoding?**
+  - **What exists.** One encoding, defined with the [plan digest](./manager-result.md#the-plan-digest), produces plan digests, repository identity and TUF signature input. It sorts keys by their encoded bytes with quotation marks and normalizes strings to NFC. securesystemslib, which python-tuf uses, sorts raw keys and writes strings unnormalized. So standard TUF tooling cannot be assumed to sign this repository's metadata ([the difference](../tool-release-metadata/index.md#canonical-json-and-the-reference-tuf-implementations)). The released `morphirup` (finos/morphir-dotnet `v0.4.0-alpha.4`) and the reference checker compute digests with the current rule.
+  - **3A. Keep the current rule** and state the difference, as the profile now does. No digest moves. The cost is that a repository's signing tool must use this encoding, not python-tuf or go-tuf as they are.
+  - **3B. Adopt the reference encoding**: raw key order, and no normalization. Strings that are not NFC are then refused instead of normalized, as the [signed text](../tool-release-metadata/index.md#signed-text) rules already refuse them in TUF metadata. Standard TUF tooling then signs for this profile. The cost:
+    - every plan digest whose plan has a key pair that orders differently changes; the committed fixtures have two, the `keyOrder` member of `result/setup-plan-escaping.json` and `result/setup-plan-key-order.json`;
+    - every plan with non-NFC text is refused, so `result/setup-plan-escaping.json` loses its decomposed `é`;
+    - the released tool's recorded digests and `--expect-plan` values for such plans become invalid;
+    - the .NET encoder and the reference checker change, and the checker can no longer use `olpc-cjson` as it is.
+  - **Recommendation:** 3A for now. Keys that order differently are rare in real TUF metadata, and the cost of 3B grows with every release that records digests. If the official repository will be signed with standard TUF tooling, choose 3B before the first production repository exists, while only test digests depend on the rule.

@@ -61,17 +61,22 @@ A plan says everything the command will do and write, so that its digest pins al
 - its `components`: what it installs for `platform`;
 - `lock`: the complete [lock](./toolchain-lock.md) the command writes when it succeeds, with every platform's closure, not only `platform`'s. After success the written lock equals `lock` as a parsed value. A setup locks the request's `platforms` together with the platform it runs on, each once, in [platform table](./index.md#platforms) order: a request listing `win-x64` and `osx-arm64`, set up on `linux-x64`, locks all three (binding kind `setup-platforms`).
 
-Because `lock` is inside the plan, `--expect-plan` pins every closure that setup records, for the other platforms too (binding case `plan-lock`). The reader checks the plan against its lock, refusing each mismatch with `inconsistent_document`:
+Because `lock` is inside the plan, `--expect-plan` pins every closure that setup records, for the other platforms too (binding case `plan-lock`). The reader checks the plan against its lock, refusing each mismatch with `inconsistent_document`. The checks run in this order, and the first failure is reported:
 
-- `lock.recipe` is the plan's `recipe`, at `plan.lock.recipe`;
-- `lock.host` has the plan's implementation and deployment, at `plan.lock.host`;
-- `lock.platforms` records `platform`, at `plan.lock.platforms`;
-- there is exactly one host component and one provider component per provider of that closure, at `plan.components`;
-- the host component's `implementation`, `deployment` and `version` are the lock's host, at `plan.components[i]` (`result/negative/plan-host-component-other-deployment.json`, `-other-implementation.json`, `-other-version.json`), and its source target is that platform's host artifact, at `source.target`;
-- each provider component's `extensionId`, `version` and `delivery` are its operation's locked provider, at `plan.components[i]`. Provider components are matched to the lock by operation, so their order in `components` is free (`result/setup-plan-providers-swapped.json` is valid);
-- each source has the kind its component's role allows, at its `source`: a host's is `repository-target`, for a release authenticated by its own TUF target, or `external-owner`; an external provider's is `recipe-digest`, because the recipe binds its bytes by digest, or `external-owner`; a built-in's is `built-in` (`result/negative/plan-provider-repository-target-source.json`, `plan-host-built-in-source.json`);
-- each source names that provider's artifact or package, at its `source`;
-- every `repository-target` and `recipe-digest` source, the host's included, names the recipe's repository, at `source.repositoryId` (one repository per binding check).
+1. `lock.recipe` is the plan's `recipe`, at `plan.lock.recipe`.
+2. `lock.host` has the plan's implementation and deployment, at `plan.lock.host`.
+3. `lock.platforms` records `platform`, at `plan.lock.platforms`.
+4. Then each component in index order, all of its checks before the next component's:
+   1. A `repository-target` or `recipe-digest` source, the host's included, names the recipe's repository, at `source.repositoryId` (one repository per binding check).
+   2. For the host component:
+      - its `implementation`, `deployment` and `version` are the lock's host, at `plan.components[i]` (`result/negative/plan-host-component-other-deployment.json`, `-other-implementation.json`, `-other-version.json`);
+      - its source kind is `repository-target`, for a release authenticated by its own TUF target, or `external-owner`, at `source` (`plan-host-built-in-source.json`, `plan-host-recipe-digest-source.json`);
+      - its source target is that platform's host artifact, at `source.target`. So a host source of the wrong kind that also names the wrong target is refused at `source`.
+   3. For a provider component:
+      - the closure has a provider for its operation, at `plan.components[i].component`;
+      - its `extensionId`, `version` and `delivery` are that locked provider, at `plan.components[i]`. Provider components are matched to the lock by operation, so their order in `components` is free (`result/setup-plan-providers-swapped.json` is valid);
+      - its source has the kind its delivery allows and names the locked artifact or package, at `source`: `recipe-digest`, because the recipe binds an external provider's bytes by digest, or `external-owner`; `built-in` for a built-in (`result/negative/plan-provider-repository-target-source.json`).
+5. There is exactly one host component and one provider component per provider of that closure, at `plan.components`.
 
 `lock` itself follows the lock schema and reader: a refusal inside it carries its path under `plan.lock`.
 
@@ -92,13 +97,23 @@ All of this is required because a plan's digest covers it: every member of a pla
 
 `planSha256` is the SHA-256 of the plan's canonical JSON bytes. `--expect-plan <digest>` compares against it, and a different plan fails with `plan_changed` (`lock-binding`, `document` `result`, `path` `planSha256`; `result/setup-plan-changed.json`) before anything is changed. A result whose `planSha256` does not match its plan is `inconsistent_document` at `planSha256`.
 
-The canonical form is defined by the rules below, and this page is their authority. They are the OLPC canonical JSON that tool release metadata v1 uses for repository identity, and this repository's reference checker produces them with the `olpc-cjson` crate. "OLPC canonical JSON" is not one fixed format across implementations, so where any library, that crate included, differs from these rules, the rules apply:
+The canonical form is defined by the rules below, and this page is their authority. They are the canonical JSON that tool release metadata v1 uses for repository identity and signatures, and this repository's reference checker produces them with the `olpc-cjson` crate. "OLPC canonical JSON" is not one fixed format across implementations. These rules differ from the canonical JSON of the TUF reference implementations, securesystemslib and go-securesystemslib, in key order and in NFC ([the TUF profile](../tool-release-metadata/index.md#canonical-json-and-the-reference-tuf-implementations) says what that means for signing). Where any library, `olpc-cjson` included, differs from these rules, the rules apply:
 
 - There is no whitespace outside strings.
 - A string is converted to Unicode Normalization Form C and written as `"`, its UTF-8 bytes, and `"`. Only `"` and `\` are escaped, as `\"` and `\\`. Every other character is written as its own UTF-8 bytes, with no `\uXXXX` or other escape: `<`, `>`, `&`, `+`, `'`, non-ASCII characters, and the control characters U+0000 to U+001F. A line feed is therefore the single byte `0x0A`, not `\n`, and the canonical bytes are not always valid JSON; they are only hashed.
 - An object's members are sorted by the bytes of each key as written by the previous rule, including its enclosing quotation marks, compared byte by byte as unsigned values. Because the closing `"` is part of the comparison, `"a!"` sorts before `"a"` (`!` is `0x21`, `"` is `0x22`), and the order is UTF-8 byte order, not UTF-16 code-unit order: U+FF76 sorts before U+1D11E. Keys are normalized before they are sorted. Two member names of one object that differ but have the same NFC form, such as a precomposed `é` and `e` followed by U+0301, would encode as one key. So the reader refuses such a plan before computing its digest, with `invalid_document` at that object (`result/negative/plan-key-collision.json`).
 - A number is an integer written in plain decimal. A number with a fraction or an exponent cannot be encoded, and a plan with one is invalid; the reader refuses it before the digest is computed, because every integer member of a result is written that way (see [numbers](./index.md#numbers)).
 - `true`, `false` and `null` are written as such.
+
+**NFC and the plan digest.** Because strings are normalized, two plans whose text differs only in NFC-equivalent spelling have one digest. The TUF profile refuses that for signed metadata, because there a signature from one party must authenticate the exact text another party serves ([signed text](../tool-release-metadata/index.md#signed-text)). A plan is different, and nothing changes for it:
+
+- the manager makes it from authenticated inputs;
+- `--expect-plan` compares two digests the same manager computed;
+- every member of a plan that selects bytes is a SHA-256, a target path that must already be NFC, or an ASCII token.
+
+So two plans with one digest install the same artifacts, and can differ only in text no check reads, such as an unknown member. `result/setup-plan-escaping.json` keeps its decomposed `é` to pin the normalization.
+
+The `canonical-json` binding cases pin the encoding on its own: for each key pair whose order differs from the reference TUF implementations' and for a decomposed string, they give the expected canonical text, and beside it, as `referenceTuf`, what securesystemslib 1.6.0 writes. `result/setup-plan-key-order.json` is a plan carrying both key pairs, with its canonical bytes in `setup-plan-key-order.plan.canonical.json`.
 
 **Unicode normalization (decided 9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6760173619)).** NFC here is Unicode Normalization Form C as defined by **Unicode 17.0.0**: its canonical decompositions, canonical combining classes and composition exclusions, and the Hangul algorithm. A manager ships its own normalization data of that version. It does not use the machine's ICU, which a Native AOT executable may not find, which may silently skip normalization, and whose version varies, so a digest is the same on every machine.
 

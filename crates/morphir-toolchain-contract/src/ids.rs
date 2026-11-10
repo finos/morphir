@@ -271,6 +271,11 @@ pub fn exact_version(value: &str) -> Result<Version, String> {
     }
 }
 
+/// The largest integer in any toolchain document or TUF metadata of the
+/// profile: 2^53 - 1, the I-JSON (RFC 7493) range, so that every reader
+/// language holds every integer exactly.
+pub const MAX_INTEGER: u64 = 9_007_199_254_740_991;
+
 /// The longest version string, in characters: npm semver's `MAX_LENGTH`.
 pub const MAX_VERSION_LENGTH: usize = 256;
 

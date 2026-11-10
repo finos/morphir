@@ -964,10 +964,12 @@
         },
         "downloadBytes": {
           "type": "integer",
+          "maximum": 9007199254740991,
           "minimum": 0
         },
         "installedBytes": {
           "type": "integer",
+          "maximum": 9007199254740991,
           "minimum": 0
         },
         "updateOwner": {

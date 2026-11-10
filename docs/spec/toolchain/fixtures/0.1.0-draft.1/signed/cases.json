@@ -885,6 +885,111 @@
         "target": "extensions/fsharp-frontend/0.6.0/notes/café-naïve-字.txt"
       },
       "expected": "valid"
+    },
+    {
+      "name": "targets whose custom keys sort differently under the reference TUF encoder load when signed over this profile's canonical bytes",
+      "metadata": "keyOrder",
+      "mutations": [],
+      "action": {
+        "op": "load"
+      },
+      "expected": "valid"
+    },
+    {
+      "name": "the same targets signed over the reference TUF encoder's bytes do not verify",
+      "metadata": "keyOrderReferenceTuf",
+      "mutations": [],
+      "action": {
+        "op": "load"
+      },
+      "expected": {
+        "code": "metadata_signature_invalid",
+        "path": ""
+      }
+    },
+    {
+      "name": "signed custom text in NFC loads",
+      "metadata": "customText",
+      "mutations": [],
+      "action": {
+        "op": "load"
+      },
+      "expected": "valid"
+    },
+    {
+      "name": "signed custom text served decomposed under the original targets signature is refused",
+      "metadata": "customText",
+      "mutations": [
+        {
+          "op": "replace-role-text",
+          "role": "targets",
+          "find": "\"label\":\"café\"",
+          "replace": "\"label\":\"café\""
+        },
+        {
+          "op": "relink"
+        }
+      ],
+      "action": {
+        "op": "load"
+      },
+      "expected": {
+        "code": "metadata_signature_invalid",
+        "path": ""
+      }
+    },
+    {
+      "name": "a member that differs from a defined member only in letter case is refused",
+      "metadata": "caseVariantMember",
+      "mutations": [],
+      "action": {
+        "op": "load"
+      },
+      "expected": {
+        "code": "metadata_signature_invalid",
+        "path": ""
+      }
+    },
+    {
+      "name": "a timestamp version at the integer bound, 2^53 - 1, loads",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "set-signed-member",
+          "role": "timestamp",
+          "pointer": "/version",
+          "value": 9007199254740991
+        },
+        {
+          "op": "relink"
+        }
+      ],
+      "action": {
+        "op": "load"
+      },
+      "expected": "valid"
+    },
+    {
+      "name": "a timestamp version one past the integer bound is refused",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "set-signed-member",
+          "role": "timestamp",
+          "pointer": "/version",
+          "value": 9007199254740992
+        },
+        {
+          "op": "relink"
+        }
+      ],
+      "action": {
+        "op": "load"
+      },
+      "expected": {
+        "code": "metadata_signature_invalid",
+        "path": ""
+      }
     }
   ],
   "frozen": [

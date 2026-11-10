@@ -59,6 +59,13 @@ const OPTIONAL: &[&str] = &[
     "result: plan.keyOrder.e\u{301}",
     "result: plan.keyOrder.ｶ",
     "result: plan.keyOrder.𝄞",
+    // The key pairs the reference TUF encoder orders differently.
+    "result: plan.keyOrderQuote",
+    "result: plan.keyOrderQuote.a\"",
+    "result: plan.keyOrderQuote.a#",
+    "result: plan.keyOrderSpace",
+    "result: plan.keyOrderSpace.a",
+    "result: plan.keyOrderSpace.a b",
     "result: selection",
     "result: selection.lockSha256",
 ];

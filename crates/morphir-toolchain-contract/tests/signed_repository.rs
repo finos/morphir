@@ -36,6 +36,29 @@ fn cases() -> Value {
     read_json(&signed_dir().join("cases.json"))
 }
 
+/// The `canonical-json` cases record what securesystemslib's
+/// `encode_canonical`, which python-tuf uses, writes for each value. The
+/// generator's reference encoder signs the `keyOrderReferenceTuf` set with
+/// those bytes, so it is checked against them here.
+#[test]
+fn the_reference_tuf_encoder_writes_the_recorded_bytes() {
+    let cases = read_json(&signed_dir().join("../cases.json"));
+    let mut seen = 0;
+    for case in cases["bindings"].as_array().unwrap() {
+        if case["kind"] != "canonical-json" {
+            continue;
+        }
+        seen += 1;
+        assert_eq!(
+            String::from_utf8(repository::reference_tuf_canonical(&case["value"])).unwrap(),
+            case["referenceTuf"].as_str().unwrap(),
+            "{}",
+            case["name"]
+        );
+    }
+    assert!(seen >= 3, "the key-order cases are present");
+}
+
 async fn authenticated(fixture: &Value, set: &Value) -> (tempfile::TempDir, AuthenticatedTargets) {
     let directory = tempfile::tempdir().unwrap();
     let targets = support::tuf::targets_of(fixture, set, directory.path())
@@ -439,6 +462,16 @@ fn mutate(fixture: &Value, case: &Value) -> (Value, Value) {
                     .expect("pointer names a member") = mutation["value"].clone();
             }
             "relink" => repository::relink(&mut set),
+            "replace-role-text" => {
+                let role = mutation["role"].as_str().unwrap();
+                let text = String::from_utf8(repository::canonical(&set[role])).unwrap();
+                let find = mutation["find"].as_str().unwrap();
+                assert!(text.contains(find), "{role} contains {find}");
+                set["replaceRoleText"][role] = json!({
+                    "find": find,
+                    "replace": mutation["replace"]
+                });
+            }
             "replace-role" => {
                 let from = mutation["from"]
                     .as_str()

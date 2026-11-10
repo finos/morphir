@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use super::repository::canonical;
+use super::repository::{canonical, served};
 use morphir_distribution::{DistributionError, TrustedToolRepository};
 use morphir_toolchain_contract::AuthenticatedTargets;
 use serde_json::Value;
@@ -21,21 +21,17 @@ pub fn write_set(
     std::fs::create_dir_all(&targets).unwrap();
     let trusted_root = canonical(&fixture["trustedRoot"]);
     std::fs::write(metadata.join("1.root.json"), &trusted_root).unwrap();
-    std::fs::write(
-        metadata.join("timestamp.json"),
-        canonical(&set["timestamp"]),
-    )
-    .unwrap();
+    std::fs::write(metadata.join("timestamp.json"), served(set, "timestamp")).unwrap();
     let snapshot_version = set["snapshot"]["signed"]["version"].as_u64().unwrap();
     std::fs::write(
         metadata.join(format!("{snapshot_version}.snapshot.json")),
-        canonical(&set["snapshot"]),
+        served(set, "snapshot"),
     )
     .unwrap();
     let targets_version = set["targets"]["signed"]["version"].as_u64().unwrap();
     std::fs::write(
         metadata.join(format!("{targets_version}.targets.json")),
-        canonical(&set["targets"]),
+        served(set, "targets"),
     )
     .unwrap();
     let signed_targets = set["targets"]["signed"]["targets"].as_object().unwrap();

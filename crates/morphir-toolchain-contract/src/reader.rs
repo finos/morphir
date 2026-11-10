@@ -148,10 +148,21 @@ impl<'a> Node<'a> {
             .ok_or_else(|| type_error(self.path, "a string"))
     }
 
+    /// A non-negative integer, at most 2^53 - 1; a larger one is
+    /// `invalid_value`.
     pub(crate) fn u64(&self) -> Result<u64> {
-        self.value
+        let integer = self
+            .value
             .as_u64()
-            .ok_or_else(|| type_error(self.path, "a non-negative integer"))
+            .ok_or_else(|| type_error(self.path, "a non-negative integer"))?;
+        if integer > crate::ids::MAX_INTEGER {
+            return Err(Diagnostic::new(
+                Code::InvalidValue,
+                self.path,
+                format!("{integer} is past the integer bound 2^53 - 1"),
+            ));
+        }
+        Ok(integer)
     }
 
     /// Parse a string with a validated constructor, reporting `code` on refusal.

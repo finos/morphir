@@ -532,6 +532,14 @@
     },
     {
       "contract": "recipe",
+      "document": "recipe/negative/precedence-repetition-before-invalid-entry.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].protocolVersions[1]"
+      }
+    },
+    {
+      "contract": "recipe",
       "document": "recipe/negative/duplicate-wasm-abi.json",
       "expected": {
         "code": "inconsistent_document",
@@ -790,6 +798,16 @@
     {
       "contract": "result",
       "document": "result/setup-plan.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-integer-at-bound.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-key-order.json",
       "expected": "valid"
     },
     {
@@ -1638,6 +1656,14 @@
     },
     {
       "contract": "result",
+      "document": "result/negative/download-bytes-past-bound.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "plan.components[0].downloadBytes"
+      }
+    },
+    {
+      "contract": "result",
       "document": "result/negative/provider-component-without-extension-id.json",
       "expected": {
         "code": "inconsistent_document",
@@ -1864,6 +1890,16 @@
     {
       "contract": "result",
       "document": "result/negative/plan-host-built-in-source.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not tie a component's source kind to its role and delivery."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-recipe-digest-source.json",
       "expected": {
         "code": "inconsistent_document",
         "path": "plan.components[0].source"
@@ -3174,6 +3210,52 @@
         "code": "invalid_value",
         "path": ""
       }
+    },
+    {
+      "name": "canonical json: a key that is a prefix of another followed by a space sorts after it",
+      "kind": "canonical-json",
+      "value": {
+        "a b": 2,
+        "a": 1
+      },
+      "expected": "{\"a b\":2,\"a\":1}",
+      "referenceTuf": "{\"a\":1,\"a b\":2}"
+    },
+    {
+      "name": "canonical json: a key that is a prefix of another followed by ! sorts after it",
+      "kind": "canonical-json",
+      "value": {
+        "a!": 2,
+        "a": 1
+      },
+      "expected": "{\"a!\":2,\"a\":1}",
+      "referenceTuf": "{\"a\":1,\"a!\":2}"
+    },
+    {
+      "name": "canonical json: a key holding a quotation mark sorts by its escaped bytes",
+      "kind": "canonical-json",
+      "value": {
+        "a#": 1,
+        "a\"": 2
+      },
+      "expected": "{\"a#\":1,\"a\\\"\":2}",
+      "referenceTuf": "{\"a\\\"\":2,\"a#\":1}"
+    },
+    {
+      "name": "canonical json: a decomposed string is written in NFC",
+      "kind": "canonical-json",
+      "value": {
+        "k": "é"
+      },
+      "expected": "{\"k\":\"é\"}",
+      "referenceTuf": "{\"k\":\"é\"}"
+    },
+    {
+      "name": "a plan digest covers keys that the reference TUF encoder orders differently",
+      "kind": "plan-canonical",
+      "result": "result/setup-plan-key-order.json",
+      "canonical": "result/setup-plan-key-order.plan.canonical.json",
+      "expected": "valid"
     }
   ]
 }

@@ -33,7 +33,7 @@ Metadata follows TUF 1.0 JSON with these constraints:
 | Concern | Version 1 rule |
 | --- | --- |
 | TUF version | `spec_version` must be compatible with `1.0`. The conformance fixture uses `1.0.36`. |
-| Encoding | UTF-8 JSON. Signed objects use TUF canonical JSON for signature verification, with exactly the rules stated for the [plan digest](../toolchain/manager-result.md#the-plan-digest). Those rules govern wherever canonical JSON libraries differ; the same encoding produces repository identity, signature input and plan digests. Target paths are NFC (see [target paths](../toolchain/index.md#target-paths)). Floating-point values are forbidden. |
+| Encoding | UTF-8 JSON. Signed objects use canonical JSON for signature verification, with exactly the rules stated for the [plan digest](../toolchain/manager-result.md#the-plan-digest). Those rules govern wherever canonical JSON libraries differ; the same encoding produces repository identity, signature input and plan digests. Target paths are NFC (see [target paths](../toolchain/index.md#target-paths)). Floating-point values are forbidden. See [canonical JSON and the reference TUF implementations](#canonical-json-and-the-reference-tuf-implementations) and [signed text](#signed-text). |
 | Keys | Ed25519. An implementation may add a TUF-defined scheme only after adding conformance fixtures. |
 | Target hashes | SHA-256 is required. Other TUF hashes may accompany it. |
 | Snapshots | `consistent_snapshot` must be `true`. |
@@ -42,6 +42,39 @@ Metadata follows TUF 1.0 JSON with these constraints:
 | Delegations | Version 1 does not assign Morphir semantics to delegated role names. A conforming TUF client may process standard delegations when repository policy enables them. |
 
 Clients apply bounded download limits before parsing metadata. The initial limits are 64 KiB for each root or timestamp file, 1 MiB for a snapshot, 8 MiB for targets metadata, and 1 MiB for a release descriptor. A trusted target's declared length limits every artifact download.
+
+### Canonical JSON and the reference TUF implementations
+
+This profile's canonical JSON is **not** the canonical JSON that the TUF reference implementations write. securesystemslib's `encode_canonical`, which python-tuf uses, and, by its documented sort, go-securesystemslib's `cjson` differ from it in two ways:
+
+- **Key order.** This profile sorts each key's encoded bytes, enclosing quotation marks and escapes included. The reference implementations sort the raw keys. The orders differ when a key is a prefix of another that continues with a character below `"` (U+0022), and when a key contains `"` or `\`. For `{"a b":2,"a":1}` this profile writes `{"a b":2,"a":1}` and securesystemslib 1.6.0 writes `{"a":1,"a b":2}`. For `{"a#":1,"a\"":2}` this profile writes the `a#` member first and securesystemslib the `a"` member.
+- **NFC.** This profile writes every string in NFC; the reference implementations write strings as they are.
+
+So the reference TUF implementations cannot be assumed to sign this repository's metadata. A signature they make over a `signed` object that holds such keys, or text that is not NFC, does not verify here: it is `metadata_signature_invalid`.
+
+A tool that signs metadata for this profile must:
+
+- encode `signed` by the plan digest rules;
+- refuse to sign text that is not already NFC, which the [signed text](#signed-text) rules refuse anyway;
+- sign those bytes.
+
+A signing tool that only reorders keys can use the reference implementations when no key in `signed` differs in order between the two encodings. That holds for metadata whose keys are TUF's own member names, key ids and target paths without such prefixes or characters. Whether the profile should adopt the reference encoding instead is [open question Q3](../toolchain/index.md#open-questions).
+
+The cases pin both encodings:
+
+- the `canonical-json` binding cases in the toolchain `cases.json` give this profile's bytes beside securesystemslib's for each key pair and for a decomposed string;
+- the plan digest case `result/setup-plan-key-order.json` carries both key pairs;
+- the signed metadata sets `keyOrder` and `keyOrderReferenceTuf` hold the same targets, signed over this profile's bytes and over the reference encoder's bytes, and their trust cases load and refuse them.
+
+### Signed text
+
+Canonical encoding normalizes strings to NFC, so two `signed` objects whose strings differ only in NFC-equivalent spelling have one signature input. Someone holding the online snapshot and timestamp keys, but not the offline targets key, could then serve targets text that differs from what was signed and re-link it. A client therefore checks the text of every role's `signed` object, as served, and refuses with `metadata_signature_invalid`:
+
+- a string or member name that is not already NFC by the [Unicode 17.0.0 rule](../toolchain/manager-result.md#the-plan-digest). Then the signature input is one-to-one on accepted metadata, and normalization never changes signed text;
+- a member whose name differs from a member that TUF 1.0 or this profile defines for that object only in ASCII letter case, such as `Version` beside `version`, or `Length` in a target entry. A case-sensitive reader ignores it as an unknown member, as TUF says, but a reader that binds JSON names without case reads it instead of the real member. Other unknown members are still ignored.
+- an integer past 2<sup>53</sup> − 1, the [integer bound](../toolchain/index.md#numbers) of the toolchain documents. Versions, thresholds and lengths are all integers.
+
+The defined members are those of TUF 1.0 for each role, key, role entry, meta entry, hashes object and target entry, and for `custom.morphir`. For `custom.morphir` they are `schemaVersion`, `kind`, `toolId`, `version`, `channels`, `status`, `compatibility` (`morphirCli`), `platforms` and `platform` (`os`, `arch`), and `preset`. The signed sets `customText` and `caseVariantMember` pin the first two rules: one trust case serves `customText`'s targets with its custom text decomposed, under the original targets signature with the snapshot and timestamp re-linked, and is refused. Trust cases at a timestamp version of 2<sup>53</sup> − 1 and of 2<sup>53</sup> pin the third. A non-NFC target path keeps its own code, `non_portable_path`, because target paths are checked first.
 
 ### Root rotation
 

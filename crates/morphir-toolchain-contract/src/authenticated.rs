@@ -107,6 +107,149 @@ fn trust_code(error: &tough::error::Error, target: bool) -> Code {
     Code::RepositoryUnavailable
 }
 
+fn read_role(directory: &Path, file: &str) -> Result<Vec<u8>> {
+    std::fs::read(directory.join(file))
+        .map_err(|error| invalid_metadata("", format!("cannot read {file}: {error}")))
+}
+
+/// The members TUF 1.0 and this profile define for an object of `signed`,
+/// by its place: the path from `signed`, with data-keyed map entries as `*`
+/// and array elements as `#`. An empty list means the object's member names
+/// are data, such as key ids or target paths.
+fn known_members(role: &str, place: &[&str]) -> &'static [&'static str] {
+    const MORPHIR: &[&str] = &[
+        "schemaVersion",
+        "kind",
+        "toolId",
+        "version",
+        "channels",
+        "status",
+        "compatibility",
+        "platforms",
+        "platform",
+        "preset",
+    ];
+    match (role, place) {
+        ("root", []) => &[
+            "_type",
+            "spec_version",
+            "version",
+            "expires",
+            "consistent_snapshot",
+            "keys",
+            "roles",
+        ],
+        ("root", ["keys", "*"]) => &["keytype", "scheme", "keyval", "keyid_hash_algorithms"],
+        ("root", ["keys", "*", "keyval"]) => &["public"],
+        ("root", ["roles", "*"]) => &["keyids", "threshold"],
+        ("timestamp" | "snapshot", []) => &["_type", "spec_version", "version", "expires", "meta"],
+        ("timestamp" | "snapshot", ["meta", "*"]) => &["version", "length", "hashes"],
+        ("targets", []) => &[
+            "_type",
+            "spec_version",
+            "version",
+            "expires",
+            "targets",
+            "delegations",
+        ],
+        ("targets", ["targets", "*"]) => &["length", "hashes", "custom"],
+        ("targets", ["targets", "*", "custom"]) => &["morphir"],
+        ("targets", ["targets", "*", "custom", "morphir"]) => MORPHIR,
+        ("targets", ["targets", "*", "custom", "morphir", "compatibility"]) => &["morphirCli"],
+        ("targets", ["targets", "*", "custom", "morphir", "platform"])
+        | ("targets", ["targets", "*", "custom", "morphir", "platforms", "#"]) => &["os", "arch"],
+        (_, [.., "hashes"]) => &["sha256", "sha512"],
+        _ => &[],
+    }
+}
+
+/// Whether the members of the object at `place` are data, named by `*`.
+fn data_keyed(role: &str, place: &[&str]) -> bool {
+    matches!(
+        (role, place),
+        ("root", ["keys" | "roles"])
+            | ("timestamp" | "snapshot", ["meta"])
+            | ("targets", ["targets"])
+    )
+}
+
+/// Refuse served role bytes whose `signed` object the profile does not
+/// accept as signed text. Canonical encoding normalizes strings to NFC, so a
+/// string that is not already NFC would be authenticated by a signature over
+/// other text; a member that differs from a defined one only in ASCII case
+/// would be read as that member by a case-insensitive reader; and an integer
+/// past 2^53 - 1 cannot be held exactly by every reader language.
+fn check_signed_text(role: &str, bytes: &[u8]) -> Result<()> {
+    let refuse = |message: String| {
+        Diagnostic::new(
+            Code::MetadataSignatureInvalid,
+            "",
+            format!("{role} metadata: {message}"),
+        )
+    };
+    let envelope = crate::reader::parse_json(bytes).map_err(|refusal| refuse(refusal.message))?;
+    fn walk(
+        role: &str,
+        value: &Value,
+        place: &mut Vec<String>,
+        refuse: &dyn Fn(String) -> Diagnostic,
+    ) -> Result<()> {
+        let segments: Vec<&str> = place.iter().map(String::as_str).collect();
+        match value {
+            Value::String(text) => {
+                if !unicode_normalization::is_nfc(text) {
+                    return Err(refuse(format!(
+                        "the string at {} is not NFC",
+                        segments.join("/")
+                    )));
+                }
+            }
+            Value::Number(number) => {
+                if !number
+                    .as_u64()
+                    .is_some_and(|integer| integer <= crate::ids::MAX_INTEGER)
+                {
+                    return Err(refuse(format!(
+                        "the number at {} is not an integer from 0 to 2^53 - 1",
+                        segments.join("/")
+                    )));
+                }
+            }
+            Value::Array(items) => {
+                for item in items {
+                    place.push("#".to_owned());
+                    walk(role, item, place, refuse)?;
+                    place.pop();
+                }
+            }
+            Value::Object(members) => {
+                let known = known_members(role, &segments);
+                let data = data_keyed(role, &segments);
+                for (name, member) in members {
+                    if !unicode_normalization::is_nfc(name) {
+                        return Err(refuse(format!("the member name {name} is not NFC")));
+                    }
+                    if !known.contains(&name.as_str())
+                        && known
+                            .iter()
+                            .any(|defined| defined.eq_ignore_ascii_case(name))
+                    {
+                        return Err(refuse(format!(
+                            "the member {name} differs from a defined member only in letter case"
+                        )));
+                    }
+                    place.push(if data { "*".to_owned() } else { name.clone() });
+                    walk(role, member, place, refuse)?;
+                    place.pop();
+                }
+            }
+            Value::Bool(_) | Value::Null => {}
+        }
+        Ok(())
+    }
+    walk(role, &envelope["signed"], &mut Vec::new(), &refuse)
+}
+
 fn invalid_metadata(path: &str, message: impl Into<String>) -> Diagnostic {
     Diagnostic::new(Code::RepositoryUnavailable, path, message)
 }
@@ -182,6 +325,30 @@ impl AuthenticatedTargets {
         let root: Value = serde_json::from_slice(trusted_root).map_err(|error| {
             invalid_metadata("", format!("the trusted root is not JSON: {error}"))
         })?;
+        // The profile's rules on the text of `signed`, which the client checks
+        // on the bytes it was served: every string and member name already
+        // NFC, no case variant of a member the profile defines, and every
+        // integer at most 2^53 - 1.
+        let trusted_version = root["signed"]["version"].as_u64().unwrap_or(1);
+        check_signed_text("root", trusted_root)?;
+        for version in trusted_version + 1..=repository.root().signed.version.get() {
+            let bytes = read_role(metadata_directory, &format!("{version}.root.json"))?;
+            check_signed_text("root", &bytes)?;
+        }
+        for (role, file) in [
+            ("timestamp", "timestamp.json".to_owned()),
+            (
+                "snapshot",
+                format!(
+                    "{}.snapshot.json",
+                    repository.snapshot().signed.version.get()
+                ),
+            ),
+            ("targets", format!("{targets_version}.targets.json")),
+        ] {
+            let bytes = read_role(metadata_directory, &file)?;
+            check_signed_text(role, &bytes)?;
+        }
         let repository_id = crate::result::canonical_sha256(&root["signed"])
             .map_err(|message| invalid_metadata("", message))?;
         Ok(Self {

@@ -154,23 +154,54 @@ pub fn root(keys: &Keys) -> Value {
 }
 
 pub fn meta(envelope: &Value) -> Value {
-    let bytes = canonical(envelope);
+    meta_of(&envelope["signed"]["version"], &canonical(envelope))
+}
+
+fn meta_of(version: &Value, bytes: &[u8]) -> Value {
     json!({
-        "version": envelope["signed"]["version"],
+        "version": version,
         "length": bytes.len(),
-        "hashes": { "sha256": Sha256::of_bytes(&bytes).to_string() }
+        "hashes": { "sha256": Sha256::of_bytes(bytes).to_string() }
     })
 }
 
-/// Re-link and re-sign the snapshot and timestamp over the set's current
-/// targets metadata, with the fixture keys. The targets role is not re-signed.
+/// The bytes a runner serves for `role` of a metadata set: the canonical
+/// bytes of its envelope, with a trust case's `replace-role-text`
+/// replacement applied, if it has one.
+pub fn served(set: &Value, role: &str) -> Vec<u8> {
+    let bytes = canonical(&set[role]);
+    match set
+        .get("replaceRoleText")
+        .and_then(|changes| changes.get(role))
+    {
+        Some(change) => String::from_utf8(bytes)
+            .expect("canonical bytes are UTF-8")
+            .replacen(
+                change["find"].as_str().unwrap(),
+                change["replace"].as_str().unwrap(),
+                1,
+            )
+            .into_bytes(),
+        None => bytes,
+    }
+}
+
+/// Re-link and re-sign the snapshot and timestamp over the bytes served for
+/// the set's current targets and snapshot, with the fixture keys. The
+/// targets role is not re-signed.
 pub fn relink(set: &mut Value) {
     let keys = Keys::derive();
     let mut snapshot = set["snapshot"]["signed"].clone();
-    snapshot["meta"]["targets.json"] = meta(&set["targets"]);
+    snapshot["meta"]["targets.json"] = meta_of(
+        &set["targets"]["signed"]["version"],
+        &served(set, "targets"),
+    );
     set["snapshot"] = sign(snapshot, &[&keys.snapshot]);
     let mut timestamp = set["timestamp"]["signed"].clone();
-    timestamp["meta"]["snapshot.json"] = meta(&set["snapshot"]);
+    timestamp["meta"]["snapshot.json"] = meta_of(
+        &set["snapshot"]["signed"]["version"],
+        &served(set, "snapshot"),
+    );
     set["timestamp"] = sign(timestamp, &[&keys.timestamp]);
 }
 
@@ -183,8 +214,97 @@ pub struct Target {
 
 pub type Targets = BTreeMap<String, Target>;
 
+/// The canonical JSON that securesystemslib's `encode_canonical` (python-tuf)
+/// writes: object members sorted by their raw keys, strings not normalized,
+/// and only `"` and `\` escaped. It differs from this profile's encoding in
+/// key order when a key is a prefix of another followed by a character below
+/// `"`, or contains `"` or `\`, and in NFC.
+pub fn reference_tuf_canonical(value: &Value) -> Vec<u8> {
+    fn string(text: &str, out: &mut Vec<u8>) {
+        out.push(b'"');
+        for character in text.chars() {
+            if character == '"' || character == '\\' {
+                out.push(b'\\');
+            }
+            let mut buffer = [0; 4];
+            out.extend_from_slice(character.encode_utf8(&mut buffer).as_bytes());
+        }
+        out.push(b'"');
+    }
+    fn write(value: &Value, out: &mut Vec<u8>) {
+        match value {
+            Value::Null => out.extend_from_slice(b"null"),
+            Value::Bool(flag) => out.extend_from_slice(flag.to_string().as_bytes()),
+            Value::Number(number) => out.extend_from_slice(number.to_string().as_bytes()),
+            Value::String(text) => string(text, out),
+            Value::Array(items) => {
+                out.push(b'[');
+                for (position, item) in items.iter().enumerate() {
+                    if position > 0 {
+                        out.push(b',');
+                    }
+                    write(item, out);
+                }
+                out.push(b']');
+            }
+            Value::Object(members) => {
+                let mut sorted: Vec<_> = members.iter().collect();
+                sorted.sort_by(|left, right| left.0.cmp(right.0));
+                out.push(b'{');
+                for (position, (key, member)) in sorted.into_iter().enumerate() {
+                    if position > 0 {
+                        out.push(b',');
+                    }
+                    string(key, out);
+                    out.push(b':');
+                    write(member, out);
+                }
+                out.push(b'}');
+            }
+        }
+    }
+    let mut out = Vec::new();
+    write(value, &mut out);
+    out
+}
+
+/// Sign `signed` over the bytes `encode` gives for it.
+fn sign_encoded(signed: Value, keys: &[&FixtureKey], encode: fn(&Value) -> Vec<u8>) -> Value {
+    let message = encode(&signed);
+    let signatures = keys
+        .iter()
+        .map(|key| {
+            json!({
+                "keyid": key.key_id(),
+                "sig": hex(&key.signing.sign(&message).to_bytes())
+            })
+        })
+        .collect::<Vec<_>>();
+    json!({ "signatures": signatures, "signed": signed })
+}
+
 /// Sign a complete metadata set (targets, snapshot, timestamp) at `version`.
 pub fn metadata(keys: &Keys, targets: &Targets, version: u64, timestamp_expires: &str) -> Value {
+    metadata_with(
+        keys,
+        targets,
+        version,
+        timestamp_expires,
+        &|_| {},
+        canonical,
+    )
+}
+
+/// A metadata set whose targets `signed` object `edit` changes before it is
+/// signed over the bytes `encode` gives for it.
+pub fn metadata_with(
+    keys: &Keys,
+    targets: &Targets,
+    version: u64,
+    timestamp_expires: &str,
+    edit: &dyn Fn(&mut Value),
+    encode: fn(&Value) -> Vec<u8>,
+) -> Value {
     // Publication refuses a target path that is not NFC: the canonical
     // encoder would otherwise sign it under its NFC spelling.
     for path in targets.keys() {
@@ -203,16 +323,15 @@ pub fn metadata(keys: &Keys, targets: &Targets, version: u64, timestamp_expires:
             (path.clone(), entry)
         })
         .collect::<serde_json::Map<_, _>>();
-    let targets = sign(
-        json!({
-            "_type": "targets",
-            "spec_version": SPEC_VERSION,
-            "version": version,
-            "expires": NEVER,
-            "targets": entries
-        }),
-        &[&keys.targets],
-    );
+    let mut targets_signed = json!({
+        "_type": "targets",
+        "spec_version": SPEC_VERSION,
+        "version": version,
+        "expires": NEVER,
+        "targets": entries
+    });
+    edit(&mut targets_signed);
+    let targets = sign_encoded(targets_signed, &[&keys.targets], encode);
     let snapshot = sign(
         json!({
             "_type": "snapshot",
@@ -1234,6 +1353,17 @@ pub fn revoked(targets: &Targets) -> Targets {
     revoked
 }
 
+/// Custom members whose key order differs between this profile's canonical
+/// JSON and the reference TUF implementation's.
+fn key_order_custom(signed: &mut Value) {
+    signed["targets"][NON_ASCII_TARGET]["custom"] = json!({
+        "morphir": {
+            "keyOrder": { "a b": 2, "a": 1 },
+            "keyOrderQuote": { "a#": 1, "a\"": 2 }
+        }
+    });
+}
+
 /// Build the complete repository fixture document.
 pub fn fixture() -> Value {
     let keys = Keys::derive();
@@ -1256,6 +1386,19 @@ pub fn fixture() -> Value {
         "metadata": metadata(&keys, &targets, 1, NEVER),
         "learnedRevocation": metadata(&keys, &revoked(&targets), 2, NEVER),
         "recipeRevocation": metadata(&keys, &recipe_revoked(&targets), 2, NEVER),
+        // Signed text the profile accepts, and variants it refuses. Each puts
+        // its members into the non-ASCII notes target's entry.
+        "customText": metadata_with(&keys, &targets, 2, NEVER, &|signed| {
+            signed["targets"][NON_ASCII_TARGET]["custom"] = json!({ "morphir": { "label": "café" } });
+        }, canonical),
+        "caseVariantMember": metadata_with(&keys, &targets, 2, NEVER, &|signed| {
+            let length = signed["targets"][NON_ASCII_TARGET]["length"].clone();
+            signed["targets"][NON_ASCII_TARGET]["Length"] = length;
+        }, canonical),
+        "keyOrder": metadata_with(&keys, &targets, 2, NEVER, &key_order_custom, canonical),
+        "keyOrderReferenceTuf": metadata_with(
+            &keys, &targets, 2, NEVER, &key_order_custom, reference_tuf_canonical,
+        ),
         "rejectionMetadata": {
             "expiredTimestamp": metadata(&keys, &targets, 2, "2020-01-01T00:00:00Z")["timestamp"]
         },
