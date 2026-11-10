@@ -89,9 +89,9 @@ jobs:
               - 'website/static/schemas/toolset-recipe-*.schema.json'
               - 'website/static/schemas/toolchain-*.schema.json'
               - 'website/static/schemas/morphirup-result-*.schema.json'
-              # the fixed F# readiness workflow case and the IR schema its expected IR is checked against
+              # the fixed F# readiness workflow case; the docs job validates its
+              # expected IR against the IR v4 schema
               - 'spec/toolchain/**'
-              - 'website/static/schemas/morphir-ir-v4.json'
               # the narrative's examples, links and diagrams are checked by that crate's tests
               - 'docs/design/proposals/toolchain-acquisition.md'
               - 'docs/design/proposals/index.md'
@@ -138,6 +138,8 @@ jobs:
               - 'spec/package/**'
               - 'spec/workbench/**'
               - 'spec/conceptual/**'
+              # examples:validate checks the readiness workflow case's expected IR
+              - 'spec/toolchain/**'
               # the tracked IR fixtures and the corpus generator are validated
               # in the docs job, and the mise tasks define what that job runs
               - 'tests/bdd/fixtures/**'

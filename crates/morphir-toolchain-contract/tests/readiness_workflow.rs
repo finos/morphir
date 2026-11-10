@@ -100,21 +100,29 @@ fn the_expected_ir_is_well_formed_for_its_declared_version() {
     let tuple_version =
         semver::Version::parse(compile["modelTuple"]["irVersion"].as_str().unwrap()).unwrap();
     assert_eq!(ir["formatVersion"], json!(tuple_version.major));
+    assert_eq!(ir["formatVersion"], 4, "the IR v4 shape is checked here");
+    // The IR v4 schema itself is applied by `mise run examples:validate` in the
+    // docs job, which runs for schema changes and for changes to this case.
+    // Here: an IR v4 library distribution of this package and its modules.
+    let distribution = ir["distribution"].as_object().expect("a distribution");
     assert_eq!(
-        ir["formatVersion"], 4,
-        "only the IR v4 schema is checked here"
+        distribution.keys().collect::<Vec<_>>(),
+        ["Library"],
+        "a library distribution"
     );
-    let schema = json(&root().join("website/static/schemas/morphir-ir-v4.json"));
-    let validator = jsonschema::validator_for(&schema).expect("IR v4 schema compiles");
-    let errors = validator
-        .iter_errors(&ir)
-        .map(|error| format!("{error} at {}", error.instance_path))
+    let library = &distribution["Library"];
+    assert_eq!(library["packageName"], case["package"]["name"]);
+    assert!(library["dependencies"].is_object());
+    let modules = library["def"]["modules"].as_object().expect("a module map");
+    // The exposed modules here are single words, whose IR v4 module names are
+    // their lowercase spelling.
+    let exposed = case["package"]["exposedModules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|module| module.as_str().unwrap().to_lowercase())
         .collect::<Vec<_>>();
-    assert!(errors.is_empty(), "{errors:?}");
-    assert_eq!(
-        ir["distribution"]["Library"]["packageName"],
-        case["package"]["name"]
-    );
+    assert_eq!(modules.keys().cloned().collect::<Vec<_>>(), exposed);
     // The provenance names the corpus variant the case reuses.
     let provenance = &ir_entry["provenance"];
     assert_eq!(provenance["commit"], case["basis"]["commit"]);

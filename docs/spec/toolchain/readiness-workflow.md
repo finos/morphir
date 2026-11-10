@@ -113,7 +113,7 @@ A runner in morphir-dotnet reads the case as follows:
 
 ## Checks in this repository
 
-`crates/morphir-toolchain-contract/tests/readiness_workflow.rs` checks the data only. It validates `case.json` against its schema; checks that every listed file is at a portable path inside the case directory and has its stated SHA-256; checks that the expected IR's `formatVersion` matches the declared value and the tuple's IR major version, and that it follows the [IR v4 schema](/schemas/morphir-ir-v4.json); checks that every tuple, protocol version, built-in identity and model input matches the signed F# recipe fixture; checks that the qualified receipt fixture names this workflow; and checks that pending steps list no files. It generates and regenerates nothing.
+`crates/morphir-toolchain-contract/tests/readiness_workflow.rs` checks the data only. It validates `case.json` against its schema; checks that every listed file is at a portable path inside the case directory and has its stated SHA-256; checks that the expected IR's `formatVersion` matches the declared value and the tuple's IR major version, and that it is an IR v4 library distribution of this package with its exposed modules; checks that every tuple, protocol version, built-in identity and model input matches the signed F# recipe fixture; checks that the qualified receipt fixture names this workflow; and checks that pending steps list no files. It generates and regenerates nothing. The docs job's `mise run examples:validate` validates the expected IR against the [IR v4 schema](/schemas/morphir-ir-v4.json); it runs whenever that schema or this case changes.
 
 ```sh
 cargo test --locked --package morphir-toolchain-contract --test readiness_workflow
