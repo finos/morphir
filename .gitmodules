@@ -26,3 +26,6 @@
 [submodule "ecosystem/morphir-gleam"]
 	path = ecosystem/morphir-gleam
 	url = https://github.com/finos/morphir-gleam.git
+[submodule "ecosystem/morphir-dotnet"]
+	path = ecosystem/morphir-dotnet
+	url = https://github.com/finos/morphir-dotnet.git
