@@ -23,7 +23,6 @@
         "toolId": "morphir-dotnet-native-aot"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],
@@ -90,7 +89,6 @@
         "toolId": "morphir-dotnet-self-contained"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],
@@ -108,6 +106,17 @@
         }
       ],
       "builtIns": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
         {
           "operation": "generate",
           "target": "fsharp",
@@ -157,7 +166,6 @@
         "toolId": "morphir-dotnet-framework-dependent"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],
@@ -183,6 +191,17 @@
         }
       ],
       "builtIns": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
         {
           "operation": "generate",
           "target": "fsharp",
@@ -233,7 +252,6 @@
         "command": "dotnet-morphir"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],
@@ -256,6 +274,17 @@
         }
       ],
       "builtIns": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
         {
           "operation": "generate",
           "target": "fsharp",
@@ -306,7 +335,7 @@
       "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
       "descriptorSha256": "af16efdc13f1abb21af3a23a18ecbdad914a6ee3d325e98bd91a0ed89e530bd2",
-      "protocolVersion": "0.1",
+      "protocolVersion": "0.2.0-draft.1",
       "modelTuple": {
         "operation": "morphir.frontend.compileModel",
         "profile": "morphir-ir",
@@ -352,6 +381,11 @@
           "artifactTarget": "extensions/fsharp-frontend/0.6.0/linux-arm64.zip",
           "artifactSha256": "631ad7bf9a254a0f165e6466520b0839bfc69756fd640c000e5cb05968c81e2c"
         }
+      },
+      "modelInput": {
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "irVersion": "4.0.0"
       }
     },
     {

@@ -11,7 +11,7 @@
 use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::envelope::CONTRACT_VERSION;
 use crate::ids::{PresetId, Sha256, TargetDigest, TargetPath};
-use crate::model::{Operation, Protocol};
+use crate::model::Operation;
 use crate::platform::PlatformId;
 use crate::reader::{index, join};
 use crate::recipe::{HostSource, RecipeDelivery, RecipeProvider, ToolsetRecipe};
@@ -771,17 +771,11 @@ fn check_capabilities(
         ));
     }
     let protocol = provider.delivery().protocol();
-    if !claims
-        .protocol_versions
-        .iter()
-        .any(|version| version == protocol.version().as_str())
-    {
+    let wanted_version = protocol.version().to_string();
+    if !claims.protocol_versions.contains(&wanted_version) {
         return Err(mismatch(
             "protocolVersion",
-            format!(
-                "the artifact does not claim MEP {}",
-                protocol.version().as_str()
-            ),
+            format!("the artifact does not claim MEP {wanted_version}"),
         ));
     }
     let capability = claims.capabilities.get(kind).cloned().unwrap_or_default();
@@ -809,42 +803,24 @@ fn check_capabilities(
             format!("the artifact's {kind} claims do not include this {member}"),
         ));
     }
-    match protocol {
-        Protocol::ModelTransport(tuple) => {
-            let wanted = serde_json::json!({
-                "operation": tuple.operation().model_method(),
-                "profile": tuple.profile().as_str(),
-                "codec": tuple.codec().as_str(),
-                "envelopeVersion": tuple.envelope_version().to_string(),
-                "irVersion": tuple.ir_version().to_string()
-            });
-            let claimed = claims
-                .capabilities
-                .get("modelTransport")
-                .and_then(|transport| transport["tuples"].as_array().cloned())
-                .unwrap_or_default();
-            if !claimed.contains(&wanted) {
-                return Err(mismatch(
-                    "modelTuple",
-                    "the artifact does not claim this exact model tuple".into(),
-                ));
-            }
-        }
-        Protocol::Legacy(input) => {
-            let full = input.ir_version.to_string();
-            let major = input.ir_version.major.to_string();
-            let claimed = capability["irVersions"].as_array().is_some_and(|versions| {
-                versions
-                    .iter()
-                    .any(|version| version == &full || version == &major)
-            });
-            if !claimed {
-                return Err(mismatch(
-                    "modelInput.irVersion",
-                    format!("the artifact does not claim IR {full}"),
-                ));
-            }
-        }
+    let tuple = protocol.tuple();
+    let wanted = serde_json::json!({
+        "operation": tuple.operation().model_method(),
+        "profile": tuple.profile().as_str(),
+        "codec": tuple.codec().as_str(),
+        "envelopeVersion": tuple.envelope_version().to_string(),
+        "irVersion": tuple.ir_version().to_string()
+    });
+    let claimed = claims
+        .capabilities
+        .get("modelTransport")
+        .and_then(|transport| transport["tuples"].as_array().cloned())
+        .unwrap_or_default();
+    if !claimed.contains(&wanted) {
+        return Err(mismatch(
+            "modelTuple",
+            "the artifact does not claim this exact model tuple".into(),
+        ));
     }
     Ok(())
 }

@@ -169,6 +169,61 @@
     },
     {
       "contract": "lock",
+      "document": "lock/protocol-version-later-prerelease.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/protocol-version-final.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/protocol-version-patch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.1.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.1.0.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.3.0-draft.1.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.3.0.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-1.0.0.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
       "document": "lock/negative/draft-2.json",
       "expected": {
         "code": "unsupported_contract_version",
@@ -353,12 +408,19 @@
     },
     {
       "contract": "recipe",
-      "document": "recipe/negative/legacy-protocol-with-model-tuple.json",
+      "document": "recipe/negative/protocol-version-0.1.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/external-provider-with-model-input.json",
       "expected": {
         "code": "inconsistent_document",
-        "path": "providers[0].modelTuple"
-      },
-      "schema": "rejects"
+        "path": "providers[0].modelInput"
+      }
     },
     {
       "contract": "recipe",
@@ -2099,6 +2161,108 @@
       "start": "workspace/pricing",
       "expected": {
         "request": null
+      }
+    },
+    {
+      "name": "mep version: the first draft of MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0-draft.1",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a later prerelease of MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0-draft.2",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a release candidate of MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0-rc.1",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: the final MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a later patch release on the 0.2 line",
+      "kind": "mep-version",
+      "version": "0.2.3",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: the legacy MEP 0.1 spelling",
+      "kind": "mep-version",
+      "version": "0.1",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: MEP 0.1.0",
+      "kind": "mep-version",
+      "version": "0.1.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a prerelease of a later patch on the 0.2 line",
+      "kind": "mep-version",
+      "version": "0.2.1-rc.1",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a draft of MEP 0.3.0",
+      "kind": "mep-version",
+      "version": "0.3.0-draft.1",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: MEP 0.3.0",
+      "kind": "mep-version",
+      "version": "0.3.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: MEP 1.0.0",
+      "kind": "mep-version",
+      "version": "1.0.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a 0.2 version with build metadata",
+      "kind": "mep-version",
+      "version": "0.2.0+build.1",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a 0.2 version in non-canonical spelling",
+      "kind": "mep-version",
+      "version": "v0.2.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
       }
     }
   ]

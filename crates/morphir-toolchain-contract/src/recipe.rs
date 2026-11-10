@@ -13,7 +13,7 @@ use crate::ids::{
     CommandName, DeploymentId, ExtensionIdentity, ImplementationId, PackageId, PresetId,
     ProtocolVersion, Sha256, TargetDigest, WasmAbi,
 };
-use crate::model::{self, DeliveryKind, ModelInput, Operation, Prerequisite, Protocol};
+use crate::model::{self, DeliveryKind, ModelFormat, Operation, Prerequisite, Protocol};
 use crate::platform::{Os, PlatformId};
 use crate::reader::{Node, Obj, inconsistent, index, join};
 use morphir_distribution::ToolId;
@@ -109,7 +109,7 @@ pub struct BuiltIn {
     operation: Operation,
     extension_id: ExtensionIdentity,
     version: Version,
-    model: ModelInput,
+    model: ModelFormat,
 }
 
 impl BuiltIn {
@@ -127,7 +127,7 @@ impl BuiltIn {
     }
     /// The model it exchanges with the host: the model a `generate` built-in
     /// reads (`modelInput`) or a `compile` built-in writes (`modelOutput`).
-    pub fn model(&self) -> &ModelInput {
+    pub fn model(&self) -> &ModelFormat {
         &self.model
     }
 }
@@ -514,8 +514,7 @@ impl Misfit {
     pub(crate) fn describe(&self, provider: &RecipeProvider) -> String {
         match self {
             Self::Protocol(version) => format!(
-                "the host does not speak MEP {} required by {}",
-                version.as_str(),
+                "the host does not speak MEP {version} required by {}",
                 provider.extension_id
             ),
             Self::Platform(platform) => format!(
@@ -541,8 +540,8 @@ pub(crate) fn provider_fits(
     platform: Option<PlatformId>,
 ) -> std::result::Result<(), Misfit> {
     let protocol = provider.delivery.protocol().version();
-    if !host.protocol_versions.contains(&protocol) {
-        return Err(Misfit::Protocol(protocol));
+    if !host.protocol_versions.contains(protocol) {
+        return Err(Misfit::Protocol(protocol.clone()));
     }
     match &provider.delivery {
         RecipeDelivery::Process { platforms, .. } => match platform {

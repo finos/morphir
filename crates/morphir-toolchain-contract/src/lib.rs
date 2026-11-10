@@ -56,7 +56,7 @@ pub use ids::{
 };
 pub use lock::{LockedHost, PlatformClosure, RequestChangeCause, ToolchainLock, read_lock};
 pub use model::{
-    DeliveryKind, LockedDelivery, LockedProvider, ModelInput, ModelTuple, Operation, Prerequisite,
+    DeliveryKind, LockedDelivery, LockedProvider, ModelFormat, ModelTuple, Operation, Prerequisite,
     Protocol, RecipeRef, SdkPhase,
 };
 pub use platform::{Arch, Os, PlatformId};

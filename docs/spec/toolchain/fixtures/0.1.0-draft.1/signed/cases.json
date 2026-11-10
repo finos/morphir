@@ -498,20 +498,6 @@
       "expected": "valid"
     },
     {
-      "name": "a MEP 0.1 frontend whose claims list the IR major version binds",
-      "recipe": "toolchains/recipes/legacy-ir-major/1.0.0.json",
-      "expected": "valid"
-    },
-    {
-      "name": "a MEP 0.1 frontend whose claims lack the IR version is refused",
-      "rule": "provider-claims-model",
-      "recipe": "toolchains/recipes/negative-legacy-ir-version/1.0.0.json",
-      "expected": {
-        "code": "release_descriptor_mismatch",
-        "path": "providers[0].modelInput.irVersion"
-      }
-    },
-    {
       "name": "a provider that names another repository is refused",
       "rule": "provider-repository",
       "recipe": "toolchains/recipes/negative-provider-repository/1.0.0.json",
@@ -895,7 +881,7 @@
       "expected": {
         "lockEqualsResolution": true,
         "requestSha256": "27b50b72893ec4150bf6faf7d15c4b765e765040b9d118841e8cd50783f0168d",
-        "recipeSha256": "1e9f8eea2f489f3d1feb1d42cc2d197609517050e578f8dc3fd38d8aab09eb63",
+        "recipeSha256": "717f32a8df8d187af96ae27feb01420f1eb6ace57a39476234676ba8913b5fb2",
         "platforms": [
           "win-x64",
           "win-arm64",
@@ -913,7 +899,7 @@
       "expected": {
         "lockEqualsResolution": true,
         "requestSha256": "c7ba6ffcee4849885baf99d9b18fbb9a4a4c1096117473264fc9c7050bc7b22f",
-        "recipeSha256": "1e9f8eea2f489f3d1feb1d42cc2d197609517050e578f8dc3fd38d8aab09eb63",
+        "recipeSha256": "717f32a8df8d187af96ae27feb01420f1eb6ace57a39476234676ba8913b5fb2",
         "platforms": [
           "win-x64",
           "win-arm64",
@@ -931,7 +917,7 @@
       "expected": {
         "lockEqualsResolution": true,
         "requestSha256": "435127e4a6317af8eca632f3f1f3b74f8cb3546d462c12660c641240c5bd05b9",
-        "recipeSha256": "1e9f8eea2f489f3d1feb1d42cc2d197609517050e578f8dc3fd38d8aab09eb63",
+        "recipeSha256": "717f32a8df8d187af96ae27feb01420f1eb6ace57a39476234676ba8913b5fb2",
         "platforms": [
           "win-x64",
           "win-arm64",
@@ -949,7 +935,7 @@
       "expected": {
         "lockEqualsResolution": true,
         "requestSha256": "1745807f06a03ab7c1f5f85adfbfd83ab0d5b7c35e93c45c6ce5f7a7b81d6304",
-        "recipeSha256": "1e9f8eea2f489f3d1feb1d42cc2d197609517050e578f8dc3fd38d8aab09eb63",
+        "recipeSha256": "717f32a8df8d187af96ae27feb01420f1eb6ace57a39476234676ba8913b5fb2",
         "platforms": [
           "win-x64",
           "win-arm64",

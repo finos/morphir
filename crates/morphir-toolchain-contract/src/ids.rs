@@ -6,7 +6,7 @@
 //! do not have.
 
 use morphir_distribution::{RelativeArtifactPath, Sha256Digest};
-use semver::{Comparator, Version};
+use semver::{Comparator, Version, VersionReq};
 use std::fmt;
 
 fn portable_token(value: &str) -> bool {
@@ -290,34 +290,56 @@ pub fn comparator(value: &str) -> Result<Comparator, String> {
         .map_err(|error| format!("'{value}' is not a SemVer comparator: {error}"))
 }
 
-/// A MEP protocol version. MEP keeps the legacy `0.1` spelling until its next
-/// protocol change; `0.2.0-draft.1` is the SemVer draft adding model transport.
+/// A MEP protocol version on the supported 0.2 line: every prerelease of
+/// `0.2.0` and every final `0.2.x`, in canonical SemVer spelling and without
+/// build metadata. MEP `0.1` is not supported. Admitting every prerelease of
+/// `0.2.0` is a maintainer exception, for MEP only, to the rule that a
+/// prerelease matches only exactly.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ProtocolVersion {
-    /// The legacy `0.1` handshake and JSON compile/generate shapes.
-    Legacy,
-    /// MEP `0.2.0-draft.1`, which admits the model transport methods.
-    ModelTransportDraft1,
-}
+pub struct ProtocolVersion(Version);
 
 impl ProtocolVersion {
-    /// Parse a MEP version this contract knows.
+    /// The supported set as single comparators. They mean that set under the
+    /// prerelease rule of the `semver` crate and `@std/semver`: a prerelease
+    /// version matches only when a comparator names the same major, minor and
+    /// patch with a prerelease. That rule is what keeps `0.2.1-rc.1` out.
+    pub const SUPPORTED: [&'static str; 2] = [">=0.2.0-0", "<0.3.0-0"];
+
+    /// Parse a MEP version on the supported 0.2 line.
     pub fn parse(value: &str) -> Result<Self, String> {
-        match value {
-            "0.1" => Ok(Self::Legacy),
-            "0.2.0-draft.1" => Ok(Self::ModelTransportDraft1),
-            other => Err(format!(
-                "MEP version '{other}' is not known to this reader; expected 0.1 or 0.2.0-draft.1"
-            )),
+        let outside = |detail: String| {
+            format!(
+                "MEP version '{value}' is not on the supported 0.2 line (every prerelease of 0.2.0 and every final 0.2.x): {detail}"
+            )
+        };
+        let version = exact_version(value).map_err(outside)?;
+        if !version.build.is_empty() {
+            return Err(outside("a MEP version carries no build metadata".into()));
         }
+        let supported = VersionReq {
+            comparators: Self::SUPPORTED
+                .iter()
+                .map(|text| Comparator::parse(text).expect("the supported comparators parse"))
+                .collect(),
+        };
+        if !supported.matches(&version) {
+            return Err(outside(format!(
+                "it does not satisfy {}",
+                Self::SUPPORTED.join(" and ")
+            )));
+        }
+        Ok(Self(version))
     }
 
-    /// Return the MEP spelling.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Legacy => "0.1",
-            Self::ModelTransportDraft1 => "0.2.0-draft.1",
-        }
+    /// The version.
+    pub fn version(&self) -> &Version {
+        &self.0
+    }
+}
+
+impl fmt::Display for ProtocolVersion {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
     }
 }
 

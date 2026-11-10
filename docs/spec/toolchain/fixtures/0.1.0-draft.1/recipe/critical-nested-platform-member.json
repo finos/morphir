@@ -26,7 +26,6 @@
         "toolId": "morphir-dotnet-native-aot"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],
@@ -93,7 +92,6 @@
         "toolId": "morphir-dotnet-self-contained"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],
@@ -160,7 +158,6 @@
         "toolId": "morphir-dotnet-framework-dependent"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],
@@ -236,7 +233,6 @@
         "command": "dotnet-morphir"
       },
       "protocolVersions": [
-        "0.1",
         "0.2.0-draft.1"
       ],
       "wasmAbis": [],

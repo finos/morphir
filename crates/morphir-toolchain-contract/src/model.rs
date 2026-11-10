@@ -111,9 +111,13 @@ impl ModelTuple {
     }
 }
 
-/// The model input of a built-in or legacy provider.
+/// The model a built-in provider exchanges with its host in process: the
+/// model a `generate` built-in reads (`modelInput`) or the model a `compile`
+/// built-in writes (`modelOutput`). A built-in has no MEP session, so it has
+/// no model transport tuple; this is what readiness and the capability check
+/// compare instead.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModelInput {
+pub struct ModelFormat {
     /// Model profile.
     pub profile: ModelToken,
     /// Model codec.
@@ -122,30 +126,28 @@ pub struct ModelInput {
     pub ir_version: Version,
 }
 
-/// How an external provider negotiates with its host.
+/// How an external provider negotiates with its host: one MEP version on
+/// the supported 0.2 line and one exact model transport tuple.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Protocol {
-    /// MEP `0.1` with the legacy JSON shapes and a declared model input.
-    Legacy(ModelInput),
-    /// MEP `0.2.0-draft.1` with one exact model transport tuple.
-    ModelTransport(ModelTuple),
+pub struct Protocol {
+    version: ProtocolVersion,
+    tuple: ModelTuple,
 }
 
 impl Protocol {
-    /// The MEP version this protocol case requires.
-    pub fn version(&self) -> ProtocolVersion {
-        match self {
-            Self::Legacy(_) => ProtocolVersion::Legacy,
-            Self::ModelTransport(_) => ProtocolVersion::ModelTransportDraft1,
-        }
+    /// The MEP version the provider speaks.
+    pub fn version(&self) -> &ProtocolVersion {
+        &self.version
+    }
+
+    /// The model transport tuple the provider supports.
+    pub fn tuple(&self) -> &ModelTuple {
+        &self.tuple
     }
 
     /// The semantic IR version the provider reads or writes.
     pub fn ir_version(&self) -> &Version {
-        match self {
-            Self::Legacy(input) => &input.ir_version,
-            Self::ModelTransport(tuple) => &tuple.ir_version,
-        }
+        &self.tuple.ir_version
     }
 }
 
@@ -239,7 +241,7 @@ pub enum LockedDelivery {
         /// The model format the built-in exchanges with the host: the model a
         /// `generate` built-in reads (`modelInput`), or the model a `compile`
         /// built-in writes (`modelOutput`).
-        model: ModelInput,
+        model: ModelFormat,
     },
     /// A process guest from an extension release descriptor.
     Process {
@@ -399,9 +401,9 @@ pub(crate) fn recipe_ref(node: Node<'_>) -> Result<RecipeRef> {
     })
 }
 
-pub(crate) fn model_input(node: Node<'_>) -> Result<ModelInput> {
+pub(crate) fn model_format(node: Node<'_>) -> Result<ModelFormat> {
     let object = node.object()?;
-    Ok(ModelInput {
+    Ok(ModelFormat {
         profile: object.req("profile", token(ModelToken::parse))?,
         codec: object.req("codec", token(ModelToken::parse))?,
         ir_version: object.req("irVersion", version)?,
@@ -411,7 +413,7 @@ pub(crate) fn model_input(node: Node<'_>) -> Result<ModelInput> {
 /// The model member of a built-in provider: `modelOutput` for a `compile`
 /// built-in, which writes the model, and `modelInput` for a `generate`
 /// built-in, which reads it. The other member is refused.
-pub(crate) fn built_in_model(object: &Obj<'_>, operation: &Operation) -> Result<ModelInput> {
+pub(crate) fn built_in_model(object: &Obj<'_>, operation: &Operation) -> Result<ModelFormat> {
     let (wanted, other) = match operation {
         Operation::Compile { .. } => ("modelOutput", "modelInput"),
         Operation::Generate { .. } => ("modelInput", "modelOutput"),
@@ -422,7 +424,7 @@ pub(crate) fn built_in_model(object: &Obj<'_>, operation: &Operation) -> Result<
             format!("a built-in for this operation declares {wanted}, not {other}"),
         ));
     }
-    object.req(wanted, model_input)
+    object.req(wanted, model_format)
 }
 
 fn model_tuple(node: Node<'_>, provider: &Operation) -> Result<ModelTuple> {
@@ -459,33 +461,27 @@ fn model_tuple(node: Node<'_>, provider: &Operation) -> Result<ModelTuple> {
     })
 }
 
-/// Read `protocolVersion` with exactly the compatibility member it requires.
+/// Read an external provider's `protocolVersion` and `modelTuple`. Only a
+/// built-in declares `modelInput` or `modelOutput`, so an external provider
+/// with either is refused.
 pub(crate) fn protocol(object: &Obj<'_>, provider: &Operation) -> Result<Protocol> {
-    let protocol_version = object.req("protocolVersion", |node| {
+    let version = object.req("protocolVersion", |node| {
         node.parse(Code::UnsupportedCase, ProtocolVersion::parse)
     })?;
-    match protocol_version {
-        ProtocolVersion::Legacy => {
-            if object.has("modelTuple") {
-                return Err(inconsistent(
-                    object.member_path("modelTuple"),
-                    "MEP 0.1 never enables model transport; declare modelInput instead",
-                ));
-            }
-            Ok(Protocol::Legacy(object.req("modelInput", model_input)?))
-        }
-        ProtocolVersion::ModelTransportDraft1 => {
-            if object.has("modelInput") {
-                return Err(inconsistent(
-                    object.member_path("modelInput"),
-                    "MEP 0.2.0-draft.1 providers declare one modelTuple",
-                ));
-            }
-            Ok(Protocol::ModelTransport(
-                object.req("modelTuple", |node| model_tuple(node, provider))?,
-            ))
+    for member in ["modelInput", "modelOutput"] {
+        if object.has(member) {
+            return Err(inconsistent(
+                object.member_path(member),
+                format!(
+                    "only a built-in declares {member}; a MEP provider declares one modelTuple"
+                ),
+            ));
         }
     }
+    Ok(Protocol {
+        version,
+        tuple: object.req("modelTuple", |node| model_tuple(node, provider))?,
+    })
 }
 
 #[derive(Clone, Copy)]

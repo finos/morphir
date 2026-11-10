@@ -6,8 +6,9 @@
 //! `valid` or the exact diagnostic code and member path a reader reports.
 
 use morphir_toolchain_contract::{
-    Code, Operation, PlatformId, canonical_json, canonical_sha256, discover_request, read_lock,
-    read_receipt, read_recipe, read_request, read_result, resolve_closure, understood,
+    Code, Operation, PlatformId, ProtocolVersion, canonical_json, canonical_sha256,
+    discover_request, read_lock, read_receipt, read_recipe, read_request, read_result,
+    resolve_closure, understood,
 };
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -180,6 +181,17 @@ fn every_binding_case_matches_the_reference_checks() {
     let mut failures = Vec::new();
     for case in cases()["bindings"].as_array().expect("binding cases") {
         let name = case["name"].as_str().unwrap();
+        if case["kind"] == "mep-version" {
+            // A MEP version on its own has no document path; a reader reports
+            // a refused one with unsupported_case at the member that holds it.
+            let actual = ProtocolVersion::parse(case["version"].as_str().unwrap())
+                .map(drop)
+                .map_err(|_| (Code::UnsupportedCase.as_str().to_owned(), String::new()));
+            if actual != expected(case) {
+                failures.push(format!("{name}: gave {actual:?}"));
+            }
+            continue;
+        }
         let file = |key: &str| read(&fixtures().join(case[key].as_str().unwrap()));
         let lock = || {
             let bytes = file("lock");

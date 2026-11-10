@@ -382,7 +382,7 @@ pub fn digest_of(targets: &Targets, path: &str) -> String {
     Sha256::of_bytes(targets[path].bytes.as_bytes()).to_string()
 }
 
-fn model_input() -> Value {
+fn model_format() -> Value {
     json!({ "profile": "morphir-ir", "codec": "morphir-json", "irVersion": "4.0.0" })
 }
 
@@ -392,7 +392,7 @@ fn built_in_generate() -> Value {
         "target": "fsharp",
         "extensionId": "morphir.fsharp",
         "version": HOST_VERSION,
-        "modelInput": model_input()
+        "modelInput": model_format()
     })
 }
 
@@ -407,7 +407,7 @@ fn built_in_compile() -> Value {
         "language": "fsharp",
         "extensionId": BUILT_IN_FRONTEND_ID,
         "version": HOST_VERSION,
-        "modelOutput": model_input()
+        "modelOutput": model_format()
     })
 }
 
@@ -458,7 +458,7 @@ fn archive_offering(targets: &Targets, offering: &Offering, on: &[PlatformId]) -
         "deployment": offering.deployment,
         "execution": if offering.deployment == "native-aot" { "native-aot" } else { "jit" },
         "source": { "kind": "tool-release", "toolId": offering.tool_id },
-        "protocolVersions": ["0.1", "0.2.0-draft.1"],
+        "protocolVersions": ["0.2.0-draft.1"],
         "wasmAbis": [],
         "prerequisites": prerequisites,
         "builtIns": built_ins(offering.deployment),
@@ -479,7 +479,7 @@ pub fn host_offerings(targets: &Targets) -> Vec<Value> {
         "deployment": "dotnet-tool",
         "execution": "jit",
         "source": { "kind": "dotnet-tool", "packageId": "Morphir.Tool", "command": "dotnet-morphir" },
-        "protocolVersions": ["0.1", "0.2.0-draft.1"],
+        "protocolVersions": ["0.2.0-draft.1"],
         "wasmAbis": [],
         "prerequisites": [runtime(), sdk()],
         "builtIns": built_ins("dotnet-tool"),
@@ -552,9 +552,6 @@ pub const BACKEND_DIR: &str = "extensions/fsharp-backend/0.1.0";
 /// A release whose descriptor lists its archive with a digest that is not
 /// the archive's.
 pub const LISTED_DIGEST_DIR: &str = "extensions/fsharp-frontend-listed-digest/0.6.0";
-/// MEP 0.1 frontends claiming IR 3 and IR 4.
-pub const LEGACY_IR3_DIR: &str = "extensions/fsharp-frontend-legacy-ir3/0.6.0";
-pub const LEGACY_IR4_DIR: &str = "extensions/fsharp-frontend-legacy-ir4/0.6.0";
 /// A portable WASM frontend release and its module.
 pub const WASM_DIR: &str = "extensions/fsharp-frontend-wasm/0.6.0";
 pub const WASM_FILE: &str = "morphir-bytes-v1.wasm";
@@ -784,16 +781,6 @@ pub fn tool_frontend_provider(targets: &Targets, repository: &str, dir: &str) ->
     })
 }
 
-/// A MEP 0.1 process frontend bound to the win-x64 archive of `dir`.
-pub fn legacy_frontend_provider(targets: &Targets, repository: &str, dir: &str) -> Value {
-    let mut provider = frontend_provider(targets, repository, dir, &[platform("win-x64")]);
-    let object = provider.as_object_mut().unwrap();
-    object.remove("modelTuple");
-    object.insert("protocolVersion".into(), json!("0.1"));
-    object.insert("modelInput".into(), model_input());
-    provider
-}
-
 /// A WASM frontend for `morphir-bytes-v1` bound to `artifact`, with the
 /// portable WASM release's descriptor.
 pub fn wasm_frontend_provider(targets: &Targets, repository: &str, artifact: &str) -> Value {
@@ -892,9 +879,9 @@ pub fn claim_variants() -> Vec<(&'static str, &'static str, &'static str, Claims
         ),
         (
             "negative-claims-protocol",
-            "extensions/fsharp-frontend-legacy-protocol/0.6.0",
+            "extensions/fsharp-frontend-other-protocol/0.6.0",
             FRONTEND_ID,
-            with(&|claims| claims.protocols = vec!["0.1"]),
+            with(&|claims| claims.protocols = vec!["0.2.0"]),
         ),
         (
             "negative-claims-identity",
@@ -1089,29 +1076,6 @@ pub fn published() -> Targets {
         &[ReleaseArtifact::Process(windows)],
         |descriptor| descriptor["artifacts"][0]["sha256"] = json!("8".repeat(64)),
     );
-    // MEP 0.1 frontends, whose claims state IR versions instead of tuples.
-    for (dir, ir_versions) in [(LEGACY_IR3_DIR, "3"), (LEGACY_IR4_DIR, "4")] {
-        let claims = Claims {
-            id: FRONTEND_ID,
-            types: vec!["frontend"],
-            protocols: vec!["0.1"],
-            capabilities: json!({
-                "frontend": {
-                    "languages": [{ "id": "fsharp", "fileExtensions": [".fs"] }],
-                    "compile": true,
-                    "irVersions": [ir_versions]
-                }
-            }),
-        };
-        add_extension_release(
-            &mut targets,
-            dir,
-            FRONTEND_ID,
-            FRONTEND_VERSION,
-            &claims,
-            &[windows],
-        );
-    }
     // A portable WASM frontend for the morphir-bytes-v1 ABI.
     add_release(
         &mut targets,
@@ -1202,12 +1166,6 @@ pub fn published() -> Targets {
         }),
         provider("negative-package-digest", &|providers| {
             providers[1]["packageSha256"] = json!("5".repeat(64));
-        }),
-        provider("legacy-ir-major", &|providers| {
-            providers[0] = legacy_frontend_provider(&targets, &repository, LEGACY_IR4_DIR);
-        }),
-        provider("negative-legacy-ir-version", &|providers| {
-            providers[0] = legacy_frontend_provider(&targets, &repository, LEGACY_IR3_DIR);
         }),
         provider("wasm-frontend", &|providers| {
             providers[0] =
@@ -1331,27 +1289,24 @@ pub const FROZEN: [(&str, &str); 4] = [
 ];
 
 fn protocol_json(entry: &mut serde_json::Map<String, Value>, protocol: &Protocol) {
-    entry.insert("protocolVersion".into(), json!(protocol.version().as_str()));
-    match protocol {
-        Protocol::Legacy(input) => {
-            entry.insert("modelInput".into(), model_input_json(input));
-        }
-        Protocol::ModelTransport(tuple) => {
-            entry.insert(
-                "modelTuple".into(),
-                json!({
-                    "operation": tuple.operation().model_method(),
-                    "profile": tuple.profile().as_str(),
-                    "codec": tuple.codec().as_str(),
-                    "envelopeVersion": tuple.envelope_version().to_string(),
-                    "irVersion": tuple.ir_version().to_string()
-                }),
-            );
-        }
-    }
+    entry.insert(
+        "protocolVersion".into(),
+        json!(protocol.version().to_string()),
+    );
+    let tuple = protocol.tuple();
+    entry.insert(
+        "modelTuple".into(),
+        json!({
+            "operation": tuple.operation().model_method(),
+            "profile": tuple.profile().as_str(),
+            "codec": tuple.codec().as_str(),
+            "envelopeVersion": tuple.envelope_version().to_string(),
+            "irVersion": tuple.ir_version().to_string()
+        }),
+    );
 }
 
-fn model_input_json(input: &morphir_toolchain_contract::ModelInput) -> Value {
+fn model_format_json(input: &morphir_toolchain_contract::ModelFormat) -> Value {
     json!({
         "profile": input.profile.as_str(),
         "codec": input.codec.as_str(),
@@ -1391,7 +1346,7 @@ pub fn provider_json(provider: &LockedProvider) -> Value {
                 Operation::Compile { .. } => "modelOutput",
                 Operation::Generate { .. } => "modelInput",
             };
-            entry.insert(member.into(), model_input_json(model));
+            entry.insert(member.into(), model_format_json(model));
         }
         LockedDelivery::Process {
             repository_id,

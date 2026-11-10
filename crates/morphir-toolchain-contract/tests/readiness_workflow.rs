@@ -193,7 +193,7 @@ fn each_delivery_has_at_most_one_provider_and_one_set_per_step() {
     }
 }
 
-fn model_json(model: &morphir_toolchain_contract::ModelInput) -> Value {
+fn model_json(model: &morphir_toolchain_contract::ModelFormat) -> Value {
     json!({
         "profile": model.profile.as_str(),
         "codec": model.codec.as_str(),
@@ -211,16 +211,14 @@ fn case_provider<'a>(step: &'a Value, delivery: &str) -> &'a Value {
 }
 
 fn tuple_json(protocol: &Protocol) -> Value {
-    match protocol {
-        Protocol::ModelTransport(tuple) => json!({
-            "operation": tuple.operation().model_method(),
-            "profile": tuple.profile().as_str(),
-            "codec": tuple.codec().as_str(),
-            "envelopeVersion": tuple.envelope_version().to_string(),
-            "irVersion": tuple.ir_version().to_string()
-        }),
-        Protocol::Legacy(_) => panic!("the F# recipe uses MEP 0.2.0-draft.1"),
-    }
+    let tuple = protocol.tuple();
+    json!({
+        "operation": tuple.operation().model_method(),
+        "profile": tuple.profile().as_str(),
+        "codec": tuple.codec().as_str(),
+        "envelopeVersion": tuple.envelope_version().to_string(),
+        "irVersion": tuple.ir_version().to_string()
+    })
 }
 
 /// Every provider a recipe can select for an operation of the case is one
@@ -253,7 +251,7 @@ fn check_recipe_against_case(recipe: &morphir_toolchain_contract::ToolsetRecipe)
         {
             let covered = case_provider(step, provider.delivery().kind().as_str());
             let protocol = provider.delivery().protocol();
-            assert_eq!(protocol.version().as_str(), covered["protocolVersion"]);
+            assert_eq!(protocol.version().to_string(), covered["protocolVersion"]);
             assert_eq!(tuple_json(protocol), covered["modelTuple"]);
         }
     }

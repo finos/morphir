@@ -91,7 +91,7 @@ All of this is required because a plan's digest covers it: every member of a pla
 
 `planSha256` is the SHA-256 of the plan's canonical JSON bytes. `--expect-plan <digest>` compares against it, and a different plan fails with `plan_changed` (`lock-binding`, `document` `result`, `path` `planSha256`; `result/setup-plan-changed.json`) before anything is changed. A result whose `planSha256` does not match its plan is `inconsistent_document` at `planSha256`.
 
-The canonical form is the OLPC canonical JSON encoding of the `olpc-cjson` encoder that the TUF client uses, which tool release metadata v1 already uses for repository identity. "OLPC canonical JSON" is not one fixed format across implementations, so the rules below govern; where another canonical JSON library differs from them, these rules apply:
+The canonical form is defined by the rules below, and this page is their authority. They are the OLPC canonical JSON that tool release metadata v1 uses for repository identity, and this repository's reference checker produces them with the `olpc-cjson` crate. "OLPC canonical JSON" is not one fixed format across implementations, so where any library, that crate included, differs from these rules, the rules apply:
 
 - There is no whitespace outside strings.
 - A string is converted to Unicode Normalization Form C and written as `"`, its UTF-8 bytes, and `"`. Only `"` and `\` are escaped, as `\"` and `\\`. Every other character is written as its own UTF-8 bytes, with no `\uXXXX` or other escape: `<`, `>`, `&`, `+`, `'`, non-ASCII characters, and the control characters U+0000 to U+001F. A line feed is therefore the single byte `0x0A`, not `\n`, and the canonical bytes are not always valid JSON; they are only hashed.

@@ -75,12 +75,12 @@ Each provider has `operation` (`compile` with `language`, or `generate` with `ta
 
 | `delivery` | Additional members |
 | --- | --- |
-| `built-in` | `modelOutput` for `compile` and `modelInput` for `generate`: the model the built-in writes or reads. The other member is `inconsistent_document` |
+| `built-in` | `modelOutput` for `compile` and `modelInput` for `generate`: the model the built-in writes or reads in process. A built-in has no MEP session and so no `modelTuple`; this model is what readiness and the capability check compare. The other member is `inconsistent_document` |
 | `process` | `repositoryId`, `descriptorTarget`, `descriptorSha256`, `artifactTarget`, `artifactSha256`, protocol members |
 | `wasm` | `abi` and the `process` members |
 | `dotnet-tool` | `repositoryId`, `descriptorTarget`, `descriptorSha256` (the release's extension descriptor, whose claims describe the guest), `packageId`, `command`, `packageTarget`, `packageSha256`, protocol members |
 
-The protocol members are `protocolVersion` and exactly one compatibility member. MEP `0.1` never enables model transport, so it carries `modelInput`. MEP `0.2.0-draft.1` carries one `modelTuple` whose five members are compared exactly, and whose `operation` is `morphir.frontend.compileModel` for `compile` and `morphir.backend.generateModel` for `generate`. Another MEP version is `unsupported_case`.
+The protocol members are `protocolVersion`, a MEP version on the [supported 0.2 line](./index.md#mep-versions), and one `modelTuple` whose five members are compared exactly, and whose `operation` is `morphir.frontend.compileModel` for `compile` and `morphir.backend.generateModel` for `generate`. A version off the line is `unsupported_case` at `protocolVersion` (`lock/negative/protocol-version-*.json`). An external provider with `modelInput` or `modelOutput`, which only a built-in has, is `inconsistent_document` at that member.
 
 For a `dotnet-tool` host offering, `hostTarget` names the authenticated package bytes.
 
@@ -124,7 +124,7 @@ The two repository rows apply the [one repository per binding check](./toolset-r
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/lock/approved-fragment.json` is the example above. `two-platforms-bound.json` adds an `osx-arm64` closure and binds `request/approved.toml` by its real digest. `dotnet-tool-host.json` locks a `dotnet-tool` host with the .NET tool frontend and binds `request/critical-understood-member.toml`. `critical-nested-provider-member.json` names a provider member as critical. `target-path-512-utf8-bytes.json` and `target-path-240-utf16-units.json` hold host targets exactly at the [target path](./index.md#target-paths) byte and code-unit limits, written with non-ASCII characters. `lock/negative/` covers:
+`fixtures/0.1.0-draft.1/lock/approved-fragment.json` is the example above. `two-platforms-bound.json` adds an `osx-arm64` closure and binds `request/approved.toml` by its real digest. `dotnet-tool-host.json` locks a `dotnet-tool` host with the .NET tool frontend and binds `request/critical-understood-member.toml`. `critical-nested-provider-member.json` names a provider member as critical. `target-path-512-utf8-bytes.json` and `target-path-240-utf16-units.json` hold host targets exactly at the [target path](./index.md#target-paths) byte and code-unit limits, written with non-ASCII characters. `protocol-version-later-prerelease.json`, `protocol-version-final.json` and `protocol-version-patch.json` are `two-platforms-bound.json` with its external providers at MEP `0.2.0-draft.2`, `0.2.0` and `0.2.3`, and `lock/negative/protocol-version-*.json` put them at `0.1`, `0.1.0`, `0.3.0-draft.1`, `0.3.0` and `1.0.0`. `lock/negative/` covers:
 
 - a later draft, an unknown critical member, an unknown nested critical member, a concrete platform key named as critical and a repeated critical path;
 - a drive path, a rooted path, a traversing path, a device-name component, a component ending in `.`, a path over 240 code units, a line separator, and non-ASCII paths one past each limit: 513 UTF-8 bytes, 241 UTF-16 code units, and a 256-byte component;

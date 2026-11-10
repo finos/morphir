@@ -26,7 +26,7 @@ A toolset recipe is an ordinary authenticated TUF target in a tool repository, f
 | `implementation`, `version`, `deployment` | The offering's identity. A recipe has one offering per implementation and deployment |
 | `execution` | `native-aot` or `jit` |
 | `source` | `{ "kind": "tool-release", "toolId": … }` or `{ "kind": "dotnet-tool", "packageId": …, "command": … }` |
-| `protocolVersions` | MEP versions the host speaks |
+| `protocolVersions` | MEP versions the host speaks, each on the [supported 0.2 line](./index.md#mep-versions). A version off the line is `unsupported_case` at that element |
 | `wasmAbis` | WASM ABIs the host's qualified engine supports. Optional; absent or empty when it has none |
 | `prerequisites` | Runtime, SDK and native prerequisites. Optional; absent means none |
 | `builtIns` | Built-in providers, at most one per operation: `operation`, `extensionId`, `version`, and the model the built-in exchanges with the host. That is `modelOutput` for a `compile` built-in, which writes the model, and `modelInput` for a `generate` built-in, which reads it; the other member is `inconsistent_document`. Optional; absent means none |
@@ -63,7 +63,7 @@ The first four rules marked *while reading* concern one object and are checked a
 | A `tool-release` offering lists no musl platform | while reading | `hosts[i].platforms.<id>` | `musl-bound-to-tool-release.json` |
 | A process provider lists at least one platform | while reading | `providers[i].platforms` | `process-without-platforms.json` |
 | A `modelTuple` operation performs the provider's operation | while reading | `providers[i].modelTuple.operation` | `tuple-operation-mismatch.json` |
-| The compatibility member matches `protocolVersion` | while reading | `providers[i].modelTuple` | `legacy-protocol-with-model-tuple.json` |
+| An external provider declares no `modelInput` or `modelOutput`, which only a built-in has | while reading | `providers[i].modelInput`, `providers[i].modelOutput` | `external-provider-with-model-input.json` |
 | At least one operation | after reading | `operations` | `no-operations.json` |
 | At least one host offering | after reading | `hosts` | `no-hosts.json` |
 | No duplicate operation | after reading | `operations[i]` | `duplicate-operation.json` |
@@ -158,7 +158,7 @@ Then each provider, in order:
 | The claims list the capability kind: `frontend` for `compile`, `backend` for `generate` | `release_descriptor_mismatch` | `providers[i].operation` | `provider-claims-kind` |
 | The claims list the provider's MEP version in `protocolVersions` | `release_descriptor_mismatch` | `providers[i].protocolVersion` | `provider-claims-protocol` |
 | The claims support the language (`capabilities.frontend.compile` is `true` and `languages` has its `id`) or the target (`capabilities.backend.generate` is `true` and `targets` has it) | `release_descriptor_mismatch` | `providers[i].language`, `providers[i].target` | `provider-claims-operand` |
-| For MEP `0.2.0-draft.1`, `capabilities.modelTransport.tuples` contains the provider's `modelTuple` exactly; for MEP `0.1`, the capability's `irVersions` contains the IR version or its major | `release_descriptor_mismatch` | `providers[i].modelTuple`, `providers[i].modelInput.irVersion` | `provider-claims-model` |
+| `capabilities.modelTransport.tuples` contains the provider's `modelTuple` exactly | `release_descriptor_mismatch` | `providers[i].modelTuple` | `provider-claims-model` |
 
 A process provider's platforms are checked in platform table order, and for each platform the artifact rows apply in the order above. A `wasm` provider has one artifact, at `providers[i].artifactTarget` and `providers[i].artifactSha256`. A `dotnet-tool` provider's package is checked by the bound-member row, and its capability rows are checked against every artifact's claims in its descriptor.
 
@@ -218,13 +218,13 @@ These are open. Rules that depend on them are marked provisional where they appe
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator, and the three managed offerings have the built-in frontend `morphir-dotnet.fsharp`; its `resolve` case for `self-contained` selects both built-ins. It is unsigned and binds nothing, so it keeps the dotted frontend identity of the approved example. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`; its `resolve` cases show that resolution reports `abi_unavailable` unless the request chooses the other ABI. `critical-nested-platform-member.json` names a platform member as critical. `provider-misfit.json` has a frontend that fits its host on one of the host's two platforms. `recipe/negative/` has the fixtures in the consistency table plus a later draft, an unknown critical member and an unknown nested critical member, a WASM provider without an ABI, an uppercase identity, an identity token over 64 characters, an unknown source kind, a `dotnet-tool` provider without its descriptor, a `compile` built-in with `modelInput` and one without `modelOutput`, credential members (`apiKey`, and `APIKEY` to pin case-insensitive matching), and two documents that break two rules at once (`precedence-*.json`).
+`fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator, and the three managed offerings have the built-in frontend `morphir-dotnet.fsharp`; its `resolve` case for `self-contained` selects both built-ins. It is unsigned and binds nothing, so it keeps the dotted frontend identity of the approved example. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`; its `resolve` cases show that resolution reports `abi_unavailable` unless the request chooses the other ABI. `critical-nested-platform-member.json` names a platform member as critical. `provider-misfit.json` has a frontend that fits its host on one of the host's two platforms. `recipe/negative/` has the fixtures in the consistency table plus a later draft, an unknown critical member and an unknown nested critical member, a WASM provider without an ABI, an uppercase identity, an identity token over 64 characters, an unknown source kind, a `dotnet-tool` provider without its descriptor, a `compile` built-in with `modelInput` and one without `modelOutput`, a provider speaking MEP `0.1` (`protocol-version-0.1.json`, `unsupported_case`), credential members (`apiKey`, and `APIKEY` to pin case-insensitive matching), and two documents that break two rules at once (`precedence-*.json`).
 
 The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes:
 
 - the three archive offerings as version 1 tool releases on the six first-delivery platforms, and the `Morphir.Tool` package;
 - the F# frontend `morphir-fsharp-frontend` 0.6.0 and the standalone backend `morphir-fsharp-backend` 0.1.0 as version-2 extension releases, with the frontend's .NET tool package;
-- a portable WASM frontend for `morphir-bytes-v1`, two MEP `0.1` frontends whose claims list IR `3` and IR `4`, and releases whose claims or descriptors are each wrong in one way;
+- a portable WASM frontend for `morphir-bytes-v1`, and releases whose claims or descriptors are each wrong in one way, among them a frontend whose claims list MEP `0.2.0` while the recipe binds `0.2.0-draft.1`;
 - the `fsharp-builtin` and `fsharp` recipes, six `channel-example` recipes on different channels and statuses, and a validly signed recipe for each refusal in the tables above.
 
 `signed/cases.json` lists the recipes in `recipeChecks`, together with the trust cases, channel selection, version 1 client selections, frozen locks and lock-against-recipe cases described in the [overview](./index.md#fixtures-and-conformance). Four frozen requests and their locks record complete closures on all six first-delivery platforms:

@@ -26,14 +26,14 @@ The request is what a project asks for. The lock is the exact answer, portable a
 
 Each document starts at `0.1.0-draft.1`, and each page above is the authority for its own version. Changing one document's version does not change another's.
 
-The contracts these documents refer to keep their own versions. Nothing here renames them in place:
+The contracts these documents refer to keep their own versions. Nothing here renames them in place. A reader reads each one at the version listed and is not required to read an earlier draft of it, and nothing on these pages converts between drafts:
 
 | Referenced contract | Version | Authority |
 | --- | --- | --- |
 | Tool release descriptor and TUF profile | `schemaVersion: 1` | [Tool release metadata v1](../tool-release-metadata/index.md) |
 | Extension release descriptor | `2.0.0-draft.2` | [Extension distribution](../../design/draft/extensions/distribution-and-acquisition.md) |
 | Capability claim set | `claimsVersion` `0.1.0-draft.2` | [Extension protocol](../../design/draft/extensions/protocol.md#capability-claims) |
-| MEP | `0.1` and `0.2.0-draft.1` | [Extension protocol](../../design/draft/extensions/protocol.md) and [model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md) |
+| MEP | The 0.2 line: every prerelease of `0.2.0` and every final `0.2.x` ([MEP versions](#mep-versions)) | [Extension protocol](../../design/draft/extensions/protocol.md) and [model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md) |
 | Model envelope | `0.1.0-draft.1` | [Model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md) |
 | Morphir IR | `formatVersion` | [IR format version](../ir/format-version.md) |
 
@@ -56,6 +56,16 @@ Some words are used with more than one meaning across the toolchain, MEP and mor
 ### Versions
 
 `schemaVersion` is a SemVer string. A reader lists the versions it supports as SemVer requirements and refuses anything else before it reads another member. A `0.1.0-draft.1` reader lists exactly `=0.1.0-draft.1`, so it refuses `0.1.0-draft.2` and the released `0.1.0` with `unsupported_contract_version`. A contract version carries no build metadata: `=0.1.0-draft.1` would match `0.1.0-draft.1+build.5` by SemVer precedence, so a reader also refuses any version with build metadata (`lock/negative/draft-build-metadata.json`). Every other version member is compared as exact text in canonical SemVer spelling, so `1.2.3` and `1.2.3+build` are different versions. A string that is not SemVer, such as `0.1`, is `invalid_value`. Drafts promise no compatibility with each other. Use a SemVer library, never a hand-written version type.
+
+### MEP versions
+
+A provider's `protocolVersion` and a host offering's `protocolVersions` are MEP versions on the supported 0.2 line. A version is on the line when, in canonical SemVer spelling without build metadata, its major is `0` and its minor `2`, and it either has no prerelease or is a prerelease of `0.2.0`. So `0.2.0-draft.1`, `0.2.0-draft.2`, `0.2.0-rc.1`, `0.2.0` and `0.2.3` are on it, and `0.1`, `0.1.0`, `0.2.1-rc.1`, `0.3.0-draft.1`, `0.3.0`, `1.0.0` and `0.2.0+build.1` are not. A version off the line is `unsupported_case` at the member that holds it. MEP `0.1` is not supported.
+
+As single comparators the line is `>=0.2.0-0` and `<0.3.0-0`. Both comparators hold for `0.2.1-rc.1` too; the SemVer library rule of the Rust `semver` crate and `@std/semver`, under which a prerelease matches only a comparator naming its own major, minor and patch, is what keeps it out. A library without that rule, such as NuGet's version ranges, must apply the definition above rather than the comparators. The `mep-version` binding cases in `cases.json` pin the line, and `lock/protocol-version-*.json` and `lock/negative/protocol-version-*.json` show it in a lock.
+
+Admitting every prerelease of `0.2.0` is a maintainer exception, for MEP only, to the rule that a prerelease matches only exactly. The five toolchain documents keep exact draft matching for their own `schemaVersion`, as stated above.
+
+Membership is exact. A provider fits a host offering only when the offering lists the provider's `protocolVersion`, and a release's claims must list it too ([authenticated recipe checks](./toolset-recipe.md#authenticated-recipe-targets)). So two versions on the line are still different versions.
 
 ### Unknown and critical members
 
@@ -141,7 +151,7 @@ A target path names an authenticated TUF target. It is relative, uses `/` as its
 - is at most 255 UTF-8 bytes and 255 UTF-16 code units;
 - is not a Windows device name. A component is a device name when the part before its first `.`, with trailing spaces removed and compared ASCII case-insensitively, is `CON`, `PRN`, `AUX`, `NUL`, `CONIN$`, `CONOUT$`, or `COM` or `LPT` followed by one of `1` to `9`, `¹`, `²` or `³`. So `artifacts/CON/win-x64.zip` and `con.tar.gz` are refused.
 
-A path that breaks any of these rules is `non_portable_path`. These are the rules the existing tool and extension stores apply to every stored path, so a target that passes can be stored on every first-delivery platform.
+A path that breaks any of these rules is `non_portable_path`. This page defines the rules. A target that passes them can be stored on every first-delivery platform, and a manager's tool and extension stores apply the same rules to every path they store.
 
 A target path is also in Unicode Normalization Form C. Canonical encoding normalizes the keys of signed targets metadata to NFC, so a path in another form would be signed under one key and looked up under another. The rule is applied in three places:
 
@@ -307,7 +317,9 @@ This repository checks the cases with the `morphir-toolchain-contract` crate. It
 
 IR and MEP behavior is qualified by the compatibility kit. Following the maintainer's decision of 9 November 2026, the kit's runner lives in finos/morphir-dotnet (`src/Morphir.Conformance`, with the `cli`, `library` and `mep-guest` adapters), and its cases, fixed expectations and report contracts stay in this repository as data. The [F# readiness workflow case](./readiness-workflow.md) is one of them. AGENTS.md still describes the earlier arrangement, in which the runner was the Rust `morphir-mck` crate here.
 
-Resolution (`resolve_closure`), recipe selection and the authenticated-target checks make resolution behavior normative. Each rule they apply is therefore stated on the [toolset recipe](./toolset-recipe.md) page and pinned by fixtures, so an implementation never has to read the Rust code. Whether the reference reader stays in Rust is a maintainer decision.
+Resolution (`resolve_closure`), recipe selection and the authenticated-target checks make resolution behavior normative. Each rule they apply is therefore stated on the [toolset recipe](./toolset-recipe.md) page and pinned by fixtures, so an implementation never has to read the Rust code. Where the crate and a page disagree, the page is right and the crate has a bug.
+
+The maintainer treats the Rust CLI as legacy and puts first-delivery work into the morphir-dotnet and morphir-moonbit hosts (9 November 2026). In that light, the crate is a reference checker for these documents, kept while it is cheap to keep. It is not the implementation that other hosts must match, and keeping it signals no investment in the Rust CLI. Whether it stays is a question for the maintainer.
 
 ```sh
 cargo test --locked --package morphir-toolchain-contract
