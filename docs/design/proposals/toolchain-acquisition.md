@@ -251,7 +251,32 @@ Frozen restore uses only the lock:
 | A revocation has been learned | Enforced, online and offline. A generation containing a revoked artifact cannot launch or be rolled back to. |
 | A locked archive is missing offline | Reports the missing component and digest, makes no network request and changes no selection. |
 
-The last case, as a manager result:
+Each refusal has a stable code that the manager result reports. A changed request, for example:
+
+```json title="docs/spec/toolchain/fixtures/0.1.0-draft.1/result/restore-request-changed.json"
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "restore",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "lock-binding",
+      "code": "request_changed",
+      "severity": "error",
+      "message": "The request bytes no longer hash to the lock's requestSha256. Frozen restore changes nothing; run an explicit setup or update.",
+      "document": "lock",
+      "path": "requestSha256",
+      "instruction": [
+        "morphirup",
+        "setup",
+        "--yes"
+      ]
+    }
+  ]
+}
+```
+
+The missing-archive case:
 
 ```json title="docs/spec/toolchain/fixtures/0.1.0-draft.1/result/restore-offline-missing.json"
 {
@@ -340,7 +365,7 @@ Two facts that are easy to confuse stay separate:
 
 A recipe never turns `unchecked` into `probed`, and a probe never makes an artifact authenticated. An unsigned developer artifact stays labelled as developer-supplied, can appear only in a local receipt, and can never be bound by a recipe or named by a portable lock. The [installation receipt](../../spec/toolchain/installation-receipt.md#installation) records both facts side by side.
 
-A WASM recipe names the ABI its guest needs. The public runtime name stays `wasm`; the engine and its ABI are separate. A host that supports `morphir-bytes-v1` cannot qualify an `extism-kernel-v1` guest merely because both are WASM, and setup reports the missing ABI as not ready. Process F# readiness establishes nothing about WASM capability. The WASM engine is a separate host change that must qualify its packaged engine across every offering before setup advertises it.
+A WASM recipe names the ABI its guest needs. The public runtime name stays `wasm`; the engine and its ABI are separate. A host that supports `morphir-bytes-v1` cannot qualify an `extism-kernel-v1` guest merely because both are WASM, and setup reports the missing ABI as not ready. It does not quietly pick another guest built for an ABI the host has either: resolution reports `abi_unavailable`, naming the missing ABI, unless the request chooses the other ABI explicitly. Process F# readiness establishes nothing about WASM capability. The WASM engine is a separate host change that must qualify its packaged engine across every offering before setup advertises it.
 
 ![This change and the separate WASM host change both lead to packaged WASM qualification. That, together with the bounded-access readers and sessions, leads to the bounded generation large-package gate. F# process acquisition can ship before the WASM engine.](../../assets/toolchain-delivery-dependencies.svg)
 
