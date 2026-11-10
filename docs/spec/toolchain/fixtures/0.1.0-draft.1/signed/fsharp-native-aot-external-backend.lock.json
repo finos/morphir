@@ -1,0 +1,296 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "critical": [
+    "host",
+    "platforms"
+  ],
+  "requestSha256": "435127e4a6317af8eca632f3f1f3b74f8cb3546d462c12660c641240c5bd05b9",
+  "recipe": {
+    "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+    "target": "toolchains/recipes/fsharp/1.0.0.json",
+    "sha256": "2e5297d8f7793235f289f6995f5790e1345983fdeedd0068eb7186cd5a9929ed"
+  },
+  "host": {
+    "implementation": "dotnet",
+    "version": "1.2.3",
+    "deployment": "native-aot"
+  },
+  "platforms": {
+    "win-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+      "hostSha256": "aa76ea5eb00aa3c46c5de6322d4d587ed8145e2320f23df9eef71ef6cfe459cc",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "0a50b987b16c0193873f46bd9bd17e6e83fe89e6fe6d0907117877c74f12acff",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+          "artifactSha256": "af4638207ff18d14dcb1fdb9ae930ac5c9559984aecf7dc5d03bf4c9fa75ff23",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "process",
+          "extensionId": "morphir-fsharp-backend",
+          "version": "0.1.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-backend/0.1.0/release.json",
+          "descriptorSha256": "ecfc0c28fd41090ce712886c4e548f1d9cbc829bb40316f6084424bdcc583a3b",
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/win-x64.zip",
+          "artifactSha256": "8bb51e5533b219a7c2efe8fa72b87d8ba65a1ffdd69e940e286a1b18fbefa7f7",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "win-arm64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip",
+      "hostSha256": "4e02db3b9d0500a2581e815317cd55cde4560e26d2afc3544db6afc18c0582a4",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "0a50b987b16c0193873f46bd9bd17e6e83fe89e6fe6d0907117877c74f12acff",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-arm64.zip",
+          "artifactSha256": "f8157014d5e6ca465da49c8dfdbe071bb3a001eae4bee0ef4f6e428ad109e52a",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "process",
+          "extensionId": "morphir-fsharp-backend",
+          "version": "0.1.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-backend/0.1.0/release.json",
+          "descriptorSha256": "ecfc0c28fd41090ce712886c4e548f1d9cbc829bb40316f6084424bdcc583a3b",
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/win-arm64.zip",
+          "artifactSha256": "e4db82f65df0cec321a869b6861a55475b5b9fd41473dd1895fdd5e878b604fc",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "osx-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz",
+      "hostSha256": "7609eac79ff052ca3696faf15d5dfebe8fc8393d360e10621ec0aa44e478fb53",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "0a50b987b16c0193873f46bd9bd17e6e83fe89e6fe6d0907117877c74f12acff",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/osx-x64.zip",
+          "artifactSha256": "22effdaf60e0c85c183d084b2e185cc47ed40ff03c592f3d9998b065dc8d697b",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "process",
+          "extensionId": "morphir-fsharp-backend",
+          "version": "0.1.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-backend/0.1.0/release.json",
+          "descriptorSha256": "ecfc0c28fd41090ce712886c4e548f1d9cbc829bb40316f6084424bdcc583a3b",
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/osx-x64.zip",
+          "artifactSha256": "8dc9bc6a33c2b84724ec595b77e79ff248726d64dc9f6a67b9e8ca2181ece841",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "osx-arm64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz",
+      "hostSha256": "0dd19d15c043700587da8e498e192f3d4fa60dd7a9be1de80773da91595b575e",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "0a50b987b16c0193873f46bd9bd17e6e83fe89e6fe6d0907117877c74f12acff",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/osx-arm64.zip",
+          "artifactSha256": "a75f2e9c383dc0b85590c813ee444ed0ea17602079c18e5651c3e86f4cc42d53",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "process",
+          "extensionId": "morphir-fsharp-backend",
+          "version": "0.1.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-backend/0.1.0/release.json",
+          "descriptorSha256": "ecfc0c28fd41090ce712886c4e548f1d9cbc829bb40316f6084424bdcc583a3b",
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/osx-arm64.zip",
+          "artifactSha256": "42c9c2bc011c6c92b3476358b015e2f8ff7374be10a0a175f3b725a7958a13df",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "linux-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz",
+      "hostSha256": "71152a5dc855c64cb3de65aec365537098bcbb6704026f9cf4a89843ae0a2f8b",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "0a50b987b16c0193873f46bd9bd17e6e83fe89e6fe6d0907117877c74f12acff",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/linux-x64.zip",
+          "artifactSha256": "f75bf40002e8e02ecfcbb6196b4839f64d9badbf5ffd6e9353996e6caa5bfdd3",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "process",
+          "extensionId": "morphir-fsharp-backend",
+          "version": "0.1.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-backend/0.1.0/release.json",
+          "descriptorSha256": "ecfc0c28fd41090ce712886c4e548f1d9cbc829bb40316f6084424bdcc583a3b",
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/linux-x64.zip",
+          "artifactSha256": "dbe39609b187ddd2044b7e55b3d3e7437cab78daa9ee727b1618b358c13a0b7c",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "linux-arm64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz",
+      "hostSha256": "c6d031d6274e92b666e4cb07454de65dd3f5361d01003288c8805adb912327cc",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "0a50b987b16c0193873f46bd9bd17e6e83fe89e6fe6d0907117877c74f12acff",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/linux-arm64.zip",
+          "artifactSha256": "ee18065201523fb5c2f51bef067981ef57225439dbba38cb97a88d24a21a7fd8",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "process",
+          "extensionId": "morphir-fsharp-backend",
+          "version": "0.1.0",
+          "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+          "descriptorTarget": "extensions/fsharp-backend/0.1.0/release.json",
+          "descriptorSha256": "ecfc0c28fd41090ce712886c4e548f1d9cbc829bb40316f6084424bdcc583a3b",
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/linux-arm64.zip",
+          "artifactSha256": "b488366161648a0d94d05f08278b0c21fe9a7ef42dd34091e6ef0340ca372107",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -12,7 +12,9 @@
 #![allow(dead_code)]
 
 use ed25519_dalek::{Signer, SigningKey};
-use morphir_toolchain_contract::{PlatformId, Sha256};
+use morphir_toolchain_contract::{
+    LockedDelivery, LockedProvider, Operation, PlatformId, Protocol, Sha256, TargetDigest,
+};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -143,7 +145,7 @@ pub fn root(keys: &Keys) -> Value {
     sign(signed, &keys.root.iter().collect::<Vec<_>>())
 }
 
-fn meta(envelope: &Value) -> Value {
+pub fn meta(envelope: &Value) -> Value {
     let bytes = canonical(envelope);
     json!({
         "version": envelope["signed"]["version"],
@@ -456,6 +458,170 @@ pub fn offering_recipe(targets: &Targets, preset: &str) -> Value {
     })
 }
 
+// ----- F# extension releases --------------------------------------------------
+
+pub const FRONTEND_ID: &str = "org.finos.morphir.fsharp-frontend";
+/// The extension descriptor's store id. A version-2 descriptor `extensionId`
+/// is one portable token, so it cannot spell the dotted MEP identity, which
+/// travels in the artifact claims.
+pub const FRONTEND_STORE_ID: &str = "morphir-fsharp-frontend";
+pub const FRONTEND_VERSION: &str = "0.6.0";
+pub const FRONTEND_DIR: &str = "extensions/fsharp-frontend/0.6.0";
+pub const FRONTEND_PACKAGE: &str = "packages/nuget/morphir.frontend.fsharp.extension/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg";
+pub const BACKEND_ID: &str = "morphir-fsharp-backend";
+pub const BACKEND_VERSION: &str = "0.1.0";
+pub const BACKEND_DIR: &str = "extensions/fsharp-backend/0.1.0";
+
+pub fn extension_artifact(dir: &str, platform: PlatformId) -> String {
+    format!("{dir}/{platform}.zip")
+}
+
+/// Publish a version-2 extension release descriptor and one process archive
+/// per first-delivery platform. The claims are synthetic: the real claim sets
+/// come from each guest's `describe` at packaging time.
+#[allow(clippy::too_many_arguments)]
+fn add_extension_release(
+    targets: &mut Targets,
+    dir: &str,
+    store_id: &str,
+    mep_id: &str,
+    name: &str,
+    version: &str,
+    kind: &str,
+    capabilities: Value,
+) {
+    let artifacts = platforms()
+        .into_iter()
+        .map(|platform| {
+            let path = extension_artifact(dir, platform);
+            targets.insert(
+                path.clone(),
+                Target {
+                    bytes: synthetic(&format!("{store_id} {version} {platform} process archive")),
+                    custom: None,
+                },
+            );
+            json!({
+                "platform": platform.target_triple(),
+                "runtime": "process",
+                "filename": format!("{platform}.zip"),
+                "sha256": digest_of(targets, &path),
+                "claims": {
+                    "claimsVersion": "0.1.0-draft.2",
+                    "protocolVersions": ["0.2.0-draft.1"],
+                    "extension": { "id": mep_id, "name": name, "version": version, "types": [kind] },
+                    "capabilities": capabilities
+                },
+                "claimCheck": "unchecked"
+            })
+        })
+        .collect::<Vec<_>>();
+    let descriptor = json!({
+        "schemaVersion": "2.0.0-draft.2",
+        "extensionId": store_id,
+        "shortId": store_id.trim_start_matches("morphir-"),
+        "version": version,
+        "platformDifferences": "none",
+        "artifacts": artifacts
+    });
+    targets.insert(
+        format!("{dir}/release.json"),
+        Target {
+            bytes: String::from_utf8(canonical(&descriptor)).unwrap(),
+            custom: None,
+        },
+    );
+}
+
+fn tuple(method: &str) -> Value {
+    json!({
+        "operation": method,
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+    })
+}
+
+fn process_platforms(targets: &Targets, dir: &str) -> Value {
+    Value::Object(
+        platforms()
+            .into_iter()
+            .map(|platform| {
+                let path = extension_artifact(dir, platform);
+                (
+                    platform.to_string(),
+                    json!({ "artifactTarget": path, "artifactSha256": digest_of(targets, &path) }),
+                )
+            })
+            .collect(),
+    )
+}
+
+/// The F# recipe: the four offerings, the F# frontend as a self-contained
+/// process guest and as the existing framework-dependent .NET tool, and the
+/// standalone F# backend process guest. Every offering keeps `morphir.fsharp`.
+pub fn fsharp_recipe(targets: &Targets, preset: &str, repository_id: &str) -> Value {
+    let glibc = json!({
+        "kind": "native", "name": "glibc", "versions": [">=2.28.0"],
+        "platforms": ["linux-x64", "linux-arm64"]
+    });
+    json!({
+        "schemaVersion": "0.1.0-draft.1",
+        "preset": preset,
+        "version": "1.0.0",
+        "operations": [
+            { "operation": "compile", "language": "fsharp" },
+            { "operation": "generate", "target": "fsharp" }
+        ],
+        "hosts": host_offerings(targets),
+        "providers": [
+            {
+                "operation": "compile", "language": "fsharp", "delivery": "process",
+                "extensionId": FRONTEND_ID, "version": FRONTEND_VERSION,
+                "repositoryId": repository_id,
+                "descriptorTarget": format!("{FRONTEND_DIR}/release.json"),
+                "descriptorSha256": digest_of(targets, &format!("{FRONTEND_DIR}/release.json")),
+                "protocolVersion": "0.2.0-draft.1",
+                "modelTuple": tuple("morphir.frontend.compileModel"),
+                "prerequisites": [glibc],
+                "platforms": process_platforms(targets, FRONTEND_DIR)
+            },
+            {
+                "operation": "compile", "language": "fsharp", "delivery": "dotnet-tool",
+                "extensionId": FRONTEND_ID, "version": FRONTEND_VERSION,
+                "repositoryId": repository_id,
+                "packageId": "Morphir.Frontend.FSharp.Extension",
+                "command": "morphir-fsharp-frontend",
+                "packageTarget": FRONTEND_PACKAGE,
+                "packageSha256": digest_of(targets, FRONTEND_PACKAGE),
+                "protocolVersion": "0.2.0-draft.1",
+                "modelTuple": tuple("morphir.frontend.compileModel"),
+                "prerequisites": [
+                    { "kind": "runtime", "name": "Microsoft.NETCore.App", "versions": [">=10.0.0", "<11.0.0"] },
+                    { "kind": "sdk", "name": "Microsoft.NET.Sdk", "versions": [">=10.0.100"], "phase": "install" }
+                ]
+            },
+            {
+                "operation": "generate", "target": "fsharp", "delivery": "process",
+                "extensionId": BACKEND_ID, "version": BACKEND_VERSION,
+                "repositoryId": repository_id,
+                "descriptorTarget": format!("{BACKEND_DIR}/release.json"),
+                "descriptorSha256": digest_of(targets, &format!("{BACKEND_DIR}/release.json")),
+                "protocolVersion": "0.2.0-draft.1",
+                "modelTuple": tuple("morphir.backend.generateModel"),
+                "prerequisites": [glibc],
+                "platforms": process_platforms(targets, BACKEND_DIR)
+            }
+        ]
+    })
+}
+
+/// The repository identity, which the F# recipe's providers name.
+pub fn repository_id() -> String {
+    Sha256::of_bytes(&canonical(&root(&Keys::derive())["signed"])).to_string()
+}
+
 /// The published content of the test-only repository.
 pub fn published() -> Targets {
     let mut targets = Targets::new();
@@ -515,7 +681,242 @@ pub fn published() -> Targets {
     for negative in [digest, platform, deployment, missing] {
         add_recipe(&mut targets, &negative, &[], "active");
     }
+
+    add_extension_release(
+        &mut targets,
+        FRONTEND_DIR,
+        FRONTEND_STORE_ID,
+        FRONTEND_ID,
+        "F# frontend (TEST-ONLY fixture)",
+        FRONTEND_VERSION,
+        "frontend",
+        json!({ "frontend": { "languages": [{ "id": "fsharp", "fileExtensions": [".fs"] }], "compile": true } }),
+    );
+    add_extension_release(
+        &mut targets,
+        BACKEND_DIR,
+        BACKEND_ID,
+        BACKEND_ID,
+        "F# backend (TEST-ONLY fixture)",
+        BACKEND_VERSION,
+        "backend",
+        json!({ "backend": { "targets": ["fsharp"], "generate": true } }),
+    );
+    targets.insert(
+        FRONTEND_PACKAGE.to_owned(),
+        Target {
+            bytes: synthetic("Morphir.Frontend.FSharp.Extension 0.6.0 NuGet package"),
+            custom: None,
+        },
+    );
+
+    let repository = repository_id();
+    let fsharp = fsharp_recipe(&targets, "fsharp", &repository);
+    // Validly signed F# recipes that each break one provider binding rule.
+    let provider = |preset: &str, edit: &dyn Fn(&mut Value)| {
+        let mut recipe = fsharp_recipe(&targets, preset, &repository);
+        edit(&mut recipe["providers"]);
+        recipe
+    };
+    let osx = extension_artifact(FRONTEND_DIR, PlatformId::parse("osx-arm64").unwrap());
+    let backend_descriptor = digest_of(&targets, &format!("{BACKEND_DIR}/release.json"));
+    let frontend_platform = provider("negative-frontend-platform-substituted", &|providers| {
+        providers[0]["platforms"]["win-x64"] =
+            json!({ "artifactTarget": osx, "artifactSha256": digest_of(&targets, &osx) });
+    });
+    let frontend_artifact = provider("negative-frontend-artifact-digest", &|providers| {
+        providers[0]["platforms"]["win-x64"]["artifactSha256"] = json!("2".repeat(64));
+    });
+    let descriptor_digest = provider("negative-descriptor-digest-substituted", &|providers| {
+        providers[0]["descriptorSha256"] = json!(backend_descriptor);
+    });
+    let identity = provider("negative-frontend-identity-substituted", &|providers| {
+        providers[0]["extensionId"] = json!("org.finos.morphir.csharp-frontend");
+    });
+    add_recipe(&mut targets, &fsharp, &["stable"], "active");
+    for negative in [
+        frontend_platform,
+        frontend_artifact,
+        descriptor_digest,
+        identity,
+    ] {
+        add_recipe(&mut targets, &negative, &[], "active");
+    }
     targets
+}
+
+/// The same targets after the publisher learns that the native-aot 1.2.3
+/// release must be revoked. Descriptor bytes do not change; only the
+/// authenticated release state does.
+pub fn revoked(targets: &Targets) -> Targets {
+    let mut revoked = targets.clone();
+    let path = "releases/morphir-dotnet-native-aot/1.2.3.json";
+    let custom = revoked.get_mut(path).unwrap().custom.as_mut().unwrap();
+    custom["status"] = json!("revoked");
+    custom["channels"] = json!([]);
+    revoked
+}
+
+/// The requests whose frozen locks are committed beside the repository.
+pub const FROZEN: [(&str, &str); 3] = [
+    (
+        "fsharp-native-aot",
+        "schemaVersion = \"0.1.0-draft.1\"\nplatforms = [\"win-x64\", \"win-arm64\", \"osx-x64\", \"osx-arm64\", \"linux-x64\", \"linux-arm64\"]\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp\"\n",
+    ),
+    (
+        "fsharp-native-aot-external-backend",
+        "schemaVersion = \"0.1.0-draft.1\"\nplatforms = [\"win-x64\", \"win-arm64\", \"osx-x64\", \"osx-arm64\", \"linux-x64\", \"linux-arm64\"]\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp\"\n[[toolset.providers]]\noperation = \"generate\"\ntarget = \"fsharp\"\ndelivery = \"process\"\n",
+    ),
+    (
+        "fsharp-framework-dependent-tool-frontend",
+        "schemaVersion = \"0.1.0-draft.1\"\nplatforms = [\"win-x64\", \"win-arm64\", \"osx-x64\", \"osx-arm64\", \"linux-x64\", \"linux-arm64\"]\n[host]\nimplementation = \"dotnet\"\ndeployment = \"framework-dependent\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp\"\n[[toolset.providers]]\noperation = \"compile\"\nlanguage = \"fsharp\"\ndelivery = \"dotnet-tool\"\n",
+    ),
+];
+
+fn protocol_json(entry: &mut serde_json::Map<String, Value>, protocol: &Protocol) {
+    entry.insert("protocolVersion".into(), json!(protocol.version().as_str()));
+    match protocol {
+        Protocol::Legacy(input) => {
+            entry.insert("modelInput".into(), model_input_json(input));
+        }
+        Protocol::ModelTransport(tuple) => {
+            entry.insert(
+                "modelTuple".into(),
+                json!({
+                    "operation": tuple.operation.model_method(),
+                    "profile": tuple.profile.as_str(),
+                    "codec": tuple.codec.as_str(),
+                    "envelopeVersion": tuple.envelope_version.to_string(),
+                    "irVersion": tuple.ir_version.to_string()
+                }),
+            );
+        }
+    }
+}
+
+fn model_input_json(input: &morphir_toolchain_contract::ModelInput) -> Value {
+    json!({
+        "profile": input.profile.as_str(),
+        "codec": input.codec.as_str(),
+        "irVersion": input.ir_version.to_string()
+    })
+}
+
+/// Write a locked provider in the lock's JSON shape.
+pub fn provider_json(provider: &LockedProvider) -> Value {
+    let mut entry = serde_json::Map::new();
+    match &provider.operation {
+        Operation::Compile { language } => {
+            entry.insert("operation".into(), json!("compile"));
+            entry.insert("language".into(), json!(language.as_str()));
+        }
+        Operation::Generate { target } => {
+            entry.insert("operation".into(), json!("generate"));
+            entry.insert("target".into(), json!(target.as_str()));
+        }
+    }
+    entry.insert("delivery".into(), json!(provider.delivery.kind().as_str()));
+    entry.insert("extensionId".into(), json!(provider.extension_id.as_str()));
+    entry.insert("version".into(), json!(provider.version.to_string()));
+    let pair = |entry: &mut serde_json::Map<String, Value>, prefix: &str, digest: &TargetDigest| {
+        entry.insert(format!("{prefix}Target"), json!(digest.target.as_str()));
+        entry.insert(format!("{prefix}Sha256"), json!(digest.sha256.to_string()));
+    };
+    match &provider.delivery {
+        LockedDelivery::BuiltIn { model_input } => {
+            entry.insert("modelInput".into(), model_input_json(model_input));
+        }
+        LockedDelivery::Process {
+            repository_id,
+            descriptor,
+            artifact,
+            protocol,
+        } => {
+            entry.insert("repositoryId".into(), json!(repository_id.to_string()));
+            pair(&mut entry, "descriptor", descriptor);
+            pair(&mut entry, "artifact", artifact);
+            protocol_json(&mut entry, protocol);
+        }
+        LockedDelivery::Wasm {
+            abi,
+            repository_id,
+            descriptor,
+            artifact,
+            protocol,
+        } => {
+            entry.insert("abi".into(), json!(abi.as_str()));
+            entry.insert("repositoryId".into(), json!(repository_id.to_string()));
+            pair(&mut entry, "descriptor", descriptor);
+            pair(&mut entry, "artifact", artifact);
+            protocol_json(&mut entry, protocol);
+        }
+        LockedDelivery::DotnetTool {
+            repository_id,
+            package_id,
+            command,
+            package,
+            protocol,
+        } => {
+            entry.insert("repositoryId".into(), json!(repository_id.to_string()));
+            entry.insert("packageId".into(), json!(package_id.as_str()));
+            entry.insert("command".into(), json!(command.as_str()));
+            pair(&mut entry, "package", package);
+            protocol_json(&mut entry, protocol);
+        }
+    }
+    Value::Object(entry)
+}
+
+/// Resolve each frozen request against the F# recipe and write its lock.
+pub fn frozen_locks(targets: &Targets) -> Vec<(String, String, Value)> {
+    let recipe_path = recipe_path("fsharp", "1.0.0");
+    let recipe_bytes = targets[&recipe_path].bytes.as_bytes();
+    let recipe = morphir_toolchain_contract::read_recipe(recipe_bytes).unwrap();
+    FROZEN
+        .iter()
+        .map(|(name, request_text)| {
+            let request = morphir_toolchain_contract::read_request(request_text.as_bytes()).unwrap();
+            let host = recipe
+                .hosts
+                .iter()
+                .find(|host| host.deployment == request.host.deployment)
+                .unwrap();
+            let platforms = request
+                .platforms
+                .iter()
+                .map(|platform| {
+                    let closure =
+                        morphir_toolchain_contract::resolve_closure(&recipe, &request, *platform)
+                            .unwrap();
+                    (
+                        platform.to_string(),
+                        json!({
+                            "hostTarget": closure.host.target.as_str(),
+                            "hostSha256": closure.host.sha256.to_string(),
+                            "providers": closure.providers.iter().map(provider_json).collect::<Vec<_>>()
+                        }),
+                    )
+                })
+                .collect::<serde_json::Map<_, _>>();
+            let lock = json!({
+                "schemaVersion": "0.1.0-draft.1",
+                "critical": ["host", "platforms"],
+                "requestSha256": request.identity.to_string(),
+                "recipe": {
+                    "repositoryId": repository_id(),
+                    "target": recipe_path,
+                    "sha256": Sha256::of_bytes(recipe_bytes).to_string()
+                },
+                "host": {
+                    "implementation": host.implementation.as_str(),
+                    "version": host.version.to_string(),
+                    "deployment": host.deployment.as_str()
+                },
+                "platforms": platforms
+            });
+            (name.to_string(), request_text.to_string(), lock)
+        })
+        .collect()
 }
 
 /// Build the complete fixture document.
@@ -538,6 +939,10 @@ pub fn fixture() -> Value {
         })).collect::<Vec<_>>(),
         "trustedRoot": trusted_root,
         "metadata": metadata(&keys, &targets, 1, NEVER),
+        "learnedRevocation": metadata(&keys, &revoked(&targets), 2, NEVER),
+        "rejectionMetadata": {
+            "expiredTimestamp": metadata(&keys, &targets, 2, "2020-01-01T00:00:00Z")["timestamp"]
+        },
         "targetFiles": targets
             .iter()
             .map(|(path, target)| (path.clone(), Value::String(target.bytes.clone())))

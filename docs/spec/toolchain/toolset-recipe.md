@@ -88,6 +88,23 @@ The TUF client authenticates the metadata. A manager then checks the recipe and 
 | The artifact's version 1 platform is the bound platform | `artifact_platform_mismatch` |
 
 Authentication alone is not enough: each refusal above has a fixture recipe that is validly signed and still wrong.
+
+Provider bindings are checked next:
+
+| Check | Code |
+| --- | --- |
+| `descriptorTarget`, each `artifactTarget` and a `packageTarget` are authenticated targets | `target_not_authenticated` |
+| Their `descriptorSha256`, `artifactSha256` and `packageSha256` equal the authenticated digests | `target_digest_mismatch` |
+| The descriptor is an extension release descriptor of the provider's `version`, read by the existing reader without rewriting | `release_descriptor_mismatch` |
+| The descriptor lists the artifact in its own directory, with the delivery's runtime and the same digest | `release_descriptor_mismatch`, `target_digest_mismatch` |
+| A process artifact's target triple is the bound platform's (see [platforms](./index.md#platforms)) | `artifact_platform_mismatch` |
+| The artifact's claims name the provider's `extensionId` and `version`, the `frontend` kind for `compile` or `backend` for `generate`, and the provider's MEP version | `release_descriptor_mismatch` |
+
+The provider `extensionId` is compared with the claim set's `extension.id`, which is the identity the host checks again at initialization. The descriptor's own `extensionId` names the store entry and is a single portable token, so a dotted identity such as `org.finos.morphir.fsharp-frontend` appears only in the claims; the fixture's frontend descriptor uses `morphir-fsharp-frontend` there.
+
+### Claim checks and publisher authentication
+
+These are separate facts and stay separate. A recipe digest authenticates an extension's bytes: it says the repository's publisher bound exactly these bytes to this toolset. It says nothing about whether anyone ran the artifact to compare its capability claims. A descriptor written by bundle authoring keeps `claimCheck: unchecked`, and a recipe never changes that. The install-time probe, or `--no-probe`, decides the installed record's `claimCheck`, and the [receipt](./installation-receipt.md#installation) records it beside `authentication`. A probed artifact is not thereby authenticated; an unsigned developer artifact can be probed and is still `local-developer`. No recipe can bind an unsigned developer artifact, because it is not an authenticated target, so it can appear in a local receipt under explicit developer policy and never in a portable lock.
 ## Selecting a closure
 
 Resolution is pure: it reads a recipe, a request and a platform and performs no I/O.
@@ -105,4 +122,18 @@ Plan-only setup may refresh metadata, but it never runs an acquired artifact. Re
 
 `fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`. `recipe/negative/` covers each consistency rule plus a later draft, an unknown critical member, a WASM provider without an ABI, an uppercase identity, a process provider without platforms and an unknown source kind.
 
-The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes the three archive offerings as version 1 tool releases on the six first-delivery platforms, the `Morphir.Tool` package, the `fsharp-builtin` recipe, and four validly signed recipes that each break one binding rule. `signed/cases.json` lists the selection cases and the recipe binding cases with their expected targets or codes. Every key in that repository derives from a public label recorded in `testOnlyKeys`, so anyone can sign with it. Never trust that repository, its keys or its `repositoryId` outside tests.
+The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes the three archive offerings as version 1 tool releases on the six first-delivery platforms, the `Morphir.Tool` package, the `fsharp-builtin` recipe, and four validly signed recipes that each break one binding rule. `signed/cases.json` lists the selection cases and the recipe binding cases with their expected targets or codes.
+
+The same repository publishes the TEST-ONLY F# recipe, `toolchains/recipes/fsharp/1.0.0.json` on `stable`. It binds the four host offerings, the F# frontend `org.finos.morphir.fsharp-frontend` 0.6.0 as a process guest on each platform and as the `Morphir.Frontend.FSharp.Extension` .NET tool, and the standalone F# backend `morphir-fsharp-backend` 0.1.0 as a process guest, to exact descriptor, archive and package digests. Four more validly signed recipes each break one provider binding rule; `providerBindings` in `signed/cases.json` lists them.
+
+Three frozen requests and their locks sit beside it, each with a complete closure on all six first-delivery platforms:
+
+| Files | Selection |
+| --- | --- |
+| `fsharp-native-aot.toml`, `.lock.json` | Native AOT host, process frontend, built-in `morphir.fsharp` backend |
+| `fsharp-native-aot-external-backend.toml`, `.lock.json` | The same host and frontend, explicit external backend process guest |
+| `fsharp-framework-dependent-tool-frontend.toml`, `.lock.json` | Framework-dependent host, explicit .NET tool frontend, built-in backend |
+
+Each lock is the resolution of its request against the authenticated recipe, binds the request bytes and the recipe digest, and names only authenticated targets. A change to the recipe or to the resolution rules shows up as a diff in these files.
+
+The repository also carries the trust cases: `learnedRevocation` is a later signed metadata set in which the native-aot 1.2.3 release is revoked while every descriptor byte stays the same, so the F# recipe's native-aot binding is refused with `release_revoked`; `rejectionMetadata.expiredTimestamp` is a correctly signed but expired timestamp, which the TUF client refuses. Tampered metadata, tampered targets and an unsigned developer artifact are derived from the published files by the tests. The descriptor claims are synthetic: real claim sets come from each guest's `describe` when it is packaged. Every key in that repository derives from a public label recorded in `testOnlyKeys`, so anyone can sign with it. Never trust that repository, its keys or its `repositoryId` outside tests.

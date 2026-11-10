@@ -201,5 +201,49 @@
         "path": "hosts[0].platforms.win-x64.target"
       }
     }
+  ],
+  "providerBindings": [
+    {
+      "name": "the F# recipe binds its host, frontend and backend descriptors and artifacts",
+      "recipe": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": "valid"
+    },
+    {
+      "name": "another platform's frontend archive is refused",
+      "recipe": "toolchains/recipes/negative-frontend-platform-substituted/1.0.0.json",
+      "expected": {
+        "code": "artifact_platform_mismatch",
+        "path": "providers[0].platforms.win-x64.artifactTarget"
+      }
+    },
+    {
+      "name": "a substituted frontend archive digest is refused",
+      "recipe": "toolchains/recipes/negative-frontend-artifact-digest/1.0.0.json",
+      "expected": {
+        "code": "target_digest_mismatch",
+        "path": "providers[0].platforms.win-x64.artifactSha256"
+      }
+    },
+    {
+      "name": "another release's descriptor digest is refused",
+      "recipe": "toolchains/recipes/negative-descriptor-digest-substituted/1.0.0.json",
+      "expected": {
+        "code": "target_digest_mismatch",
+        "path": "providers[0].descriptorSha256"
+      }
+    },
+    {
+      "name": "a provider identity the descriptor claims do not state is refused",
+      "recipe": "toolchains/recipes/negative-frontend-identity-substituted/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].extensionId"
+      }
+    }
+  ],
+  "frozen": [
+    "fsharp-native-aot",
+    "fsharp-native-aot-external-backend",
+    "fsharp-framework-dependent-tool-frontend"
   ]
 }
