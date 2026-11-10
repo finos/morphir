@@ -1,11 +1,11 @@
 //! Thin command layer for the shared executable MEP guest suite.
 use super::{Outcome, finish};
+use crate::AppResult;
 use clap::Args;
 use morphir_mck::{
     mep::{Identity, check_report_file, load_kit, run_process},
     transport::Limits,
 };
-use starbase::AppResult;
 use std::{ffi::OsString, path::PathBuf, time::Duration};
 
 #[derive(Clone, Args)]

@@ -1,7 +1,7 @@
 # `morphir mck` CLI and engine contract
 
 Status: **approved** in the IR-0 design review on 2026-09-18 ([#851](https://github.com/finos/morphir/issues/851)). Changes now need their own review.
-Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check`, `report render`, `package run` and `package inspect`. Parent IR gates use the Rust CLI. IR runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. Parent package integrity and resolution gates also use the native CLI after beta.3 qualification and adoption under #852. Frozen migration evidence remains; the replaced TypeScript runner is retired.
+Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage`, `schema check`, `report check`, `report render`, `package run` and `package inspect`. Parent IR gates use the standalone runner `morphir-mck` (see [Invocation](#invocation)). IR runs write consolidated `2.0.0-draft.1` reports; HTML is an optional offline view. Coverage and schema gates work from embedded, source and managed kits without external validators. Parent package integrity and resolution gates also use the native CLI after beta.3 qualification and adoption under #852. Frozen migration evidence remains; the replaced TypeScript runner is retired.
 
 The IR commands retain their approved contract. The package addition under
 [#852](https://github.com/finos/morphir/issues/852) uses its existing separate versioned protocols and reports.
@@ -14,6 +14,24 @@ and `workbench check`, using the same bounded transport and a separate
 parent-owned goldens determine verdicts. The approved IR command/report contract
 and connected-host protocol remain unchanged. Workbench adoption is pending review.
 
+## Invocation
+
+The runner's program is `morphir-mck`, built from `crates/morphir-mck-cli`. It is a development tool of this
+repository and is not released. The commands below are written as `morphir mck <command>`, the spelling they had
+in the deleted Rust CLI; the standalone spelling drops the space and nothing else:
+
+| Spelling | Program |
+| --- | --- |
+| `morphir-mck <command> ARGS` | The runner itself. |
+| `morphir mck <command> ARGS` | The Morphir CLI (finos/morphir-dotnet) starts `morphir-mck <command> ARGS` with the same arguments, standard streams, working directory and exit status. It carries no second implementation; a command it cannot delegate fails with a message that names `morphir-mck`. |
+| `cargo run --locked -p morphir-mck-cli -- <command> ARGS` | How this repository's tasks run it from source (`mise run mck -- <command>`). |
+
+The commands, options, adapters, exit codes, output routing and report formats below are unchanged by the move
+([`move-cli-delivery-to-umbrella`](../../openspec/changes/move-cli-delivery-to-umbrella/proposal.md)). The
+runner's destination is the .NET host (maintainer direction of 9 November 2026; its decision record is proposed in
+[#1148](https://github.com/finos/morphir/pull/1148)). Until that runner replaces this one, its gaps are stated, not
+hidden.
+
 Each behaviour below is marked **kept** (same as the TypeScript driver at the
 [baseline](baseline/README.md)), **hardened** (a deliberate, stricter departure) or **new**.
 
@@ -22,7 +40,7 @@ Each behaviour below is marked **kept** (same as the TypeScript driver at the
 | Component | Responsibility |
 | --- | --- |
 | `crates/morphir-mck` library | `kit` (parse, load, hash, manifest, acquisition), `transport` (adapter sessions), `ir` (execution, comparison, capabilities, vocabulary coverage), `schema` (offline authoring validation), `report` (draft schema reader, records, summary, baseline gate, HTML rendering). |
-| `crates/morphir/src/commands/mck` | Argument validation, help, terminal output, exit status. No compatibility logic. |
+| `crates/morphir-mck-cli` (`morphir-mck`) | Argument validation, help, terminal output, exit status. No compatibility logic. |
 | Adapter | Owned by each implementation. Decodes, encodes and handles document trees. |
 
 Case interpretation and comparison are pure functions, callable without a subprocess or global

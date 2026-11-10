@@ -23,7 +23,6 @@ pub(super) fn qualify(work: &Path, run: &impl Fn(&[&str]) -> Output, denied_prob
     let adapter = adapter.to_str().unwrap();
     let report = "package-mvp.json";
     let output = run(&[
-        "mck",
         "package",
         "mvp-run",
         "--source",
@@ -60,15 +59,7 @@ pub(super) fn qualify(work: &Path, run: &impl Fn(&[&str]) -> Output, denied_prob
             .all(|record| record["result"] == "pass")
     );
     assert_eq!(actual["adapterError"], Value::Null);
-    let checked = run(&[
-        "mck",
-        "package",
-        "mvp-report",
-        "check",
-        report,
-        "--source",
-        source,
-    ]);
+    let checked = run(&["package", "mvp-report", "check", report, "--source", source]);
     assert_eq!(
         checked.status.code(),
         Some(0),
@@ -78,7 +69,6 @@ pub(super) fn qualify(work: &Path, run: &impl Fn(&[&str]) -> Output, denied_prob
     );
     assert!(stdout(&checked).contains("70 required cases, all passing"));
     let rendered = run(&[
-        "mck",
         "package",
         "mvp-report",
         "render",
@@ -108,7 +98,6 @@ pub(super) fn qualify(work: &Path, run: &impl Fn(&[&str]) -> Output, denied_prob
     )
     .unwrap();
     let rejected = run(&[
-        "mck",
         "package",
         "mvp-report",
         "check",
@@ -131,7 +120,6 @@ pub(super) fn qualify(work: &Path, run: &impl Fn(&[&str]) -> Output, denied_prob
     // Malformed independent input cannot fall through to adapter execution.
     std::fs::write(source_path.join("spec/package/mck/mvp-cases.json"), b"{").unwrap();
     let rejected = run(&[
-        "mck",
         "package",
         "mvp-run",
         "--source",
@@ -161,42 +149,9 @@ pub(super) fn qualify(work: &Path, run: &impl Fn(&[&str]) -> Output, denied_prob
     .unwrap();
     retain(work, "package-mvp-negative.log");
 
-    // The installed binary executes both user workflows, including trust, fresh
-    // metadata, full-lock operations, restore and generated provider consumption.
-    let examples = work.join("examples");
-    std::fs::create_dir(&examples).unwrap();
-    for name in ["local-library-restore", "local-library-update"] {
-        copy_snapshot(
-            &repo().join("examples/package").join(name),
-            &examples.join(name),
-        )
-        .expect("copy explicit package example");
-    }
-    let examples = examples.to_str().unwrap();
-    let mut lines = Vec::new();
-    for name in ["local-library-restore", "local-library-update"] {
-        let output = run(&["itest", examples, "--filter", name]);
-        lines.push(format!(
-            "{name}: {}\n{}\n{}",
-            output.status,
-            stdout(&output),
-            stderr(&output)
-        ));
-        std::fs::write(work.join("package-examples.log"), lines.join("\n")).unwrap();
-        retain(work, "package-examples.log");
-        assert_eq!(
-            output.status.code(),
-            Some(0),
-            "installed CLI {name}: {}\n{}",
-            stdout(&output),
-            stderr(&output)
-        );
-        assert!(
-            stdout(&output).contains("1 passed; 0 failed"),
-            "{}",
-            stdout(&output)
-        );
-    }
+    // The Rust product CLI also ran the two package examples (`itest`) here.
+    // Those are product workflows of the deleted Rust CLI, not runner checks;
+    // they are requalified against the .NET Morphir CLI, not by this runner.
     std::fs::write(
         work.join("package-mvp-runtime.json"),
         serde_json::to_vec_pretty(&json!({
@@ -208,7 +163,7 @@ pub(super) fn qualify(work: &Path, run: &impl Fn(&[&str]) -> Output, denied_prob
             "reportRender": "passed",
             "missingRecordRejected": true,
             "malformedInventoryRejected": true,
-            "examples": ["local-library-restore", "local-library-update"],
+            "productExamples": "not run: product workflows of the deleted Rust CLI",
             "networkDenial": denied_probe,
         }))
         .unwrap(),

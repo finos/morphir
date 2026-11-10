@@ -4,10 +4,10 @@ use std::{path::Path, process::Command};
 #[test]
 fn public_mvp_run_requires_admission_and_an_explicit_adapter() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env("MORPHIR_NO_BANNER", "true")
-        .args(["mck", "package", "mvp-run", "--source"])
+        .args(["package", "mvp-run", "--source"])
         .arg(root)
         .args(["--adapter", "/missing-mvp-adapter"])
         .output()
@@ -20,10 +20,10 @@ fn public_mvp_run_requires_admission_and_an_explicit_adapter() {
     );
 
     let empty = tempfile::tempdir().unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env("MORPHIR_NO_BANNER", "true")
-        .args(["mck", "package", "mvp-run", "--source"])
+        .args(["package", "mvp-run", "--source"])
         .arg(empty.path())
         .args(["--adapter", "/missing-mvp-adapter"])
         .output()
@@ -39,10 +39,10 @@ fn public_mvp_report_is_written_checked_and_rendered_offline() {
     let temp = tempfile::tempdir().unwrap();
     let json = temp.path().join("report.json");
     let html = temp.path().join("report.html");
-    let run = Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let run = Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env("MORPHIR_NO_BANNER", "true")
-        .args(["mck", "package", "mvp-run", "--source"])
+        .args(["package", "mvp-run", "--source"])
         .arg(&root)
         .args(["--adapter", "/missing-mvp-adapter", "--report"])
         .arg(&json)
@@ -53,10 +53,10 @@ fn public_mvp_report_is_written_checked_and_rendered_offline() {
     assert_eq!(report["contractVersion"], "0.1.0-draft.1");
     assert_eq!(report["records"].as_array().unwrap().len(), 70);
 
-    let check = Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let check = Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env("MORPHIR_NO_BANNER", "true")
-        .args(["mck", "package", "mvp-report", "check"])
+        .args(["package", "mvp-report", "check"])
         .arg(&json)
         .args(["--source"])
         .arg(&root)
@@ -64,10 +64,10 @@ fn public_mvp_report_is_written_checked_and_rendered_offline() {
         .unwrap();
     assert_eq!(check.status.code(), Some(1));
 
-    let render = Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let render = Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env("MORPHIR_NO_BANNER", "true")
-        .args(["mck", "package", "mvp-report", "render"])
+        .args(["package", "mvp-report", "render"])
         .arg(&json)
         .args(["--output"])
         .arg(&html)

@@ -6,13 +6,13 @@ use std::process::{Command, Output};
 use serde_json::{Value, json};
 
 fn command(action: &str) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_morphir-mck"));
     command
         .env("MORPHIR_LOG_FILE", "false")
         .env("MORPHIR_NO_BANNER", "true")
         .env_remove("MORPHIR_LOG_DIR")
         .env_remove("MORPHIR_OUT_DIR")
-        .args(["mck", "workbench", action]);
+        .args(["workbench", action]);
     command
 }
 

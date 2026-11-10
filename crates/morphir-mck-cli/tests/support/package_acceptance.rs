@@ -62,7 +62,6 @@ pub(super) fn qualify(
         let replay = copied_baseline.join(format!("{}.ndjson", suite.name));
         let report_name = format!("package-{}.json", suite.name);
         let output = run(&[
-            "mck",
             "package",
             "run",
             "--contract",

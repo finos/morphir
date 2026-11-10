@@ -12,11 +12,11 @@ use serde_json::{Value, json};
 use tempfile::TempDir;
 
 fn morphir(args: &[&str]) -> Output {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"));
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir-mck"));
     command.env("MORPHIR_LOG_FILE", "false");
     command.env_remove("MORPHIR_LOG_DIR");
     command.env_remove("MORPHIR_OUT_DIR");
-    command.args(args).output().expect("morphir runs")
+    command.args(args).output().expect("morphir-mck runs")
 }
 
 fn stdout(output: &Output) -> String {
@@ -50,7 +50,7 @@ fn check_accepts_a_feature_only_kit() {
         "types.feature",
         "@node:Type\nFeature: Types\n  Scenario: types-0001 Unit\n    Then its canonical YAML spelling is:\n      \"\"\"yaml\n      Unit: {}\n      \"\"\"\n",
     )]);
-    let output = morphir(&["mck", "check", kit.to_str().unwrap(), "--json"]);
+    let output = morphir(&["check", kit.to_str().unwrap(), "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     let result = json_of(&output);
     assert_eq!(result["files"], json!(["spec/ir/mck/types.feature"]));
@@ -60,14 +60,14 @@ fn check_accepts_a_feature_only_kit() {
 
 #[test]
 fn convert_is_not_a_kit_command_after_the_cutover() {
-    let output = morphir(&["mck", "convert", "--help"]);
+    let output = morphir(&["convert", "--help"]);
     assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
     assert!(stderr(&output).contains("unrecognized subcommand 'convert'"));
 }
 
 #[test]
 fn check_accepts_the_repository_kit_and_summarises_on_stdout() {
-    let output = morphir(&["mck", "check", repository_kit().to_str().unwrap()]);
+    let output = morphir(&["check", repository_kit().to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     let summary = stdout(&output);
     assert!(
@@ -98,7 +98,7 @@ fn check_reports_errors_on_stderr_with_locations_and_exits_1() {
         "types.feature",
         "Feature: Types\n  Scenario: types-0001 open\n    Then an unsupported step\n",
     )]);
-    let output = morphir(&["mck", "check", kit.to_str().unwrap()]);
+    let output = morphir(&["check", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(stdout(&output).contains("1 case(s) in 1 file(s),"));
 
@@ -120,7 +120,7 @@ fn check_json_is_tab_indented_machine_output_on_stdout_only() {
             "Feature: Values\n  Scenario: values-0001 v\n    Then an unsupported step\n",
         ),
     ]);
-    let output = morphir(&["mck", "check", kit.to_str().unwrap(), "--json"]);
+    let output = morphir(&["check", kit.to_str().unwrap(), "--json"]);
     assert_eq!(output.status.code(), Some(1));
     let text = stdout(&output);
     assert!(text.starts_with("{\n\t\"files\": ["), "{text}");
@@ -148,7 +148,7 @@ fn check_json_is_tab_indented_machine_output_on_stdout_only() {
 
 #[test]
 fn a_missing_kit_directory_is_an_operational_error() {
-    let output = morphir(&["mck", "check", "no-such-kit-directory"]);
+    let output = morphir(&["check", "no-such-kit-directory"]);
     assert_eq!(output.status.code(), Some(1));
     assert!(
         stderr(&output).contains("error: cannot read kit no-such-kit-directory"),
@@ -161,10 +161,10 @@ fn a_missing_kit_directory_is_an_operational_error() {
 #[test]
 fn usage_errors_exit_2_before_doing_anything() {
     for args in [
-        &["mck"][..],
-        &["mck", "kit"],
-        &["mck", "check"],
-        &["mck", "check", "a", "--bogus"],
+        &[][..],
+        &["kit"][..],
+        &["check"],
+        &["check", "a", "--bogus"],
     ] {
         let output = morphir(args);
         assert_eq!(output.status.code(), Some(2), "{args:?}");
@@ -174,7 +174,7 @@ fn usage_errors_exit_2_before_doing_anything() {
 
 #[test]
 fn kit_status_identifies_the_embedded_kit_offline() {
-    let output = morphir(&["mck", "kit", "status", "--json"]);
+    let output = morphir(&["kit", "status", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     let status: Value = serde_json::from_str(&stdout(&output)).unwrap();
     assert_eq!(status["mode"], "embedded");
@@ -190,9 +190,8 @@ fn kit_status_identifies_the_embedded_kit_offline() {
 #[test]
 fn kit_status_reports_an_unedited_checkout_as_matching_and_an_edited_kit_as_modified() {
     let embedded: Value =
-        serde_json::from_str(&stdout(&morphir(&["mck", "kit", "status", "--json"]))).unwrap();
+        serde_json::from_str(&stdout(&morphir(&["kit", "status", "--json"]))).unwrap();
     let checkout = morphir(&[
-        "mck",
         "kit",
         "status",
         "--kit",
@@ -205,14 +204,7 @@ fn kit_status_reports_an_unedited_checkout_as_matching_and_an_edited_kit_as_modi
     assert_eq!(checkout["corpusHash"], embedded["corpusHash"]);
 
     let (_root, kit) = repository(&[("types.feature", GOOD_FEATURE)]);
-    let edited = morphir(&[
-        "mck",
-        "kit",
-        "status",
-        "--kit",
-        kit.to_str().unwrap(),
-        "--json",
-    ]);
+    let edited = morphir(&["kit", "status", "--kit", kit.to_str().unwrap(), "--json"]);
     assert_eq!(edited.status.code(), Some(0));
     let edited: Value = serde_json::from_str(&stdout(&edited)).unwrap();
     assert_eq!(edited["modified"], true);
@@ -229,7 +221,7 @@ fn kit_status_fails_for_a_kit_with_errors() {
         "types.feature",
         "Feature: Types\n  Scenario: types-1 bad id\n    Then its canonical JSON spelling is {}\n",
     )]);
-    let output = morphir(&["mck", "kit", "status", "--kit", kit.to_str().unwrap()]);
+    let output = morphir(&["kit", "status", "--kit", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(
         stdout(&output).contains("corpus hash: none; the kit has errors"),
@@ -250,7 +242,6 @@ fn json_of(output: &Output) -> Value {
 
 fn vendor_embedded(dest: &Path) -> Output {
     morphir(&[
-        "mck",
         "kit",
         "vendor",
         "--source",
@@ -265,7 +256,7 @@ fn vendor_embedded(dest: &Path) -> Output {
 fn an_invalid_manifest_is_an_error_never_a_fallback_to_the_raw_kit() {
     let (root, kit) = repository(&[("types.feature", GOOD_FEATURE)]);
     std::fs::write(root.path().join("mck-kit.lock.json"), "{}").unwrap();
-    for args in [&["mck", "check"][..], &["mck", "kit", "status", "--kit"]] {
+    for args in [&["check"][..], &["kit", "status", "--kit"]] {
         let output = morphir(&[args, &[kit.to_str().unwrap()]].concat());
         assert_eq!(output.status.code(), Some(1), "{args:?}");
         assert!(
@@ -293,14 +284,7 @@ fn the_embedded_kit_vendors_offline_into_a_new_nested_directory_and_verifies() {
 
     // Both the snapshot root and its kit directory resolve to the managed kit.
     for kit in [dest.clone(), dest.join("spec").join("ir").join("mck")] {
-        let status = morphir(&[
-            "mck",
-            "kit",
-            "status",
-            "--kit",
-            kit.to_str().unwrap(),
-            "--json",
-        ]);
+        let status = morphir(&["kit", "status", "--kit", kit.to_str().unwrap(), "--json"]);
         assert_eq!(status.status.code(), Some(0), "{}", stderr(&status));
         let status = json_of(&status);
         assert_eq!(status["mode"], "vendored");
@@ -309,7 +293,6 @@ fn the_embedded_kit_vendors_offline_into_a_new_nested_directory_and_verifies() {
         assert_eq!(status["driverContract"], 2);
     }
     let check = morphir(&[
-        "mck",
         "check",
         dest.join("spec").join("ir").join("mck").to_str().unwrap(),
     ]);
@@ -318,14 +301,7 @@ fn the_embedded_kit_vendors_offline_into_a_new_nested_directory_and_verifies() {
     let again = vendor_embedded(&dest);
     assert_eq!(again.status.code(), Some(0), "{}", stderr(&again));
     assert_eq!(json_of(&again)["outcome"], "unchanged");
-    let update = morphir(&[
-        "mck",
-        "kit",
-        "update",
-        "--kit",
-        dest.to_str().unwrap(),
-        "--json",
-    ]);
+    let update = morphir(&["kit", "update", "--kit", dest.to_str().unwrap(), "--json"]);
     assert_eq!(update.status.code(), Some(0), "{}", stderr(&update));
     assert_eq!(json_of(&update)["outcome"], "unchanged");
     assert_eq!(
@@ -342,7 +318,6 @@ fn a_checkout_vendors_with_no_revision_and_its_embedded_twin_has_the_same_corpus
     let work = TempDir::new().unwrap();
     let from_checkout = work.path().join("checkout");
     let output = morphir(&[
-        "mck",
         "kit",
         "vendor",
         "--source",
@@ -389,12 +364,11 @@ fn an_edited_snapshot_fails_check_status_and_update_naming_the_file() {
 
     for args in [
         vec![
-            "mck",
             "check",
             dest.join("spec").join("ir").join("mck").to_str().unwrap(),
         ],
-        vec!["mck", "kit", "status", "--kit", dest.to_str().unwrap()],
-        vec!["mck", "kit", "update", "--kit", dest.to_str().unwrap()],
+        vec!["kit", "status", "--kit", dest.to_str().unwrap()],
+        vec!["kit", "update", "--kit", dest.to_str().unwrap()],
     ] {
         let output = morphir(&args.iter().map(|s| &**s).collect::<Vec<_>>());
         assert_eq!(output.status.code(), Some(1), "{args:?}");
@@ -423,7 +397,7 @@ fn a_snapshot_for_another_driver_contract_is_refused_before_use() {
     let manifest = dest.join("mck-kit.lock.json");
     let text = std::fs::read_to_string(&manifest).unwrap();
     std::fs::write(&manifest, text.replace(">=2, <3", ">=3, <4")).unwrap();
-    let output = morphir(&["mck", "check", dest.to_str().unwrap()]);
+    let output = morphir(&["check", dest.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(
         stderr(&output)
@@ -451,7 +425,6 @@ fn vendor_refuses_unrelated_content_and_a_wrong_expected_digest_without_writing(
     let dest = work.path().join("kit");
     let wrong = format!("sha256-{}", "0".repeat(64));
     let output = morphir(&[
-        "mck",
         "kit",
         "vendor",
         "--source",
@@ -504,7 +477,7 @@ fn source_and_revision_mistakes_are_usage_errors_before_anything_happens() {
             "--expect-digest:",
         ),
     ] {
-        let output = morphir(&[&["mck", "kit", "vendor", "--dest", dest][..], &args].concat());
+        let output = morphir(&[&["kit", "vendor", "--dest", dest][..], &args].concat());
         assert_eq!(
             output.status.code(),
             Some(2),
@@ -530,7 +503,6 @@ fn update_from_a_local_snapshot_needs_its_source_named() {
     let work = TempDir::new().unwrap();
     let dest = work.path().join("kit");
     let output = morphir(&[
-        "mck",
         "kit",
         "vendor",
         "--source",
@@ -539,7 +511,7 @@ fn update_from_a_local_snapshot_needs_its_source_named() {
         dest.to_str().unwrap(),
     ]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    let output = morphir(&["mck", "kit", "update", "--kit", dest.to_str().unwrap()]);
+    let output = morphir(&["kit", "update", "--kit", dest.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(
         stderr(&output).contains("name it again with --source <path>"),
@@ -548,7 +520,6 @@ fn update_from_a_local_snapshot_needs_its_source_named() {
     );
 
     let output = morphir(&[
-        "mck",
         "kit",
         "update",
         "--kit",
@@ -571,7 +542,7 @@ fn kit_status_reports_a_leftover_from_an_interrupted_run_instead_of_passing() {
     assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
     let staging = work.path().join(".kit.mck-staging-dead");
     std::fs::create_dir(&staging).unwrap();
-    let output = morphir(&["mck", "kit", "status", "--kit", dest.to_str().unwrap()]);
+    let output = morphir(&["kit", "status", "--kit", dest.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     let diagnostics = stderr(&output);
     assert!(
@@ -608,7 +579,7 @@ fn github_sourced_snapshot(work: &Path) -> PathBuf {
 fn update_of_a_github_snapshot_takes_its_source_from_the_manifest() {
     let work = TempDir::new().unwrap();
     let dest = github_sourced_snapshot(work.path());
-    let output = morphir(&["mck", "kit", "update", "--kit", dest.to_str().unwrap()]);
+    let output = morphir(&["kit", "update", "--kit", dest.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(
         stderr(&output).contains("pass --revision <full commit> to update it"),
@@ -617,7 +588,6 @@ fn update_of_a_github_snapshot_takes_its_source_from_the_manifest() {
     );
 
     let output = morphir(&[
-        "mck",
         "kit",
         "update",
         "--kit",
@@ -647,7 +617,6 @@ fn update_verifies_the_existing_snapshot_before_fetching_anything() {
     let full = "0000000000000000000000000000000000000000";
     for args in [
         vec![
-            "mck",
             "kit",
             "update",
             "--kit",
@@ -656,7 +625,6 @@ fn update_verifies_the_existing_snapshot_before_fetching_anything() {
             full,
         ],
         vec![
-            "mck",
             "kit",
             "update",
             "--kit",
@@ -688,7 +656,6 @@ fn a_revision_is_refused_for_a_snapshot_that_did_not_come_from_github() {
     let dest = work.path().join("kit");
     assert_eq!(vendor_embedded(&dest).status.code(), Some(0));
     let output = morphir(&[
-        "mck",
         "kit",
         "update",
         "--kit",
@@ -702,4 +669,46 @@ fn a_revision_is_refused_for_a_snapshot_that_did_not_come_from_github() {
         "{}",
         stderr(&output)
     );
+}
+
+// `morphir-mck` is the runner's own program. The Morphir CLI (finos/morphir-dotnet)
+// delegates `morphir mck ARGS` to it with the same ARGS (spec/mck/cli-contract.md),
+// so the command tree here is the one `morphir mck` always had.
+#[test]
+fn the_standalone_runner_names_itself_and_keeps_the_mck_command_tree() {
+    let version = morphir(&["--version"]);
+    assert_eq!(version.status.code(), Some(0), "{}", stderr(&version));
+    assert_eq!(
+        stdout(&version).trim(),
+        format!("morphir-mck {}", env!("CARGO_PKG_VERSION"))
+    );
+
+    let help = morphir(&["--help"]);
+    assert_eq!(help.status.code(), Some(0), "{}", stderr(&help));
+    let help = stdout(&help);
+    assert!(help.contains("Usage: morphir-mck"), "{help}");
+    for command in [
+        "mep",
+        "check",
+        "coverage",
+        "schema",
+        "run",
+        "package",
+        "workbench",
+        "node-address",
+        "report",
+        "kit",
+    ] {
+        assert!(
+            help.lines()
+                .any(|line| line.trim_start().starts_with(&format!("{command} "))),
+            "missing {command}:\n{help}"
+        );
+    }
+
+    // `mck` is not a subcommand of the runner itself: `morphir-mck mck run` is a
+    // usage error, not a second spelling.
+    let nested = morphir(&["mck", "run"]);
+    assert_eq!(nested.status.code(), Some(2));
+    assert_eq!(stdout(&nested), "");
 }

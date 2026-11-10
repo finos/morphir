@@ -117,7 +117,6 @@ pub(super) fn qualify(
     assert_eq!(case_ids.len(), 32);
     let run_control = |kit: &Path, report: &Path, mode: &str| {
         run(&[
-            "mck",
             "workbench",
             "run",
             "--kit",
@@ -138,7 +137,6 @@ pub(super) fn qualify(
     };
     let check = |kit: &Path, report: &Path| {
         run(&[
-            "mck",
             "workbench",
             "check",
             "--kit",
@@ -288,7 +286,7 @@ pub(super) fn qualify(
         stderr(&boundary_check)
     );
 
-    let version = run(&["--no-banner", "--version"]);
+    let version = run(&["--version"]);
     assert!(version.status.success());
     write_json(
         &evidence.join("runtime.json"),
@@ -327,7 +325,7 @@ pub(super) fn installed_cli_qualification_requires_workbench_evidence() {
         receipt["runnerVersion"]
             .as_str()
             .unwrap()
-            .starts_with("morphir ")
+            .starts_with("morphir-mck ")
     );
     assert_eq!(receipt["reportRefusals"].as_array().unwrap().len(), 5);
     assert_eq!(receipt["adapterFailures"].as_array().unwrap().len(), 4);

@@ -9,10 +9,10 @@ fn source() -> PathBuf {
 }
 
 fn inspect(source: &Path, contract: &str) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_morphir"))
+    Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env("MORPHIR_NO_BANNER", "true")
-        .args(["mck", "package", "inspect", "--source"])
+        .args(["package", "inspect", "--source"])
         .arg(source)
         .args(["--contract", contract])
         .output()

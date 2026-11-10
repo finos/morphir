@@ -5,13 +5,13 @@ use std::process::Output;
 use tempfile::TempDir;
 
 fn morphir(args: &[&str]) -> Output {
-    std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    std::process::Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env_remove("MORPHIR_LOG_DIR")
         .env_remove("MORPHIR_OUT_DIR")
         .args(args)
         .output()
-        .expect("morphir runs")
+        .expect("morphir-mck runs")
 }
 
 const VOCABULARY: &str = r#"{
@@ -36,7 +36,7 @@ fn repository() -> (TempDir, PathBuf) {
 #[test]
 fn missing_variant_is_a_gap_on_stdout_and_exit_one() {
     let (_root, kit) = repository();
-    let output = morphir(&["mck", "coverage", "--kit", kit.to_str().unwrap()]);
+    let output = morphir(&["coverage", "--kit", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1), "{:?}", output);
     assert_eq!(output.stdout, b"Type/Function has no case\n");
     assert!(
@@ -52,8 +52,8 @@ fn missing_variant_is_a_gap_on_stdout_and_exit_one() {
 fn embedded_and_repository_kits_have_complete_coverage() {
     let kit = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/ir/mck");
     for args in [
-        vec!["mck", "coverage"],
-        vec!["mck", "coverage", "--kit", kit.to_str().unwrap()],
+        vec!["coverage"],
+        vec!["coverage", "--kit", kit.to_str().unwrap()],
     ] {
         let output = morphir(&args);
         assert_eq!(output.status.code(), Some(0), "{:?}", output);
@@ -77,7 +77,6 @@ fn standalone_kit_uses_explicit_repository_root() {
     let standalone = root.path().join("standalone");
     std::fs::rename(&kit, &standalone).unwrap();
     let output = morphir(&[
-        "mck",
         "coverage",
         "--kit",
         standalone.to_str().unwrap(),
@@ -104,13 +103,13 @@ fn missing_or_invalid_vocabulary_is_an_operational_error() {
         &VOCABULARY.replace("\"vocabularyVersion\": 1", "\"vocabularyVersion\": 2"),
     ] {
         std::fs::write(root.path().join("spec/mck/vocabulary.json"), invalid).unwrap();
-        let output = morphir(&["mck", "coverage", "--kit", kit.to_str().unwrap()]);
+        let output = morphir(&["coverage", "--kit", kit.to_str().unwrap()]);
         assert_eq!(output.status.code(), Some(1));
         assert!(output.stdout.is_empty(), "{:?}", output);
         assert!(String::from_utf8_lossy(&output.stderr).contains("spec/mck/vocabulary.json"));
     }
     std::fs::remove_file(root.path().join("spec/mck/vocabulary.json")).unwrap();
-    let output = morphir(&["mck", "coverage", "--kit", kit.to_str().unwrap()]);
+    let output = morphir(&["coverage", "--kit", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
     assert!(String::from_utf8_lossy(&output.stderr).contains("not found"));
@@ -120,7 +119,7 @@ fn missing_or_invalid_vocabulary_is_an_operational_error() {
 fn kit_parse_errors_are_reported_before_coverage() {
     let (_root, kit) = repository();
     std::fs::write(kit.join("types.feature"), "Feature: Types\n  Scenario: types-1 invalid identifier\n    Then its canonical JSON spelling is {}\n").unwrap();
-    let output = morphir(&["mck", "coverage", "--kit", kit.to_str().unwrap()]);
+    let output = morphir(&["coverage", "--kit", kit.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
     assert!(!output.stderr.is_empty());
@@ -131,7 +130,6 @@ fn managed_snapshot_verification_precedes_vocabulary_parsing() {
     let root = TempDir::new().unwrap();
     let snapshot = root.path().join("snapshot");
     let output = morphir(&[
-        "mck",
         "kit",
         "vendor",
         "--source",
@@ -140,11 +138,11 @@ fn managed_snapshot_verification_precedes_vocabulary_parsing() {
         snapshot.to_str().unwrap(),
     ]);
     assert_eq!(output.status.code(), Some(0), "{:?}", output);
-    let clean = morphir(&["mck", "coverage", "--kit", snapshot.to_str().unwrap()]);
+    let clean = morphir(&["coverage", "--kit", snapshot.to_str().unwrap()]);
     assert_eq!(clean.status.code(), Some(0), "{:?}", clean);
     std::fs::write(snapshot.join("spec/mck/vocabulary.json"), "{").unwrap();
     for kit in [snapshot.clone(), snapshot.join("spec/ir/mck")] {
-        let output = morphir(&["mck", "coverage", "--kit", kit.to_str().unwrap()]);
+        let output = morphir(&["coverage", "--kit", kit.to_str().unwrap()]);
         assert_eq!(output.status.code(), Some(1), "{:?}", output);
         assert!(output.stdout.is_empty());
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -155,10 +153,7 @@ fn managed_snapshot_verification_precedes_vocabulary_parsing() {
 
 #[test]
 fn malformed_arguments_are_usage_errors() {
-    for args in [
-        vec!["mck", "coverage", "--kit"],
-        vec!["mck", "coverage", "--unknown"],
-    ] {
+    for args in [vec!["coverage", "--kit"], vec!["coverage", "--unknown"]] {
         let output = morphir(&args);
         assert_eq!(output.status.code(), Some(2), "{:?}", output);
         assert!(output.stdout.is_empty());

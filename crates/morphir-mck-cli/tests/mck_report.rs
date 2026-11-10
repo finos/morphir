@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 fn run(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_morphir"))
+    Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env_remove("MORPHIR_LOG_DIR")
         .env_remove("MORPHIR_OUT_DIR")
@@ -22,7 +22,6 @@ fn render_a_saved_report_without_an_adapter_or_kit() {
     let output = work.path().join("out/report.html");
     std::fs::write(&input, fixture()).unwrap();
     let result = run(&[
-        "mck",
         "report",
         "render",
         input.to_str().unwrap(),
@@ -50,7 +49,6 @@ fn invalid_reports_preserve_existing_output_and_input_cannot_be_overwritten() {
     std::fs::write(&input, "{\"contractVersion\":1}").unwrap();
     std::fs::write(&output, "previous report").unwrap();
     let result = run(&[
-        "mck",
         "report",
         "render",
         input.to_str().unwrap(),
@@ -64,7 +62,6 @@ fn invalid_reports_preserve_existing_output_and_input_cannot_be_overwritten() {
     std::fs::hard_link(&input, &alias).unwrap();
     for path in [&input, &alias] {
         let result = run(&[
-            "mck",
             "report",
             "render",
             input.to_str().unwrap(),
@@ -85,7 +82,6 @@ fn report_check_does_not_certify_an_example_without_a_kit_digest() {
     std::fs::write(&allowed, "{\"cases\":[]}").unwrap();
     let kit = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/ir/mck");
     let result = run(&[
-        "mck",
         "report",
         "check",
         input.to_str().unwrap(),
@@ -106,7 +102,6 @@ fn publication_replaces_old_output_and_cleans_temporary_files_on_failure() {
     std::fs::write(&output, "old output").unwrap();
     let render = |destination: &Path| {
         run(&[
-            "mck",
             "report",
             "render",
             input.to_str().unwrap(),

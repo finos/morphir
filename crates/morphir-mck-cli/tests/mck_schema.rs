@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 fn cli(cwd: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_morphir"))
+    Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .current_dir(cwd)
         .env("MORPHIR_LOG_FILE", "false")
         .env_remove("MORPHIR_OUT_DIR")
@@ -19,7 +19,7 @@ fn embedded_source_and_vendored_schema_gates_work_without_other_tools() {
     let work = tempfile::tempdir().unwrap();
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let source = root.join("spec/ir/mck");
-    let embedded = cli(work.path(), &["mck", "schema", "check"]);
+    let embedded = cli(work.path(), &["schema", "check"]);
     assert!(
         embedded.status.success(),
         "{}",
@@ -31,7 +31,7 @@ fn embedded_source_and_vendored_schema_gates_work_without_other_tools() {
     );
     let raw = cli(
         work.path(),
-        &["mck", "schema", "check", "--kit", source.to_str().unwrap()],
+        &["schema", "check", "--kit", source.to_str().unwrap()],
     );
     assert!(
         raw.status.success(),
@@ -43,7 +43,6 @@ fn embedded_source_and_vendored_schema_gates_work_without_other_tools() {
     let vendor = cli(
         work.path(),
         &[
-            "mck",
             "kit",
             "vendor",
             "--source",
@@ -60,7 +59,7 @@ fn embedded_source_and_vendored_schema_gates_work_without_other_tools() {
     let check = || {
         cli(
             work.path(),
-            &["mck", "schema", "check", "--kit", managed.to_str().unwrap()],
+            &["schema", "check", "--kit", managed.to_str().unwrap()],
         )
     };
     let vendored = check();
@@ -91,7 +90,7 @@ fn old_managed_lock_does_not_silently_gain_required_schema_inputs() {
     snapshot.write(&old, &lock).unwrap();
     let result = cli(
         work.path(),
-        &["mck", "schema", "check", "--kit", old.to_str().unwrap()],
+        &["schema", "check", "--kit", old.to_str().unwrap()],
     );
     assert_eq!(result.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&result.stderr).contains("vocabulary.schema.json"));
@@ -120,7 +119,6 @@ fn decimal_response_id_cannot_round_to_a_different_pending_request() {
     let result = cli(
         work.path(),
         &[
-            "mck",
             "schema",
             "check",
             "--kit",

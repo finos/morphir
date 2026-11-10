@@ -12,12 +12,12 @@ fn kit() -> PathBuf {
 }
 
 fn command() -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_morphir-mck"));
     command
         .env("MORPHIR_LOG_FILE", "false")
         .env_remove("MORPHIR_LOG_DIR")
         .env_remove("MORPHIR_OUT_DIR")
-        .args(["mck", "package", "run"]);
+        .args(["package", "run"]);
     command
 }
 

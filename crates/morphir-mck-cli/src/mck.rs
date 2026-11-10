@@ -11,6 +11,7 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
+use crate::AppResult;
 use clap::Args;
 use morphir_bdd::{Console, Suite, SuiteResult};
 use morphir_mck::ir::run::{RunState, report_of};
@@ -34,7 +35,6 @@ use morphir_mck::report::iso_timestamp;
 use morphir_mck::steps::{KitRun, link};
 use morphir_mck::transport::{Limits, Session, TransportError};
 use serde_json::json;
-use starbase::AppResult;
 
 pub mod mep;
 pub mod node_address;

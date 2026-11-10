@@ -14,8 +14,6 @@ use std::process::Output;
 
 use serde_json::Value;
 
-#[path = "support/metadata_acceptance.rs"]
-mod metadata_acceptance;
 #[path = "support/mvp_acceptance.rs"]
 mod mvp_acceptance;
 #[path = "support/package_acceptance.rs"]
@@ -34,14 +32,7 @@ fn transcript() -> PathBuf {
 }
 
 fn the_legacy_engine_option_is_rejected_after_cutover() {
-    let output = morphir(&[
-        "mck",
-        "run",
-        "--engine",
-        "legacy",
-        "--adapter",
-        "unused-adapter",
-    ]);
+    let output = morphir(&["run", "--engine", "legacy", "--adapter", "unused-adapter"]);
     assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
     assert!(stderr(&output).contains("unexpected argument '--engine'"));
 }
@@ -152,7 +143,6 @@ fn metadata_cli_accepts_reordered_fact_object_members() {
     let report = work.path().join("metadata-report.json");
     let adapter = std::env::current_exe().unwrap();
     let output = morphir(&[
-        "mck",
         "run",
         "--suite",
         "metadata",
@@ -180,7 +170,6 @@ fn metadata_cli_runs_and_checks_one_fixed_case() {
     std::fs::write(&allowed, "{\"cases\":[]}").unwrap();
     let adapter = std::env::current_exe().unwrap();
     let output = morphir(&[
-        "mck",
         "run",
         "--suite",
         "metadata",
@@ -208,7 +197,6 @@ fn metadata_cli_runs_and_checks_one_fixed_case() {
             .contains("metadata-0001")
     );
     let checked = morphir(&[
-        "mck",
         "report",
         "check",
         report.to_str().unwrap(),
@@ -219,7 +207,6 @@ fn metadata_cli_runs_and_checks_one_fixed_case() {
     assert!(checked.status.success(), "{}", stderr(&checked));
     let rendered = work.path().join("metadata-report.html");
     let output = morphir(&[
-        "mck",
         "report",
         "render",
         report.to_str().unwrap(),
@@ -243,7 +230,6 @@ fn old_capabilities_skip_metadata_and_fail_strict_qualification() {
     let report = work.path().join("metadata-report.json");
     let adapter = std::env::current_exe().unwrap();
     let output = morphir(&[
-        "mck",
         "run",
         "--suite",
         "metadata",
@@ -265,13 +251,13 @@ fn old_capabilities_skip_metadata_and_fail_strict_qualification() {
 }
 
 fn morphir(args: &[&str]) -> Output {
-    std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    std::process::Command::new(env!("CARGO_BIN_EXE_morphir-mck"))
         .env("MORPHIR_LOG_FILE", "false")
         .env_remove("MORPHIR_LOG_DIR")
         .env_remove("MORPHIR_OUT_DIR")
         .args(args)
         .output()
-        .expect("morphir runs")
+        .expect("morphir-mck runs")
 }
 
 fn stdout(output: &Output) -> String {
@@ -404,13 +390,13 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     std::fs::create_dir(&home).unwrap();
     let cli = work
         .path()
-        .join(format!("morphir{}", std::env::consts::EXE_SUFFIX));
+        .join(format!("morphir-mck{}", std::env::consts::EXE_SUFFIX));
     let adapter = work
         .path()
         .join(format!("adapter{}", std::env::consts::EXE_SUFFIX));
     let installed = std::env::var_os("MORPHIR_MCK_INSTALLED_CLI")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_morphir")));
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_morphir-mck")));
     std::fs::copy(&installed, &cli).expect("copy the selected installed CLI");
     std::fs::copy(std::env::current_exe().unwrap(), &adapter).unwrap();
     let replay = work.path().join("transcript.ndjson");
@@ -454,10 +440,10 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     };
     success(&["--version"]);
     for args in [
-        vec!["mck", "--help"],
-        vec!["mck", "schema", "check", "--help"],
-        vec!["mck", "report", "check", "--help"],
-        vec!["mck", "report", "render", "--help"],
+        vec!["--help"],
+        vec!["schema", "check", "--help"],
+        vec!["report", "check", "--help"],
+        vec!["report", "render", "--help"],
     ] {
         success(&args);
     }
@@ -465,20 +451,17 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         copy_snapshot(Path::new(&source), &work.path().join("kit"))
             .expect("copy the pre-acquired kit");
     } else {
-        success(&[
-            "mck", "kit", "vendor", "--source", "embedded", "--dest", "kit",
-        ]);
+        success(&["kit", "vendor", "--source", "embedded", "--dest", "kit"]);
     }
-    let status = success(&["mck", "kit", "status", "--kit", "kit", "--json"]);
-    success(&["mck", "check", "kit"]);
-    success(&["mck", "coverage", "--kit", "kit"]);
-    success(&["mck", "schema", "check", "--kit", "kit"]);
+    let status = success(&["kit", "status", "--kit", "kit", "--json"]);
+    success(&["check", "kit"]);
+    success(&["coverage", "--kit", "kit"]);
+    success(&["schema", "check", "--kit", "kit"]);
 
     // Keep the installed CLI's acquisition and health checks on the current
     // kit, then replay the immutable historical exchange on its pinned kit.
     let source = historical_kit();
     success(&[
-        "mck",
         "kit",
         "vendor",
         "--source",
@@ -491,7 +474,6 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         ("frozen-kit", "report.json"),
     ] {
         success(&[
-            "mck",
             "run",
             "--adapter",
             adapter.to_str().unwrap(),
@@ -523,7 +505,6 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     assert_eq!(actual["records"].as_array().unwrap().len(), 802);
     std::fs::write(work.path().join("allowed.json"), "{\"cases\":[]}").unwrap();
     success(&[
-        "mck",
         "report",
         "check",
         "report.json",
@@ -534,7 +515,6 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         &filter,
     ]);
     success(&[
-        "mck",
         "report",
         "render",
         "report.json",
@@ -553,7 +533,6 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
     if std::env::var_os("MORPHIR_MCK_MVP_REQUIRED").is_some_and(|value| !value.is_empty()) {
         mvp_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
     }
-    metadata_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
     workbench_acceptance::qualify(work.path(), &adapter, &run, denied_probe.as_deref());
 
     if let Some(directory) = std::env::var_os("MORPHIR_MCK_ACCEPTANCE_EVIDENCE") {
@@ -573,7 +552,6 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
             "package-mvp-runtime.json",
             "package-mvp-negative.log",
             "package-examples.log",
-            "metadata-preview.json",
         ] {
             if work.path().join(name).exists() {
                 std::fs::copy(work.path().join(name), directory.join(name)).unwrap();
@@ -599,7 +577,7 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         "{}",
     )
     .unwrap();
-    let corrupted = run(&["mck", "schema", "check", "--kit", "kit"]);
+    let corrupted = run(&["schema", "check", "--kit", "kit"]);
     assert_eq!(corrupted.status.code(), Some(1));
     assert!(
         stderr(&corrupted).contains("altered"),
@@ -616,7 +594,6 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     let exe = std::env::current_exe().unwrap();
     let transcript = transcript();
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         exe.to_str().unwrap(),
@@ -683,7 +660,6 @@ fn a_full_run_against_recorded_answers_reproduces_the_typescript_report() {
     let allowed = work.path().join("allowed.json");
     std::fs::write(&allowed, "{\"cases\":[]}").unwrap();
     let checked = morphir(&[
-        "mck",
         "report",
         "check",
         report.to_str().unwrap(),
@@ -728,7 +704,6 @@ fn replay_run(binding: &str, transcript: &Path, report: &Path) -> Output {
     let exe = std::env::current_exe().unwrap();
     let filter = baseline_filter(binding);
     morphir(&[
-        "mck",
         "run",
         "--adapter",
         exe.to_str().unwrap(),
@@ -825,7 +800,6 @@ fn a_gherkin_run_with_no_kit_replays_a_current_ion_spelling_case() {
     let exe = std::env::current_exe().unwrap();
     let transcript = repo().join("spec/mck/baseline-ion-2026-09-26/values-0023-rust.ndjson");
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         exe.to_str().unwrap(),
@@ -864,7 +838,6 @@ fn a_gherkin_run_with_no_kit_replays_a_current_ion_spelling_case() {
 /// A filter matching no case is an error, rather than a passing empty suite.
 fn a_filter_matching_nothing_is_an_error() {
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         "definitely-not-an-mck-adapter",
@@ -879,9 +852,8 @@ fn a_run_without_an_adapter_is_a_usage_error_that_writes_nothing() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
     for args in [
-        vec!["mck", "run", "--report", report.to_str().unwrap()],
+        vec!["run", "--report", report.to_str().unwrap()],
         vec![
-            "mck",
             "run",
             "--adapter-arg",
             "x",
@@ -903,21 +875,14 @@ fn a_run_without_an_adapter_is_a_usage_error_that_writes_nothing() {
 }
 
 fn an_unsupported_filter_is_a_usage_error() {
-    let output = morphir(&[
-        "mck",
-        "run",
-        "--adapter",
-        "unused",
-        "--filter",
-        "types-(?=0001)",
-    ]);
+    let output = morphir(&["run", "--adapter", "unused", "--filter", "types-(?=0001)"]);
     assert_eq!(output.status.code(), Some(2));
     assert!(
         stderr(&output).contains("invalid --filter regex:"),
         "{}",
         stderr(&output)
     );
-    let output = morphir(&["mck", "run", "--adapter", "unused", "--only", "("]);
+    let output = morphir(&["run", "--adapter", "unused", "--only", "("]);
     assert_eq!(
         output.status.code(),
         Some(2),
@@ -929,7 +894,6 @@ fn a_missing_adapter_program_fails_every_fence_and_still_reports() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         "definitely-not-an-mck-adapter",
@@ -961,7 +925,6 @@ fn an_html_only_run_writes_the_offline_view() {
     let work = tempfile::tempdir().unwrap();
     let html = work.path().join("report.html");
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         "definitely-not-an-mck-adapter",
@@ -981,7 +944,6 @@ fn html_output_cannot_replace_the_json_report() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         "definitely-not-an-mck-adapter",
@@ -1001,7 +963,6 @@ fn an_empty_selection_is_never_a_success() {
     let work = tempfile::tempdir().unwrap();
     let report = work.path().join("report.json");
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         "definitely-not-an-mck-adapter",
@@ -1041,7 +1002,6 @@ fn mck_report_compare_accepts_two_copies_of_a_frozen_report() {
     std::fs::write(&a, &text).unwrap();
     std::fs::write(&b, &text).unwrap();
     let output = morphir(&[
-        "mck",
         "report",
         "compare",
         a.to_str().unwrap(),
@@ -1059,7 +1019,6 @@ fn mck_report_compare_treats_implicit_semantic_check_as_explicit() {
     let b = work.path().join("explicit.json");
     std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
     let output = morphir(&[
-        "mck",
         "report",
         "compare",
         a.to_str().unwrap(),
@@ -1069,7 +1028,6 @@ fn mck_report_compare_treats_implicit_semantic_check_as_explicit() {
     report["records"][0]["check"] = Value::String("spelling".into());
     std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
     let output = morphir(&[
-        "mck",
         "report",
         "compare",
         a.to_str().unwrap(),
@@ -1093,7 +1051,6 @@ fn mck_report_compare_rejects_a_changed_record_result_and_names_its_index() {
     let b = work.path().join("b.json");
     std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
     let output = morphir(&[
-        "mck",
         "report",
         "compare",
         a.to_str().unwrap(),
@@ -1116,7 +1073,6 @@ fn mck_report_compare_rejects_a_record_count_mismatch() {
     let b = work.path().join("b.json");
     std::fs::write(&b, serde_json::to_vec(&report).unwrap()).unwrap();
     let output = morphir(&[
-        "mck",
         "report",
         "compare",
         a.to_str().unwrap(),
@@ -1139,7 +1095,6 @@ fn mck_report_compare_rejects_a_report_without_records() {
     let a = work.path().join("a.json");
     std::fs::write(&a, serde_json::to_vec(&report).unwrap()).unwrap();
     let output = morphir(&[
-        "mck",
         "report",
         "compare",
         a.to_str().unwrap(),
@@ -1166,7 +1121,6 @@ fn a_run_on_a_kit_without_feature_files_is_a_usage_error() {
     }
     let report = work.path().join("report.json");
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         "definitely-not-an-mck-adapter",
@@ -1207,7 +1161,6 @@ fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
     let report = work.path().join("report.json");
     let exe = std::env::current_exe().unwrap();
     let output = morphir(&[
-        "mck",
         "run",
         "--adapter",
         exe.to_str().unwrap(),

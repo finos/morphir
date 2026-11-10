@@ -2,7 +2,8 @@
 // bun run tools/run-mck-gate.ts <report> <baseline> <kit> <adapter> [adapter args...]
 import { rmSync } from "node:fs";
 
-const DEFAULT_COMMAND = ["cargo", "run", "--locked", "-p", "morphir", "--", "mck"];
+// The shared runner, morphir-mck; its subcommands follow.
+const DEFAULT_COMMAND = ["cargo", "run", "--locked", "-p", "morphir-mck-cli", "--"];
 
 export function runMckGate(
 	report: string,

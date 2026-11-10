@@ -1,6 +1,6 @@
 import path from "node:path";
 
-/** CI orchestration only: the native CLI owns every case and verdict. */
+/** CI orchestration only: the shared runner (morphir-mck) owns every case and verdict. */
 export function packageMckInvocation(root: string, platform: string, args: readonly string[]): { command: string[]; report: string } {
 	const [binding, contract] = args;
 	if (args.length !== 2 || (binding !== "typescript" && binding !== "rust") || (contract !== "0.1.0-draft.1" && contract !== "0.1.0-draft.2")) {
@@ -14,7 +14,7 @@ export function packageMckInvocation(root: string, platform: string, args: reado
 		"--suite", "package", "--contract", contract,
 	];
 	return { report, command: [
-		"cargo", "run", "--locked", "--package", "morphir", "--", "mck", "package", "run",
+		"cargo", "run", "--locked", "--package", "morphir-mck-cli", "--", "package", "run",
 		"--kit", path.join(root, "spec/package/mck"), "--contract", contract, "--adapter", adapter,
 		...adapterArgs.flatMap(arg => ["--adapter-arg", arg]), "--report", report,
 	] };
