@@ -324,6 +324,18 @@
             },
             "required": [ "modelInput" ]
           }
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [ "protocolVersion" ]
+              },
+              {
+                "required": [ "modelTuple" ]
+              }
+            ]
+          }
         }
       ],
       "required": [ "operation", "extensionId", "version" ],

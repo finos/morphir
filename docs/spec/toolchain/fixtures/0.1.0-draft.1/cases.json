@@ -186,7 +186,7 @@
       "contract": "lock",
       "document": "lock/negative/protocol-version-0.1.json",
       "expected": {
-        "code": "unsupported_case",
+        "code": "invalid_value",
         "path": "platforms.win-x64.providers[0].protocolVersion"
       }
     },
@@ -220,6 +220,30 @@
       "expected": {
         "code": "unsupported_case",
         "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/external-provider-with-model-input.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[0].modelInput"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-protocol-version-before-model-member.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/built-in-with-protocol-version.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[1].protocolVersion"
       }
     },
     {
@@ -356,6 +380,11 @@
     },
     {
       "contract": "recipe",
+      "document": "recipe/protocol-membership-exact.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
       "document": "recipe/wasm-abi-alternatives.json",
       "expected": "valid"
     },
@@ -410,7 +439,7 @@
       "contract": "recipe",
       "document": "recipe/negative/protocol-version-0.1.json",
       "expected": {
-        "code": "unsupported_case",
+        "code": "invalid_value",
         "path": "providers[0].protocolVersion"
       }
     },
@@ -420,6 +449,22 @@
       "expected": {
         "code": "inconsistent_document",
         "path": "providers[0].modelInput"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/external-provider-with-model-output.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].modelOutput"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/built-in-with-model-tuple.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].builtIns[0].modelTuple"
       }
     },
     {
@@ -2198,7 +2243,7 @@
       "kind": "mep-version",
       "version": "0.1",
       "expected": {
-        "code": "unsupported_case",
+        "code": "invalid_value",
         "path": ""
       }
     },
@@ -2261,8 +2306,109 @@
       "kind": "mep-version",
       "version": "v0.2.0",
       "expected": {
-        "code": "unsupported_case",
+        "code": "invalid_value",
         "path": ""
+      }
+    },
+    {
+      "name": "mep version: a final patch release on the 0.2 line",
+      "kind": "mep-version",
+      "version": "0.2.7",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a prerelease of 0.2.0 in upper case (SemVer is case-sensitive)",
+      "kind": "mep-version",
+      "version": "0.2.0-DRAFT.1",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a patch at the largest component, 2^64 - 1",
+      "kind": "mep-version",
+      "version": "0.2.18446744073709551615",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a prerelease of 0.2.0 of 1,100 letters",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a partial version",
+      "kind": "mep-version",
+      "version": "0.2",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a leading zero in the major",
+      "kind": "mep-version",
+      "version": "00.2.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: an empty prerelease",
+      "kind": "mep-version",
+      "version": "0.2.0-",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a numeric prerelease identifier with a leading zero",
+      "kind": "mep-version",
+      "version": "0.2.0-01",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: the empty string",
+      "kind": "mep-version",
+      "version": "",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a version followed by a line feed",
+      "kind": "mep-version",
+      "version": "0.2.0\n",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a patch one past the largest component",
+      "kind": "mep-version",
+      "version": "0.2.18446744073709551616",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      },
+      "schema": "accepts",
+      "schemaGap": "A pattern cannot bound a decimal component's value; the page limits each of major, minor and patch to 2^64 - 1."
+    },
+    {
+      "name": "a provider at MEP 0.2.0 does not fit a host that lists only 0.2.0-draft.1",
+      "kind": "resolve",
+      "rule": "resolve-preferred-misfit",
+      "recipe": "recipe/protocol-membership-exact.json",
+      "request": "request/approved.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset"
       }
     }
   ]

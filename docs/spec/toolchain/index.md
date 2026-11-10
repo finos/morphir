@@ -26,7 +26,7 @@ The request is what a project asks for. The lock is the exact answer, portable a
 
 Each document starts at `0.1.0-draft.1`, and each page above is the authority for its own version. Changing one document's version does not change another's.
 
-The contracts these documents refer to keep their own versions. Nothing here renames them in place. A reader reads each one at the version listed and is not required to read an earlier draft of it, and nothing on these pages converts between drafts:
+The contracts these documents refer to keep their own versions. Nothing here renames them in place. A reader reads each one only at the version listed, never an earlier draft of it, and nothing on these pages converts between drafts (maintainer decision of 9 November 2026: transient pre-1.0 formats are not read or converted):
 
 | Referenced contract | Version | Authority |
 | --- | --- | --- |
@@ -57,15 +57,26 @@ Some words are used with more than one meaning across the toolchain, MEP and mor
 
 `schemaVersion` is a SemVer string. A reader lists the versions it supports as SemVer requirements and refuses anything else before it reads another member. A `0.1.0-draft.1` reader lists exactly `=0.1.0-draft.1`, so it refuses `0.1.0-draft.2` and the released `0.1.0` with `unsupported_contract_version`. A contract version carries no build metadata: `=0.1.0-draft.1` would match `0.1.0-draft.1+build.5` by SemVer precedence, so a reader also refuses any version with build metadata (`lock/negative/draft-build-metadata.json`). Every other version member is compared as exact text in canonical SemVer spelling, so `1.2.3` and `1.2.3+build` are different versions. A string that is not SemVer, such as `0.1`, is `invalid_value`. Drafts promise no compatibility with each other. Use a SemVer library, never a hand-written version type.
 
+A version's major, minor and patch are each at most 18446744073709551615 (2<sup>64</sup> − 1); a larger component is `invalid_value`. A library that holds components in a narrower type, such as a 32-bit integer, must still accept every value up to that bound. A version string has no length bound of its own: it is bounded only by the size of the document that holds it, and a reader never refuses a valid version for its length. A prerelease of 1,100 letters is valid (`mep-version` cases).
+
+The schemas' patterns are ECMA-262 regular expressions. In ECMA-262, `$` matches only at the end of the string, so `"0.2.0\n"` is refused; some engines, .NET's among them, also let `$` match before a final line feed, and a validator built on one must anchor at the end of the string instead.
+
 ### MEP versions
 
-A provider's `protocolVersion` and a host offering's `protocolVersions` are MEP versions on the supported 0.2 line. A version is on the line when, in canonical SemVer spelling without build metadata, its major is `0` and its minor `2`, and it either has no prerelease or is a prerelease of `0.2.0`. So `0.2.0-draft.1`, `0.2.0-draft.2`, `0.2.0-rc.1`, `0.2.0` and `0.2.3` are on it, and `0.1`, `0.1.0`, `0.2.1-rc.1`, `0.3.0-draft.1`, `0.3.0`, `1.0.0` and `0.2.0+build.1` are not. A version off the line is `unsupported_case` at the member that holds it. MEP `0.1` is not supported.
+A provider's `protocolVersion` and a host offering's `protocolVersions` are MEP versions on the supported 0.2 line. A version is on the line when, in canonical SemVer spelling without build metadata, its major is `0` and its minor `2`, and it either has no prerelease or is a prerelease of `0.2.0`. So `0.2.0-draft.1`, `0.2.0-draft.2`, `0.2.0-DRAFT.1` (SemVer is case-sensitive, so this is another prerelease of `0.2.0`), `0.2.0-rc.1`, `0.2.0` and `0.2.3` are on it, and `0.1.0`, `0.2.1-rc.1`, `0.3.0-draft.1`, `0.3.0`, `1.0.0` and `0.2.0+build.1` are not. MEP `0.1` is not supported.
+
+Two codes apply, following their definitions in the [code table](#stable-codes):
+
+- a string that is not a version in canonical SemVer spelling fails its type and is `invalid_value`, as for every other version member: `0.1`, `0.2`, `v0.2.0`, `00.2.0`, `0.2.0-`, `0.2.0-01`, `"0.2.0\n"`, the empty string, and `0.2.18446744073709551616`, whose patch is past the bound above;
+- a SemVer version that is not on the line, build metadata included, names a protocol this contract does not support and is `unsupported_case`, as an unknown case of a tagged member is: `0.1.0`, `0.2.1-rc.1`, `0.3.0-draft.1`, `0.3.0`, `1.0.0` and `0.2.0+build.1`.
+
+Either refusal is at the member that holds the version.
 
 As single comparators the line is `>=0.2.0-0` and `<0.3.0-0`. Both comparators hold for `0.2.1-rc.1` too; the SemVer library rule of the Rust `semver` crate and `@std/semver`, under which a prerelease matches only a comparator naming its own major, minor and patch, is what keeps it out. A library without that rule, such as NuGet's version ranges, must apply the definition above rather than the comparators. The `mep-version` binding cases in `cases.json` pin the line, and `lock/protocol-version-*.json` and `lock/negative/protocol-version-*.json` show it in a lock.
 
 Admitting every prerelease of `0.2.0` is a maintainer exception, for MEP only, to the rule that a prerelease matches only exactly. The five toolchain documents keep exact draft matching for their own `schemaVersion`, as stated above.
 
-Membership is exact. A provider fits a host offering only when the offering lists the provider's `protocolVersion`, and a release's claims must list it too ([authenticated recipe checks](./toolset-recipe.md#authenticated-recipe-targets)). So two versions on the line are still different versions.
+Membership is exact, deliberately. A provider fits a host offering only when the offering lists the provider's `protocolVersion`, and a release's claims must list it too ([authenticated recipe checks](./toolset-recipe.md#authenticated-recipe-targets)). So two versions on the line are still different versions: a provider at `0.2.0` does not fit a host that lists only `0.2.0-draft.1` (`recipe/protocol-membership-exact.json` and its `resolve` case). This matches how MEP negotiates, by intersecting the lists of versions each side names. The rule is **provisional** on [open question Q1](#open-questions): whether supporting the 0.2 line means that any version on it may be named, which is this rule, or that peers on the line work together.
 
 ### Unknown and critical members
 
@@ -90,7 +101,11 @@ Within the body:
 - the checks that compare one document with another, on the recipe, lock and receipt pages, visit platforms in the same order;
 - a rule that relates several platforms or elements to each other names their common parent, such as `platforms`, never one of them.
 
-Failures in two different members of one object are not ordered by this contract: a reader may report either. The fixtures are written so that no case depends on that order. These fixtures each break two rules and pin the order between them:
+Failures in two different members of one object are not ordered by this contract, with one exception: a reader may report either. The fixtures are written so that no case depends on that order.
+
+The exception is a provider's delivery members. An external provider is checked `protocolVersion` first (its type, then the line), then the members it must not have (`modelInput`, then `modelOutput`), then `modelTuple`. A built-in is checked for the members it must not have (`protocolVersion`, then `modelTuple`), then for its model member. So a provider with an off-line `protocolVersion` and a `modelInput` is refused at `protocolVersion`.
+
+These fixtures each break two rules and pin the order between them:
 
 | Fixture | Rules broken | Reported |
 | --- | --- | --- |
@@ -101,6 +116,7 @@ Failures in two different members of one object are not ordered by this contract
 | `lock/negative/precedence-credential-byte-order.json` | `host.token`, listed first; `Authorization` at the root, listed last | `credential_in_document` at `Authorization` |
 | `lock/negative/precedence-platform-table-order.json` | A bad digest in `osx-arm64`, listed first, and in `win-x64` | `invalid_value` at `platforms.win-x64.hostSha256` |
 | `lock/negative/precedence-platform-keys-first.json` | A bad digest in `win-x64`; an unknown key `zz-unknown` | `invalid_value` at `platforms.zz-unknown` |
+| `lock/negative/precedence-protocol-version-before-model-member.json` | An external provider at MEP `0.3.0` that also has `modelInput` | `unsupported_case` at `platforms.win-x64.providers[0].protocolVersion` |
 | `recipe/negative/precedence-body-before-consistency.json` | No operations; a non-SemVer host version | `invalid_value` at `hosts[0].version` |
 | `recipe/negative/precedence-consistency-table-order.json` | A second built-in in `hosts[0]`; `hosts[1]` repeats the offering | `inconsistent_document` at `hosts[1]` |
 | `receipt/binding/recipe-and-host-substituted.json` (against `lock/two-platforms-bound.json`) | Another recipe; another host release | `receipt_lock_mismatch` at `recipe` |
@@ -137,7 +153,13 @@ Prerequisites are `runtime`, `sdk` (with `phase` `install` or `run`) and `native
 | Digest | 64 lowercase hexadecimal digits of SHA-256 over exact bytes |
 | Version | Canonical SemVer |
 
-Dotted extension ids are decided and their descriptor change is finos/morphir#1149. When it lands, only the provider identity changes: it takes #1149's grammar, which keeps the 238-character total and drops the 64-character segment limit, refining this draft in place. Every other token in the table above keeps its 64-character limit. No toolchain document uses an extension id as a JSON member name, so the [critical path](#unknown-and-critical-members) grammar is unaffected; ids appear only as values.
+Dotted extension ids are decided, and the approved plan for them is the OpenSpec change `allow-dotted-extension-ids` (finos/morphir#1149, merged 10 November 2026). Its last group, which is still to do here, changes three things in these contracts, refining `0.1.0-draft.1` in place:
+
+- the provider identity takes that change's grammar, including its rule that the first segment is not a Windows device name, so `con.example` becomes invalid;
+- the 64-character segment limit is dropped, keeping the 238-character total;
+- the referenced extension release descriptor moves to `2.0.0-draft.3`, and the signed fixtures' descriptors are regenerated at that version with the F# guests under their dotted ids.
+
+Until then the table above and the signed fixtures stand as they are. Every other token in the table keeps its 64-character limit. No toolchain document uses an extension id as a JSON member name, so the [critical path](#unknown-and-critical-members) grammar is unaffected; ids appear only as values.
 
 An extension id never appears in a target path: target layouts use the descriptor's `shortId`, as in `extensions/fsharp-frontend/0.6.0/release.json`. An id does name local files, such as the extension lock `MORPHIR_HOME/locks/extensions/<id>.json` and its `<id>.json.transaction` journal. A typical Windows home, the `locks\extensions\` directories and the `.json.transaction` suffix add about 60 characters to the id. So an id longer than about 200 characters exceeds the 260-character `MAX_PATH` when long paths are not enabled. Long ids were already allowed; dotted ids make them more likely.
 
@@ -199,8 +221,8 @@ Every code has exactly one result diagnostic kind, so a [manager result](./manag
 | `invalid_document` | `unsupported-contract` | Not the document's syntax, a required member is absent, or a member has the wrong JSON type |
 | `unsupported_contract_version` | `unsupported-contract` | `schemaVersion` is not a listed version |
 | `unsupported_critical_member` | `unsupported-contract` | `critical` names a path the reader does not understand |
-| `unsupported_case` | `unsupported-contract` | A tagged member has an unknown case |
-| `invalid_value` | `unsupported-contract` | A scalar fails its validated type |
+| `unsupported_case` | `unsupported-contract` | A tagged member has an unknown case, or a MEP version is not on the [supported line](#mep-versions) |
+| `invalid_value` | `unsupported-contract` | A scalar fails its validated type, such as a version that is not canonical SemVer |
 | `non_portable_path` | `unsupported-contract` | A target path breaks the target path rules |
 | `credential_in_document` | `unsupported-contract` | A credential member or a URL carrying credentials |
 | `inconsistent_document` | `unsupported-contract` | Valid members that contradict each other |
@@ -253,6 +275,7 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 | `resolve` | `recipe`, `request`, `platform` | [Resolution](./toolset-recipe.md#selecting-a-closure) gives the listed providers, or the code and path |
 | `plan-canonical` | `result`, `canonical` | The plan's canonical bytes are exactly `canonical`, and `planSha256` is their SHA-256 |
 | `plan-lock` | `result`, `lock` | The plan's `lock` equals `lock` as a parsed value |
+| `mep-version` | `version` | Read as a `protocolVersion` value, the string is `valid`, or refused with `invalid_value` or `unsupported_case` ([MEP versions](#mep-versions)). It is the one kind that checks a bare string; `path` is empty because the member's path belongs to the document that holds it. The string is also checked against the schemas' shared `$defs.mepVersion`, and a refused string the pattern accepts says so with `"schema": "accepts"` and a `schemaGap` |
 | `discover` | `files`, `boundary`, `start` | [Discovery](./toolchain-request.md#discovery) from `start` finds `expected.request`, or no request when it is `null`. Paths are relative, `/`-separated, and name files under one synthetic root |
 
 `fixtures/0.1.0-draft.1/signed/` holds a TEST-ONLY repository in the tool release metadata v1 profile. Its `cases.json` has these sections:
@@ -317,12 +340,20 @@ This repository checks the cases with the `morphir-toolchain-contract` crate. It
 
 IR and MEP behavior is qualified by the compatibility kit. Following the maintainer's decision of 9 November 2026, the kit's runner lives in finos/morphir-dotnet (`src/Morphir.Conformance`, with the `cli`, `library` and `mep-guest` adapters), and its cases, fixed expectations and report contracts stay in this repository as data. The [F# readiness workflow case](./readiness-workflow.md) is one of them. AGENTS.md still describes the earlier arrangement, in which the runner was the Rust `morphir-mck` crate here.
 
-Resolution (`resolve_closure`), recipe selection and the authenticated-target checks make resolution behavior normative. Each rule they apply is therefore stated on the [toolset recipe](./toolset-recipe.md) page and pinned by fixtures, so an implementation never has to read the Rust code. Where the crate and a page disagree, the page is right and the crate has a bug.
+Resolution (`resolve_closure`), recipe selection and the authenticated-target checks make resolution behavior normative. Each rule they apply is therefore stated on the [toolset recipe](./toolset-recipe.md) page and pinned by fixtures, so an implementation never has to read the Rust code.
 
-The maintainer treats the Rust CLI as legacy and puts first-delivery work into the morphir-dotnet and morphir-moonbit hosts (9 November 2026). In that light, the crate is a reference checker for these documents, kept while it is cheap to keep. It is not the implementation that other hosts must match, and keeping it signals no investment in the Rust CLI. Whether it stays is a question for the maintainer.
+The pages are the authority over everything else in the contract: the schemas, the case manifests and their fixtures, and the crate. When any of them disagrees with a page, that one has a defect, and the fix is to change it to match the page. When a page is silent or contradicts itself, the page is fixed first, and the others follow it.
+
+The maintainer treats the Rust CLI as legacy and puts first-delivery work into the morphir-dotnet and morphir-moonbit hosts (9 November 2026). In that light, the crate is a reference checker for these documents, kept while it is cheap to keep. It is not the implementation that other hosts must match, and keeping it signals no investment in the Rust CLI. It takes its identities, channels, digests, target path checks and its TUF client (tough) from `morphir-distribution` in the legacy `ecosystem/morphir-rust` submodule, so it stays cheap only while that library keeps building here. Whether it stays is a question for the maintainer.
 
 ```sh
 cargo test --locked --package morphir-toolchain-contract
 ```
 
 CI runs the same command through `mise run ci:validate-toolchain-contracts`, and checks the schemas with `mise run fmt-check:schema` and `mise run lint:schema`.
+
+## Open questions
+
+These are the questions still open for the maintainer. Each rule that depends on one is marked provisional where it is stated.
+
+- **Q1. Does supporting the MEP 0.2 line mean any version on it may be named, or that peers on the line work together?** Today a provider fits a host only when the host lists the provider's exact `protocolVersion` ([MEP versions](#mep-versions)). **(A)** Keep exact membership: simple, and it matches MEP negotiation, but a guest released at `0.2.1` fits no host that lists only `0.2.0` until the host releases. **(B)** Compatibility within the line: a host speaking any final `0.2.x` fits a provider at any final `0.2.y`, with prereleases still exact. Patch releases then interoperate, but the contract must define which changes a `0.2.x` release may make, and the claims check changes too. Recommendation: A.

@@ -34,6 +34,8 @@ bootstrap morphirup -> select host + deployment + toolset
 
 None in this planning repository. Existing MEP guest requirements remain unchanged. Adoption must update morphir-dotnet's host availability and delivery reporting in its own `extension-registry` spec; executable names alone will no longer identify a deployment profile.
 
+> **Note added 10 November 2026, after approval.** The maintainer later decided (9 November 2026, recorded on finos/morphir#1146) that MEP `0.1` is not supported and that the whole MEP 0.2 line is: every prerelease of `0.2.0` and every final `0.2.x`. So the sentence "Existing MEP guest requirements remain unchanged" no longer holds for a guest that speaks only MEP `0.1`: no recipe can bind it. The toolchain contracts state the rule in `docs/spec/toolchain/index.md#mep-versions`. The approved text above is left as approved.
+
 ## Tracking
 
 - Approval: the user approved this proposal and its narrative design on 9 November 2026. Implementation tasks remain unstarted.

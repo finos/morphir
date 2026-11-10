@@ -63,7 +63,7 @@ The first four rules marked *while reading* concern one object and are checked a
 | A `tool-release` offering lists no musl platform | while reading | `hosts[i].platforms.<id>` | `musl-bound-to-tool-release.json` |
 | A process provider lists at least one platform | while reading | `providers[i].platforms` | `process-without-platforms.json` |
 | A `modelTuple` operation performs the provider's operation | while reading | `providers[i].modelTuple.operation` | `tuple-operation-mismatch.json` |
-| An external provider declares no `modelInput` or `modelOutput`, which only a built-in has | while reading | `providers[i].modelInput`, `providers[i].modelOutput` | `external-provider-with-model-input.json` |
+| A provider has only its delivery's members: an external provider declares no `modelInput` or `modelOutput`, which only a built-in has, and a built-in declares no `protocolVersion` or `modelTuple`, because it has no MEP session | while reading | `providers[i].modelInput`, `providers[i].modelOutput`, `hosts[i].builtIns[j].protocolVersion`, `hosts[i].builtIns[j].modelTuple` | `external-provider-with-model-input.json`, `external-provider-with-model-output.json`, `built-in-with-model-tuple.json` |
 | At least one operation | after reading | `operations` | `no-operations.json` |
 | At least one host offering | after reading | `hosts` | `no-hosts.json` |
 | No duplicate operation | after reading | `operations[i]` | `duplicate-operation.json` |

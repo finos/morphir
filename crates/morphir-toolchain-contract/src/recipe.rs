@@ -429,7 +429,7 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
         execution: host.case("execution", Execution::CASES)?,
         source,
         protocol_versions: host.req("protocolVersions", |node| {
-            node.array(|item| item.parse(Code::UnsupportedCase, ProtocolVersion::parse))
+            node.array(|item| item.parse_coded(ProtocolVersion::parse))
         })?,
         wasm_abis: host
             .opt("wasmAbis", |node| node.array(model::token(WasmAbi::parse)))?

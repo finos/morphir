@@ -569,26 +569,42 @@
             }
           },
           "then": {
-            "if": {
-              "required": [ "operation" ],
-              "properties": {
-                "operation": {
-                  "const": "compile"
+            "allOf": [
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [ "protocolVersion" ]
+                    },
+                    {
+                      "required": [ "modelTuple" ]
+                    }
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "required": [ "operation" ],
+                  "properties": {
+                    "operation": {
+                      "const": "compile"
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "required": [ "modelInput" ]
+                  },
+                  "required": [ "modelOutput" ]
+                },
+                "else": {
+                  "not": {
+                    "required": [ "modelOutput" ]
+                  },
+                  "required": [ "modelInput" ]
                 }
               }
-            },
-            "then": {
-              "not": {
-                "required": [ "modelInput" ]
-              },
-              "required": [ "modelOutput" ]
-            },
-            "else": {
-              "not": {
-                "required": [ "modelOutput" ]
-              },
-              "required": [ "modelInput" ]
-            }
+            ]
           }
         },
         {
@@ -624,7 +640,12 @@
         },
         {
           "if": {
-            "required": [ "protocolVersion" ]
+            "required": [ "delivery" ],
+            "properties": {
+              "delivery": {
+                "enum": [ "process", "wasm", "dotnet-tool" ]
+              }
+            }
           },
           "then": {
             "not": {

@@ -179,16 +179,50 @@ fn summary(closure: &morphir_toolchain_contract::PlatformClosure) -> Value {
 #[test]
 fn every_binding_case_matches_the_reference_checks() {
     let mut failures = Vec::new();
+    let mep_version = schema("lock")["$defs"]["mepVersion"].clone();
+    for contract in ["recipe", "receipt"] {
+        assert_eq!(
+            schema(contract)["$defs"]["mepVersion"],
+            mep_version,
+            "every schema shares one mepVersion definition"
+        );
+    }
+    let mep_version_schema = jsonschema::validator_for(&mep_version).expect("mepVersion compiles");
     for case in cases()["bindings"].as_array().expect("binding cases") {
         let name = case["name"].as_str().unwrap();
         if case["kind"] == "mep-version" {
             // A MEP version on its own has no document path; a reader reports
-            // a refused one with unsupported_case at the member that holds it.
-            let actual = ProtocolVersion::parse(case["version"].as_str().unwrap())
+            // a refused one at the member that holds it, so the case's path is
+            // empty.
+            let version = case["version"].as_str().unwrap();
+            let actual = ProtocolVersion::parse(version)
                 .map(drop)
-                .map_err(|_| (Code::UnsupportedCase.as_str().to_owned(), String::new()));
+                .map_err(|(code, _)| (code.as_str().to_owned(), String::new()));
             if actual != expected(case) {
                 failures.push(format!("{name}: gave {actual:?}"));
+            }
+            // Every lock, receipt, recipe and workflow schema shares this
+            // definition; the case states where the pattern is looser.
+            let accepted = mep_version_schema.is_valid(&Value::String(version.to_owned()));
+            let looser = case["schema"] == "accepts";
+            if looser && actual.is_ok() {
+                failures.push(format!(
+                    "{name}: only a refused version can be marked accepts"
+                ));
+            }
+            if accepted != (actual.is_ok() || looser) {
+                failures.push(format!(
+                    "{name}: the mepVersion pattern accepts it: {accepted}"
+                ));
+            }
+            if looser
+                != case["schemaGap"]
+                    .as_str()
+                    .is_some_and(|gap| !gap.trim().is_empty())
+            {
+                failures.push(format!(
+                    "{name}: a refused version the pattern accepts states a schemaGap, and no other case does"
+                ));
             }
             continue;
         }

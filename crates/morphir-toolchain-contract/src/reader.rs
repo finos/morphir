@@ -81,6 +81,15 @@ impl<'a> Node<'a> {
         parse(text).map_err(|message| Diagnostic::new(code, self.path, message))
     }
 
+    /// Parse a string with a constructor that chooses its own refusal code.
+    pub(crate) fn parse_coded<T>(
+        &self,
+        parse: impl FnOnce(&str) -> std::result::Result<T, (Code, String)>,
+    ) -> Result<T> {
+        let text = self.str()?;
+        parse(text).map_err(|(code, message)| Diagnostic::new(code, self.path, message))
+    }
+
     /// Read a string that names one of `cases`.
     pub(crate) fn case<T: Copy>(&self, cases: &[(&'static str, T)]) -> Result<T> {
         let tag = self.str()?;

@@ -75,12 +75,12 @@ Each provider has `operation` (`compile` with `language`, or `generate` with `ta
 
 | `delivery` | Additional members |
 | --- | --- |
-| `built-in` | `modelOutput` for `compile` and `modelInput` for `generate`: the model the built-in writes or reads in process. A built-in has no MEP session and so no `modelTuple`; this model is what readiness and the capability check compare. The other member is `inconsistent_document` |
+| `built-in` | `modelOutput` for `compile` and `modelInput` for `generate`: the model the built-in writes or reads in process. A built-in has no MEP session and so no `modelTuple`; this model is what readiness and the capability check compare. The other model member, `protocolVersion` and `modelTuple` are each `inconsistent_document` at that member (`lock/negative/built-in-with-protocol-version.json`) |
 | `process` | `repositoryId`, `descriptorTarget`, `descriptorSha256`, `artifactTarget`, `artifactSha256`, protocol members |
 | `wasm` | `abi` and the `process` members |
 | `dotnet-tool` | `repositoryId`, `descriptorTarget`, `descriptorSha256` (the release's extension descriptor, whose claims describe the guest), `packageId`, `command`, `packageTarget`, `packageSha256`, protocol members |
 
-The protocol members are `protocolVersion`, a MEP version on the [supported 0.2 line](./index.md#mep-versions), and one `modelTuple` whose five members are compared exactly, and whose `operation` is `morphir.frontend.compileModel` for `compile` and `morphir.backend.generateModel` for `generate`. A version off the line is `unsupported_case` at `protocolVersion` (`lock/negative/protocol-version-*.json`). An external provider with `modelInput` or `modelOutput`, which only a built-in has, is `inconsistent_document` at that member.
+The protocol members are `protocolVersion`, a MEP version on the [supported 0.2 line](./index.md#mep-versions), and one `modelTuple` whose five members are compared exactly, and whose `operation` is `morphir.frontend.compileModel` for `compile` and `morphir.backend.generateModel` for `generate`. A string that is not canonical SemVer is `invalid_value` at `protocolVersion`, and a version off the line is `unsupported_case` there (`lock/negative/protocol-version-*.json`). An external provider with `modelInput` or `modelOutput`, which only a built-in has, is `inconsistent_document` at that member (`lock/negative/external-provider-with-model-input.json`). These are checked in that order, `protocolVersion` first ([order of checks](./index.md#order-of-checks)).
 
 For a `dotnet-tool` host offering, `hostTarget` names the authenticated package bytes.
 

@@ -414,6 +414,16 @@ pub(crate) fn model_format(node: Node<'_>) -> Result<ModelFormat> {
 /// built-in, which writes the model, and `modelInput` for a `generate`
 /// built-in, which reads it. The other member is refused.
 pub(crate) fn built_in_model(object: &Obj<'_>, operation: &Operation) -> Result<ModelFormat> {
+    // A built-in has no MEP session, so it has no protocol members: the
+    // mirror of the rule that an external provider has no model member.
+    for member in ["protocolVersion", "modelTuple"] {
+        if object.has(member) {
+            return Err(inconsistent(
+                object.member_path(member),
+                format!("a built-in has no MEP session and declares no {member}"),
+            ));
+        }
+    }
     let (wanted, other) = match operation {
         Operation::Compile { .. } => ("modelOutput", "modelInput"),
         Operation::Generate { .. } => ("modelInput", "modelOutput"),
@@ -466,7 +476,7 @@ fn model_tuple(node: Node<'_>, provider: &Operation) -> Result<ModelTuple> {
 /// with either is refused.
 pub(crate) fn protocol(object: &Obj<'_>, provider: &Operation) -> Result<Protocol> {
     let version = object.req("protocolVersion", |node| {
-        node.parse(Code::UnsupportedCase, ProtocolVersion::parse)
+        node.parse_coded(ProtocolVersion::parse)
     })?;
     for member in ["modelInput", "modelOutput"] {
         if object.has(member) {

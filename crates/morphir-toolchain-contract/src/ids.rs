@@ -5,6 +5,7 @@
 //! extension acquisition. The types defined here are the ones those contracts
 //! do not have.
 
+use crate::diagnostic::Code;
 use morphir_distribution::{RelativeArtifactPath, Sha256Digest};
 use semver::{Comparator, Version, VersionReq};
 use std::fmt;
@@ -305,14 +306,21 @@ impl ProtocolVersion {
     /// patch with a prerelease. That rule is what keeps `0.2.1-rc.1` out.
     pub const SUPPORTED: [&'static str; 2] = [">=0.2.0-0", "<0.3.0-0"];
 
-    /// Parse a MEP version on the supported 0.2 line.
-    pub fn parse(value: &str) -> Result<Self, String> {
+    /// Parse a MEP version on the supported 0.2 line. A string that is not a
+    /// version in canonical SemVer spelling fails its type and is
+    /// `invalid_value`; a version that is not on the line is
+    /// `unsupported_case`.
+    pub fn parse(value: &str) -> Result<Self, (Code, String)> {
+        let version = exact_version(value)
+            .map_err(|message| (Code::InvalidValue, format!("MEP version {message}")))?;
         let outside = |detail: String| {
-            format!(
-                "MEP version '{value}' is not on the supported 0.2 line (every prerelease of 0.2.0 and every final 0.2.x): {detail}"
+            (
+                Code::UnsupportedCase,
+                format!(
+                    "MEP version '{value}' is not on the supported 0.2 line (every prerelease of 0.2.0 and every final 0.2.x): {detail}"
+                ),
             )
         };
-        let version = exact_version(value).map_err(outside)?;
         if !version.build.is_empty() {
             return Err(outside("a MEP version carries no build metadata".into()));
         }
