@@ -372,7 +372,7 @@ Uninstalling or updating an extension SHALL remove or replace its lock and catal
 - **THEN** the lock and catalog entry are removed, the running process continues, and its files stay in the store
 
 ### Requirement: Collection removes only unused packages
-A host SHALL delete a published package only on an explicit collection command, under the state lock. It SHALL do so only when no extension lock names its tree digest and it can take an exclusive lock on its lease without waiting. It SHALL clear the read-only modes, rename the package to `.trash-<random>`, then delete it. A failed rename SHALL leave the package in place.
+A host SHALL delete a published package only on an explicit collection command, under the state lock. It SHALL do so only when no extension lock in `locks/extensions/` names its tree digest, backups not counted, and it can take an exclusive lock on its lease without waiting. It SHALL clear the read-only modes, rename the package to `.trash-<random>`, then delete it. A failed rename SHALL leave the package in place.
 
 #### Scenario: A package in use is kept
 - **WHEN** collection runs while a process started from an unreferenced package still holds its lease
