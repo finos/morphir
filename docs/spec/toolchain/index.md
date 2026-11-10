@@ -147,7 +147,7 @@ A target path is also in Unicode Normalization Form C. Canonical encoding normal
 
 - a publisher refuses to publish a target whose path is not NFC;
 - a reader refuses a document member that names a non-NFC target path with `non_portable_path` at that member (`lock/negative/target-path-nfd.json`);
-- a client refuses a repository whose targets metadata lists a non-NFC path with `non_portable_path` at the empty path.
+- a client refuses a repository whose targets metadata lists a non-NFC path with `non_portable_path` at the empty path. The canonical encoder normalizes every string to NFC, so only a server that serves non-canonical metadata bytes can list one. The signed fixtures serve canonical bytes, so no signed case lists an NFD path; this refusal has no case.
 
 Non-ASCII NFC paths are allowed, and the signed repository publishes one (`extensions/fsharp-frontend/0.6.0/notes/café-naïve-字.txt`), read by a trust case, so every runner's canonical encoder signs and serves a key that is not ASCII. `lock/target-path-non-ascii-nfc.json` is the valid lock counterpart.
 
