@@ -191,6 +191,10 @@ impl Sha256 {
         Self(Sha256Digest::of_bytes(bytes))
     }
 
+    pub(crate) fn of_digest(digest: Sha256Digest) -> Self {
+        Self(digest)
+    }
+
     /// Return the `morphir-distribution` digest.
     pub fn digest(&self) -> &Sha256Digest {
         &self.0
@@ -211,7 +215,9 @@ impl TargetPath {
     /// Parse a forward-slash relative target path. Absolute, rooted, drive,
     /// backslash and `.`/`..` paths are refused.
     pub fn parse(value: &str) -> Result<Self, String> {
-        let bounded = value.len() <= 512 && value.encode_utf16().count() <= 240;
+        let bounded = value.len() <= 512
+            && value.encode_utf16().count() <= 240
+            && !value.contains(['\u{2028}', '\u{2029}']);
         match RelativeArtifactPath::parse(value) {
             Ok(path) if bounded => Ok(Self(path)),
             _ => Err(format!(
@@ -295,5 +301,63 @@ impl ProtocolVersion {
             Self::Legacy => "0.1",
             Self::ModelTransportDraft1 => "0.2.0-draft.1",
         }
+    }
+}
+
+/// The path syntax an absolute local path must follow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathStyle {
+    /// `X:\…`, `X:/…` or a UNC path `\\server\share…`.
+    Windows,
+    /// `/…`.
+    Posix,
+    /// Either syntax, for a document that does not name its platform.
+    Either,
+}
+
+/// An absolute local path, such as a launch program or a project request.
+///
+/// A Windows path is a drive letter, `:`, a `\` or `/` and at least one more
+/// character, or a UNC path `\\` followed by at least one more character. A
+/// POSIX path is `/` followed by at least one more character. No segment,
+/// split on `\` and `/`, is `.` or `..`, and the path has no NUL.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AbsolutePath(String);
+
+impl AbsolutePath {
+    /// Parse an absolute path in `style`.
+    pub fn parse(value: &str, style: PathStyle) -> Result<Self, String> {
+        let bytes = value.as_bytes();
+        let windows = (bytes.len() > 3
+            && bytes[0].is_ascii_alphabetic()
+            && bytes[1] == b':'
+            && matches!(bytes[2], b'\\' | b'/'))
+            || (bytes.len() > 2 && value.starts_with("\\\\"));
+        let posix = bytes.len() > 1 && bytes[0] == b'/';
+        let rooted = match style {
+            PathStyle::Windows => windows,
+            PathStyle::Posix => posix,
+            PathStyle::Either => windows || posix,
+        };
+        let traverses = value
+            .split(['\\', '/'])
+            .any(|segment| segment == "." || segment == "..");
+        if rooted && !traverses && !value.contains('\0') {
+            Ok(Self(value.to_owned()))
+        } else {
+            Err(format!(
+                "'{value}' is not an absolute {} path without . or .. segments",
+                match style {
+                    PathStyle::Windows => "Windows",
+                    PathStyle::Posix => "POSIX",
+                    PathStyle::Either => "local",
+                }
+            ))
+        }
+    }
+
+    /// Return the path.
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }

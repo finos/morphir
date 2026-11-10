@@ -11,12 +11,10 @@
 //! | Installation receipt | `MORPHIR_HOME/toolchains/generations/<id>/` | [`read_receipt`] |
 //! | Manager result | `morphirup --json` standard output | [`read_result`] |
 //!
-//! Tool release metadata v1, extension release descriptors, capability
-//! claims, MEP and Morphir IR keep their own versions. These readers parse
-//! documents at the boundary into domain types and report a stable
-//! [`Code`] with the member path for every refusal. They implement no
-//! acquisition, network or filesystem behavior; the `morphirup`
-//! implementation in finos/morphir-dotnet does.
+//! This crate is this repository's reference reader for those document
+//! contracts: ordinary schema and conformance testing, not a compatibility
+//! runner. The contract itself is the specification pages, schemas, fixtures
+//! and case manifests; every rule this crate enforces is stated there.
 //!
 //! ```
 //! use morphir_toolchain_contract::{Code, read_request};
@@ -48,13 +46,13 @@ mod request;
 mod resolve;
 mod result;
 
-pub use authenticated::{AuthenticatedTarget, AuthenticatedTargets, RecipeTargetState};
-pub use diagnostic::{Code, Diagnostic, Result};
+pub use authenticated::{AuthenticatedTargets, RecipeStatus, RecipeTargetState};
+pub use diagnostic::{Code, Diagnostic, DiagnosticKind, Result};
 pub use envelope::{CONTRACT_VERSION, SUPPORTED_VERSIONS};
 pub use ids::{
-    CommandName, DeploymentId, ExtensionIdentity, GenerationId, ImplementationId, LanguageId,
-    ModelToken, PackageId, PackageManagerId, PresetId, ProtocolVersion, Sha256, TargetDigest,
-    TargetPath, WasmAbi, WorkflowId,
+    AbsolutePath, CommandName, DeploymentId, ExtensionIdentity, GenerationId, ImplementationId,
+    LanguageId, ModelToken, PackageId, PackageManagerId, PathStyle, PresetId, ProtocolVersion,
+    Sha256, TargetDigest, TargetPath, WasmAbi, WorkflowId,
 };
 pub use lock::{LockedHost, PlatformClosure, ToolchainLock, read_lock};
 pub use model::{
@@ -63,9 +61,9 @@ pub use model::{
 };
 pub use platform::{Arch, Os, PlatformId};
 pub use receipt::{
-    Authentication, Check, CheckKind, CheckStatus, ClaimCheck, DotnetToolScope, HostIdentity,
-    Installation, InstallationReceipt, InstalledHost, InstalledProvider, Launch, Ownership,
-    ProbeSource, Readiness, RuntimeOrigin, read_receipt,
+    Authentication, Check, CheckKind, CheckStatus, ClaimCheck, DotnetToolScope, HostExecution,
+    HostIdentity, Installation, InstallationReceipt, InstalledHost, InstalledProvider, Launch,
+    ManagedRuntime, Ownership, ProbeSource, Readiness, read_receipt,
 };
 pub use recipe::{
     BuiltIn, Execution, HostOffering, HostSource, RecipeDelivery, RecipeProvider, ToolsetRecipe,
@@ -76,8 +74,9 @@ pub use request::{
 };
 pub use resolve::resolve_closure;
 pub use result::{
-    COMMANDS, ComponentRef, ManagerResult, Outcome, ResultDiagnostic, ResultDiagnosticKind,
-    SelectionSource, Severity, TRUST_CODES, canonical_sha256, read_result,
+    Alternative, Command, ComponentRef, DocumentKind, ManagerResult, MetadataRefresh, Outcome,
+    Plan, PlanComponent, PlanSource, Probe, ResultDiagnostic, ResultDiagnosticKind, Selection,
+    SelectionSource, Severity, TufRole, canonical_json, canonical_sha256, read_result,
 };
 
 /// Understood `critical` member paths, by document.

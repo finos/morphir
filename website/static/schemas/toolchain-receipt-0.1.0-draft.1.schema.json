@@ -97,6 +97,35 @@
         },
         "execution": {
           "type": "object",
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "native-aot"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "runtime": {
+                "properties": {
+                  "kind": {
+                    "const": "none"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "runtime": {
+                "properties": {
+                  "kind": {
+                    "enum": [ "bundled", "system" ]
+                  }
+                }
+              }
+            }
+          },
           "required": [ "mode", "runtime" ],
           "properties": {
             "mode": {
@@ -174,6 +203,8 @@
     },
     "checks": {
       "type": "array",
+      "maxItems": 1,
+      "minItems": 1,
       "items": {
         "$ref": "#/$defs/check"
       }
@@ -186,7 +217,8 @@
     },
     "extensionIdentity": {
       "type": "string",
-      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?)*$",
+      "maxLength": 238
     },
     "packageId": {
       "type": "string",
@@ -203,13 +235,13 @@
     },
     "targetPath": {
       "type": "string",
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
-      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)(?!.*[. ](?:/|$))(?!(?:.*/)?(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Nn][Ii][Nn]\\$|[Cc][Oo][Nn][Oo][Uu][Tt]\\$|[Cc][Oo][Mm][1-9¹²³]|[Ll][Pp][Tt][1-9¹²³]) *(?:\\.[^/]*)?(?:/|$))[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 240,
       "minLength": 1
     },
     "absolutePath": {
       "type": "string",
-      "pattern": "^(?:[A-Za-z]:[\\\\/]|\\\\\\\\|/)[^\\u0000]*$"
+      "pattern": "^(?!.*(?:^|[\\\\/])\\.{1,2}(?:[\\\\/]|$))(?:[A-Za-z]:[\\\\/][^\\u0000]+|\\\\\\\\[^\\u0000]+|/[^\\u0000]+)$"
     },
     "platformId": {
       "enum": [
@@ -588,6 +620,18 @@
               "packageSha256",
               "protocolVersion"
             ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [ "descriptorTarget", "descriptorSha256" ]
           }
         }
       ],

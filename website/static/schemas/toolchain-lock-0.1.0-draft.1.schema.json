@@ -31,7 +31,38 @@
           "host.implementation",
           "host.version",
           "host.deployment",
-          "platforms"
+          "platforms",
+          "platforms.*",
+          "platforms.*.hostTarget",
+          "platforms.*.hostSha256",
+          "platforms.*.providers",
+          "platforms.*.providers.operation",
+          "platforms.*.providers.language",
+          "platforms.*.providers.target",
+          "platforms.*.providers.delivery",
+          "platforms.*.providers.extensionId",
+          "platforms.*.providers.version",
+          "platforms.*.providers.abi",
+          "platforms.*.providers.repositoryId",
+          "platforms.*.providers.descriptorTarget",
+          "platforms.*.providers.descriptorSha256",
+          "platforms.*.providers.artifactTarget",
+          "platforms.*.providers.artifactSha256",
+          "platforms.*.providers.packageId",
+          "platforms.*.providers.command",
+          "platforms.*.providers.packageTarget",
+          "platforms.*.providers.packageSha256",
+          "platforms.*.providers.protocolVersion",
+          "platforms.*.providers.modelTuple",
+          "platforms.*.providers.modelTuple.operation",
+          "platforms.*.providers.modelTuple.profile",
+          "platforms.*.providers.modelTuple.codec",
+          "platforms.*.providers.modelTuple.envelopeVersion",
+          "platforms.*.providers.modelTuple.irVersion",
+          "platforms.*.providers.modelInput",
+          "platforms.*.providers.modelInput.profile",
+          "platforms.*.providers.modelInput.codec",
+          "platforms.*.providers.modelInput.irVersion"
         ]
       }
     },
@@ -74,7 +105,8 @@
     },
     "extensionIdentity": {
       "type": "string",
-      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?)*$",
+      "maxLength": 238
     },
     "packageId": {
       "type": "string",
@@ -91,8 +123,8 @@
     },
     "targetPath": {
       "type": "string",
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
-      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)(?!.*[. ](?:/|$))(?!(?:.*/)?(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Nn][Ii][Nn]\\$|[Cc][Oo][Nn][Oo][Uu][Tt]\\$|[Cc][Oo][Mm][1-9¹²³]|[Ll][Pp][Tt][1-9¹²³]) *(?:\\.[^/]*)?(?:/|$))[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 240,
       "minLength": 1
     },
     "platformId": {
@@ -278,6 +310,18 @@
             },
             "required": [ "modelTuple" ]
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [ "descriptorTarget", "descriptorSha256" ]
+          }
         }
       ],
       "required": [ "operation", "delivery", "extensionId", "version" ],
@@ -353,6 +397,7 @@
         },
         "providers": {
           "type": "array",
+          "minItems": 1,
           "items": {
             "$ref": "#/$defs/lockedProvider"
           }

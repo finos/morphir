@@ -37,6 +37,9 @@
           "hosts.prerequisites",
           "hosts.builtIns",
           "hosts.platforms",
+          "hosts.platforms.*",
+          "hosts.platforms.*.target",
+          "hosts.platforms.*.sha256",
           "providers",
           "providers.operation",
           "providers.delivery",
@@ -56,7 +59,10 @@
           "providers.modelTuple",
           "providers.modelInput",
           "providers.prerequisites",
-          "providers.platforms"
+          "providers.platforms",
+          "providers.platforms.*",
+          "providers.platforms.*.artifactTarget",
+          "providers.platforms.*.artifactSha256"
         ]
       }
     },
@@ -69,6 +75,7 @@
     "operations": {
       "type": "array",
       "minItems": 1,
+      "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/operation"
       }
@@ -82,6 +89,7 @@
     },
     "providers": {
       "type": "array",
+      "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/provider"
       }
@@ -99,7 +107,8 @@
     },
     "extensionIdentity": {
       "type": "string",
-      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?)*$",
+      "maxLength": 238
     },
     "packageId": {
       "type": "string",
@@ -123,8 +132,8 @@
     },
     "targetPath": {
       "type": "string",
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
-      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)(?!.*[. ](?:/|$))(?!(?:.*/)?(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Nn][Ii][Nn]\\$|[Cc][Oo][Nn][Oo][Uu][Tt]\\$|[Cc][Oo][Mm][1-9¹²³]|[Ll][Pp][Tt][1-9¹²³]) *(?:\\.[^/]*)?(?:/|$))[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 240,
       "minLength": 1
     },
     "platformId": {
@@ -476,6 +485,18 @@
               "required": [ "modelInput" ]
             },
             "required": [ "modelTuple" ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "delivery": {
+                "const": "dotnet-tool"
+              }
+            }
+          },
+          "then": {
+            "required": [ "descriptorTarget", "descriptorSha256" ]
           }
         }
       ],

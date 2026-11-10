@@ -1,7 +1,7 @@
 //! Operations, compatibility tuples, prerequisites and delivery cases shared by
 //! recipes, locks, receipts and manager results.
 
-use crate::diagnostic::{Code, Result};
+use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::ids::{
     CommandName, ExtensionIdentity, LanguageId, ModelToken, PackageId, ProtocolVersion, Sha256,
     TargetDigest, TargetPath, WasmAbi, comparator, exact_version,
@@ -34,6 +34,14 @@ impl Operation {
             Self::Generate { .. } => "morphir.backend.generateModel",
         }
     }
+
+    /// The capability kind a provider for this operation claims.
+    pub fn capability_kind(&self) -> &'static str {
+        match self {
+            Self::Compile { .. } => "frontend",
+            Self::Generate { .. } => "backend",
+        }
+    }
 }
 
 /// The delivery kind a provider uses. The public runtime name of a WASM
@@ -50,18 +58,13 @@ pub enum DeliveryKind {
     DotnetTool,
 }
 
-pub(crate) const DELIVERY_CASES: &[&str] = &["built-in", "process", "wasm", "dotnet-tool"];
-
 impl DeliveryKind {
-    pub(crate) fn from_tag(tag: &str) -> Self {
-        match tag {
-            "built-in" => Self::BuiltIn,
-            "process" => Self::Process,
-            "wasm" => Self::Wasm,
-            "dotnet-tool" => Self::DotnetTool,
-            other => unreachable!("tag '{other}' was checked against DELIVERY_CASES"),
-        }
-    }
+    pub(crate) const CASES: &'static [(&'static str, Self)] = &[
+        ("built-in", Self::BuiltIn),
+        ("process", Self::Process),
+        ("wasm", Self::Wasm),
+        ("dotnet-tool", Self::DotnetTool),
+    ];
 
     /// Return the tag spelling.
     pub fn as_str(&self) -> &'static str {
@@ -74,19 +77,38 @@ impl DeliveryKind {
     }
 }
 
-/// The five exactly compared members of a MEP model transport tuple.
+/// The five exactly compared members of a MEP model transport tuple. Its
+/// operation always agrees with the provider operation that carries it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelTuple {
-    /// Operation the tuple admits; agrees with the provider operation.
-    pub operation: Operation,
-    /// Model profile.
-    pub profile: ModelToken,
-    /// Model codec.
-    pub codec: ModelToken,
-    /// Model envelope version.
-    pub envelope_version: Version,
-    /// Semantic IR version.
-    pub ir_version: Version,
+    operation: Operation,
+    profile: ModelToken,
+    codec: ModelToken,
+    envelope_version: Version,
+    ir_version: Version,
+}
+
+impl ModelTuple {
+    /// The operation the tuple admits.
+    pub fn operation(&self) -> &Operation {
+        &self.operation
+    }
+    /// The model profile.
+    pub fn profile(&self) -> &ModelToken {
+        &self.profile
+    }
+    /// The model codec.
+    pub fn codec(&self) -> &ModelToken {
+        &self.codec
+    }
+    /// The model envelope version.
+    pub fn envelope_version(&self) -> &Version {
+        &self.envelope_version
+    }
+    /// The semantic IR version.
+    pub fn ir_version(&self) -> &Version {
+        &self.ir_version
+    }
 }
 
 /// The model input of a built-in or legacy provider.
@@ -115,6 +137,14 @@ impl Protocol {
         match self {
             Self::Legacy(_) => ProtocolVersion::Legacy,
             Self::ModelTransport(_) => ProtocolVersion::ModelTransportDraft1,
+        }
+    }
+
+    /// The semantic IR version the provider reads or writes.
+    pub fn ir_version(&self) -> &Version {
+        match self {
+            Self::Legacy(input) => &input.ir_version,
+            Self::ModelTransport(tuple) => &tuple.ir_version,
         }
     }
 }
@@ -148,7 +178,8 @@ pub enum Prerequisite {
         /// Install-time or run-time requirement.
         phase: SdkPhase,
     },
-    /// A native library or operating-system component.
+    /// A native library or operating-system component. Its version is
+    /// written as SemVer (glibc 2.28 is `2.28.0`).
     Native {
         /// Library name, such as `glibc`.
         name: String,
@@ -162,14 +193,42 @@ pub enum Prerequisite {
 /// The provider identity recorded by a lock and repeated by a receipt.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LockedProvider {
-    /// Operation this provider performs.
-    pub operation: Operation,
-    /// Registry and MEP identity.
-    pub extension_id: ExtensionIdentity,
-    /// Exact provider release.
-    pub version: Version,
-    /// Delivery and its exact artifact identities.
-    pub delivery: LockedDelivery,
+    operation: Operation,
+    extension_id: ExtensionIdentity,
+    version: Version,
+    delivery: LockedDelivery,
+}
+
+impl LockedProvider {
+    pub(crate) fn new(
+        operation: Operation,
+        extension_id: ExtensionIdentity,
+        version: Version,
+        delivery: LockedDelivery,
+    ) -> Self {
+        Self {
+            operation,
+            extension_id,
+            version,
+            delivery,
+        }
+    }
+    /// The operation this provider performs.
+    pub fn operation(&self) -> &Operation {
+        &self.operation
+    }
+    /// The registry and MEP identity.
+    pub fn extension_id(&self) -> &ExtensionIdentity {
+        &self.extension_id
+    }
+    /// The exact provider release.
+    pub fn version(&self) -> &Version {
+        &self.version
+    }
+    /// The delivery and its exact artifact identities.
+    pub fn delivery(&self) -> &LockedDelivery {
+        &self.delivery
+    }
 }
 
 /// A locked delivery with the exact identities it needs.
@@ -204,10 +263,13 @@ pub enum LockedDelivery {
         /// Negotiation contract.
         protocol: Protocol,
     },
-    /// A .NET tool package installed into an isolated tool path.
+    /// A .NET tool package installed into an isolated tool path. The
+    /// extension release descriptor of the same release states its claims.
     DotnetTool {
-        /// Repository identity holding the package.
+        /// Repository identity holding the package and descriptor.
         repository_id: Sha256,
+        /// Extension release descriptor of the same release.
+        descriptor: TargetDigest,
         /// NuGet package id.
         package_id: PackageId,
         /// Command the package exposes.
@@ -277,7 +339,7 @@ pub(crate) fn comparators(node: Node<'_>) -> Result<Vec<Comparator>> {
 pub(crate) fn non_empty_string(node: Node<'_>) -> Result<String> {
     let text = node.str()?;
     if text.trim().is_empty() {
-        Err(crate::diagnostic::Diagnostic::new(
+        Err(Diagnostic::new(
             Code::InvalidValue,
             node.path(),
             "expected a non-blank string",
@@ -287,16 +349,32 @@ pub(crate) fn non_empty_string(node: Node<'_>) -> Result<String> {
     }
 }
 
+#[derive(Clone, Copy)]
+enum OperationTag {
+    Compile,
+    Generate,
+}
+
 /// Read the operation members of an object tagged by `operation`.
 pub(crate) fn operation(object: &Obj<'_>) -> Result<Operation> {
-    match object.tag("operation", &["compile", "generate"])? {
-        "compile" => Ok(Operation::Compile {
+    match object.case(
+        "operation",
+        &[
+            ("compile", OperationTag::Compile),
+            ("generate", OperationTag::Generate),
+        ],
+    )? {
+        OperationTag::Compile => Ok(Operation::Compile {
             language: object.req("language", token(LanguageId::parse))?,
         }),
-        _ => Ok(Operation::Generate {
+        OperationTag::Generate => Ok(Operation::Generate {
             target: object.req("target", token(LanguageId::parse))?,
         }),
     }
+}
+
+pub(crate) fn delivery(object: &Obj<'_>) -> Result<DeliveryKind> {
+    object.case("delivery", DeliveryKind::CASES)
 }
 
 pub(crate) fn recipe_ref(node: Node<'_>) -> Result<RecipeRef> {
@@ -320,17 +398,19 @@ pub(crate) fn model_input(node: Node<'_>) -> Result<ModelInput> {
 fn model_tuple(node: Node<'_>, provider: &Operation) -> Result<ModelTuple> {
     let object = node.object()?;
     let method_path = object.member_path("operation");
-    let method = object.str("operation")?;
-    let operation = match method {
-        "morphir.frontend.compileModel" | "morphir.backend.generateModel" => provider.clone(),
-        other => {
-            return Err(crate::diagnostic::Diagnostic::new(
-                Code::UnsupportedCase,
-                method_path,
-                format!("'{other}' is not a model transport method known to this reader"),
-            ));
-        }
-    };
+    let method = object.case(
+        "operation",
+        &[
+            (
+                "morphir.frontend.compileModel",
+                "morphir.frontend.compileModel",
+            ),
+            (
+                "morphir.backend.generateModel",
+                "morphir.backend.generateModel",
+            ),
+        ],
+    )?;
     if method != provider.model_method() {
         return Err(inconsistent(
             method_path,
@@ -341,7 +421,7 @@ fn model_tuple(node: Node<'_>, provider: &Operation) -> Result<ModelTuple> {
         ));
     }
     Ok(ModelTuple {
-        operation,
+        operation: provider.clone(),
         profile: object.req("profile", token(ModelToken::parse))?,
         codec: object.req("codec", token(ModelToken::parse))?,
         envelope_version: object.req("envelopeVersion", version)?,
@@ -378,23 +458,38 @@ pub(crate) fn protocol(object: &Obj<'_>, provider: &Operation) -> Result<Protoco
     }
 }
 
+#[derive(Clone, Copy)]
+enum PrerequisiteTag {
+    Runtime,
+    Sdk,
+    Native,
+}
+
 pub(crate) fn prerequisite(node: Node<'_>) -> Result<Prerequisite> {
     let object = node.object()?;
+    let kind = object.case(
+        "kind",
+        &[
+            ("runtime", PrerequisiteTag::Runtime),
+            ("sdk", PrerequisiteTag::Sdk),
+            ("native", PrerequisiteTag::Native),
+        ],
+    )?;
     let name = object.req("name", non_empty_string)?;
-    match object.tag("kind", &["runtime", "sdk", "native"])? {
-        "runtime" => Ok(Prerequisite::Runtime {
+    match kind {
+        PrerequisiteTag::Runtime => Ok(Prerequisite::Runtime {
             name,
             versions: object.req("versions", comparators)?,
         }),
-        "sdk" => Ok(Prerequisite::Sdk {
+        PrerequisiteTag::Sdk => Ok(Prerequisite::Sdk {
             name,
             versions: object.req("versions", comparators)?,
-            phase: match object.tag("phase", &["install", "run"])? {
-                "install" => SdkPhase::Install,
-                _ => SdkPhase::Run,
-            },
+            phase: object.case(
+                "phase",
+                &[("install", SdkPhase::Install), ("run", SdkPhase::Run)],
+            )?,
         }),
-        _ => Ok(Prerequisite::Native {
+        PrerequisiteTag::Native => Ok(Prerequisite::Native {
             name,
             versions: object.opt("versions", comparators)?.unwrap_or_default(),
             platforms: object
@@ -421,10 +516,10 @@ pub(crate) fn digest_pair(object: &Obj<'_>, target: &str, digest: &str) -> Resul
 pub(crate) fn locked_provider(node: Node<'_>) -> Result<LockedProvider> {
     let object = node.object()?;
     let operation = operation(&object)?;
-    let delivery = DeliveryKind::from_tag(object.tag("delivery", DELIVERY_CASES)?);
+    let kind = delivery(&object)?;
     let extension_id = object.req("extensionId", extension_id)?;
     let version = object.req("version", version)?;
-    let delivery = match delivery {
+    let delivery = match kind {
         DeliveryKind::BuiltIn => LockedDelivery::BuiltIn {
             model_input: object.req("modelInput", model_input)?,
         },
@@ -443,6 +538,7 @@ pub(crate) fn locked_provider(node: Node<'_>) -> Result<LockedProvider> {
         },
         DeliveryKind::DotnetTool => LockedDelivery::DotnetTool {
             repository_id: object.req("repositoryId", sha256)?,
+            descriptor: digest_pair(&object, "descriptorTarget", "descriptorSha256")?,
             package_id: object.req("packageId", token(PackageId::parse))?,
             command: object.req("command", token(CommandName::parse))?,
             package: digest_pair(&object, "packageTarget", "packageSha256")?,
@@ -457,7 +553,7 @@ pub(crate) fn locked_provider(node: Node<'_>) -> Result<LockedProvider> {
     })
 }
 
-/// Refuse a second provider for the same operation.
+/// Refuse a second entry for the same operation.
 pub(crate) fn unique_operations<'a>(
     path: &str,
     operations: impl Iterator<Item = &'a Operation>,
@@ -467,7 +563,7 @@ pub(crate) fn unique_operations<'a>(
         if seen.contains(&operation) {
             return Err(inconsistent(
                 crate::reader::index(path, position),
-                "a second provider for the same operation",
+                "a second entry for the same operation",
             ));
         }
         seen.push(operation);

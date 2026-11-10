@@ -438,7 +438,7 @@
     },
     {
       "contract": "receipt",
-      "document": "receipt/binding/host-deployment-substituted.json",
+      "document": "receipt/binding/host-version-substituted.json",
       "expected": "valid"
     },
     {
@@ -685,6 +685,424 @@
         "path": "planSha256"
       },
       "schema": "accepts"
+    },
+    {
+      "contract": "request",
+      "document": "request/wasm-example-default.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/wasm-example-bytes-abi.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/two-choices-one-operation.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "toolset.providers[1]"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/choice-without-delivery-or-id.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "toolset.providers[0]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/credential-member.toml",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "host.token"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/abi-without-wasm.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "toolset.providers[0].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/critical-nested-platform-member.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/no-operations.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/no-hosts.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-operation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations[1]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-provider.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[3]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/second-built-in.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].builtIns[1]"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/credential-member.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "providers[0].apiKey"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/extension-id-token-too-long.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "providers[0].extensionId"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/unknown-nested-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "hosts.platforms.*.signature"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/critical-nested-provider-member.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/dotnet-tool-host.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/empty-providers.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/incomplete-closure.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.osx-arm64.providers"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/credential-member.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "authorization"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/device-name-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/trailing-dot-component.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-too-long.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-nested-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "platforms.*.providers.signature"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/platform-not-locked.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/native-aot-bundled-runtime.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.execution.runtime"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/deployment-execution-mismatch.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.execution"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/external-owner-manager-owned.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.installation.authentication"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/non-passed-without-reason.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].checks[1].reason"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/workflow-on-component-check.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.checks[0].workflow"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/two-workflow-checks.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "checks"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/developer-policy-other.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.authentication.policy"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/recipe-digest-other-recipe.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.authentication"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/credential-api-key.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "host.installation.apiKey"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/dot-dot-launch-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/drive-root-launch-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/built-in-integrity-differs.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[1].checks"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-request-changed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-escaping.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/empty-instruction.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[4].instruction"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/code-of-another-kind.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[2].code"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/failed-without-error.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "outcome"
+      },
+      "schema": "accepts"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/abi-unavailable-without-abi.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[9].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/relative-project-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "selection.source.path"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/dot-dot-project-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "selection.source.path"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/lock-sha-not-digest.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "selection.lockSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/planned-without-plan.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "outcome"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/provider-component-without-delivery.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].delivery"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/process-probe-none.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].probe"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/line-separator-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
     }
   ],
   "bindings": [
@@ -770,14 +1188,99 @@
       }
     },
     {
-      "name": "a receipt refuses a substituted host deployment",
+      "name": "a receipt refuses a substituted host release",
       "kind": "receipt-lock",
-      "receipt": "receipt/binding/host-deployment-substituted.json",
+      "receipt": "receipt/binding/host-version-substituted.json",
       "lock": "lock/two-platforms-bound.json",
       "expected": {
         "code": "receipt_lock_mismatch",
         "path": "host.identity"
       }
+    },
+    {
+      "name": "a .NET tool host lock binds its request",
+      "kind": "lock-request",
+      "lock": "lock/dotnet-tool-host.json",
+      "request": "request/critical-understood-member.toml",
+      "expected": "valid"
+    },
+    {
+      "name": "a .NET tool host receipt binds its lock",
+      "kind": "receipt-lock",
+      "receipt": "receipt/external-dotnet-tool-host.json",
+      "lock": "lock/dotnet-tool-host.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a receipt for a platform the lock does not record is refused",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/platform-not-locked.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "platform_not_locked",
+        "path": "platforms"
+      }
+    },
+    {
+      "name": "the F# preset resolves the process frontend and the built-in generator",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/approved.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "compile",
+            "language": "fsharp",
+            "delivery": "process",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0"
+          },
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp",
+            "version": "1.2.3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a missing WASM ABI is reported, not substituted",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-alternatives.json",
+      "request": "request/wasm-example-default.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "abi_unavailable",
+        "path": "toolset"
+      }
+    },
+    {
+      "name": "an explicit ABI choice selects the alternative",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-alternatives.json",
+      "request": "request/wasm-example-bytes-abi.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "example",
+            "delivery": "wasm",
+            "extensionId": "morphir-example-backend",
+            "version": "1.9.0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plan digest is the SHA-256 of these canonical bytes",
+      "kind": "plan-canonical",
+      "result": "result/setup-plan-escaping.json",
+      "canonical": "result/setup-plan-escaping.plan.canonical.json",
+      "expected": "valid"
     }
   ]
 }

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "show",
+  "outcome": "succeeded",
+  "selection": {
+    "source": {
+      "kind": "project",
+      "path": "C:\\Users\\fixture\\src\\..\\loans\\.morphir\\toolchain.toml"
+    },
+    "generationId": "gen-0001",
+    "platform": "win-x64",
+    "host": {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "native-aot"
+    },
+    "lockSha256": "1f5573b35fb2772da39fca1ac51783ea160d7884f17097ba4e94fd69aee0b926"
+  },
+  "diagnostics": []
+}

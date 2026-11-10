@@ -18,6 +18,9 @@ semver = { workspace = true, features = ["serde"] }
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
+# The TUF client morphir-distribution uses; AuthenticatedTargets exists only
+# as the result of loading a repository through it.
+tough = "0.24"
 url.workspace = true
 
 [dev-dependencies]

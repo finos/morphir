@@ -4,6 +4,16 @@
   "title": "morphirup JSON result 0.1.0-draft.1",
   "description": "The single document morphirup writes to standard output with --json. Progress goes to standard error. Unknown members are ignored unless critical names them",
   "type": "object",
+  "if": {
+    "properties": {
+      "outcome": {
+        "const": "planned"
+      }
+    }
+  },
+  "then": {
+    "required": [ "plan" ]
+  },
   "required": [ "schemaVersion", "command", "outcome", "diagnostics" ],
   "properties": {
     "schemaVersion": {
@@ -100,7 +110,8 @@
     },
     "extensionIdentity": {
       "type": "string",
-      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?)*$",
+      "maxLength": 238
     },
     "packageId": {
       "type": "string",
@@ -117,13 +128,13 @@
     },
     "targetPath": {
       "type": "string",
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
-      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*/$)(?!.*[. ](?:/|$))(?!(?:.*/)?(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Nn][Ii][Nn]\\$|[Cc][Oo][Nn][Oo][Uu][Tt]\\$|[Cc][Oo][Mm][1-9¹²³]|[Ll][Pp][Tt][1-9¹²³]) *(?:\\.[^/]*)?(?:/|$))[^\\u0000-\\u001F<>:\"\\\\|?*\\u2028\\u2029]+$",
+      "maxLength": 240,
       "minLength": 1
     },
     "absolutePath": {
       "type": "string",
-      "pattern": "^(?:[A-Za-z]:[\\\\/]|\\\\\\\\|/)[^\\u0000]*$"
+      "pattern": "^(?!.*(?:^|[\\\\/])\\.{1,2}(?:[\\\\/]|$))(?:[A-Za-z]:[\\\\/][^\\u0000]+|\\\\\\\\[^\\u0000]+|/[^\\u0000]+)$"
     },
     "platformId": {
       "enum": [
@@ -280,7 +291,16 @@
             }
           },
           "then": {
-            "required": [ "component", "platform" ]
+            "required": [ "code", "component", "platform" ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "unsupported_artifact",
+                  "abi_unavailable",
+                  "no_compatible_release"
+                ]
+              }
+            }
           }
         },
         {
@@ -292,7 +312,12 @@
             }
           },
           "then": {
-            "required": [ "component", "prerequisite" ]
+            "required": [ "code", "component", "prerequisite" ],
+            "properties": {
+              "code": {
+                "enum": [ "missing_prerequisite" ]
+              }
+            }
           }
         },
         {
@@ -308,17 +333,19 @@
             "properties": {
               "code": {
                 "enum": [
+                  "target_not_authenticated",
+                  "target_length_mismatch",
+                  "target_digest_mismatch",
+                  "release_descriptor_mismatch",
+                  "artifact_platform_mismatch",
+                  "release_revoked",
                   "metadata_signature_invalid",
                   "metadata_expired",
                   "metadata_rollback",
                   "metadata_link_mismatch",
                   "metadata_root_rotation_invalid",
-                  "target_length_mismatch",
-                  "target_digest_mismatch",
-                  "release_descriptor_mismatch",
-                  "release_revoked",
-                  "no_compatible_release",
-                  "offline_metadata_unavailable"
+                  "offline_metadata_unavailable",
+                  "repository_unavailable"
                 ]
               }
             }
@@ -333,7 +360,12 @@
             }
           },
           "then": {
-            "required": [ "component", "target", "sha256" ]
+            "required": [ "code", "component", "target", "sha256" ],
+            "properties": {
+              "code": {
+                "enum": [ "offline_content_unavailable" ]
+              }
+            }
           }
         },
         {
@@ -345,7 +377,12 @@
             }
           },
           "then": {
-            "required": [ "component", "ownership" ]
+            "required": [ "code", "component", "ownership" ],
+            "properties": {
+              "code": {
+                "enum": [ "ownership_conflict" ]
+              }
+            }
           }
         },
         {
@@ -357,7 +394,12 @@
             }
           },
           "then": {
-            "required": [ "component", "check", "readiness" ]
+            "required": [ "code", "component", "check", "readiness" ],
+            "properties": {
+              "code": {
+                "enum": [ "readiness_failed" ]
+              }
+            }
           }
         },
         {
@@ -369,7 +411,7 @@
             }
           },
           "then": {
-            "required": [ "document", "code", "path" ],
+            "required": [ "code", "document", "path" ],
             "properties": {
               "code": {
                 "enum": [
@@ -395,11 +437,70 @@
             }
           },
           "then": {
-            "required": [ "source" ]
+            "required": [ "code", "source" ],
+            "properties": {
+              "code": {
+                "enum": [ "generation_not_installed" ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "lock-binding"
+              }
+            }
+          },
+          "then": {
+            "required": [ "code", "document", "path" ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "request_changed",
+                  "platform_not_locked",
+                  "lock_changed",
+                  "receipt_lock_mismatch",
+                  "lock_recipe_mismatch"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "abi_unavailable"
+              }
+            }
+          },
+          "then": {
+            "required": [ "abi" ]
+          },
+          "else": {
+            "not": {
+              "required": [ "abi" ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "platform_not_locked"
+              }
+            }
+          },
+          "then": {
+            "required": [ "platform" ]
           }
         }
       ],
-      "required": [ "kind", "severity", "message" ],
+      "required": [ "kind", "code", "severity", "message" ],
       "properties": {
         "kind": {
           "enum": [
@@ -410,7 +511,8 @@
             "ownership-conflict",
             "readiness-failed",
             "unsupported-contract",
-            "selection-unavailable"
+            "selection-unavailable",
+            "lock-binding"
           ]
         },
         "severity": {
@@ -479,11 +581,61 @@
         },
         "source": {
           "$ref": "#/$defs/selectionSource"
+        },
+        "abi": {
+          "$ref": "#/$defs/token"
         }
       }
     },
     "planComponent": {
       "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "component": {
+                "properties": {
+                  "role": {
+                    "const": "provider"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [ "delivery" ]
+          },
+          "else": {
+            "not": {
+              "required": [ "delivery" ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "delivery" ],
+            "properties": {
+              "delivery": {
+                "enum": [ "process", "dotnet-tool" ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "probe": {
+                "const": "process-with-user-rights"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "probe": {
+                "enum": [ "none", "in-host" ]
+              }
+            }
+          }
+        }
+      ],
       "required": [
         "component",
         "version",

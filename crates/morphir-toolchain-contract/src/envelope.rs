@@ -3,6 +3,10 @@
 //! A reader lists the exact drafts it supports as SemVer requirements. A draft
 //! matches only exactly, so `=0.1.0-draft.1` refuses `0.1.0-draft.2` and the
 //! released `0.1.0`. Unknown members are ignored unless `critical` names them.
+//!
+//! A critical path is a dotted list of member names from the document root.
+//! Array elements are named by the array's member name, and the entries of a
+//! map whose keys are data (such as `platforms`) by `*`.
 
 use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::reader::Node;
@@ -26,9 +30,7 @@ pub(crate) fn check(root: &Value, understood: &[&str]) -> Result<()> {
         })
     })?;
     let supported = SUPPORTED_VERSIONS.iter().any(|requirement| {
-        VersionReq::parse(requirement)
-            .expect("supported requirements are valid")
-            .matches(&version)
+        VersionReq::parse(requirement).is_ok_and(|requirement| requirement.matches(&version))
     });
     if !supported {
         return Err(Diagnostic::new(
@@ -61,5 +63,6 @@ pub(crate) fn check(root: &Value, understood: &[&str]) -> Result<()> {
             None => Ok(()),
         }
     })?;
-    Ok(())
+    // No toolchain document carries a credential, checked or local.
+    crate::reader::refuse_credentials(root, "")
 }

@@ -4,8 +4,8 @@
 //! A recipe maps host offerings (implementation, release, deployment) to the
 //! tool release metadata v1 tool ids or .NET tool packages that publish them,
 //! and binds each required operation to built-in or independently released
-//! providers by exact descriptor and artifact digests. It does not change the
-//! extension descriptor format.
+//! providers by exact digests. It does not change the extension descriptor
+//! format.
 
 use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::envelope;
@@ -13,9 +13,7 @@ use crate::ids::{
     CommandName, DeploymentId, ExtensionIdentity, ImplementationId, PackageId, PresetId,
     ProtocolVersion, Sha256, TargetDigest, WasmAbi,
 };
-use crate::model::{
-    self, DELIVERY_CASES, DeliveryKind, ModelInput, Operation, Prerequisite, Protocol,
-};
+use crate::model::{self, DeliveryKind, ModelInput, Operation, Prerequisite, Protocol};
 use crate::platform::{Os, PlatformId};
 use crate::reader::{Node, Obj, inconsistent, index, join};
 use morphir_distribution::ToolId;
@@ -23,7 +21,8 @@ use semver::Version;
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-/// Member paths a `0.1.0-draft.1` recipe reader understands.
+/// Member paths a `0.1.0-draft.1` recipe reader understands. `*` names any
+/// platform key.
 pub const UNDERSTOOD_PATHS: &[&str] = &[
     "schemaVersion",
     "critical",
@@ -41,6 +40,9 @@ pub const UNDERSTOOD_PATHS: &[&str] = &[
     "hosts.prerequisites",
     "hosts.builtIns",
     "hosts.platforms",
+    "hosts.platforms.*",
+    "hosts.platforms.*.target",
+    "hosts.platforms.*.sha256",
     "providers",
     "providers.operation",
     "providers.delivery",
@@ -61,6 +63,9 @@ pub const UNDERSTOOD_PATHS: &[&str] = &[
     "providers.modelInput",
     "providers.prerequisites",
     "providers.platforms",
+    "providers.platforms.*",
+    "providers.platforms.*.artifactTarget",
+    "providers.platforms.*.artifactSha256",
 ];
 
 /// How a host executes.
@@ -70,6 +75,11 @@ pub enum Execution {
     NativeAot,
     /// Managed code under a JIT, with a bundled or installed runtime.
     Jit,
+}
+
+impl Execution {
+    pub(crate) const CASES: &'static [(&'static str, Self)] =
+        &[("native-aot", Self::NativeAot), ("jit", Self::Jit)];
 }
 
 /// Where a host offering is published.
@@ -83,7 +93,8 @@ pub enum HostSource {
         tool_id: ToolId,
     },
     /// A .NET tool package. The package bytes are authenticated targets bound
-    /// per platform like any other host artifact.
+    /// per platform like any other host artifact. A .NET tool package has no
+    /// version 1 release status: revocation reaches it only through the recipe.
     DotnetTool {
         /// NuGet package id, such as `Morphir.Tool`.
         package_id: PackageId,
@@ -95,39 +106,87 @@ pub enum HostSource {
 /// A provider compiled into a host offering.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuiltIn {
-    /// Operation it performs.
-    pub operation: Operation,
-    /// Registry identity, such as `morphir.fsharp`.
-    pub extension_id: ExtensionIdentity,
-    /// Exact version.
-    pub version: Version,
-    /// Model input.
-    pub model_input: ModelInput,
+    operation: Operation,
+    extension_id: ExtensionIdentity,
+    version: Version,
+    model_input: ModelInput,
+}
+
+impl BuiltIn {
+    /// The operation it performs.
+    pub fn operation(&self) -> &Operation {
+        &self.operation
+    }
+    /// Its registry identity, such as `morphir.fsharp`.
+    pub fn extension_id(&self) -> &ExtensionIdentity {
+        &self.extension_id
+    }
+    /// Its exact version.
+    pub fn version(&self) -> &Version {
+        &self.version
+    }
+    /// Its model input.
+    pub fn model_input(&self) -> &ModelInput {
+        &self.model_input
+    }
 }
 
 /// One host offering: an implementation, release and deployment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HostOffering {
-    /// Implementation.
-    pub implementation: ImplementationId,
-    /// Exact release.
-    pub version: Version,
-    /// Deployment offering.
-    pub deployment: DeploymentId,
-    /// Execution mode.
-    pub execution: Execution,
-    /// Publication source.
-    pub source: HostSource,
-    /// MEP versions the host speaks.
-    pub protocol_versions: Vec<ProtocolVersion>,
-    /// WASM ABIs the host's qualified engine supports.
-    pub wasm_abis: Vec<WasmAbi>,
-    /// Declared prerequisites.
-    pub prerequisites: Vec<Prerequisite>,
-    /// Built-in providers.
-    pub built_ins: Vec<BuiltIn>,
+    implementation: ImplementationId,
+    version: Version,
+    deployment: DeploymentId,
+    execution: Execution,
+    source: HostSource,
+    protocol_versions: Vec<ProtocolVersion>,
+    wasm_abis: Vec<WasmAbi>,
+    prerequisites: Vec<Prerequisite>,
+    built_ins: Vec<BuiltIn>,
+    platforms: BTreeMap<PlatformId, TargetDigest>,
+}
+
+impl HostOffering {
+    /// The implementation.
+    pub fn implementation(&self) -> &ImplementationId {
+        &self.implementation
+    }
+    /// The exact release.
+    pub fn version(&self) -> &Version {
+        &self.version
+    }
+    /// The deployment offering.
+    pub fn deployment(&self) -> &DeploymentId {
+        &self.deployment
+    }
+    /// The execution mode.
+    pub fn execution(&self) -> Execution {
+        self.execution
+    }
+    /// The publication source.
+    pub fn source(&self) -> &HostSource {
+        &self.source
+    }
+    /// The MEP versions the host speaks.
+    pub fn protocol_versions(&self) -> &[ProtocolVersion] {
+        &self.protocol_versions
+    }
+    /// The WASM ABIs the host's qualified engine supports.
+    pub fn wasm_abis(&self) -> &[WasmAbi] {
+        &self.wasm_abis
+    }
+    /// The declared prerequisites.
+    pub fn prerequisites(&self) -> &[Prerequisite] {
+        &self.prerequisites
+    }
+    /// The built-in providers.
+    pub fn built_ins(&self) -> &[BuiltIn] {
+        &self.built_ins
+    }
     /// The authenticated artifact for each supported platform.
-    pub platforms: BTreeMap<PlatformId, TargetDigest>,
+    pub fn platforms(&self) -> &BTreeMap<PlatformId, TargetDigest> {
+        &self.platforms
+    }
 }
 
 /// A recipe provider delivery and its exact identities.
@@ -157,10 +216,14 @@ pub enum RecipeDelivery {
         /// Negotiation contract.
         protocol: Protocol,
     },
-    /// A framework-dependent .NET tool package.
+    /// A framework-dependent .NET tool package. The version-2 extension
+    /// descriptor has no runtime for .NET tool packages, so the provider binds
+    /// the release's descriptor, whose claims describe the guest.
     DotnetTool {
-        /// Repository holding the package.
+        /// Repository holding the package and descriptor.
         repository_id: Sha256,
+        /// Extension release descriptor of the same release.
+        descriptor: TargetDigest,
         /// NuGet package id.
         package_id: PackageId,
         /// Command the package exposes.
@@ -190,36 +253,81 @@ impl RecipeDelivery {
             | Self::DotnetTool { protocol, .. } => protocol,
         }
     }
+
+    /// Return the extension release descriptor.
+    pub fn descriptor(&self) -> &TargetDigest {
+        match self {
+            Self::Process { descriptor, .. }
+            | Self::Wasm { descriptor, .. }
+            | Self::DotnetTool { descriptor, .. } => descriptor,
+        }
+    }
 }
 
 /// An independently released provider a recipe may select.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeProvider {
-    /// Operation it performs.
-    pub operation: Operation,
-    /// Registry and MEP identity.
-    pub extension_id: ExtensionIdentity,
-    /// Exact provider release.
-    pub version: Version,
-    /// Declared prerequisites.
-    pub prerequisites: Vec<Prerequisite>,
-    /// Delivery.
-    pub delivery: RecipeDelivery,
+    operation: Operation,
+    extension_id: ExtensionIdentity,
+    version: Version,
+    prerequisites: Vec<Prerequisite>,
+    delivery: RecipeDelivery,
+}
+
+impl RecipeProvider {
+    /// The operation it performs.
+    pub fn operation(&self) -> &Operation {
+        &self.operation
+    }
+    /// Its registry and MEP identity.
+    pub fn extension_id(&self) -> &ExtensionIdentity {
+        &self.extension_id
+    }
+    /// Its exact release.
+    pub fn version(&self) -> &Version {
+        &self.version
+    }
+    /// Its declared prerequisites.
+    pub fn prerequisites(&self) -> &[Prerequisite] {
+        &self.prerequisites
+    }
+    /// Its delivery.
+    pub fn delivery(&self) -> &RecipeDelivery {
+        &self.delivery
+    }
 }
 
 /// A parsed toolset recipe.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolsetRecipe {
-    /// Preset name.
-    pub preset: PresetId,
-    /// Recipe release.
-    pub version: Version,
-    /// Required operations, in workflow order.
-    pub operations: Vec<Operation>,
-    /// Host offerings.
-    pub hosts: Vec<HostOffering>,
-    /// Providers, in preference order.
-    pub providers: Vec<RecipeProvider>,
+    preset: PresetId,
+    version: Version,
+    operations: Vec<Operation>,
+    hosts: Vec<HostOffering>,
+    providers: Vec<RecipeProvider>,
+}
+
+impl ToolsetRecipe {
+    /// The preset name.
+    pub fn preset(&self) -> &PresetId {
+        &self.preset
+    }
+    /// The recipe release.
+    pub fn version(&self) -> &Version {
+        &self.version
+    }
+    /// The required operations, in workflow order. Never empty.
+    pub fn operations(&self) -> &[Operation] {
+        &self.operations
+    }
+    /// The host offerings. Never empty.
+    pub fn hosts(&self) -> &[HostOffering] {
+        &self.hosts
+    }
+    /// The providers, in preference order.
+    pub fn providers(&self) -> &[RecipeProvider] {
+        &self.providers
+    }
 }
 
 /// Read a recipe from its exact bytes.
@@ -263,19 +371,31 @@ fn platform_digests(
     })
 }
 
+#[derive(Clone, Copy)]
+enum SourceTag {
+    ToolRelease,
+    DotnetTool,
+}
+
 fn host_offering(node: Node<'_>) -> Result<HostOffering> {
     let host = node.object()?;
     let source = host.req("source", |node| {
         let source = node.object()?;
-        match source.tag("kind", &["tool-release", "dotnet-tool"])? {
-            "tool-release" => Ok(HostSource::ToolRelease {
+        match source.case(
+            "kind",
+            &[
+                ("tool-release", SourceTag::ToolRelease),
+                ("dotnet-tool", SourceTag::DotnetTool),
+            ],
+        )? {
+            SourceTag::ToolRelease => Ok(HostSource::ToolRelease {
                 tool_id: source.req("toolId", |node| {
                     node.parse(Code::InvalidValue, |text| {
                         ToolId::parse(text).map_err(|error| error.to_string())
                     })
                 })?,
             }),
-            _ => Ok(HostSource::DotnetTool {
+            SourceTag::DotnetTool => Ok(HostSource::DotnetTool {
                 package_id: source.req("packageId", model::token(PackageId::parse))?,
                 command: source.req("command", model::token(CommandName::parse))?,
             }),
@@ -296,10 +416,7 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
         implementation: host.req("implementation", model::token(ImplementationId::parse))?,
         version: host.req("version", model::version)?,
         deployment: host.req("deployment", model::token(DeploymentId::parse))?,
-        execution: match host.tag("execution", &["native-aot", "jit"])? {
-            "native-aot" => Execution::NativeAot,
-            _ => Execution::Jit,
-        },
+        execution: host.case("execution", Execution::CASES)?,
         source,
         protocol_versions: host.req("protocolVersions", |node| {
             node.array(|item| item.parse(Code::UnsupportedCase, ProtocolVersion::parse))
@@ -328,7 +445,7 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
 fn provider(node: Node<'_>) -> Result<RecipeProvider> {
     let object = node.object()?;
     let operation = model::operation(&object)?;
-    let kind = DeliveryKind::from_tag(object.tag("delivery", DELIVERY_CASES)?);
+    let kind = model::delivery(&object)?;
     let extension_id = object.req("extensionId", model::extension_id)?;
     let version = object.req("version", model::version)?;
     let delivery = match kind {
@@ -353,6 +470,7 @@ fn provider(node: Node<'_>) -> Result<RecipeProvider> {
         },
         DeliveryKind::DotnetTool => RecipeDelivery::DotnetTool {
             repository_id: object.req("repositoryId", model::sha256)?,
+            descriptor: model::digest_pair(&object, "descriptorTarget", "descriptorSha256")?,
             package_id: object.req("packageId", model::token(PackageId::parse))?,
             command: object.req("command", model::token(CommandName::parse))?,
             package: model::digest_pair(&object, "packageTarget", "packageSha256")?,
@@ -368,47 +486,81 @@ fn provider(node: Node<'_>) -> Result<RecipeProvider> {
     })
 }
 
+/// Why a provider cannot run on a host offering and platform.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Misfit {
+    /// The host does not speak the provider's MEP version.
+    Protocol(ProtocolVersion),
+    /// The provider has no process artifact for the platform.
+    Platform(PlatformId),
+    /// The provider shares no platform with the host.
+    NoSharedPlatform,
+    /// The host does not support the provider's WASM ABI.
+    Abi(WasmAbi),
+}
+
+impl Misfit {
+    pub(crate) fn describe(&self, provider: &RecipeProvider) -> String {
+        match self {
+            Self::Protocol(version) => format!(
+                "the host does not speak MEP {} required by {}",
+                version.as_str(),
+                provider.extension_id
+            ),
+            Self::Platform(platform) => format!(
+                "{} has no process artifact for {platform}",
+                provider.extension_id
+            ),
+            Self::NoSharedPlatform => {
+                format!("{} shares no platform with the host", provider.extension_id)
+            }
+            Self::Abi(abi) => format!(
+                "the host does not support the WASM ABI {abi} required by {}",
+                provider.extension_id
+            ),
+        }
+    }
+}
+
 /// Whether a provider can run on a host offering and platform. Nothing is
-/// substituted: a missing platform artifact, ABI or protocol is incompatible.
+/// substituted: a missing platform artifact, ABI or protocol is a misfit.
 pub(crate) fn provider_fits(
     provider: &RecipeProvider,
     host: &HostOffering,
     platform: Option<PlatformId>,
-) -> std::result::Result<(), String> {
+) -> std::result::Result<(), Misfit> {
     let protocol = provider.delivery.protocol().version();
     if !host.protocol_versions.contains(&protocol) {
-        return Err(format!(
-            "the host does not speak MEP {} required by {}",
-            protocol.as_str(),
-            provider.extension_id
-        ));
+        return Err(Misfit::Protocol(protocol));
     }
     match &provider.delivery {
         RecipeDelivery::Process { platforms, .. } => match platform {
-            Some(platform) if !platforms.contains_key(&platform) => Err(format!(
-                "{} has no process artifact for {platform}",
-                provider.extension_id
-            )),
+            Some(platform) if !platforms.contains_key(&platform) => Err(Misfit::Platform(platform)),
             None if !platforms
                 .keys()
                 .any(|platform| host.platforms.contains_key(platform)) =>
             {
-                Err(format!(
-                    "{} shares no platform with the host",
-                    provider.extension_id
-                ))
+                Err(Misfit::NoSharedPlatform)
             }
             _ => Ok(()),
         },
-        RecipeDelivery::Wasm { abi, .. } if !host.wasm_abis.contains(abi) => Err(format!(
-            "the host does not support the WASM ABI {abi} required by {}",
-            provider.extension_id
-        )),
+        RecipeDelivery::Wasm { abi, .. } if !host.wasm_abis.contains(abi) => {
+            Err(Misfit::Abi(abi.clone()))
+        }
         RecipeDelivery::Wasm { .. } | RecipeDelivery::DotnetTool { .. } => Ok(()),
     }
 }
 
 fn validate(recipe: &ToolsetRecipe) -> Result<()> {
+    if recipe.operations.is_empty() {
+        return Err(inconsistent(
+            "operations",
+            "a recipe requires at least one operation",
+        ));
+    }
+    if recipe.hosts.is_empty() {
+        return Err(inconsistent("hosts", "a recipe offers at least one host"));
+    }
     for (position, operation) in recipe.operations.iter().enumerate() {
         if recipe.operations[..position].contains(operation) {
             return Err(inconsistent(

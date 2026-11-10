@@ -261,6 +261,7 @@ The last case, as a manager result:
   "diagnostics": [
     {
       "kind": "offline-content-unavailable",
+      "code": "offline_content_unavailable",
       "severity": "error",
       "message": "The locked F# frontend archive is not in the verified local store. Run morphirup restore --locked with network access.",
       "component": {

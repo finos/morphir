@@ -42,7 +42,8 @@
           "toolset.providers.language",
           "toolset.providers.target",
           "toolset.providers.delivery",
-          "toolset.providers.extensionId"
+          "toolset.providers.extensionId",
+          "toolset.providers.abi"
         ]
       }
     },
@@ -108,7 +109,8 @@
     },
     "extensionIdentity": {
       "type": "string",
-      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]*[a-z0-9])?)*$"
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\\.[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?)*$",
+      "maxLength": 238
     },
     "semanticVersion": {
       "type": "string",
@@ -169,6 +171,19 @@
         },
         "extensionId": {
           "$ref": "#/$defs/extensionIdentity"
+        },
+        "abi": {
+          "$ref": "#/$defs/token"
+        }
+      },
+      "dependentSchemas": {
+        "abi": {
+          "required": [ "delivery" ],
+          "properties": {
+            "delivery": {
+              "const": "wasm"
+            }
+          }
         }
       }
     }

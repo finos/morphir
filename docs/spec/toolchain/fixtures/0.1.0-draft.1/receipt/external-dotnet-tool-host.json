@@ -2,7 +2,7 @@
   "schemaVersion": "0.1.0-draft.1",
   "generationId": "gen-0004",
   "platform": "win-x64",
-  "lockSha256": "1f5573b35fb2772da39fca1ac51783ea160d7884f17097ba4e94fd69aee0b926",
+  "lockSha256": "4826e7f6970fa2506c39c3de2b8f641ef0037312e07a663baa8efb002124f95e",
   "recipe": {
     "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "target": "toolchains/recipes/fsharp/1.0.0.json",
@@ -12,9 +12,9 @@
     "identity": {
       "implementation": "dotnet",
       "version": "1.2.3",
-      "deployment": "native-aot",
-      "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
-      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      "deployment": "dotnet-tool",
+      "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
     },
     "execution": {
       "mode": "jit",
@@ -33,7 +33,7 @@
         "kind": "external-owner"
       },
       "launch": {
-        "program": "C:\\Users\\fixture\\.morphir\\toolchains\\objects\\dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\morphir.exe",
+        "program": "C:\\Users\\fixture\\.dotnet\\tools\\dotnet-morphir.exe",
         "args": []
       }
     },
@@ -54,14 +54,16 @@
       "identity": {
         "operation": "compile",
         "language": "fsharp",
-        "delivery": "process",
+        "delivery": "dotnet-tool",
         "extensionId": "org.finos.morphir.fsharp-frontend",
         "version": "0.6.0",
         "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
         "descriptorSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-        "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
-        "artifactSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "packageId": "Morphir.Frontend.FSharp.Extension",
+        "command": "morphir-fsharp-frontend",
+        "packageTarget": "packages/nuget/morphir.frontend.fsharp.extension/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg",
+        "packageSha256": "8888888888888888888888888888888888888888888888888888888888888888",
         "protocolVersion": "0.2.0-draft.1",
         "modelTuple": {
           "operation": "morphir.frontend.compileModel",
@@ -83,7 +85,7 @@
         },
         "claimCheck": "unchecked",
         "launch": {
-          "program": "C:\\Users\\fixture\\.morphir\\store\\extensions\\sha256\\ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\\morphir-fsharp-frontend.exe",
+          "program": "C:\\Users\\fixture\\.morphir\\tools\\morphir.frontend.fsharp.extension\\0.6.0\\morphir-fsharp-frontend.exe",
           "args": []
         }
       },

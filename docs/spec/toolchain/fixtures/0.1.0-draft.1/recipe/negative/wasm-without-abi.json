@@ -366,7 +366,9 @@
           ],
           "phase": "install"
         }
-      ]
+      ],
+      "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+      "descriptorSha256": "af16efdc13f1abb21af3a23a18ecbdad914a6ee3d325e98bd91a0ed89e530bd2"
     },
     {
       "operation": "generate",

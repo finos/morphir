@@ -78,12 +78,17 @@ impl PlatformId {
 
     /// Return the identifier.
     pub fn as_str(&self) -> &'static str {
-        ALL.iter()
-            .find(|(_, os, arch)| *os == self.os && *arch == self.arch)
-            .map(|(name, _, _)| *name)
-            .expect("every platform has a spelling")
+        match (self.os, self.arch) {
+            (Os::Windows, Arch::X64) => "win-x64",
+            (Os::Windows, Arch::Arm64) => "win-arm64",
+            (Os::MacOs, Arch::X64) => "osx-x64",
+            (Os::MacOs, Arch::Arm64) => "osx-arm64",
+            (Os::LinuxGlibc, Arch::X64) => "linux-x64",
+            (Os::LinuxGlibc, Arch::Arm64) => "linux-arm64",
+            (Os::LinuxMusl, Arch::X64) => "linux-musl-x64",
+            (Os::LinuxMusl, Arch::Arm64) => "linux-musl-arm64",
+        }
     }
-
     /// Return the operating system.
     pub fn os(&self) -> Os {
         self.os
@@ -110,7 +115,7 @@ impl PlatformId {
             Arch::X64 => "x86_64",
             Arch::Arm64 => "aarch64",
         };
-        Some(Platform::new(os, arch).expect("fixed v1 platform spelling is valid"))
+        Platform::new(os, arch).ok()
     }
 
     /// Return the target triple an extension release descriptor uses.

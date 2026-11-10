@@ -1,9 +1,9 @@
-//! The project toolchain request, `.morphir/toolchain.toml`.
+//! The project toolchain request, `.morphir/toolchain.toml` (TOML 1.0).
 
 use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::envelope;
-use crate::ids::{DeploymentId, ExtensionIdentity, ImplementationId, PresetId, Sha256};
-use crate::model::{self, DELIVERY_CASES, DeliveryKind, Operation};
+use crate::ids::{DeploymentId, ExtensionIdentity, ImplementationId, PresetId, Sha256, WasmAbi};
+use crate::model::{self, DeliveryKind, Operation};
 use crate::platform::PlatformId;
 use crate::reader::{Node, inconsistent};
 use morphir_distribution::Channel;
@@ -29,6 +29,7 @@ pub const UNDERSTOOD_PATHS: &[&str] = &[
     "toolset.providers.target",
     "toolset.providers.delivery",
     "toolset.providers.extensionId",
+    "toolset.providers.abi",
 ];
 
 /// How the request selects a host release. Exactly one applies.
@@ -52,7 +53,8 @@ pub struct RequestedHost {
 }
 
 /// An explicit provider choice for one operation. An explicit choice always
-/// wins over a built-in.
+/// wins over a built-in, and it is the only way to choose a provider that is
+/// not the recipe's first for its operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProviderSelection {
     /// Operation the choice applies to.
@@ -61,21 +63,41 @@ pub struct ProviderSelection {
     pub delivery: Option<DeliveryKind>,
     /// Required provider identity, when stated.
     pub extension_id: Option<ExtensionIdentity>,
+    /// Required WASM ABI, when stated.
+    pub abi: Option<WasmAbi>,
 }
 
 /// A parsed toolchain request and its identity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolchainRequest {
+    identity: Sha256,
+    platforms: Vec<PlatformId>,
+    host: RequestedHost,
+    preset: PresetId,
+    providers: Vec<ProviderSelection>,
+}
+
+impl ToolchainRequest {
     /// SHA-256 of the exact request bytes. Reformatting changes it.
-    pub identity: Sha256,
-    /// Platforms setup prepares closures for; the current platform when empty.
-    pub platforms: Vec<PlatformId>,
-    /// Requested host.
-    pub host: RequestedHost,
-    /// Requested preset.
-    pub preset: PresetId,
-    /// Explicit provider choices.
-    pub providers: Vec<ProviderSelection>,
+    pub fn identity(&self) -> &Sha256 {
+        &self.identity
+    }
+    /// Unique platforms setup prepares closures for; the current platform when empty.
+    pub fn platforms(&self) -> &[PlatformId] {
+        &self.platforms
+    }
+    /// The requested host.
+    pub fn host(&self) -> &RequestedHost {
+        &self.host
+    }
+    /// The requested preset.
+    pub fn preset(&self) -> &PresetId {
+        &self.preset
+    }
+    /// Explicit provider choices, at most one per operation.
+    pub fn providers(&self) -> &[ProviderSelection] {
+        &self.providers
+    }
 }
 
 /// Read a request from its exact UTF-8 bytes.
@@ -140,34 +162,27 @@ fn read_request_value(value: &Value, identity: Sha256) -> Result<ToolchainReques
                 node.array(|item| {
                     let selection = item.object()?;
                     let operation = model::operation(&selection)?;
-                    let delivery = selection.opt("delivery", |node| {
-                        let object_tag = node.str()?;
-                        DELIVERY_CASES
-                            .iter()
-                            .find(|case| **case == object_tag)
-                            .map(|case| DeliveryKind::from_tag(case))
-                            .ok_or_else(|| {
-                                Diagnostic::new(
-                                    Code::UnsupportedCase,
-                                    node.path(),
-                                    format!(
-                                        "'{object_tag}' is not one of {}",
-                                        DELIVERY_CASES.join(", ")
-                                    ),
-                                )
-                            })
-                    })?;
+                    let delivery =
+                        selection.opt("delivery", |node| node.case(DeliveryKind::CASES))?;
                     let extension_id = selection.opt("extensionId", model::extension_id)?;
+                    let abi = selection.opt("abi", model::token(WasmAbi::parse))?;
                     if delivery.is_none() && extension_id.is_none() {
                         return Err(inconsistent(
                             selection.path(),
                             "a provider selection names a delivery, an extensionId or both",
                         ));
                     }
+                    if abi.is_some() && delivery != Some(DeliveryKind::Wasm) {
+                        return Err(inconsistent(
+                            selection.member_path("abi"),
+                            "an ABI is chosen only with the wasm delivery",
+                        ));
+                    }
                     Ok(ProviderSelection {
                         operation,
                         delivery,
                         extension_id,
+                        abi,
                     })
                 })
             })?

@@ -81,6 +81,28 @@ impl<'a> Node<'a> {
         parse(text).map_err(|message| Diagnostic::new(code, self.path, message))
     }
 
+    /// Read a string that names one of `cases`.
+    pub(crate) fn case<T: Copy>(&self, cases: &[(&'static str, T)]) -> Result<T> {
+        let tag = self.str()?;
+        cases
+            .iter()
+            .find(|(name, _)| *name == tag)
+            .map(|(_, value)| *value)
+            .ok_or_else(|| {
+                Diagnostic::new(
+                    Code::UnsupportedCase,
+                    self.path,
+                    format!(
+                        "'{tag}' is not one of {}",
+                        cases
+                            .iter()
+                            .map(|(name, _)| *name)
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                )
+            })
+    }
     /// Read every element of an array with its indexed path.
     pub(crate) fn array<T>(&self, mut read: impl FnMut(Node<'_>) -> Result<T>) -> Result<Vec<T>> {
         let values = self
@@ -149,23 +171,19 @@ impl<'a> Obj<'a> {
         value.as_str().ok_or_else(|| type_error(&path, "a string"))
     }
 
-    /// Read a tagged member: the tag must be a string and one of `cases`.
-    pub(crate) fn tag(&self, key: &str, cases: &[&'static str]) -> Result<&'static str> {
+    /// Read a tagged member. The tag must be a string naming one of `cases`;
+    /// any other tag is `unsupported_case`. There is no default case.
+    pub(crate) fn case<T: Copy>(&self, key: &str, cases: &[(&'static str, T)]) -> Result<T> {
         let path = self.member_path(key);
-        let tag = self.str(key)?;
-        cases
-            .iter()
-            .copied()
-            .find(|case| *case == tag)
-            .ok_or_else(|| {
-                Diagnostic::new(
-                    Code::UnsupportedCase,
-                    path,
-                    format!("'{tag}' is not one of {}", cases.join(", ")),
-                )
-            })
+        let value = self.map.get(key).ok_or_else(|| {
+            Diagnostic::new(
+                Code::InvalidDocument,
+                &path,
+                format!("required member '{key}' is absent"),
+            )
+        })?;
+        Node { value, path: &path }.case(cases)
     }
-
     /// Visit every entry of a map-valued object with its keyed path.
     pub(crate) fn map<K, T>(
         &self,
@@ -188,4 +206,46 @@ impl<'a> Obj<'a> {
 /// Refuse a member that contradicts another member.
 pub(crate) fn inconsistent(path: impl Into<String>, message: impl Into<String>) -> Diagnostic {
     Diagnostic::new(Code::InconsistentDocument, path, message)
+}
+
+/// Member names that carry credentials, compared ASCII case-insensitively.
+pub(crate) const CREDENTIAL_MEMBERS: &[&str] = &[
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "apikey",
+    "api-key",
+    "api_key",
+    "authorization",
+    "credential",
+    "credentials",
+    "cookie",
+];
+
+/// Refuse a credential-shaped member at any depth, including inside members
+/// a reader otherwise ignores.
+pub(crate) fn refuse_credentials(value: &Value, path: &str) -> Result<()> {
+    match value {
+        Value::Object(map) => map.iter().try_for_each(|(key, value)| {
+            let member = join(path, key);
+            if CREDENTIAL_MEMBERS
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case(key))
+            {
+                Err(Diagnostic::new(
+                    Code::CredentialInDocument,
+                    member,
+                    "toolchain documents never carry credentials",
+                ))
+            } else {
+                refuse_credentials(value, &member)
+            }
+        }),
+        Value::Array(values) => values
+            .iter()
+            .enumerate()
+            .try_for_each(|(position, value)| refuse_credentials(value, &index(path, position))),
+        _ => Ok(()),
+    }
 }

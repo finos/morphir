@@ -1,15 +1,17 @@
-//! Recipe bindings checked against authenticated TUF targets metadata.
+//! Recipe bindings checked against an authenticated tool repository.
 //!
-//! The TUF client authenticates the metadata: signatures, thresholds, expiry,
-//! rollback and snapshot links. These checks then prove what an authenticated
-//! recipe binds. A validly signed recipe can still name another platform's
-//! artifact, another offering's artifact, a wrong digest or an unpublished
-//! target, and each of those is refused here.
+//! [`AuthenticatedTargets`] is built only by loading a repository through the
+//! TUF client from an out-of-band trusted root, so every target it lists has
+//! passed signature, threshold, expiry, rollback and snapshot-link checks.
+//! These checks then prove what an authenticated recipe binds: a validly
+//! signed recipe can still name another platform's artifact, another
+//! offering's artifact, a wrong digest, an unpublished target or an artifact
+//! whose claims do not fit, and each of those is refused here.
 
 use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::envelope::CONTRACT_VERSION;
 use crate::ids::{PresetId, Sha256, TargetDigest, TargetPath};
-use crate::model::{DeliveryKind, Operation};
+use crate::model::{Operation, Protocol};
 use crate::platform::PlatformId;
 use crate::reader::{index, join};
 use crate::recipe::{HostSource, RecipeDelivery, RecipeProvider, ToolsetRecipe};
@@ -17,27 +19,30 @@ use morphir_distribution::{ArtifactRuntime, Channel, ReleaseBundleDescriptor, To
 use semver::Version;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::path::Path;
+use tough::{FilesystemTransport, IntoVec, Limits, RepositoryLoader, TargetName};
 
 /// One authenticated target entry.
 #[derive(Debug, Clone)]
-pub struct AuthenticatedTarget {
-    /// Declared length.
-    pub length: u64,
-    /// SHA-256 of the exact target bytes.
-    pub sha256: Sha256,
-    /// `custom.morphir`, when present.
-    pub custom: Option<Value>,
+struct AuthenticatedTarget {
+    length: u64,
+    sha256: Sha256,
+    custom: Option<Value>,
 }
 
-/// The `targets` map of verified TUF targets metadata.
-#[derive(Debug, Clone)]
-pub struct AuthenticatedTargets {
-    targets: BTreeMap<String, AuthenticatedTarget>,
+/// The current authenticated status of a recipe target.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecipeStatus {
+    /// Eligible for channel and exact selection.
+    Active,
+    /// Excluded from channels, still eligible by exact target.
+    Yanked,
+    /// Refused.
+    Revoked,
 }
 
 /// A recipe target's `custom.morphir` metadata. Recipe targets are an
-/// additive target kind: version 1 tool clients select only `tool-release`
-/// targets and ignore them.
+/// additive target kind, versioned by the recipe contract.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeTargetState {
     /// Preset.
@@ -46,53 +51,142 @@ pub struct RecipeTargetState {
     pub version: Version,
     /// Current channel memberships.
     pub channels: Vec<Channel>,
-    /// Current status: `active`, `yanked` or `revoked`.
-    pub status: String,
+    /// Current status.
+    pub status: RecipeStatus,
+}
+
+/// The authenticated targets of a loaded tool repository.
+pub struct AuthenticatedTargets {
+    repository: tough::Repository,
+    targets: BTreeMap<String, AuthenticatedTarget>,
+    targets_version: u64,
+}
+
+impl std::fmt::Debug for AuthenticatedTargets {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("AuthenticatedTargets")
+            .field("targets", &self.targets.len())
+            .field("targets_version", &self.targets_version)
+            .finish()
+    }
+}
+
+/// The stable code for a TUF client failure. `target` says whether the
+/// failure happened while reading a target rather than metadata.
+fn trust_code(error: &tough::error::Error, target: bool) -> Code {
+    use tough::error::Error as E;
+    let mut current: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(error) = current {
+        if let Some(error) = error.downcast_ref::<E>() {
+            let code = match error {
+                E::ExpiredMetadata { .. } => Some(Code::MetadataExpired),
+                E::VerifyMetadata { .. }
+                | E::VerifyRoleMetadata { .. }
+                | E::VerifyTrustedMetadata { .. } => Some(Code::MetadataSignatureInvalid),
+                E::OlderMetadata { .. }
+                | E::VersionMismatch { .. }
+                | E::SnapshotRoleRollback { .. }
+                | E::OlderSnapshotInTimestamp { .. } => Some(Code::MetadataRollback),
+                E::MaxUpdatesExceeded { .. } => Some(Code::MetadataRootRotationInvalid),
+                E::HashMismatch { .. } if target => Some(Code::TargetDigestMismatch),
+                E::MaxSizeExceeded { .. } if target => Some(Code::TargetLengthMismatch),
+                E::HashMismatch { .. } | E::MaxSizeExceeded { .. } => {
+                    Some(Code::MetadataLinkMismatch)
+                }
+                _ => None,
+            };
+            if let Some(code) = code {
+                return code;
+            }
+        }
+        current = error.source();
+    }
+    Code::RepositoryUnavailable
+}
+
+fn invalid_metadata(path: &str, message: impl Into<String>) -> Diagnostic {
+    Diagnostic::new(Code::RepositoryUnavailable, path, message)
 }
 
 impl AuthenticatedTargets {
-    /// Read the `signed` object of targets metadata whose signatures, expiry
-    /// and snapshot links the TUF client has already verified.
-    pub fn from_targets_metadata(signed: &Value) -> std::result::Result<Self, String> {
-        let entries = signed["targets"]
-            .as_object()
-            .ok_or("targets metadata has no targets map")?;
-        let targets = entries
-            .iter()
-            .map(|(path, entry)| {
-                let length = entry["length"]
-                    .as_u64()
-                    .ok_or_else(|| format!("{path} has no length"))?;
-                let sha256 = entry["hashes"]["sha256"]
-                    .as_str()
-                    .ok_or_else(|| format!("{path} has no SHA-256 hash"))
-                    .and_then(Sha256::parse)?;
-                Ok((
-                    path.clone(),
-                    AuthenticatedTarget {
-                        length,
-                        sha256,
-                        custom: entry["custom"].get("morphir").cloned(),
-                    },
-                ))
+    /// Load and authenticate a filesystem repository from an out-of-band
+    /// trusted root. Expiry is enforced against the current time.
+    pub async fn load_filesystem(
+        trusted_root: &[u8],
+        metadata_directory: &Path,
+        targets_directory: &Path,
+        datastore: &Path,
+    ) -> Result<Self> {
+        std::fs::create_dir_all(datastore).map_err(|error| {
+            invalid_metadata(
+                "",
+                format!("cannot create {}: {error}", datastore.display()),
+            )
+        })?;
+        let url = |path: &Path| {
+            url::Url::from_directory_path(path).map_err(|()| {
+                invalid_metadata("", format!("{} is not a directory URL", path.display()))
             })
-            .collect::<std::result::Result<_, String>>()?;
-        Ok(Self { targets })
+        };
+        let repository = RepositoryLoader::new(
+            &trusted_root,
+            url(metadata_directory)?,
+            url(targets_directory)?,
+        )
+        .transport(FilesystemTransport)
+        .limits(Limits {
+            max_root_updates: 32,
+            ..Limits::default()
+        })
+        .datastore(datastore)
+        .load()
+        .await
+        .map_err(|error| Diagnostic::new(trust_code(&error, false), "", error.to_string()))?;
+        let mut targets = BTreeMap::new();
+        for (name, target) in repository.all_targets() {
+            let digest: [u8; 32] = target.hashes.sha256.as_ref().try_into().map_err(|_| {
+                invalid_metadata("", format!("{} has no SHA-256 digest", name.raw()))
+            })?;
+            targets.insert(
+                name.raw().to_owned(),
+                AuthenticatedTarget {
+                    length: target.length,
+                    sha256: Sha256::of_digest(morphir_distribution::Sha256Digest::from_bytes(
+                        digest,
+                    )),
+                    custom: target.custom.get("morphir").cloned(),
+                },
+            );
+        }
+        let targets_version = repository.targets().signed.version.get();
+        Ok(Self {
+            repository,
+            targets,
+            targets_version,
+        })
     }
 
-    /// Return the authenticated digest of a target.
+    /// The authenticated targets metadata version.
+    pub fn targets_version(&self) -> u64 {
+        self.targets_version
+    }
+
+    /// The authenticated digest of a target.
     pub fn digest(&self, path: &str) -> Option<&Sha256> {
         self.targets.get(path).map(|target| &target.sha256)
     }
 
-    /// Return a target's `custom.morphir` metadata.
+    /// A target's `custom.morphir` metadata.
     pub fn custom(&self, path: &str) -> Option<&Value> {
         self.targets
             .get(path)
             .and_then(|target| target.custom.as_ref())
     }
 
-    /// Verify exact bytes against the authenticated length and digest.
+    /// Verify bytes from elsewhere, such as a local store, against the
+    /// authenticated length and digest. Refusals concern the target itself
+    /// and have the empty path.
     pub fn authenticate(&self, path: &str, bytes: &[u8]) -> Result<Sha256> {
         let target = self.targets.get(path).ok_or_else(|| {
             Diagnostic::new(
@@ -126,214 +220,149 @@ impl AuthenticatedTargets {
         Ok(actual)
     }
 
-    /// Return a recipe target's authenticated state.
-    pub fn recipe_state(&self, path: &str) -> Option<RecipeTargetState> {
-        let custom = self.custom(path)?;
-        if custom["kind"] != "toolset-recipe" || custom["schemaVersion"] != CONTRACT_VERSION {
-            return None;
+    /// Read a target's bytes through the TUF client, which verifies their
+    /// length and digest. Refusals have the empty path.
+    pub async fn read(&self, path: &str) -> Result<Vec<u8>> {
+        if !self.targets.contains_key(path) {
+            return Err(Diagnostic::new(
+                Code::TargetNotAuthenticated,
+                "",
+                format!("{path} is not an authenticated target"),
+            ));
         }
-        Some(RecipeTargetState {
-            preset: PresetId::parse(custom["preset"].as_str()?).ok()?,
-            version: Version::parse(custom["version"].as_str()?).ok()?,
-            channels: custom["channels"]
-                .as_array()?
-                .iter()
-                .map(|channel| channel.as_str().and_then(|text| Channel::parse(text).ok()))
-                .collect::<Option<Vec<_>>>()?,
-            status: custom["status"].as_str()?.to_owned(),
+        let name = TargetName::new(path)
+            .map_err(|error| Diagnostic::new(Code::NonPortablePath, "", error.to_string()))?;
+        let stream = self
+            .repository
+            .read_target(&name)
+            .await
+            .map_err(|error| Diagnostic::new(trust_code(&error, true), "", error.to_string()))?
+            .ok_or_else(|| {
+                Diagnostic::new(
+                    Code::TargetNotAuthenticated,
+                    "",
+                    format!("{path} is not available"),
+                )
+            })?;
+        stream
+            .into_vec()
+            .await
+            .map_err(|error| Diagnostic::new(trust_code(&error, true), "", error.to_string()))
+    }
+
+    /// A recipe target's authenticated state, or a refusal when the target is
+    /// not a `0.1.0-draft.1` toolset recipe. Refusals have the empty path.
+    pub fn recipe_state(&self, path: &str) -> Result<RecipeTargetState> {
+        let not_a_recipe = || {
+            Diagnostic::new(
+                Code::ReleaseDescriptorMismatch,
+                "",
+                format!("{path} is not authenticated as a {CONTRACT_VERSION} toolset recipe"),
+            )
+        };
+        let custom = self.custom(path).ok_or_else(not_a_recipe)?;
+        if custom["kind"] != "toolset-recipe" || custom["schemaVersion"] != CONTRACT_VERSION {
+            return Err(not_a_recipe());
+        }
+        let status = match custom["status"].as_str() {
+            Some("active") => RecipeStatus::Active,
+            Some("yanked") => RecipeStatus::Yanked,
+            Some("revoked") => RecipeStatus::Revoked,
+            _ => return Err(not_a_recipe()),
+        };
+        let channels = custom["channels"]
+            .as_array()
+            .ok_or_else(not_a_recipe)?
+            .iter()
+            .map(|channel| channel.as_str().and_then(|text| Channel::parse(text).ok()))
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(not_a_recipe)?;
+        Ok(RecipeTargetState {
+            preset: custom["preset"]
+                .as_str()
+                .and_then(|text| PresetId::parse(text).ok())
+                .ok_or_else(not_a_recipe)?,
+            version: custom["version"]
+                .as_str()
+                .and_then(|text| Version::parse(text).ok())
+                .ok_or_else(not_a_recipe)?,
+            channels,
+            status,
         })
     }
 
     /// Select the greatest active recipe for a preset on a moving channel,
     /// with the tool release metadata v1 channel rules.
     pub fn select_recipe(&self, preset: &PresetId, channel: &Channel) -> Result<TargetPath> {
-        self.targets
-            .keys()
-            .filter_map(|path| self.recipe_state(path).map(|state| (path, state)))
-            .filter(|(_, state)| {
-                &state.preset == preset
-                    && state.status == "active"
-                    && channel_matches(channel, &state.version, &state.channels)
-            })
-            .max_by(|(_, left), (_, right)| left.version.cmp(&right.version))
-            .map(|(path, _)| TargetPath::parse(path).expect("authenticated paths are portable"))
-            .ok_or_else(|| {
-                Diagnostic::new(
-                    Code::UnsupportedArtifact,
-                    "toolset.preset",
-                    format!("no active {preset} recipe is on the {channel} channel"),
-                )
-            })
-    }
-
-    /// Authenticate a recipe target, enforce its authenticated status, read
-    /// it, and check every host and provider binding.
-    pub fn check_recipe(
-        &self,
-        path: &str,
-        bytes: &[u8],
-        read: impl Fn(&str) -> Option<Vec<u8>>,
-    ) -> Result<ToolsetRecipe> {
-        self.authenticate(path, bytes)?;
-        let state = self.recipe_state(path).ok_or_else(|| {
+        let mut best: Option<(&String, Version)> = None;
+        for path in self.targets.keys() {
+            let Ok(state) = self.recipe_state(path) else {
+                continue;
+            };
+            if &state.preset == preset
+                && state.status == RecipeStatus::Active
+                && channel_matches(channel, &state.version, &state.channels)
+                && best
+                    .as_ref()
+                    .is_none_or(|(_, version)| state.version > *version)
+            {
+                best = Some((path, state.version));
+            }
+        }
+        let (path, _) = best.ok_or_else(|| {
             Diagnostic::new(
-                Code::ReleaseDescriptorMismatch,
-                "",
-                format!("{path} is not authenticated as a {CONTRACT_VERSION} toolset recipe"),
+                Code::UnsupportedArtifact,
+                "toolset.preset",
+                format!("no active {preset} recipe is on the {channel} channel"),
             )
         })?;
-        if state.status == "revoked" {
+        TargetPath::parse(path)
+            .map_err(|message| Diagnostic::new(Code::NonPortablePath, "", message))
+    }
+
+    /// Read an authenticated recipe target, enforce its authenticated state,
+    /// and check every host and provider binding. Refusals about the recipe
+    /// target itself have the empty path.
+    pub async fn check_recipe(&self, path: &str) -> Result<ToolsetRecipe> {
+        TargetPath::parse(path)
+            .map_err(|message| Diagnostic::new(Code::NonPortablePath, "", message))?;
+        let bytes = self.read(path).await?;
+        let state = self.recipe_state(path)?;
+        if state.status == RecipeStatus::Revoked {
             return Err(Diagnostic::new(
                 Code::ReleaseRevoked,
                 "",
                 format!("{path} is revoked"),
             ));
         }
-        let recipe = crate::recipe::read_recipe(bytes)?;
-        if recipe.preset != state.preset || recipe.version != state.version {
+        let recipe = crate::recipe::read_recipe(&bytes)?;
+        if recipe.preset() != &state.preset || recipe.version() != &state.version {
             return Err(Diagnostic::new(
                 Code::ReleaseDescriptorMismatch,
                 "",
                 format!("{path} disagrees with its authenticated preset and version"),
             ));
         }
-        self.check_recipe_hosts(&recipe, &read)?;
-        self.check_recipe_providers(&recipe, &read)?;
+        self.check_recipe_bindings(&recipe).await?;
         Ok(recipe)
     }
 
-    /// Check every provider binding of an authenticated recipe.
-    ///
-    /// The extension release descriptor is read with the existing version-2
-    /// reader and is not rewritten. Its artifacts' claim-check status is left
-    /// as published: authenticating the bytes says who published them, not
-    /// whether the claims were probed.
-    pub fn check_recipe_providers(
-        &self,
-        recipe: &ToolsetRecipe,
-        read: impl Fn(&str) -> Option<Vec<u8>>,
-    ) -> Result<()> {
-        for (position, provider) in recipe.providers.iter().enumerate() {
-            let path = index("providers", position);
-            match &provider.delivery {
-                RecipeDelivery::Process {
-                    descriptor,
-                    platforms,
-                    ..
-                } => {
-                    let release = self.descriptor(&path, provider, descriptor, &read)?;
-                    for (platform, binding) in platforms {
-                        let binding_path = join(&join(&path, "platforms"), platform.as_str());
-                        self.bound_target(&binding_path, "artifact", binding)?;
-                        check_extension_artifact(
-                            &release,
-                            descriptor,
-                            provider,
-                            Some(*platform),
-                            binding,
-                            &path,
-                            &binding_path,
-                        )?;
-                    }
-                }
-                RecipeDelivery::Wasm {
-                    descriptor,
-                    artifact,
-                    ..
-                } => {
-                    let release = self.descriptor(&path, provider, descriptor, &read)?;
-                    self.bound_target(&path, "artifact", artifact)?;
-                    check_extension_artifact(
-                        &release, descriptor, provider, None, artifact, &path, &path,
-                    )?;
-                }
-                RecipeDelivery::DotnetTool { package, .. } => {
-                    self.bound_target(&path, "package", package)?;
-                }
-            }
-        }
-        Ok(())
+    /// Check every host and provider binding of a recipe document.
+    pub async fn check_recipe_bindings(&self, recipe: &ToolsetRecipe) -> Result<()> {
+        self.check_hosts(recipe).await?;
+        self.check_providers(recipe).await
     }
 
-    /// Check that `<prefix>Target` is authenticated with `<prefix>Sha256`.
-    fn bound_target(&self, path: &str, prefix: &str, binding: &TargetDigest) -> Result<()> {
-        let target = binding.target.as_str();
-        let entry = self.targets.get(target).ok_or_else(|| {
-            Diagnostic::new(
-                Code::TargetNotAuthenticated,
-                join(path, &format!("{prefix}Target")),
-                format!("{target} is not an authenticated target"),
-            )
-        })?;
-        if entry.sha256 != binding.sha256 {
-            return Err(Diagnostic::new(
-                Code::TargetDigestMismatch,
-                join(path, &format!("{prefix}Sha256")),
-                format!(
-                    "the recipe binds {target} to {}, but it is authenticated as {}",
-                    binding.sha256, entry.sha256
-                ),
-            ));
-        }
-        Ok(())
-    }
-
-    fn descriptor(
-        &self,
-        path: &str,
-        provider: &RecipeProvider,
-        descriptor: &TargetDigest,
-        read: &impl Fn(&str) -> Option<Vec<u8>>,
-    ) -> Result<ReleaseBundleDescriptor> {
-        self.bound_target(path, "descriptor", descriptor)?;
-        let target = descriptor.target.as_str();
-        let bytes = read(target).ok_or_else(|| {
-            Diagnostic::new(
-                Code::TargetNotAuthenticated,
-                join(path, "descriptorTarget"),
-                format!("{target} is not available"),
-            )
-        })?;
-        self.authenticate(target, &bytes)?;
-        let release = ReleaseBundleDescriptor::parse_json(&bytes).map_err(|error| {
-            Diagnostic::new(
-                Code::ReleaseDescriptorMismatch,
-                join(path, "descriptorTarget"),
-                format!("{target} is not an extension release descriptor: {error}"),
-            )
-        })?;
-        if release.version() != &provider.version {
-            return Err(Diagnostic::new(
-                Code::ReleaseDescriptorMismatch,
-                join(path, "version"),
-                format!(
-                    "{target} describes release {}, not {}",
-                    release.version(),
-                    provider.version
-                ),
-            ));
-        }
-        Ok(release)
-    }
-
-    /// Check every host binding of an authenticated recipe.
-    ///
-    /// `read` returns the bytes of an authenticated target, such as a tool
-    /// release descriptor; they are authenticated again before use.
-    pub fn check_recipe_hosts(
-        &self,
-        recipe: &ToolsetRecipe,
-        read: impl Fn(&str) -> Option<Vec<u8>>,
-    ) -> Result<()> {
-        for (position, host) in recipe.hosts.iter().enumerate() {
+    async fn check_hosts(&self, recipe: &ToolsetRecipe) -> Result<()> {
+        for (position, host) in recipe.hosts().iter().enumerate() {
             let host_path = index("hosts", position);
-            let release = match &host.source {
+            let release = match host.source() {
                 HostSource::ToolRelease { tool_id } => {
-                    let path = format!("releases/{tool_id}/{}.json", host.version);
+                    let path = format!("releases/{tool_id}/{}.json", host.version());
                     let custom = self.custom(&path).filter(|custom| {
                         custom["kind"] == "tool-release"
                             && custom["toolId"] == tool_id.as_str()
-                            && custom["version"] == host.version.to_string()
+                            && custom["version"] == host.version().to_string()
                     });
                     let Some(custom) = custom else {
                         return Err(Diagnostic::new(
@@ -346,17 +375,10 @@ impl AuthenticatedTargets {
                         return Err(Diagnostic::new(
                             Code::ReleaseRevoked,
                             join(&host_path, "version"),
-                            format!("{tool_id} {} is revoked", host.version),
+                            format!("{tool_id} {} is revoked", host.version()),
                         ));
                     }
-                    let bytes = read(&path).ok_or_else(|| {
-                        Diagnostic::new(
-                            Code::TargetNotAuthenticated,
-                            join(&host_path, "source"),
-                            format!("{path} is not available"),
-                        )
-                    })?;
-                    self.authenticate(&path, &bytes)?;
+                    let bytes = self.read(&path).await?;
                     let record: ToolReleaseRecord =
                         serde_json::from_slice(&bytes).map_err(|error| {
                             Diagnostic::new(
@@ -369,33 +391,319 @@ impl AuthenticatedTargets {
                 }
                 HostSource::DotnetTool { .. } => None,
             };
-            for (platform, binding) in &host.platforms {
+            for (platform, binding) in host.platforms() {
                 let path = join(&join(&host_path, "platforms"), platform.as_str());
-                let target = binding.target.as_str();
-                let Some(entry) = self.targets.get(target) else {
-                    return Err(Diagnostic::new(
-                        Code::TargetNotAuthenticated,
-                        join(&path, "target"),
-                        format!("{target} is not an authenticated target"),
-                    ));
-                };
-                if entry.sha256 != binding.sha256 {
-                    return Err(Diagnostic::new(
-                        Code::TargetDigestMismatch,
-                        join(&path, "sha256"),
-                        format!(
-                            "the recipe binds {target} to {}, but it is authenticated as {}",
-                            binding.sha256, entry.sha256
-                        ),
-                    ));
-                }
+                let entry = self.bound(&path, "target", "sha256", binding)?;
                 if let Some(record) = &release {
-                    check_release_artifact(record, *platform, target, entry, &path)?;
+                    check_release_artifact(
+                        record,
+                        *platform,
+                        binding.target.as_str(),
+                        entry,
+                        &path,
+                    )?;
                 }
             }
         }
         Ok(())
     }
+
+    /// Check that a bound target is authenticated with the bound digest.
+    fn bound(
+        &self,
+        path: &str,
+        target_member: &str,
+        digest_member: &str,
+        binding: &TargetDigest,
+    ) -> Result<&AuthenticatedTarget> {
+        let target = binding.target.as_str();
+        let entry = self.targets.get(target).ok_or_else(|| {
+            Diagnostic::new(
+                Code::TargetNotAuthenticated,
+                join(path, target_member),
+                format!("{target} is not an authenticated target"),
+            )
+        })?;
+        if entry.sha256 != binding.sha256 {
+            return Err(Diagnostic::new(
+                Code::TargetDigestMismatch,
+                join(path, digest_member),
+                format!(
+                    "the recipe binds {target} to {}, but it is authenticated as {}",
+                    binding.sha256, entry.sha256
+                ),
+            ));
+        }
+        Ok(entry)
+    }
+
+    async fn check_providers(&self, recipe: &ToolsetRecipe) -> Result<()> {
+        for (position, provider) in recipe.providers().iter().enumerate() {
+            let path = index("providers", position);
+            let descriptor = provider.delivery().descriptor();
+            self.bound(&path, "descriptorTarget", "descriptorSha256", descriptor)?;
+            let bytes = self.read(descriptor.target.as_str()).await?;
+            let release = read_descriptor(&bytes, &path)?;
+            check_release_identity(&release, provider, &path)?;
+            match provider.delivery() {
+                RecipeDelivery::Process { platforms, .. } => {
+                    for (platform, binding) in platforms {
+                        let binding_path = join(&join(&path, "platforms"), platform.as_str());
+                        self.bound(&binding_path, "artifactTarget", "artifactSha256", binding)?;
+                        let artifact = listed_artifact(
+                            &release,
+                            descriptor,
+                            binding,
+                            ArtifactRuntime::Process,
+                            &binding_path,
+                        )?;
+                        if artifact.platform() != Some(platform.target_triple()) {
+                            return Err(Diagnostic::new(
+                                Code::ArtifactPlatformMismatch,
+                                join(&binding_path, "artifactTarget"),
+                                format!(
+                                    "{} is the {} artifact, not the {} artifact",
+                                    binding.target,
+                                    artifact.platform().unwrap_or("portable"),
+                                    platform.target_triple()
+                                ),
+                            ));
+                        }
+                        check_capabilities(artifact, provider, &path)?;
+                    }
+                }
+                RecipeDelivery::Wasm { artifact, .. } => {
+                    self.bound(&path, "artifactTarget", "artifactSha256", artifact)?;
+                    let listed = listed_artifact(
+                        &release,
+                        descriptor,
+                        artifact,
+                        ArtifactRuntime::Wasm,
+                        &path,
+                    )?;
+                    check_capabilities(listed, provider, &path)?;
+                }
+                RecipeDelivery::DotnetTool { package, .. } => {
+                    self.bound(&path, "packageTarget", "packageSha256", package)?;
+                    for artifact in release.artifacts() {
+                        check_capabilities(artifact, provider, &path)?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn read_descriptor(bytes: &[u8], path: &str) -> Result<ReleaseBundleDescriptor> {
+    ReleaseBundleDescriptor::parse_json(bytes).map_err(|error| {
+        Diagnostic::new(
+            Code::ReleaseDescriptorMismatch,
+            join(path, "descriptorTarget"),
+            format!("not an extension release descriptor: {error}"),
+        )
+    })
+}
+
+/// The descriptor's own identity, and every artifact's claimed identity, are
+/// the provider's. This is the existing publication rule: claims name the
+/// descriptor's `extensionId` and `version`.
+fn check_release_identity(
+    release: &ReleaseBundleDescriptor,
+    provider: &RecipeProvider,
+    path: &str,
+) -> Result<()> {
+    let mismatch = |member: &str, message: String| {
+        Diagnostic::new(Code::ReleaseDescriptorMismatch, join(path, member), message)
+    };
+    if release.extension_id().as_str() != provider.extension_id().as_str() {
+        return Err(mismatch(
+            "extensionId",
+            format!(
+                "the descriptor is for {}, not {}",
+                release.extension_id(),
+                provider.extension_id()
+            ),
+        ));
+    }
+    if release.version() != provider.version() {
+        return Err(mismatch(
+            "version",
+            format!(
+                "the descriptor describes {}, not {}",
+                release.version(),
+                provider.version()
+            ),
+        ));
+    }
+    for artifact in release.artifacts() {
+        let claims = artifact.claims();
+        if claims.extension.id != release.extension_id().as_str()
+            || claims.extension.version != release.version().to_string()
+        {
+            return Err(mismatch(
+                "descriptorTarget",
+                format!(
+                    "{} claims {} {}, not the descriptor's {} {}",
+                    artifact.filename().as_str(),
+                    claims.extension.id,
+                    claims.extension.version,
+                    release.extension_id(),
+                    release.version()
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The descriptor entry that lists a bound artifact in its own directory,
+/// with the delivery's runtime and the same digest.
+fn listed_artifact<'a>(
+    release: &'a ReleaseBundleDescriptor,
+    descriptor: &TargetDigest,
+    binding: &TargetDigest,
+    runtime: ArtifactRuntime,
+    binding_path: &str,
+) -> Result<&'a morphir_distribution::BundleArtifactDescriptor> {
+    let target_path = join(binding_path, "artifactTarget");
+    let directory = descriptor
+        .target
+        .as_str()
+        .rsplit_once('/')
+        .map_or("", |(directory, _)| directory);
+    let artifact = release
+        .artifacts()
+        .iter()
+        .find(|artifact| {
+            format!("{directory}/{}", artifact.filename().as_str()) == binding.target.as_str()
+        })
+        .ok_or_else(|| {
+            Diagnostic::new(
+                Code::ReleaseDescriptorMismatch,
+                &target_path,
+                format!("{} does not list {}", descriptor.target, binding.target),
+            )
+        })?;
+    if artifact.runtime() != runtime {
+        return Err(Diagnostic::new(
+            Code::ReleaseDescriptorMismatch,
+            &target_path,
+            format!("{} is not a {runtime:?} artifact", binding.target),
+        ));
+    }
+    if artifact.sha256() != binding.sha256.digest() {
+        return Err(Diagnostic::new(
+            Code::TargetDigestMismatch,
+            join(binding_path, "artifactSha256"),
+            format!(
+                "{} lists {} with another digest",
+                descriptor.target, binding.target
+            ),
+        ));
+    }
+    Ok(artifact)
+}
+
+/// The artifact's claims support the provider's operation, language or
+/// target, MEP version, and model tuple or IR version.
+fn check_capabilities(
+    artifact: &morphir_distribution::BundleArtifactDescriptor,
+    provider: &RecipeProvider,
+    path: &str,
+) -> Result<()> {
+    let mismatch = |member: &str, message: String| {
+        Diagnostic::new(Code::ReleaseDescriptorMismatch, join(path, member), message)
+    };
+    let claims = artifact.claims();
+    let kind = provider.operation().capability_kind();
+    let types = serde_json::to_value(&claims.extension.types).unwrap_or_default();
+    if !types
+        .as_array()
+        .is_some_and(|types| types.iter().any(|item| item == kind))
+    {
+        return Err(mismatch(
+            "operation",
+            format!("the artifact does not claim the {kind} capability kind"),
+        ));
+    }
+    let protocol = provider.delivery().protocol();
+    if !claims
+        .protocol_versions
+        .iter()
+        .any(|version| version == protocol.version().as_str())
+    {
+        return Err(mismatch(
+            "protocolVersion",
+            format!(
+                "the artifact does not claim MEP {}",
+                protocol.version().as_str()
+            ),
+        ));
+    }
+    let capability = claims.capabilities.get(kind).cloned().unwrap_or_default();
+    let (member, supported) = match provider.operation() {
+        Operation::Compile { language } => (
+            "language",
+            capability["compile"] == true
+                && capability["languages"].as_array().is_some_and(|languages| {
+                    languages
+                        .iter()
+                        .any(|entry| entry["id"] == language.as_str())
+                }),
+        ),
+        Operation::Generate { target } => (
+            "target",
+            capability["generate"] == true
+                && capability["targets"]
+                    .as_array()
+                    .is_some_and(|targets| targets.iter().any(|entry| entry == target.as_str())),
+        ),
+    };
+    if !supported {
+        return Err(mismatch(
+            member,
+            format!("the artifact's {kind} claims do not include this {member}"),
+        ));
+    }
+    match protocol {
+        Protocol::ModelTransport(tuple) => {
+            let wanted = serde_json::json!({
+                "operation": tuple.operation().model_method(),
+                "profile": tuple.profile().as_str(),
+                "codec": tuple.codec().as_str(),
+                "envelopeVersion": tuple.envelope_version().to_string(),
+                "irVersion": tuple.ir_version().to_string()
+            });
+            let claimed = claims
+                .capabilities
+                .get("modelTransport")
+                .and_then(|transport| transport["tuples"].as_array().cloned())
+                .unwrap_or_default();
+            if !claimed.contains(&wanted) {
+                return Err(mismatch(
+                    "modelTuple",
+                    "the artifact does not claim this exact model tuple".into(),
+                ));
+            }
+        }
+        Protocol::Legacy(input) => {
+            let full = input.ir_version.to_string();
+            let major = input.ir_version.major.to_string();
+            let claimed = capability["irVersions"].as_array().is_some_and(|versions| {
+                versions
+                    .iter()
+                    .any(|version| version == &full || version == &major)
+            });
+            if !claimed {
+                return Err(mismatch(
+                    "modelInput.irVersion",
+                    format!("the artifact does not claim IR {full}"),
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn check_release_artifact(
@@ -421,9 +729,13 @@ fn check_release_artifact(
                 ),
             )
         })?;
-    let expected = platform
-        .tool_platform()
-        .expect("recipe validation keeps musl platforms off v1 offerings");
+    let Some(expected) = platform.tool_platform() else {
+        return Err(Diagnostic::new(
+            Code::ArtifactPlatformMismatch,
+            &target_path,
+            format!("a version 1 artifact cannot be bound to {platform}"),
+        ));
+    };
     if artifact.platform() != &expected {
         return Err(Diagnostic::new(
             Code::ArtifactPlatformMismatch,
@@ -434,8 +746,7 @@ fn check_release_artifact(
             ),
         ));
     }
-    let custom = entry.custom.as_ref();
-    let agrees = custom.is_some_and(|custom| {
+    let agrees = entry.custom.as_ref().is_some_and(|custom| {
         custom["kind"] == "tool-artifact"
             && custom["toolId"] == record.tool_id().as_str()
             && custom["version"] == record.version().to_string()
@@ -451,118 +762,6 @@ fn check_release_artifact(
             format!("the authenticated artifact metadata of {target} disagrees with its release"),
         ))
     }
-}
-
-/// Check one bound artifact against the descriptor entry that lists it.
-fn check_extension_artifact(
-    release: &ReleaseBundleDescriptor,
-    descriptor: &TargetDigest,
-    provider: &RecipeProvider,
-    platform: Option<PlatformId>,
-    binding: &TargetDigest,
-    provider_path: &str,
-    binding_path: &str,
-) -> Result<()> {
-    let target_path = join(binding_path, "artifactTarget");
-    let mismatch = |path: &str, message: String| {
-        Diagnostic::new(Code::ReleaseDescriptorMismatch, path, message)
-    };
-    let directory = descriptor
-        .target
-        .as_str()
-        .rsplit_once('/')
-        .map_or("", |(directory, _)| directory);
-    let artifact = release
-        .artifacts()
-        .iter()
-        .find(|artifact| {
-            format!("{directory}/{}", artifact.filename().as_str()) == binding.target.as_str()
-        })
-        .ok_or_else(|| {
-            mismatch(
-                &target_path,
-                format!("{} does not list {}", descriptor.target, binding.target),
-            )
-        })?;
-    let runtime = match provider.delivery.kind() {
-        DeliveryKind::Wasm => ArtifactRuntime::Wasm,
-        _ => ArtifactRuntime::Process,
-    };
-    if artifact.runtime() != runtime {
-        return Err(mismatch(
-            &target_path,
-            format!(
-                "{} is not a {} artifact",
-                binding.target,
-                provider.delivery.kind().as_str()
-            ),
-        ));
-    }
-    if let Some(platform) = platform
-        && artifact.platform() != Some(platform.target_triple())
-    {
-        return Err(Diagnostic::new(
-            Code::ArtifactPlatformMismatch,
-            &target_path,
-            format!(
-                "{} is the {} artifact, not the {} artifact",
-                binding.target,
-                artifact.platform().unwrap_or("portable"),
-                platform.target_triple()
-            ),
-        ));
-    }
-    if artifact.sha256() != binding.sha256.digest() {
-        return Err(Diagnostic::new(
-            Code::TargetDigestMismatch,
-            join(binding_path, "artifactSha256"),
-            format!(
-                "{} lists {} with another digest",
-                descriptor.target, binding.target
-            ),
-        ));
-    }
-    let claims = artifact.claims();
-    if claims.extension.id != provider.extension_id.as_str()
-        || claims.extension.version != provider.version.to_string()
-    {
-        return Err(mismatch(
-            &join(provider_path, "extensionId"),
-            format!(
-                "the artifact claims {} {}, not {} {}",
-                claims.extension.id,
-                claims.extension.version,
-                provider.extension_id,
-                provider.version
-            ),
-        ));
-    }
-    let kind = match provider.operation {
-        Operation::Compile { .. } => "frontend",
-        Operation::Generate { .. } => "backend",
-    };
-    let types = serde_json::to_value(&claims.extension.types).unwrap_or_default();
-    if !types
-        .as_array()
-        .is_some_and(|types| types.iter().any(|item| item == kind))
-    {
-        return Err(mismatch(
-            &join(provider_path, "operation"),
-            format!("the artifact does not claim the {kind} capability kind"),
-        ));
-    }
-    let protocol = provider.delivery.protocol().version();
-    if !claims
-        .protocol_versions
-        .iter()
-        .any(|version| version == protocol.as_str())
-    {
-        return Err(mismatch(
-            &join(provider_path, "protocolVersion"),
-            format!("the artifact does not claim MEP {}", protocol.as_str()),
-        ));
-    }
-    Ok(())
 }
 
 fn channel_matches(requested: &Channel, version: &Version, channels: &[Channel]) -> bool {

@@ -1,14 +1,17 @@
 //! The manager JSON result: the one document `morphirup --json` writes to
 //! standard output. Progress goes to standard error.
 
-use crate::diagnostic::{Code, Diagnostic, Result};
+use crate::diagnostic::{Code, Diagnostic, DiagnosticKind, Result};
 use crate::envelope;
-use crate::ids::{DeploymentId, GenerationId, ImplementationId, Sha256, TargetPath};
+use crate::ids::{
+    AbsolutePath, DeploymentId, ExtensionIdentity, GenerationId, ImplementationId, PathStyle,
+    Sha256, TargetDigest, TargetPath, WasmAbi,
+};
 use crate::lock::{LockedHost, locked_host};
-use crate::model::{self, DELIVERY_CASES, DeliveryKind, Operation, Prerequisite, RecipeRef};
+use crate::model::{self, DeliveryKind, Operation, Prerequisite, RecipeRef};
 use crate::platform::PlatformId;
 use crate::reader::{Node, Obj, inconsistent};
-use crate::receipt::{CheckKind, Ownership, Readiness, refuse_credentials};
+use crate::receipt::{CheckKind, Ownership, Readiness, ownership};
 use serde_json::Value;
 
 /// Member paths a `0.1.0-draft.1` result reader understands.
@@ -23,36 +26,53 @@ pub const UNDERSTOOD_PATHS: &[&str] = &[
     "diagnostics",
 ];
 
-/// Tool release metadata v1 stable diagnostic codes a trust failure reports.
-pub const TRUST_CODES: &[&str] = &[
-    "metadata_signature_invalid",
-    "metadata_expired",
-    "metadata_rollback",
-    "metadata_link_mismatch",
-    "metadata_root_rotation_invalid",
-    "target_length_mismatch",
-    "target_digest_mismatch",
-    "release_descriptor_mismatch",
-    "release_revoked",
-    "no_compatible_release",
-    "offline_metadata_unavailable",
-];
+/// The manager command that produced a result. `run` passes the selected
+/// host's own output through and writes no result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Command {
+    /// `setup`.
+    Setup,
+    /// `restore`.
+    Restore,
+    /// `update`.
+    Update,
+    /// `show`.
+    Show,
+    /// `doctor`.
+    Doctor,
+    /// `list`.
+    List,
+    /// `default`.
+    Default,
+    /// `rollback`.
+    Rollback,
+    /// `repair`.
+    Repair,
+    /// `remove`.
+    Remove,
+    /// `self-update`.
+    SelfUpdate,
+    /// `env`.
+    Env,
+}
 
-/// The manager command that produced a result.
-pub const COMMANDS: &[&str] = &[
-    "setup",
-    "restore",
-    "update",
-    "show",
-    "doctor",
-    "list",
-    "default",
-    "rollback",
-    "repair",
-    "remove",
-    "self-update",
-    "env",
-];
+impl Command {
+    /// Every command and its spelling.
+    pub const CASES: &'static [(&'static str, Self)] = &[
+        ("setup", Self::Setup),
+        ("restore", Self::Restore),
+        ("update", Self::Update),
+        ("show", Self::Show),
+        ("doctor", Self::Doctor),
+        ("list", Self::List),
+        ("default", Self::Default),
+        ("rollback", Self::Rollback),
+        ("repair", Self::Repair),
+        ("remove", Self::Remove),
+        ("self-update", Self::SelfUpdate),
+        ("env", Self::Env),
+    ];
+}
 
 /// The overall outcome.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +83,44 @@ pub enum Outcome {
     Succeeded,
     /// At least one error diagnostic.
     Failed,
+}
+
+/// A toolchain document kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DocumentKind {
+    /// The project request.
+    Request,
+    /// The portable lock.
+    Lock,
+    /// A toolset recipe.
+    Recipe,
+    /// An installation receipt.
+    Receipt,
+    /// A manager result.
+    Result,
+}
+
+impl DocumentKind {
+    pub(crate) const CASES: &'static [(&'static str, Self)] = &[
+        ("request", Self::Request),
+        ("lock", Self::Lock),
+        ("recipe", Self::Recipe),
+        ("receipt", Self::Receipt),
+        ("result", Self::Result),
+    ];
+}
+
+/// A TUF metadata role.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TufRole {
+    /// `root`.
+    Root,
+    /// `timestamp`.
+    Timestamp,
+    /// `snapshot`.
+    Snapshot,
+    /// `targets`.
+    Targets,
 }
 
 /// A component a plan or diagnostic concerns.
@@ -98,14 +156,24 @@ pub enum SelectionSource {
     /// The nearest project toolchain file.
     Project {
         /// Absolute path of the project request.
-        path: String,
+        path: AbsolutePath,
     },
     /// The user default.
     UserDefault,
 }
 
-/// One result diagnostic. The cases are the failure categories the manager
-/// distinguishes.
+/// An alternative offered instead of an unavailable artifact.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Alternative {
+    /// Implementation, when it differs.
+    pub implementation: Option<ImplementationId>,
+    /// Deployment, when it differs.
+    pub deployment: Option<DeploymentId>,
+    /// Platform, when it differs.
+    pub platform: Option<PlatformId>,
+}
+
+/// The kind-specific members of a result diagnostic.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResultDiagnosticKind {
     /// No artifact matches; alternatives are listed, never substituted.
@@ -114,6 +182,10 @@ pub enum ResultDiagnosticKind {
         component: ComponentRef,
         /// Requested platform.
         platform: PlatformId,
+        /// The missing ABI, for `abi_unavailable`.
+        abi: Option<WasmAbi>,
+        /// Alternatives.
+        alternatives: Vec<Alternative>,
     },
     /// A declared runtime, SDK or native prerequisite is absent.
     MissingPrerequisite {
@@ -121,13 +193,17 @@ pub enum ResultDiagnosticKind {
         component: ComponentRef,
         /// Prerequisite.
         prerequisite: Prerequisite,
+        /// Alternatives.
+        alternatives: Vec<Alternative>,
     },
-    /// Repository authentication failed, with the v1 stable code.
+    /// Repository authentication or an authenticated binding failed.
     TrustFailure {
-        /// Stable code from tool release metadata v1.
-        code: String,
         /// Repository identity.
         repository_id: Sha256,
+        /// Metadata role, when one failed.
+        role: Option<TufRole>,
+        /// Target, when one failed.
+        target: Option<TargetPath>,
         /// Mirror, without credentials.
         mirror: Option<String>,
     },
@@ -135,10 +211,8 @@ pub enum ResultDiagnosticKind {
     OfflineContentUnavailable {
         /// Component.
         component: ComponentRef,
-        /// Missing target.
-        target: TargetPath,
-        /// Its digest.
-        sha256: Sha256,
+        /// Missing target and its digest.
+        target: TargetDigest,
     },
     /// Another owner manages the installation.
     OwnershipConflict {
@@ -159,10 +233,8 @@ pub enum ResultDiagnosticKind {
     /// A document was refused by its contract reader.
     UnsupportedContract {
         /// Document kind.
-        document: String,
-        /// Reader code.
-        code: String,
-        /// Member path.
+        document: DocumentKind,
+        /// Member path the reader reported.
         path: String,
     },
     /// The selected generation is not installed; nothing falls back.
@@ -170,37 +242,263 @@ pub enum ResultDiagnosticKind {
         /// Selection source.
         source: SelectionSource,
     },
+    /// The request, lock, receipt and recipe do not bind each other.
+    LockBinding {
+        /// The document the refusal concerns.
+        document: DocumentKind,
+        /// Member path the check reported.
+        path: String,
+        /// The platform, for `platform_not_locked`.
+        platform: Option<PlatformId>,
+    },
 }
 
-/// A result diagnostic.
+/// A result diagnostic. Its code always belongs to its kind.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResultDiagnostic {
+    /// Stable code.
+    code: Code,
     /// Severity.
-    pub severity: Severity,
+    severity: Severity,
     /// Human-readable message.
-    pub message: String,
+    message: String,
+    /// What to run next, as an argument vector.
+    instruction: Option<Vec<String>>,
     /// Category and its members.
-    pub kind: ResultDiagnosticKind,
+    kind: ResultDiagnosticKind,
+}
+
+impl ResultDiagnostic {
+    /// The `code` member.
+    pub fn code(&self) -> Code {
+        self.code
+    }
+    /// The `severity` member.
+    pub fn severity(&self) -> Severity {
+        self.severity
+    }
+    /// The `message` member.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+    /// The `instruction` member.
+    pub fn instruction(&self) -> Option<&[String]> {
+        self.instruction.as_deref()
+    }
+    /// The `kind` member.
+    pub fn kind(&self) -> &ResultDiagnosticKind {
+        &self.kind
+    }
+}
+
+/// Whether a plan refreshes repository metadata.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MetadataRefresh {
+    /// Metadata is refreshed before acquisition.
+    Required,
+    /// Cached metadata is fresh enough.
+    NotRequired,
+}
+
+/// Where a planned component comes from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlanSource {
+    /// A target authenticated by TUF target metadata.
+    RepositoryTarget {
+        /// Repository identity.
+        repository_id: Sha256,
+        /// Target and digest.
+        target: TargetDigest,
+    },
+    /// A target bound by a digest in the authenticated recipe.
+    RecipeDigest {
+        /// Repository identity.
+        repository_id: Sha256,
+        /// Target and digest.
+        target: TargetDigest,
+    },
+    /// Compiled into the host.
+    BuiltIn,
+    /// An existing installation owned elsewhere.
+    ExternalOwner,
+}
+
+/// How readiness will run a component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Probe {
+    /// No probe.
+    None,
+    /// Checked inside the host.
+    InHost,
+    /// A process probe runs acquired code with the user's rights.
+    ProcessWithUserRights,
+}
+
+/// One planned component.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanComponent {
+    /// Component.
+    component: ComponentRef,
+    /// Exact release.
+    version: semver::Version,
+    /// Provider identity.
+    extension_id: Option<ExtensionIdentity>,
+    /// Provider delivery; present exactly for providers.
+    delivery: Option<DeliveryKind>,
+    /// Source.
+    source: PlanSource,
+    /// Bytes to download.
+    download_bytes: u64,
+    /// Bytes installed.
+    installed_bytes: u64,
+    /// Owner of updates.
+    update_owner: Ownership,
+    /// Prerequisites.
+    prerequisites: Vec<Prerequisite>,
+    /// Readiness probe.
+    probe: Probe,
+}
+
+impl PlanComponent {
+    /// The `component` member.
+    pub fn component(&self) -> &ComponentRef {
+        &self.component
+    }
+    /// The `version` member.
+    pub fn version(&self) -> &semver::Version {
+        &self.version
+    }
+    /// The `extension_id` member.
+    pub fn extension_id(&self) -> Option<&ExtensionIdentity> {
+        self.extension_id.as_ref()
+    }
+    /// The `delivery` member.
+    pub fn delivery(&self) -> Option<DeliveryKind> {
+        self.delivery
+    }
+    /// The `source` member.
+    pub fn source(&self) -> &PlanSource {
+        &self.source
+    }
+    /// The `download_bytes` member.
+    pub fn download_bytes(&self) -> u64 {
+        self.download_bytes
+    }
+    /// The `installed_bytes` member.
+    pub fn installed_bytes(&self) -> u64 {
+        self.installed_bytes
+    }
+    /// The `update_owner` member.
+    pub fn update_owner(&self) -> &Ownership {
+        &self.update_owner
+    }
+    /// The `prerequisites` member.
+    pub fn prerequisites(&self) -> &[Prerequisite] {
+        &self.prerequisites
+    }
+    /// The `probe` member.
+    pub fn probe(&self) -> Probe {
+        self.probe
+    }
+}
+
+/// A setup or update plan.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Plan {
+    /// Implementation.
+    implementation: ImplementationId,
+    /// Deployment.
+    deployment: DeploymentId,
+    /// Platform.
+    platform: PlatformId,
+    /// Recipe.
+    recipe: RecipeRef,
+    /// Metadata refresh.
+    metadata_refresh: MetadataRefresh,
+    /// Components.
+    components: Vec<PlanComponent>,
+}
+
+impl Plan {
+    /// The `implementation` member.
+    pub fn implementation(&self) -> &ImplementationId {
+        &self.implementation
+    }
+    /// The `deployment` member.
+    pub fn deployment(&self) -> &DeploymentId {
+        &self.deployment
+    }
+    /// The `platform` member.
+    pub fn platform(&self) -> PlatformId {
+        self.platform
+    }
+    /// The `recipe` member.
+    pub fn recipe(&self) -> &RecipeRef {
+        &self.recipe
+    }
+    /// The `metadata_refresh` member.
+    pub fn metadata_refresh(&self) -> MetadataRefresh {
+        self.metadata_refresh
+    }
+    /// The `components` member.
+    pub fn components(&self) -> &[PlanComponent] {
+        &self.components
+    }
+}
+
+/// The explained selection of a `show` result.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Selection {
+    /// Where it came from.
+    pub source: SelectionSource,
+    /// The selected generation.
+    pub generation_id: GenerationId,
+    /// Its platform.
+    pub platform: PlatformId,
+    /// Its host.
+    pub host: LockedHost,
+    /// The lock it was installed from, when it came from a lock.
+    pub lock_sha256: Option<Sha256>,
 }
 
 /// A parsed manager result.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagerResult {
-    /// Command.
-    pub command: &'static str,
-    /// Outcome.
-    pub outcome: Outcome,
-    /// A setup or update plan and its digest.
-    pub plan: Option<(Value, Sha256)>,
-    /// The explained selection, for `show`.
-    pub selection: Option<(SelectionSource, GenerationId, PlatformId, LockedHost)>,
-    /// Diagnostics.
-    pub diagnostics: Vec<ResultDiagnostic>,
+    command: Command,
+    outcome: Outcome,
+    plan: Option<(Plan, Sha256)>,
+    selection: Option<Selection>,
+    diagnostics: Vec<ResultDiagnostic>,
 }
 
-/// SHA-256 of the TUF canonical JSON of a value: keys sorted, no insignificant
-/// whitespace, no floating-point numbers. `planSha256` is this digest of `plan`.
-pub fn canonical_sha256(value: &Value) -> std::result::Result<Sha256, String> {
+impl ManagerResult {
+    /// The command.
+    pub fn command(&self) -> Command {
+        self.command
+    }
+    /// The outcome.
+    pub fn outcome(&self) -> Outcome {
+        self.outcome
+    }
+    /// The plan and its verified digest.
+    pub fn plan(&self) -> Option<&(Plan, Sha256)> {
+        self.plan.as_ref()
+    }
+    /// The explained selection.
+    pub fn selection(&self) -> Option<&Selection> {
+        self.selection.as_ref()
+    }
+    /// The diagnostics.
+    pub fn diagnostics(&self) -> &[ResultDiagnostic] {
+        &self.diagnostics
+    }
+}
+
+/// Encode a value as TUF (OLPC) canonical JSON: object members sorted by the
+/// bytes of their encoded keys, no insignificant whitespace, strings in
+/// Unicode NFC with only `"` and `\` escaped (as `\"` and `\\`) and every
+/// other character written as its UTF-8 bytes, integers only.
+pub fn canonical_json(value: &Value) -> std::result::Result<Vec<u8>, String> {
     use serde::Serialize;
     let mut bytes = Vec::new();
     let mut serializer =
@@ -208,7 +506,12 @@ pub fn canonical_sha256(value: &Value) -> std::result::Result<Sha256, String> {
     value
         .serialize(&mut serializer)
         .map_err(|error| format!("not canonical JSON: {error}"))?;
-    Ok(Sha256::of_bytes(&bytes))
+    Ok(bytes)
+}
+
+/// SHA-256 of [`canonical_json`]. `planSha256` is this digest of `plan`.
+pub fn canonical_sha256(value: &Value) -> std::result::Result<Sha256, String> {
+    canonical_json(value).map(|bytes| Sha256::of_bytes(&bytes))
 }
 
 /// Read a result from its exact bytes.
@@ -217,16 +520,18 @@ pub fn read_result(bytes: &[u8]) -> Result<ManagerResult> {
         Diagnostic::new(Code::InvalidDocument, "", format!("not JSON: {error}"))
     })?;
     envelope::check(&value, UNDERSTOOD_PATHS)?;
-    refuse_credentials(&value, "")?;
     let root = Node::root(&value).object()?;
-    let command = root.tag("command", COMMANDS)?;
-    let outcome = match root.tag("outcome", &["planned", "succeeded", "failed"])? {
-        "planned" => Outcome::Planned,
-        "succeeded" => Outcome::Succeeded,
-        _ => Outcome::Failed,
-    };
+    let command = root.case("command", Command::CASES)?;
+    let outcome = root.case(
+        "outcome",
+        &[
+            ("planned", Outcome::Planned),
+            ("succeeded", Outcome::Succeeded),
+            ("failed", Outcome::Failed),
+        ],
+    )?;
     let plan = root.opt("plan", |node| {
-        plan(node)?;
+        let plan = plan(node)?;
         let digest = root.req("planSha256", model::sha256)?;
         let actual = canonical_sha256(node.value())
             .map_err(|message| Diagnostic::new(Code::InvalidDocument, node.path(), message))?;
@@ -236,16 +541,17 @@ pub fn read_result(bytes: &[u8]) -> Result<ManagerResult> {
                 format!("planSha256 is {digest}, but the canonical plan hashes to {actual}"),
             ));
         }
-        Ok((node.value().clone(), digest))
+        Ok((plan, digest))
     })?;
     let selection = root.opt("selection", |node| {
         let selection = node.object()?;
-        Ok((
-            selection.req("source", selection_source)?,
-            selection.req("generationId", model::token(GenerationId::parse))?,
-            selection.req("platform", model::platform)?,
-            selection.req("host", locked_host)?,
-        ))
+        Ok(Selection {
+            source: selection.req("source", selection_source)?,
+            generation_id: selection.req("generationId", model::token(GenerationId::parse))?,
+            platform: selection.req("platform", model::platform)?,
+            host: selection.req("host", locked_host)?,
+            lock_sha256: selection.opt("lockSha256", model::sha256)?,
+        })
     })?;
     let diagnostics = root.req("diagnostics", |node| node.array(diagnostic))?;
     let failed = diagnostics
@@ -271,73 +577,61 @@ pub fn read_result(bytes: &[u8]) -> Result<ManagerResult> {
     })
 }
 
+#[derive(Clone, Copy)]
+enum RoleTag {
+    Host,
+    Provider,
+}
+
 fn component(node: Node<'_>) -> Result<ComponentRef> {
     let object = node.object()?;
-    match object.tag("role", &["host", "provider"])? {
-        "host" => Ok(ComponentRef::Host {
+    match object.case(
+        "role",
+        &[("host", RoleTag::Host), ("provider", RoleTag::Provider)],
+    )? {
+        RoleTag::Host => Ok(ComponentRef::Host {
             implementation: object.req("implementation", model::token(ImplementationId::parse))?,
             deployment: object.req("deployment", model::token(DeploymentId::parse))?,
         }),
-        _ => Ok(ComponentRef::Provider(model::operation(&object)?)),
+        RoleTag::Provider => Ok(ComponentRef::Provider(model::operation(&object)?)),
     }
 }
 
-fn ownership(node: Node<'_>) -> Result<Ownership> {
-    let object = node.object()?;
-    match object.tag(
-        "kind",
-        &[
-            "manager-owned",
-            "direct-archive",
-            "dotnet-tool",
-            "system-package",
-        ],
-    )? {
-        "manager-owned" => Ok(Ownership::ManagerOwned),
-        "direct-archive" => Ok(Ownership::DirectArchive),
-        "dotnet-tool" => Ok(Ownership::DotnetTool {
-            package_id: object.req("packageId", model::token(crate::ids::PackageId::parse))?,
-            scope: match object.tag("scope", &["global", "tool-path", "local-manifest"])? {
-                "global" => crate::receipt::DotnetToolScope::Global,
-                "tool-path" => crate::receipt::DotnetToolScope::ToolPath,
-                _ => crate::receipt::DotnetToolScope::LocalManifest,
-            },
-        }),
-        _ => Ok(Ownership::SystemPackage {
-            manager: object.req("manager", model::token(crate::ids::PackageManagerId::parse))?,
-        }),
-    }
-}
-
-fn absolute_path(node: Node<'_>) -> Result<String> {
+fn absolute_path(node: Node<'_>) -> Result<AbsolutePath> {
     node.parse(Code::InvalidValue, |text| {
-        let bytes = text.as_bytes();
-        let windows = bytes.len() > 3
-            && bytes[0].is_ascii_alphabetic()
-            && bytes[1] == b':'
-            && matches!(bytes[2], b'\\' | b'/');
-        if windows || text.starts_with('/') || text.starts_with("\\\\") {
-            Ok(text.to_owned())
-        } else {
-            Err(format!("'{text}' is not an absolute path"))
-        }
+        AbsolutePath::parse(text, PathStyle::Either)
     })
+}
+
+#[derive(Clone, Copy)]
+enum SourceTag {
+    Cli,
+    Environment,
+    Project,
+    UserDefault,
 }
 
 fn selection_source(node: Node<'_>) -> Result<SelectionSource> {
     let object = node.object()?;
-    match object.tag("kind", &["cli", "environment", "project", "user-default"])? {
-        "cli" => Ok(SelectionSource::Cli),
-        "environment" => Ok(SelectionSource::Environment),
-        "project" => Ok(SelectionSource::Project {
+    match object.case(
+        "kind",
+        &[
+            ("cli", SourceTag::Cli),
+            ("environment", SourceTag::Environment),
+            ("project", SourceTag::Project),
+            ("user-default", SourceTag::UserDefault),
+        ],
+    )? {
+        SourceTag::Cli => Ok(SelectionSource::Cli),
+        SourceTag::Environment => Ok(SelectionSource::Environment),
+        SourceTag::Project => Ok(SelectionSource::Project {
             path: object.req("path", absolute_path)?,
         }),
-        _ => Ok(SelectionSource::UserDefault),
+        SourceTag::UserDefault => Ok(SelectionSource::UserDefault),
     }
 }
 
-/// A mirror is reported only without credentials: no user information, no
-/// query and no fragment.
+/// A reported mirror carries no user information, query or fragment.
 fn mirror(node: Node<'_>) -> Result<String> {
     let text = node.str()?;
     let url = url::Url::parse(text).map_err(|error| {
@@ -361,8 +655,52 @@ fn mirror(node: Node<'_>) -> Result<String> {
     Ok(text.to_owned())
 }
 
-fn argv(object: &Obj<'_>) -> Result<()> {
-    object.opt("instruction", |node| {
+fn alternatives(object: &Obj<'_>) -> Result<Vec<Alternative>> {
+    Ok(object
+        .opt("alternatives", |node| {
+            node.array(|item| {
+                let alternative = item.object()?;
+                Ok(Alternative {
+                    implementation: alternative
+                        .opt("implementation", model::token(ImplementationId::parse))?,
+                    deployment: alternative.opt("deployment", model::token(DeploymentId::parse))?,
+                    platform: alternative.opt("platform", model::platform)?,
+                })
+            })
+        })?
+        .unwrap_or_default())
+}
+
+fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
+    let object = node.object()?;
+    let kind_tag = object.case("kind", DiagnosticKind::CASES)?;
+    let code_path = object.member_path("code");
+    let code = object.req("code", |node| {
+        let spelling = node.str()?;
+        Code::parse(spelling).ok_or_else(|| {
+            Diagnostic::new(
+                Code::UnsupportedCase,
+                node.path(),
+                format!("'{spelling}' is not a stable code"),
+            )
+        })
+    })?;
+    if code.kind() != kind_tag {
+        return Err(inconsistent(
+            code_path,
+            format!(
+                "{code} is reported by a {} diagnostic, not {}",
+                code.kind().as_str(),
+                kind_tag.as_str()
+            ),
+        ));
+    }
+    let severity = object.case(
+        "severity",
+        &[("error", Severity::Error), ("warning", Severity::Warning)],
+    )?;
+    let message = object.req("message", model::non_empty_string)?;
+    let instruction = object.opt("instruction", |node| {
         let words = node.array(|item| item.str().map(str::to_owned))?;
         if words.is_empty() {
             return Err(inconsistent(
@@ -370,106 +708,56 @@ fn argv(object: &Obj<'_>) -> Result<()> {
                 "an instruction is a non-empty argument vector",
             ));
         }
-        Ok(())
+        Ok(words)
     })?;
-    Ok(())
-}
-
-fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
-    let object = node.object()?;
-    let kind_tag = object.tag(
-        "kind",
-        &[
-            "unsupported-artifact",
-            "missing-prerequisite",
-            "trust-failure",
-            "offline-content-unavailable",
-            "ownership-conflict",
-            "readiness-failed",
-            "unsupported-contract",
-            "selection-unavailable",
-        ],
-    )?;
-    let severity = match object.tag("severity", &["error", "warning"])? {
-        "error" => Severity::Error,
-        _ => Severity::Warning,
-    };
-    let message = object.req("message", model::non_empty_string)?;
-    argv(&object)?;
-    let alternatives = || -> Result<()> {
-        object.opt("alternatives", |node| {
-            node.array(|item| {
-                let alternative = item.object()?;
-                alternative.opt("implementation", model::token(ImplementationId::parse))?;
-                alternative.opt("deployment", model::token(DeploymentId::parse))?;
-                alternative.opt("platform", model::platform)?;
-                Ok(())
-            })
-        })?;
-        Ok(())
-    };
     let kind = match kind_tag {
-        "unsupported-artifact" => {
-            alternatives()?;
+        DiagnosticKind::UnsupportedArtifact => {
+            let abi = object.opt("abi", model::token(WasmAbi::parse))?;
+            if (code == Code::AbiUnavailable) != abi.is_some() {
+                return Err(inconsistent(
+                    object.member_path("abi"),
+                    "abi_unavailable names the missing ABI, and only it does",
+                ));
+            }
             ResultDiagnosticKind::UnsupportedArtifact {
                 component: object.req("component", component)?,
                 platform: object.req("platform", model::platform)?,
+                abi,
+                alternatives: alternatives(&object)?,
             }
         }
-        "missing-prerequisite" => {
-            alternatives()?;
-            ResultDiagnosticKind::MissingPrerequisite {
-                component: object.req("component", component)?,
-                prerequisite: object.req("prerequisite", model::prerequisite)?,
-            }
-        }
-        "trust-failure" => {
-            let code = object.tag("code", TRUST_CODES)?.to_owned();
-            object.opt("role", |node| {
-                let role = node.str()?;
-                if ["root", "timestamp", "snapshot", "targets"].contains(&role) {
-                    Ok(())
-                } else {
-                    Err(Diagnostic::new(
-                        Code::UnsupportedCase,
-                        node.path(),
-                        format!("'{role}' is not a TUF role"),
-                    ))
-                }
-            })?;
-            object.opt("target", model::target_path)?;
-            ResultDiagnosticKind::TrustFailure {
-                code,
-                repository_id: object.req("repositoryId", model::sha256)?,
-                mirror: object.opt("mirror", mirror)?,
-            }
-        }
-        "offline-content-unavailable" => ResultDiagnosticKind::OfflineContentUnavailable {
+        DiagnosticKind::MissingPrerequisite => ResultDiagnosticKind::MissingPrerequisite {
             component: object.req("component", component)?,
-            target: object.req("target", model::target_path)?,
-            sha256: object.req("sha256", model::sha256)?,
+            prerequisite: object.req("prerequisite", model::prerequisite)?,
+            alternatives: alternatives(&object)?,
         },
-        "ownership-conflict" => ResultDiagnosticKind::OwnershipConflict {
+        DiagnosticKind::TrustFailure => ResultDiagnosticKind::TrustFailure {
+            repository_id: object.req("repositoryId", model::sha256)?,
+            role: object.opt("role", |node| {
+                node.case(&[
+                    ("root", TufRole::Root),
+                    ("timestamp", TufRole::Timestamp),
+                    ("snapshot", TufRole::Snapshot),
+                    ("targets", TufRole::Targets),
+                ])
+            })?,
+            target: object.opt("target", model::target_path)?,
+            mirror: object.opt("mirror", mirror)?,
+        },
+        DiagnosticKind::OfflineContentUnavailable => {
+            ResultDiagnosticKind::OfflineContentUnavailable {
+                component: object.req("component", component)?,
+                target: model::digest_pair(&object, "target", "sha256")?,
+            }
+        }
+        DiagnosticKind::OwnershipConflict => ResultDiagnosticKind::OwnershipConflict {
             component: object.req("component", component)?,
             ownership: object.req("ownership", ownership)?,
         },
-        "readiness-failed" => {
-            let check = CheckKind::from_tag(object.tag("check", CheckKind::CASES)?);
+        DiagnosticKind::ReadinessFailed => {
+            let check = object.case("check", CheckKind::CASES)?;
             let readiness_path = object.member_path("readiness");
-            let readiness = object.req("readiness", |node| {
-                let tag = node.str()?;
-                Readiness::CASES
-                    .iter()
-                    .find(|case| **case == tag)
-                    .map(|case| Readiness::from_tag(case))
-                    .ok_or_else(|| {
-                        Diagnostic::new(
-                            Code::UnsupportedCase,
-                            node.path(),
-                            format!("'{tag}' is not a readiness state"),
-                        )
-                    })
-            })?;
+            let readiness = object.case("readiness", Readiness::CASES)?;
             if readiness >= check.reaches() {
                 return Err(inconsistent(
                     readiness_path,
@@ -482,100 +770,125 @@ fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
                 readiness,
             }
         }
-        "unsupported-contract" => ResultDiagnosticKind::UnsupportedContract {
-            document: object
-                .tag(
-                    "document",
-                    &["request", "lock", "recipe", "receipt", "result"],
-                )?
-                .to_owned(),
-            code: object
-                .tag(
-                    "code",
-                    &[
-                        "invalid_document",
-                        "unsupported_contract_version",
-                        "unsupported_critical_member",
-                        "unsupported_case",
-                        "invalid_value",
-                        "non_portable_path",
-                        "credential_in_document",
-                        "inconsistent_document",
-                    ],
-                )?
-                .to_owned(),
+        DiagnosticKind::UnsupportedContract => ResultDiagnosticKind::UnsupportedContract {
+            document: object.case("document", DocumentKind::CASES)?,
             path: object.str("path")?.to_owned(),
         },
-        _ => ResultDiagnosticKind::SelectionUnavailable {
+        DiagnosticKind::SelectionUnavailable => ResultDiagnosticKind::SelectionUnavailable {
             source: object.req("source", selection_source)?,
         },
+        DiagnosticKind::LockBinding => {
+            let platform = object.opt("platform", model::platform)?;
+            if (code == Code::PlatformNotLocked) != platform.is_some() {
+                return Err(inconsistent(
+                    object.member_path("platform"),
+                    "platform_not_locked names the platform, and only it does",
+                ));
+            }
+            ResultDiagnosticKind::LockBinding {
+                document: object.case("document", DocumentKind::CASES)?,
+                path: object.str("path")?.to_owned(),
+                platform,
+            }
+        }
     };
     Ok(ResultDiagnostic {
+        code,
         severity,
         message,
+        instruction,
         kind,
     })
 }
 
-fn plan(node: Node<'_>) -> Result<()> {
+#[derive(Clone, Copy)]
+enum PlanSourceTag {
+    Repository,
+    Recipe,
+    BuiltIn,
+    External,
+}
+
+fn plan(node: Node<'_>) -> Result<Plan> {
     let plan = node.object()?;
-    plan.req("implementation", model::token(ImplementationId::parse))?;
-    plan.req("deployment", model::token(DeploymentId::parse))?;
-    plan.req("platform", model::platform)?;
-    plan.req("recipe", |node| {
-        model::recipe_ref(node).map(|_: RecipeRef| ())
+    Ok(Plan {
+        implementation: plan.req("implementation", model::token(ImplementationId::parse))?,
+        deployment: plan.req("deployment", model::token(DeploymentId::parse))?,
+        platform: plan.req("platform", model::platform)?,
+        recipe: plan.req("recipe", model::recipe_ref)?,
+        metadata_refresh: plan.case(
+            "metadataRefresh",
+            &[
+                ("required", MetadataRefresh::Required),
+                ("not-required", MetadataRefresh::NotRequired),
+            ],
+        )?,
+        components: plan.req("components", |node| node.array(plan_component))?,
+    })
+}
+
+fn plan_component(node: Node<'_>) -> Result<PlanComponent> {
+    let object = node.object()?;
+    let component = object.req("component", component)?;
+    let delivery = object.opt("delivery", |node| node.case(DeliveryKind::CASES))?;
+    if matches!(component, ComponentRef::Provider(_)) != delivery.is_some() {
+        return Err(inconsistent(
+            object.member_path("delivery"),
+            "a provider component names its delivery and a host component does not",
+        ));
+    }
+    let source = object.req("source", |node| {
+        let source = node.object()?;
+        match source.case(
+            "kind",
+            &[
+                ("repository-target", PlanSourceTag::Repository),
+                ("recipe-digest", PlanSourceTag::Recipe),
+                ("built-in", PlanSourceTag::BuiltIn),
+                ("external-owner", PlanSourceTag::External),
+            ],
+        )? {
+            PlanSourceTag::Repository => Ok(PlanSource::RepositoryTarget {
+                repository_id: source.req("repositoryId", model::sha256)?,
+                target: model::digest_pair(&source, "target", "sha256")?,
+            }),
+            PlanSourceTag::Recipe => Ok(PlanSource::RecipeDigest {
+                repository_id: source.req("repositoryId", model::sha256)?,
+                target: model::digest_pair(&source, "target", "sha256")?,
+            }),
+            PlanSourceTag::BuiltIn => Ok(PlanSource::BuiltIn),
+            PlanSourceTag::External => Ok(PlanSource::ExternalOwner),
+        }
     })?;
-    plan.tag("metadataRefresh", &["required", "not-required"])?;
-    plan.req("components", |node| {
-        node.array(|item| {
-            let component_object = item.object()?;
-            let target = component_object.req("component", component)?;
-            component_object.req("version", model::version)?;
-            component_object.opt("extensionId", model::extension_id)?;
-            let delivery = component_object
-                .opt("delivery", |node| {
-                    let tag = node.str()?;
-                    DELIVERY_CASES
-                        .iter()
-                        .find(|case| **case == tag)
-                        .map(|case| DeliveryKind::from_tag(case))
-                        .ok_or_else(|| {
-                            Diagnostic::new(Code::UnsupportedCase, node.path(), format!("'{tag}' is not a delivery"))
-                        })
-                })?;
-            if matches!(target, ComponentRef::Provider(_)) != delivery.is_some() {
-                return Err(inconsistent(
-                    component_object.member_path("delivery"),
-                    "a provider component names its delivery and a host component does not",
-                ));
-            }
-            component_object.req("source", |node| {
-                let source = node.object()?;
-                match source.tag("kind", &["repository-target", "recipe-digest", "built-in", "external-owner"])? {
-                    "repository-target" | "recipe-digest" => {
-                        source.req("repositoryId", model::sha256)?;
-                        source.req("target", model::target_path)?;
-                        source.req("sha256", model::sha256)?;
-                    }
-                    _ => {}
-                }
-                Ok(())
-            })?;
-            component_object.req("downloadBytes", |node| node.u64())?;
-            component_object.req("installedBytes", |node| node.u64())?;
-            component_object.req("updateOwner", ownership)?;
-            model::prerequisites(&component_object)?;
-            let probe_path = component_object.member_path("probe");
-            let probe = component_object.tag("probe", &["none", "in-host", "process-with-user-rights"])?;
-            let runs_a_process = matches!(delivery, Some(DeliveryKind::Process | DeliveryKind::DotnetTool));
-            if runs_a_process != (probe == "process-with-user-rights") {
-                return Err(inconsistent(
-                    probe_path,
-                    "a process probe runs acquired code with the user's rights, and the plan says so",
-                ));
-            }
-            Ok(())
-        })
-    })?;
-    Ok(())
+    let probe_path = object.member_path("probe");
+    let probe = object.case(
+        "probe",
+        &[
+            ("none", Probe::None),
+            ("in-host", Probe::InHost),
+            ("process-with-user-rights", Probe::ProcessWithUserRights),
+        ],
+    )?;
+    let runs_a_process = matches!(
+        delivery,
+        Some(DeliveryKind::Process | DeliveryKind::DotnetTool)
+    );
+    if runs_a_process != (probe == Probe::ProcessWithUserRights) {
+        return Err(inconsistent(
+            probe_path,
+            "a process probe runs acquired code with the user's rights, and the plan says so",
+        ));
+    }
+    Ok(PlanComponent {
+        component,
+        version: object.req("version", model::version)?,
+        extension_id: object.opt("extensionId", model::extension_id)?,
+        delivery,
+        source,
+        download_bytes: object.req("downloadBytes", |node| node.u64())?,
+        installed_bytes: object.req("installedBytes", |node| node.u64())?,
+        update_owner: object.req("updateOwner", ownership)?,
+        prerequisites: model::prerequisites(&object)?,
+        probe,
+    })
 }

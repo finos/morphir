@@ -8,8 +8,8 @@
 use crate::diagnostic::{Code, Diagnostic, Result};
 use crate::envelope;
 use crate::ids::{
-    DeploymentId, GenerationId, ImplementationId, PackageId, PackageManagerId, Sha256,
-    TargetDigest, TargetPath, WorkflowId,
+    AbsolutePath, DeploymentId, GenerationId, ImplementationId, PackageId, PackageManagerId,
+    PathStyle, Sha256, TargetDigest, WorkflowId,
 };
 use crate::lock::ToolchainLock;
 use crate::model::{self, DeliveryKind, LockedProvider, RecipeRef};
@@ -84,15 +84,8 @@ pub enum Authentication {
         /// The trusted targets metadata version.
         targets_version: u64,
     },
-    /// The bytes matched a digest in an authenticated recipe.
-    RecipeDigest {
-        /// Repository identity holding the recipe.
-        repository_id: Sha256,
-        /// Recipe target.
-        recipe_target: TargetPath,
-        /// Recipe digest.
-        recipe_sha256: Sha256,
-    },
+    /// The bytes matched a digest in the receipt's own authenticated recipe.
+    RecipeDigest,
     /// An unsigned artifact admitted by explicit developer policy. It carries
     /// no publisher authentication.
     LocalDeveloper,
@@ -122,7 +115,7 @@ pub enum ProbeSource {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Launch {
     /// Absolute program path on this machine.
-    pub program: String,
+    pub program: AbsolutePath,
     /// Fixed leading arguments.
     pub args: Vec<String>,
 }
@@ -131,11 +124,26 @@ pub struct Launch {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Installation {
     /// Owner.
-    pub ownership: Ownership,
+    ownership: Ownership,
     /// Authentication of the installed bytes.
-    pub authentication: Authentication,
+    authentication: Authentication,
     /// Launch command.
-    pub launch: Launch,
+    launch: Launch,
+}
+
+impl Installation {
+    /// The `ownership` member.
+    pub fn ownership(&self) -> &Ownership {
+        &self.ownership
+    }
+    /// The `authentication` member.
+    pub fn authentication(&self) -> &Authentication {
+        &self.authentication
+    }
+    /// The `launch` member.
+    pub fn launch(&self) -> &Launch {
+        &self.launch
+    }
 }
 
 /// Readiness of one component or of the whole generation, in order.
@@ -152,21 +160,12 @@ pub enum Readiness {
 }
 
 impl Readiness {
-    pub(crate) const CASES: &'static [&'static str] = &[
-        "acquired",
-        "integrity-verified",
-        "capability-checked",
-        "workflow-qualified",
+    pub(crate) const CASES: &'static [(&'static str, Self)] = &[
+        ("acquired", Self::Acquired),
+        ("integrity-verified", Self::IntegrityVerified),
+        ("capability-checked", Self::CapabilityChecked),
+        ("workflow-qualified", Self::WorkflowQualified),
     ];
-
-    pub(crate) fn from_tag(tag: &str) -> Self {
-        match tag {
-            "acquired" => Self::Acquired,
-            "integrity-verified" => Self::IntegrityVerified,
-            "capability-checked" => Self::CapabilityChecked,
-            _ => Self::WorkflowQualified,
-        }
-    }
 }
 
 /// A readiness check.
@@ -181,15 +180,11 @@ pub enum CheckKind {
 }
 
 impl CheckKind {
-    pub(crate) const CASES: &'static [&'static str] = &["integrity", "capability", "workflow"];
-
-    pub(crate) fn from_tag(tag: &str) -> Self {
-        match tag {
-            "integrity" => Self::Integrity,
-            "capability" => Self::Capability,
-            _ => Self::Workflow,
-        }
-    }
+    pub(crate) const CASES: &'static [(&'static str, Self)] = &[
+        ("integrity", Self::Integrity),
+        ("capability", Self::Capability),
+        ("workflow", Self::Workflow),
+    ];
 
     /// The readiness a passed check of this kind reaches.
     pub fn reaches(&self) -> Readiness {
@@ -201,7 +196,7 @@ impl CheckKind {
     }
 }
 
-/// The outcome of a check. Every non-passed outcome stays visible.
+/// The outcome of a check. Every non-passed outcome states its reason.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CheckStatus {
     /// The check passed.
@@ -218,22 +213,45 @@ pub enum CheckStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Check {
     /// Kind.
-    pub kind: CheckKind,
+    kind: CheckKind,
     /// Outcome.
-    pub status: CheckStatus,
-    /// The workflow, for a workflow check.
-    pub workflow: Option<WorkflowId>,
+    status: CheckStatus,
+    /// The workflow, for a workflow check and only for one.
+    workflow: Option<WorkflowId>,
 }
 
-/// The installed host's runtime arrangement.
+impl Check {
+    /// The `kind` member.
+    pub fn kind(&self) -> CheckKind {
+        self.kind
+    }
+    /// The `status` member.
+    pub fn status(&self) -> &CheckStatus {
+        &self.status
+    }
+    /// The `workflow` member.
+    pub fn workflow(&self) -> Option<&WorkflowId> {
+        self.workflow.as_ref()
+    }
+}
+
+/// The runtime a managed host runs on.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RuntimeOrigin {
-    /// Native AOT code needs no runtime.
-    None,
+pub enum ManagedRuntime {
     /// An application-local runtime shipped with the host.
     Bundled(Version),
     /// A runtime installed on the system.
     System(Version),
+}
+
+/// How the installed host executes. Native AOT has no runtime, so a native
+/// AOT host with a runtime cannot be represented.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HostExecution {
+    /// Native AOT code.
+    NativeAot,
+    /// Managed code under a JIT.
+    Jit(ManagedRuntime),
 }
 
 /// The exact host identity a receipt binds.
@@ -252,86 +270,109 @@ pub struct HostIdentity {
 /// The installed host.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstalledHost {
-    /// Identity.
-    pub identity: HostIdentity,
-    /// Execution mode and runtime origin.
-    pub execution: (crate::recipe::Execution, RuntimeOrigin),
-    /// Installation facts.
-    pub installation: Installation,
-    /// Readiness.
-    pub readiness: Readiness,
-    /// Integrity and capability checks.
-    pub checks: Vec<Check>,
+    identity: HostIdentity,
+    execution: HostExecution,
+    installation: Installation,
+    readiness: Readiness,
+    checks: Vec<Check>,
+}
+
+impl InstalledHost {
+    /// The identity.
+    pub fn identity(&self) -> &HostIdentity {
+        &self.identity
+    }
+    /// The execution mode and runtime.
+    pub fn execution(&self) -> &HostExecution {
+        &self.execution
+    }
+    /// The installation facts.
+    pub fn installation(&self) -> &Installation {
+        &self.installation
+    }
+    /// The derived readiness.
+    pub fn readiness(&self) -> Readiness {
+        self.readiness
+    }
+    /// The integrity and capability checks.
+    pub fn checks(&self) -> &[Check] {
+        &self.checks
+    }
 }
 
 /// An installed provider. A built-in has no installation of its own.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstalledProvider {
+    identity: LockedProvider,
+    installation: Option<(Installation, ClaimCheck)>,
+    readiness: Readiness,
+    checks: Vec<Check>,
+}
+
+impl InstalledProvider {
     /// The locked identity.
-    pub identity: LockedProvider,
+    pub fn identity(&self) -> &LockedProvider {
+        &self.identity
+    }
     /// Installation facts and claim-check status, absent for a built-in.
-    pub installation: Option<(Installation, ClaimCheck)>,
-    /// Readiness.
-    pub readiness: Readiness,
-    /// Integrity and capability checks.
-    pub checks: Vec<Check>,
+    pub fn installation(&self) -> Option<&(Installation, ClaimCheck)> {
+        self.installation.as_ref()
+    }
+    /// The derived readiness.
+    pub fn readiness(&self) -> Readiness {
+        self.readiness
+    }
+    /// The integrity and capability checks.
+    pub fn checks(&self) -> &[Check] {
+        &self.checks
+    }
 }
 
 /// A parsed receipt.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstallationReceipt {
-    /// Local opaque generation id.
-    pub generation_id: GenerationId,
-    /// Platform the generation was installed for.
-    pub platform: PlatformId,
-    /// SHA-256 of the exact lock bytes.
-    pub lock_sha256: Sha256,
-    /// Recipe the lock used.
-    pub recipe: RecipeRef,
-    /// Installed host.
-    pub host: InstalledHost,
-    /// Installed providers, in lock order.
-    pub providers: Vec<InstalledProvider>,
-    /// Generation readiness.
-    pub readiness: Readiness,
-    /// Generation checks (the workflow).
-    pub checks: Vec<Check>,
+    generation_id: GenerationId,
+    platform: PlatformId,
+    lock_sha256: Sha256,
+    recipe: RecipeRef,
+    host: InstalledHost,
+    providers: Vec<InstalledProvider>,
+    readiness: Readiness,
+    checks: Vec<Check>,
 }
 
-/// Member names that carry credentials. A document refuses them at any depth,
-/// including inside members it otherwise ignores.
-pub(crate) const CREDENTIAL_MEMBERS: &[&str] = &[
-    "password",
-    "passwd",
-    "secret",
-    "token",
-    "apikey",
-    "api-key",
-    "authorization",
-    "credential",
-    "credentials",
-    "cookie",
-];
-
-pub(crate) fn refuse_credentials(value: &Value, path: &str) -> Result<()> {
-    match value {
-        Value::Object(map) => map.iter().try_for_each(|(key, value)| {
-            let member = join(path, key);
-            if CREDENTIAL_MEMBERS.contains(&key.to_ascii_lowercase().as_str()) {
-                Err(Diagnostic::new(
-                    Code::CredentialInDocument,
-                    member,
-                    "credential members never appear in plans, receipts or diagnostics",
-                ))
-            } else {
-                refuse_credentials(value, &member)
-            }
-        }),
-        Value::Array(values) => values
-            .iter()
-            .enumerate()
-            .try_for_each(|(position, value)| refuse_credentials(value, &index(path, position))),
-        _ => Ok(()),
+impl InstallationReceipt {
+    /// The local opaque generation id.
+    pub fn generation_id(&self) -> &GenerationId {
+        &self.generation_id
+    }
+    /// The platform the generation was installed for.
+    pub fn platform(&self) -> PlatformId {
+        self.platform
+    }
+    /// SHA-256 of the exact lock bytes.
+    pub fn lock_sha256(&self) -> &Sha256 {
+        &self.lock_sha256
+    }
+    /// The recipe the lock used.
+    pub fn recipe(&self) -> &RecipeRef {
+        &self.recipe
+    }
+    /// The installed host.
+    pub fn host(&self) -> &InstalledHost {
+        &self.host
+    }
+    /// The installed providers, in lock order.
+    pub fn providers(&self) -> &[InstalledProvider] {
+        &self.providers
+    }
+    /// The derived generation readiness.
+    pub fn readiness(&self) -> Readiness {
+        self.readiness
+    }
+    /// The generation's workflow check.
+    pub fn checks(&self) -> &[Check] {
+        &self.checks
     }
 }
 
@@ -341,56 +382,68 @@ pub fn read_receipt(bytes: &[u8]) -> Result<InstallationReceipt> {
         Diagnostic::new(Code::InvalidDocument, "", format!("not JSON: {error}"))
     })?;
     envelope::check(&value, UNDERSTOOD_PATHS)?;
-    refuse_credentials(&value, "")?;
     let root = Node::root(&value).object()?;
     let platform = root.req("platform", model::platform)?;
+    let recipe = root.req("recipe", model::recipe_ref)?;
+    let context = Context {
+        platform,
+        recipe: &recipe,
+    };
+    let host = root.req("host", |node| installed_host(node, &context))?;
     let receipt = InstallationReceipt {
         generation_id: root.req("generationId", model::token(GenerationId::parse))?,
         platform,
         lock_sha256: root.req("lockSha256", model::sha256)?,
-        recipe: root.req("recipe", model::recipe_ref)?,
-        host: root.req("host", |node| installed_host(node, platform))?,
         providers: root.req("providers", |node| {
-            node.array(|item| installed_provider(item, platform))
+            node.array(|item| installed_provider(item, &context, &host))
         })?,
-        readiness: root.req("readiness", readiness)?,
+        recipe,
+        host,
+        readiness: root.req("readiness", |node| node.case(Readiness::CASES))?,
         checks: root.req("checks", |node| node.array(check))?,
     };
     validate_generation(&receipt)?;
     Ok(receipt)
 }
 
-fn readiness(node: Node<'_>) -> Result<Readiness> {
-    let tag = node.str()?;
-    Readiness::CASES
-        .iter()
-        .find(|case| **case == tag)
-        .map(|case| Readiness::from_tag(case))
-        .ok_or_else(|| {
-            Diagnostic::new(
-                Code::UnsupportedCase,
-                node.path(),
-                format!("'{tag}' is not one of {}", Readiness::CASES.join(", ")),
-            )
-        })
+struct Context<'a> {
+    platform: PlatformId,
+    recipe: &'a RecipeRef,
+}
+
+#[derive(Clone, Copy)]
+enum StatusTag {
+    Passed,
+    Failed,
+    Skipped,
+    Unsupported,
 }
 
 pub(crate) fn check(node: Node<'_>) -> Result<Check> {
     let object = node.object()?;
-    let kind = CheckKind::from_tag(object.tag("check", CheckKind::CASES)?);
+    let kind = object.case("check", CheckKind::CASES)?;
     let reason = || -> Result<String> {
-        object.req("reason", model::non_empty_string).map_err(|_| {
-            inconsistent(
+        if !object.has("reason") {
+            return Err(inconsistent(
                 object.member_path("reason"),
                 "a check that did not pass states its reason",
-            )
-        })
+            ));
+        }
+        object.req("reason", model::non_empty_string)
     };
-    let status = match object.tag("status", &["passed", "failed", "skipped", "unsupported"])? {
-        "passed" => CheckStatus::Passed,
-        "failed" => CheckStatus::Failed(reason()?),
-        "skipped" => CheckStatus::Skipped(reason()?),
-        _ => CheckStatus::Unsupported(reason()?),
+    let status = match object.case(
+        "status",
+        &[
+            ("passed", StatusTag::Passed),
+            ("failed", StatusTag::Failed),
+            ("skipped", StatusTag::Skipped),
+            ("unsupported", StatusTag::Unsupported),
+        ],
+    )? {
+        StatusTag::Passed => CheckStatus::Passed,
+        StatusTag::Failed => CheckStatus::Failed(reason()?),
+        StatusTag::Skipped => CheckStatus::Skipped(reason()?),
+        StatusTag::Unsupported => CheckStatus::Unsupported(reason()?),
     };
     let workflow = object.opt("workflow", model::token(WorkflowId::parse))?;
     if (kind == CheckKind::Workflow) != workflow.is_some() {
@@ -406,76 +459,84 @@ pub(crate) fn check(node: Node<'_>) -> Result<Check> {
     })
 }
 
-fn absolute_program(platform: PlatformId) -> impl Fn(&str) -> std::result::Result<String, String> {
-    move |text| {
-        let bytes = text.as_bytes();
-        let absolute = if platform.is_windows() {
-            (bytes.len() > 3
-                && bytes[0].is_ascii_alphabetic()
-                && bytes[1] == b':'
-                && matches!(bytes[2], b'\\' | b'/'))
-                || text.starts_with("\\\\")
-        } else {
-            text.starts_with('/')
-        };
-        if absolute && !text.contains('\0') {
-            Ok(text.to_owned())
-        } else {
-            Err(format!(
-                "'{text}' is not an absolute {platform} launch path"
-            ))
-        }
+#[derive(Clone, Copy)]
+enum OwnerTag {
+    Manager,
+    Archive,
+    Tool,
+    System,
+}
+
+#[derive(Clone, Copy)]
+enum AuthenticationTag {
+    Repository,
+    Recipe,
+    Developer,
+    External,
+}
+
+pub(crate) fn ownership(node: Node<'_>) -> Result<Ownership> {
+    let owner = node.object()?;
+    match owner.case(
+        "kind",
+        &[
+            ("manager-owned", OwnerTag::Manager),
+            ("direct-archive", OwnerTag::Archive),
+            ("dotnet-tool", OwnerTag::Tool),
+            ("system-package", OwnerTag::System),
+        ],
+    )? {
+        OwnerTag::Manager => Ok(Ownership::ManagerOwned),
+        OwnerTag::Archive => Ok(Ownership::DirectArchive),
+        OwnerTag::Tool => Ok(Ownership::DotnetTool {
+            package_id: owner.req("packageId", model::token(PackageId::parse))?,
+            scope: owner.case(
+                "scope",
+                &[
+                    ("global", DotnetToolScope::Global),
+                    ("tool-path", DotnetToolScope::ToolPath),
+                    ("local-manifest", DotnetToolScope::LocalManifest),
+                ],
+            )?,
+        }),
+        OwnerTag::System => Ok(Ownership::SystemPackage {
+            manager: owner.req("manager", model::token(PackageManagerId::parse))?,
+        }),
     }
 }
 
-fn installation(object: &Obj<'_>, platform: PlatformId) -> Result<Installation> {
-    let ownership = object.req("ownership", |node| {
-        let owner = node.object()?;
-        match owner.tag(
-            "kind",
-            &[
-                "manager-owned",
-                "direct-archive",
-                "dotnet-tool",
-                "system-package",
-            ],
-        )? {
-            "manager-owned" => Ok(Ownership::ManagerOwned),
-            "direct-archive" => Ok(Ownership::DirectArchive),
-            "dotnet-tool" => Ok(Ownership::DotnetTool {
-                package_id: owner.req("packageId", model::token(PackageId::parse))?,
-                scope: match owner.tag("scope", &["global", "tool-path", "local-manifest"])? {
-                    "global" => DotnetToolScope::Global,
-                    "tool-path" => DotnetToolScope::ToolPath,
-                    _ => DotnetToolScope::LocalManifest,
-                },
-            }),
-            _ => Ok(Ownership::SystemPackage {
-                manager: owner.req("manager", model::token(PackageManagerId::parse))?,
-            }),
-        }
-    })?;
+fn installation(object: &Obj<'_>, context: &Context<'_>) -> Result<Installation> {
+    let ownership = object.req("ownership", ownership)?;
     let authentication = object.req("authentication", |node| {
         let auth = node.object()?;
-        match auth.tag(
+        match auth.case(
             "kind",
             &[
-                "repository-target",
-                "recipe-digest",
-                "local-developer",
-                "external-owner",
+                ("repository-target", AuthenticationTag::Repository),
+                ("recipe-digest", AuthenticationTag::Recipe),
+                ("local-developer", AuthenticationTag::Developer),
+                ("external-owner", AuthenticationTag::External),
             ],
         )? {
-            "repository-target" => Ok(Authentication::RepositoryTarget {
+            AuthenticationTag::Repository => Ok(Authentication::RepositoryTarget {
                 repository_id: auth.req("repositoryId", model::sha256)?,
                 targets_version: auth.req("targetsVersion", |node| node.u64())?,
             }),
-            "recipe-digest" => Ok(Authentication::RecipeDigest {
-                repository_id: auth.req("repositoryId", model::sha256)?,
-                recipe_target: auth.req("recipeTarget", model::target_path)?,
-                recipe_sha256: auth.req("recipeSha256", model::sha256)?,
-            }),
-            "local-developer" => {
+            AuthenticationTag::Recipe => {
+                let named = RecipeRef {
+                    repository_id: auth.req("repositoryId", model::sha256)?,
+                    target: auth.req("recipeTarget", model::target_path)?,
+                    sha256: auth.req("recipeSha256", model::sha256)?,
+                };
+                if &named != context.recipe {
+                    return Err(inconsistent(
+                        auth.path(),
+                        "recipe-digest authentication names the receipt's own recipe",
+                    ));
+                }
+                Ok(Authentication::RecipeDigest)
+            }
+            AuthenticationTag::Developer => {
                 if auth.str("policy")? != "developer" {
                     return Err(inconsistent(
                         auth.member_path("policy"),
@@ -484,7 +545,7 @@ fn installation(object: &Obj<'_>, platform: PlatformId) -> Result<Installation> 
                 }
                 Ok(Authentication::LocalDeveloper)
             }
-            _ => Ok(Authentication::ExternalOwner),
+            AuthenticationTag::External => Ok(Authentication::ExternalOwner),
         }
     })?;
     if authentication == Authentication::LocalDeveloper && ownership != Ownership::ManagerOwned {
@@ -499,11 +560,16 @@ fn installation(object: &Obj<'_>, platform: PlatformId) -> Result<Installation> 
             "a manager-owned installation records how the manager authenticated it",
         ));
     }
+    let style = if context.platform.is_windows() {
+        PathStyle::Windows
+    } else {
+        PathStyle::Posix
+    };
     let launch = object.req("launch", |node| {
         let launch = node.object()?;
         Ok(Launch {
             program: launch.req("program", |node| {
-                node.parse(Code::InvalidValue, absolute_program(platform))
+                node.parse(Code::InvalidValue, |text| AbsolutePath::parse(text, style))
             })?,
             args: launch.req("args", |node| {
                 node.array(|item| item.str().map(str::to_owned))
@@ -519,7 +585,20 @@ fn installation(object: &Obj<'_>, platform: PlatformId) -> Result<Installation> 
 
 fn component_checks(object: &Obj<'_>) -> Result<(Readiness, Vec<Check>)> {
     let readiness_path = object.member_path("readiness");
-    let readiness = object.req("readiness", readiness)?;
+    let readiness = object.req("readiness", |node| {
+        node.case(&Readiness::CASES[..3]).map_err(|refusal| {
+            if refusal.code == Code::UnsupportedCase
+                && node.str().is_ok_and(|tag| tag == "workflow-qualified")
+            {
+                inconsistent(
+                    node.path(),
+                    "workflow-qualified belongs to the whole generation",
+                )
+            } else {
+                refusal
+            }
+        })
+    })?;
     let checks = object.req("checks", |node| node.array(check))?;
     let find = |kind: CheckKind| {
         checks
@@ -549,7 +628,74 @@ fn component_checks(object: &Obj<'_>) -> Result<(Readiness, Vec<Check>)> {
     Ok((readiness, checks))
 }
 
-fn installed_host(node: Node<'_>, platform: PlatformId) -> Result<InstalledHost> {
+#[derive(Clone, Copy)]
+enum RuntimeTag {
+    None,
+    Bundled,
+    System,
+}
+
+fn execution(node: Node<'_>) -> Result<HostExecution> {
+    let execution = node.object()?;
+    let mode = execution.case("mode", crate::recipe::Execution::CASES)?;
+    let runtime_path = execution.member_path("runtime");
+    execution.req("runtime", |node| {
+        let runtime = node.object()?;
+        let tag = runtime.case(
+            "kind",
+            &[
+                ("none", RuntimeTag::None),
+                ("bundled", RuntimeTag::Bundled),
+                ("system", RuntimeTag::System),
+            ],
+        )?;
+        match (mode, tag) {
+            (crate::recipe::Execution::NativeAot, RuntimeTag::None) => Ok(HostExecution::NativeAot),
+            (crate::recipe::Execution::Jit, RuntimeTag::Bundled) => Ok(HostExecution::Jit(
+                ManagedRuntime::Bundled(runtime.req("version", model::version)?),
+            )),
+            (crate::recipe::Execution::Jit, RuntimeTag::System) => Ok(HostExecution::Jit(
+                ManagedRuntime::System(runtime.req("version", model::version)?),
+            )),
+            _ => Err(inconsistent(
+                &runtime_path,
+                "Native AOT has no runtime; JIT execution records its runtime origin",
+            )),
+        }
+    })
+}
+
+/// For the `dotnet` implementation the deployment fixes the execution.
+fn check_dotnet_execution(
+    identity: &HostIdentity,
+    execution: &HostExecution,
+    path: &str,
+) -> Result<()> {
+    if identity.implementation.as_str() != "dotnet" {
+        return Ok(());
+    }
+    let agrees = match identity.deployment.as_str() {
+        "native-aot" => matches!(execution, HostExecution::NativeAot),
+        "self-contained" => matches!(execution, HostExecution::Jit(ManagedRuntime::Bundled(_))),
+        "framework-dependent" | "dotnet-tool" => {
+            matches!(execution, HostExecution::Jit(ManagedRuntime::System(_)))
+        }
+        _ => true,
+    };
+    if agrees {
+        Ok(())
+    } else {
+        Err(inconsistent(
+            path,
+            format!(
+                "a dotnet {} host does not execute this way",
+                identity.deployment
+            ),
+        ))
+    }
+}
+
+fn installed_host(node: Node<'_>, context: &Context<'_>) -> Result<InstalledHost> {
     let host = node.object()?;
     let identity = host.req("identity", |node| {
         let identity = node.object()?;
@@ -561,34 +707,10 @@ fn installed_host(node: Node<'_>, platform: PlatformId) -> Result<InstalledHost>
             artifact: model::digest_pair(&identity, "target", "sha256")?,
         })
     })?;
-    let execution = host.req("execution", |node| {
-        let execution = node.object()?;
-        let mode = match execution.tag("mode", &["native-aot", "jit"])? {
-            "native-aot" => crate::recipe::Execution::NativeAot,
-            _ => crate::recipe::Execution::Jit,
-        };
-        let runtime = execution.req("runtime", |node| {
-            let runtime = node.object()?;
-            match runtime.tag("kind", &["none", "bundled", "system"])? {
-                "none" => Ok(RuntimeOrigin::None),
-                "bundled" => Ok(RuntimeOrigin::Bundled(
-                    runtime.req("version", model::version)?,
-                )),
-                _ => Ok(RuntimeOrigin::System(
-                    runtime.req("version", model::version)?,
-                )),
-            }
-        })?;
-        if (mode == crate::recipe::Execution::NativeAot) != (runtime == RuntimeOrigin::None) {
-            return Err(inconsistent(
-                execution.member_path("runtime"),
-                "Native AOT has no runtime; JIT execution records its runtime origin",
-            ));
-        }
-        Ok((mode, runtime))
-    })?;
+    let execution = host.req("execution", execution)?;
+    check_dotnet_execution(&identity, &execution, &host.member_path("execution"))?;
     let installation = host.req("installation", |node| {
-        installation(&node.object()?, platform)
+        installation(&node.object()?, context)
     })?;
     let (readiness, checks) = component_checks(&host)?;
     Ok(InstalledHost {
@@ -600,10 +722,20 @@ fn installed_host(node: Node<'_>, platform: PlatformId) -> Result<InstalledHost>
     })
 }
 
-fn installed_provider(node: Node<'_>, platform: PlatformId) -> Result<InstalledProvider> {
+#[derive(Clone, Copy)]
+enum ClaimTag {
+    Probed,
+    Unchecked,
+}
+
+fn installed_provider(
+    node: Node<'_>,
+    context: &Context<'_>,
+    host: &InstalledHost,
+) -> Result<InstalledProvider> {
     let provider = node.object()?;
     let identity = provider.req("identity", model::locked_provider)?;
-    let built_in = identity.delivery.kind() == DeliveryKind::BuiltIn;
+    let built_in = identity.delivery().kind() == DeliveryKind::BuiltIn;
     let installation = match (built_in, provider.has("installation")) {
         (true, true) => {
             return Err(inconsistent(
@@ -614,15 +746,22 @@ fn installed_provider(node: Node<'_>, platform: PlatformId) -> Result<InstalledP
         (true, false) => None,
         (false, _) => Some(provider.req("installation", |node| {
             let object = node.object()?;
-            let installed = installation(&object, platform)?;
-            let claim_check = match object.tag("claimCheck", &["probed", "unchecked"])? {
-                "probed" => ClaimCheck::Probed(
-                    match object.tag("probeSource", &["describe", "session-fallback"])? {
-                        "describe" => ProbeSource::Describe,
-                        _ => ProbeSource::SessionFallback,
-                    },
-                ),
-                _ => {
+            let installed = installation(&object, context)?;
+            let claim_check = match object.case(
+                "claimCheck",
+                &[
+                    ("probed", ClaimTag::Probed),
+                    ("unchecked", ClaimTag::Unchecked),
+                ],
+            )? {
+                ClaimTag::Probed => ClaimCheck::Probed(object.case(
+                    "probeSource",
+                    &[
+                        ("describe", ProbeSource::Describe),
+                        ("session-fallback", ProbeSource::SessionFallback),
+                    ],
+                )?),
+                ClaimTag::Unchecked => {
                     if object.has("probeSource") {
                         return Err(inconsistent(
                             object.member_path("probeSource"),
@@ -636,6 +775,21 @@ fn installed_provider(node: Node<'_>, platform: PlatformId) -> Result<InstalledP
         })?),
     };
     let (readiness, checks) = component_checks(&provider)?;
+    if built_in {
+        // A built-in is part of the host's bytes: its integrity is the host's.
+        let status = |checks: &[Check]| {
+            checks
+                .iter()
+                .find(|check| check.kind == CheckKind::Integrity)
+                .map(|check| check.status == CheckStatus::Passed)
+        };
+        if status(&checks) != status(&host.checks) {
+            return Err(inconsistent(
+                provider.member_path("checks"),
+                "a built-in's integrity check is the host's integrity check",
+            ));
+        }
+    }
     Ok(InstalledProvider {
         identity,
         installation,
@@ -645,12 +799,7 @@ fn installed_provider(node: Node<'_>, platform: PlatformId) -> Result<InstalledP
 }
 
 fn validate_generation(receipt: &InstallationReceipt) -> Result<()> {
-    let workflows = receipt
-        .checks
-        .iter()
-        .filter(|check| check.kind == CheckKind::Workflow)
-        .collect::<Vec<_>>();
-    if workflows.len() != 1 || receipt.checks.len() != 1 {
+    if receipt.checks.len() != 1 || receipt.checks[0].kind != CheckKind::Workflow {
         return Err(inconsistent(
             "checks",
             "a generation records exactly one workflow check",
@@ -660,15 +809,14 @@ fn validate_generation(receipt: &InstallationReceipt) -> Result<()> {
         .providers
         .iter()
         .map(|provider| provider.readiness)
-        .chain(std::iter::once(receipt.host.readiness))
-        .min()
-        .expect("the host is always present");
-    let derived =
-        if lowest == Readiness::CapabilityChecked && workflows[0].status == CheckStatus::Passed {
-            Readiness::WorkflowQualified
-        } else {
-            lowest
-        };
+        .fold(receipt.host.readiness, Ord::min);
+    let derived = if lowest == Readiness::CapabilityChecked
+        && receipt.checks[0].status == CheckStatus::Passed
+    {
+        Readiness::WorkflowQualified
+    } else {
+        lowest
+    };
     if receipt.readiness != derived {
         return Err(inconsistent(
             "readiness",
@@ -703,23 +851,24 @@ impl InstallationReceipt {
                 format!("{what} differs from the lock's {} closure", self.platform),
             )
         };
-        if self.recipe != lock.recipe {
+        if &self.recipe != lock.recipe() {
             return Err(mismatch("recipe", "the recipe"));
         }
         let closure = lock.closure(self.platform)?;
         let host = &self.host.identity;
-        if host.implementation != lock.host.implementation
-            || host.version != lock.host.version
-            || host.deployment != lock.host.deployment
-            || host.artifact != closure.host
+        let locked = lock.host();
+        if host.implementation != locked.implementation
+            || host.version != locked.version
+            || host.deployment != locked.deployment
+            || &host.artifact != closure.host()
         {
             return Err(mismatch("host.identity", "the host identity"));
         }
-        if self.providers.len() != closure.providers.len() {
+        if self.providers.len() != closure.providers().len() {
             return Err(mismatch("providers", "the provider list"));
         }
         for (position, (installed, locked)) in
-            self.providers.iter().zip(&closure.providers).enumerate()
+            self.providers.iter().zip(closure.providers()).enumerate()
         {
             if &installed.identity != locked {
                 return Err(mismatch(

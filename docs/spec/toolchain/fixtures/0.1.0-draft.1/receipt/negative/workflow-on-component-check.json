@@ -12,7 +12,7 @@
     "identity": {
       "implementation": "dotnet",
       "version": "1.2.3",
-      "deployment": "self-contained",
+      "deployment": "native-aot",
       "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
       "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     },
@@ -40,7 +40,8 @@
     "checks": [
       {
         "check": "integrity",
-        "status": "passed"
+        "status": "passed",
+        "workflow": "fsharp-compile-generate"
       },
       {
         "check": "capability",

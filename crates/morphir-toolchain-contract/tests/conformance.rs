@@ -6,7 +6,8 @@
 //! `valid` or the exact diagnostic code and member path a reader reports.
 
 use morphir_toolchain_contract::{
-    Code, PlatformId, read_lock, read_receipt, read_recipe, read_request, read_result, understood,
+    Code, Operation, PlatformId, canonical_json, canonical_sha256, read_lock, read_receipt,
+    read_recipe, read_request, read_result, resolve_closure, understood,
 };
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -130,34 +131,85 @@ fn every_document_case_matches_its_reader_and_schema() {
     );
 }
 
+fn summary(closure: &morphir_toolchain_contract::PlatformClosure) -> Value {
+    Value::Array(
+        closure
+            .providers()
+            .iter()
+            .map(|provider| {
+                let (operation, member, id) = match provider.operation() {
+                    Operation::Compile { language } => ("compile", "language", language),
+                    Operation::Generate { target } => ("generate", "target", target),
+                };
+                serde_json::json!({
+                    "operation": operation,
+                    member: id.as_str(),
+                    "delivery": provider.delivery().kind().as_str(),
+                    "extensionId": provider.extension_id().as_str(),
+                    "version": provider.version().to_string()
+                })
+            })
+            .collect(),
+    )
+}
+
 #[test]
 fn every_binding_case_matches_the_reference_checks() {
     let mut failures = Vec::new();
     for case in cases()["bindings"].as_array().expect("binding cases") {
         let name = case["name"].as_str().unwrap();
-        let lock_bytes = read(&fixtures().join(case["lock"].as_str().unwrap()));
-        let lock = read_lock(&lock_bytes).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let file = |key: &str| read(&fixtures().join(case[key].as_str().unwrap()));
+        let lock = || {
+            let bytes = file("lock");
+            let lock = read_lock(&bytes).unwrap_or_else(|error| panic!("{name}: {error}"));
+            (bytes, lock)
+        };
         let actual = match case["kind"].as_str().unwrap() {
             "lock-request" => {
-                let request =
-                    read_request(&read(&fixtures().join(case["request"].as_str().unwrap())))
-                        .unwrap_or_else(|error| panic!("{name}: {error}"));
-                lock.check_request(&request)
+                let request = read_request(&file("request"))
+                    .unwrap_or_else(|error| panic!("{name}: {error}"));
+                lock().1.check_request(&request)
             }
             "lock-platform" => {
                 let platform = PlatformId::parse(case["platform"].as_str().unwrap()).unwrap();
-                lock.closure(platform).map(drop)
+                lock().1.closure(platform).map(drop)
             }
             "receipt-lock" => {
-                let receipt =
-                    read_receipt(&read(&fixtures().join(case["receipt"].as_str().unwrap())))
-                        .unwrap_or_else(|error| panic!("{name}: {error}"));
-                receipt.check_lock(&lock_bytes, &lock)
+                let receipt = read_receipt(&file("receipt"))
+                    .unwrap_or_else(|error| panic!("{name}: {error}"));
+                let (bytes, lock) = lock();
+                receipt.check_lock(&bytes, &lock)
+            }
+            "resolve" => {
+                let recipe = read_recipe(&file("recipe")).unwrap();
+                let request = read_request(&file("request")).unwrap();
+                let platform = PlatformId::parse(case["platform"].as_str().unwrap()).unwrap();
+                resolve_closure(&recipe, &request, platform).map(|closure| {
+                    if summary(&closure) != case["expected"]["providers"] {
+                        failures.push(format!("{name}: resolved {}", summary(&closure)));
+                    }
+                })
+            }
+            "plan-canonical" => {
+                let result: Value = serde_json::from_slice(&file("result")).unwrap();
+                let canonical = canonical_json(&result["plan"]).unwrap();
+                if canonical != file("canonical") {
+                    failures.push(format!("{name}: the canonical plan bytes differ"));
+                }
+                if canonical_sha256(&result["plan"]).unwrap().to_string() != result["planSha256"] {
+                    failures.push(format!(
+                        "{name}: planSha256 is not the digest of those bytes"
+                    ));
+                }
+                read_result(&file("result")).map(drop)
             }
             other => panic!("unknown binding kind {other}"),
         }
         .map_err(|diagnostic| (diagnostic.code.as_str().to_owned(), diagnostic.path));
-        let wanted = expected(case);
+        let wanted = match &case["expected"] {
+            Value::Object(object) if object.contains_key("providers") => Ok(()),
+            _ => expected(case),
+        };
         if actual != wanted {
             failures.push(format!("{name}: gave {actual:?}, expected {wanted:?}"));
         }
@@ -170,6 +222,42 @@ fn every_binding_case_matches_the_reference_checks() {
     );
 }
 
+/// Every stable code has exactly one result diagnostic kind, and every kind
+/// reports at least one code, so a result can report any refusal.
+#[test]
+fn every_stable_code_has_a_result_diagnostic_kind() {
+    let kinds = Code::ALL
+        .iter()
+        .map(|code| code.kind())
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(kinds.len(), 9);
+    for code in Code::ALL {
+        assert_eq!(Code::parse(code.as_str()), Some(*code));
+    }
+    // The result schema lists, for each kind, exactly the codes that belong to it.
+    let schema = schema("result");
+    let rules = schema["$defs"]["diagnostic"]["allOf"].as_array().unwrap();
+    let mut listed = 0;
+    for rule in rules {
+        let Some(kind) = rule["if"]["properties"]["kind"]["const"].as_str() else {
+            continue;
+        };
+        let codes = rule["then"]["properties"]["code"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|code| code.as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        let expected = Code::ALL
+            .iter()
+            .filter(|code| code.kind().as_str() == kind)
+            .map(|code| code.as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(codes, expected, "{kind}");
+        listed += codes.len();
+    }
+    assert_eq!(listed, Code::ALL.len());
+}
 #[test]
 fn every_fixture_document_is_a_listed_case() {
     let cases = cases();
@@ -178,7 +266,14 @@ fn every_fixture_document_is_a_listed_case() {
         listed.insert(case["document"].as_str().unwrap().to_owned());
     }
     for case in cases["bindings"].as_array().unwrap() {
-        for key in ["lock", "request", "receipt"] {
+        for key in [
+            "lock",
+            "request",
+            "receipt",
+            "recipe",
+            "result",
+            "canonical",
+        ] {
             if let Some(path) = case[key].as_str() {
                 listed.insert(path.to_owned());
             }

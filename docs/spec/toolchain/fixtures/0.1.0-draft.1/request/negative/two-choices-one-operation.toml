@@ -1,0 +1,15 @@
+schemaVersion = "0.1.0-draft.1"
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+channel = "stable"
+[toolset]
+preset = "fsharp"
+[[toolset.providers]]
+operation = "generate"
+target = "fsharp"
+delivery = "built-in"
+[[toolset.providers]]
+operation = "generate"
+target = "fsharp"
+delivery = "process"
