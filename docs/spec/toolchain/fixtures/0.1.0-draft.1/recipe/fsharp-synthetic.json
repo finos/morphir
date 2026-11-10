@@ -109,6 +109,17 @@
       ],
       "builtIns": [
         {
+          "operation": "compile",
+          "language": "fsharp",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
           "operation": "generate",
           "target": "fsharp",
           "extensionId": "morphir.fsharp",
@@ -184,6 +195,17 @@
       ],
       "builtIns": [
         {
+          "operation": "compile",
+          "language": "fsharp",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
           "operation": "generate",
           "target": "fsharp",
           "extensionId": "morphir.fsharp",
@@ -256,6 +278,17 @@
         }
       ],
       "builtIns": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
         {
           "operation": "generate",
           "target": "fsharp",

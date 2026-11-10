@@ -131,6 +131,7 @@
     },
     "steps": {
       "type": "array",
+      "maxItems": 2,
       "minItems": 2,
       "prefixItems": [
         {
@@ -250,8 +251,7 @@
         "operation",
         "language",
         "input",
-        "protocolVersion",
-        "modelTuple",
+        "providers",
         "expected"
       ],
       "properties": {
@@ -266,12 +266,6 @@
         },
         "input": {
           "$ref": "#/$defs/input"
-        },
-        "protocolVersion": {
-          "const": "0.2.0-draft.1"
-        },
-        "modelTuple": {
-          "$ref": "#/$defs/modelTuple"
         },
         "expected": {
           "type": "object",
@@ -309,6 +303,23 @@
               }
             }
           }
+        },
+        "providers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/caseProvider",
+            "if": {
+              "properties": {
+                "delivery": {
+                  "const": "built-in"
+                }
+              }
+            },
+            "then": {
+              "required": [ "modelOutput" ]
+            }
+          }
         }
       }
     },
@@ -317,7 +328,18 @@
       "required": [ "files", "comparison", "provenance" ],
       "properties": {
         "appliesTo": {
-          "type": "object"
+          "type": "object",
+          "required": [ "delivery" ],
+          "properties": {
+            "delivery": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
+              }
+            }
+          }
         },
         "files": {
           "type": "array",
@@ -348,34 +370,12 @@
     },
     "generateStep": {
       "type": "object",
-      "if": {
-        "properties": {
-          "provider": {
-            "properties": {
-              "delivery": {
-                "const": "built-in"
-              }
-            }
-          }
-        }
-      },
-      "then": {
-        "required": [ "modelInput" ],
-        "properties": {
-          "provider": {
-            "required": [ "extensionId" ]
-          }
-        }
-      },
-      "else": {
-        "required": [ "protocolVersion", "modelTuple" ]
-      },
       "required": [
         "id",
         "operation",
         "target",
         "input",
-        "provider",
+        "providers",
         "expected"
       ],
       "properties": {
@@ -399,27 +399,6 @@
               "const": "expected-ir"
             }
           }
-        },
-        "provider": {
-          "type": "object",
-          "required": [ "delivery" ],
-          "properties": {
-            "delivery": {
-              "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
-            },
-            "extensionId": {
-              "$ref": "#/$defs/extensionIdentity"
-            }
-          }
-        },
-        "protocolVersion": {
-          "const": "0.2.0-draft.1"
-        },
-        "modelTuple": {
-          "$ref": "#/$defs/modelTuple"
-        },
-        "modelInput": {
-          "$ref": "#/$defs/modelInput"
         },
         "expected": {
           "type": "object",
@@ -461,6 +440,60 @@
               }
             }
           }
+        },
+        "providers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/caseProvider",
+            "if": {
+              "properties": {
+                "delivery": {
+                  "const": "built-in"
+                }
+              }
+            },
+            "then": {
+              "required": [ "modelInput" ]
+            }
+          }
+        }
+      }
+    },
+    "caseProvider": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "delivery": {
+            "const": "built-in"
+          }
+        }
+      },
+      "then": {
+        "required": [ "extensionId" ]
+      },
+      "else": {
+        "required": [ "protocolVersion", "modelTuple" ]
+      },
+      "required": [ "delivery" ],
+      "properties": {
+        "delivery": {
+          "enum": [ "built-in", "process", "wasm", "dotnet-tool" ]
+        },
+        "extensionId": {
+          "$ref": "#/$defs/extensionIdentity"
+        },
+        "protocolVersion": {
+          "const": "0.2.0-draft.1"
+        },
+        "modelTuple": {
+          "$ref": "#/$defs/modelTuple"
+        },
+        "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        },
+        "modelOutput": {
+          "$ref": "#/$defs/modelInput"
         }
       }
     }

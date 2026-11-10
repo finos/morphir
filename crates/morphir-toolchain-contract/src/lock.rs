@@ -58,6 +58,10 @@ pub const UNDERSTOOD_PATHS: &[&str] = &[
     "platforms.*.providers.modelInput.profile",
     "platforms.*.providers.modelInput.codec",
     "platforms.*.providers.modelInput.irVersion",
+    "platforms.*.providers.modelOutput",
+    "platforms.*.providers.modelOutput.profile",
+    "platforms.*.providers.modelOutput.codec",
+    "platforms.*.providers.modelOutput.irVersion",
 ];
 
 /// The exact host release a lock selects on every platform.

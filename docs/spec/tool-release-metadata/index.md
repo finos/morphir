@@ -33,7 +33,7 @@ Metadata follows TUF 1.0 JSON with these constraints:
 | Concern | Version 1 rule |
 | --- | --- |
 | TUF version | `spec_version` must be compatible with `1.0`. The conformance fixture uses `1.0.36`. |
-| Encoding | UTF-8 JSON. Signed objects use TUF canonical JSON for signature verification. Floating-point values are forbidden. |
+| Encoding | UTF-8 JSON. Signed objects use TUF canonical JSON for signature verification, with exactly the rules stated for the [plan digest](../toolchain/manager-result.md#the-plan-digest). Those rules govern wherever canonical JSON libraries differ; the same encoding produces repository identity, signature input and plan digests. Target paths are NFC (see [target paths](../toolchain/index.md#target-paths)). Floating-point values are forbidden. |
 | Keys | Ed25519. An implementation may add a TUF-defined scheme only after adding conformance fixtures. |
 | Target hashes | SHA-256 is required. Other TUF hashes may accompany it. |
 | Snapshots | `consistent_snapshot` must be `true`. |
@@ -183,9 +183,9 @@ A [toolset recipe](../toolchain/toolset-recipe.md) maps each offering to its imp
 
 A recipe binding is accepted only when the target is authenticated, its digest equals the authenticated digest, the offering's release descriptor `releases/<tool-id>/<version>.json` lists that target, and the artifact's version 1 platform is the bound platform. Version 1 platforms do not state a C library, so an offering's Linux artifacts bind only to glibc platforms (`linux-x64`, `linux-arm64`); a musl machine is told that no artifact matches.
 
-Version 1 requires `compatibility.morphirCli`, and its resolver filters releases by the acquiring Morphir CLI's version. A manager acquiring an offering through a recipe is not the Morphir CLI and does not use version 1 channel resolution for it; it checks the recipe's exact bindings against the authenticated release instead. What an offering should publish in `morphirCli` is an [open question](../toolchain/toolset-recipe.md#open-questions-for-the-maintainer). The test fixtures publish `>=0.0.0`, which matches no prerelease CLI.
+Version 1 requires `compatibility.morphirCli`, and its resolver filters releases by the acquiring Morphir CLI's version. A host offering publishes `<0.0.0-0`, which no version satisfies, so the Morphir CLI never selects a .NET host offering through version 1 resolution: there is no second installer. `>=0.0.0` would not do, because it starts matching at the first final CLI release. A manager acquiring an offering through a recipe is not the Morphir CLI and never evaluates the member; it checks the recipe's exact bindings against the authenticated release instead (see [toolset recipe limits](../toolchain/toolset-recipe.md#limits-of-this-contract-version)).
 
-Recipe targets are a separate target kind. Their `custom.morphir` object is `{ "kind": "toolset-recipe", "schemaVersion": "0.1.0-draft.1", "preset", "version", "channels", "status" }`, versioned by the recipe contract. This profile does not say how a client treats target kinds it does not define. The reference tool client in `morphir-distribution` resolves only `tool-release` targets, and its tests select offerings correctly from a repository that also publishes recipe and extension targets. Channel and status follow the [release states](#release-states) and [channel resolution](#channel-and-exact-version-resolution) above.
+Recipe targets are a separate target kind. Their `custom.morphir` object is `{ "kind": "toolset-recipe", "schemaVersion": "0.1.0-draft.1", "preset", "version", "channels", "status" }`, versioned by the recipe contract. A version 1 client ignores, for resolution, every target whose `custom.morphir.kind` it does not define. Such targets are authenticated like any other target, but never selected as a tool release. The reference tool client in `morphir-distribution` resolves only `tool-release` targets, and its tests read a repository that also publishes recipe and extension targets. Channel and status follow the [release states](#release-states) and [channel resolution](#channel-and-exact-version-resolution) above.
 
 ## Mirrors
 

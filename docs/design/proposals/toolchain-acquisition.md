@@ -106,13 +106,13 @@ Publication is journaled. The new lock and selection are written to a new genera
 
 ## F# as capabilities (FS-1)
 
-Ada's host is AOT. Setup resolves the self-contained `morphir-fsharp-frontend` process guest (the lock example below records it as `org.finos.morphir.fsharp-frontend`; which spelling a recipe can bind is an [open question](../../spec/toolchain/toolset-recipe.md#open-questions-for-the-maintainer)), which carries the F# compiler services and its own managed runtime and talks to the host over the existing Content-Length MEP transport. Generation stays with the host's built-in `morphir.fsharp`. An explicit provider selection always wins over a built-in.
+Ada's host is AOT. Setup resolves the self-contained `org.finos.morphir.fsharp-frontend` process guest (the dotted id is decided; until the descriptor change finos/morphir#1149 lands, the signed fixtures bind it as `morphir-fsharp-frontend`; see [toolset recipe limits](../../spec/toolchain/toolset-recipe.md#limits-of-this-contract-version)), which carries the F# compiler services and its own managed runtime and talks to the host over the existing Content-Length MEP transport. Generation stays with the host's built-in `morphir.fsharp`. An explicit provider selection always wins over a built-in.
 
 ![The AOT host sends source to the F# frontend process, which carries its own runtime and compiler services and returns Morphir IR for a declared model tuple. A built-in or process F# backend produces F# source.](../../assets/toolchain-fsharp-aot.svg)
 
-Ben's managed host can use the same managed F# frontend composition that the tool uses today. The existing framework-dependent frontend .NET tool remains an explicit delivery.
+Ben's managed host compiles with its built-in in-process F# frontend, `morphir-dotnet.fsharp`, the same managed composition the tool uses today; his recipe resolves it by default and downloads no frontend. The existing framework-dependent frontend .NET tool remains an explicit delivery.
 
-The F# generator also gets a standalone process delivery, proposed as `morphir-fsharp-backend`, with its own identity and exact claims, so that MoonBit or another compatible host can acquire it without the .NET CLI. Default .NET setup does not download it, because the built-in already does the job. Selecting it is explicit, and that external path is part of first-delivery acceptance.
+The F# generator also gets a standalone process delivery, `org.finos.morphir.fsharp-backend` (bound as `morphir-fsharp-backend` in the signed fixtures until finos/morphir#1149 lands), with its own identity and exact claims, so that MoonBit or another compatible host can acquire it without the .NET CLI. Default .NET setup does not download it, because the built-in already does the job. Selecting it is explicit, and that external path is part of first-delivery acceptance.
 
 Compilation here means supported F# source to Morphir IR. It does not mean that any `.fsproj` builds without an SDK or a NuGet restore. If Ada wants to compile the generated F# into a .NET application, the plan reports that consumer build's SDK and package prerequisites as a separate fact. Each delivery declares its runtime, SDK and native prerequisites separately, and setup never installs an SDK implicitly.
 

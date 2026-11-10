@@ -32,14 +32,39 @@
       "operation": "compile",
       "language": "fsharp",
       "input": "files",
-      "protocolVersion": "0.2.0-draft.1",
-      "modelTuple": {
-        "operation": "morphir.frontend.compileModel",
-        "profile": "morphir-ir",
-        "codec": "morphir-json",
-        "envelopeVersion": "0.1.0-draft.1",
-        "irVersion": "4.0.0"
-      },
+      "providers": [
+        {
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "delivery": "process",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "delivery": "dotnet-tool",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ],
       "expected": {
         "outcome": "success-without-error-diagnostics",
         "ir": {
@@ -58,50 +83,38 @@
       }
     },
     {
-      "id": "generate-built-in",
+      "id": "generate",
       "operation": "generate",
       "target": "fsharp",
       "input": {
         "step": "compile",
         "model": "expected-ir"
       },
-      "provider": {
-        "delivery": "built-in",
-        "extensionId": "morphir.fsharp"
-      },
-      "modelInput": {
-        "profile": "morphir-ir",
-        "codec": "morphir-json",
-        "irVersion": "4.0.0"
-      },
+      "providers": [
+        {
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "delivery": "process",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ],
       "expected": {
         "status": "pending",
-        "reason": "The expected generated F# files are not frozen. The Native AOT host skips the Fantomas formatting pass, so its built-in backend emits different bytes from the managed hosts and the process guest, and how frozen files treat that is a maintainer decision. Candidate files come from morphir-dotnet and are reviewed before they are frozen.",
-        "sets": []
-      }
-    },
-    {
-      "id": "generate-external",
-      "operation": "generate",
-      "target": "fsharp",
-      "input": {
-        "step": "compile",
-        "model": "expected-ir"
-      },
-      "provider": {
-        "delivery": "process"
-      },
-      "protocolVersion": "0.2.0-draft.1",
-      "modelTuple": {
-        "operation": "morphir.backend.generateModel",
-        "profile": "morphir-ir",
-        "codec": "morphir-json",
-        "envelopeVersion": "0.1.0-draft.1",
-        "irVersion": "4.0.0"
-      },
-      "expected": {
-        "status": "pending",
-        "reason": "The expected generated F# files are not frozen. Candidate files come from morphir-dotnet and are reviewed before they are frozen, together with the decision on the Native AOT formatting difference.",
+        "reason": "Maintainer question M1: how the expected generated F# files are frozen. The Native AOT built-in cannot run the Fantomas formatter, and formatted output follows platform line endings. The recommended default is one unformatted set with LF line endings, produced by every delivery under an explicit format switch. Candidate files come from morphir-dotnet and are reviewed before they are frozen.",
         "sets": []
       }
     }

@@ -33,7 +33,7 @@ pub(crate) fn built_in(built_in: &BuiltIn) -> LockedProvider {
         built_in.extension_id().clone(),
         built_in.version().clone(),
         LockedDelivery::BuiltIn {
-            model_input: built_in.model_input().clone(),
+            model: built_in.model().clone(),
         },
     )
 }

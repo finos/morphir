@@ -302,7 +302,31 @@
     "builtIn": {
       "$ref": "#/$defs/operation",
       "type": "object",
-      "required": [ "operation", "extensionId", "version", "modelInput" ],
+      "allOf": [
+        {
+          "if": {
+            "required": [ "operation" ],
+            "properties": {
+              "operation": {
+                "const": "compile"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [ "modelInput" ]
+            },
+            "required": [ "modelOutput" ]
+          },
+          "else": {
+            "not": {
+              "required": [ "modelOutput" ]
+            },
+            "required": [ "modelInput" ]
+          }
+        }
+      ],
+      "required": [ "operation", "extensionId", "version" ],
       "properties": {
         "extensionId": {
           "$ref": "#/$defs/extensionIdentity"
@@ -311,6 +335,9 @@
           "$ref": "#/$defs/semanticVersion"
         },
         "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        },
+        "modelOutput": {
           "$ref": "#/$defs/modelInput"
         }
       }

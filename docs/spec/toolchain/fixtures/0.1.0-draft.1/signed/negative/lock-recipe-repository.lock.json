@@ -8,7 +8,7 @@
   "recipe": {
     "repositoryId": "6666666666666666666666666666666666666666666666666666666666666666",
     "target": "toolchains/recipes/fsharp/1.0.0.json",
-    "sha256": "3606a334b66335429e4d21c3831c075af4fa43627107c5aa2b8093730879aaf8"
+    "sha256": "1e9f8eea2f489f3d1feb1d42cc2d197609517050e578f8dc3fd38d8aab09eb63"
   },
   "host": {
     "implementation": "dotnet",

@@ -109,7 +109,7 @@ pub struct BuiltIn {
     operation: Operation,
     extension_id: ExtensionIdentity,
     version: Version,
-    model_input: ModelInput,
+    model: ModelInput,
 }
 
 impl BuiltIn {
@@ -125,9 +125,10 @@ impl BuiltIn {
     pub fn version(&self) -> &Version {
         &self.version
     }
-    /// Its model input.
-    pub fn model_input(&self) -> &ModelInput {
-        &self.model_input
+    /// The model it exchanges with the host: the model a `generate` built-in
+    /// reads (`modelInput`) or a `compile` built-in writes (`modelOutput`).
+    pub fn model(&self) -> &ModelInput {
+        &self.model
     }
 }
 
@@ -438,11 +439,12 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
             .opt("builtIns", |node| {
                 node.array(|item| {
                     let built_in = item.object()?;
+                    let operation = model::operation(&built_in)?;
                     Ok(BuiltIn {
-                        operation: model::operation(&built_in)?,
                         extension_id: built_in.req("extensionId", model::extension_id)?,
                         version: built_in.req("version", model::version)?,
-                        model_input: built_in.req("modelInput", model::model_input)?,
+                        model: model::built_in_model(&built_in, &operation)?,
+                        operation,
                     })
                 })
             })?

@@ -37,6 +37,20 @@ The contracts these documents refer to keep their own versions. Nothing here ren
 | Model envelope | `0.1.0-draft.1` | [Model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md) |
 | Morphir IR | `formatVersion` | [IR format version](../ir/format-version.md) |
 
+## Glossary
+
+Some words are used with more than one meaning across the toolchain, MEP and morphir-dotnet documents. On these pages they mean:
+
+| Word | Meaning here | Not to be confused with |
+| --- | --- | --- |
+| host | The Morphir CLI release a generation runs: an implementation, a version and a deployment (`dotnet` `1.2.3` `native-aot`). A recipe's `hosts` are host offerings | The command name a host's `extension list --json` reports (`morphir`, `dotnet-morphir`), and the MEP side that runs guests |
+| deployment, offering | One separately published form of a host: `native-aot`, `self-contained`, `framework-dependent` or `dotnet-tool`. An offering is a recipe's entry for one implementation, release and deployment | A command name: `dotnet-morphir` is the command of the `dotnet-tool` deployment |
+| readiness | The state one component or one generation reached on one machine: `acquired`, `integrity-verified`, `capability-checked` or `workflow-qualified` | The [readiness workflow case](./readiness-workflow.md), which is the data the workflow check runs |
+| `workflow-qualified` | A readiness state: this generation, on this machine, passed the readiness workflow with its selected providers | A qualification claim. It says nothing about a release, an offering or a platform being qualified, which needs release evidence from acquired artifacts. A generation installed from a developer build can reach it |
+| probe | The plan member `probe`: whether setup runs a component's code, and with what rights | The install-time `describe` claim check, the readiness handshake, and the AOT probe test projects in morphir-dotnet |
+| extension id | A provider's registry and MEP identity, such as `morphir-dotnet.fsharp`, without any transport label or runtime version text | The frontend identity a compile report names, which includes runtime text, and an executable name such as `morphir-fsharp-frontend` |
+| capability check | For a process, WASM or .NET tool provider, the session handshake comparing its claims with the locked model. For a built-in, the staged host's `extension list --json` reporting the built-in with the locked `extensionId`, `version`, language or target, and the IR version of its model | The claim check (`claimCheck`), which compares a probe's claims with the descriptor's |
+
 ## Rules shared by all five
 
 ### Versions
@@ -93,7 +107,7 @@ The provider delivery cases are:
 
 | `delivery` | Meaning | Identities it requires |
 | --- | --- | --- |
-| `built-in` | Compiled into the host | `modelInput` only; no artifact |
+| `built-in` | Compiled into the host | The model it exchanges with the host: `modelOutput` for `compile`, which writes the model, and `modelInput` for `generate`, which reads it. No artifact |
 | `process` | A native process speaking Content-Length framed MEP | Descriptor and per-platform artifact digests |
 | `wasm` | A portable module for one named ABI | `abi`, descriptor and artifact digests |
 | `dotnet-tool` | A .NET tool package installed into an isolated tool path | `packageId`, `command`, package digest, and the release's descriptor digest |
@@ -107,11 +121,15 @@ Prerequisites are `runtime`, `sdk` (with `phase` `install` or `run`) and `native
 | Value | Rule |
 | --- | --- |
 | Implementation, deployment, preset, language, target, ABI, generation id, workflow, package manager, command | A lowercase portable token: `[a-z]`, then `[a-z0-9-]`, ending in a letter or digit, at most 64 characters |
-| Provider identity (`extensionId`) | Portable tokens joined by `.`, at most 238 characters: `morphir.fsharp`, `morphir-fsharp-backend` |
+| Provider identity (`extensionId`) | Portable tokens joined by `.`, at most 238 characters: `morphir.fsharp`, `morphir-dotnet.fsharp`, `org.finos.morphir.fsharp-frontend`. In `0.1.0-draft.1` each segment also has at most 64 characters |
 | NuGet package id | Segments of `[A-Za-z0-9_]` joined by `.` or `-`, at most 100 characters |
 | Tool id | The tool release metadata v1 tool id grammar |
 | Digest | 64 lowercase hexadecimal digits of SHA-256 over exact bytes |
 | Version | Canonical SemVer |
+
+Dotted extension ids are decided and their descriptor change is finos/morphir#1149. When it lands, only the provider identity changes: it takes #1149's grammar, which keeps the 238-character total and drops the 64-character segment limit, refining this draft in place. Every other token in the table above keeps its 64-character limit. No toolchain document uses an extension id as a JSON member name, so the [critical path](#unknown-and-critical-members) grammar is unaffected; ids appear only as values.
+
+An extension id never appears in a target path: target layouts use the descriptor's `shortId`, as in `extensions/fsharp-frontend/0.6.0/release.json`. An id does name local files, such as the extension lock `MORPHIR_HOME/locks/extensions/<id>.json` and its `<id>.json.transaction` journal. A typical Windows home, the `locks\extensions\` directories and the `.json.transaction` suffix add about 60 characters to the id. So an id longer than about 200 characters exceeds the 260-character `MAX_PATH` when long paths are not enabled. Long ids were already allowed; dotted ids make them more likely.
 
 ### Target paths
 

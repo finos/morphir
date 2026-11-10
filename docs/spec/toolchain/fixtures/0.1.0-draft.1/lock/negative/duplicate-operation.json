@@ -41,9 +41,9 @@
           "operation": "compile",
           "language": "fsharp",
           "delivery": "built-in",
-          "extensionId": "morphir.fsharp",
+          "extensionId": "morphir-dotnet.fsharp",
           "version": "1.2.3",
-          "modelInput": {
+          "modelOutput": {
             "profile": "morphir-ir",
             "codec": "morphir-json",
             "irVersion": "4.0.0"

@@ -6,7 +6,7 @@ status: draft
 
 # F# readiness workflow case
 
-An F# generation is `workflow-qualified` when it has run one fixed case: a small F# source package is compiled to an expected semantic IR model, and that model is generated to F# with the selected providers. This page describes that case, `fsharp-compile-generate`, and the files that hold it. Its [installation receipt](./installation-receipt.md#readiness) records the result as the generation's `workflow` check.
+An F# generation is `workflow-qualified` when it has run one fixed case: a small F# source package is compiled to an expected semantic IR model, and that model is generated to F# with the generation's selected providers. `workflow-qualified` is a readiness state of one generation on one machine; it is not a claim that a release, an offering or a platform is qualified (see the [glossary](./index.md#glossary)). This page describes that case, `fsharp-compile-generate`, and the files that hold it. Its [installation receipt](./installation-receipt.md#readiness) records the result as the generation's `workflow` check.
 
 The case is data. It lives in [`spec/toolchain/workflows/fsharp-compile-generate/`](https://github.com/finos/morphir/tree/main/spec/toolchain/workflows/fsharp-compile-generate). The conformance runner that executes it lives in finos/morphir-dotnet, in `src/Morphir.Conformance`, with its `cli`, `library` and `mep-guest` adapters. This repository holds the case and checks that the data is consistent; it runs nothing.
 
@@ -14,23 +14,26 @@ The expected generated files are still pending (see below), so no generation can
 
 ## What the workflow is
 
-The case has three steps. Each generation step reads the expected IR, not the compile step's output, so a generation failure is never caused by a compile difference.
+The case has one step per operation of the `fsharp` preset. A generation runs each step once, with **the generation's selected provider** for that operation: the provider its lock records, whatever its delivery. It never runs a provider it did not select, so a default generation, which selects the built-in backend, never needs the external backend to qualify, and never downloads it.
 
-| Step | Operation | Provider | Protocol and model | Expected |
-| --- | --- | --- | --- | --- |
-| `compile` | `compile`, language `fsharp`, from `files` | The recipe's process frontend | MEP `0.2.0-draft.1`, `morphir.frontend.compileModel` / `morphir-ir` / `morphir-json` / envelope `0.1.0-draft.1` / IR `4.0.0` | Success with no error diagnostics, and IR equal to `expected/ir-4.0.0.json` |
-| `generate-built-in` | `generate`, target `fsharp` | The host's built-in `morphir.fsharp` | `modelInput` `morphir-ir` / `morphir-json` / IR `4.0.0` | Pending |
-| `generate-external` | `generate`, target `fsharp` | The recipe's external process backend | MEP `0.2.0-draft.1`, `morphir.backend.generateModel` / `morphir-ir` / `morphir-json` / envelope `0.1.0-draft.1` / IR `4.0.0` | Pending |
+Each step lists, under `providers`, the deliveries it covers and what each must agree on:
 
-The `morphir-json` codec carries the whole IR JSON document, including its `formatVersion`. The tuples are the ones the TEST-ONLY signed F# recipe fixture binds (`toolchains/recipes/fsharp/1.0.0.json` in [`fixtures/0.1.0-draft.1/signed/`](./index.md#fixtures-and-conformance)), and the morphir-dotnet frontend and backend guests advertise the same tuples.
+| Step | Operation | Covered deliveries of the selected provider | Expected |
+| --- | --- | --- | --- |
+| `compile` | `compile`, language `fsharp`, from `files` | `built-in` `morphir-dotnet.fsharp` writing `modelOutput` `morphir-ir` / `morphir-json` / IR `4.0.0` (the managed offerings); `process` and `dotnet-tool` speaking MEP `0.2.0-draft.1` with `morphir.frontend.compileModel` / `morphir-ir` / `morphir-json` / envelope `0.1.0-draft.1` / IR `4.0.0` | Success with no error diagnostics, and IR equal to `expected/ir-4.0.0.json` |
+| `generate` | `generate`, target `fsharp` | `built-in` `morphir.fsharp` reading `modelInput` `morphir-ir` / `morphir-json` / IR `4.0.0`; `process` speaking MEP `0.2.0-draft.1` with `morphir.backend.generateModel` and the same model | Pending |
+
+The generate step reads the expected IR, not the compile step's output, so a generation failure is never caused by a compile difference. The `morphir-json` codec carries the whole IR JSON document, including its `formatVersion`. The identities, tuples and models are the ones the F# recipe fixtures bind: the synthetic `recipe/fsharp-synthetic.json` and the TEST-ONLY signed `toolchains/recipes/fsharp/1.0.0.json` in [`fixtures/0.1.0-draft.1/signed/`](./index.md#fixtures-and-conformance). The morphir-dotnet guests advertise the same tuples.
+
+A process or `.NET` tool provider is identified by its delivery and its tuple, not by an `extensionId`, because the case qualifies whichever provider the generation's recipe bound. A built-in is identified by its `extensionId`, because it is part of the host and has no artifact.
 
 ## What it proves and what it does not
 
 When a generation passes the case, it shows that:
 
-- the selected frontend, the host and the selected backends agree on the model tuple and actually exchange a model over it;
-- the frontend compiles this package to the expected semantic IR;
-- each selected backend accepts that IR. Once the generation expectations are frozen, it also shows that each backend produces the expected F# files.
+- the selected frontend, the host and the selected backend agree on the model and actually exchange it;
+- the selected frontend compiles this package to the expected semantic IR;
+- the selected backend accepts that IR. Once the generation expectations are frozen, it also shows that it produces the expected F# files.
 
 It does not show:
 
@@ -71,12 +74,20 @@ The comparison is the corpus rule: the produced IR document equals the expected 
 
 ## Generation expectations are pending
 
-The expected generated F# files are not frozen yet, for two reasons:
+The expected generated F# files are not frozen yet.
 
-- the Native AOT host skips the Fantomas formatting pass, so its built-in backend emits different bytes from the managed hosts and from the process guest. How frozen files treat that difference is a maintainer decision;
-- candidate files have to come from morphir-dotnet and be reviewed before they are frozen. They are never recorded here from a backend run.
+> **Maintainer question M1: how are the expected generated files frozen?** The Native AOT built-in cannot run the Fantomas formatter, because Fantomas is built on the F# compiler's parser, which the Native AOT composition excludes. Formatted output also follows the platform's line endings. **Recommended default:** one unformatted set with LF line endings, produced by every delivery under an explicit format switch (a backend option, not a protocol member), and readiness runs with formatting off. A formatter hook is later, separate work, and readiness never runs hooks. Everything below about sets is **provisional** until M1 is answered.
 
-Each generation step therefore has `status: "pending"`, a `reason` and an empty `sets` array. A frozen step will list one or more sets. Each set has its `files` (the generated path, the committed file and its SHA-256), a `comparison` (`exact-bytes` or `json-member-order-insensitive`), a `provenance`, and an optional `appliesTo` object that says which deliveries it covers. The schema leaves `appliesTo` open, so one set for every provider and one set per delivery are both possible without changing the case version.
+Candidate files have to come from morphir-dotnet and be reviewed before they are frozen. They are never recorded here from a backend run.
+
+The generate step therefore has `status: "pending"`, a `reason` that names M1 and an empty `sets` array. A frozen step lists one or more sets. Each set has:
+
+- `files`: the generated path, the committed file and its SHA-256;
+- a `comparison`: `exact-bytes` or `json-member-order-insensitive`;
+- a `provenance`;
+- an optional `appliesTo`, keyed by delivery: `{ "delivery": ["built-in", "process"] }` names the deliveries of the selected provider it covers.
+
+A set without `appliesTo` covers every delivery and must be the step's only set. Otherwise each delivery appears in at most one set, and only deliveries the step lists under `providers`. The recommended default for M1 is one set without `appliesTo`.
 
 ## Case manifest
 
@@ -91,29 +102,29 @@ The corpus format, Gherkin with the closed step vocabulary 1.1, was not used. Th
 | `basis` | The corpus case, commit, feature blob, vocabulary and row the case reuses |
 | `package` | The package name and its exposed modules |
 | `sources` | Each document's `uri` as the frontend sees it, its `file` in the case directory and its SHA-256 |
-| `steps` | The compile step first, then one or more generation steps |
-| `steps.protocolVersion`, `steps.modelTuple` | The MEP version and tuple of a frontend or external provider |
-| `steps.modelInput` | The model a built-in provider reads |
-| `steps.provider` | The `delivery`, and for a built-in the `extensionId` |
+| `steps` | The compile step, then the generate step |
+| `steps.providers` | Each delivery of a selected provider that the step covers, at most once each: `delivery`; for a built-in, `extensionId` and its model (`modelOutput` when it compiles, `modelInput` when it generates); otherwise `protocolVersion` and `modelTuple` |
 | `steps.expected` | The expected outcome, IR or generated files, with comparison and provenance |
 
 Every file the manifest lists is stored with its exact bytes and LF line endings, and `.gitattributes` marks the case directory `-text` so checkouts do not rewrite them.
 
-The external backend step names its delivery but not its `extensionId`. The signed recipe fixture calls the backend `morphir-fsharp-backend`, while the morphir-dotnet process guest identifies itself as `org.finos.morphir.fsharp-backend`. That is the open question on [dotted provider identities](./toolset-recipe.md#open-questions-for-the-maintainer), and the case does not settle it.
+The external backend is `org.finos.morphir.fsharp-backend` and the external frontend is `org.finos.morphir.fsharp-frontend`. Dotted extension ids in release descriptors are decided, and the descriptor change is finos/morphir#1149. Until it lands, the signed fixtures use `morphir-fsharp-frontend` and `morphir-fsharp-backend` (see [toolset recipe limits](./toolset-recipe.md#limits-of-this-contract-version)). The case names neither, because it identifies external providers by delivery and tuple.
 
 ## Running the case
 
 A runner in morphir-dotnet reads the case as follows:
 
 1. Read `case.json`, accept only `schemaVersion` `0.1.0-draft.1`, and check every listed SHA-256 before using a file.
-2. Compile `sources` through the generation's frontend with the compile step's tuple, using the adapter that fits the delivery: `cli` for the `morphir` command line, `library` in process, or `mep-guest` for a process guest.
-3. Compare the produced IR with `expected/ir-4.0.0.json` using the stated comparison rule.
-4. For each generation step, give `expected/ir-4.0.0.json` to the selected provider and compare its output with the step's set for that delivery.
-5. Report the outcome as the generation's `workflow` check. It is `passed` only when the compile step passed and every generation step passed against frozen files. While a generation step is `pending` the check cannot pass: it is `skipped`, with a reason naming the pending steps, so the generation stays `capability-checked`.
+2. For each step, take the generation's selected provider for the step's operation from its lock. If the step does not list that provider's delivery under `providers`, or the provider's identity, protocol or model differs from the listed entry, the case does not cover this generation: the workflow check is `unsupported`, naming the step.
+3. Compile `sources` through the selected frontend, using the adapter that fits its delivery: `cli` for a built-in, run through the `morphir` command line, `library` in process, or `mep-guest` for a process or .NET tool guest. Compare the produced IR with `expected/ir-4.0.0.json` using the stated comparison rule.
+4. Give `expected/ir-4.0.0.json` to the selected backend, and compare its output with the generate step's set for that delivery.
+5. Report the outcome as the generation's `workflow` check. It is `passed` only when every step passed with the selected providers against frozen files. While the generate step is `pending` the check cannot pass: it is `skipped`, with a reason naming the pending step and M1.
+
+> **Maintainer question M5: what readiness must a staged generation reach before setup activates it?** **Recommended default:** no check `failed`, and every component `capability-checked`. A `skipped` or `unsupported` workflow check is allowed, `show` and `doctor` report it, and the generation is never called qualified. Under this default a generation whose workflow check is `skipped` is activated as `capability-checked`. The activation rule on the [receipt page](./installation-receipt.md#readiness) is **provisional** until M5 is answered.
 
 ## Checks in this repository
 
-`crates/morphir-toolchain-contract/tests/readiness_workflow.rs` checks the data only. It validates `case.json` against its schema; checks that every listed file is at a portable path inside the case directory and has its stated SHA-256; checks that the expected IR's `formatVersion` matches the declared value and the tuple's IR major version, and that it is an IR v4 library distribution of this package with its exposed modules; checks that every tuple, protocol version, built-in identity and model input matches the signed F# recipe fixture; checks that the qualified receipt fixture names this workflow; and checks that pending steps list no files. It generates and regenerates nothing. The docs job's `mise run examples:validate` validates the expected IR against the [IR v4 schema](/schemas/morphir-ir-v4.json); it runs whenever that schema or this case changes.
+`crates/morphir-toolchain-contract/tests/readiness_workflow.rs` checks the data only. It validates `case.json` against its schema; checks that every listed file is at a portable path inside the case directory and has its stated SHA-256; checks that the expected IR's `formatVersion` matches the declared value and the tuple's IR major version, and that it is an IR v4 library distribution of this package with its exposed modules; checks that every provider the synthetic and signed F# recipes can select for an operation, built-in or external, is covered by its step with the same identity, protocol and model; checks that each step names a delivery once and that frozen sets name disjoint deliveries; checks that the managed offerings, and only they, compile in process; checks that the qualified receipt fixture names this workflow; and checks that the pending step lists no files. It generates and regenerates nothing. The docs job's `mise run examples:validate` validates the expected IR against the [IR v4 schema](/schemas/morphir-ir-v4.json); it runs whenever that schema or this case changes.
 
 ```sh
 cargo test --locked --package morphir-toolchain-contract --test readiness_workflow

@@ -5,8 +5,7 @@
 //! finos/morphir-dotnet executes the case through its adapters.
 
 use morphir_toolchain_contract::{
-    DeliveryKind, LockedDelivery, Operation, Protocol, Sha256, TargetPath, read_receipt,
-    read_recipe,
+    LockedDelivery, Operation, Protocol, Sha256, TargetPath, read_receipt, read_recipe,
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -97,8 +96,21 @@ fn the_expected_ir_is_well_formed_for_its_declared_version() {
     );
     assert_eq!(ir["formatVersion"], ir_entry["formatVersion"]);
     // IR 4.0.0 is written with the canonical integer formatVersion 4.
-    let tuple_version =
-        semver::Version::parse(compile["modelTuple"]["irVersion"].as_str().unwrap()).unwrap();
+    let tuple_version = semver::Version::parse(
+        case_provider(compile, "process")["modelTuple"]["irVersion"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    // Every covered provider exchanges the same IR version.
+    for provider in compile["providers"].as_array().unwrap() {
+        let model = if provider["delivery"] == "built-in" {
+            &provider["modelOutput"]
+        } else {
+            &provider["modelTuple"]
+        };
+        assert_eq!(model["irVersion"], json!(tuple_version.to_string()));
+    }
     assert_eq!(ir["formatVersion"], json!(tuple_version.major));
     assert_eq!(ir["formatVersion"], 4, "the IR v4 shape is checked here");
     // The IR v4 schema itself is applied by `mise run examples:validate` in the
@@ -136,12 +148,66 @@ fn the_expected_ir_is_well_formed_for_its_declared_version() {
 #[test]
 fn pending_generation_steps_record_no_expected_files() {
     let case = case();
-    for id in ["generate-built-in", "generate-external"] {
-        let expected = &step(&case, id)["expected"];
-        assert_eq!(expected["status"], "pending", "{id}");
-        assert!(expected["sets"].as_array().unwrap().is_empty(), "{id}");
-        assert!(!expected["reason"].as_str().unwrap().trim().is_empty());
+    let expected = &step(&case, "generate")["expected"];
+    assert_eq!(expected["status"], "pending");
+    assert!(expected["sets"].as_array().unwrap().is_empty());
+    assert!(
+        expected["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with("Maintainer question M1")
+    );
+}
+
+/// A step names each delivery it covers once, and frozen sets that name
+/// deliveries name disjoint ones. A set without `appliesTo` stands alone.
+#[test]
+fn each_delivery_has_at_most_one_provider_and_one_set_per_step() {
+    let case = case();
+    for step in case["steps"].as_array().unwrap() {
+        let deliveries = step["providers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|provider| provider["delivery"].as_str().unwrap())
+            .collect::<Vec<_>>();
+        let unique = deliveries.iter().collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(unique.len(), deliveries.len(), "{}", step["id"]);
+        let sets = step["expected"]["sets"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        let mut covered = std::collections::BTreeSet::new();
+        for set in &sets {
+            match set["appliesTo"]["delivery"].as_array() {
+                None => assert_eq!(sets.len(), 1, "a set for every delivery stands alone"),
+                Some(named) => {
+                    for delivery in named {
+                        let delivery = delivery.as_str().unwrap();
+                        assert!(deliveries.contains(&delivery), "{delivery}");
+                        assert!(covered.insert(delivery.to_owned()), "{delivery} twice");
+                    }
+                }
+            }
+        }
     }
+}
+
+fn model_json(model: &morphir_toolchain_contract::ModelInput) -> Value {
+    json!({
+        "profile": model.profile.as_str(),
+        "codec": model.codec.as_str(),
+        "irVersion": model.ir_version.to_string()
+    })
+}
+
+fn case_provider<'a>(step: &'a Value, delivery: &str) -> &'a Value {
+    step["providers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|provider| provider["delivery"] == delivery)
+        .unwrap_or_else(|| panic!("{} covers {delivery}", step["id"]))
 }
 
 fn tuple_json(protocol: &Protocol) -> Value {
@@ -157,8 +223,44 @@ fn tuple_json(protocol: &Protocol) -> Value {
     }
 }
 
+/// Every provider a recipe can select for an operation of the case is one
+/// the case covers, with the same identity, protocol and model. So whatever
+/// a generation selected, the case runs with that provider.
+fn check_recipe_against_case(recipe: &morphir_toolchain_contract::ToolsetRecipe) {
+    let case = case();
+    assert_eq!(recipe.preset().as_str(), case["preset"]);
+    for operation in recipe.operations() {
+        let (id, built_in_member) = match operation {
+            Operation::Compile { .. } => ("compile", "modelOutput"),
+            Operation::Generate { .. } => ("generate", "modelInput"),
+        };
+        let step = step(&case, id);
+        for host in recipe.hosts() {
+            if let Some(built_in) = host
+                .built_ins()
+                .iter()
+                .find(|built_in| built_in.operation() == operation)
+            {
+                let covered = case_provider(step, "built-in");
+                assert_eq!(built_in.extension_id().as_str(), covered["extensionId"]);
+                assert_eq!(model_json(built_in.model()), covered[built_in_member]);
+            }
+        }
+        for provider in recipe
+            .providers()
+            .iter()
+            .filter(|provider| provider.operation() == operation)
+        {
+            let covered = case_provider(step, provider.delivery().kind().as_str());
+            let protocol = provider.delivery().protocol();
+            assert_eq!(protocol.version().as_str(), covered["protocolVersion"]);
+            assert_eq!(tuple_json(protocol), covered["modelTuple"]);
+        }
+    }
+}
+
 #[test]
-fn the_tuples_agree_with_the_signed_fsharp_recipe() {
+fn every_provider_the_signed_fsharp_recipe_can_select_is_covered() {
     let repository =
         json(&root().join("docs/spec/toolchain/fixtures/0.1.0-draft.1/signed/repository.json"));
     let recipe = read_recipe(
@@ -168,62 +270,24 @@ fn the_tuples_agree_with_the_signed_fsharp_recipe() {
             .as_bytes(),
     )
     .unwrap();
-    let case = case();
-    assert_eq!(recipe.preset().as_str(), case["preset"]);
-
-    let compile = step(&case, "compile");
-    let frontend = recipe
-        .providers()
-        .iter()
-        .find(|provider| {
-            matches!(provider.operation(), Operation::Compile { language } if language.as_str() == compile["language"])
-                && provider.delivery().kind() == DeliveryKind::Process
-        })
-        .expect("the recipe binds a process frontend");
-    assert_eq!(
-        frontend.delivery().protocol().version().as_str(),
-        compile["protocolVersion"]
-    );
-    assert_eq!(
-        tuple_json(frontend.delivery().protocol()),
-        compile["modelTuple"]
-    );
-
-    let built_in_step = step(&case, "generate-built-in");
+    check_recipe_against_case(&recipe);
+    // The managed offerings compile in process; Native AOT does not.
     for host in recipe.hosts() {
-        let built_in = host
+        let compiles = host
             .built_ins()
             .iter()
-            .find(|built_in| matches!(built_in.operation(), Operation::Generate { target } if target.as_str() == built_in_step["target"]))
-            .expect("every offering keeps the built-in F# generator");
-        assert_eq!(
-            built_in.extension_id().as_str(),
-            built_in_step["provider"]["extensionId"]
-        );
-        let input = built_in.model_input();
-        assert_eq!(
-            json!({ "profile": input.profile.as_str(), "codec": input.codec.as_str(), "irVersion": input.ir_version.to_string() }),
-            built_in_step["modelInput"]
-        );
+            .any(|built_in| matches!(built_in.operation(), Operation::Compile { .. }));
+        assert_eq!(compiles, host.deployment().as_str() != "native-aot");
     }
+}
 
-    let external_step = step(&case, "generate-external");
-    let backend = recipe
-        .providers()
-        .iter()
-        .find(|provider| {
-            matches!(provider.operation(), Operation::Generate { target } if target.as_str() == external_step["target"])
-                && provider.delivery().kind().as_str() == external_step["provider"]["delivery"]
-        })
-        .expect("the recipe binds an external process backend");
-    assert_eq!(
-        backend.delivery().protocol().version().as_str(),
-        external_step["protocolVersion"]
-    );
-    assert_eq!(
-        tuple_json(backend.delivery().protocol()),
-        external_step["modelTuple"]
-    );
+#[test]
+fn every_provider_the_synthetic_fsharp_recipe_can_select_is_covered() {
+    let recipe = read_recipe(&read(
+        &root().join("docs/spec/toolchain/fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json"),
+    ))
+    .unwrap();
+    check_recipe_against_case(&recipe);
 }
 
 #[test]

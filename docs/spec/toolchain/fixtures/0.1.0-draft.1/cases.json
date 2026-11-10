@@ -1473,6 +1473,40 @@
       "contract": "receipt",
       "document": "receipt/binding/host-repository-substituted.json",
       "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/self-contained.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/built-in-compile-with-model-input.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[1].builtIns[0].modelInput"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/built-in-compile-without-model-output.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "hosts[1].builtIns[0].modelOutput"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/built-in-frontend.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/built-in-compile-with-model-input.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[0].modelInput"
+      }
     }
   ],
   "bindings": [
@@ -1786,6 +1820,31 @@
       "expected": {
         "code": "repository_mismatch",
         "path": "host.installation.authentication.repositoryId"
+      }
+    },
+    {
+      "name": "a managed offering compiles with its built-in frontend",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/self-contained.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "compile",
+            "language": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir-dotnet.fsharp",
+            "version": "1.2.3"
+          },
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp",
+            "version": "1.2.3"
+          }
+        ]
       }
     }
   ]

@@ -92,11 +92,18 @@ fn committed_fixtures_are_reproducible_from_their_labels() {
         );
         store(signed_dir().join(format!("{name}.lock.json")), lock);
     }
+    // The negatives vary the Native AOT lock, whose first provider is the
+    // process frontend with a repository and artifact digests.
+    let native = &locks
+        .iter()
+        .find(|(name, _, _)| name == "fsharp-native-aot")
+        .unwrap()
+        .2;
     store(
         signed_dir().join("negative/lock-provider-not-in-recipe.lock.json"),
-        &repository::lock_with_unbound_provider(&locks[0].2),
+        &repository::lock_with_unbound_provider(native),
     );
-    for (name, lock) in repository::lock_recipe_negatives(&locks[0].2, &repository::published()) {
+    for (name, lock) in repository::lock_recipe_negatives(native, &repository::published()) {
         store(signed_dir().join("negative").join(name), &lock);
     }
 }
@@ -165,8 +172,12 @@ async fn the_repository_identity_is_the_digest_of_the_canonical_root() {
     }
 }
 
+/// Offering descriptors publish `compatibility.morphirCli` `<0.0.0-0`, so
+/// the Morphir CLI's version 1 tool client never selects a .NET offering,
+/// whatever its version, while a recipe still binds each offering's distinct
+/// per-platform artifact.
 #[tokio::test]
-async fn the_v1_tool_client_selects_each_offering_by_tool_id_and_platform() {
+async fn no_version_1_client_selects_a_dotnet_offering() {
     let fixture = fixture();
     let directory = tempfile::tempdir().unwrap();
     let client = support::tuf::load_set(&fixture, &fixture["metadata"], directory.path())
@@ -190,22 +201,24 @@ async fn the_v1_tool_client_selects_each_offering_by_tool_id_and_platform() {
             case["platform"]["arch"].as_str().unwrap(),
         )
         .unwrap();
-        let resolved = client
-            .resolve(
-                &ToolId::parse(tool_id).unwrap(),
-                &Selection::Channel(Channel::Stable),
-                &platform,
-                &cli,
-            )
-            .await
-            .unwrap_or_else(|error| panic!("{tool_id} {platform:?}: {error}"));
-        let expected = case["expected"]["targetPath"].as_str().unwrap();
-        assert_eq!(resolved.artifact().target_path().as_str(), expected);
-        assert_eq!(
-            Some(resolved.digest()),
-            targets.digest(expected).map(|d| d.digest())
-        );
-        // The recipe binds the same artifact for that deployment and platform.
+        assert_eq!(case["expected"]["selected"], false);
+        for version in [
+            &cli,
+            &Version::parse("0.4.0-beta.12").unwrap(),
+            &Version::parse("99.0.0").unwrap(),
+        ] {
+            let resolved = client
+                .resolve(
+                    &ToolId::parse(tool_id).unwrap(),
+                    &Selection::Channel(Channel::Stable),
+                    &platform,
+                    version,
+                )
+                .await;
+            assert!(resolved.is_err(), "{tool_id} {platform:?} {version}");
+        }
+        // The recipe binds the offering's own authenticated artifact there.
+        let expected = case["recipeBinding"]["targetPath"].as_str().unwrap();
         let host = recipe
             .hosts()
             .iter()
@@ -214,8 +227,8 @@ async fn the_v1_tool_client_selects_each_offering_by_tool_id_and_platform() {
         let binding = &host.platforms()
             [&PlatformId::parse(case["recipePlatform"].as_str().unwrap()).unwrap()];
         assert_eq!(binding.target.as_str(), expected);
-        assert_eq!(resolved.digest(), binding.sha256.digest());
-        selected.insert(resolved.digest().clone());
+        assert_eq!(Some(&binding.sha256), targets.digest(expected));
+        selected.insert(binding.sha256.clone());
     }
     // Implementation, deployment and platform are each part of the identity,
     // although every Windows archive's entry point is morphir.exe.

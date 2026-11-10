@@ -23,6 +23,11 @@ pub const SPEC_VERSION: &str = "1.0.36";
 pub const NEVER: &str = "2999-01-01T00:00:00Z";
 pub const REFERENCE_TIME: &str = "2030-01-01T00:00:00Z";
 pub const HOST_VERSION: &str = "1.2.3";
+/// What an offering's version 1 descriptor publishes in `compatibility.morphirCli`:
+/// a comparator no version satisfies, so the Morphir CLI's version 1 tool
+/// client never selects a .NET host offering. Managers bind offerings
+/// through recipes and never evaluate it.
+pub const OFFERING_MORPHIR_CLI: &str = "<0.0.0-0";
 
 /// Encode TUF canonical JSON.
 pub fn canonical(value: &Value) -> Vec<u8> {
@@ -329,7 +334,7 @@ pub fn add_tool_release(
         "version": HOST_VERSION,
         "channels": ["stable"],
         "status": "active",
-        "compatibility": { "morphirCli": ">=0.0.0" },
+        "compatibility": { "morphirCli": OFFERING_MORPHIR_CLI },
         "artifacts": artifacts
     });
     targets.insert(
@@ -343,7 +348,7 @@ pub fn add_tool_release(
                 "version": HOST_VERSION,
                 "channels": ["stable"],
                 "status": "active",
-                "compatibility": { "morphirCli": ">=0.0.0" },
+                "compatibility": { "morphirCli": OFFERING_MORPHIR_CLI },
                 "platforms": on.iter().map(|platform| v1_platform(*platform)).collect::<Vec<_>>()
             })),
         },
@@ -386,6 +391,31 @@ fn built_in_generate() -> Value {
     })
 }
 
+/// The in-process F# frontend of the managed offerings, registered as
+/// `morphir-dotnet.fsharp` (morphir-dotnet `cli-model-compilation`). The
+/// Native AOT offering has none and uses the process frontend.
+pub const BUILT_IN_FRONTEND_ID: &str = "morphir-dotnet.fsharp";
+
+fn built_in_compile() -> Value {
+    json!({
+        "operation": "compile",
+        "language": "fsharp",
+        "extensionId": BUILT_IN_FRONTEND_ID,
+        "version": HOST_VERSION,
+        "modelOutput": model_input()
+    })
+}
+
+/// The built-ins of an offering: every offering generates F# in process, and
+/// the managed offerings also compile it in process.
+fn built_ins(deployment: &str) -> Value {
+    if deployment == "native-aot" {
+        json!([built_in_generate()])
+    } else {
+        json!([built_in_compile(), built_in_generate()])
+    }
+}
+
 fn glibc() -> Value {
     json!({
         "kind": "native", "name": "glibc", "versions": [">=2.28.0"],
@@ -426,7 +456,7 @@ fn archive_offering(targets: &Targets, offering: &Offering, on: &[PlatformId]) -
         "protocolVersions": ["0.1", "0.2.0-draft.1"],
         "wasmAbis": [],
         "prerequisites": prerequisites,
-        "builtIns": [built_in_generate()],
+        "builtIns": built_ins(offering.deployment),
         "platforms": platforms
     })
 }
@@ -447,7 +477,7 @@ pub fn host_offerings(targets: &Targets) -> Vec<Value> {
         "protocolVersions": ["0.1", "0.2.0-draft.1"],
         "wasmAbis": [],
         "prerequisites": [runtime(), sdk()],
-        "builtIns": [built_in_generate()],
+        "builtIns": built_ins("dotnet-tool"),
         "platforms": platforms()
             .into_iter()
             .map(|platform| (platform.to_string(), json!({ "target": TOOL_PACKAGE, "sha256": package_digest })))
@@ -975,7 +1005,7 @@ pub fn published() -> Targets {
                 "version": HOST_VERSION,
                 "channels": [],
                 "status": "active",
-                "compatibility": { "morphirCli": ">=0.0.0" },
+                "compatibility": { "morphirCli": OFFERING_MORPHIR_CLI },
                 "platforms": [v1_platform(windows)]
             })),
         },
@@ -1248,7 +1278,11 @@ pub fn fixture() -> Value {
 // ----- frozen locks -----------------------------------------------------------
 
 /// The requests whose frozen locks are committed beside the repository.
-pub const FROZEN: [(&str, &str); 3] = [
+pub const FROZEN: [(&str, &str); 4] = [
+    (
+        "fsharp-self-contained",
+        "schemaVersion = \"0.1.0-draft.1\"\nplatforms = [\"win-x64\", \"win-arm64\", \"osx-x64\", \"osx-arm64\", \"linux-x64\", \"linux-arm64\"]\n[host]\nimplementation = \"dotnet\"\ndeployment = \"self-contained\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp\"\n",
+    ),
     (
         "fsharp-native-aot",
         "schemaVersion = \"0.1.0-draft.1\"\nplatforms = [\"win-x64\", \"win-arm64\", \"osx-x64\", \"osx-arm64\", \"linux-x64\", \"linux-arm64\"]\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp\"\n",
@@ -1319,8 +1353,12 @@ pub fn provider_json(provider: &LockedProvider) -> Value {
         entry.insert(format!("{prefix}Sha256"), json!(digest.sha256.to_string()));
     };
     match provider.delivery() {
-        LockedDelivery::BuiltIn { model_input } => {
-            entry.insert("modelInput".into(), model_input_json(model_input));
+        LockedDelivery::BuiltIn { model } => {
+            let member = match provider.operation() {
+                Operation::Compile { .. } => "modelOutput",
+                Operation::Generate { .. } => "modelInput",
+            };
+            entry.insert(member.into(), model_input_json(model));
         }
         LockedDelivery::Process {
             repository_id,

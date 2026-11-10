@@ -236,8 +236,10 @@ impl LockedProvider {
 pub enum LockedDelivery {
     /// A provider compiled into the locked host; it has no artifact.
     BuiltIn {
-        /// Model input the built-in reads or writes.
-        model_input: ModelInput,
+        /// The model format the built-in exchanges with the host: the model a
+        /// `generate` built-in reads (`modelInput`), or the model a `compile`
+        /// built-in writes (`modelOutput`).
+        model: ModelInput,
     },
     /// A process guest from an extension release descriptor.
     Process {
@@ -406,6 +408,23 @@ pub(crate) fn model_input(node: Node<'_>) -> Result<ModelInput> {
     })
 }
 
+/// The model member of a built-in provider: `modelOutput` for a `compile`
+/// built-in, which writes the model, and `modelInput` for a `generate`
+/// built-in, which reads it. The other member is refused.
+pub(crate) fn built_in_model(object: &Obj<'_>, operation: &Operation) -> Result<ModelInput> {
+    let (wanted, other) = match operation {
+        Operation::Compile { .. } => ("modelOutput", "modelInput"),
+        Operation::Generate { .. } => ("modelInput", "modelOutput"),
+    };
+    if object.has(other) {
+        return Err(inconsistent(
+            object.member_path(other),
+            format!("a built-in for this operation declares {wanted}, not {other}"),
+        ));
+    }
+    object.req(wanted, model_input)
+}
+
 fn model_tuple(node: Node<'_>, provider: &Operation) -> Result<ModelTuple> {
     let object = node.object()?;
     let method_path = object.member_path("operation");
@@ -532,7 +551,7 @@ pub(crate) fn locked_provider(node: Node<'_>) -> Result<LockedProvider> {
     let version = object.req("version", version)?;
     let delivery = match kind {
         DeliveryKind::BuiltIn => LockedDelivery::BuiltIn {
-            model_input: object.req("modelInput", model_input)?,
+            model: built_in_model(&object, &operation)?,
         },
         DeliveryKind::Process => LockedDelivery::Process {
             repository_id: object.req("repositoryId", sha256)?,

@@ -75,7 +75,7 @@ Each provider has `operation` (`compile` with `language`, or `generate` with `ta
 
 | `delivery` | Additional members |
 | --- | --- |
-| `built-in` | `modelInput` |
+| `built-in` | `modelOutput` for `compile` and `modelInput` for `generate`: the model the built-in writes or reads. The other member is `inconsistent_document` |
 | `process` | `repositoryId`, `descriptorTarget`, `descriptorSha256`, `artifactTarget`, `artifactSha256`, protocol members |
 | `wasm` | `abi` and the `process` members |
 | `dotnet-tool` | `repositoryId`, `descriptorTarget`, `descriptorSha256` (the release's extension descriptor, whose claims describe the guest), `packageId`, `command`, `packageTarget`, `packageSha256`, protocol members |
@@ -84,7 +84,7 @@ The protocol members are `protocolVersion` and exactly one compatibility member.
 
 For a `dotnet-tool` host offering, `hostTarget` names the authenticated package bytes.
 
-Understood critical paths: `schemaVersion`, `critical`, `requestSha256`, `recipe`, `recipe.repositoryId`, `recipe.target`, `recipe.sha256`, `host`, `host.implementation`, `host.version`, `host.deployment`, `platforms`, `platforms.*`, `platforms.*.hostTarget`, `platforms.*.hostSha256`, `platforms.*.providers`, and `platforms.*.providers.<member>` for each provider member above, including `modelTuple.<member>` and `modelInput.<member>` for each tuple and input member. A lock that needs every reader to understand a provider member lists it, for example `platforms.*.providers.modelTuple`. A platform is named only by `*`: `platforms.win-x64.hostTarget` is not an understood path and is refused with `unsupported_critical_member` (`lock/negative/critical-concrete-platform-key.json`).
+Understood critical paths: `schemaVersion`, `critical`, `requestSha256`, `recipe`, `recipe.repositoryId`, `recipe.target`, `recipe.sha256`, `host`, `host.implementation`, `host.version`, `host.deployment`, `platforms`, `platforms.*`, `platforms.*.hostTarget`, `platforms.*.hostSha256`, `platforms.*.providers`, and `platforms.*.providers.<member>` for each provider member above, including `modelTuple.<member>`, `modelInput.<member>` and `modelOutput.<member>` for each tuple and model member. A lock that needs every reader to understand a provider member lists it, for example `platforms.*.providers.modelTuple`. A platform is named only by `*`: `platforms.win-x64.hostTarget` is not an understood path and is refused with `unsupported_critical_member` (`lock/negative/critical-concrete-platform-key.json`).
 
 ## Frozen restore
 

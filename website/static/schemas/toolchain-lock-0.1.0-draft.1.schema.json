@@ -62,7 +62,11 @@
           "platforms.*.providers.modelInput",
           "platforms.*.providers.modelInput.profile",
           "platforms.*.providers.modelInput.codec",
-          "platforms.*.providers.modelInput.irVersion"
+          "platforms.*.providers.modelInput.irVersion",
+          "platforms.*.providers.modelOutput",
+          "platforms.*.providers.modelOutput.profile",
+          "platforms.*.providers.modelOutput.codec",
+          "platforms.*.providers.modelOutput.irVersion"
         ]
       }
     },
@@ -226,7 +230,26 @@
             }
           },
           "then": {
-            "required": [ "modelInput" ]
+            "if": {
+              "required": [ "operation" ],
+              "properties": {
+                "operation": {
+                  "const": "compile"
+                }
+              }
+            },
+            "then": {
+              "not": {
+                "required": [ "modelInput" ]
+              },
+              "required": [ "modelOutput" ]
+            },
+            "else": {
+              "not": {
+                "required": [ "modelOutput" ]
+              },
+              "required": [ "modelInput" ]
+            }
           }
         },
         {
@@ -381,6 +404,9 @@
           "$ref": "#/$defs/modelTuple"
         },
         "modelInput": {
+          "$ref": "#/$defs/modelInput"
+        },
+        "modelOutput": {
           "$ref": "#/$defs/modelInput"
         }
       }
