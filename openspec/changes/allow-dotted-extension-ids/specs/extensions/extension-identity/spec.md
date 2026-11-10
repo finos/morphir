@@ -33,7 +33,7 @@ Paths in the home are relative to the home root, and paths in a repository are r
 
 This capability fixes each file's path, version, encoding, unknown-member rule, locking and recovery. It does not list the members of a catalog entry, an extension lock or the repositories configuration. Those member tables are written by task 1.4 on `docs/design/draft/extensions/distribution-and-acquisition.md`. Until that page lands, an installer cannot be built from this change alone, and the Rust source is the only statement of those members.
 
-A host can find a home in a state it cannot use: files at earlier versions written by an older host, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. What a host does with old state is provisional on the open question `Q-OLDHOME`.
+A host can find a home in a state it cannot use: files at earlier versions written by an older host, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. The maintainer decided what a host does with it on 10 November 2026 (Decision 10, recorded on finos/morphir#1146): it moves the old state to a marked backup, asking first; `--yes` skips the question; `morphir doctor --fix` makes the same move by hand. Four readings of that decision are provisional on the maintainer's confirmation (`Q-OLDHOME-READINGS`).
 
 ## ADDED Requirements
 
@@ -247,7 +247,7 @@ Under the state lock, before it recovers any journal, a host SHALL check for old
 
 #### Scenario: A home the Rust CLI left mid-install
 - **WHEN** a current host takes the state lock in a home with a `2.0.0-draft.2` catalog and `locks/extensions/morphir-elm.json.transaction` at integer `1`
-- **THEN** it reports old state and handles it as `Q-OLDHOME` decides, and does not report a journal refusal first
+- **THEN** it reports old state and offers to move it aside, and does not report a journal refusal first
 
 #### Scenario: Two journals are old state
 - **WHEN** a host takes the state lock and finds `morphir-elm.json.transaction` and `acme.tools.json.transaction`
@@ -316,24 +316,71 @@ A publisher to a local repository SHALL hold an exclusive lock on `.publish.lock
 - **THEN** one waits for the other's publish lock, and the history ends with both records, each written once
 
 ### Requirement: A host does not read, replay or convert old state
-Provisional on open question `Q-OLDHOME`, under every outcome. A host SHALL NOT read, replay or convert old state. Outcome `OLDHOME-C`, converting old state in place, contradicts the decision that transient drafts are not converted, so this change specifies no conversion. When any file is old state, every extension's state in the home is old state: a current catalog beside one old extension lock is moved aside too.
+A host SHALL NOT read, replay or convert old state; it only moves it aside (maintainer, Decision 10, 10 November 2026). Converting old state in place contradicts the decision that transient drafts are not converted, so this change specifies no conversion. When any file is old state, every extension's state in the home is old state: a current catalog beside one old extension lock is moved aside too.
 
 #### Scenario: Old state is found by version
 - **WHEN** a current host takes the state lock in a home whose catalog is at `2.0.0-draft.3` and whose `locks/extensions/morphir-elm.json` is at `"1.0"`
 - **THEN** it treats the home as holding old state, naming `locks/extensions/morphir-elm.json`
 
-### Requirement: A current host refuses old state and names one command
-Provisional on `Q-OLDHOME`; this is outcome `OLDHOME-A`. A host SHALL refuse every command that reads or writes extension state in a home that holds old state. The refusal SHALL name the first old file, the versions the host reads, and the one command that moves the old state aside. Under outcome `OLDHOME-B` there is no refusal: the first such command moves the old state aside itself and writes a notice naming the backup directory on stderr.
+### Requirement: A command that meets old state offers to move it aside
+When a command that needs extension state finds old state, the host SHALL show what the move would take, ask the user to accept moving it to a backup, and on acceptance run the move of `morphir doctor --fix` and go on with the command. With `--yes`, the host SHALL make the move without asking. The host SHALL write the question and the notice naming the backup directory on stderr.
 
-#### Scenario: A home an older CLI wrote is refused
-- **WHEN** a current host is asked to install `morphir-elm` into a home whose `catalog/extensions.json` is at `2.0.0-draft.2`
-- **THEN** it refuses, names `catalog/extensions.json`, the version `2.0.0-draft.3` and the command that moves the old state aside, and changes no file
+#### Scenario: Accepted at the prompt
+- **WHEN** a user at a terminal runs an install of `morphir-elm` in a home whose catalog is at `2.0.0-draft.2`, and accepts the prompt
+- **THEN** the host moves the old state to `backups/extensions-<time>/`, writes the notice on stderr, and installs `morphir-elm` into a new `2.0.0-draft.3` catalog
+
+#### Scenario: Skipped with --yes
+- **WHEN** the same install runs with `--yes`
+- **THEN** the host makes the same move without asking and installs `morphir-elm`
+
+### Requirement: A declined or unanswerable prompt changes nothing
+Provisional on the maintainer's confirmation of `Q-OLDHOME-READINGS` (readings 1 and 2). When the user declines the prompt, or when standard input is not a terminal and `--yes` is not given, the host SHALL refuse the command and change nothing. The refusal SHALL name the first old file, `morphir doctor --fix` and `--yes`.
+
+#### Scenario: Declined
+- **WHEN** the user declines the prompt
+- **THEN** the command fails, no file in the home changes, and the message names `catalog/extensions.json`, `morphir doctor --fix` and `--yes`
+
+#### Scenario: No terminal and no --yes
+- **WHEN** an install runs in a script whose standard input is not a terminal, without `--yes`, in a home with old state
+- **THEN** it asks nothing, fails, changes nothing, and names the same file, `morphir doctor --fix` and `--yes`
+
+### Requirement: morphir doctor reports old state
+`morphir doctor` SHALL check the home for old state and for a backup without its completion marker. Provisional on `Q-OLDHOME-READINGS` (reading 3): without `--fix` it SHALL report each finding and the files `--fix` would move, and change nothing. It SHALL write its result on stdout and its messages on stderr, and exit 0 when it finds nothing to fix, 1 when it finds something, and 2 when it does not run, such as on an unknown option.
+
+#### Scenario: doctor reports only
+- **WHEN** a user runs `morphir doctor` in a home whose catalog is at `2.0.0-draft.2`
+- **THEN** it reports old state, lists the catalog and each extension lock and journal that `--fix` would move, exits 1, and changes no file
+
+### Requirement: morphir doctor --fix makes the move
+`morphir doctor --fix` SHALL make the move of "Old state moves to a named backup" and complete an unmarked backup. Provisional on `Q-OLDHOME-READINGS` (reading 4): it SHALL first show what it will move and ask, unless `--yes` is given, and a declined or unanswerable prompt SHALL change nothing. It SHALL exit 0 when nothing is left to fix, and 1 otherwise.
+
+#### Scenario: doctor --fix moves
+- **WHEN** a user runs `morphir doctor --fix --yes` in a home with old state
+- **THEN** it moves the old state to a marked backup, reports the backup directory, and exits 0
+
+#### Scenario: A second run finds nothing to fix
+- **WHEN** `morphir doctor --fix` runs again in that home, or `morphir doctor` runs there
+- **THEN** it finds nothing to fix, changes nothing, and exits 0
+
+### Requirement: The automatic path and doctor --fix make the same move
+The move a command makes on acceptance and the move `morphir doctor --fix` makes SHALL be one operation: the same files moved in the same order, the same backup layout and the same completion marker. A host SHALL implement them once.
+
+#### Scenario: The same backup either way
+- **WHEN** two copies of one home with old state are repaired, one by an install accepted at the prompt and one by `morphir doctor --fix --yes`
+- **THEN** both backup directories hold the same files at the same paths, each with `.complete`, and both homes hold no old state
+
+### Requirement: The host asks without holding the state lock
+A host SHALL detect old state under the state lock, release the lock before it asks, and take it again after acceptance. It SHALL then detect old state again. When the old state differs from what it showed, it SHALL show it and ask again, or with `--yes` move what it now finds. It SHALL make the move and then the command's own state change in that one hold.
+
+#### Scenario: The command continues against the empty state
+- **WHEN** an uninstall of `morphir-elm` is accepted at the prompt in a home whose old catalog listed `morphir-elm`
+- **THEN** the host moves the old state, and the uninstall then finds `morphir-elm` not installed in the empty state and reports that
 
 ### Requirement: Old state moves to a named backup
-Provisional on `Q-OLDHOME` (outcomes A and B). Under the state lock, a host SHALL move every journal and extension lock in `locks/extensions/`, then `catalog/extensions.json` if present, into `backups/extensions-<time>/` (UTC, as `YYYYMMDDTHHMMSSZ`), each keeping its path relative to the home, then write an empty `.complete` there. It SHALL NOT move the store, the repositories configuration or either lock file.
+Under the state lock, a host SHALL move every journal and extension lock in `locks/extensions/`, then `catalog/extensions.json` if present, into `backups/extensions-<time>/` (UTC, as `YYYYMMDDTHHMMSSZ`), each keeping its path relative to the home, then write an empty `.complete` there. It SHALL NOT move the store, the repositories configuration or either lock file.
 
 #### Scenario: The old state is moved aside
-- **WHEN** the user runs that command at 2026-11-10T09:30:00Z in that home, which also holds `locks/extensions/morphir-elm.json` at `"1.0"`
+- **WHEN** the move runs at 2026-11-10T09:30:00Z in a home whose catalog is at `2.0.0-draft.2` and which also holds `locks/extensions/morphir-elm.json` at `"1.0"`
 - **THEN** `backups/extensions-20261110T093000Z/` holds `catalog/extensions.json`, `locks/extensions/morphir-elm.json` and `.complete`, the home holds neither moved file, `config/extensions/repositories.json` is unchanged, and the next install writes a `2.0.0-draft.3` catalog
 
 #### Scenario: Old state without a catalog
@@ -341,15 +388,15 @@ Provisional on `Q-OLDHOME` (outcomes A and B). Under the state lock, a host SHAL
 - **THEN** the backup directory holds that lock and `.complete`, and no catalog
 
 ### Requirement: Only a backup without its completion marker is completed
-Provisional on `Q-OLDHOME` (outcomes A and B). A backup directory `backups/extensions-<time>/` is complete when it holds `.complete`. When exactly one lacks it, a host SHALL move any old state into it, then write `.complete`, instead of starting another; with no old state left it only writes `.complete`. When more than one lacks it, a file to move exists at its target, or a new directory's name exists, the host SHALL refuse and name them.
+A backup directory `backups/extensions-<time>/` is complete when it holds `.complete`. When exactly one lacks it, the move SHALL put any old state into it, then write `.complete`, instead of starting another. With no old state left, any state command except `morphir doctor` without `--fix` SHALL only write `.complete`, without asking. When more than one lacks it, a file to move exists at its target, or a new directory's name exists, the host SHALL refuse and name them.
 
 #### Scenario: An interrupted move is completed
 - **WHEN** the move was interrupted after it moved the extension locks and before it moved the catalog, and it runs again
 - **THEN** it moves the catalog into the same backup directory, writes `.complete`, and starts no new one
 
 #### Scenario: Interrupted before the marker
-- **WHEN** the move had moved every file but stopped before writing `.complete`, and any state command runs
-- **THEN** the host writes `.complete` in that directory and goes on, since no old state is left
+- **WHEN** the move had moved every file but stopped before writing `.complete`, and any state command other than `morphir doctor` without `--fix` runs
+- **THEN** the host writes `.complete` in that directory, without asking, and goes on, since no old state is left
 
 #### Scenario: A completed backup is never reused
 - **WHEN** a complete backup holds `locks/extensions/morphir-elm.json`, the older CLI later writes old state again, and the move runs

@@ -49,6 +49,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li>transient pre-1.0 document formats are not read or converted ("we are paying too much of a cost to support transient pre 1.0 contracts");</li>
 <li>one installed catalog, rather than a separate partition for dotted ids, with older hosts not protected ("we don't have users to support the cost of maintaining 2 versions").</li>
 </ul>
+<p>A fourth, of 10 November 2026 (Decision 10), answers what a host does with a home that an older CLI wrote: it moves the old state aside after asking, <code>--yes</code> skips the question, and <code>morphir doctor --fix</code> runs the same repair by hand (<a href="#old-1">OLD-1</a>).</p>
 
 <nav class="toc" aria-label="Contents">
 <ul>
@@ -69,7 +70,8 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li><a href="#def-3">DEF-3. The state lock primitive</a></li>
 <li><a href="#def-4">DEF-4. Path spelling and temporary files</a></li>
 <li><a href="#hist-1">HIST-1. A history holds one version</a></li>
-<li><a href="#old-1">OLD-1. A home that an older CLI wrote (provisional)</a></li>
+<li><a href="#old-1">OLD-1. A home that an older CLI wrote</a></li>
+<li><a href="#doc-1">DOC-1. A morphir doctor command, as far as this decision needs it</a></li>
 <li><a href="#cfg-1">CFG-1. Project configuration quotes dotted ids</a></li>
 <li><a href="#conf-1">CONF-1. Shared conformance cases</a></li>
 <li><a href="#repo-1">REPO-1. Delivery order</a></li>
@@ -79,7 +81,8 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li><a href="#migration">Migration plan</a></li>
 <li><a href="#open-questions">Open questions</a>
 <ul>
-<li><a href="#q-oldhome">Q-OLDHOME</a></li>
+<li><a href="#q-oldhome">Q-OLDHOME (answered)</a></li>
+<li><a href="#q-oldhome-readings">Q-OLDHOME-READINGS</a></li>
 <li><a href="#q-publisher">Q-PUBLISHER</a></li>
 <li><a href="#q-device">Q-DEVICE</a></li>
 <li><a href="#q-segment">Q-SEGMENT</a></li>
@@ -285,7 +288,7 @@ repository/
 <li><strong>Order under the state lock.</strong>
 <ol>
 <li>Detect old state. Read each file's <code>schemaVersion</code>, and read the journals in full. Old state is a catalog not at <code>2.0.0-draft.3</code>, an extension lock or journal not at <code>2.0.0-draft.1</code>, more than one journal, or a journal that fails its checks.</li>
-<li>If there is old state, handle it as <a href="#q-oldhome">Q-OLDHOME</a> decides (<a href="#old-1">OLD-1</a>), and recover nothing.</li>
+<li>If there is old state, release the state lock and offer the move of <a href="#old-1">OLD-1</a> (Decision 10); recover nothing from old state.</li>
 <li>Otherwise recover the one journal, if there is one: write the lock, then the catalog, then remove the journal.</li>
 </ol></li>
 <li><strong>The checks.</strong> A journal passes when it is at <code>2.0.0-draft.1</code> and its saved lock and catalog pass full validation, as each document's reader validates it, including ids, order and critical members. "Valid JSON at a version" was too loose: two hosts could differ on a saved catalog with an invalid id.</li>
@@ -332,23 +335,28 @@ repository/
 <p><strong>Edge cases.</strong> A CR before LF is JSON whitespace, so CRLF histories are valid. A history with no record, empty or only blank lines, is refused, as <span class="tag">observed</span> Rust's <code>EmptyHistory</code> does.</p>
 <p><strong>The publish lock.</strong> <span class="tag">observed</span> Rust's local publisher holds <code>StateGuard::acquire(&amp;self.root.join(".publish.lock"))</code> (<code>repository_authoring.rs</code>) while it reads and appends a history. Two publishers without it could both read <code>morphir-elm.jsonl</code> and both append, and the refusal of mixed histories would race. Every publisher to a local repository holds <code>.publish.lock</code> at the repository root, with the state lock's primitive and opening rules, from before it reads a history until it has written it. Under <code>PUBLISHER-B</code>, morphir-dotnet's bundle authoring would be such a second publisher.</p>
 
-<h3 id="old-1">OLD-1. A home that an older CLI wrote <span class="tag">provisional</span></h3>
+<h3 id="old-1">OLD-1. A home that an older CLI wrote</h3>
 <p>Ada has used the Rust CLI for a year. Ada's default home holds a <code>2.0.0-draft.2</code> catalog and <code>"1.0"</code> locks. The first .NET global install goes to the same shared catalog.</p>
-<p>Under <a href="#ver-2">VER-2</a> the .NET host does not read those files. What it does next is open question <a href="#q-oldhome">Q-OLDHOME</a>. The spec states outcome <code>OLDHOME-A</code> and the other two outcomes:</p>
-<ul>
-<li><strong>Old state.</strong> A home holds old state when it has any of these:
+<p>Under <a href="#ver-2">VER-2</a> the .NET host does not read those files. What it does next was open question <a href="#q-oldhome">Q-OLDHOME</a>. The maintainer answered it on 10 November 2026 (Decision 10, recorded on finos/morphir#1146):</p>
+<blockquote><p>"I like the auto approach but we should offer resolution through a fix option under the <code>morphir doctor</code> subcommand i.e. <code>morphir doctor --fix</code>. When we encounter this we can run the same code we would when fixing this scenario (thus we have both an automated and manual invoked path). A user can bypass being prompted to accept this by using --yes like we use elsewhere"</p></blockquote>
+<p><strong>Old state.</strong> A home holds old state when it has any of these:</p>
 <ul>
 <li>a catalog not at <code>2.0.0-draft.3</code>;</li>
 <li>an extension lock or journal in <code>locks/extensions/</code> not at <code>2.0.0-draft.1</code>;</li>
 <li>more than one journal;</li>
 <li>a journal that fails its checks (<a href="#def-2">DEF-2</a>).</li>
 </ul>
-Detection runs under the state lock before any journal is recovered. When any file is old state, every extension's state in the home is moved: a current catalog beside one old extension lock goes too. That is intended, because the home's files are one transaction's state and cannot be split safely.</li>
-<li><strong><code>OLDHOME-A</code>, refuse and offer one command.</strong> Every command that reads or writes extension state is refused. The message names the first old file, the versions the host reads, and one explicit command that moves the old state aside and starts fresh.</li>
-<li><strong><code>OLDHOME-B</code>, move aside automatically.</strong> The first command that needs extension state does the same move without asking, and writes a notice on stderr that names the backup directory.</li>
-<li><strong><code>OLDHOME-C</code>, convert in place.</strong> Contradicts the decision that transient drafts are not converted. The spec defines no conversion.</li>
+<p>Detection runs under the state lock before any journal is recovered. When any file is old state, every extension's state in the home is moved: a current catalog beside one old extension lock goes too. That is intended, because the home's files are one transaction's state and cannot be split safely.</p>
+<p><strong>Decision.</strong> Two paths reach one move.</p>
+<ul>
+<li><strong>Automatic path.</strong> A command that needs extension state and finds old state shows what the move would take and asks the user to accept moving it to a marked backup. On acceptance it makes the move, writes a notice naming the backup directory on stderr, and goes on with the command. This is <code>OLDHOME-B</code>'s move with a prompt. It is neither <code>OLDHOME-A</code>'s refusal nor a silent move.</li>
+<li><strong><code>--yes</code></strong> skips the prompt.</li>
+<li><strong>Manual path.</strong> <code>morphir doctor --fix</code> makes the same move by hand (<a href="#doc-1">DOC-1</a>).</li>
+<li><strong>One implementation.</strong> The automatic path runs the code that <code>morphir doctor --fix</code> runs. The spec requires the two to produce the same backup: the same files, order, layout and marker.</li>
+<li><strong>Nothing is read or converted.</strong> <code>OLDHOME-C</code>, converting in place, stays rejected, so <a href="#ver-2">VER-2</a> holds.</li>
 </ul>
-<p>Under A and B the move is the same transaction, under the state lock:</p>
+<p><strong><code>--yes</code> where it is "used elsewhere".</strong> The approved change <code>add-deployment-and-acquisition</code> defines it for <code>morphirup setup</code>: "<code>--yes</code> authorizes the displayed setup operation in automation. It never means bypass signatures, ignore incompatibility, modify unrelated installations or install a system SDK." Here it has the same meaning: it authorizes the displayed move, and nothing else. It never makes a host read or convert old state, and it never moves the store, the repositories configuration or a lock file. morphir-dotnet's <code>morphirup</code> documentation (<code>docs/content/docs/cli/morphirup.md</code>, "Exit code 2") is the only shipped use of the option so far, and no <code>morphir</code> command has <code>--yes</code> yet.</p>
+<p><strong>The move</strong> is the same transaction whichever path starts it, under the state lock:</p>
 <pre><code class="language-console">MORPHIR_HOME/
   backups/extensions-20261110T093000Z/
     locks/extensions/morphir-elm.json        moved first: every journal and extension lock
@@ -357,16 +365,60 @@ Detection runs under the state lock before any journal is recovered. When any fi
   config/extensions/repositories.json        stays
   store/extensions/sha256/…                  stays
   locks/extensions.state.lock                stays (a lock file, not an extension lock)</code></pre>
-<p>The backup is named by the UTC time as <code>YYYYMMDDTHHMMSSZ</code>. Each file keeps its path relative to the home. After the move the home has no catalog, and the next install writes a draft.3 one. Nothing is read or converted, so <a href="#ver-2">VER-2</a> holds.</p>
-<p><strong>Completion is marked, not inferred.</strong> The first revision treated a backup without a catalog as an interrupted move. That was wrong, as both reviews found. Old state can have no catalog at all, for example when an older CLI's first install stopped after its journal. Moving it then leaves a finished backup without a catalog. Under the old rule a later move would pour a second generation into that backup, onto the first generation's paths.</p>
-<p>So the move writes an empty <code>.complete</code> last, and only a backup without it is unfinished:</p>
+<p>The backup is named by the UTC time as <code>YYYYMMDDTHHMMSSZ</code>. Each file keeps its path relative to the home. After the move the home has no catalog, and the next write creates a draft.3 one.</p>
+<p><strong>Completion is marked, not inferred.</strong> Old state can have no catalog at all, for example when an older CLI's first install stopped after its journal. So the move writes an empty <code>.complete</code> last, and only a backup without it is unfinished:</p>
 <ul>
-<li><strong>Exactly one backup lacks the marker.</strong> A host moves any old state left into it, then writes the marker. With nothing left to move, any state command only writes the marker.</li>
+<li><strong>Exactly one backup lacks the marker.</strong> The move puts any old state left into it, then writes the marker. With nothing left to move, any state command except <code>morphir doctor</code> without <code>--fix</code> only writes the marker, without asking: no state moves, so there is nothing to accept.</li>
 <li><strong>More than one lacks it, a file to move already exists at its target, or a new directory's name is taken.</strong> The host refuses and names them. Two moves in the same second therefore fail rather than merge.</li>
 </ul>
-<p><strong>Why A is recommended.</strong> The deciding reason, which the second review gave, is this: the move removes every installed extension from the user's view, and a user should see that before it happens, not learn it from one line on stderr. A puts it in front of the user once, in a message that says exactly what to run. A and B otherwise cost the same: one move, one backup name, the marker and the cases. B makes the first install succeed. A user who still runs the Rust CLI in that home also fares better under A: under B that user would see the Rust CLI's installs disappear again at every alternation.</p>
-<p><strong>A's own cost.</strong> The command is host-specific. Each host names its own, so the shared cases can pin the trees before and after the move, but not the command's name.</p>
-<p>The merged text, "refuse and change nothing", was A without the command. Its own recovery advice, "start on a fresh home or reinstall", could not be followed in place, because reinstalling needs the refused catalog. So in practice the user removed files by hand.</p>
+<p><strong>The move inside another command.</strong> The automatic path runs inside a command that has its own lock use:</p>
+<ol>
+<li>The command takes the state lock, as every state command does, and detects old state.</li>
+<li>It releases the state lock before it asks. Waiting on a person while holding the lock would stop every other host's extension command in that home.</li>
+<li>On acceptance, or with <code>--yes</code>, it takes the state lock again and detects old state again. If what it finds differs from what it showed, another process changed the home meanwhile: it shows the new state and asks again, or with <code>--yes</code> moves what it now finds.</li>
+<li>In that same hold it makes the move, then makes the command's own state change against the now-empty state.</li>
+</ol>
+<p>With <code>--yes</code> and no change, steps 2 and 3 collapse into one hold. The repositories lock is not involved: a command reads the repositories configuration under that lock and releases it before it takes the state lock, so the two are never held together. The backup rules therefore hold unchanged inside another command, because the move always runs under one hold of the state lock and writes the marker last.</p>
+<p><strong>What the triggering command does next.</strong> It continues against the now-empty state:</p>
+<ul>
+<li>an install writes a new draft.3 catalog holding only what it installs;</li>
+<li>a list shows nothing;</li>
+<li>an uninstall or update of an extension the old catalog listed reports that the extension is not installed;</li>
+<li>a compile that needs an installed extension reports that it is missing, as it would in a fresh home.</li>
+</ul>
+<p>The notice on stderr names the backup directory, so the user can see what was moved and reinstall from it by hand.</p>
+<p><strong>Readings the decision does not state</strong> <span class="tag">provisional</span>. Decision 10 does not state these. The spec writes them in, provisional on the maintainer's confirmation, <a href="#q-oldhome-readings">Q-OLDHOME-READINGS</a>:</p>
+<ol>
+<li>with no terminal and no <code>--yes</code>, the command is refused and changes nothing, and the message names the file, <code>morphir doctor --fix</code> and <code>--yes</code>;</li>
+<li>when the user declines the prompt, the same refusal follows, with nothing changed;</li>
+<li><code>morphir doctor</code> without <code>--fix</code> reports the old home and what <code>--fix</code> would move, and changes nothing;</li>
+<li><code>morphir doctor --fix</code> shows what it will move and asks before moving, unless <code>--yes</code> is given.</li>
+</ol>
+<p>No existing rule in the specs gives a better reading. The approved deployment design's "<code>--yes</code> authorizes the displayed … operation in automation" supports reading 1: without <code>--yes</code>, automation has no authorization. "No terminal" means that standard input is not a terminal, because a host cannot read an answer otherwise. The prompt itself goes to stderr, so a command's result on stdout stays clean.</p>
+<p><strong>Why this fits.</strong> The first install succeeds once the user accepts, and nothing disappears from view without the user seeing the list first. That was the reason the earlier revision gave for <code>OLDHOME-A</code>, and it is kept by the prompt. Scripts get a deterministic answer (<code>--yes</code>, or a refusal that names the fix), and a user who prefers to repair deliberately has <code>morphir doctor --fix</code>.</p>
+<p>The merged text, "refuse and change nothing", left the user removing files by hand. Its own recovery advice, "start on a fresh home or reinstall", could not be followed in place, because reinstalling needs the refused catalog.</p>
+
+<h3 id="doc-1">DOC-1. A <code>morphir doctor</code> command, as far as this decision needs it</h3>
+<p><span class="tag">observed</span> No <code>morphir doctor</code> exists yet:</p>
+<ul>
+<li>the .NET host has none: its only <code>doctor</code> is <code>morphirup doctor</code>, a different program (<code>src/Morphirup/Cli.fs</code> in morphir-dotnet; the local checkout's <code>origin/main</code> at <code>09db613</code>);</li>
+<li>the Rust CLI in this repository has none (<code>crates/</code>);</li>
+<li>this repository's pages only plan one. <code>docs/getting-started/morphir-cli.md</code> says a path-budget check "is planned for <code>morphir doctor</code> and is not in the CLI yet", and <code>docs/design/proposals/desktop-acquisition-and-launch.md</code> lists <code>morphir doctor</code> among proposed commands. The other mentions are in deprecated design pages.</li>
+</ul>
+<p><strong>Decision.</strong> This change introduces <code>morphir doctor</code> with only what Decision 10 needs:</p>
+<ul>
+<li><strong>Report.</strong> <code>morphir doctor</code> checks the home for old state and for a backup without its completion marker, and reports each finding and the files <code>--fix</code> would move. It changes nothing (reading 3, provisional).</li>
+<li><strong><code>--fix</code>.</strong> Makes the move, or completes an unmarked backup. It shows what it will move and asks first (reading 4, provisional).</li>
+<li><strong><code>--yes</code>.</strong> Skips the question, with the meaning above.</li>
+<li><strong>Output.</strong> The result goes on stdout, and messages, warnings and the prompt go on stderr.</li>
+<li><strong>Exit codes,</strong> following <code>morphirup</code>'s convention ("Commands" in <code>morphirup.md</code>):
+<ul>
+<li>0 when nothing is left to fix;</li>
+<li>1 when something is found and left, including a report without <code>--fix</code>, a declined prompt and a refusal without a terminal;</li>
+<li>2 when the command does not run, such as on an unknown option.</li>
+</ul></li>
+</ul>
+<p>The result's format is the host's to choose until a shared result document exists. This is the place later repairs and checks are added, such as the path-budget check <code>morphir-cli.md</code> plans, and this change designs no other check. The implementation's owner is finos/morphir-dotnet (task 2.6). The MoonBit host adds the same command when it adopts the shared files (task 3.2).</p>
 
 <h3 id="cfg-1">CFG-1. Project configuration quotes dotted ids</h3>
 <p>Ada configures the frontend in her project's <code>morphir.toml</code>.</p>
@@ -413,7 +465,7 @@ x = 1</code></pre>
 <tr><td>Journal</td><td>A current journal with saved documents that pass full validation, replayed; a journal with integer <code>schemaVersion</code> 1, old state with nothing written; a current journal whose <code>nextCatalog</code> holds a draft.2 catalog, or a draft.3 catalog with an invalid id, old state with nothing written; two journals, old state with nothing written; a draft.2 catalog beside an integer-1 journal, reported as old state rather than as a journal refusal; a journal with an unknown member, refused; a <code>.stage-</code> file beside a journal, ignored</td></tr>
 <tr><td>Member sets</td><td>An unknown member in a lock, a journal and a repositories file, each refused; an unknown optional member in a catalog, ignored; the same member named in <code>critical</code>, refused</td></tr>
 <tr><td>Path spelling</td><td><code>\\?\C:\ext-repo</code>, <code>\\?\c:\ext-repo</code> and <code>C:\ext-repo</code> equal; <code>\\?\UNC\server\share\r</code> and <code>\\server\share\r</code> equal; <code>\\?\D:\</code> written <code>D:\</code>; <code>\\?\C:\repo.</code> refused; the spelling a writer writes for each</td></tr>
-<tr><td>Old home <span class="tag">provisional</span></td><td>Under <code>OLDHOME-A</code>: a draft.2 catalog, refused naming the file and the command, nothing changed; the move from a given home to the expected backup tree with <code>.complete</code>; old state without a catalog, moved, with a backup that has no catalog and is complete; an interrupted move completed into the same backup; a move stopped before the marker, marked by the next command; a second generation of old state, moved into a new backup with the complete one untouched; two unmarked backups, refused. Under <code>OLDHOME-B</code> the same trees, reached by an install with a notice on stderr.</td></tr>
+<tr><td>Old home</td><td>Decided (Decision 10): a draft.2 catalog met by an install with <code>--yes</code>, moved to the expected backup tree with <code>.complete</code>, then the install made against the empty state; the same home repaired by <code>morphir doctor --fix --yes</code>, giving the same backup tree; old state without a catalog, moved, with a backup that has no catalog and is complete; an interrupted move completed into the same backup; a move stopped before the marker, marked by the next command; a second generation of old state, moved into a new backup with the complete one untouched; two unmarked backups, refused; a second <code>doctor --fix</code>, nothing to fix. <span class="tag">provisional</span> on <a href="#q-oldhome-readings">Q-OLDHOME-READINGS</a>: no terminal and no <code>--yes</code>, refused naming the file, <code>morphir doctor --fix</code> and <code>--yes</code>, nothing changed; declined, the same; <code>morphir doctor</code>, a report of the files <code>--fix</code> would move, nothing changed. The prompt itself is a host test, not a data case.</td></tr>
 <tr><td>Configuration</td><td>Quoted dotted key accepted; unquoted dotted key refused with the quoted suggestion; <code>[extensions.acme.config]</code> read as <code>acme</code>'s config; <code>[extensions.acme.path]</code> with <code>command</code>, refused with the suggestion <code>"acme.path"</code>; <code>config = 1</code>, <code>[[extensions.acme.args]]</code> and <code>[[extensions.acme.x]]</code>, refused; a key that is not a valid id refused with its rule; a branching nested table refused with no suggestion; the quoted key in a diagnostic</td></tr>
 </tbody>
 </table>
@@ -486,7 +538,8 @@ Group 4 carries out that list. Refining the toolchain's <code>0.1.0-draft.1</cod
 <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
 <tbody>
 <tr><td>A user runs an older Rust CLI on a home or repository that a current host has written.</td><td>Accepted. The older CLI refuses the catalog or the new records by version and changes nothing. It can be used again with its own <code>MORPHIR_HOME</code>, its repositories re-added, and repositories that no current writer has published to (<a href="#state-1">STATE-1</a>).</td></tr>
-<tr><td>A user's first current install meets a home that the Rust CLI wrote.</td><td><span class="tag">provisional</span> <a href="#old-1">OLD-1</a> and <a href="#q-oldhome">Q-OLDHOME</a>: refused with one command to move the old state aside, or moved aside automatically.</td></tr>
+<tr><td>A user's first current install meets a home that the Rust CLI wrote.</td><td><a href="#old-1">OLD-1</a> (Decision 10): the host shows what it would move and asks; on acceptance or with <code>--yes</code> it moves the old state to a marked backup and goes on. <code>morphir doctor --fix</code> does the same by hand. A declined prompt or a script without <code>--yes</code> changes nothing (<span class="tag">provisional</span>, <a href="#q-oldhome-readings">Q-OLDHOME-READINGS</a>).</td></tr>
+<tr><td>A user accepts the move without reading the list and loses sight of installed extensions.</td><td>The prompt lists what moves, the stderr notice names the backup directory, and nothing in it is deleted, so the files stay recoverable by hand.</td></tr>
 <tr><td>The existing extensions are published only at drafts that current hosts do not read, and the only writer is the legacy Rust tooling.</td><td><span class="tag">provisional</span> <a href="#q-publisher">Q-PUBLISHER</a>. Until it is answered, current hosts can install only extensions published at draft.3, which today means only the F# guests of task 2.5.</td></tr>
 <tr><td>Two hosts take different kinds of lock and both write.</td><td>One named primitive per platform, an open that waits rather than fails, and a two-process test in each host (<a href="#def-3">DEF-3</a>).</td></tr>
 <tr><td>A home is on NFS or SMB, where the primitive's guarantees differ.</td><td>Not supported. A host that can tell refuses; one that cannot gives no guarantee (<a href="#def-3">DEF-3</a>).</td></tr>
@@ -501,22 +554,31 @@ Group 4 carries out that list. Refining the toolchain's <code>0.1.0-draft.1</cod
 </table>
 
 <h2 id="migration">Migration plan</h2>
-<p>Nothing is converted. Writers write the new drafts from the first release that implements this change. Readers read the new drafts only. Hosts that read only earlier versions refuse what current writers produce, by version. A user who needs such a host gives it its own Morphir home, re-adds its repositories, and uses repositories that no current writer publishes to. A current host in a home that an older CLI wrote follows <a href="#old-1">OLD-1</a> <span class="tag">provisional</span>. Existing releases stay unreadable by current hosts. New releases of the existing extensions become installable once a publisher writes them at draft.3, starting each history again; <a href="#q-publisher">Q-PUBLISHER</a> chooses that publisher. The toolchain fixtures stay on hyphenated ids until <a href="#repo-1">REPO-1</a> step 4, so they never depend on a host that has not shipped.</p>
+<p>Nothing is converted. Writers write the new drafts from the first release that implements this change. Readers read the new drafts only. Hosts that read only earlier versions refuse what current writers produce, by version. A user who needs such a host gives it its own Morphir home, re-adds its repositories, and uses repositories that no current writer publishes to. A current host in a home that an older CLI wrote offers to move the old state to a marked backup, or the user runs <code>morphir doctor --fix</code> (<a href="#old-1">OLD-1</a>, Decision 10). Existing releases stay unreadable by current hosts. New releases of the existing extensions become installable once a publisher writes them at draft.3, starting each history again; <a href="#q-publisher">Q-PUBLISHER</a> chooses that publisher. The toolchain fixtures stay on hyphenated ids until <a href="#repo-1">REPO-1</a> step 4, so they never depend on a host that has not shipped.</p>
 
 <h2 id="open-questions">Open questions</h2>
-<p>Answered and removed from the list: a separate partition or one catalog (one catalog, maintainer, 9 November 2026); whether to bump the versions and whether readers read earlier drafts (<a href="#ver-1">VER-1</a>, <a href="#ver-2">VER-2</a>, and the decision on transient formats). The merged text's question 9 asked whether current hosts read the existing releases and homes; the decision on transient formats already answers no, and the two questions it left are <a href="#q-oldhome">Q-OLDHOME</a> and <a href="#q-publisher">Q-PUBLISHER</a> below. Its question 6, which repository holds the MoonBit host's extension installation, is a fact to find, not a decision: it is task 3.1. The labels below replace the merged numbers 3, 4, 5 and 7.</p>
+<p>Answered and removed from the list: a separate partition or one catalog (one catalog, maintainer, 9 November 2026); <a href="#q-oldhome">Q-OLDHOME</a> (Decision 10, 10 November 2026, kept below for its record); whether to bump the versions and whether readers read earlier drafts (<a href="#ver-1">VER-1</a>, <a href="#ver-2">VER-2</a>, and the decision on transient formats). The merged text's question 9 asked whether current hosts read the existing releases and homes; the decision on transient formats already answers no, and the two questions it left are <a href="#q-oldhome">Q-OLDHOME</a> and <a href="#q-publisher">Q-PUBLISHER</a> below. Its question 6, which repository holds the MoonBit host's extension installation, is a fact to find, not a decision: it is task 3.1. The labels below replace the merged numbers 3, 4, 5 and 7.</p>
 <p>Each question stands alone. Options have labels that do not repeat across questions.</p>
 
-<h3 id="q-oldhome">Q-OLDHOME. What does a current host do with a home that an older CLI wrote? <span class="tag">provisional requirement</span></h3>
-<p><strong>Today.</strong> Every user who has run the Rust CLI has a default home with a <code>"1.0"</code> or <code>2.0.0-draft.2</code> catalog and <code>"1.0"</code> locks, and .NET global installs go to that same catalog. Current hosts do not read those files (<a href="#ver-2">VER-2</a>). The merged text refused and changed nothing, so the user had to remove files by hand.</p>
+<h3 id="q-oldhome">Q-OLDHOME. What does a current host do with a home that an older CLI wrote? <span class="tag">answered 10 November 2026</span></h3>
+<p>Answered by the maintainer as Decision 10, recorded on finos/morphir#1146. The answer is a prompted version of the earlier <code>OLDHOME-B</code>:</p>
 <ul>
-<li><strong><code>OLDHOME-A</code>.</strong> Keep the refusal. The message names the file and offers one explicit command that moves the old catalog, extension locks and journals to a named backup, <code>backups/extensions-&lt;time&gt;/</code>, under the state lock, marks it complete, and starts fresh. Cost: the command in each host, whose name the shared cases cannot pin, the backup layout and its cases. The first current install fails once, with the command to run. Nothing disappears from the user's view without the user asking.</li>
-<li><strong><code>OLDHOME-B</code>.</strong> Move the old state aside automatically at the first command that needs it, with a notice on stderr. Cost: the same move and cases, and no command. The first install succeeds, but every installed extension disappears from view with only that stderr line. A user who still runs the Rust CLI there loses its installs again at each alternation.</li>
-<li><strong><code>OLDHOME-C</code>.</strong> Convert the old files in place. Cost: a converter in each host for each earlier version. It contradicts the decision that transient drafts are not converted.</li>
+<li>the host moves the old state to a marked backup automatically, but asks first;</li>
+<li><code>--yes</code> skips the question;</li>
+<li><code>morphir doctor --fix</code> runs the same code by hand.</li>
 </ul>
-<p>A and B share the same detection order (detection before journal recovery), the same treatment of two journals and of a journal that fails its checks, and the same completion marker, so each is fully written whichever is chosen.</p>
-<p><strong>Recommendation:</strong> <code>OLDHOME-A</code>, because the move removes every installed extension from view, and a user should see that before it happens. Depends on it: the requirements "A host does not read, replay or convert old state", "A current host refuses old state and names one command", "Old state moves to a named backup" and "Only a backup without its completion marker is completed"; <a href="#old-1">OLD-1</a>; the "Old home" cases; task 1.6; and the old-home part of task 2.3.</p>
+<p><code>OLDHOME-A</code>'s refusal and <code>OLDHOME-C</code>'s conversion were not taken. <a href="#old-1">OLD-1</a> and <a href="#doc-1">DOC-1</a> carry the decision. The identifiers <code>OLDHOME-A</code>, <code>OLDHOME-B</code> and <code>OLDHOME-C</code> stay as names of the options that were weighed.</p>
 
+<h3 id="q-oldhome-readings">Q-OLDHOME-READINGS. Do these four readings of Decision 10 hold? <span class="tag">provisional requirements</span></h3>
+<p><strong>Today.</strong> Decision 10 says the host asks before it moves, that <code>--yes</code> skips the question, and that <code>morphir doctor --fix</code> is the manual path. It does not say what happens when the host cannot ask, when the user says no, or what <code>morphir doctor</code> does without <code>--fix</code>. The spec writes in these readings, each provisional:</p>
+<ol>
+<li><strong>No terminal and no <code>--yes</code>.</strong> The command is refused and changes nothing. The message names the first old file, <code>morphir doctor --fix</code> and <code>--yes</code>.</li>
+<li><strong>The user declines.</strong> The same refusal, with nothing changed.</li>
+<li><strong><code>morphir doctor</code> without <code>--fix</code>.</strong> It reports the old home and what <code>--fix</code> would move, changes nothing, and exits 1.</li>
+<li><strong><code>morphir doctor --fix</code>.</strong> It shows what it will move and asks before moving, unless <code>--yes</code> is given.</li>
+</ol>
+<p>One answer can confirm all four, or correct any of them. The cost of a correction is the wording of the requirements "A declined or unanswerable prompt changes nothing", "morphir doctor reports old state" and "morphir doctor --fix makes the move", and their cases. The move itself does not change.</p>
+<p><strong>Recommendation:</strong> confirm all four. Depends on it: those three requirements, the provisional part of the "Old home" cases, and the provisional parts of tasks 1.6, 2.3 and 2.6.</p>
 <h3 id="q-publisher">Q-PUBLISHER. Who publishes the existing extensions at draft.3? <span class="tag">provisional tasks</span></h3>
 <p><strong>Today.</strong> morphir-elm, morphir-python, morphir-avro, morphir-openapi and morphir-rust are published only at draft.2 and earlier. The only tool that writes descriptors and index records is the Rust tooling, <code>morphir extension bundle</code> and <code>morphir extension repository publish</code> (<code>distribution-and-acquisition.md</code>, from line 148), which this change marks as optional later work. Until something writes draft.3 for them, the .NET and MoonBit hosts cannot install them.</p>
 <p><strong>What republishing can and cannot reach.</strong> Each existing release's own <code>release.json</code> asset is at draft.2. A current host refuses it by version (<a href="#ver-2">VER-2</a>), so rewriting history lines alone makes no existing release installable. A current host can install only a release whose descriptor is draft.3. So under every option below, only new releases are published at draft.3, and existing versions stay uninstallable by current hosts. The only exception would be replacing their published assets, which changes digests that existing index lines and lock files record; this change does not propose it. A history that holds draft.2 lines cannot take a draft.3 line (<a href="#hist-1">HIST-1</a>). The first draft.3 release of an extension therefore starts its history again, holding only draft.3 lines. That is a new file with a new revision digest; no draft.1 lock can pin the old one, because no current host reads it.</p>
