@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>add-extension-packages: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; --ok: #1f7a3a; --bad: #a3271f; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; --ok: #6fd391; --bad: #ff8b80; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; vertical-align: top; }
+svg { max-width: 100%; height: auto; }
+svg text { fill: var(--fg); font: 13px system-ui, sans-serif; }
+svg .box { fill: var(--panel); stroke: var(--line); }
+svg .edge { stroke: var(--muted); fill: none; }
+.tag { font-size: .8rem; border: 1px solid var(--line); border-radius: .3rem; padding: 0 .3rem; color: var(--muted); }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>add-extension-packages: design</h1>
+<p class="meta">OpenSpec change | 10 November 2026 | proposed for maintainer review, nothing implemented</p>
+
+<p>The reasons are in <a href="proposal.md">proposal.md</a>; the normative rules are in <a href="specs/extensions/extension-packages/spec.md">the extension packages spec</a>; the work is in <a href="tasks.md">tasks.md</a>. Facts marked <span class="tag">observed</span> were read from this repository on <code>origin/main</code> at <code>9690dfc37</code> with its pinned submodules (<code>ecosystem/morphir-rust</code> at <code>c9f79da</code>), from the toolchain contracts on <code>origin/feat/morphirup-deployment-acquisition</code> at <code>1451c081f</code>, and from the morphir-dotnet installer plan <code>openspec/changes/add-extension-installation/</code> (finos/morphir-dotnet#567) in its local checkout. Everything else is a proposed interface unless it is marked <span class="tag">assumption</span>, and each assumption has a task that settles it. Requirements marked <span class="tag">provisional</span> depend on an open question.</p>
+
+<p>Maintainer decisions of 9 November 2026 that bind this design:</p>
+<ul>
+<li>the shared extension contract is extended so that an extension can be a multi-file package (<a href="https://github.com/finos/morphir/issues/1146">finos/morphir#1146</a>, the comment on the installed form of a multi-file extension);</li>
+<li>the Rust CLI is legacy: work goes to the morphir-dotnet and morphir-moonbit hosts, and Rust is optional later work that gates nothing;</li>
+<li>transient pre-1.0 document formats are not read or converted;</li>
+<li>one installed catalog for every extension id (finos/morphir#1149);</li>
+<li>MEP <code>0.1</code> is not supported; the supported protocol is the 0.2 line;</li>
+<li>publisher authentication and claim checks are separate facts, and a checksum is integrity, not authentication;</li>
+<li>NFC in the toolchain contracts is Unicode Normalization Form C as defined by Unicode 17.0.0 (<a href="https://github.com/finos/morphir/issues/1146#issuecomment-6760173619">finos/morphir#1146</a>).</li>
+</ul>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a>
+<ul>
+<li><a href="#pkg-1">PKG-1. A package is an artifact with a package member</a></li>
+<li><a href="#ver-1">VER-1. Which drafts carry packages</a></li>
+<li><a href="#tree-1">TREE-1. The tree manifest and two digests</a></li>
+<li><a href="#ext-1">EXT-1. Safe unpacking, as refusals with stable codes</a></li>
+<li><a href="#ext-2">EXT-2. Bounds</a></li>
+<li><a href="#mode-1">MODE-1. File modes</a></li>
+<li><a href="#store-1">STORE-1. Store layout and atomic publication</a></li>
+<li><a href="#vfy-1">VFY-1. What verified means, and when it is checked</a></li>
+<li><a href="#run-1">RUN-1. Activation and launch</a></li>
+<li><a href="#rem-1">REM-1. Removal and collection</a></li>
+<li><a href="#trust-1">TRUST-1. A package changes nothing about trust</a></li>
+<li><a href="#tc-1">TC-1. Recipes and locks in the toolchain contracts</a></li>
+<li><a href="#conf-1">CONF-1. Shared conformance cases</a></li>
+<li><a href="#repo-1">REPO-1. Delivery order</a></li>
+<li><a href="#alternatives">Alternatives not chosen</a></li>
+</ul></li>
+<li><a href="#needs">What this change needs from other work</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#assumed">Assumed</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+
+<p>The proposal says why this change exists. This section lists only what the design builds on. These rows describe today's code and pages; after this change, the contract pages define the package rules, and the Rust source is evidence, not the authority.</p>
+
+<table>
+<thead><tr><th>Where</th><th>What it does today</th></tr></thead>
+<tbody>
+<tr><td><span class="tag">observed</span> Release descriptor, version 2 (<code>docs/design/draft/extensions/distribution-and-acquisition.md</code>, "Release descriptor, version 2")</td><td>Each artifact has <code>platform</code>, <code>runtime</code>, <code>filename</code>, <code>sha256</code> and <code>claims</code>. There is no entry-point member. The page's example names a <code>process</code> artifact <code>morphir-elm-extension-0.3.0-aarch64-apple-darwin.tgz</code>, but nothing says what is inside such a file.</td></tr>
+<tr><td><span class="tag">observed</span> Publication (<code>repository_authoring/process.rs</code>)</td><td>Refuses any process artifact whose name ends in <code>.tgz</code>, <code>.tar.gz</code>, <code>.zip</code> or <code>.tar</code>: "publish supports raw executables only".</td></tr>
+<tr><td><span class="tag">observed</span> Extension store (<code>store.rs</code>)</td><td>One file per artifact, at <code>store/extensions/sha256/&lt;digest&gt;/&lt;filename&gt;</code>, at most 256 MiB (<code>MAX_EXTENSION_ARTIFACT_BYTES</code>).</td></tr>
+<tr><td><span class="tag">observed</span> Activation (<code>state/activation.rs</code>; the page's "Installed inventory and activation")</td><td>Loads the catalog entry and lock under the state lock, checks that they agree, rehashes the stored file, and starts a private copy written from the verified bytes. The page says activation "rehashes it, and verifies its runtime-specific mode before starting a session". The page's security list already requires that archives "reject path traversal, unsafe links, device files, and platform path collisions", and that native processes get "a filtered environment and explicit working directory".</td></tr>
+<tr><td><span class="tag">observed</span> Tool packages in the Rust library (<code>tool_archive.rs</code>, <code>tool_state/package.rs</code>, <code>tool_state/verification.rs</code>)</td><td>Tools, not extensions, can already be ZIP or tar.gz packages with an entry point. The extractor accepts only regular files and directories, compares every path prefix under two keys (NFC of the case folding, and NFC of the uppercase mapping), allows 10 000 entries and 4 GiB, unpacks into a <code>.package-</code> staging directory, and publishes by rename. The installed catalog keeps a per-file manifest (path, digest, length, executable), and activation rehashes every file. No contract page states these rules; the tool release metadata page is silent on archives.</td></tr>
+<tr><td><span class="tag">observed</span> Toolchain contracts (<code>docs/spec/toolchain/</code> at <code>1451c081f</code>)</td><td>A process provider binds <code>artifactTarget</code> and <code>artifactSha256</code>, one archive per platform, such as <code>extensions/fsharp-frontend/0.6.0/win-x64.zip</code>. <code>toolset-recipe.md</code>, question M2, keeps that rule <strong>provisional</strong> and recommends a single-file self-extracting frontend for first delivery. <code>index.md</code>, "Target paths", defines portable path rules, including the Windows device names, and requires NFC. The receipt's <code>launch.program</code> is an absolute local path.</td></tr>
+<tr><td><span class="tag">observed</span> morphir-dotnet installer plan (finos/morphir-dotnet#567)</td><td>ARC-1 reads archives with the base class library, requires ASCII entry names compared ignoring ASCII case, and limits archives to 1 GiB, 1024 entries and 256 MiB per entry. Q-ARCHIVE recommends that a target archive hold exactly one file. Q-MULTIFILE keeps refusing multi-file artifacts until an upstream package form exists. Its Option B lists what that form needs. SEL-3 starts a private copy of each single-file artifact. Q-WINLAUNCH recommends <code>.exe</code> and a launch-path limit on Windows.</td></tr>
+<tr><td><span class="tag">observed</span> The F# frontend (finos/morphir-dotnet#569)</td><td>Published by <code>SelfContainedProcess.pubxml</code> as a folder, with <code>PublishSingleFile</code> false, "because the compiler references are files of the folder". It reports <code>org.finos.morphir.fsharp-frontend</code>. <span class="tag">assumption</span> The folder is about 239 files and 121 MB; the installer plan says the size is "not measured here". Task 2.1 lists the real output.</td></tr>
+</tbody>
+</table>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals.</strong> An extension can be a tree of files that a host unpacks once, checks against a digest its descriptor names, stores immutably and starts by one entry point. Two hosts reach the same answer for every archive. A single-file artifact keeps its meaning.</p>
+<p><strong>Non-goals.</strong></p>
+<ul>
+<li>Packages for WASM, daemon or .NET tool deliveries. A WASM module is one file, and a .NET tool is installed by its own manager.</li>
+<li>Symbolic links inside a package, and archive formats other than ZIP and gzip-compressed tar.</li>
+<li>Sharing files between packages, deduplicating them, or applying patches between versions.</li>
+<li>Any change to who is trusted, to how a repository or recipe is authenticated, or to the claim check.</li>
+<li>Keeping the released Rust CLI working, or reading earlier drafts.</li>
+<li>Edits to the toolchain contracts. <a href="#tc-1">TC-1</a> lists their follow-up as tasks.</li>
+</ul>
+
+<h2 id="decisions">Decisions</h2>
+
+<p>The journey below follows one artifact from release to removal: the F# frontend <code>org.finos.morphir.fsharp-frontend</code> 0.6.0 for <code>x86_64-pc-windows-msvc</code>, published as <code>fsharp-frontend-0.6.0-win-x64.zip</code>, installed by the Native AOT <code>morphir</code> host into a home on Windows, and later removed. Each decision appears where it first matters.</p>
+
+<h3 id="pkg-1">PKG-1. A package is an artifact with a package member</h3>
+<p>The release job has a published folder and must describe it in <code>release.json</code>.</p>
+<pre><code class="language-json">{
+  "platform": "x86_64-pc-windows-msvc",
+  "runtime": "process",
+  "filename": "fsharp-frontend-0.6.0-win-x64.zip",
+  "sha256": "&lt;SHA-256 of the archive&gt;",
+  "package": {
+    "format": "zip",
+    "root": "fsharp-frontend",
+    "entryPoint": "morphir-fsharp-frontend.exe",
+    "treeSha256": "&lt;SHA-256 of the tree manifest&gt;"
+  },
+  "claims": { "extension": { "id": "org.finos.morphir.fsharp-frontend", "version": "0.6.0" } }
+}</code></pre>
+<p>The Linux artifact of the same release has <code>"format": "tar.gz"</code>, <code>"entryPoint": "morphir-fsharp-frontend"</code> and <code>"executables": ["createdump"]</code>.</p>
+<p><strong>Decision.</strong></p>
+<ul>
+<li><strong>The member.</strong> An artifact is a package when it has a <code>package</code> member, and a single-file artifact otherwise. <code>package</code> has <code>format</code>, <code>entryPoint</code> and <code>treeSha256</code>, and optionally <code>root</code> and <code>executables</code>.</li>
+<li><strong>Formats.</strong> <code>format</code> is <code>zip</code> or <code>tar.gz</code>, and the file name ends in <code>.zip</code>, or in <code>.tar.gz</code> or <code>.tgz</code>, to match.</li>
+<li><strong>Runtime.</strong> Only <code>process</code> artifacts can be packages.</li>
+<li><strong>Single files.</strong> An artifact without <code>package</code> is read, stored, recorded and started as before, whatever its name.</li>
+<li><strong>Hosts without package support.</strong> A host that reads the package drafts but cannot install packages refuses a package with <code>package.unsupported</code>. It never runs the archive as if it were the program.</li>
+</ul>
+<p><strong>Why these formats.</strong> They are the two forms the toolchain recipes already bind (<code>.zip</code> on Windows, <code>.tgz</code> elsewhere), and the forms the Rust tool extractor and the .NET base class library both read. A ZIP file is the native form on Windows, and tar keeps Unix conventions on the other platforms. A third format would add a reader to every host for no artifact that needs it.</p>
+<p><strong>Why an explicit member, not the file name.</strong> Inferring a package from <code>.zip</code> would change the meaning of an existing single-file artifact whose name happens to end that way. With the member, a host reading the descriptor knows exactly what to do.</p>
+<p><strong>Why process only.</strong> The F# frontend is a process. A WASM guest is one module by definition, and a daemon or .NET tool is installed by other means.</p>
+
+<h3 id="ver-1">VER-1. Which drafts carry packages</h3>
+<p>The descriptor, the index record, the catalog and the extension lock all gain the <code>package</code> member. Under <code>AGENTS.md</code> a new member in a draft needs a new draft, unless the draft is refined in place before anything is published at it. finos/morphir#1149 has already moved the same four documents: the descriptor, record and catalog to <code>2.0.0-draft.3</code>, and the lock to <code>2.0.0-draft.1</code>. It merged on 10 November 2026 as an approved proposal (<code>9690dfc37</code>), but its tasks have not run, so nothing is published at those drafts yet.</p>
+<table>
+<thead><tr><th>Outcome</th><th>Drafts</th><th>Cost</th></tr></thead>
+<tbody>
+<tr><td><code>PKGVER-A</code>: one bump covering both changes</td><td>Refine #1149's <code>2.0.0-draft.3</code> and lock <code>2.0.0-draft.1</code> in place to add <code>package</code></td><td>#1149's sentence "<code>2.0.0-draft.3</code> differs from <code>2.0.0-draft.2</code> only in the id grammar" becomes "in the id grammar and the <code>package</code> member". Its page work (task 1.4) and this change's (task 1.2) land together, so #1149's shared-file definition waits for this change's approval, or lands first and is refined. The .NET installer builds against one set of drafts once, and the F# guests are published once.</td></tr>
+<tr><td><code>PKGVER-B</code>: a following draft</td><td>Descriptor, record and catalog at <code>2.0.0-draft.4</code>; lock at <code>2.0.0-draft.2</code></td><td>#1149 proceeds alone. But readers read only the current drafts, so every document written at draft.3 must be written again at draft.4, and every host implements two successive drafts. That includes the F# guests of #1149's task 2.5, and every home a current host has written, which then holds old state under #1149's open question on old homes.</td></tr>
+</tbody>
+</table>
+<p><strong>Decision.</strong> Choose by a fact that can be checked, not by preference. Use <code>PKGVER-A</code> if, when this change is approved, no descriptor, record, catalog or lock has been published at #1149's drafts, and <code>PKGVER-B</code> otherwise. Task 1.1 records which applies. The spec names "the package drafts" and gives both outcomes in a table, so every requirement holds in either order. This is not a question for the maintainer: refining a draft before anything is published at it is what <code>AGENTS.md</code> allows, and it is the cheaper outcome.</p>
+
+<h3 id="tree-1">TREE-1. The tree manifest and two digests</h3>
+<p>The release job now needs the value of <code>treeSha256</code>, and every installer must compute the same bytes from the same archive.</p>
+<p><strong>Decision.</strong> The tree manifest is UTF-8 text: a header line, then one line per file in ascending order of the UTF-8 bytes of its tree path. Each line holds the kind, the size, the SHA-256 and the path, separated by single spaces, and every line ends with one LF:</p>
+<pre><code class="language-console">morphir-package-tree 1
+f 1153536 4a1f…e2 FSharp.Compiler.Service.dll
+f 1062912 9bc0…7d FSharp.Core.dll
+…
+x 152576 07d3…a9 morphir-fsharp-frontend.exe
+…
+f 4096 c51e…10 zh-Hant/FSharp.Core.resources.dll</code></pre>
+<ul>
+<li><strong>Kind.</strong> <code>x</code> when the path is the entry point or is listed in <code>executables</code>, otherwise <code>f</code>. It comes from the descriptor, never from the archive, so the digest is the same on every platform and for archives made on Windows, which carry no Unix modes.</li>
+<li><strong>Size and digest.</strong> The size is decimal without leading zeros. The SHA-256 is lowercase hexadecimal, over the file's bytes after decompression, with line endings and encodings untouched.</li>
+<li><strong>Path.</strong> The tree path after the optional <code>root</code> is removed: <code>/</code>-separated and NFC (<a href="#ext-1">EXT-1</a>). A path cannot contain LF, because control characters are refused, so the line format is unambiguous.</li>
+<li><strong>Not covered.</strong> Directories are implied by file paths and are not listed. Owners, timestamps, permission bits and extended attributes do not appear.</li>
+</ul>
+<p>The tree digest is the SHA-256 of the manifest's bytes. The artifact's <code>sha256</code> stays the archive's SHA-256. Both are recorded:</p>
+<table>
+<thead><tr><th>Document</th><th>Archive digest</th><th>Tree digest</th></tr></thead>
+<tbody>
+<tr><td>Release descriptor and index record</td><td><code>artifacts[i].sha256</code>, as today</td><td><code>artifacts[i].package.treeSha256</code></td></tr>
+<tr><td>Installed catalog entry and extension lock</td><td>the artifact digest, as today</td><td>the <code>package</code> member, copied unchanged</td></tr>
+<tr><td>Toolset recipe and portable lock</td><td><code>artifactSha256</code>, as today</td><td>through the bound descriptor (<a href="#tc-1">TC-1</a>)</td></tr>
+</tbody>
+</table>
+<p><strong>Why both.</strong> The archive digest is what a repository and a recipe authenticate: it is the TUF target's hash, and a recipe binds it today. It cannot check an unpacked tree once the archive is gone. The tree digest names what actually runs, and it can be checked offline at any time against files on disk. Recording only the tree digest would break the recipe's binding to authenticated targets. Recording only the archive digest would force a host to keep or re-download every archive to check anything.</p>
+<p><strong>Why a manifest and not a per-file list in the descriptor.</strong> The manifest has the same information as a per-file list, but the descriptor stays small, and the bytes that are hashed are defined once. A host keeps the manifest next to the tree (<a href="#store-1">STORE-1</a>), so a per-file check needs no network.</p>
+
+<h3 id="ext-1">EXT-1. Safe unpacking, as refusals with stable codes</h3>
+<p>The host downloads the archive and checks its SHA-256 against the descriptor. Now it must turn about 239 archive entries into files without writing anywhere it should not, and without two files that one file system would treat as one.</p>
+<svg viewBox="0 0 900 250" role="img" aria-labelledby="flow-title flow-desc">
+<title id="flow-title">From archive to recorded package</title>
+<desc id="flow-desc">The archive is checked for size, digest and format, then each entry is checked in archive order, then the tree's entry point and digest. Files are written into a staging directory and published by one rename. Only then are the lock and catalog written through the journal under the state lock. A failure at any step leaves nothing that a host can select.</desc>
+<rect class="box" x="10" y="20" width="160" height="70" rx="6"/><text x="20" y="45">1. archive</text><text x="20" y="65">size, digest,</text><text x="20" y="82">format</text>
+<rect class="box" x="190" y="20" width="160" height="70" rx="6"/><text x="200" y="45">2. each entry</text><text x="200" y="65">kind, path, names,</text><text x="200" y="82">collisions, bounds</text>
+<rect class="box" x="370" y="20" width="160" height="70" rx="6"/><text x="380" y="45">3. tree</text><text x="380" y="65">entry point,</text><text x="380" y="82">tree digest</text>
+<rect class="box" x="550" y="20" width="160" height="70" rx="6"/><text x="560" y="45">4. publish</text><text x="560" y="65">rename .stage-…</text><text x="560" y="82">to sha256/&lt;tree&gt;</text>
+<rect class="box" x="730" y="20" width="160" height="70" rx="6"/><text x="740" y="45">5. record</text><text x="740" y="65">journal, lock,</text><text x="740" y="82">catalog</text>
+<path class="edge" d="M170 55 L190 55 M350 55 L370 55 M530 55 L550 55 M710 55 L730 55"/>
+<rect class="box" x="10" y="150" width="700" height="80" rx="6"/>
+<text x="20" y="175">steps 1 to 3 run in store/extensions/packages/.stage-&lt;random&gt;/, owned through an exclusive lock on its owner file</text>
+<text x="20" y="197">a refusal names one code and one entry, and the staging directory is removed</text>
+<text x="20" y="219">nothing is selectable until step 5 commits, and step 5 runs only after step 4</text>
+<path class="edge" stroke-dasharray="5 4" d="M90 90 L90 150 M270 90 L270 150 M450 90 L450 150"/>
+</svg>
+<p><strong>Decision.</strong> One code per rule, prefixed <code>package.</code>, checked in a fixed order. A host reports only the first refusal. The order is the order of the table. Archive-level rules come first, then each entry in archive order, then the tree rules, then the install path.</p>
+<table>
+<thead><tr><th>Code</th><th>Refuses</th></tr></thead>
+<tbody>
+<tr><td><code>archive_too_large</code></td><td>an archive over 256 MiB, before it is read</td></tr>
+<tr><td><code>archive_digest_mismatch</code></td><td>an archive whose SHA-256 is not the artifact's <code>sha256</code></td></tr>
+<tr><td><code>archive_format</code></td><td>a format or file-name mismatch; an archive that cannot be read completely; ZIP encryption, multiple disks, a compression method other than stored or deflate, or a local header name that differs from the central directory name; a tar global extended header or sparse entry; an entry name that is not UTF-8</td></tr>
+<tr><td><code>entry_count</code></td><td>more than 4096 entries (<a href="#ext-2">EXT-2</a>)</td></tr>
+<tr><td><code>link_entry</code></td><td>a symbolic or hard link</td></tr>
+<tr><td><code>special_entry</code></td><td>a device, FIFO, socket or other entry that is not a regular file or a directory</td></tr>
+<tr><td><code>backslash</code></td><td>a path containing <code>\</code></td></tr>
+<tr><td><code>absolute_path</code></td><td>a path starting with <code>/</code></td></tr>
+<tr><td><code>drive_letter</code></td><td>a first component of a letter and <code>:</code>, as in <code>C:</code> or <code>C:x</code></td></tr>
+<tr><td><code>empty_or_dot_component</code></td><td>an empty or <code>.</code> component; one trailing <code>/</code> on a directory entry is allowed</td></tr>
+<tr><td><code>parent_component</code></td><td>a <code>..</code> component</td></tr>
+<tr><td><code>reserved_character</code></td><td>U+0000 to U+001F, U+007F, U+2028, U+2029, or one of <code>&lt; &gt; : " | ? *</code></td></tr>
+<tr><td><code>trailing_dot_or_space</code></td><td>a component ending in <code>.</code> or a space</td></tr>
+<tr><td><code>device_name</code></td><td>a component that is a Windows device name by the toolchain contracts' target-path rule: the part before the first <code>.</code>, with trailing spaces removed and compared ignoring ASCII case, is <code>CON</code>, <code>PRN</code>, <code>AUX</code>, <code>NUL</code>, <code>CONIN$</code>, <code>CONOUT$</code>, or <code>COM</code> or <code>LPT</code> followed by <code>1</code> to <code>9</code>, <code>¹</code>, <code>²</code> or <code>³</code></td></tr>
+<tr><td><code>not_nfc</code></td><td>a path that is not NFC under Unicode 17.0.0</td></tr>
+<tr><td><code>path_length</code></td><td>an entry path over 512 UTF-8 bytes or 240 UTF-16 code units, a component over 255 of either, or a tree path over 120 UTF-16 code units</td></tr>
+<tr><td><code>nesting_depth</code></td><td>a tree path of more than 16 components</td></tr>
+<tr><td><code>outside_root</code></td><td>with <code>root</code> declared, an entry that is not under it, other than a directory entry for the root or one of its ancestors</td></tr>
+<tr><td><code>duplicate_entry</code></td><td>a path equal to an earlier entry's</td></tr>
+<tr><td><code>file_directory_conflict</code></td><td>a file whose path is an earlier entry's directory, or a directory whose path is an earlier file's</td></tr>
+<tr><td><code>case_collision</code></td><td>a path prefix whose collision key equals a different earlier prefix's key</td></tr>
+<tr><td><code>file_too_large</code>, <code>unpacked_size</code>, <code>file_count</code></td><td>a file over 256 MiB, more than 1 GiB in total, more than 4096 files, counted as bytes are decompressed</td></tr>
+<tr><td><code>entry_point_missing</code>, <code>entry_point_not_exe</code>, <code>executable_missing</code></td><td>no file at <code>entryPoint</code>; a Windows entry point whose last component does not end in <code>.exe</code>; a path in <code>executables</code> with no file</td></tr>
+<tr><td><code>tree_digest_mismatch</code></td><td>a computed tree digest that is not <code>treeSha256</code></td></tr>
+<tr><td><code>install_path_too_long</code></td><td>on Windows, a store path over 259 UTF-16 code units (<a href="#run-1">RUN-1</a>)</td></tr>
+</tbody>
+</table>
+<p>Elsewhere a host reports <code>package.runtime</code> (a <code>package</code> on a non-process artifact), <code>package.unsupported</code> (<a href="#pkg-1">PKG-1</a>) and <code>package.tree_changed</code> (<a href="#vfy-1">VFY-1</a>).</p>
+<p><strong>Unicode.</strong> Paths may hold non-ASCII characters in NFC, as Unicode 17.0.0 defines it, the version the toolchain contracts pin. A host ships its own normalization and case data of that version and does not use the operating system's, for the reason the toolchain decision gives: the result must be the same on every machine. NFC is unique, so two different NFC paths are never canonically equivalent. Normalization therefore cannot make two accepted paths collide; only case can.</p>
+<p><strong>Collision keys.</strong> Every prefix of every path (<code>lib</code>, then <code>lib/a.dll</code>) has two keys: the NFC of its full case folding (CaseFolding.txt statuses C and F), and the NFC of its full uppercase mapping without language-specific rules. Two different prefixes collide when either key is equal. This is <span class="tag">observed</span> the Rust tool extractor's rule, with the Unicode version pinned. The two keys cover different cases:</p>
+<ul>
+<li><code>straße.txt</code> and <code>strasse.txt</code> collide by case folding;</li>
+<li><code>ı.dll</code> (dotless i) and <code>i.dll</code> collide by uppercase, as NTFS's uppercase table treats them, while case folding keeps them apart.</li>
+</ul>
+<p>The rule refuses some pairs that no first-delivery file system would confuse, such as <code>straße</code> and <code>strasse</code> on NTFS. That costs nothing a real package needs.</p>
+<p><strong>Root.</strong> Archives made by <code>zip -r</code> or <code>tar -C</code> often wrap everything in one directory. <code>root</code> names that directory, so the tree does not depend on how the archive was made, and anything outside it is refused rather than silently dropped.</p>
+
+<h3 id="ext-2">EXT-2. Bounds</h3>
+<table>
+<thead><tr><th>Bound</th><th>Value</th><th>Why this value</th></tr></thead>
+<tbody>
+<tr><td>Archive size</td><td>256 MiB</td><td>The existing per-artifact limit (<code>MAX_EXTENSION_ARTIFACT_BYTES</code>). The F# frontend's archive is well under it (<span class="tag">assumption</span>, task 2.1).</td></tr>
+<tr><td>Entries, files</td><td>4096 each</td><td>About 17 times the F# frontend's 239 files. The installer plan's 1024 is too close for other self-contained runtimes, and the Rust tool limit of 10 000 is more than an extension needs.</td></tr>
+<tr><td>File size</td><td>256 MiB</td><td>The same as the archive limit, so a single file cannot exceed what an artifact could hold before.</td></tr>
+<tr><td>Unpacked total</td><td>1 GiB</td><td>About 8 times the F# frontend; the installer plan's value.</td></tr>
+<tr><td>Entry path</td><td>512 UTF-8 bytes, 240 UTF-16 code units; components 255</td><td>The toolchain contracts' target-path limits, so one portable-path rule serves both.</td></tr>
+<tr><td>Tree path, depth</td><td>120 UTF-16 code units, 16 components</td><td>Leaves room on Windows for the store prefix (<a href="#run-1">RUN-1</a>).</td></tr>
+<tr><td>Tar extension header</td><td>1 MiB each</td><td>The Rust tool extractor's value, so a PAX header cannot exhaust memory.</td></tr>
+</tbody>
+</table>
+<p>Sizes are counted as bytes come out of the decompressor, never taken from headers, and the host stops at the first byte past a limit. That one rule covers decompression bombs; no separate compression ratio is needed.</p>
+
+<h3 id="mode-1">MODE-1. File modes</h3>
+<p>On Linux and macOS the frontend's apphost must be executable. Some .NET runtime files, such as <code>createdump</code>, are executable too.</p>
+<p><strong>Decision.</strong> On Unix a host gives <code>x</code> files mode <code>0755</code>, <code>f</code> files <code>0644</code> and directories <code>0755</code>, and sets no setuid, setgid or sticky bit. On Windows it sets no attribute and writes no alternate data stream; a Windows entry point is executable because it ends in <code>.exe</code>. Nothing else from the archive is used: not modes, owners, groups, timestamps or extended attributes. The <code>x</code> set is the entry point plus <code>executables</code>, from the descriptor.</p>
+<p><strong>Why the descriptor decides, not the archive.</strong> A ZIP file written on Windows has no Unix modes. A tar file has modes, but they differ between build machines. Taking the executable set from the authenticated descriptor makes the tree digest independent of the archiving tool, and means the set cannot change without changing the descriptor's digest. <span class="tag">observed</span> The Rust tool extractor instead marks any entry with an executable mode bit. That is the behavior this rule replaces.</p>
+
+<h3 id="store-1">STORE-1. Store layout and atomic publication</h3>
+<p>The checked files must end up somewhere that no host can read half-written, and where every later check can find the manifest.</p>
+<pre><code class="language-console">MORPHIR_HOME/store/extensions/
+  sha256/&lt;digest&gt;/&lt;filename&gt;            single-file artifacts, unchanged
+  packages/
+    .stage-&lt;random&gt;/                     staging: owner, manifest, tree/
+    .trash-&lt;random&gt;/                     a package being collected
+    sha256/&lt;treeSha256&gt;/
+      manifest                           the tree manifest bytes
+      lease                              no content; held while the package runs
+      tree/morphir-fsharp-frontend.exe   the entry point
+      tree/…                             the other files</code></pre>
+<p><strong>Decision.</strong></p>
+<ol>
+<li><strong>Stage.</strong> The host creates <code>packages/.stage-&lt;random&gt;/</code> on the same volume and holds an exclusive lock on its <code>owner</code> file throughout. It unpacks into <code>tree/</code>, hashing each file from the bytes it writes, then flushes each file, writes <code>manifest</code> and flushes it. On Unix it also syncs the directories.</li>
+<li><strong>Verify.</strong> It applies every rule of <a href="#ext-1">EXT-1</a> and compares the manifest's SHA-256 with <code>treeSha256</code>.</li>
+<li><strong>Publish.</strong> It renames the staging directory to <code>sha256/&lt;treeSha256&gt;/</code>. If that path already exists, another install published the same tree. The host verifies the existing tree in full: if it matches, the host discards its staging directory and uses it; if not, it moves the existing tree to <code>.trash-</code> and publishes its own.</li>
+<li><strong>Record.</strong> Under the state lock, through the transaction journal, it writes the lock and the catalog entry with the <code>package</code> member.</li>
+</ol>
+<p>A published package is never changed. Unpacking and hashing about 121 MB takes seconds, so steps 1 to 3 run outside the state lock. Only step 4 takes it, which keeps other hosts' commands from waiting on an unpack.</p>
+<table>
+<thead><tr><th>Interrupted during</th><th>What is left</th><th>What recovery does</th></tr></thead>
+<tbody>
+<tr><td>Download or step 1</td><td>A <code>.stage-</code> directory whose <code>owner</code> lock is free</td><td>The next install or collection removes it when it can take the <code>owner</code> lock without waiting. A directory whose owner still runs is left alone.</td></tr>
+<tr><td>Step 2 (a refusal)</td><td>Nothing; the host removes its staging directory</td><td>None.</td></tr>
+<tr><td>Step 3, the rename</td><td>Either the staging directory or the published tree, never part of one: a rename within one volume is atomic (<span class="tag">assumption</span>, task 2.3)</td><td>As for step 1, or as for the next row.</td></tr>
+<tr><td>Between steps 3 and 4</td><td>A published tree that no lock names</td><td>The next install of the same package finds it, verifies it and records it. Otherwise collection removes it.</td></tr>
+<tr><td>Step 4</td><td>A journal</td><td>#1149's journal recovery writes the lock and the catalog, or neither.</td></tr>
+</tbody>
+</table>
+<p><strong>Why key by the tree digest.</strong> The tree is what runs, and the digest that names it can be checked on disk. Two archives with the same files, for example one recompressed, share one tree. The archive is not kept. A repair downloads it again, so a home holds about 121 MB per installed frontend, not 121 MB plus the archive.</p>
+
+<h3 id="vfy-1">VFY-1. What verified means, and when it is checked</h3>
+<p>A project compiles many times a day, and each compile starts the frontend once. The single-file rule rehashes the artifact at every activation. Applied to a package, that rule meets 239 files and about 121 MB.</p>
+<p><strong>Verified</strong> means three things: the archive matched <code>sha256</code>, no rule of <a href="#ext-1">EXT-1</a> refused it, and the tree digest computed from the written bytes equalled <code>treeSha256</code>. A package that is not verified is never published, recorded or started.</p>
+<table>
+<thead><tr><th>Check</th><th>What it reads</th><th>Estimated cost for 239 files and 121 MB <span class="tag">assumption</span></th></tr></thead>
+<tbody>
+<tr><td>Full verification at install</td><td>The archive, every decompressed byte, 239 writes</td><td>About 1 to 3 seconds, once per install</td></tr>
+<tr><td>Structure check at each activation</td><td>The manifest (about 25 KB) and its SHA-256, plus a listing and size of every file</td><td>About 5 to 30 ms; up to about 100 ms on Windows with real-time scanning</td></tr>
+<tr><td>Full rehash at each activation</td><td>239 opens and 121 MB of SHA-256</td><td>About 0.1 to 0.3 seconds with a warm cache; 0.5 to 2 seconds cold, and more with real-time scanning</td></tr>
+<tr><td>Private copy at each activation (the single-file practice)</td><td>121 MB written to 239 new files</td><td>About 0.5 to 3 seconds, plus scanning of each new executable file, and twice the disk while it runs</td></tr>
+</tbody>
+</table>
+<p>The estimates assume SHA-256 at 0.5 to 2 GB/s and solid-state storage. Task 2.4 measures them on the first-delivery platforms.</p>
+<p><strong>Decision</strong> <span class="tag">provisional</span>. Open question <a href="#q-verify">Q-VERIFY</a>; the spec states outcome <code>VERIFY-B</code>:</p>
+<ul>
+<li><strong>At install, and when the user asks to verify installed extensions:</strong> full verification.</li>
+<li><strong>At each activation, under the state lock:</strong>
+<ul>
+<li>the lock and catalog agree on <code>package</code>;</li>
+<li>the SHA-256 of <code>manifest</code> equals <code>treeSha256</code>;</li>
+<li><code>tree/</code> holds exactly the manifest's files, as regular files, with the manifest's sizes and, on Unix, executable bits.</li>
+</ul>
+A failure is <code>package.tree_changed</code>, and nothing starts.</li>
+<li><strong>Under <code>VERIFY-A</code>:</strong> activation also rehashes every file.</li>
+</ul>
+<p><strong>Why <code>VERIFY-B</code> is recommended.</strong> It catches what happens in practice: deleted, truncated, added or replaced files, and a manifest edited out of step with the lock. It does so for a few milliseconds instead of a fraction of a second on every compile. What it misses is a same-size change to a file's bytes. A process running as the same user could make that change, but such a process could equally change the host or the lock, so a rehash at launch is not a security boundary against it. The full check stays one command away.</p>
+
+<h3 id="run-1">RUN-1. Activation and launch</h3>
+<p>The compile now needs the frontend running.</p>
+<p><strong>Decision.</strong> The host starts the entry point from the store; it does not copy it.</p>
+<ul>
+<li><strong>Program.</strong> The absolute path of <code>tree/&lt;entryPoint&gt;</code>, in the platform's native spelling, without a verbatim prefix, as <code>C:\Users\dev\.morphir\store\extensions\packages\sha256\&lt;treeSha256&gt;\tree\morphir-fsharp-frontend.exe</code>.</li>
+<li><strong>Arguments.</strong> The argument vector is that path followed by the locked arguments.</li>
+<li><strong>Working directory.</strong> The project directory for a project command, otherwise a new private directory outside the store, never inside it. The environment is filtered as for a single-file process.</li>
+<li><strong>Lease.</strong> While it holds the state lock after the activation check, the host takes a shared lock on the package's <code>lease</code> file. It keeps the lease until the started process exits: <code>flock(LOCK_SH)</code> on Unix, and <code>LockFileEx</code> without <code>LOCKFILE_EXCLUSIVE_LOCK</code> over the full range on Windows, the same calls #1149's state lock uses in shared form.</li>
+</ul>
+<p><strong>Windows.</strong></p>
+<ul>
+<li>A Windows entry point ends in <code>.exe</code>, compared ignoring ASCII case. That is the installer plan's recommendation in Q-WINLAUNCH: <code>CreateProcessW</code> starts <code>.exe</code> files directly, and anything else would go through a command interpreter.</li>
+<li>Before it publishes, a host refuses a package with <code>package.install_path_too_long</code> when any of its store paths would exceed 259 UTF-16 code units. The message names the longest path and its length. The store prefix in a typical home is about 130 code units (<code>C:\Users\dev\.morphir\store\extensions\packages\sha256\</code>, 64 hexadecimal digits, <code>\tree\</code>), and a tree path is at most 120 (<a href="#ext-2">EXT-2</a>), so the limit binds only for long home paths.</li>
+<li><span class="tag">assumption</span> <code>CreateProcessW</code> and the loaders of the runtimes inside a package do not accept longer paths without long-path support, so 259 is the safe limit. Task 2.5 checks this. If the assumption is wrong, the rule is relaxed for hosts that detect long-path support.</li>
+</ul>
+<p><strong>Why from the store.</strong> A private copy per launch costs a large write on every compile (<a href="#vfy-1">VFY-1</a>). It also gains nothing for packages, because the reasons for copies do not apply. Update installs a new tree under another digest, so no running file is replaced. Uninstall never deletes a package (<a href="#rem-1">REM-1</a>). And a verified, immutable tree in the user's own home is as trusted as a copy written from it. The single-file artifacts keep their private copies; that is not changed here.</p>
+
+<h3 id="rem-1">REM-1. Removal and collection</h3>
+<p>The user uninstalls the frontend while a compile is still running it.</p>
+<p><strong>Decision.</strong> Uninstall and update remove or replace the extension's lock and catalog entry, and never delete or change a published package. The running process keeps its files.</p>
+<p>A separate, explicit collection command deletes packages. Under the state lock, for each published package, it requires two things: no extension lock in the home names its tree digest, and an exclusive lock on its <code>lease</code> can be taken without waiting. It renames such a package to <code>.trash-&lt;random&gt;</code>, then deletes it. A rename that fails, as it can on Windows while a file is open, leaves the package for a later run. Collection also removes <code>.trash-</code> directories and abandoned <code>.stage-</code> directories (<a href="#store-1">STORE-1</a>).</p>
+<p><strong>Why.</strong> <span class="tag">observed</span> Today nothing deletes store bytes; the installer plan keeps that rule ("Removal never deletes store objects"). A package is about 121 MB, so some deletion is needed. Tying it to an explicit command keeps uninstall fast and safe while the extension runs. The lease is what makes deletion safe across hosts and processes. The state lock alone cannot do it, because it is not held while a guest runs.</p>
+<p>A toolchain generation's receipt can also point into the store. The toolchain follow-up (<a href="#tc-1">TC-1</a>) says how collection treats a package that a receipt names.</p>
+
+<h3 id="trust-1">TRUST-1. A package changes nothing about trust</h3>
+<p><strong>Decision.</strong> A package does not change who is trusted. Claim checks and publisher authentication stay separate facts.</p>
+<ul>
+<li><strong>What a host may conclude</strong> from a verified package: its tree is the one the descriptor names. When the descriptor is authenticated, by a repository's signed targets or a recipe's digest, the tree is therefore the one its publisher released.</li>
+<li><strong>What a host may not conclude.</strong> Unpacking says nothing about the publisher. A code signature inside the tree, such as Authenticode on the entry point, is not authentication and grants nothing. The <code>executables</code> list grants no permission beyond the executable bit. The package's claims are still decided by the probe, run from the published tree.</li>
+</ul>
+<p>An unsigned developer package from a local repository stays unsigned developer content, admitted only under explicit developer policy.</p>
+
+<h3 id="tc-1">TC-1. Recipes and locks in the toolchain contracts</h3>
+<p>The toolchain contracts bind the frontend's archive today and leave multi-file artifacts open as their question M2. This change answers M2 differently from that question's recommended default: a package, not a self-extracting single file. The follow-up is task group 4, on those contracts, not edits here:</p>
+<ul>
+<li>close M2, and make final the rule that a process provider's <code>artifactTarget</code> is one archive per platform;</li>
+<li>state that <code>artifactSha256</code> is the archive digest, and that the tree digest comes from the bound descriptor, so the portable lock needs no new member. A frozen restore already has the descriptor, because it binds <code>descriptorTarget</code> and <code>descriptorSha256</code>;</li>
+<li>add the recipe consistency check that a package artifact's <code>package.format</code> matches the target's suffix;</li>
+<li>say that a receipt's <code>launch.program</code> for a package names the entry point inside the published tree, and how extension collection treats a package that a receipt names;</li>
+<li>regenerate the signed F# frontend fixtures as packages with a <code>treeSha256</code>.</li>
+</ul>
+
+<h3 id="conf-1">CONF-1. Shared conformance cases</h3>
+<p>The .NET host and the MoonBit host must refuse the same archives with the same codes.</p>
+<p><strong>Decision.</strong> Publish the cases in finos/morphir, beside a normative package page, as data. Each case is a small archive file, generated deterministically by a checked-in script, plus a JSON entry naming the archive, the descriptor's <code>package</code> member and the expected outcome: valid with its tree digest, or the refusal code and the entry path it names. Many refusals cannot be produced with ordinary archiving tools (links, devices, <code>..</code>, mismatched ZIP names), so the generator writes archive bytes directly and the bytes are checked in. A runner reads the bytes, not the script.</p>
+<table>
+<thead><tr><th>Group</th><th>Cases</th></tr></thead>
+<tbody>
+<tr><td>Valid</td><td>A ZIP and a <code>tar.gz</code> package with a root, nested directories, a non-ASCII NFC name and an <code>executables</code> entry; the same tree in both formats, with one tree digest</td></tr>
+<tr><td>Tree digests</td><td>Manifests as text with their expected digests, including empty-file and sort-order cases</td></tr>
+<tr><td>Refusals</td><td>One archive for each code of <a href="#ext-1">EXT-1</a> except <code>install_path_too_long</code>, and archives that break two rules to pin the order</td></tr>
+<tr><td>Metadata ignored</td><td>Two archives that differ only in modes and timestamps, with one tree digest</td></tr>
+<tr><td>Single file</td><td>A descriptor with a <code>process</code> artifact named <code>tool.zip</code> and no <code>package</code>, read as a single-file artifact</td></tr>
+<tr><td>Descriptor</td><td>A <code>package</code> on a <code>wasm</code> artifact (<code>package.runtime</code>), and a format and file name that do not match</td></tr>
+</tbody>
+</table>
+<p>The lease, the Windows path limit and the atomic rename depend on the operating system, so each host proves them with tests, not data (tasks 2.3 and 2.5).</p>
+
+<h3 id="repo-1">REPO-1. Delivery order</h3>
+<svg viewBox="0 0 900 200" role="img" aria-labelledby="repo-title repo-desc">
+<title id="repo-title">Delivery order across repositories</title>
+<desc id="repo-desc">First finos/morphir publishes the rule page, the cases and the shared-file definitions. Then morphir-dotnet implements the installer and publishes the F# frontend as a package. Then the MoonBit host adopts the rules. Then the toolchain contracts bind packages. Rust is optional later work.</desc>
+<rect class="box" x="10" y="20" width="190" height="70" rx="6"/><text x="20" y="45">1. finos/morphir</text><text x="20" y="65">rule page, cases,</text><text x="20" y="82">shared files</text>
+<rect class="box" x="235" y="20" width="190" height="70" rx="6"/><text x="245" y="45">2. morphir-dotnet</text><text x="245" y="65">installer, F# frontend</text><text x="245" y="82">as a package</text>
+<rect class="box" x="460" y="20" width="190" height="70" rx="6"/><text x="470" y="45">3. MoonBit host</text><text x="470" y="65">rules and cases</text>
+<rect class="box" x="685" y="20" width="205" height="70" rx="6"/><text x="695" y="45">4. toolchain contracts</text><text x="695" y="65">M2 closed, fixtures</text><text x="695" y="82">as packages</text>
+<rect class="box" x="685" y="120" width="205" height="55" rx="6"/><text x="695" y="143">optional, gates nothing:</text><text x="695" y="162">Rust library and CLI</text>
+<path class="edge" d="M200 55 L235 55 M425 55 L460 55 M650 55 L685 55"/>
+</svg>
+<ol>
+<li><strong>finos/morphir.</strong> This change is approved. The normative package page and its cases land, and <code>distribution-and-acquisition.md</code> defines the <code>package</code> member in the descriptor, record, catalog and lock at the package drafts (<a href="#ver-1">VER-1</a>).</li>
+<li><strong>finos/morphir-dotnet.</strong> The installer of finos/morphir-dotnet#567 installs, verifies, starts and collects packages, and runs the cases. The F# frontend is published as a package for each platform (the installer plan's adoption task 3.3). Its Q-MULTIFILE closes in favor of this form, and its Q-ARCHIVE rule "a target archive holds exactly one executable" is replaced: an archive artifact is a package, even with one file.</li>
+<li><strong>MoonBit host.</strong> Its owning repository adopts the rules and runs the cases. Until then it refuses packages with <code>package.unsupported</code>.</li>
+<li><strong>Toolchain contracts in finos/morphir</strong> (<a href="#tc-1">TC-1</a>).</li>
+</ol>
+<p><strong>Optional later work, gating nothing.</strong> finos/morphir-rust's <code>morphir-distribution</code> could reuse its tool extractor for extension packages. Its publication path would stop refusing archives that carry a <code>package</code> member, and the Rust CLI could install them. No <code>ecosystem/morphir-rust</code> pin move is planned.</p>
+
+<h3 id="alternatives">Alternatives not chosen</h3>
+<table>
+<thead><tr><th>Alternative</th><th>Why not</th></tr></thead>
+<tbody>
+<tr><td>A self-unpacking single-file F# frontend (<code>PublishSingleFile</code> with <code>IncludeAllContentForSelfExtract</code>), as toolchain question M2 and the installer plan's Option A recommended</td><td>Not taken by the maintainer. It needs a second publish profile and a qualification task, an extraction directory outside the verified store whose files are never rehashed, and about 121 MB written at the first start of each extraction directory. It fixes one guest, and the next multi-file guest would need the same work.</td></tr>
+<tr><td>Leave the Native AOT offering without an installable F# frontend</td><td>Not taken by the maintainer. That offering has no built-in F# frontend, so it could not compile F# at all.</td></tr>
+<tr><td>Archive digest only</td><td>An unpacked tree could not be checked without keeping or re-downloading the archive (<a href="#tree-1">TREE-1</a>).</td></tr>
+<tr><td>Tree digest only</td><td>Repositories and recipes authenticate the archive as a TUF target; dropping its digest would break that binding.</td></tr>
+<tr><td>A per-file list in the descriptor</td><td>The same information as the manifest, but it makes the descriptor large and defines the hashed bytes twice.</td></tr>
+<tr><td>Verify every file at every launch (<code>VERIFY-A</code>)</td><td>A fraction of a second to seconds on every compile, against a threat it does not stop (<a href="#vfy-1">VFY-1</a>). Kept as an option in <a href="#q-verify">Q-VERIFY</a>.</td></tr>
+<tr><td>Verify only at install (<code>VERIFY-C</code>)</td><td>A deleted or truncated file would surface as a confusing failure inside the guest, not as a clear refusal.</td></tr>
+<tr><td>Start a private copy of the tree at each launch</td><td>Writes about 121 MB per compile and adds scanning delay; the reasons for copies do not apply to immutable trees (<a href="#run-1">RUN-1</a>).</td></tr>
+<tr><td>Keep the archive and unpack it at each activation</td><td>The cost of a full unpack on every compile.</td></tr>
+<tr><td>Honor the archive's executable bits</td><td>The digest would depend on the archiving tool, and ZIP files made on Windows have none (<a href="#mode-1">MODE-1</a>).</td></tr>
+<tr><td>ASCII-only entry names, as the installer plan's ARC-1 has for its archives</td><td>Simpler, and enough for the F# frontend. But the toolchain contracts allow non-ASCII NFC target paths, and one repository should not have two portable-path rules. A later package from another runtime could carry non-ASCII resource names. The two collision keys keep the Unicode rule safe.</td></tr>
+<tr><td>The workbench artifact profile's collision key (NFKC, then Unicode 9.0.0 case folding, then NFC, in <code>spec/workbench/</code>)</td><td>It pins two Unicode versions and folds compatibility characters that no file system folds. It also misses the dotless i, which the uppercase key catches.</td></tr>
+<tr><td>Allow symbolic links that stay inside the root</td><td>Not needed by the F# frontend. Links are the commonest cause of extraction escapes, and Windows needs privileges to create them. A later draft can add them if a runtime needs <code>.so</code> links.</td></tr>
+<tr><td>More formats (<code>tar.xz</code>, <code>tar.zst</code>, 7z)</td><td>A reader in every host for no artifact that needs it.</td></tr>
+<tr><td>Infer a package from the file name</td><td>Would change the meaning of an existing single-file artifact with that name (<a href="#pkg-1">PKG-1</a>).</td></tr>
+<tr><td>Delete a package at uninstall</td><td>Unsafe while the package runs, and on Windows it fails on open files (<a href="#rem-1">REM-1</a>).</td></tr>
+<tr><td>A following draft regardless of timing (<code>PKGVER-B</code> always)</td><td>Costs a second draft in every host and a republication even when nothing was published at #1149's drafts (<a href="#ver-1">VER-1</a>).</td></tr>
+</tbody>
+</table>
+
+<h2 id="needs">What this change needs from other work</h2>
+<table>
+<thead><tr><th>From</th><th>File and section</th><th>What it says</th><th>What this change needs</th></tr></thead>
+<tbody>
+<tr><td>finos/morphir#1149</td><td><code>openspec/changes/allow-dotted-extension-ids/specs/extensions/extension-identity/spec.md</code>, "The documents that can carry a dotted id are at new exact drafts"</td><td>"A writer SHALL write every release descriptor, repository index record and installed catalog at <code>2.0.0-draft.3</code>, and every extension lock at <code>2.0.0-draft.1</code> … <code>2.0.0-draft.3</code> differs from <code>2.0.0-draft.2</code> only in the id grammar"</td><td>Under <code>PKGVER-A</code>, "only in the id grammar" becomes "in the id grammar and the <code>package</code> member". Under <code>PKGVER-B</code>, nothing.</td></tr>
+<tr><td>finos/morphir#1149</td><td>the same spec, "Names derived from an id"</td><td>"The content-addressed artifact store SHALL NOT use the id in its paths."</td><td>The package store follows the same rule; nothing to change.</td></tr>
+<tr><td>finos/morphir#1149</td><td><code>tasks.md</code>, task 1.4</td><td>"Update <code>docs/design/draft/extensions/distribution-and-acquisition.md</code> so it defines, as the authority, the members and values of … the installed catalog …, the extension lock …, the transaction journal, the state lock …"</td><td>The <code>package</code> member is added to the catalog and lock that this task defines (this change's task 1.2). The lock is a closed document, so <code>package</code> must be in its definition.</td></tr>
+<tr><td>Review fixes to #1149 (branch <code>docs/openspec-dotted-ids-review-fixes</code>, <code>7f22dfea2</code>, not merged)</td><td>design DEF-3 and DEF-4; spec "The lock primitive is a whole-file exclusive operating-system lock", "Shared files are replaced through temporary files that readers ignore"</td><td>The state lock is <code>flock(LOCK_EX)</code> or a full-range <code>LockFileEx</code>. Temporary files start with <code>.stage-</code>, and readers ignore entries starting with <code>.</code>.</td><td>The lease uses the same calls in shared form. The <code>.stage-</code> and <code>.trash-</code> directories follow the dot rule. If those fixes are not merged, this change's task 1.2 states the primitive itself.</td></tr>
+<tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/toolset-recipe.md</code>, "Questions for the maintainer", M2</td><td>"Recommended default: for first delivery, a single-file self-extracting frontend at the archive's root … A package form for multi-file guests would be a separate, reviewed descriptor change. The rule that a process provider's <code>artifactTarget</code> is one archive per platform is provisional until M2 is answered."</td><td>M2 is answered by this change (<a href="#tc-1">TC-1</a>, task 4.1).</td></tr>
+<tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/index.md</code>, "Target paths"</td><td>The component rules and the Windows device names, and "A target path is also in Unicode Normalization Form C"</td><td>The entry path rules reuse them. The Unicode 17.0.0 pin appears in that section and in <code>manager-result.md</code>, "Unicode normalization (decided 9 November 2026 …)", in toolchain work at <code>cd7391232</code>, which is not yet on a remote branch. The decision itself is the maintainer's comment on finos/morphir#1146.</td></tr>
+<tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/installation-receipt.md</code>, members table, <code>launch</code></td><td>"<code>program</code>, an absolute local path in the receipt platform's syntax, and fixed <code>args</code>"</td><td>For a package, <code>program</code> names the entry point in the published tree (task 4.2).</td></tr>
+<tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, ARC-1</td><td>"Entry names: must be ASCII … are compared ignoring ASCII case"; limits "1 GiB, 1024 entries, 256 MiB per entry"</td><td>For packages, the installer adopts <a href="#ext-1">EXT-1</a> and <a href="#ext-2">EXT-2</a> instead (task 2.2).</td></tr>
+<tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, Q-ARCHIVE and Q-MULTIFILE; <code>specs/extension-package-archives/spec.md</code>, "A target archive holds exactly one executable"</td><td>Option (a): "Require exactly one regular file, install it, record its digest in the lock"; "This change keeps refusing multi-file artifacts (<code>extension.multi_file_artifact</code>)"</td><td>Replaced: an archive artifact is a package, and the lock records the archive digest and the <code>package</code> member (task 2.2).</td></tr>
+<tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, "The path to installing the F# frontend without .NET", Option B</td><td>"a descriptor member for an entry point and a per-file manifest; a store layout for trees, and activation that verifies every file; a catalog and lock member for trees …; a new draft of the descriptor, catalog and lock"</td><td>Delivered here, except that activation runs a structure check rather than a full rehash, provisionally (<a href="#q-verify">Q-VERIFY</a>), and the per-file manifest is derived and stored locally, not carried in the descriptor.</td></tr>
+<tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, SEL-3, and Q-WINLAUNCH</td><td>"runs a private copy written from the verified read"; "refuse non-<code>.exe</code> Windows executables at install, launch from the short private copy"</td><td>For packages, the host starts the entry point from the store, and the <code>.exe</code> rule and a path limit are adopted (<a href="#run-1">RUN-1</a>).</td></tr>
+</tbody>
+</table>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>A same-size change to a stored file goes unnoticed until a full verification.</td><td>Accepted under <code>VERIFY-B</code>; a same-user process could change the host as easily. The full check is one command, and <a href="#q-verify">Q-VERIFY</a> lets the maintainer choose <code>VERIFY-A</code>.</td></tr>
+<tr><td>Hosts compute different collision keys because their Unicode data differ.</td><td>The version is pinned, hosts ship their own data, and the cases include non-ASCII collisions.</td></tr>
+<tr><td>A long <code>MORPHIR_HOME</code> on Windows refuses a package that installs elsewhere.</td><td>A refusal before anything is published, naming the path and its length, with a 120-unit bound on tree paths.</td></tr>
+<tr><td>A guest starts a process that outlives the host, which then releases the lease, and collection removes the tree under it.</td><td>On Unix the running process keeps its open files. On Windows the rename fails while files are open, and collection skips the package. Collection runs only on request.</td></tr>
+<tr><td>Unused packages fill the disk.</td><td>An explicit collection command; uninstall reports that the files stay until collection.</td></tr>
+<tr><td>A real package needs a symbolic link.</td><td>Refused with a clear code. A later draft can allow links that stay inside the root.</td></tr>
+<tr><td>PKGVER-B is needed after all, and the F# guests are republished.</td><td>The timing rule picks A whenever it is still possible (<a href="#ver-1">VER-1</a>).</td></tr>
+<tr><td>Antivirus delays the first start of each new file.</td><td>Files are written once, at install, not at each launch (<a href="#run-1">RUN-1</a>).</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>Nothing is converted. Single-file artifacts are unchanged. Publishers start writing packages at the package drafts once a host can install them; the first is the F# frontend. A host that reads the package drafts but does not yet install packages refuses them with <code>package.unsupported</code>. Rolling back a host leaves published packages in the store, where they occupy disk until a collection by a host that knows them. No existing home holds a package, so no home needs a migration step.</p>
+
+<h2 id="assumed">Assumed</h2>
+<table>
+<thead><tr><th>Assumption</th><th>Settled by</th></tr></thead>
+<tbody>
+<tr><td>The F# frontend's published folder is about 239 files and 121 MB, holds no symbolic link and no non-ASCII name, has a longest tree path under 120 UTF-16 code units, and needs the executable bit only on its apphost and <code>createdump</code>.</td><td>Task 2.1</td></tr>
+<tr><td>Renaming a directory within one volume is atomic on NTFS, APFS and ext4, and fails without replacing anything when the target exists.</td><td>Task 2.3</td></tr>
+<tr><td>The cost estimates of <a href="#vfy-1">VFY-1</a>.</td><td>Task 2.4</td></tr>
+<tr><td><code>CreateProcessW</code>, and the loaders inside a self-contained .NET program, need store paths of at most 259 UTF-16 code units without long-path support. Files a CLI writes on macOS carry no quarantine attribute, so Gatekeeper does not block an unsigned entry point.</td><td>Task 2.5</td></tr>
+<tr><td>.NET's ZIP and tar readers expose what the rules need: local header names, entry types and PAX records. The installer plan's ARC-1 assumes the same.</td><td>Task 2.2</td></tr>
+<tr><td>The MoonBit host can ship Unicode 17.0.0 normalization, case-folding and uppercase data.</td><td>Task 3.2</td></tr>
+</tbody>
+</table>
+
+<h2 id="open-questions">Open questions</h2>
+<p>One question is left for the maintainer. The others the brief raised are settled above: the package form itself, by the maintainer; the version sharing, by the timing rule of <a href="#ver-1">VER-1</a>; the formats, digests, refusals, modes, store, launch and removal, by this design.</p>
+
+<h3 id="q-verify">Q-VERIFY. What does a host check each time it starts a package? <span class="tag">provisional requirement</span></h3>
+<p><strong>Today.</strong> A single-file artifact is rehashed at every activation and run from a private copy. A package is about 239 files and 121 MB, and the F# frontend starts once per compile.</p>
+<ul>
+<li><strong><code>VERIFY-A</code>.</strong> Rehash every file at every activation, as for single files. Cost: about 0.1 to 2 seconds per compile, more with real-time scanning.</li>
+<li><strong><code>VERIFY-B</code>.</strong> At every activation, check the manifest's digest and that the files match it in names, sizes and executable bits. Rehash every file at install and on request. Cost: a few milliseconds per compile. A same-size change to a file's bytes is found only by the full check.</li>
+<li><strong><code>VERIFY-C</code>.</strong> Check only at install. Cost: nothing per compile. Deleted or truncated files surface as failures inside the guest.</li>
+</ul>
+<p><strong>Recommendation:</strong> <code>VERIFY-B</code>. Depends on it: the spec's "Activation checks the published tree", and tasks 2.2 and 2.4.</p>
+
+</main>
+</body>
+</html>
