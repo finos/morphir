@@ -146,11 +146,22 @@ The host SHALL provide `morphir extension worker`, taking `--abi`, `--module`, `
 - **THEN** stderr carries a `refused` report with `extension.abi_unsupported`, stdout carries no bytes and the exit status is not zero
 
 ### Requirement: Worker build identity
-`morphir extension worker --help --json` SHALL report a build identity for the executable. When `--build-identity` is given and differs, the worker SHALL exit before loading the module.
+`morphir extension worker --help --json` SHALL report a build identity for the executable. When `--build-identity` is given and differs, the worker SHALL refuse with `extension.worker_runtime_mismatch` before loading the module.
 
 #### Scenario: Stale identity
 - **WHEN** the worker is started with the build identity of another release
-- **THEN** it exits with a `refused` report that names both identities
+- **THEN** it exits with status 3 and a `refused` report with `extension.worker_runtime_mismatch` that names both identities
+
+### Requirement: Worker events and exit status
+With `--json` the worker SHALL write `started`, `output`, `fault`, `refused` and `exited` events with the members and fault kinds the MoonBit worker uses. It SHALL exit 0 after serving until `exit`, 1 after a guest fault, invalid frame or early end of stdin, 2 for invalid arguments and 3 for a refusal before any request.
+
+#### Scenario: Guest traps
+- **WHEN** a guest traps during a request in worker mode
+- **THEN** stderr carries a `fault` event with kind `trap` and the exit status is 1
+
+#### Scenario: Unknown argument
+- **WHEN** the worker is started with an argument it does not know
+- **THEN** it exits with status 2 and writes no frame to stdout
 
 ### Requirement: Packaged engine is qualified
 A release SHALL claim the WASM runtime for an offering and platform only after the released artifact, on a clean machine of that platform, has run one guest of each profile and one refusal of each bound. A run from the build directory SHALL NOT count.

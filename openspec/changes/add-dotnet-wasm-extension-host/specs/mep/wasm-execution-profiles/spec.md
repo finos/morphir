@@ -93,6 +93,11 @@ A host SHALL read a module's imports and exports before instantiating it and SHA
 - **THEN** the host refuses it with `extension.abi_unsupported`, naming `env.open_socket`
 - **AND** the module is not instantiated
 
+#### Scenario: Module with no profile imports
+- **WHEN** a module imports nothing from a profile namespace and no ABI is declared
+- **THEN** the host classifies it as `extism-kernel-v1`
+- **AND** the same module declared as `morphir-bytes-v1` is classified as `morphir-bytes-v1`
+
 #### Scenario: Known name with another signature
 - **WHEN** a module imports `morphir_bytes_v1.input_byte` as `(i64) -> i32`
 - **THEN** the host refuses it with `extension.abi_unsupported`, naming that import
@@ -151,12 +156,16 @@ For `extism-kernel-v1` the host SHALL keep one instance for the session and call
 - **AND** `morphir.initialized` and `morphir.exit` are not delivered to the guest
 
 ### Requirement: One message per call
-A host SHALL pass exactly one complete JSON-RPC message per `handle` call, as UTF-8 bytes without a `Content-Length` header, and SHALL accept at most one response per call. A message larger than the session's negotiated byte limit SHALL be refused before the guest is called.
+A host SHALL pass exactly one complete JSON-RPC message per `handle` call, as UTF-8 bytes without a `Content-Length` header, and SHALL accept at most one response per call. A request over the session's request byte limit SHALL be refused with `extension.request_limit` before the guest is called. A response over the response byte limit SHALL fail the session with `extension.response_limit`.
 
 #### Scenario: Oversized request
 - **WHEN** a request exceeds the session's request byte limit
-- **THEN** the host refuses it without calling `handle`
+- **THEN** the host refuses it with `extension.request_limit` without calling `handle`
 - **AND** the diagnostic names the limit and the request size
+
+#### Scenario: Oversized response
+- **WHEN** a guest returns a response larger than the session's response byte limit
+- **THEN** the session fails with `extension.response_limit` and no part of the response reaches the MEP session
 
 ### Requirement: Host function policy
 The Extism and Morphir host functions SHALL behave as the policy table under Purpose states. `http_request` SHALL fail without opening a connection. Session stores and caches SHALL start empty and SHALL NOT outlive the session. A store or cache write over its limit SHALL fail that call.

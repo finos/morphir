@@ -98,6 +98,17 @@ The report SHALL record, for each bound, whether the host declared it enforced. 
 - **WHEN** a host declares the call deadline as not enforced
 - **THEN** the host is not qualified
 
+### Requirement: A runaway guest is stopped in time
+A case whose module never returns SHALL pass when the host ends the call no later than the profile's call deadline plus a fixed margin, by the instruction budget or by the deadline. The report SHALL record which bound ended it. A call still running after the margin SHALL fail the case.
+
+#### Scenario: Metering host
+- **WHEN** a host that enforces the instruction budget runs the spinning byte-profile module
+- **THEN** the call ends with fault `budget-exhausted` before 10 seconds and the case passes
+
+#### Scenario: Host without metering
+- **WHEN** a host without metering runs the same module
+- **THEN** the call ends with fault `call-deadline` between 10 and 12 seconds and the case passes
+
 ### Requirement: Report identity
 A host qualification report SHALL identify the runner, the corpus digest, the profile contract version, the host executable's path and digest, its declared offering, platform and engine, and each module's digest. `report-check` SHALL recompute the verdict from the recorded observations.
 

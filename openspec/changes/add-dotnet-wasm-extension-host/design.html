@@ -168,7 +168,8 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 </svg>
 <figcaption>Figure 2. The frequent calls stay inside WASM. Host code sees only the rare ones.</figcaption>
 </figure>
-<p>The .NET host does the same linking itself. It instantiates the kernel module, pinned by digest and embedded in the host, in the session's store, links its exports under <code>extism:host/env</code>, and implements the remaining functions in managed code. Per call it sets the input through the kernel, calls <code>handle</code>, and reads the output and error back from the kernel.</p>
+<p>The .NET host does the same linking itself. It instantiates the kernel module, pinned by digest and embedded in the host, in the session's store, links its 20 exports under <code>extism:host/env</code>, and implements the remaining functions in managed code. Per call it sets the input through the kernel, calls <code>handle</code>, and reads the output and error back from the kernel.</p>
+<p>The kernel it embeds is the one MoonBit already ships: the module from <code>moonrockz/extism</code>, built from Zig and differentially tested against upstream <code>extism-runtime.wasm</code>. It has the same 20 exports and handle values as upstream, with three differences that suit a strict host. It uses no reference types and omits upstream's <code>extism_context</code> global, so the engine needs no extra WASM features. <code>alloc</code> returns 0 when memory is exhausted where upstream traps. An out-of-bounds load or store returns 0 or does nothing where upstream traps. Sharing the bytes means a guest sees the same kernel under both hosts, down to the digest in the report.</p>
 <p>This gives four things the alternative does not:</p>
 <ul>
 <li><strong>One engine and one native library.</strong> The Extism library is itself built on Wasmtime, so shipping it means a second copy of the engine in every offering on every platform.</li>
@@ -176,8 +177,8 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <li><strong>The result of <code>handle</code>.</strong> The host calls the export directly. The SDK's <code>Plugin.Call</code> hid it.</li>
 <li><strong>Speed without the binding problem.</strong> A PDK reads its input through kernel calls in a loop. Those are WASM-to-WASM calls and never cross into managed code.</li>
 </ul>
-<p><em>Alternatives.</em> <code>libextism</code> through the Extism .NET SDK: least code, but the spike recorded four defects against it, listed in the context table. Reimplement the kernel's functions in managed code: possible, and it is what MoonBit's engine does, but every byte the guest loads would become a host call, which is the problem CALL-1 exists to avoid.</p>
-<p><em>Assumption to prove first.</em> The kernel links and runs under the AOT host with zero warnings, and the limiter applies to the kernel's memory as well as the guest's. Task 3.1 proves this with the Python module before any other Extism work. If it fails, this decision returns for review. The implementation does not switch to an alternative on its own.</p>
+<p><em>Alternatives.</em> <code>libextism</code> through the Extism .NET SDK: least code, but the spike recorded four defects against it, listed in the context table. Reimplement the kernel's functions in managed code: possible, but every byte the guest loads would become a host call, which is the problem CALL-1 exists to avoid. Embed upstream <code>extism-runtime.wasm</code>: it works, but it needs reference types enabled and traps where the shared kernel returns 0, so the two hosts would differ on a guest that runs out of memory.</p>
+<p><em>Assumption to prove first.</em> The kernel links and runs under the AOT host with zero warnings, the limiter applies to the kernel's memory as well as the guest's, and the <code>moonrockz/extism</code> licence allows embedding its kernel bytes in morphir-dotnet. Task 3.1 proves this with the Python module before any other Extism work. If it fails, this decision returns for review. The implementation does not switch to an alternative on its own.</p>
 <p><em>Consequence to state plainly.</em> The engine's limit is per memory, and an Extism session has two. The resident bound for an Extism guest is therefore twice the ceiling, 512 MiB, and the runtime report says so.</p>
 
 <p class="stage">Stage 6. The guest reaches outside</p>
@@ -267,11 +268,12 @@ $ morphir mck mep guest-run \
 <tr><td>Classification</td><td>Imports <code>env.open_socket</code></td><td><code>extension.abi_unsupported</code>, import named, not instantiated</td></tr>
 <tr><td>Classification</td><td>Extism imports, declared as bytes</td><td><code>extension.abi_mismatch</code></td></tr>
 <tr><td>Byte results</td><td>Returns <code>-2</code> for a request</td><td>Session fails without waiting</td></tr>
-<tr><td>Bounds</td><td>Loops forever</td><td>Budget code on a metering host; <code>deadline</code> otherwise</td></tr>
+<tr><td>Bounds</td><td>Loops forever</td><td>Stopped by the budget on a metering host, by the deadline otherwise, and in either case no later than the deadline</td></tr>
 <tr><td>Bounds</td><td>Grows one page at a time, then traps</td><td><code>extension.memory_limit</code></td></tr>
 <tr><td>Sandbox</td><td>Calls <code>http_request</code>, returns the result</td><td>Failure returned to the guest, URL recorded, session continues</td></tr>
 <tr><td>Sandbox</td><td>Calls WASI <code>path_open</code> on <code>/etc/passwd</code></td><td>Error code, session continues</td></tr>
 </tbody></table></div>
+<p>One limit is worth stating. A module that only computes cannot tell the budget from the deadline: on a metering host the budget always ends a busy loop first. The corpus therefore checks the property users depend on, that a runaway guest is stopped no later than its deadline, and records which bound stopped it. A metering host's deadline is observed only where the budget is not enforced.</p>
 <p>The corpus is built from text in this repository, so it needs no guest toolchain and belongs to no host. MoonBit already has crafted fixtures of its own. Adopting the shared ones is a MoonBit follow-up that this change makes possible and does not require.</p>
 
 <h3 id="cache-1">CACHE-1. No compiled-module cache on disk</h3>
