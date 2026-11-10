@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>drop-generic-guest-legacy-tier: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>drop-generic-guest-legacy-tier: design</h1>
+<p class="meta">OpenSpec change | 10 November 2026 | proposed</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See <a href="proposal.md">proposal.md</a> for the reason. The requirements are in <a href="specs/mep/generic-guest-profile/spec.md">specs/mep/generic-guest-profile/spec.md</a>.</p>
+<p>The profile <code>generic-json-library-v1</code> lets any extension show that it compiles and generates one small Bool library. Today the runner, <code>morphir mck mep guest-run</code> in <code>crates/morphir-mck</code>, reads the guest's <code>describe</code> result and builds a plan with two tiers, each in its own guest process:</p>
+<ul>
+<li>The legacy tier negotiates MEP <code>0.1</code> and uses <code>morphir.frontend.compile</code> and <code>morphir.backend.generate</code>. It is required of every guest: the <code>describe</code> case fails when the guest does not claim <code>0.1</code>. It also holds the only checks of a malformed source, an unknown method, an unknown notification, an unchanged <code>describe</code> and a request after shutdown.</li>
+<li>The model tier negotiates <code>0.2.0-draft.1</code> and uses <code>compileModel</code> and <code>generateModel</code> with JSON tuples. It runs only when the guest claims it.</li>
+</ul>
+<p>The running example is the published Python extension <code>0.6.0</code>. It claims IR <code>3.0.0</code> and <code>4.0.0</code> with JSON tuples at both. Under today's plan it would run 35 cases: <code>describe</code>, 19 in the legacy tier and 15 in the model tier. finos/morphir-dotnet#570 ran it through the .NET worker, which offers the <code>0.2</code> line only, and recorded the 16 cases that do not need <code>0.1</code> as passing.</p>
+
+<svg viewBox="0 0 720 190" role="img" aria-labelledby="plan-title">
+<title id="plan-title">The plan before and after this change</title>
+<g font-family="system-ui, sans-serif" font-size="14" fill="currentColor">
+<text x="10" y="20">Before: two guest processes</text>
+<rect x="10" y="30" width="90" height="44" fill="none" stroke="currentColor"/>
+<text x="22" y="57">describe</text>
+<rect x="110" y="30" width="290" height="44" fill="none" stroke="currentColor"/>
+<text x="120" y="50">legacy tier, MEP 0.1, required</text>
+<text x="120" y="67" font-size="12">compile, generate, lifecycle checks</text>
+<rect x="410" y="30" width="290" height="44" fill="none" stroke="currentColor" stroke-dasharray="6 4"/>
+<text x="420" y="50">model tier, MEP 0.2.0-draft.1, if claimed</text>
+<text x="420" y="67" font-size="12">compileModel, generateModel, bad digest</text>
+<text x="10" y="120">After: one guest process</text>
+<rect x="10" y="130" width="90" height="44" fill="none" stroke="currentColor"/>
+<text x="22" y="157">describe</text>
+<rect x="110" y="130" width="590" height="44" fill="none" stroke="currentColor"/>
+<text x="120" y="150">one session, MEP 0.2.0-draft.1, required</text>
+<text x="120" y="167" font-size="12">compileModel, generateModel, bad digest, lifecycle checks</text>
+</g>
+</svg>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> a guest that speaks only the MEP <code>0.2</code> line can qualify; a run through a host that offers no <code>0.1</code> is a complete run; no check that the legacy tier made is lost.</p>
+<p><strong>Non-goals:</strong></p>
+<ul>
+<li>The other two guest profiles, <code>moonbit-model-stable-v1</code> and <code>python-json-library-v1</code>. Both also negotiate <code>0.1</code> in some cases. They have no OpenSpec capability and are not changed here.</li>
+<li>The MEP contract itself. The Smithy model, the <code>session-legacy</code> transcript and the model transport corpus still describe <code>0.1</code>.</li>
+<li>The command names in the capability's Purpose and in "Recheck from the recorded claim". The .NET runner's command names are that repository's choice; a later change aligns the text if they differ.</li>
+<li>New kit languages or a larger fixed package.</li>
+</ul>
+
+<h2 id="decisions">Decisions</h2>
+<p>The decisions follow one run of the Python <code>0.6.0</code> guest, from its claim to its last case.</p>
+
+<h3 id="tier-1">TIER-1. One session, on MEP 0.2.0-draft.1, required of every guest</h3>
+<p>The runner starts the guest once. It asks for the description with <code>protocolVersions</code> <code>["0.2.0-draft.1"]</code>, then initializes with the same version and a model transport offer. It never sends <code>0.1</code>. The <code>describe</code> case now fails when the guest does not claim <code>0.2.0-draft.1</code>, where it used to fail when the guest did not claim <code>0.1</code>. A guest that claims both is unaffected: the extra claim is not read.</p>
+<p>For the Python guest the plan becomes 21 cases in one process, in this order:</p>
+<table>
+<thead><tr><th>Case</th><th>Request</th><th>Expected</th><th>Came from</th></tr></thead>
+<tbody>
+<tr><td><code>describe</code></td><td><code>morphir.extension.describe</code></td><td>Supported claims format, identity, <code>0.2.0-draft.1</code>, a language and an IR version selected</td><td>Both tiers</td></tr>
+<tr><td><code>model-initialize</code></td><td><code>morphir.initialize</code> with the JSON tuples and the runner's limits</td><td>Same identity, the offered tuples in host order, limits at the bilateral minimum</td><td>Model tier</td></tr>
+<tr><td><code>model-initialized-silent</code></td><td><code>morphir.initialized</code>, no id</td><td>No output</td><td>Model tier</td></tr>
+<tr><td><code>unknown-notification-silent</code></td><td><code>morphir.mck.unknown</code>, no id</td><td>No output</td><td>Legacy tier</td></tr>
+<tr><td><code>compile-model-vthree</code></td><td><code>compileModel</code> on the fixed source</td><td>A model equal to the expected IR, inside the limits</td><td>Model tier</td></tr>
+<tr><td><code>generate-model-vthree</code></td><td><code>generateModel</code> from that model</td><td>Text artifacts with unique relative paths</td><td>Model tier</td></tr>
+<tr><td><code>roundtrip-model-vthree</code></td><td><code>compileModel</code> on those files</td><td>A model equal to the expected IR</td><td>Model tier</td></tr>
+<tr><td><code>generate-model-independent-vthree</code></td><td><code>generateModel</code> from a model the kit builds from its expected IR</td><td>Text artifacts</td><td>Model tier</td></tr>
+<tr><td><code>roundtrip-model-independent-vthree</code></td><td><code>compileModel</code> on those files</td><td>A model equal to the expected IR</td><td>Model tier</td></tr>
+<tr><td>the same five with <code>-vfour</code></td><td colspan="2">As above, at <code>4.0.0</code></td><td>Model tier</td></tr>
+<tr><td><code>bad-digest</code></td><td><code>generateModel</code> with a payload whose SHA-256 is wrong</td><td>Error <code>-32602</code></td><td>Model tier</td></tr>
+<tr><td><code>malformed-source</code></td><td><code>compileModel</code> on the kit's malformed source</td><td><code>success</code> false, no model, an <code>error</code> diagnostic</td><td>Legacy tier</td></tr>
+<tr><td><code>unknown-method</code></td><td><code>morphir.mck.unknown</code></td><td>Error <code>-32601</code></td><td>Legacy tier</td></tr>
+<tr><td><code>describe-immutable</code></td><td><code>morphir.extension.describe</code></td><td>The first <code>describe</code> result again</td><td>Legacy tier</td></tr>
+<tr><td><code>model-shutdown</code></td><td><code>morphir.shutdown</code></td><td>A result</td><td>Model tier</td></tr>
+<tr><td><code>after-shutdown</code></td><td><code>morphir.ping</code></td><td>Error <code>-32014</code></td><td>Legacy tier</td></tr>
+<tr><td><code>model-exit</code></td><td><code>morphir.exit</code>, no id</td><td>Clean exit, stdout closed</td><td>Model tier</td></tr>
+</tbody>
+</table>
+<p>The case ids do not change. The 16 cases that a .NET run records today keep their names, and the five that move keep the names they had in the legacy tier. Request ids are still numbers counted from 1; there is one count now, since there is one process.</p>
+<p>Alternatives considered:</p>
+<ul>
+<li>Keep the legacy tier and let a host that declares the <code>0.2</code> line skip it. The maintainer rejected this: it keeps a <code>0.1</code> path that nothing else supports.</li>
+<li>Keep <code>morphir.frontend.compile</code> and <code>morphir.backend.generate</code> as extra cases inside the <code>0.2</code> session. They would compare the same IR a second time, and the model transport contract lets a provider that offers only the model methods leave those two flags false, so the cases could not be required.</li>
+</ul>
+
+<h3 id="life-1">LIFE-1. The lifecycle checks move into the session</h3>
+<p>Five checks ran only in the legacy tier. Each says something about the guest that does not depend on the protocol version, so each moves to the one session and none is dropped. Four need no change beyond the session they run in. The fifth, <code>malformed-source</code>, called <code>morphir.frontend.compile</code>; it now calls <code>compileModel</code> with the tuple of the first selected IR version. The model transport contract already fixes the answer: a failed compile is <code>success</code> false with diagnostics and no <code>model</code>. The profile keeps its stricter rule that one diagnostic is an <code>error</code>.</p>
+<p>The checks go after the last model case and before shutdown, so that a guest which fails one of them has already shown its compile and generate results. <code>unknown-notification-silent</code> stays with the other notification, directly after initialize.</p>
+<p>Alternative considered: drop the five checks and rely on the Python and MoonBit profiles for them. Those profiles are tied to one extension each, so a guest in another language would have no lifecycle check at all.</p>
+
+<h3 id="sel-1">SEL-1. An IR version needs the JSON tuple pair</h3>
+<p>Today an IR version is selected when the frontend and the backend both claim it, and the model tier then covers the selected versions that also have a JSON <code>compileModel</code> and <code>generateModel</code> tuple. With the legacy tier gone, a selected version without the tuple pair would have no case at all. So the pair becomes part of the selection: a version is tested when the frontend claims it, the backend claims it and the guest claims both tuples for it. When that leaves no version, the <code>describe</code> case fails, as it does today when the frontend and backend share no version.</p>
+<p>The frontend and backend claims stay in the rule. The model transport contract says the IR version restrictions of the frontend and backend capabilities still apply to the model methods, so a tuple alone does not make a version usable.</p>
+<p>The requirement does not ask for the <code>frontend.compile</code> and <code>backend.generate</code> flags to be true. The Rust runner does ask for them. A runner for the changed profile must not, because those flags authorize only the two methods this change stops calling.</p>
+<p>Alternative considered: let the tuples alone select the versions. That is simpler, but it would test a version the frontend or backend does not claim.</p>
+
+<h3 id="kit-1">KIT-1. The kit file does not change</h3>
+<p><code>spec/mep/mck/guest-generic-json.json</code> holds the package, the expected IR for <code>3.0.0</code> and <code>4.0.0</code>, and the sources of each language. None of it belongs to the legacy tier, so the file, its <code>contractVersion</code> <code>0.1.0-draft.1</code> and its digest stay as they are. The expected IR was recorded from Python <code>0.4.2</code>, which speaks only <code>0.1</code>; Python <code>0.6.0</code> returns the same IR through the model methods at both versions (finos/morphir-dotnet#570).</p>
+<p>Alternative considered: raise <code>contractVersion</code> to <code>0.1.0-draft.2</code>, so that a runner written for the earlier plan refuses the file. The Rust runner's tests read this file, so the change would force work in <code>crates/morphir-mck</code>, which <a href="#run-1">RUN-1</a> avoids. The report check gives the same protection where it matters: a report made under the earlier plan has other cases than the plan the check rebuilds, and fails.</p>
+
+<h3 id="run-1">RUN-1. The .NET runner carries the changed profile; the Rust runner is left alone</h3>
+<p>Decision record 0004, in #1148, moves the conformance runner to finos/morphir-dotnet and leaves the Rust <code>morphir mck</code> open to fixes only. On 10 November 2026 the maintainer also decided that the Rust CLI is to be deleted from this repository (recorded on #1146). So the changed plan is built once, in the .NET runner, and <code>crates/morphir-mck</code> is not touched.</p>
+<p>Until the Rust CLI is deleted, <code>morphir mck mep guest-run</code> with this kit still runs the earlier plan. <code>spec/mep/mck/README.md</code> says so, and says that such a report does not pass the changed check. The two runners cannot be confused in a stored report, because the report check rebuilds the plan from the recorded claim and compares the case order.</p>
+<p>Alternatives considered:</p>
+<ul>
+<li>Change the Rust runner to the new plan. That is new work on a tool that is being deleted, against decision record 0004.</li>
+<li>Remove the generic profile from the Rust runner now. That is a Rust change with test and generated documentation updates, and the deletion of the CLI makes it unnecessary.</li>
+</ul>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>The five lifecycle checks have been observed on real guests only in <code>0.1</code> sessions. A published guest may answer one of them differently in a <code>0.2.0-draft.1</code> session.</td><td>Task 2.4 runs the whole plan on Python <code>0.6.0</code> through two hosts before the delta is synced. A difference is recorded as a guest defect or a contract question first.</td></tr>
+<tr><td>Guests that speak only <code>0.1</code> stop qualifying: Python <code>0.4.2</code> and the SDK fixture of finos/morphir-moonbit. The SDK fixture is the one real guest in the kit that imports the Morphir host functions.</td><td>Accepted with the decision that MEP <code>0.1</code> is not supported. <code>add-dotnet-wasm-extension-host</code> already lists the rebuild of the SDK fixture as follow-up work.</td></tr>
+<tr><td>Until the Rust CLI is deleted, two runners give different plans for one profile id and one kit digest.</td><td>The kit README names the .NET runner as the profile's runner. A Rust report fails the changed report check (<a href="#run-1">RUN-1</a>).</td></tr>
+<tr><td>The kit negotiates exactly <code>0.2.0-draft.1</code>, while the hosts support the whole <code>0.2</code> line. A guest built only for a later draft would not qualify.</td><td>No later draft exists yet. See the open question.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<ol>
+<li>Merge #1148 first. It carries decision record 0004, which this change relies on for the runner's home.</li>
+<li>Update the kit README (task group 1). The kit file does not change, so nothing that reads it breaks.</li>
+<li>Build the plan in the .NET runner and run it on Python <code>0.6.0</code> (task group 2).</li>
+<li>Sync the delta into <code>openspec/specs/mep/generic-guest-profile/spec.md</code> and archive.</li>
+</ol>
+<p>Rollback is to revert the README and the spec delta. No data file and no released tool changes in this repository.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>When MEP publishes its next <code>0.2</code> draft, does the kit negotiate one fixed version or the newest version the guest claims? This changes the kit only then.</li>
+<li>Do the Python and MoonBit guest profiles and the model transport corpus also drop their <code>0.1</code> cases? They are outside this change, and no host that is being built can run those cases.</li>
+</ul>
+
+</main>
+</body>
+</html>
