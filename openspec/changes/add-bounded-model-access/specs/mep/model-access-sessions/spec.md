@@ -146,4 +146,3 @@ An operation claiming document-batch production SHALL stage documents under the 
 - **WHEN** a future batch-producing frontend ends without a required module document
 - **THEN** the host refuses publication of that model
 - **AND** generation cannot discover it as a successful producer result
-

@@ -143,4 +143,3 @@ A context table SHALL NOT be treated as a complete occurrence or dependency inde
 #### Scenario: Unused alias and expanded reference
 - **WHEN** the table contains an unused SDK alias and the body contains a different fully expanded SDK reference
 - **THEN** table membership alone neither proves use of the alias nor absence of the expanded reference
-

@@ -143,4 +143,3 @@ A consumer SHALL expose a successful artifact descriptor only after its operatio
 - **WHEN** generation has staged files and a later definition fails validation
 - **THEN** no successful result describes the partial output
 - **AND** the run does not install those staged files
-

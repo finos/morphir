@@ -113,4 +113,3 @@ Each receipt SHALL identify contract and kit digests, implementation revisions, 
 - **WHEN** artifacts match but mandatory peak-memory observations are absent
 - **THEN** the receipt can record correctness success
 - **AND** bounded-resource qualification remains unproven
-
