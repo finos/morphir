@@ -107,11 +107,17 @@ The report SHALL record, for each bound, whether the host declared it enforced. 
 - **THEN** the host is not qualified
 
 ### Requirement: A runaway guest is stopped in time
-A case whose module never returns SHALL pass when the host ends the call no later than the profile's call deadline plus a fixed margin, by the instruction budget or by the deadline. The report SHALL record which bound ended it. A call still running after the margin SHALL fail the case.
+A case whose module never returns SHALL pass when the host ends the call no later than the profile's call deadline plus a fixed margin, by the instruction budget or by the deadline. The report SHALL record which bound ended it. A call still running after the margin SHALL fail the case. The corpus SHALL test budget exhaustion in a separate case with a budget small enough for any metering engine to use up well before the deadline.
 
 #### Scenario: Metering host
-- **WHEN** a host that enforces the instruction budget runs the spinning Extism module
-- **THEN** the call ends with fault `budget-exhausted` before 30 seconds and the case passes
+- **WHEN** a host that enforces the instruction budget runs the spinning Extism module under the default budget
+- **THEN** the case passes when the call ends with fault `budget-exhausted` before 30 seconds
+- **AND** it also passes when the call ends with fault `call-deadline` between 30 and 32 seconds, because the budget unit is engine-defined
+
+#### Scenario: Small budget on a metering host
+- **WHEN** a host that enforces the instruction budget runs the spinning Extism module with a budget of 1,000,000 units
+- **THEN** the call ends with fault `budget-exhausted` before 30 seconds
+- **AND** a fault of `call-deadline` fails the case
 
 #### Scenario: Host without metering
 - **WHEN** a host without metering runs the same module

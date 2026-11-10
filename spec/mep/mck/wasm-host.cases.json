@@ -6,7 +6,7 @@
 	"deadlineMarginSeconds": 2,
 	"conventions": {
 		"expectations": "Every expectation is written by hand from the profile contract and the profile spec. None is recorded from a host run.",
-		"worker": "Each run starts a new worker process: <host> extension worker --abi <declaredAbi> --module <wasm> --build-identity <identity> --json, with --request-bytes and --response-bytes when the case's worker object gives them. <identity> is result.buildIdentity of the morphir/command-result that <host> extension worker --help --json writes, read once for the host. worker.omit names arguments the runs leave out. worker.buildIdentity other passes the host's identity with its last hexadecimal digit changed.",
+		"worker": "Each run starts a new worker process: <host> extension worker --abi <declaredAbi> --module <wasm> --build-identity <identity> --json, with --request-bytes, --response-bytes and --instructions when the case's worker object gives requestBytes, responseBytes or instructions. <identity> is result.buildIdentity of the morphir/command-result that <host> extension worker --help --json writes, read once for the host. worker.omit names arguments the runs leave out. worker.buildIdentity other passes the host's identity with its last hexadecimal digit changed.",
 		"profiles": "The runner is given the profiles the host declares to run. A case applies to a host that declares its appliesTo profile and is recorded as not_applicable for any other. extism-kernel-v1 is the required profile, so its cases apply to every host.",
 		"frames": "A run writes its frames in order, each as a Content-Length framed message whose body is the UTF-8 of the frame's value serialized compactly with members in the order written. After the last frame, stdin stays open until the worker exits.",
 		"exitCode": "The worker's exit status: 0 served until its instance ended; 1 a fault, an invalid frame, or stdin ended first; 2 bad arguments; 3 a refusal before any request. Absent means not constrained.",
@@ -14,7 +14,7 @@
 		"events": "events lists stderr events that must appear in this order, possibly among others. A matcher names the event and may fix abi (started), code and messageIncludes (refused; each string must occur in error.message) or kind (fault; absent means any kind). noEvents names events that must not appear. Every started event's moduleSha256 must equal the module's sha256. Every started event's bounds must have exactly the members memoryCeiling, instructionBudget and callDeadline, each {\"enforced\": true} or {\"enforced\": false, \"reason\": r} with r one of the contract's reasons. Every fault event's fault must have kind and may have message, and nothing else.",
 		"guestOutput": "guestOutput lists strings that must occur, in order, in the text of the run's output events joined in their order. guestOutputIncludes lists strings that must each occur in that text, in any order. noGuestOutput lists strings that must not occur in it.",
 		"timing": "withinSeconds.range is measured from the end of the write of the run's last frame to the first fault event (until: fault) or to the worker's exit (until: exit).",
-		"alternatives": "A run with alternatives uses the one whose when matches: {bound, enforced} matches what the started event's bounds declare for that bound; {hostRuns, runs} matches whether the host declares the profile hostRuns.",
+		"alternatives": "A run with alternatives passes when the observation satisfies one alternative whose when matches: {bound, enforced} matches what the started event's bounds declare for that bound; {hostRuns, runs} matches whether the host declares the profile hostRuns. Two alternatives may have the same when; the host may then show either. A run that expects budget-exhausted under the default budget also has a call-deadline alternative for the same when, because the budget unit is engine-defined and the deadline may come first.",
 		"bounds": "A case's bounds are the bounds it exercises. When the host declares one of them not enforced, the case is recorded as not_enforced, not as passed or failed.",
 		"gaps": "A case's gaps say what the contract leaves open about the observation; the expectation stops there.",
 		"withoutCase": "withoutCase lists the contract elements that no case covers, each with the reason. Every other contract element has at least one case."
@@ -842,7 +842,7 @@
 			"tests": {
 				"requirements": ["Call deadline", "Instruction budget where the engine meters"],
 				"scenarios": ["Runaway guest", "Budget exhausted", "Engine without metering"],
-				"contract": ["fault:call-deadline", "fault:budget-exhausted", "deadline:morphir-bytes-v1"]
+				"contract": ["fault:call-deadline", "deadline:morphir-bytes-v1"]
 			},
 			"runs": [
 				{
@@ -855,6 +855,15 @@
 								"stdoutBytes": 0,
 								"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "budget-exhausted" }],
 								"withinSeconds": { "until": "fault", "range": [0, 10] }
+							}
+						},
+						{
+							"when": { "bound": "instructionBudget", "enforced": true },
+							"expect": {
+								"exitCode": 1,
+								"stdoutBytes": 0,
+								"events": [{ "event": "started", "abi": "morphir-bytes-v1" }, { "event": "fault", "kind": "call-deadline" }],
+								"withinSeconds": { "until": "fault", "range": [10, 12] }
 							}
 						},
 						{
@@ -879,7 +888,7 @@
 			"tests": {
 				"requirements": ["Call deadline", "Instruction budget where the engine meters", "A runaway guest is stopped in time"],
 				"scenarios": ["Runaway guest", "Metering host", "Host without metering"],
-				"contract": ["fault:call-deadline", "fault:budget-exhausted", "deadline:extism-kernel-v1", "worker:started-bounds", "worker:defaults"]
+				"contract": ["fault:call-deadline", "deadline:extism-kernel-v1", "worker:started-bounds", "worker:defaults"]
 			},
 			"runs": [
 				{
@@ -895,6 +904,15 @@
 							}
 						},
 						{
+							"when": { "bound": "instructionBudget", "enforced": true },
+							"expect": {
+								"exitCode": 1,
+								"stdoutBytes": 0,
+								"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "call-deadline" }],
+								"withinSeconds": { "until": "fault", "range": [30, 32] }
+							}
+						},
+						{
 							"when": { "bound": "instructionBudget", "enforced": false },
 							"expect": {
 								"exitCode": 1,
@@ -906,7 +924,35 @@
 					]
 				}
 			],
-			"gaps": ["Of the worker defaults, this case observes the --call-ms default of 30000. The --memory-pages default shows in the memory cases. The --request-bytes, --response-bytes and --instructions defaults are not observed: they would need a frame over 6 MiB, a response over 16 MiB, or a guest whose instruction count is known under every engine."]
+			"gaps": [
+				"Of the worker defaults, this case observes the --call-ms default of 30000. The --memory-pages default shows in the memory cases. The --request-bytes, --response-bytes and --instructions defaults are not observed: they would need a frame over 6 MiB, a response over 16 MiB, or a guest whose instruction count is known under every engine.",
+				"The budget unit is engine-defined, so a metering host may reach the call deadline before it uses the default budget. Either bound may end the call. bounds/small-budget tests exhaustion on its own."
+			]
+		},
+		{
+			"caseId": "bounds/small-budget",
+			"appliesTo": "extism-kernel-v1",
+			"module": "extism-spin",
+			"declaredAbi": "extism-kernel-v1",
+			"worker": { "instructions": 1000000 },
+			"bounds": ["instructionBudget"],
+			"tests": {
+				"requirements": ["Instruction budget where the engine meters", "A runaway guest is stopped in time", "Unenforced bounds stay visible"],
+				"scenarios": ["Budget exhausted", "Small budget on a metering host", "Engine without metering"],
+				"contract": ["fault:budget-exhausted"]
+			},
+			"runs": [
+				{
+					"frames": ["initialize"],
+					"expect": {
+						"exitCode": 1,
+						"stdoutBytes": 0,
+						"events": [{ "event": "started", "abi": "extism-kernel-v1" }, { "event": "fault", "kind": "budget-exhausted" }],
+						"withinSeconds": { "until": "fault", "range": [0, 30] }
+					}
+				}
+			],
+			"gaps": ["The budget unit is engine-defined. The case takes 1,000,000 units to be far less than 30 seconds of a busy loop under any metering engine."]
 		},
 		{
 			"caseId": "bounds/grow-to-ceiling-then-trap",

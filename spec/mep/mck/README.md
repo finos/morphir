@@ -346,7 +346,7 @@ Each module is a `.wat` file of a few lines that does one thing, with the
 module does, and its `;; Cases:` line names the cases that use it. The kit
 records each binary's SHA-256.
 
-Every case has an `appliesTo` profile. The 46 cases for `extism-kernel-v1`
+Every case has an `appliesTo` profile. The 47 cases for `extism-kernel-v1`
 apply to every host, because every host must run that profile. The 11 cases
 for `morphir-bytes-v1`, a transitional profile, apply only to a host that
 declares it, and a runner records them as `not_applicable` for any other. One
@@ -362,17 +362,21 @@ must serve it. The runner takes the profiles a host declares as an input.
 | `bytes/` (6) | The `morphir-bytes-v1` handle results: a response, 0 for a request, a consumed notification, -2 for a request, -1, and a response that is not UTF-8. |
 | `extism/` (9) | The Extism handle results: a response, an error, a non-zero result, no output, and a response that is not an object. Notifications: not delivered to a guest that advertises nothing, delivered to one that advertises `call` delivery, not delivered to one that advertises a value the contract does not list, and a failure when the guest answers one. |
 | `limits/` (2) | A request over `--request-bytes` and a response over `--response-bytes`, both far from the limit. |
-| `bounds/` (8) | Runaway guests on both profiles, memory growth to the ceiling, a refused growth an Extism guest survives, a refused growth on the byte profile, a refused growth below the ceiling, a trap, and an initial memory above the ceiling. |
+| `bounds/` (9) | Runaway guests on both profiles, a runaway guest under a small instruction budget, memory growth to the ceiling, a refused growth an Extism guest survives, a refused growth on the byte profile, a refused growth below the ceiling, a trap, and an initial memory above the ceiling. |
 | `sandbox/` (16) | The host function and WASI policy: HTTP with and without a request, `path_open` on fd 3, unsupported WASI functions, `proc_exit(0)`, stdout and stderr, arguments, environment, stdin and preopens, clocks and random bytes, configuration, vars, the IR cache and its limits, workspace info, and logging. |
 
 The expectations are written by hand from the contract and the profile spec.
 None comes from running a host, so two hosts that share a bug cannot qualify
 each other. Where the contract leaves part of an observation open, the case
-stops there and says so in its `gaps`. A runaway case accepts either bound: a
-host that declares the instruction budget enforced must report
-`budget-exhausted` before the call deadline; otherwise it must report
-`call-deadline` between the deadline and two seconds after it. The
-`conventions` object of the kit defines the matchers.
+stops there and says so in its `gaps`. A runaway case under the default budget
+accepts either bound. A host that declares the instruction budget enforced may
+report `budget-exhausted` before the call deadline, or `call-deadline` between
+the deadline and two seconds after it: the budget unit is engine-defined, so
+the deadline can come first. A host without metering must report
+`call-deadline` in that range. `bounds/small-budget` runs the same guest with
+`--instructions 1000000` and accepts only `budget-exhausted`; it is recorded as
+`not_enforced` for a host without metering. The `conventions` object of the kit
+defines the matchers.
 
 Some contract elements cannot be seen through a worker: the host session's
 codes for each fault kind, its request and response limits and JSON-RPC

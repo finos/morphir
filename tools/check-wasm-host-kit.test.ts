@@ -17,7 +17,8 @@ beforeAll(async () => {
 	const assemble = input.assemble;
 	const built = new Map<string, Uint8Array>();
 	input.assemble = (name, wat) => built.get(wat) ?? (built.set(wat, assemble(name, wat)), built.get(wat) as Uint8Array);
-});
+	// Loading the assembler has passed the default 5 s on a busy machine.
+}, 60_000);
 
 /** The failures of the committed kit after `change` edits a copy of it. */
 function failuresAfter(change: (kit: Kit, contract: Contract) => void, read?: KitInput["read"]): string[] {
@@ -178,6 +179,26 @@ test("a deadline range that does not follow from the contract fails", () => {
 		if (late) late.range = [10, 15];
 	});
 	expect(named(failures, "does not follow from the morphir-bytes-v1 deadline of 10 s")).toBe(true);
+});
+
+test("a runaway case under the default budget must let the deadline win on a metering host", () => {
+	const message = "expects budget-exhausted under the default budget without a call-deadline alternative for the same when";
+	const withoutDeadline = failuresAfter((kit) => {
+		const run = caseNamed(kit, "bounds/spin-extism")?.runs[0];
+		if (run?.alternatives) run.alternatives = run.alternatives.filter((entry) => !(entry.when.bound !== undefined && entry.when.enforced && entry.expect.events?.some((matcher) => matcher.kind === "call-deadline")));
+	});
+	expect(named(withoutDeadline, message)).toBe(true);
+	const defaultBudget = failuresAfter((kit) => {
+		const small = caseNamed(kit, "bounds/small-budget");
+		if (small) delete small.worker;
+	});
+	expect(named(defaultBudget, message)).toBe(true);
+	const tooLarge = failuresAfter((kit) => {
+		const small = caseNamed(kit, "bounds/small-budget");
+		if (small?.worker) small.worker.instructions = 5_000_000_000;
+	});
+	expect(named(tooLarge, "worker.instructions must be a positive integer below the --instructions default")).toBe(true);
+	expect(caseNamed(input.kit, "bounds/small-budget")?.worker?.instructions).toBe(1_000_000);
 });
 
 test("the document states every import, code, bound, policy value and worker argument of the JSON", () => {

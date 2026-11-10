@@ -398,7 +398,7 @@ export type Case = {
 	appliesTo: string;
 	module: string;
 	declaredAbi?: string;
-	worker?: { requestBytes?: number; responseBytes?: number; omit?: string[]; buildIdentity?: "other" };
+	worker?: { requestBytes?: number; responseBytes?: number; instructions?: number; omit?: string[]; buildIdentity?: "other" };
 	bounds?: string[];
 	tests: { requirements: string[]; scenarios?: string[]; contract?: string[] };
 	runs: Run[];
@@ -524,6 +524,11 @@ export function checkKit(input: KitInput): string[] {
 		if (entry.declaredAbi === undefined && !omitted.includes("--abi")) fail(`${at}: it declares no ABI, which the worker requires; omit --abi on purpose with worker.omit`);
 		if (entry.declaredAbi !== undefined && omitted.includes("--abi")) fail(`${at}: it declares an ABI and omits --abi`);
 		if (entry.worker?.buildIdentity !== undefined && entry.worker.buildIdentity !== "other") fail(`${at}: worker.buildIdentity must be other`);
+		const smallBudget = entry.worker?.instructions;
+		const defaultBudget = contract.worker.arguments.find((argument) => argument.name === "--instructions")?.default;
+		if (smallBudget !== undefined && !(Number.isInteger(smallBudget) && smallBudget > 0 && typeof defaultBudget === "number" && smallBudget < defaultBudget)) {
+			fail(`${at}: worker.instructions must be a positive integer below the --instructions default`);
+		}
 		if (entry.tests.requirements.length === 0) fail(`${at}: it names no requirement`);
 		for (const name of entry.tests.requirements) if (!spec.requirements.has(name)) fail(`${at}: the specs have no requirement "${name}"`);
 		for (const name of entry.tests.scenarios ?? []) if (!spec.scenarios.has(name)) fail(`${at}: the specs have no scenario "${name}"`);
@@ -553,6 +558,17 @@ export function checkKit(input: KitInput): string[] {
 			const where = `${at} run ${index}`;
 			for (const frame of run.frames) if (!kit.frames[frame]) fail(`${where}: there is no frame ${frame}`);
 			if (!!run.expect === !!run.alternatives) fail(`${where}: it needs exactly one of expect and alternatives`);
+			// The budget unit is engine-defined, so under the default budget the
+			// deadline may end a runaway call first on a metering host.
+			if (smallBudget === undefined) {
+				const faults = (expect: Expectation) => (expect.events ?? []).filter((matcher) => matcher.event === "fault").map((matcher) => matcher.kind);
+				const choices = run.expect ? [{ when: undefined, expect: run.expect }] : (run.alternatives ?? []);
+				for (const choice of choices) {
+					if (!faults(choice.expect).includes("budget-exhausted")) continue;
+					const deadlineToo = choices.some((other) => JSON.stringify(other.when) === JSON.stringify(choice.when) && faults(other.expect).includes("call-deadline"));
+					if (!deadlineToo) fail(`${where}: it expects budget-exhausted under the default budget without a call-deadline alternative for the same when`);
+				}
+			}
 			for (const alternative of run.alternatives ?? []) {
 				const when = alternative.when;
 				if (when.hostRuns !== undefined) {
