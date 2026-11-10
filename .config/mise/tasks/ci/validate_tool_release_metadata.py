@@ -37,7 +37,7 @@ def validate_application(root: Path, *descriptors: Path) -> subprocess.Completed
             "--quiet",
             "--locked",
             "--package",
-            "morphir",
+            "morphir-dev-tools",
             "--example",
             "validate-tool-release-metadata",
             "--",

@@ -45,6 +45,13 @@ tempfile.workspace = true
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 toml.workspace = true
 
+# Called by .config/mise/tasks/ci/validate_tool_release_metadata.py: the application side of the
+# signed tool release metadata gate. It reads each descriptor as the shipped acquisition type, so a
+# descriptor the schema accepts but the client would refuse fails the gate.
+[[example]]
+name = "validate-tool-release-metadata"
+path = "examples/validate-tool-release-metadata.rs"
+
 [[test]]
 name = "kb_acceptance"
 path = "tests/kb_acceptance.rs"
