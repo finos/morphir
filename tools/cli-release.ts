@@ -193,6 +193,19 @@ export function launchPlan(launch: LaunchMetadata, extracted: string, toolPath: 
 	return [{ invocation: "morphir", command: [path.join(extracted, launch.launchPath)] }];
 }
 
+/**
+ * Whether `--version` output names the release. The executable prints the release, optionally with the source
+ * commit it was built from as SemVer build metadata (`0.4.0-alpha.4+<sha>`); the launch metadata carries the release
+ * alone. Metadata counts only when it is at least 7 hex digits of the pinned commit: any other commit or text fails.
+ */
+export function versionReported(output: string, version: string, commit: string): boolean {
+	const text = output.trim();
+	if (text === version) return true;
+	if (!text.startsWith(`${version}+`)) return false;
+	const metadata = text.slice(version.length + 1);
+	return /^[0-9a-f]{7,40}$/.test(metadata) && commit.startsWith(metadata);
+}
+
 /** A scenario's status. A result under a recorded pending triage is kept but never counted as qualified. */
 export function scenarioStatus(config: CliReleaseConfig, rid: string, scenario: string, exitCode: number): ScenarioStatus {
 	if (config.pendingTriage.some(entry => entry.scenario === scenario && entry.platforms.includes(rid))) return "pending-triage";
@@ -293,7 +306,7 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		if (!existsSync(step.command[0]!) && step.command[0] !== "dotnet") throw new Error(`${launch.artifact} has no ${step.command[0]}`);
 		const scenarios: Qualification["invocations"][number]["scenarios"] = [];
 		const version_ = run([...step.command, "--version"], { cwd: work, env });
-		const versionMatches = version_.exitCode === 0 && version_.stdout.trim() === version;
+		const versionMatches = version_.exitCode === 0 && versionReported(version_.stdout, version, config.source.commit);
 		scenarios.push({ scenario: "launch", status: scenarioStatus(config, launch.platform === "any" ? platform : launch.platform, "launch", versionMatches ? 0 : 1), exitCode: version_.exitCode });
 		const help = run([...step.command, "--help"], { cwd: work, env });
 		scenarios.push({ scenario: "help", status: help.exitCode === 0 ? "passed" : "failed", exitCode: help.exitCode });

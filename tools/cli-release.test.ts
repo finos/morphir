@@ -24,6 +24,7 @@ import {
 	releaseTag,
 	scenarioStatus,
 	verifySource,
+	versionReported,
 } from "./cli-release";
 
 const root = path.resolve(import.meta.dir, "..");
@@ -277,4 +278,21 @@ test("legacy-aliases copies each packed Native AOT executable byte for byte", ()
 	const recorded = JSON.parse(readFileSync(path.join(out, "legacy-aliases.json"), "utf8")) as { asset: string; aliasOf: string }[];
 	expect(recorded).toHaveLength(8);
 	expect(recorded.find(a => a.asset === "morphir-win-x64.exe")?.aliasOf).toBe("morphir-dotnet-1.0.0-native-aot-win-x64.tar.gz");
+});
+describe("reported version", () => {
+	const commit = "7c263485547598085ea83d7d12bf6328056affba";
+	test("the release alone, or the release with the source commit as build metadata", () => {
+		expect(versionReported("0.4.0-alpha.4\n", "0.4.0-alpha.4", commit)).toBe(true);
+		expect(versionReported(`0.4.0-alpha.4+${commit}\n`, "0.4.0-alpha.4", commit)).toBe(true);
+		expect(versionReported("0.4.0-alpha.4+7c26348", "0.4.0-alpha.4", commit)).toBe(true);
+	});
+
+	test("another release, another commit or other output is refused", () => {
+		expect(versionReported("0.4.0-alpha.3", "0.4.0-alpha.4", commit)).toBe(false);
+		expect(versionReported("0.4.0-alpha.4+e439701", "0.4.0-alpha.4", commit)).toBe(false);
+		expect(versionReported("0.4.0-alpha.4+7c26", "0.4.0-alpha.4", commit)).toBe(false);
+		expect(versionReported("0.4.0-alpha.4+build.1", "0.4.0-alpha.4", commit)).toBe(false);
+		expect(versionReported("morphir 0.4.0-alpha.4", "0.4.0-alpha.4", commit)).toBe(false);
+		expect(versionReported("0.4.0-alpha.4\nextra", "0.4.0-alpha.4", commit)).toBe(false);
+	});
 });

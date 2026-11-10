@@ -29,11 +29,15 @@ Each archive SHALL be qualified by extracting it and starting its executable or 
 
 #### Scenario: A launched executable reports the release version
 - **WHEN** the Native AOT archive for `win-x64` is extracted and `morphir.exe --version` is started from the extracted folder
-- **THEN** its output is exactly the release version and the launch scenario passes
+- **THEN** its output is the release version, alone or followed by `+` and at least 7 hex digits of the pinned source commit, and the launch scenario passes
+
+#### Scenario: Build metadata from another commit
+- **WHEN** the launched executable prints the release version with build metadata that is not a prefix of the pinned commit
+- **THEN** the launch scenario fails
 
 #### Scenario: The tool package keeps both invocations
 - **WHEN** `Morphir.Tool` is installed from the produced package
-- **THEN** both `dotnet-morphir --version` and `dotnet morphir --version` report the release version
+- **THEN** both `dotnet-morphir --version` and `dotnet morphir --version` report the release version by the same rule
 
 ### Requirement: A recorded pending triage is never counted as qualified
 A scenario result on a platform under a recorded pending triage SHALL be kept with its exit code and reported as `pending-triage`, and the offering SHALL NOT be reported as qualified on that platform. The macOS packaged-input scenario is under such a triage (the `/var` to `/private/var` failure seen in finos/morphir-dotnet#570, workflow run 42851276092).
