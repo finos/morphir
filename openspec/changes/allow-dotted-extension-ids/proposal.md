@@ -38,7 +38,7 @@ The same day the maintainer made three decisions that shape this change:
 
   Every host runs them, and a two-process test proves the state lock.
 - **Follow-up in the toolchain contracts.** Once the .NET guests are published under their dotted ids, the toolchain contracts align their identity grammar with this rule, including the device-name rule, and reference the descriptor at `2.0.0-draft.3`. The signed F# fixtures move to the dotted ids, and the open question on dotted provider identities closes.
-- **Republishing the existing extensions (provisional).** Existing releases carry draft.2 `release.json` files, so they stay uninstallable by current hosts; only new releases at draft.3 can be installed. Who writes those for morphir-elm and the other existing extensions is a question for the maintainer, because today only the legacy Rust tooling writes descriptors and index records.
+- **Republishing the existing extensions (decided 10 November 2026, Decision 13).** Existing releases carry draft.2 `release.json` files, so they stay uninstallable by current hosts; only new releases at draft.3 can be installed. morphir-dotnet's bundle authoring publishes those for every extension, and the Rust writers are not extended. Two readings are provisional on the maintainer's confirmation: until that publisher exists, a current host installs only the F# guests; and the Rust writers stay as they are for the legacy CLI.
 
 **BREAKING** for hosts that predate this change: they cannot read a home or repository after a current writer has written it. No valid id becomes invalid.
 
@@ -65,6 +65,7 @@ The owning issue is [finos/morphir#1146](https://github.com/finos/morphir/issues
 - **finos/morphir-dotnet:** its registry already accepts dotted ids. It adopts the device-name refinement and runs the shared cases.
   - Its installer (finos/morphir-dotnet#567) writes the one catalog, the lock and the journal at the new drafts, with the members, values, lock primitive and path spelling the design pages define.
   - Its task that waits on dotted descriptor ids then unblocks.
+  - Its bundle authoring becomes the publisher of every extension's draft.3 releases (Decision 13).
 - **MoonBit host:** the pinned `ecosystem/morphir-moonbit` holds no extension registry code. The host that reads extension ids adopts the rule in its own repository, and its pin moves only if that repository is a submodule here.
-- **Optional later work, gating nothing:** finos/morphir-rust (`morphir-distribution`, `morphir-common`) and the Rust CLI would need the grammar, the new drafts and configuration quoting to read homes and repositories that current hosts write. No `ecosystem/morphir-rust` pin move is planned.
+- **Optional later work, gating nothing:** finos/morphir-rust (`morphir-distribution`, `morphir-common`) and the Rust CLI would need the grammar, the new drafts and configuration quoting to read homes and repositories that current hosts write. Its writers are not extended (Decision 13). No `ecosystem/morphir-rust` pin move is planned.
 - **No change:** the MEP protocol versions and the capability claim set version. Both already carry the id as a string, and their equality rules stay.

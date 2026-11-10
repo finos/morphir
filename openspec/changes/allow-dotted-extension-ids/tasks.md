@@ -42,6 +42,7 @@ Depends on: 1.2 and 1.4; 2.3's old-home part and 2.6 also on 1.6.
 - [ ] 2.4 Apply the configuration rule of [CFG-1](design.html#cfg-1) wherever the .NET host reads `[extensions.<id>]` tables; verify with the configuration cases.
 - [ ] 2.5 Publish the F# frontend and backend guests' descriptors at `2.0.0-draft.3` under their dotted ids, which unblocks morphir-dotnet's task that waits on dotted descriptor ids; verify bundle authoring accepts them and their claims ids equal their descriptor ids.
 - [ ] 2.6 Add `morphir doctor` to the .NET host with only what [DOC-1](design.html#doc-1) specifies: the report, `--fix`, `--yes`, the result on stdout and messages on stderr, and exit codes 0, 1 and 2. The move is the one implementation 2.3's automatic path calls. Include the report-only behavior and the prompt in `--fix` of Decision 11. Verify with the "Old home" cases and a test that a second run exits 0 and changes nothing.
+- [ ] 2.7 Extend morphir-dotnet's bundle authoring so that it publishes any extension, not only morphir-dotnet's own guests: a draft.3 release descriptor and draft.3 index records that current hosts read. Publish into a repository under the same repository rules as every publisher: the publish lock, the history rules of [HIST-1](design.html#hist-1) (no draft.3 line appended to a history at another version), the checksum files beside each artifact, and the repository's own signing or authentication where it has any. This change does not design the tool itself (Decision 13). Verify with the shared history cases, and with a draft.3 descriptor for an extension that morphir-dotnet does not own that the .NET host installs.
 
 ## 3. MoonBit host
 
@@ -67,10 +68,15 @@ Depends on: 2.3, 2.5 and 4.2.
 
 ## 6. Republishing the existing extensions
 
-**Provisional on [Q-PUBLISHER](design.html#q-publisher).** Depends on: 1.4. Does not gate groups 1 to 5.
+Decided by the maintainer on 10 November 2026 (Decision 13, [Q-PUBLISHER](design.html#q-publisher)): morphir-dotnet's bundle authoring publishes every extension at draft.3, and the Rust writers are not extended. Depends on: 1.4 and 2.7. Does not gate groups 1 to 5.
 
-- [ ] 6.1 Under `PUBLISHER-A`: in finos/morphir-rust `morphir-distribution`, make the descriptor and index record writers write `2.0.0-draft.3` with the dotted grammar and the history rule of [HIST-1](design.html#hist-1), and let the first draft.3 release of an extension start its history again, holding only draft.3 lines; the Rust readers stay out of scope. Under `PUBLISHER-B`: add the same publishing to morphir-dotnet's bundle authoring for releases it does not own. Under `PUBLISHER-C`: record that current hosts install only the F# guests, and do nothing else. Verify, under A or B, with the shared history cases.
-- [ ] 6.2 Under `PUBLISHER-A` or `PUBLISHER-B`: publish the next release of morphir-elm, morphir-python, morphir-avro, morphir-openapi and morphir-rust at draft.3, leaving existing versions and their assets unchanged (they stay uninstallable by current hosts), and add a current-host compatibility suite that runs those draft.3 bundles through the .NET host; verify the .NET host installs each one.
+**Provisional on [Q-PUBLISHER-READINGS](design.html#q-publisher-readings):**
+
+1. Until 2.7 and 6.1 are delivered, a current host can install only the F# guests of 2.5, the others stay at their earlier draft, and nothing is converted;
+2. The Rust writers stay as they are, writing the earlier draft for the legacy CLI, and this change does not remove them.
+
+- [ ] 6.1 With the publisher of 2.7, publish the next release of morphir-elm, morphir-python, morphir-avro, morphir-openapi and morphir-rust at draft.3, from each extension's own release pipeline. Leave existing versions and their assets unchanged; they stay uninstallable by current hosts. Each first draft.3 release starts its history again, holding only draft.3 lines. Verify the .NET host installs each one from its repository.
+- [ ] 6.2 Add a current-host compatibility suite that runs those draft.3 bundles through the .NET host, and later the MoonBit host, in place of the legacy Rust CLI's suite for current hosts ([REPO-1](design.html#repo-1)); verify it passes and fails on a bundle that a current host should refuse.
 
 ## Optional later work
 
@@ -84,4 +90,4 @@ This work does not gate the change or any task above, and no `ecosystem/morphir-
 ## Workflow follow-up
 
 - Follow `AGENTS.md` for review, archive, tracker closure and release approval.
-- Archive the change once groups 1 to 5 are delivered and group 6 is delivered or closed under `PUBLISHER-C`, then verify the archived spec under `openspec/specs/extensions/extension-identity/`.
+- Archive the change once groups 1 to 6 are delivered, then verify the archived spec under `openspec/specs/extensions/extension-identity/`.
