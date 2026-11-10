@@ -10,20 +10,22 @@ name: Release
 # expectations; tools/cli-release.ts does the checks; tools/cli-release.test.ts
 # tests both and this workflow.
 #
-# Releases of the deleted Rust CLI used `v*` tags. Those tags and their
-# releases stay as they are: this workflow only runs for `cli/v*`, refuses a
-# tag whose release already exists, and never uploads into a release. While
-# the pin is an unmerged candidate (source.candidate in the config), it builds
-# and qualifies but refuses to publish.
+# Official CLI releases use `v<version>` tags (maintainer decision, 10 November
+# 2026), the namespace the deleted Rust CLI's releases used. Those tags and their
+# releases stay as they are. A new release must be newer than every existing
+# v* tag and never reuse one; the workflow refuses a tag whose release already
+# exists and never uploads into a release. While any publication gate blocks
+# (a candidate pin, unreleased source, a source tag elsewhere, an old version),
+# it builds and qualifies but refuses to publish.
 
 on:
   push:
     tags:
-      - 'cli/v*'
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing official CLI tag to release (for example, cli/v0.4.0-alpha.4). Dispatch from that tag.'
+        description: 'Existing official CLI tag to release, v<version>. Dispatch from that tag.'
         required: true
         type: string
       dry-run:

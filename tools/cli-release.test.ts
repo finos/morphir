@@ -36,6 +36,7 @@ import {
 	scenarioStatus,
 	unreleasedEntries,
 	verifySource,
+	versionCollisionBlockers,
 	versionReported,
 	workflowBindingProblems,
 } from "./cli-release";
@@ -95,14 +96,15 @@ describe("source pin", () => {
 });
 
 describe("release identity", () => {
-	test("official CLI releases carry their own tag namespace", () => {
-		expect(releaseTag(config, "0.4.0-alpha.4")).toBe("cli/v0.4.0-alpha.4");
-		expect(parseReleaseTag(config, "cli/v0.4.0-alpha.4")).toBe("0.4.0-alpha.4");
-		expect(parseReleaseTag(config, "cli/v1.2.3")).toBe("1.2.3");
+	test("official CLI releases use v<version> (maintainer decision, 10 November 2026)", () => {
+		expect(config.tagPrefix).toBe("v");
+		expect(releaseTag(config, "0.4.0-beta.13")).toBe("v0.4.0-beta.13");
+		expect(parseReleaseTag(config, "v0.4.0-beta.13")).toBe("0.4.0-beta.13");
+		expect(parseReleaseTag(config, "v1.2.3")).toBe("1.2.3");
 	});
 
-	test("Rust CLI tags, partial versions, leading zeros and build metadata are refused", () => {
-		for (const tag of ["v0.4.0-beta.12", "cli/0.4.0", "cli/v1", "cli/v01.0.0", "cli/v1.0.0+build.1", "cli/vlatest", "cli/v1.0.0 "]) {
+	test("other namespaces, partial versions, leading zeros and build metadata are refused", () => {
+		for (const tag of ["cli/v0.4.0", "0.4.0", "v1", "v01.0.0", "v1.0.0+build.1", "vlatest", "v1.0.0 ", "extension/python/v0.4.0"]) {
 			expect(() => parseReleaseTag(config, tag)).toThrow();
 		}
 	});
@@ -119,7 +121,7 @@ describe("release identity", () => {
 describe("release workflow routing", () => {
 	test("only an official CLI tag or an explicit existing tag starts a release", () => {
 		const push = release.on.push as { tags: string[] };
-		expect(push.tags).toEqual(["cli/v*"]);
+		expect(push.tags).toEqual(["v*"]);
 		const dispatch = release.on.workflow_dispatch as { inputs: Record<string, { required: boolean }> };
 		expect(dispatch.inputs.tag?.required).toBe(true);
 		expect(release.permissions).toEqual({ contents: "read" });
@@ -277,19 +279,19 @@ describe("release manifest", () => {
 	});
 
 	test("it names the source, kit and every artifact digest, and keeps pending triage visible", () => {
-		const manifest = releaseManifest(publishable, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all());
+		const manifest = releaseManifest(publishable, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all());
 		expect(manifest.source).toEqual(publishable.source);
 		expect(manifest.kit).toEqual(kit);
 		expect(manifest.publication).toEqual({ dryRun: false, publishable: true, blockers: [] });
 		const mac = manifest.qualification.find(q => q.deployment === "native-aot" && q.platform === "osx-arm64");
 		expect(mac).toMatchObject({ qualified: false, pending: ["packaged-input"] });
 		expect(manifest.pendingTriage).toEqual(config.pendingTriage);
-		const blocked = releaseManifest(config, "cli/v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all(), [], { dryRun: true, blockers: ["candidate"] });
+		const blocked = releaseManifest(config, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all(), [], { dryRun: true, blockers: ["candidate"] });
 		expect(blocked.publication).toEqual({ dryRun: true, publishable: false, blockers: ["candidate"] });
 	});
 
 	test("a missing, failed, repeated, extra or mismatched qualification, or a mismatched tag or commit, is refused", () => {
-		const refuse = (qualifications: Qualification[], expected: string, tag = "cli/v0.4.0-alpha.4", at = commit) =>
+		const refuse = (qualifications: Qualification[], expected: string, tag = "v0.4.0-alpha.4", at = commit) =>
 			expect(() => releaseManifest(publishable, tag, "0.4.0-alpha.4", at, kit, launches, qualifications)).toThrow(expected);
 		refuse(all().slice(1), "no qualification of native-aot on win-x64");
 		const failed = all();
@@ -300,8 +302,8 @@ describe("release manifest", () => {
 		refuse(all().map((q, i) => (i === 0 ? { ...q, sha256: "f".repeat(64) } : q)), "launched bytes");
 		refuse(all().map((q, i) => (i === 0 ? { ...q, artifact: "other.zip" } : q)), "launched other.zip");
 		refuse(all().map((q, i) => (i === 0 ? { ...q, release: "0.4.0-alpha.3" } : q)), "is of release 0.4.0-alpha.3");
-		refuse(all(), "does not name", "cli/v0.4.0-alpha.5");
-		refuse(all(), "commit is unknown", "cli/v0.4.0-alpha.4", "unknown");
+		refuse(all(), "does not name", "v0.4.0-alpha.5");
+		refuse(all(), "commit is unknown", "v0.4.0-alpha.4", "unknown");
 	});
 });
 
@@ -311,29 +313,57 @@ describe("publication gate", () => {
 	const unreleased = "## [Unreleased]\n\n### Added\n\n- The MCK dispatch.\n\n## [0.4.0-alpha.4] - 2026-11-10\n";
 
 	test("only a non-candidate pin that is the source's own release tag commit, with nothing unreleased, publishes", () => {
-		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, config.source.commit)).toEqual([]);
+		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, config.source.commit, [])).toEqual([]);
 		expect(unreleasedEntries(released)).toEqual([]);
 		expect(unreleasedEntries(unreleased)).toEqual(["- The MCK dispatch."]);
 	});
 
 	test("the candidate marker, unreleased source changes, or a source tag elsewhere each block publication", () => {
-		expect(publicationBlockers(config, "0.4.0-alpha.4", released, config.source.commit).join()).toContain("unmerged candidate");
-		expect(publicationBlockers(publishable, "0.4.0-alpha.4", unreleased, config.source.commit).join()).toContain("1 unreleased entry");
-		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, undefined).join()).toContain("has no tag v0.4.0-alpha.4");
+		expect(publicationBlockers(config, "0.4.0-alpha.4", released, config.source.commit, []).join()).toContain("unmerged candidate");
+		expect(publicationBlockers(publishable, "0.4.0-alpha.4", unreleased, config.source.commit, []).join()).toContain("1 unreleased entry");
+		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, undefined, []).join()).toContain("has no tag v0.4.0-alpha.4");
 		// The source's v0.4.0-alpha.4 is bec7df3; publishing the pinned 8c15df5 under that version would ship other bytes.
-		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, "bec7df31eb813396e0e119c557e0a319adbe1ebb").join()).toContain("is not the source's release 0.4.0-alpha.4");
+		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, "bec7df31eb813396e0e119c557e0a319adbe1ebb", []).join()).toContain("is not the source's release 0.4.0-alpha.4");
 	});
 
 	test("the pinned source today is blocked on every count", () => {
-		const blockers = publicationBlockers(config, changelogReleaseVersion(read(`${config.source.submodule}/CHANGELOG.md`)), read(`${config.source.submodule}/CHANGELOG.md`), "bec7df31eb813396e0e119c557e0a319adbe1ebb");
+		const blockers = publicationBlockers(config, changelogReleaseVersion(read(`${config.source.submodule}/CHANGELOG.md`)), read(`${config.source.submodule}/CHANGELOG.md`), "bec7df31eb813396e0e119c557e0a319adbe1ebb", ["v0.4.0-alpha.4", "v0.4.0-beta.12"]);
+		expect(blockers.join()).toContain("is not newer than");
 		expect(blockers.length).toBeGreaterThanOrEqual(2);
 		expect(blockers.join()).toContain("unmerged candidate");
 	});
 });
 
+describe("the shared v* namespace", () => {
+	// finos/morphir's v* tags so far: the Rust CLI's releases, up to v0.4.0-beta.12.
+	const rust = ["v0.4.0-alpha.1", "v0.4.0-alpha.4", "v0.4.0-alpha.7", "v0.4.0-beta.11", "v0.4.0-beta.12", "extension/python/v0.4.0", "mill-plugins/v0.5.0-M05"];
+
+	test("a version newer than every existing v* release can be published", () => {
+		expect(versionCollisionBlockers(config, "0.4.0-beta.13", rust)).toEqual([]);
+		expect(versionCollisionBlockers(config, "0.4.0", rust)).toEqual([]);
+		// The release's own tag exists while it runs, and is left out.
+		expect(versionCollisionBlockers(config, "0.4.0", [...rust, "v0.4.0"])).toEqual([]);
+	});
+
+	test("a version below the Rust CLI's releases, or one already published, is blocked", () => {
+		expect(versionCollisionBlockers(config, "0.4.0-alpha.4", rust).join()).toContain("is not newer than");
+		expect(versionCollisionBlockers(config, "0.4.0-beta.11", ["v0.4.0-beta.12", "v0.4.0-alpha.7"]).join()).toContain("is not newer than v0.4.0-beta.12");
+		// Reusing an existing tag itself (v0.4.0-beta.12 again) is refused by the existing-release step and by the
+		// binding check: that tag's commit is the Rust release, never the checkout of a new run.
+		expect(versionCollisionBlockers(config, "0.3.9", rust).join()).toContain("existing tags");
+		expect(publicationBlockers({ ...config, source: { ...config.source, candidate: undefined } }, "0.4.0-alpha.4", "## [Unreleased]\n", config.source.commit, rust).join()).toContain("is not newer than");
+	});
+
+	test("the workflow runs for v* tags and keeps a dispatch a dry run by default", () => {
+		const push = release.on.push as { tags: string[] };
+		expect(push.tags).toEqual(["v*"]);
+		expect(read(".github/workflows/release.yml")).not.toContain("cli/v");
+	});
+});
+
 describe("the run is bound to the tag, its commit and the pin", () => {
 	const workflow = read(".github/workflows/release.yml");
-	const good = { tag: "cli/v0.4.0-alpha.4", githubRef: "refs/tags/cli/v0.4.0-alpha.4", head: "e".repeat(40), tagCommit: "e".repeat(40), workflow };
+	const good = { tag: "v0.4.0-alpha.4", githubRef: "refs/tags/v0.4.0-alpha.4", head: "e".repeat(40), tagCommit: "e".repeat(40), workflow };
 
 	test("a run from the tag, checked out at the tag's commit, with the workflow's literal pin", () => {
 		expect(workflowBindingProblems(config, good)).toEqual([]);
@@ -490,7 +520,7 @@ describe("archives are read wherever the command runs", () => {
 		expect(legacy.exitCode, legacy.stderr.toString()).toBe(0);
 		expect(readFileSync(path.join(work, "legacy/morphir-win-x64.exe"), "utf8")).toContain("echo 1.0.0+abc1234");
 
-		const inputs = { tag: "cli/v1.0.0", version: "1.0.0", assets: "assets", kitStatus: "kit.json", legacy: "legacy/legacy-aliases.json", commit: head, changelog: "## [Unreleased]\n\n## [1.0.0] - 2026-11-10\n", sourceTagCommit: config.source.commit };
+		const inputs = { tag: "v1.0.0", version: "1.0.0", assets: "assets", kitStatus: "kit.json", legacy: "legacy/legacy-aliases.json", commit: head, changelog: "## [Unreleased]\n\n## [1.0.0] - 2026-11-10\n", sourceTagCommit: config.source.commit, existingTags: ["v0.4.0-beta.12", "v0.4.0-alpha.4", "extension/python/v0.4.0"] };
 		// The candidate pin: a dry run validates everything and writes the evidence and the list it would attach...
 		const dry = prepareRelease(config, work, { ...inputs, out: "dry", dryRun: true });
 		const dryManifest = JSON.parse(readFileSync(path.join(work, "dry/release-manifest.json"), "utf8"));

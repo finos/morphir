@@ -9,7 +9,7 @@
 			"reason": "The head of draft, unmerged finos/morphir-dotnet#590 (MCK dispatch and the reusable cli-offering.yml), pinned to wire and test the interface. A release refuses to run while this entry exists; remove it only when the pin is a commit on the source's main."
 		}
 	},
-	"tagPrefix": "cli/v",
+	"tagPrefix": "v",
 	"kit": "spec/ir/mck",
 	"deployments": [
 		{ "id": "native-aot", "portable": false, "invocations": ["morphir"] },

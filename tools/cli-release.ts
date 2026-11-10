@@ -8,13 +8,13 @@
 // manifest that ties a tag to its source, kit and artifact digests.
 //
 //   bun run tools/cli-release.ts verify-source
-//   bun run tools/cli-release.ts release-info --tag cli/v0.4.0-alpha.4 [--kit-status <file>]
+//   bun run tools/cli-release.ts release-info --tag v<version>
 //   bun run tools/cli-release.ts qualify --release-dir <dir> --deployment <id> [--rid <rid>] --version <v> --out <file>
 //   bun run tools/cli-release.ts legacy-aliases --assets <dir> --version <v> --out <dir>
 //   bun run tools/cli-release.ts manifest --tag <tag> --version <v> --commit <sha> --assets <dir> --kit-status <file> [--legacy <file>] --out <dir> [--dry-run]
 //
 // The expectations live in .config/cli-release.json.
-import { format, parse } from "@std/semver";
+import { format, greaterOrEqual, parse } from "@std/semver";
 import { createHash } from "node:crypto";
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
@@ -151,7 +151,11 @@ export function releaseTag(config: CliReleaseConfig, version: string): string {
 	return `${config.tagPrefix}${exactRelease(version)}`;
 }
 
-/** The version an official CLI tag names. Rust CLI tags (`v*`) and anything else are refused. */
+/**
+ * The version an official CLI tag names: `v<version>` (maintainer decision, 10 November 2026), the same namespace
+ * the deleted Rust CLI's releases used. Partial, non-canonical and build-metadata versions are refused; whether the
+ * version is new is `versionCollisionBlockers`.
+ */
 export function parseReleaseTag(config: CliReleaseConfig, tag: string): string {
 	if (!tag.startsWith(config.tagPrefix)) throw new Error(`'${tag}' is not an official CLI tag (${config.tagPrefix}<version>)`);
 	return exactRelease(tag.slice(config.tagPrefix.length));
@@ -499,7 +503,7 @@ export function unreleasedEntries(changelog: string): string[] {
  * has nothing unreleased, and the source's own release tag `v<version>` names exactly the pinned commit: otherwise
  * the bytes would differ from the release the source already published under that version.
  */
-export function publicationBlockers(config: CliReleaseConfig, version: string, changelog: string, sourceTagCommit: string | undefined): string[] {
+export function publicationBlockers(config: CliReleaseConfig, version: string, changelog: string, sourceTagCommit: string | undefined, existingTags: string[]): string[] {
 	const blockers: string[] = [];
 	const candidate = releaseBlocker(config);
 	if (candidate !== undefined) blockers.push(candidate);
@@ -507,7 +511,40 @@ export function publicationBlockers(config: CliReleaseConfig, version: string, c
 	if (unreleased.length > 0) blockers.push(`the pinned CHANGELOG has ${unreleased.length} unreleased entr${unreleased.length === 1 ? "y" : "ies"}, so the pin is not the source's release ${version}`);
 	if (sourceTagCommit === undefined) blockers.push(`${config.source.repository} has no tag v${version}`);
 	else if (sourceTagCommit !== config.source.commit) blockers.push(`${config.source.repository} tag v${version} is ${sourceTagCommit}, not the pinned ${config.source.commit}: the pin is not the source's release ${version}`);
+	blockers.push(...versionCollisionBlockers(config, version, existingTags));
 	return blockers;
+}
+
+/**
+ * Why `v<version>` cannot be a new official release of this repository. The tag namespace is shared with the
+ * deleted Rust CLI's releases, which stay as they are. So the version must be newer than every other `v<semver>`
+ * tag already in finos/morphir (for example `v0.4.0-beta.12`), and must not reuse one: a lower version would put the
+ * new CLI behind the old one and could reuse a published identity such as `v0.4.0-alpha.4`. `tags` are the tag
+ * names of this repository; the release's own tag is left out. This repository never picks the version.
+ */
+export function versionCollisionBlockers(config: CliReleaseConfig, version: string, tags: string[]): string[] {
+	const own = releaseTag(config, version);
+	const others = tags
+		.filter(tag => tag !== own && tag.startsWith(config.tagPrefix))
+		.flatMap(tag => {
+			try {
+				return [{ tag, version: parse(exactRelease(tag.slice(config.tagPrefix.length))) }];
+			} catch {
+				return [];
+			}
+		});
+	const wanted = parse(version);
+	const notOlder = others.filter(other => greaterOrEqual(other.version, wanted)).map(other => other.tag);
+	return notOlder.length === 0
+		? []
+		: [`${own} is not newer than ${notOlder.length === 1 ? notOlder[0] : `${notOlder.length} existing tags (${notOlder.slice(0, 3).join(", ")}${notOlder.length > 3 ? ", ..." : ""})`} in finos/morphir; an official release must be newer than every existing v* release and never reuse one`];
+}
+
+/** The tag names of a git repository's remote, read with `git ls-remote`. */
+export function remoteTags(cwd: string, remote = "origin"): string[] {
+	const result = Bun.spawnSync(["git", "ls-remote", "--tags", "--refs", remote], { cwd, stdout: "pipe", stderr: "pipe", windowsHide: true, timeout: 60_000 });
+	if (result.exitCode !== 0) throw new Error(`git ls-remote --tags ${remote} failed: ${result.stderr.toString()}`);
+	return result.stdout.toString().trim().split(/\r?\n/).filter(Boolean).map(line => line.split("\t")[1]!.replace(/^refs\/tags\//, ""));
 }
 
 /** The commit a tag of the source repository names (peeled), or undefined when there is no such tag. */
@@ -624,9 +661,10 @@ export type ReleaseInputs = {
 	commit: string;
 	/** Write the evidence and the asset list, and refuse nothing on publication grounds; never a release. */
 	dryRun: boolean;
-	/** The pinned source's CHANGELOG and the commit of its tag `v<version>`, for the publication gate. */
+	/** The pinned source's CHANGELOG, the commit of its tag `v<version>` and this repository's tags, for the publication gate. */
 	changelog: string;
 	sourceTagCommit: string | undefined;
+	existingTags: string[];
 };
 
 /**
@@ -665,7 +703,7 @@ export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: Re
 		if (!existsSync(file) || sha256(file) !== alias.sha256) throw new Error(`${alias.asset} is missing or does not match its recorded SHA-256`);
 		releaseFiles.push(file);
 	}
-	const blockers = publicationBlockers(config, inputs.version, inputs.changelog, inputs.sourceTagCommit);
+	const blockers = publicationBlockers(config, inputs.version, inputs.changelog, inputs.sourceTagCommit, inputs.existingTags);
 	const manifest = releaseManifest(config, inputs.tag, inputs.version, inputs.commit, kit, expected, qualifications, legacy, { dryRun: inputs.dryRun, blockers });
 	const out = path.resolve(cwd, inputs.out);
 	mkdirSync(out, { recursive: true });
@@ -757,7 +795,7 @@ function main(args: string[]): number {
 			output("offerings", JSON.stringify(offeringMatrix(config)));
 			// Building and qualifying may run while publication is blocked, so the interface can be exercised in a
 			// dry run; the manifest step refuses a blocked publication on its own as well.
-			const blockers = publicationBlockers(config, version, readFileSync(path.join(root, config.source.submodule, "CHANGELOG.md"), "utf8"), sourceTagCommit(config.source.repository, `v${version}`));
+			const blockers = publicationBlockers(config, version, readFileSync(path.join(root, config.source.submodule, "CHANGELOG.md"), "utf8"), sourceTagCommit(config.source.repository, `v${version}`), remoteTags(root));
 			for (const blocker of blockers) console.error(`::warning::publication blocked: ${blocker}`);
 			output("publishable", blockers.length === 0 ? "true" : "false");
 			return 0;
@@ -817,6 +855,7 @@ function main(args: string[]): number {
 				dryRun: rest.includes("--dry-run"),
 				changelog: readFileSync(path.join(root, config.source.submodule, "CHANGELOG.md"), "utf8"),
 				sourceTagCommit: sourceTagCommit(config.source.repository, `v${version}`),
+				existingTags: remoteTags(root),
 			});
 			return 0;
 		}		default:
