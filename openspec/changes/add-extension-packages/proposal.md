@@ -8,30 +8,32 @@ Today the extension release descriptor, the content-addressed store, the extensi
 
 On 9 November 2026 the maintainer decided that the shared extension contract is extended so that an extension can be a multi-file package ([finos/morphir#1146](https://github.com/finos/morphir/issues/1146)). The maintainer did not take two other options: a self-unpacking single-file form of the frontend, and leaving the Native AOT offering without an installable F# frontend. This change is the reviewed contract for that decision.
 
-For example, after this change the frontend's descriptor lists `fsharp-frontend-0.6.0-win-x64.zip` with a `package` member that names its entry point `morphir-fsharp-frontend.exe` and the digest of its unpacked tree. A host checks and unpacks the archive once, stores the tree by that digest, and starts the entry point from the store.
+For example, after this change the frontend's descriptor lists `fsharp-frontend-0.6.0-win-x64.zip` with a `package` member. The member names the entry point `morphir-fsharp-frontend.exe` and the digest of the unpacked tree, and the descriptor marks the member critical. A host reads and checks the archive once, stores the tree read-only by that digest, and starts the entry point from the store.
 
 ## What Changes
 
-- **A package is an artifact with a `package` member.** It is delivered as one ZIP or gzip-compressed tar archive and names one entry point. Only `process` artifacts can be packages. An artifact without the member is a single-file artifact and keeps its meaning exactly.
-- **Two digests.** The artifact's `sha256` stays the archive's digest, which repositories and toolset recipes already bind. A new tree digest, the SHA-256 of a canonical manifest of paths, sizes, file digests and executable flags, names what is unpacked. The descriptor, index record, catalog and lock carry both.
-- **Safe unpacking, with stable refusal codes.** Links, devices, traversal, absolute and drive paths, backslashes, Windows device names and trailing dots, non-NFC names (Unicode 17.0.0), names that collide ignoring case, duplicates, file and directory conflicts, entries outside a declared root, and bounds on size, count, path length and depth. One code per rule, checked in a fixed order.
-- **Modes.** The entry point and a listed set of files are executable on Unix. Nothing else from the archive's metadata is used.
-- **Store and publication.** A tree is staged, verified, then published by one rename at `store/extensions/packages/sha256/<tree digest>/`. It is immutable, and it is recorded only after it is published.
-- **Launch.** A host starts the entry point from the store by its absolute path. On Windows the entry point ends in `.exe` and every stored path fits in 259 UTF-16 code units.
+- **A package is an artifact with a `package` member, always marked critical.** It is delivered as one ZIP or gzip-compressed tar archive and names one entry point. Only `process` artifacts can be packages. A document that carries a package lists it in `critical`, so a host built without this change refuses the document instead of running the archive as a program.
+- **Single files.** An artifact without the member is the executable itself and keeps its meaning. A process artifact named like an archive but without the member is refused; extensions shipped that way today publish a one-file package instead.
+- **Two digests.** The artifact's `sha256` stays the archive's digest, which repositories and toolset recipes already bind. A new tree digest, the SHA-256 of a canonical manifest of paths, sizes, file digests and executable flags, names what is unpacked.
+- **Defined reading, safe unpacking, stable codes.** The change says how a ZIP or tar entry's name, type, size and order are read, and refuses what it does not accept. That covers links, devices, traversal, absolute and drive paths, backslashes, Windows device names and trailing dots, case collisions, duplicates, file and directory conflicts, entries outside a declared root, and bounds. One code per rule, in a fixed order. **Entry names are ASCII in this draft.**
+- **Read-only store, published and recorded together.** A tree is staged and verified, then published by a no-replace rename and recorded, all under one hold of the state lock. It is stored read-only at `store/extensions/packages/sha256/<tree digest>/`.
+- **Launch and lifetime.** A host starts the entry point from the store by its absolute path, with a lease that lasts as long as the guest's process tree. On Windows the entry point ends in `.exe`, and every stored path fits the process and directory limits.
 - **Removal.** Uninstall never deletes a package. An explicit collection deletes only packages that no lock names and no running process leases.
 - **Trust is unchanged.** Integrity checks say which bytes were installed, not who published them.
-- **Conformance data.** Language-neutral cases that the .NET and MoonBit hosts both run.
-- **Toolchain follow-up.** The toolchain contracts close their question on multi-file process artifacts and state how a recipe and lock bind a package. This is a task on those contracts, not an edit here.
+- **Conformance data.** Language-neutral cases, as archive bytes, that the .NET and MoonBit hosts both run.
+- **Toolchain follow-up.** The toolchain contracts make their provisional binding of the frontend's archive final, and say how a recipe, lock and receipt name a package. This is a task on those contracts, not an edit here.
 
-**Versions.** The descriptor, index record, catalog and lock gain the `package` member at a new exact draft. If nothing has been published at finos/morphir#1149's drafts when this change is approved, this change refines those drafts in place; otherwise it takes the next drafts. The design states the cost of each.
+**Versions.** The descriptor, index record, catalog and lock gain the `package` member at a new exact draft. If no released host, publisher or tool reads or writes finos/morphir#1149's drafts when this change is approved, this change refines those drafts in place; otherwise it takes the next drafts.
 
-**Not breaking** for single-file artifacts. A host that reads the package drafts but cannot install packages refuses a package rather than running its archive.
+**Not breaking** for raw-executable artifacts. Process extensions that ship one executable inside an archive, such as morphir-elm today, must be published with a `package` member to be installed by a current host; #1149 already requires them to be published again.
+
+**For the maintainer to confirm.** Starting packages from the shared store, with an explicit collection command, changes the existing rule of starting a private copy (Q-LAUNCH). What activation checks each time is open (Q-VERIFY).
 
 ## Capabilities
 
 ### New Capabilities
 
-- `extensions/extension-packages`: what a package is, its digests and manifest, the unpacking rules and refusal codes, file modes, store layout and publication, launch, removal, trust and conformance.
+- `extensions/extension-packages`: what a package is, its digests and manifest, how archives are read, the unpacking rules and refusal codes, file modes, store layout, publication and recording, launch and lifetime, removal, trust and conformance.
 
 ### Modified Capabilities
 
@@ -48,8 +50,8 @@ The owning issue is [finos/morphir#1146](https://github.com/finos/morphir/issues
   - a normative package rule page and its conformance data;
   - later, the toolchain contracts.
 - **finos/morphir-dotnet:**
-  - its installer (finos/morphir-dotnet#567) installs packages;
+  - its installer (finos/morphir-dotnet#567) installs packages, keeping its ASCII name rule;
   - the F# frontend is published as a package (its adoption task 3.3).
 - **MoonBit host:** adopts the rules and runs the cases in its own repository.
 - **Optional later work, gating nothing:** finos/morphir-rust and the Rust CLI.
-- **Depends on** finos/morphir#1149, whose drafts and shared-file definitions this change extends. The design names each dependency.
+- **Depends on** finos/morphir#1149, whose drafts and shared-file definitions this change extends, and on its review fixes (finos/morphir#1150) for the lock opening rules. The design names each dependency.
