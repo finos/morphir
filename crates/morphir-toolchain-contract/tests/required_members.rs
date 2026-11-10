@@ -15,11 +15,13 @@ use std::path::PathBuf;
 
 /// The members a valid fixture may omit, by contract, in critical-path
 /// spelling. `platforms.*` entries are map entries of a lock or recipe that
-/// lists several platforms. `futureSection`, `host.mirrorHint` and
-/// `plan.keyOrder` are unknown members some fixtures carry on purpose.
+/// lists several platforms. `futureSection`, `host.mirrorHint`,
+/// `plan.keyOrder` and the lock's `weight` are unknown members some fixtures
+/// carry on purpose.
 const OPTIONAL: &[&str] = &[
     "lock: critical",
     "lock: platforms.*",
+    "lock: weight",
     "recipe: critical",
     "recipe: hosts.builtIns",
     "recipe: hosts.platforms.*",

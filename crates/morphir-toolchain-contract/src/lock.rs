@@ -156,9 +156,7 @@ pub struct ToolchainLock {
 
 /// Read a lock from its exact bytes.
 pub fn read_lock(bytes: &[u8]) -> Result<ToolchainLock> {
-    let value: Value = serde_json::from_slice(bytes).map_err(|error| {
-        Diagnostic::new(Code::InvalidDocument, "", format!("not JSON: {error}"))
-    })?;
+    let value: Value = crate::reader::parse_json(bytes)?;
     read_lock_value(&value)
 }
 

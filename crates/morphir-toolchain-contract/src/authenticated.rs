@@ -432,6 +432,18 @@ impl AuthenticatedTargets {
             refusal.path = "recipe.target".to_owned();
             refusal
         };
+        // A recipe the trust state does not list cannot be checked for a
+        // revocation, so the generation is not launched.
+        if !self.targets.contains_key(recipe.target.as_str()) {
+            return Err(Diagnostic::new(
+                Code::TargetNotAuthenticated,
+                "recipe.target",
+                format!(
+                    "{} is not listed by the authenticated targets",
+                    recipe.target
+                ),
+            ));
+        }
         let state = self
             .recipe_state(recipe.target.as_str())
             .map_err(at_target)?;

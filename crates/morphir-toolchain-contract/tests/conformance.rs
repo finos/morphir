@@ -283,8 +283,18 @@ fn every_binding_case_matches_the_reference_checks() {
         let actual = match case["kind"].as_str().unwrap() {
             "discover" => {
                 // Paths in the case are relative and `/`-separated; they
-                // name directories and files under one synthetic root.
-                let path = |text: &str| -> PathBuf { text.split('/').collect() };
+                // name directories and files under one synthetic root. A
+                // Windows case compares names without case, so it is run with
+                // every name folded to lower case.
+                let windows = case["windows"] == true;
+                let path = |text: &str| -> PathBuf {
+                    let text = if windows {
+                        text.to_ascii_lowercase()
+                    } else {
+                        text.to_owned()
+                    };
+                    text.split('/').collect()
+                };
                 let files: BTreeSet<PathBuf> = case["files"]
                     .as_array()
                     .unwrap()

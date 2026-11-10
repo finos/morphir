@@ -8,6 +8,11 @@
     },
     {
       "contract": "request",
+      "document": "request/approved-bom.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
       "document": "request/choice-for-unrequired-operation.toml",
       "expected": "valid"
     },
@@ -174,6 +179,11 @@
     },
     {
       "contract": "lock",
+      "document": "lock/unknown-member-fraction.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
       "document": "lock/protocol-version-later-prerelease.json",
       "expected": "valid"
     },
@@ -237,6 +247,14 @@
     },
     {
       "contract": "lock",
+      "document": "lock/negative/external-provider-without-model-tuple.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].modelTuple"
+      }
+    },
+    {
+      "contract": "lock",
       "document": "lock/negative/precedence-protocol-version-before-model-member.json",
       "expected": {
         "code": "unsupported_case",
@@ -250,6 +268,25 @@
         "code": "inconsistent_document",
         "path": "platforms.win-x64.providers[1].protocolVersion"
       }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/duplicate-member.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": ""
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema validates a parsed value, and a parser keeps only one of two members with the same name."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/byte-order-mark.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": ""
+      },
+      "schema": "unparsable"
     },
     {
       "contract": "lock",
@@ -479,6 +516,30 @@
     },
     {
       "contract": "recipe",
+      "document": "recipe/negative/provider-built-in-delivery.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].delivery"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-protocol-version.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].protocolVersions[1]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-wasm-abi.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].wasmAbis[1]"
+      }
+    },
+    {
+      "contract": "recipe",
       "document": "recipe/negative/tuple-operation-mismatch.json",
       "expected": {
         "code": "inconsistent_document",
@@ -556,6 +617,40 @@
         "code": "inconsistent_document",
         "path": "providers[0].installation.authentication"
       }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/workflow-check-without-workflow.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "checks[0].workflow"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/probed-without-probe-source.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].installation.probeSource"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/component-workflow-qualified.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].readiness"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/component-checks-not-one-of-each.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].checks"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not count a component's checks by kind."
     },
     {
       "contract": "receipt",
@@ -755,9 +850,31 @@
       "expected": {
         "code": "credential_in_document",
         "path": "diagnostics[2].mirror"
-      },
-      "schema": "accepts",
-      "schemaGap": "The schema's uri format does not refuse user information, a query or a fragment."
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-drive-letter.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "diagnostics[2].mirror"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-file-scheme.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "diagnostics[2].mirror"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-bare-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "diagnostics[2].mirror"
+      }
     },
     {
       "contract": "result",
@@ -765,9 +882,7 @@
       "expected": {
         "code": "credential_in_document",
         "path": "diagnostics[2].mirror"
-      },
-      "schema": "accepts",
-      "schemaGap": "The schema's uri format does not refuse user information, a query or a fragment."
+      }
     },
     {
       "contract": "result",
@@ -1631,6 +1746,16 @@
         "code": "invalid_document",
         "path": "plan.lock"
       }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-key-collision.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.keyCollision"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema compares member names as written, not after NFC."
     },
     {
       "contract": "result",
@@ -2775,6 +2900,19 @@
       "expected": {
         "code": "unsupported_artifact",
         "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "on Windows a boundary that differs from the start only in case is the same directory",
+      "kind": "discover",
+      "windows": true,
+      "files": [
+        "Workspace/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "Workspace/loans",
+      "expected": {
+        "request": "Workspace/.morphir/toolchain.toml"
       }
     }
   ]

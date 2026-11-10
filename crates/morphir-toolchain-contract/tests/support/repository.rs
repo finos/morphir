@@ -1487,11 +1487,21 @@ pub fn lock_recipe_negatives(lock: &Value, targets: &Targets) -> Vec<(&'static s
     {
         closure["providers"][0]["repositoryId"] = json!("6".repeat(64));
     }
+    // A closure for a platform the offering does not list: the win-x64
+    // closure, recorded again as linux-musl-x64.
+    let mut platform_not_offered = lock.clone();
+    let closure = platform_not_offered["platforms"]["win-x64"].clone();
+    platform_not_offered["platforms"]["linux-musl-x64"] = closure;
+    // A recipe target the repository does not list at all.
+    let mut recipe_unlisted = lock.clone();
+    recipe_unlisted["recipe"]["target"] = json!(recipe_path("fsharp", "9.9.9"));
     vec![
         ("lock-host-not-offered.lock.json", host_not_offered),
         ("lock-host-artifact-substituted.lock.json", host_artifact),
         ("lock-operations-differ.lock.json", operations),
         ("lock-recipe-repository.lock.json", recipe_repository),
         ("lock-provider-repository.lock.json", provider_repository),
+        ("lock-platform-not-offered.lock.json", platform_not_offered),
+        ("lock-recipe-unlisted.lock.json", recipe_unlisted),
     ]
 }

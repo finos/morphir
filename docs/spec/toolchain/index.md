@@ -57,7 +57,7 @@ Some words are used with more than one meaning across the toolchain, MEP and mor
 
 `schemaVersion` is a SemVer string. A reader lists the versions it supports as SemVer requirements and refuses anything else before it reads another member. A `0.1.0-draft.1` reader lists exactly `=0.1.0-draft.1`, so it refuses `0.1.0-draft.2` and the released `0.1.0` with `unsupported_contract_version`. A contract version carries no build metadata: `=0.1.0-draft.1` would match `0.1.0-draft.1+build.5` by SemVer precedence, so a reader also refuses any version with build metadata (`lock/negative/draft-build-metadata.json`). Every other version member is compared as exact text in canonical SemVer spelling, so `1.2.3` and `1.2.3+build` are different versions. A string that is not SemVer, such as `0.1`, is `invalid_value`. Drafts promise no compatibility with each other. Use a SemVer library, never a hand-written version type.
 
-A version's major, minor and patch are each at most 18446744073709551615 (2<sup>64</sup> − 1); a larger component is `invalid_value`. A library that holds components in a narrower type, such as a 32-bit integer, must still accept every value up to that bound. A version string has no length bound of its own: it is bounded only by the size of the document that holds it, and a reader never refuses a valid version for its length. A prerelease of 1,100 letters is valid (`mep-version` cases).
+A version's major, minor and patch are each at most 18446744073709551615 (2<sup>64</sup> − 1); a larger component is `invalid_value`. A library that holds components in a narrower type, such as a 32-bit integer, must still accept every value up to that bound. A version string has no length bound of its own: it is bounded only by the [size of the document](#document-size-and-files) that holds it, and a reader never refuses a valid version for its length. A prerelease of 1,100 letters is valid (`mep-version` cases).
 
 The schemas' patterns are ECMA-262 regular expressions. In ECMA-262, `$` matches only at the end of the string, so `"0.2.0\n"` is refused; some engines, .NET's among them, also let `$` match before a final line feed, and a validator built on one must anchor at the end of the string instead.
 
@@ -88,7 +88,7 @@ A reader refuses a critical path it does not understand with `unsupported_critic
 
 A reader reports the first failure it finds, and the order is part of the contract:
 
-1. The bytes are JSON (TOML 1.0 for a request) and the root is an object. Otherwise the code is `invalid_document` at the empty path.
+1. The bytes are JSON (TOML 1.0 for a request) and the root is an object. Otherwise the code is `invalid_document` at the empty path. A JSON object that repeats a member name is not a document, because readers would keep different members: it is `invalid_document` at the empty path (`lock/negative/duplicate-member.json`). A JSON document that starts with a UTF-8 byte order mark is `invalid_document` too, because a byte order mark is not JSON (RFC 8259) and these documents are written by managers and publishers (`lock/negative/byte-order-mark.json`). A request may start with one: it is a file a person edits, editors on Windows add one, and the reader reads the TOML after it. Its identity still covers every byte, so a lock bound to the request without the mark reports `request_changed` with cause `byte-order-mark` (`request/approved-bom.toml` reads as a document).
 2. `schemaVersion`. If it is absent or not a string, the code is `invalid_document`. If it is not SemVer, `invalid_value`. If it is not a listed version, `unsupported_contract_version`.
 3. `critical`. If it is not an array of strings, the code is `invalid_document`. A repeated path is `inconsistent_document` at `critical`, checked before any path is compared with the understood ones. After that, the first path in array order that is not understood is `unsupported_critical_member`.
 4. Credentials. The first credential member found by a depth-first scan of the whole document is `credential_in_document`. The scan visits each object's members in UTF-8 byte order of their names and each array's elements in index order. A credential is therefore refused before any other member of the body is read, even inside a member the reader otherwise ignores.
@@ -123,7 +123,7 @@ These fixtures each break two rules and pin the order between them:
 
 ### Numbers
 
-Every number in these documents is a non-negative integer, such as `downloadBytes`, `installedBytes` and `targetsVersion`. It is written in plain decimal, with no sign, fraction or exponent. `41943040.0` and `1e3` are refused with `invalid_document` at the member, although their values are integers (`result/negative/download-bytes-fraction.json` and `download-bytes-exponent.json`). JSON Schema's `integer` type accepts both, so the schemas are looser here.
+Every number in these documents' known members, and every number anywhere inside a plan, is a non-negative integer, such as `downloadBytes`, `installedBytes` and `targetsVersion`. A plan is the exception among unknown members because its digest covers all of it. A number in an unknown member elsewhere is ignored with the member: `lock/unknown-member-fraction.json`, with `"weight": 1.5` at its root, is valid. The integers are written in plain decimal, with no sign, fraction or exponent. `41943040.0` and `1e3` are refused with `invalid_document` at the member, although their values are integers (`result/negative/download-bytes-fraction.json` and `download-bytes-exponent.json`). JSON Schema's `integer` type accepts both, so the schemas are looser here.
 
 ### Tagged cases
 
@@ -208,7 +208,11 @@ The first six are the first-delivery platforms. The two musl identifiers exist s
 
 ### Credentials
 
-No document carries a credential. Every reader refuses, at any depth and including inside members it otherwise ignores, a member whose name equals one of `password`, `passwd`, `secret`, `token`, `apiKey`, `api-key`, `api_key`, `authorization`, `credential`, `credentials` or `cookie`, compared ASCII case-insensitively, with `credential_in_document`. So `Authorization` and `APIKEY` are refused too (`lock/negative/precedence-credential-byte-order.json`, `recipe/negative/credential-apikey-uppercase.json`). A reported mirror URL has no user information, query or fragment.
+No document carries a credential. Every reader refuses, at any depth and including inside members it otherwise ignores, a member whose name equals one of `password`, `passwd`, `secret`, `token`, `apiKey`, `api-key`, `api_key`, `authorization`, `credential`, `credentials` or `cookie`, compared ASCII case-insensitively, with `credential_in_document`. So `Authorization` and `APIKEY` are refused too (`lock/negative/precedence-credential-byte-order.json`, `recipe/negative/credential-apikey-uppercase.json`). A reported mirror URL has no user information, query or fragment, which are `credential_in_document`. A mirror is an explicit `https` or `http` URL with a host, read the same on every operating system; a bare path such as `/srv/mirror`, a `file:` URL and a drive letter such as `c:/mirror` are `invalid_value` (`result/negative/mirror-*.json`).
+
+### Document size and files
+
+A manager reads a document only from a regular file, after following symbolic links. A FIFO, a device or a directory in its place is `document_unavailable`, so a checked-in `.morphir/toolchain.toml` cannot make a manager wait forever or read without end. A request, lock, receipt or manager result is at most 1 MiB (1,048,576 bytes), and a recipe at most 16 MiB. A larger one is `document_unavailable` without being parsed. A recipe read through TUF is also bounded by its authenticated target length. These bounds also bound every string in a document; no string, version strings included, has a length bound of its own. No fixture: a file past the bound is not committed, and a FIFO cannot be.
 
 ## Stable codes
 

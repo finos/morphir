@@ -375,9 +375,7 @@ impl InstallationReceipt {
 
 /// Read a receipt from its exact bytes.
 pub fn read_receipt(bytes: &[u8]) -> Result<InstallationReceipt> {
-    let value: Value = serde_json::from_slice(bytes).map_err(|error| {
-        Diagnostic::new(Code::InvalidDocument, "", format!("not JSON: {error}"))
-    })?;
+    let value: Value = crate::reader::parse_json(bytes)?;
     envelope::check(&value, UNDERSTOOD_PATHS)?;
     let root = Node::root(&value).object()?;
     let platform = root.req("platform", model::platform)?;
@@ -442,13 +440,19 @@ pub(crate) fn check(node: Node<'_>) -> Result<Check> {
         StatusTag::Skipped => CheckStatus::Skipped(reason()?),
         StatusTag::Unsupported => CheckStatus::Unsupported(reason()?),
     };
-    let workflow = object.opt("workflow", model::token(WorkflowId::parse))?;
-    if (kind == CheckKind::Workflow) != workflow.is_some() {
-        return Err(inconsistent(
-            object.member_path("workflow"),
-            "a workflow check, and only a workflow check, names its workflow",
-        ));
-    }
+    // `workflow` is a member of the workflow case: required there, and
+    // contradicting any other check.
+    let workflow = if kind == CheckKind::Workflow {
+        Some(object.req("workflow", model::token(WorkflowId::parse))?)
+    } else {
+        if object.has("workflow") {
+            return Err(inconsistent(
+                object.member_path("workflow"),
+                "only a workflow check names a workflow",
+            ));
+        }
+        None
+    };
     Ok(Check {
         kind,
         status,

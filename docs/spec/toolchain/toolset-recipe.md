@@ -26,8 +26,8 @@ A toolset recipe is an ordinary authenticated TUF target in a tool repository, f
 | `implementation`, `version`, `deployment` | The offering's identity. A recipe has one offering per implementation and deployment |
 | `execution` | `native-aot` or `jit` |
 | `source` | `{ "kind": "tool-release", "toolId": … }` or `{ "kind": "dotnet-tool", "packageId": …, "command": … }` |
-| `protocolVersions` | MEP versions the host speaks, each on the [supported 0.2 line](./index.md#mep-versions). A version off the line is `unsupported_case` at that element |
-| `wasmAbis` | WASM ABIs the host's qualified engine supports. Optional; absent or empty when it has none |
+| `protocolVersions` | MEP versions the host speaks, each on the [supported 0.2 line](./index.md#mep-versions) and each once. A version off the line is `unsupported_case` at that element, and a string that is not SemVer `invalid_value` |
+| `wasmAbis` | WASM ABIs the host's qualified engine supports, each once. Optional; absent or empty when it has none |
 | `prerequisites` | Runtime, SDK and native prerequisites. Optional; absent means none |
 | `builtIns` | Built-in providers, at most one per operation: `operation`, `extensionId`, `version`, and the model the built-in exchanges with the host. That is `modelOutput` for a `compile` built-in, which writes the model, and `modelInput` for a `generate` built-in, which reads it; the other member is `inconsistent_document`. Optional; absent means none |
 | `platforms` | The authenticated artifact (`target`, `sha256`) for each supported platform |
@@ -38,7 +38,7 @@ A `tool-release` source names a tool release metadata v1 tool id. Each separatel
 
 ### Providers
 
-Each provider has `operation`, `delivery` (`process`, `wasm` or `dotnet-tool`; built-ins belong to a host), `extensionId`, `version`, optional `prerequisites`, and the protocol members described for the [lock](./toolchain-lock.md#members). Delivery identities:
+Each provider has `operation`, `delivery` (`process`, `wasm` or `dotnet-tool`; built-ins belong to a host, so a provider with `delivery` `built-in` names a known case in the wrong place and is `inconsistent_document` at its `delivery`, `recipe/negative/provider-built-in-delivery.json`), `extensionId`, `version`, optional `prerequisites`, and the protocol members described for the [lock](./toolchain-lock.md#members). Delivery identities:
 
 | `delivery` | Members |
 | --- | --- |
@@ -56,11 +56,12 @@ Understood critical paths: `schemaVersion`, `critical`, `preset`, `version`, `op
 
 A reader refuses each of these with `inconsistent_document`. The fixture under `fixtures/0.1.0-draft.1/recipe/negative/` that pins each rule is named after it.
 
-The first four rules marked *while reading* concern one object and are checked as that object is read, in [reading order](./index.md#order-of-checks). The others are checked once the whole document has been read, in the order of this table; each of them is checked over its whole array, in index order, before the next rule is checked. So a recipe whose second host repeats the first offering and whose first host has a second built-in is refused at `hosts[1]` (`precedence-consistency-table-order.json`).
+The first five rules marked *while reading* concern one object and are checked as that object is read, in [reading order](./index.md#order-of-checks). The others are checked once the whole document has been read, in the order of this table; each of them is checked over its whole array, in index order, before the next rule is checked. So a recipe whose second host repeats the first offering and whose first host has a second built-in is refused at `hosts[1]` (`precedence-consistency-table-order.json`).
 
 | Rule | Checked | Path | Fixture |
 | --- | --- | --- | --- |
 | A `tool-release` offering lists no musl platform | while reading | `hosts[i].platforms.<id>` | `musl-bound-to-tool-release.json` |
+| An offering lists each MEP version and each WASM ABI once; a repeated entry is refused at the repetition | while reading | `hosts[i].protocolVersions[j]`, `hosts[i].wasmAbis[j]` | `duplicate-protocol-version.json`, `duplicate-wasm-abi.json` |
 | A process provider lists at least one platform | while reading | `providers[i].platforms` | `process-without-platforms.json` |
 | A `modelTuple` operation performs the provider's operation | while reading | `providers[i].modelTuple.operation` | `tuple-operation-mismatch.json` |
 | A provider has only its delivery's members: an external provider declares no `modelInput` or `modelOutput`, which only a built-in has, and a built-in declares no `protocolVersion` or `modelTuple`, because it has no MEP session | while reading | `providers[i].modelInput`, `providers[i].modelOutput`, `hosts[i].builtIns[j].protocolVersion`, `hosts[i].builtIns[j].modelTuple` | `external-provider-with-model-input.json`, `external-provider-with-model-output.json`, `built-in-with-model-tuple.json` |
@@ -220,7 +221,7 @@ The maintainer decisions these pages follow are listed with their dates under [D
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator, and the three managed offerings have the built-in frontend `morphir-dotnet.fsharp`; its `resolve` case for `self-contained` selects both built-ins. It is unsigned and binds nothing, so it keeps the dotted frontend identity of the approved example. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`; its `resolve` cases show that resolution reports `abi_unavailable` unless the request chooses the other ABI. `critical-nested-platform-member.json` names a platform member as critical. `provider-misfit.json` has a frontend that fits its host on one of the host's two platforms. `recipe/negative/` has the fixtures in the consistency table plus a later draft, an unknown critical member and an unknown nested critical member, a WASM provider without an ABI, an uppercase identity, an identity token over 64 characters, an unknown source kind, a `dotnet-tool` provider without its descriptor, a `compile` built-in with `modelInput` and one without `modelOutput`, a provider speaking MEP `0.1` (`protocol-version-0.1.json`, `unsupported_case`), credential members (`apiKey`, and `APIKEY` to pin case-insensitive matching), and two documents that break two rules at once (`precedence-*.json`).
+`fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator, and the three managed offerings have the built-in frontend `morphir-dotnet.fsharp`; its `resolve` case for `self-contained` selects both built-ins. It is unsigned and binds nothing, so it keeps the dotted frontend identity of the approved example. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`; its `resolve` cases show that resolution reports `abi_unavailable` unless the request chooses the other ABI. `critical-nested-platform-member.json` names a platform member as critical. `protocol-membership-exact.json` has a preferred provider at MEP `0.2.0` for hosts that list only `0.2.0-draft.1`, and `wasm-abi-and-protocol-misfit.json` a WASM provider that misfits by both ABI and protocol; their `resolve` cases pin exact membership and the order of misfits. `provider-misfit.json` has a frontend that fits its host on one of the host's two platforms. `recipe/negative/` has the fixtures in the consistency table plus a later draft, an unknown critical member and an unknown nested critical member, a WASM provider without an ABI, an uppercase identity, an identity token over 64 characters, an unknown source kind, a `dotnet-tool` provider without its descriptor, a `compile` built-in with `modelInput` and one without `modelOutput`, a provider speaking MEP `0.1` (`protocol-version-0.1.json`, `unsupported_case`), credential members (`apiKey`, and `APIKEY` to pin case-insensitive matching), and two documents that break two rules at once (`precedence-*.json`).
 
 The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes:
 

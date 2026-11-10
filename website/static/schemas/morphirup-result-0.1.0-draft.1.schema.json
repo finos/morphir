@@ -764,8 +764,9 @@
           "enum": [ "root", "timestamp", "snapshot", "targets" ]
         },
         "mirror": {
+          "description": "An https or http URL with a host, and no user information, query or fragment.",
           "type": "string",
-          "format": "uri"
+          "pattern": "^https?://[^\\s/?#@]+(/[^\\s?#]*)?$"
         },
         "target": {
           "$ref": "#/$defs/targetPath"

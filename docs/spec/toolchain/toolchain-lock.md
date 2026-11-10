@@ -80,7 +80,7 @@ Each provider has `operation` (`compile` with `language`, or `generate` with `ta
 | `wasm` | `abi` and the `process` members |
 | `dotnet-tool` | `repositoryId`, `descriptorTarget`, `descriptorSha256` (the release's extension descriptor, whose claims describe the guest), `packageId`, `command`, `packageTarget`, `packageSha256`, protocol members |
 
-The protocol members are `protocolVersion`, a MEP version on the [supported 0.2 line](./index.md#mep-versions), and one `modelTuple` whose five members are compared exactly, and whose `operation` is `morphir.frontend.compileModel` for `compile` and `morphir.backend.generateModel` for `generate`. A string that is not canonical SemVer is `invalid_value` at `protocolVersion`, and a version off the line is `unsupported_case` there (`lock/negative/protocol-version-*.json`). An external provider with `modelInput` or `modelOutput`, which only a built-in has, is `inconsistent_document` at that member (`lock/negative/external-provider-with-model-input.json`). These are checked in that order, `protocolVersion` first ([order of checks](./index.md#order-of-checks)).
+The protocol members are `protocolVersion`, a MEP version on the [supported 0.2 line](./index.md#mep-versions), and one `modelTuple`. Both are required, so a provider without `modelTuple` is `invalid_document` there (`lock/negative/external-provider-without-model-tuple.json`). The tuple's five members are compared exactly, and its `operation` is `morphir.frontend.compileModel` for `compile` and `morphir.backend.generateModel` for `generate`. A string that is not canonical SemVer is `invalid_value` at `protocolVersion`, and a version off the line is `unsupported_case` there (`lock/negative/protocol-version-*.json`). An external provider with `modelInput` or `modelOutput`, which only a built-in has, is `inconsistent_document` at that member (`lock/negative/external-provider-with-model-input.json`). These are checked in that order, `protocolVersion` first ([order of checks](./index.md#order-of-checks)).
 
 For a `dotnet-tool` host offering, `hostTarget` names the authenticated package bytes.
 
@@ -115,7 +115,7 @@ Given the recipe's exact bytes, a lock is refused with `lock_recipe_mismatch` at
 | The SHA-256 of the recipe bytes equals `recipe.sha256` | `lock_recipe_mismatch` | `recipe.sha256` | `lock-recipe-bytes` |
 | `recipe.repositoryId` is the identity of the authenticated repository the recipe bytes were read from | `repository_mismatch` | `recipe.repositoryId` | `lock-recipe-repository` |
 | The recipe offers a host with the lock's implementation, deployment and version | `lock_recipe_mismatch` | `host` | `lock-recipe-host` |
-| A closure's host artifact is the offering's artifact for that platform | `lock_recipe_mismatch` | `platforms.<id>.hostTarget` | `lock-recipe-host-artifact` |
+| A closure's host artifact is the offering's artifact for that platform. A closure for a platform the offering does not list has no such artifact and is refused the same way (`signed/negative/lock-platform-not-offered.lock.json`) | `lock_recipe_mismatch` | `platforms.<id>.hostTarget` | `lock-recipe-host-artifact` |
 | A closure's operations are exactly the recipe's operations | `lock_recipe_mismatch` | `platforms.<id>.providers` | `lock-recipe-operations` |
 | Each provider's `repositoryId`, when its delivery has one, is that same repository identity | `repository_mismatch` | `platforms.<id>.providers[i].repositoryId` | `lock-provider-repository` |
 | Each provider is the offering's built-in for its operation or a recipe provider that fits the host on that platform, in its locked form | `lock_recipe_mismatch` | `platforms.<id>.providers[i]` | `lock-recipe-provider` |
@@ -130,6 +130,10 @@ The two repository rows apply the [one repository per binding check](./toolset-r
 - a drive path, a rooted path, a traversing path, a device-name component, a component ending in `.`, a path over 240 code units, a line separator, and non-ASCII paths one past each limit: 513 UTF-8 bytes, 241 UTF-16 code units, and a 256-byte component;
 - an uppercase digest, a short digest, an unknown platform key, no platforms, an empty closure, a closure missing an operation (two variants), a process provider without its artifact digest, a `dotnet-tool` provider without its descriptor, an unknown delivery, two providers for one operation, a non-SemVer version and a WASM provider without an ABI;
 - credential members (`authorization`, and a mixed-case `Authorization`);
+- a repeated member name and a leading byte order mark;
+- MEP versions off the line or not SemVer (`protocol-version-*.json`), an external provider with `modelInput` or without `modelTuple`, and a built-in with `protocolVersion`;
 - documents that break two rules at once (`precedence-*.json`), described under [order of checks](./index.md#order-of-checks).
+
+`lock/unknown-member-fraction.json` is valid: a number in an unknown member is ignored with it.
 
 The signed fixtures add the frozen locks and the `lockRecipe` cases, with one negative lock for each check above.

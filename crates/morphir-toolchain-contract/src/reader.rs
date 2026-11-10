@@ -20,6 +20,89 @@ pub(crate) struct Obj<'a> {
     path: String,
 }
 
+/// Parse a JSON document, refusing an object that repeats a member name.
+/// `serde_json` keeps the last of two repeated members silently, so the
+/// value is built by a visitor that sees every name. A byte order mark is
+/// not JSON and is refused like any other syntax error.
+pub(crate) fn parse_json(bytes: &[u8]) -> Result<Value> {
+    use serde::Deserializer as _;
+    let mut deserializer = serde_json::Deserializer::from_slice(bytes);
+    let value = deserializer
+        .deserialize_any(StrictVisitor)
+        .and_then(|value| deserializer.end().map(|()| value))
+        .map_err(|error| {
+            Diagnostic::new(Code::InvalidDocument, "", format!("not JSON: {error}"))
+        })?;
+    Ok(value)
+}
+
+struct StrictValue(Value);
+
+impl<'de> serde::Deserialize<'de> for StrictValue {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        deserializer.deserialize_any(StrictVisitor).map(StrictValue)
+    }
+}
+
+struct StrictVisitor;
+
+impl<'de> serde::de::Visitor<'de> for StrictVisitor {
+    type Value = Value;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a JSON value")
+    }
+    fn visit_bool<E>(self, value: bool) -> std::result::Result<Value, E> {
+        Ok(Value::Bool(value))
+    }
+    fn visit_i64<E>(self, value: i64) -> std::result::Result<Value, E> {
+        Ok(Value::from(value))
+    }
+    fn visit_u64<E>(self, value: u64) -> std::result::Result<Value, E> {
+        Ok(Value::from(value))
+    }
+    fn visit_f64<E>(self, value: f64) -> std::result::Result<Value, E> {
+        Ok(serde_json::Number::from_f64(value).map_or(Value::Null, Value::Number))
+    }
+    fn visit_str<E>(self, value: &str) -> std::result::Result<Value, E> {
+        Ok(Value::String(value.to_owned()))
+    }
+    fn visit_string<E>(self, value: String) -> std::result::Result<Value, E> {
+        Ok(Value::String(value))
+    }
+    fn visit_unit<E>(self) -> std::result::Result<Value, E> {
+        Ok(Value::Null)
+    }
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(
+        self,
+        mut items: A,
+    ) -> std::result::Result<Value, A::Error> {
+        let mut values = Vec::new();
+        while let Some(StrictValue(value)) = items.next_element()? {
+            values.push(value);
+        }
+        Ok(Value::Array(values))
+    }
+    fn visit_map<A: serde::de::MapAccess<'de>>(
+        self,
+        mut members: A,
+    ) -> std::result::Result<Value, A::Error> {
+        let mut map = Map::new();
+        while let Some(name) = members.next_key::<String>()? {
+            if map.contains_key(&name) {
+                return Err(serde::de::Error::custom(format!(
+                    "the member name '{name}' is repeated"
+                )));
+            }
+            let StrictValue(value) = members.next_value()?;
+            map.insert(name, value);
+        }
+        Ok(Value::Object(map))
+    }
+}
+
 pub(crate) fn join(path: &str, key: &str) -> String {
     if path.is_empty() {
         key.to_owned()

@@ -530,11 +530,33 @@ pub fn canonical_sha256(value: &Value) -> std::result::Result<Sha256, String> {
     canonical_json(value).map(|bytes| Sha256::of_bytes(&bytes))
 }
 
+/// The path of the first object, depth first in member order, two of whose
+/// member names have the same NFC form.
+fn nfc_key_collision(value: &Value, path: &str) -> Option<String> {
+    use unicode_normalization::UnicodeNormalization;
+    match value {
+        Value::Object(map) => {
+            let mut seen = std::collections::BTreeSet::new();
+            if map
+                .keys()
+                .any(|key| !seen.insert(key.nfc().collect::<String>()))
+            {
+                return Some(path.to_owned());
+            }
+            map.iter()
+                .find_map(|(key, value)| nfc_key_collision(value, &join(path, key)))
+        }
+        Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .find_map(|(position, item)| nfc_key_collision(item, &index(path, position))),
+        _ => None,
+    }
+}
+
 /// Read a result from its exact bytes.
 pub fn read_result(bytes: &[u8]) -> Result<ManagerResult> {
-    let value: Value = serde_json::from_slice(bytes).map_err(|error| {
-        Diagnostic::new(Code::InvalidDocument, "", format!("not JSON: {error}"))
-    })?;
+    let value: Value = crate::reader::parse_json(bytes)?;
     envelope::check(&value, UNDERSTOOD_PATHS)?;
     let root = Node::root(&value).object()?;
     let command = root.case("command", Command::CASES)?;
@@ -548,6 +570,13 @@ pub fn read_result(bytes: &[u8]) -> Result<ManagerResult> {
     )?;
     let plan = root.opt("plan", |node| {
         let plan = plan(node)?;
+        if let Some(object) = nfc_key_collision(node.value(), node.path()) {
+            return Err(Diagnostic::new(
+                Code::InvalidDocument,
+                object,
+                "two member names have the same NFC form, so the canonical form cannot hold both",
+            ));
+        }
         let digest = root.req("planSha256", model::sha256)?;
         let actual = canonical_sha256(node.value())
             .map_err(|message| Diagnostic::new(Code::InvalidDocument, node.path(), message))?;
@@ -663,6 +692,15 @@ fn mirror(node: Node<'_>) -> Result<String> {
             format!("not a URL: {error}"),
         )
     })?;
+    // A mirror is an explicit http or https URL with a host, read the same
+    // on every operating system: no bare path, no file: URL, no drive letter.
+    if !matches!(url.scheme(), "https" | "http") || url.host_str().is_none_or(str::is_empty) {
+        return Err(Diagnostic::new(
+            Code::InvalidValue,
+            node.path(),
+            "a mirror is an https or http URL with a host",
+        ));
+    }
     if !url.username().is_empty()
         || url.password().is_some()
         || url.query().is_some()

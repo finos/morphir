@@ -797,6 +797,20 @@
       "expected": "valid"
     },
     {
+      "name": "a generation whose recipe target the trust state does not list is not launched",
+      "rule": "generation-recipe-unlisted",
+      "metadata": "metadata",
+      "mutations": [],
+      "action": {
+        "op": "check-locked-generation",
+        "lock": "negative/lock-recipe-unlisted.lock.json"
+      },
+      "expected": {
+        "code": "target_not_authenticated",
+        "path": "recipe.target"
+      }
+    },
+    {
       "name": "a learned recipe revocation refuses launch and rollback of generations bound to it",
       "rule": "generation-recipe-revoked",
       "metadata": "recipeRevocation",
@@ -1040,6 +1054,16 @@
       "expected": {
         "code": "repository_mismatch",
         "path": "platforms.win-x64.providers[0].repositoryId"
+      }
+    },
+    {
+      "name": "a lock with a closure for a platform the offering does not list is refused at that closure's host artifact",
+      "rule": "lock-recipe-host-artifact",
+      "lock": "negative/lock-platform-not-offered.lock.json",
+      "recipe": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "code": "lock_recipe_mismatch",
+        "path": "platforms.linux-musl-x64.hostTarget"
       }
     }
   ],

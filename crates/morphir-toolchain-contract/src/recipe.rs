@@ -7,7 +7,7 @@
 //! providers by exact digests. It does not change the extension descriptor
 //! format.
 
-use crate::diagnostic::{Code, Diagnostic, Result};
+use crate::diagnostic::{Code, Result};
 use crate::envelope;
 use crate::ids::{
     CommandName, DeploymentId, ExtensionIdentity, ImplementationId, PackageId, PresetId,
@@ -342,9 +342,7 @@ impl ToolsetRecipe {
 
 /// Read a recipe from its exact bytes.
 pub fn read_recipe(bytes: &[u8]) -> Result<ToolsetRecipe> {
-    let value: Value = serde_json::from_slice(bytes).map_err(|error| {
-        Diagnostic::new(Code::InvalidDocument, "", format!("not JSON: {error}"))
-    })?;
+    let value: Value = crate::reader::parse_json(bytes)?;
     envelope::check(&value, UNDERSTOOD_PATHS)?;
     let root = Node::root(&value).object()?;
     let recipe = ToolsetRecipe {
@@ -429,10 +427,15 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
         execution: host.case("execution", Execution::CASES)?,
         source,
         protocol_versions: host.req("protocolVersions", |node| {
-            node.array(|item| item.parse_coded(ProtocolVersion::parse))
+            unique_entries(
+                node.path(),
+                node.array(|item| item.parse_coded(ProtocolVersion::parse))?,
+            )
         })?,
         wasm_abis: host
-            .opt("wasmAbis", |node| node.array(model::token(WasmAbi::parse)))?
+            .opt("wasmAbis", |node| {
+                unique_entries(node.path(), node.array(model::token(WasmAbi::parse))?)
+            })?
             .unwrap_or_default(),
         prerequisites: model::prerequisites(&host)?,
         built_ins: host
@@ -451,6 +454,19 @@ fn host_offering(node: Node<'_>) -> Result<HostOffering> {
             .unwrap_or_default(),
         platforms,
     })
+}
+
+/// Refuse an array that repeats an entry, at the first repetition.
+fn unique_entries<T: PartialEq>(path: &str, entries: Vec<T>) -> Result<Vec<T>> {
+    if let Some(position) =
+        (1..entries.len()).find(|&position| entries[..position].contains(&entries[position]))
+    {
+        return Err(inconsistent(
+            index(path, position),
+            "an entry repeats an earlier one",
+        ));
+    }
+    Ok(entries)
 }
 
 fn provider(node: Node<'_>) -> Result<RecipeProvider> {
