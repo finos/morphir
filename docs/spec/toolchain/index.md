@@ -47,7 +47,43 @@ The contracts these documents refer to keep their own versions. Nothing here ren
 
 A reader ignores any member it does not understand, at any depth. `critical` is an optional array of unique member paths. A path is a dotted list of member names from the document root. Array elements are named through the array's member name, without an index: `toolset.providers.delivery` names `delivery` in every element of `toolset.providers`. Entries of a map whose keys are data are named by `*`: `platforms.*.providers.modelTuple` names `modelTuple` in every provider of every platform closure.
 
-A reader refuses a critical path it does not understand with `unsupported_critical_member` and names the path. A critical path that names an understood member is accepted. Each page lists the paths a `0.1.0-draft.1` reader understands, and each schema enumerates exactly those under `critical`.
+A reader refuses a critical path it does not understand with `unsupported_critical_member`, and the diagnostic's path is that critical path. Each page lists the paths a `0.1.0-draft.1` reader understands, and each schema enumerates exactly those under `critical`. A critical path is understood only when it is exactly one of those strings. A data-keyed map entry is named only by `*`, and an array element only through its array's member name, so `platforms.win-x64.hostTarget` and `providers[0]` are not understood paths, even though they name members the reader reads. The paths in `critical` are unique: a repeated path is `inconsistent_document` at `critical`.
+
+### Order of checks
+
+A reader reports the first failure it finds, and the order is part of the contract:
+
+1. The bytes are JSON (TOML 1.0 for a request) and the root is an object. Otherwise the code is `invalid_document` at the empty path.
+2. `schemaVersion`. If it is absent or not a string, the code is `invalid_document`. If it is not SemVer, `invalid_value`. If it is not a listed version, `unsupported_contract_version`.
+3. `critical`. If it is not an array of strings, the code is `invalid_document`. A repeated path is `inconsistent_document` at `critical`, checked before any path is compared with the understood ones. After that, the first path in array order that is not understood is `unsupported_critical_member`.
+4. Credentials. The first credential member found by a depth-first scan of the whole document is `credential_in_document`. The scan visits each object's members in UTF-8 byte order of their names and each array's elements in index order. A credential is therefore refused before any other member of the body is read, even inside a member the reader otherwise ignores.
+5. The body. A rule that relates members is checked once the members it relates have been read. The recipe's consistency rules marked *after reading* wait for the whole document, in the order of their table.
+
+Within the body:
+
+- array elements are read in index order, so a failure in an earlier element is reported first;
+- in a map keyed by data, every key is checked first. The first invalid key in UTF-8 byte order is `invalid_value` at that key. The entries are then read in key order, whatever order the document lists them in. For platform keys, key order is the order of the [platform table](#platforms): `win-x64`, `win-arm64`, `osx-x64`, `osx-arm64`, `linux-x64`, `linux-arm64`, `linux-musl-x64`, `linux-musl-arm64`;
+- the checks that compare one document with another, on the recipe, lock and receipt pages, visit platforms in the same order;
+- a rule that relates several platforms or elements to each other names their common parent, such as `platforms`, never one of them.
+
+Failures in two different members of one object are not ordered by this contract: a reader may report either. The fixtures are written so that no case depends on that order. These fixtures each break two rules and pin the order between them:
+
+| Fixture | Rules broken | Reported |
+| --- | --- | --- |
+| `lock/negative/precedence-version-before-credential.json` | A later draft; a credential member | `unsupported_contract_version` at `schemaVersion` |
+| `lock/negative/precedence-duplicate-before-unknown-critical.json` | A repeated critical path that is also not understood | `inconsistent_document` at `critical` |
+| `lock/negative/precedence-critical-before-credential.json` | An unknown critical path; a credential member | `unsupported_critical_member` at `platforms.*.unknownMember` |
+| `lock/negative/precedence-credential-before-body.json` | A credential member; a non-SemVer host version | `credential_in_document` at `apiKey` |
+| `lock/negative/precedence-credential-byte-order.json` | `host.token`, listed first; `Authorization` at the root, listed last | `credential_in_document` at `Authorization` |
+| `lock/negative/precedence-platform-table-order.json` | A bad digest in `osx-arm64`, listed first, and in `win-x64` | `invalid_value` at `platforms.win-x64.hostSha256` |
+| `lock/negative/precedence-platform-keys-first.json` | A bad digest in `win-x64`; an unknown key `zz-unknown` | `invalid_value` at `platforms.zz-unknown` |
+| `recipe/negative/precedence-body-before-consistency.json` | No operations; a non-SemVer host version | `invalid_value` at `hosts[0].version` |
+| `recipe/negative/precedence-consistency-table-order.json` | A second built-in in `hosts[0]`; `hosts[1]` repeats the offering | `inconsistent_document` at `hosts[1]` |
+| `receipt/binding/recipe-and-host-substituted.json` (against `lock/two-platforms-bound.json`) | Another recipe; another host release | `receipt_lock_mismatch` at `recipe` |
+
+### Numbers
+
+Every number in these documents is a non-negative integer, such as `downloadBytes`, `installedBytes` and `targetsVersion`. It is written in plain decimal, with no sign, fraction or exponent. `41943040.0` and `1e3` are refused with `invalid_document` at the member, although their values are integers (`result/negative/download-bytes-fraction.json` and `download-bytes-exponent.json`). JSON Schema's `integer` type accepts both, so the schemas are looser here.
 
 ### Tagged cases
 
@@ -89,6 +125,8 @@ A target path names an authenticated TUF target. It is relative, uses `/` as its
 
 A path that breaks any of these rules is `non_portable_path`. These are the rules the existing tool and extension stores apply to every stored path, so a target that passes can be stored on every first-delivery platform.
 
+The length limits count UTF-8 bytes and UTF-16 code units, never code points or characters. `字` (U+5B57) is 3 bytes and 1 code unit; `𝄞` (U+1D11E) is 4 bytes and 2 code units. Both limits apply, so a path of 175 code units is still refused when it is 513 bytes. The schemas cannot express these limits: their `maxLength: 240` counts code points, so they accept some paths the reader refuses. The reader's limits govern, and the cases that the schema accepts record that in `schemaGap`. `lock/target-path-512-utf8-bytes.json` and `lock/target-path-240-utf16-units.json` are valid at each limit; `lock/negative/target-path-513-utf8-bytes.json`, `target-path-241-utf16-units.json` and `target-component-256-utf8-bytes.json` are one past them.
+
 ### Local paths
 
 Only receipts and `show` results hold local paths. A local path is absolute: a drive letter, `:`, `\` or `/` and at least one more character (`C:\Users\fixture\morphir.exe`), a UNC path `\\` followed by at least one more character, or `/` followed by at least one more character. A receipt uses its platform's syntax; a result's project path may use either. No `\`- or `/`-separated segment is `.` or `..`, and the path has no NUL. Anything else is `invalid_value`.
@@ -112,7 +150,7 @@ The first six are the first-delivery platforms. The two musl identifiers exist s
 
 ### Credentials
 
-No document carries a credential. Every reader refuses, at any depth and including inside members it otherwise ignores, a member whose name equals one of `password`, `passwd`, `secret`, `token`, `apiKey`, `api-key`, `api_key`, `authorization`, `credential`, `credentials` or `cookie`, compared ASCII case-insensitively, with `credential_in_document`. A reported mirror URL has no user information, query or fragment.
+No document carries a credential. Every reader refuses, at any depth and including inside members it otherwise ignores, a member whose name equals one of `password`, `passwd`, `secret`, `token`, `apiKey`, `api-key`, `api_key`, `authorization`, `credential`, `credentials` or `cookie`, compared ASCII case-insensitively, with `credential_in_document`. So `Authorization` and `APIKEY` are refused too (`lock/negative/precedence-credential-byte-order.json`, `recipe/negative/credential-apikey-uppercase.json`). A reported mirror URL has no user information, query or fragment.
 
 ## Stable codes
 
@@ -159,7 +197,9 @@ Every code has exactly one result diagnostic kind, so a [manager result](./manag
 
 ## Fixtures and conformance
 
-The contract is the specification pages, the JSON Schemas, the fixture files and the case manifests. They are language-neutral: an implementation in any language reads the same files and must report the same outcome, code and path for every case. The schemas check document shape; rules a schema cannot express are stated on these pages and covered by cases marked `"schema": "accepts"`.
+The contract is the specification pages, the JSON Schemas, the fixture files and the case manifests. They are language-neutral: an implementation in any language reads the same files and must report the same outcome, code and path for every case. The schemas check document shape. Rules a schema does not express are stated on these pages and covered by cases marked `"schema": "accepts"`; each of those cases also has a `schemaGap` saying why the schema is looser, and a test requires one exactly where the schema accepts a refused document.
+
+Cases that pin a row of a check table carry a `rule`, which that row's Cases column names. A row that cannot have a case says `No fixture:` and why. A test fails when a row names no case and is not marked, when a rule's cases report a code or path the row does not list, when a code the row lists has no case, or when a case's rule is in no table.
 
 [`fixtures/0.1.0-draft.1/cases.json`](https://github.com/finos/morphir/tree/main/docs/spec/toolchain/fixtures/0.1.0-draft.1) lists every unsigned fixture document with the contract it claims to follow and either `valid` or the exact code and path, and whether the JSON Schema accepts it. Its `bindings` cases check documents against each other:
 
@@ -178,8 +218,17 @@ The contract is the specification pages, the JSON Schemas, the fixture files and
 | `selection` | `recipe` target, `request` text, `platform` | Resolution against the authenticated recipe |
 | `recipeChecks` | `recipe` target | The [authenticated recipe checks](./toolset-recipe.md#authenticated-recipe-targets) |
 | `trust` | `metadata` set, `mutations`, `action` | The outcome of loading or reading the mutated repository |
-| `frozen` | `request`, `lock`, `recipe` | The lock equals the resolution of the request on every platform it records |
+| `channelSelection` | `preset`, `channel` | The recipe target that [channel selection](./toolset-recipe.md#authenticated-recipe-targets) picks, or the code and path |
+| `v1Client` | `toolId`, `channel`, version 1 `platform` | The tool release metadata v1 client selects `expected.targetPath`; its authenticated digest is the one the `fsharp-builtin` recipe binds for `deployment` and `recipePlatform`, and the 18 digests are distinct |
+| `v1Descriptors` | release target | Read through the client, it validates unchanged against `tool-release-v1.schema.json`. Every release target except the deliberate negative is listed |
+| `frozen` | `request`, `lock`, `recipe` | The SHA-256 of the request bytes is `expected.requestSha256` and the lock binds it; the lock's `recipe.sha256` is `expected.recipeSha256`, the authenticated recipe digest; the lock records exactly `expected.platforms`, the six first-delivery platforms; and each closure equals the resolution of the request on its platform |
 | `lockRecipe` | `lock`, `recipe` | The lock's closures are ones the recipe allows |
+
+The metadata is served as files. Each role is the canonical JSON bytes, by the [plan digest rules](./manager-result.md#the-plan-digest), of its envelope (`signatures` and `signed`) as stored in `repository.json`; every signature is over the canonical bytes of `signed`. The repository uses consistent snapshots:
+
+- the metadata directory holds `1.root.json` (also given to the client out of band as the trusted root), `timestamp.json`, `<version>.snapshot.json` and `<version>.targets.json`, each version taken from that role's `signed.version`;
+- each entry of `targetFiles` that the targets metadata lists is served under its SHA-256. tough 0.24, the client used here, requests `<sha256>.<target path>` from the targets directory. The TUF specification puts the digest in front of the file name inside the target's directory, as in `toolchains/recipes/fsharp/<sha256>.1.0.0.json`. A runner serves each target where its own client asks for it; the expected outcomes do not depend on the layout;
+- a `targetFiles` entry the targets metadata does not list is not served.
 
 A trust case starts from the committed `repository.json`, takes the named metadata set (`metadata` or `learnedRevocation`), applies its `mutations` in order and serves the result as a consistent-snapshot repository trusted from `trustedRoot`:
 
@@ -191,7 +240,19 @@ A trust case starts from the committed `repository.json`, takes the named metada
 | `replace-target-bytes` | Serve the bytes of target `with` in place of target `target` |
 | `replace-target-text` | Serve `target` with the first `find` replaced by `replace` |
 
-The `action` is `load` (load the repository), `read` (read `target` through the TUF client), `authenticate` (compare `text` with `target`), `check-recipe` (the authenticated recipe checks) or `check-recipe-bindings` (the binding checks on `recipe` after its `documentMutations`, without authenticating the recipe document).
+The `action` is one of:
+
+- `load`: load the repository;
+- `read`: read `target` through the TUF client;
+- `authenticate`: compare the UTF-8 bytes of `text` with the authenticated length and digest of `target`, as for bytes from a local store;
+- `check-recipe`: the authenticated recipe checks on `recipe`;
+- `check-recipe-bindings`: read `recipe` through the client and parse it as JSON, then apply each entry of `documentMutations` in order. Each entry has a `pointer`, an RFC 6901 pointer into the recipe document that names an existing member or array element, and a `value` that replaces it. Read the result with the recipe reader and run only the host and provider binding checks. The mutated document is not authenticated, and the recipe target checks are not run on it.
+
+A refused load has the empty path, as does a refused `read` or `authenticate` of a target named directly. A binding check reports the binding member that named the target.
+
+The TUF client used here compares expiry with the wall clock and cannot be given another time. So every case has the same outcome at any instant after `2020-01-01T00:00:00Z`, when `rejectionMetadata.expiredTimestamp` expires, and before `2999-01-01T00:00:00Z`, when every other role expires. `referenceTime` (`2030-01-01T00:00:00Z`) is one instant in that window; a runner whose client takes a reference time uses it. A test checks that the window holds and that the current time is inside it.
+
+One outcome stays in a Rust-only test, `a_non_portable_recipe_target_is_refused_without_panicking`: channel selection over a repository that lists a recipe under `toolchains/recipes/con/`. `con` is a device name that older Windows versions cannot create as a directory, so it is kept out of the shared repository that every runner writes to disk. The `recipeChecks` case for `toolchains/recipes/con/1.0.0.json` pins the same `non_portable_path` at the empty path without listing the target, because the path check comes first.
 
 Every key in the signed repository is the Ed25519 key whose 32-byte seed is the SHA-256 of a public UTF-8 label recorded in `testOnlyKeys`. Anyone can therefore sign with it, which is what makes the `relink` mutation reproducible in any language and why the keys can never serve as a production root. A production configuration must refuse that `repositoryId` and those keys.
 

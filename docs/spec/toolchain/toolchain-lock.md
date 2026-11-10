@@ -84,24 +84,39 @@ The protocol members are `protocolVersion` and exactly one compatibility member.
 
 For a `dotnet-tool` host offering, `hostTarget` names the authenticated package bytes.
 
-Understood critical paths: `schemaVersion`, `critical`, `requestSha256`, `recipe`, `recipe.repositoryId`, `recipe.target`, `recipe.sha256`, `host`, `host.implementation`, `host.version`, `host.deployment`, `platforms`, `platforms.*`, `platforms.*.hostTarget`, `platforms.*.hostSha256`, `platforms.*.providers`, and `platforms.*.providers.<member>` for each provider member above, including `modelTuple.<member>` and `modelInput.<member>` for each tuple and input member. A lock that needs every reader to understand a provider member lists it, for example `platforms.*.providers.modelTuple`.
+Understood critical paths: `schemaVersion`, `critical`, `requestSha256`, `recipe`, `recipe.repositoryId`, `recipe.target`, `recipe.sha256`, `host`, `host.implementation`, `host.version`, `host.deployment`, `platforms`, `platforms.*`, `platforms.*.hostTarget`, `platforms.*.hostSha256`, `platforms.*.providers`, and `platforms.*.providers.<member>` for each provider member above, including `modelTuple.<member>` and `modelInput.<member>` for each tuple and input member. A lock that needs every reader to understand a provider member lists it, for example `platforms.*.providers.modelTuple`. A platform is named only by `*`: `platforms.win-x64.hostTarget` is not an understood path and is refused with `unsupported_critical_member` (`lock/negative/critical-concrete-platform-key.json`).
 
 ## Frozen restore
 
-`morphirup restore --locked` reads the request bytes and refuses with `request_changed` when their SHA-256 differs from `requestSha256`. It then takes the closure for the current platform and refuses with `platform_not_locked` when the lock does not record it. A musl machine never takes a glibc closure. Restore never resolves a channel again and never rewrites the lock; explicit setup or update creates or extends a closure.
+`morphirup restore --locked` never resolves a channel again and never rewrites the lock; explicit setup or update creates or extends a closure. It checks, in this order:
 
-A lock records each platform's complete dependency closure. A closure with no provider, or a platform whose closure covers different operations from another platform's, is `inconsistent_document`. Two closures never come from independent channel resolutions: setup resolves one recipe and writes every requested platform from it.
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| The SHA-256 of the request bytes equals `requestSha256` | `request_changed` | `requestSha256` | `lock-request` |
+| The lock records a closure for the current platform. A musl machine never takes a glibc closure | `platform_not_locked` | `platforms` | `lock-platform` |
+
+A lock records each platform's complete dependency closure. A closure with no provider is `inconsistent_document` at its `providers`. Closures that cover different operations from each other are `inconsistent_document` at `platforms`: the rule relates the closures to each other, so no single platform is named (`lock/negative/closure-operations-differ.json`). Two closures never come from independent channel resolutions: setup resolves one recipe and writes every requested platform from it.
 
 ### Checking a lock against its recipe
 
-Given the recipe's exact bytes, a lock is refused with `lock_recipe_mismatch` when:
+Given the recipe's exact bytes, a lock is refused with `lock_recipe_mismatch` at the first failure of these checks, in this order. The closures are visited in [platform table order](./index.md#order-of-checks), and for each closure the host artifact, then the operations, then each provider in index order:
 
-1. the SHA-256 of the recipe bytes differs from `recipe.sha256` (path `recipe.sha256`);
-2. the recipe offers no host with the lock's implementation, deployment and version (path `host`);
-3. a closure's host artifact is not the offering's artifact for that platform (path `platforms.<id>.hostTarget`);
-4. a closure's operations are not exactly the recipe's operations (path `platforms.<id>.providers`);
-5. a provider is neither the offering's built-in for its operation nor a recipe provider that fits the host on that platform, in its locked form (path `platforms.<id>.providers[i]`).
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| The SHA-256 of the recipe bytes equals `recipe.sha256` | `lock_recipe_mismatch` | `recipe.sha256` | `lock-recipe-bytes` |
+| The recipe offers a host with the lock's implementation, deployment and version | `lock_recipe_mismatch` | `host` | `lock-recipe-host` |
+| A closure's host artifact is the offering's artifact for that platform | `lock_recipe_mismatch` | `platforms.<id>.hostTarget` | `lock-recipe-host-artifact` |
+| A closure's operations are exactly the recipe's operations | `lock_recipe_mismatch` | `platforms.<id>.providers` | `lock-recipe-operations` |
+| Each provider is the offering's built-in for its operation or a recipe provider that fits the host on that platform, in its locked form | `lock_recipe_mismatch` | `platforms.<id>.providers[i]` | `lock-recipe-provider` |
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/lock/approved-fragment.json` is the example above. `two-platforms-bound.json` adds an `osx-arm64` closure and binds `request/approved.toml` by its real digest. `dotnet-tool-host.json` locks a `dotnet-tool` host with the .NET tool frontend and binds `request/critical-understood-member.toml`. `critical-nested-provider-member.json` names a provider member as critical. `lock/negative/` covers a later draft, an unknown critical member and an unknown nested critical member, a drive path, a rooted path, a traversing path, a device-name component, a component ending in `.`, a path over 240 code units, a line separator, an uppercase digest, a short digest, an unknown platform key, no platforms, an empty closure, a closure missing an operation, a process provider without its artifact digest, an unknown delivery, two providers for one operation, a non-SemVer version, a WASM provider without an ABI and a credential member. The signed fixtures add the frozen locks and the `lockRecipe` cases.
+`fixtures/0.1.0-draft.1/lock/approved-fragment.json` is the example above. `two-platforms-bound.json` adds an `osx-arm64` closure and binds `request/approved.toml` by its real digest. `dotnet-tool-host.json` locks a `dotnet-tool` host with the .NET tool frontend and binds `request/critical-understood-member.toml`. `critical-nested-provider-member.json` names a provider member as critical. `target-path-512-utf8-bytes.json` and `target-path-240-utf16-units.json` hold host targets exactly at the [target path](./index.md#target-paths) byte and code-unit limits, written with non-ASCII characters. `lock/negative/` covers:
+
+- a later draft, an unknown critical member, an unknown nested critical member, a concrete platform key named as critical and a repeated critical path;
+- a drive path, a rooted path, a traversing path, a device-name component, a component ending in `.`, a path over 240 code units, a line separator, and non-ASCII paths one past each limit: 513 UTF-8 bytes, 241 UTF-16 code units, and a 256-byte component;
+- an uppercase digest, a short digest, an unknown platform key, no platforms, an empty closure, a closure missing an operation (two variants), a process provider without its artifact digest, a `dotnet-tool` provider without its descriptor, an unknown delivery, two providers for one operation, a non-SemVer version and a WASM provider without an ABI;
+- credential members (`authorization`, and a mixed-case `Authorization`);
+- documents that break two rules at once (`precedence-*.json`), described under [order of checks](./index.md#order-of-checks).
+
+The signed fixtures add the frozen locks and the `lockRecipe` cases, with one negative lock for each check above.

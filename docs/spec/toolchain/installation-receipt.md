@@ -67,11 +67,22 @@ Understood critical paths: `schemaVersion`, `critical`, `generationId`, `platfor
 
 ## Binding to the lock
 
-Given the lock bytes, a receipt is refused with `lock_changed` when their SHA-256 differs from `lockSha256`, and with `receipt_lock_mismatch` when its recipe, host identity or any provider identity differs from the lock's closure for the receipt's platform.
+Given the lock bytes and the lock they read as, a receipt is checked in this order and refused at the first failure. Every path names a member of the receipt, except `platforms`, which names the lock's member, as it does in frozen restore:
+
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| The SHA-256 of the lock bytes equals `lockSha256` | `lock_changed` | `lockSha256` | `receipt-lock-bytes` |
+| `recipe` equals the lock's `recipe` (`repositoryId`, `target`, `sha256`) | `receipt_lock_mismatch` | `recipe` | `receipt-lock-recipe` |
+| The lock records a closure for the receipt's `platform` | `platform_not_locked` | `platforms` | `receipt-lock-platform` |
+| `host.identity` has the lock's host `implementation`, `version` and `deployment`, and the closure's `hostTarget` and `hostSha256` as `target` and `sha256` | `receipt_lock_mismatch` | `host.identity` | `receipt-lock-host` |
+| `providers` has as many entries as the closure's `providers` | `receipt_lock_mismatch` | `providers` | `receipt-lock-provider-count` |
+| Each provider's `identity`, in index order, equals the closure's provider at the same index | `receipt_lock_mismatch` | `providers[i].identity` | `receipt-lock-provider` |
+
+A [manager result](./manager-result.md#diagnostics) reports `lock_changed` and `receipt_lock_mismatch` with `document` `receipt`, and `platform_not_locked` with `document` `lock`.
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/receipt/` holds a workflow-qualified Windows generation bound to `lock/two-platforms-bound.json`, a generation whose frontend failed negotiation, a probed unsigned developer frontend, and an externally owned global .NET tool host bound to `lock/dotnet-tool-host.json`. `receipt/binding/` holds valid receipts that do not bind their lock: a substituted provider artifact, a substituted host release, and a platform the lock does not record. `receipt/negative/` covers:
+`fixtures/0.1.0-draft.1/receipt/` holds a workflow-qualified Windows generation bound to `lock/two-platforms-bound.json`, a generation whose frontend failed negotiation, a probed unsigned developer frontend, and an externally owned global .NET tool host bound to `lock/dotnet-tool-host.json`. `receipt/binding/` holds valid receipts that do not bind their lock: a substituted provider artifact, a substituted host release, a platform the lock does not record, another recipe, a missing provider, and another recipe together with another host release, which is refused at `recipe` because the recipe is compared first. `receipt/negative/` covers:
 
 - a later draft and an unknown critical member;
 - readiness above its checks, a qualified generation with a failed workflow, an unknown readiness state, a non-passed check without a reason, a workflow name on a component check, two workflow checks, and a built-in whose integrity differs from its host's;

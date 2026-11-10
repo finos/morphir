@@ -44,32 +44,36 @@ Each provider has `operation`, `delivery` (`process`, `wasm` or `dotnet-tool`; b
 | `wasm` | `abi`, `repositoryId`, `descriptorTarget`, `descriptorSha256`, `artifactTarget`, `artifactSha256` |
 | `dotnet-tool` | `repositoryId`, `descriptorTarget`, `descriptorSha256`, `packageId`, `command`, `packageTarget`, `packageSha256` |
 
-A `dotnet-tool` provider binds the extension release descriptor of the same release. The version-2 descriptor has no runtime for .NET tool packages, so the descriptor's claims are the authenticated statement of what the guest does, whichever delivery runs it.
+A `dotnet-tool` provider binds the extension release descriptor of the same release. The version-2 descriptor has no runtime for .NET tool packages, so the descriptor's claims are the authenticated statement of what the guest does, whichever delivery runs it. `descriptorTarget` and `descriptorSha256` are therefore required for a `dotnet-tool` provider, in a recipe and in a lock; a provider without them is `invalid_document` at the missing member. A provider shipped only as a NuGet tool cannot be bound until its release also publishes a version-2 descriptor (see the [open questions](#open-questions-for-the-maintainer)).
 
 An external provider never reuses a built-in identity. The standalone F# backend is `morphir-fsharp-backend`, not `morphir.fsharp`.
 
-Understood critical paths: `schemaVersion`, `critical`, `preset`, `version`, `operations`, `hosts` and `hosts.<member>` for each host member above, `hosts.platforms.*`, `hosts.platforms.*.target`, `hosts.platforms.*.sha256`, `providers` and `providers.<member>` for each provider member above, `providers.platforms.*`, `providers.platforms.*.artifactTarget`, `providers.platforms.*.artifactSha256`.
+Understood critical paths: `schemaVersion`, `critical`, `preset`, `version`, `operations`, `hosts` and `hosts.<member>` for each host member above, `hosts.platforms.*`, `hosts.platforms.*.target`, `hosts.platforms.*.sha256`, `providers` and `providers.<member>` for each provider member above, `providers.platforms.*`, `providers.platforms.*.artifactTarget`, `providers.platforms.*.artifactSha256`. These exact strings are the understood forms; see [unknown and critical members](./index.md#unknown-and-critical-members).
 
 ## Consistency rules
 
-A reader refuses each of these with `inconsistent_document`. The fixture under `fixtures/0.1.0-draft.1/recipe/negative/` that pins each rule is named after it:
+A reader refuses each of these with `inconsistent_document`. The fixture under `fixtures/0.1.0-draft.1/recipe/negative/` that pins each rule is named after it.
 
-| Rule | Path | Fixture |
-| --- | --- | --- |
-| At least one operation | `operations` | `no-operations.json` |
-| At least one host offering | `hosts` | `no-hosts.json` |
-| No duplicate operation | `operations[i]` | `duplicate-operation.json` |
-| One offering per implementation and deployment | `hosts[i]` | `duplicate-offering.json` |
-| At most one built-in per operation in an offering | `hosts[i].builtIns[j]` | `second-built-in.json` |
-| No duplicate provider (same operation, identity, delivery and version) | `providers[i]` | `duplicate-provider.json` |
-| An external provider never uses a built-in identity | `providers[i].extensionId` | `external-impersonates-built-in.json` |
-| A `tool-release` offering lists no musl platform | `hosts[i].platforms.<id>` | `musl-bound-to-tool-release.json` |
-| Every offering can perform every operation with a built-in or a fitting provider | `operations[i]` | `operation-without-candidate.json` |
-| A `modelTuple` operation performs the provider's operation | `providers[i].modelTuple.operation` | `tuple-operation-mismatch.json` |
-| The compatibility member matches `protocolVersion` | `providers[i].modelTuple` | `legacy-protocol-with-model-tuple.json` |
-| A process provider lists at least one platform | `providers[i].platforms` | `process-without-platforms.json` |
+The first four rules marked *while reading* concern one object and are checked as that object is read, in [reading order](./index.md#order-of-checks). The others are checked once the whole document has been read, in the order of this table; each of them is checked over its whole array, in index order, before the next rule is checked. So a recipe whose second host repeats the first offering and whose first host has a second built-in is refused at `hosts[1]` (`precedence-consistency-table-order.json`).
 
-A provider *fits* a host offering on a platform when the host speaks its MEP version, a process provider has an artifact for that platform, and a WASM provider's ABI is one the host lists in `wasmAbis`.
+| Rule | Checked | Path | Fixture |
+| --- | --- | --- | --- |
+| A `tool-release` offering lists no musl platform | while reading | `hosts[i].platforms.<id>` | `musl-bound-to-tool-release.json` |
+| A process provider lists at least one platform | while reading | `providers[i].platforms` | `process-without-platforms.json` |
+| A `modelTuple` operation performs the provider's operation | while reading | `providers[i].modelTuple.operation` | `tuple-operation-mismatch.json` |
+| The compatibility member matches `protocolVersion` | while reading | `providers[i].modelTuple` | `legacy-protocol-with-model-tuple.json` |
+| At least one operation | after reading | `operations` | `no-operations.json` |
+| At least one host offering | after reading | `hosts` | `no-hosts.json` |
+| No duplicate operation | after reading | `operations[i]` | `duplicate-operation.json` |
+| One offering per implementation and deployment | after reading | `hosts[i]` | `duplicate-offering.json` |
+| At most one built-in per operation in an offering | after reading | `hosts[i].builtIns[j]` | `second-built-in.json` |
+| No duplicate provider (same operation, identity, delivery and version) | after reading | `providers[i]` | `duplicate-provider.json` |
+| An external provider never uses a built-in identity | after reading | `providers[i].extensionId` | `external-impersonates-built-in.json` |
+| Every offering can perform every operation with a built-in or a provider that fits it on some platform | after reading | `operations[i]` | `operation-without-candidate.json`, `operation-without-candidate-no-shared-platform.json` |
+
+A provider *fits* a host offering on a platform when the host speaks its MEP version, a process provider has an artifact for that platform, and a WASM provider's ABI is one the host lists in `wasmAbis`. A `dotnet-tool` provider has no platform artifacts, so only the MEP version decides its fit.
+
+The last consistency rule asks about a recipe, not about one platform, so it uses fit without a platform: a process provider fits an offering when the host speaks its MEP version and the provider has an artifact for at least one platform the offering also lists. The provider need not fit on every platform. `recipe/provider-misfit.json` is valid although its frontend has an artifact only for `win-x64` and its host also lists `osx-arm64`; resolution on `osx-arm64` then fails with `unsupported_artifact` at `toolset`. `recipe/negative/operation-without-candidate-no-shared-platform.json` has a frontend whose only platform the host does not list, and is refused.
 
 ## Authenticated recipe targets
 
@@ -86,51 +90,68 @@ A recipe is published as a TUF target at `toolchains/recipes/<preset>/<version>.
 }
 ```
 
-`schemaVersion` here is the recipe contract version, not the version 1 profile's numeric `schemaVersion`. Channel membership and `status` (`active`, `yanked` or `revoked`) are current authenticated state, with the version 1 rules: a moving channel selects the greatest `active` recipe for the preset on that channel, and `stable` admits only final versions. A recipe on no channel is reachable only by its exact target path. A recipe target whose path breaks the [target path rules](./index.md#target-paths) is refused with `non_portable_path`.
+`schemaVersion` here is the recipe contract version, not the version 1 profile's numeric `schemaVersion`. Channel membership and `status` (`active`, `yanked` or `revoked`) are current authenticated state, with the version 1 rules:
 
-The TUF client authenticates the metadata. A manager then checks the recipe target, in this order, and refuses with the first failure. Refusals about the recipe target itself have the empty path:
+- a moving channel selects, among the recipe targets of the preset whose status is `active` and that are on that channel, the one with the greatest SemVer `version`;
+- `stable` admits only final versions, so a prerelease listed on `stable` is never selected for it;
+- `preview` and `insiders` select from every recipe on `preview`, any `preview/<name>` channel or `insiders`; a named `preview/<name>` selects only recipes on exactly that channel;
+- a `yanked` recipe is skipped by channels and is still read by its exact target path; a `revoked` one is refused;
+- when nothing is selected, the result is `unsupported_artifact` at `toolset.preset`.
 
-| Check | Code | Path |
-| --- | --- | --- |
-| The recipe is an authenticated target whose bytes have the authenticated length and digest | `target_not_authenticated`, `target_length_mismatch`, `target_digest_mismatch` | empty |
-| Its `custom.morphir` has `kind` `toolset-recipe`, `schemaVersion` `0.1.0-draft.1`, a preset token, a SemVer version, channels and a known status | `release_descriptor_mismatch` | empty |
-| Its status is not `revoked` | `release_revoked` | empty |
-| The document reads as a `0.1.0-draft.1` recipe | the reader's codes | the member |
-| The document's `preset` and `version` equal the authenticated ones | `release_descriptor_mismatch` | empty |
+A recipe on no channel is reachable only by its exact target path. The `channelSelection` cases pin each of these rules.
 
-Then each host offering, in order:
+The TUF client authenticates the metadata. A manager then checks the recipe target, in this order, and refuses with the first failure. Refusals about the recipe target itself have the empty path; the empty path is never used for any other target. The Cases column names the `rule` of the cases in `signed/cases.json` and `cases.json` that pin each row.
 
-| Check | Code | Path |
-| --- | --- | --- |
-| A `tool-release` offering's descriptor `releases/<toolId>/<version>.json` is an authenticated `tool-release` target for that tool and version | `target_not_authenticated` | `hosts[i].source` |
-| That release's current status is not `revoked` | `release_revoked` | `hosts[i].version` |
-| The descriptor reads as a version 1 tool release | `release_descriptor_mismatch` | `hosts[i].source` |
-| Each platform's `target` is an authenticated target | `target_not_authenticated` | `hosts[i].platforms.<id>.target` |
-| Its `sha256` equals the authenticated digest | `target_digest_mismatch` | `hosts[i].platforms.<id>.sha256` |
-| The release lists the target | `release_descriptor_mismatch` | `hosts[i].platforms.<id>.target` |
-| The listed artifact's version 1 platform is the bound platform | `artifact_platform_mismatch` | `hosts[i].platforms.<id>.target` |
-| The target's `custom.morphir` is `kind` `tool-artifact` with the release's tool id, version and that platform | `release_descriptor_mismatch` | `hosts[i].platforms.<id>.target` |
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| The recipe target path follows the [target path rules](./index.md#target-paths). This is checked before anything is read | `non_portable_path` | empty | `recipe-target-portable` |
+| The recipe is an authenticated target whose bytes have the authenticated length and digest | `target_not_authenticated`, `target_length_mismatch`, `target_digest_mismatch` | empty | `recipe-target-authenticated` |
+| Its `custom.morphir` has `kind` `toolset-recipe`, `schemaVersion` `0.1.0-draft.1`, a preset token, a SemVer version, channels and a known status | `release_descriptor_mismatch` | empty | `recipe-target-state` |
+| Its status is not `revoked` | `release_revoked` | empty | `recipe-target-revoked` |
+| The document reads as a `0.1.0-draft.1` recipe | the reader's codes | the member | `recipe-document-reads` |
+| The document's `preset` and `version` equal the authenticated ones | `release_descriptor_mismatch` | empty | `recipe-document-identity` |
+
+A target's bytes are checked for length before digest, whether they are read through the TUF client or compared with [`authenticate`](./index.md#fixtures-and-conformance): bytes longer or shorter than the authenticated length are `target_length_mismatch`, and bytes of that length with another SHA-256 are `target_digest_mismatch`.
+
+Then each host offering, in order. A failed read of a target that a binding names is reported at that binding member, never at the empty path:
+
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| A `tool-release` offering's descriptor `releases/<toolId>/<version>.json` is an authenticated `tool-release` target for that tool and version | `target_not_authenticated` | `hosts[i].source` | `host-release-authenticated` |
+| That release's current status is not `revoked` | `release_revoked` | `hosts[i].version` | `host-release-revoked` |
+| The descriptor bytes have the authenticated length and digest | `target_length_mismatch`, `target_digest_mismatch` | `hosts[i].source` | `host-release-read` |
+| The descriptor reads as a version 1 tool release | `release_descriptor_mismatch` | `hosts[i].source` | `host-release-v1` |
+| Each platform's `target` is an authenticated target | `target_not_authenticated` | `hosts[i].platforms.<id>.target` | `host-target-authenticated` |
+| Its `sha256` equals the authenticated digest | `target_digest_mismatch` | `hosts[i].platforms.<id>.sha256` | `host-target-digest` |
+| The release lists the target | `release_descriptor_mismatch` | `hosts[i].platforms.<id>.target` | `host-target-listed` |
+| The listed artifact's version 1 platform is the bound platform | `artifact_platform_mismatch` | `hosts[i].platforms.<id>.target` | `host-target-platform` |
+| The target's `custom.morphir` is `kind` `tool-artifact` with the release's tool id, version and that platform | `release_descriptor_mismatch` | `hosts[i].platforms.<id>.target` | `host-target-metadata` |
+
+A `dotnet-tool` offering has no version 1 release, so only its platform `target` and `sha256` rows apply. The platforms of an offering are checked in [platform table order](./index.md#order-of-checks).
 
 Then each provider, in order:
 
-| Check | Code | Path |
-| --- | --- | --- |
-| `descriptorTarget` is authenticated with `descriptorSha256` | `target_not_authenticated`, `target_digest_mismatch` | `providers[i].descriptorTarget`, `providers[i].descriptorSha256` |
-| The descriptor reads, with the existing reader, as an extension release descriptor | `release_descriptor_mismatch` | `providers[i].descriptorTarget` |
-| The descriptor's own `extensionId` is the provider's `extensionId` | `release_descriptor_mismatch` | `providers[i].extensionId` |
-| The descriptor's `version` is the provider's `version` | `release_descriptor_mismatch` | `providers[i].version` |
-| Every artifact's claims name the descriptor's `extensionId` and `version`, as publication already requires | `release_descriptor_mismatch` | `providers[i].descriptorTarget` |
-| Each bound artifact (`artifactTarget`) and package (`packageTarget`) is authenticated with its digest | `target_not_authenticated`, `target_digest_mismatch` | the bound member |
-| The descriptor lists the artifact in its own directory | `release_descriptor_mismatch` | `…artifactTarget` |
-| The listed artifact has the delivery's runtime (`process` or `wasm`) | `release_descriptor_mismatch` | `…artifactTarget` |
-| The listed artifact has the bound digest | `target_digest_mismatch` | `…artifactSha256` |
-| A process artifact's target triple is the bound platform's | `artifact_platform_mismatch` | `…artifactTarget` |
-| The claims list the capability kind: `frontend` for `compile`, `backend` for `generate` | `release_descriptor_mismatch` | `providers[i].operation` |
-| The claims list the provider's MEP version in `protocolVersions` | `release_descriptor_mismatch` | `providers[i].protocolVersion` |
-| The claims support the language (`capabilities.frontend.compile` is `true` and `languages` has its `id`) or the target (`capabilities.backend.generate` is `true` and `targets` has it) | `release_descriptor_mismatch` | `providers[i].language` or `providers[i].target` |
-| For MEP `0.2.0-draft.1`, `capabilities.modelTransport.tuples` contains the provider's `modelTuple` exactly; for MEP `0.1`, the capability's `irVersions` contains the IR version or its major | `release_descriptor_mismatch` | `providers[i].modelTuple` or `providers[i].modelInput.irVersion` |
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| `descriptorTarget` is authenticated with `descriptorSha256` | `target_not_authenticated`, `target_digest_mismatch` | `providers[i].descriptorTarget`, `providers[i].descriptorSha256` | `provider-descriptor-bound` |
+| The descriptor bytes have the authenticated length and digest | `target_length_mismatch`, `target_digest_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-read` |
+| The descriptor reads, with the existing reader, as an extension release descriptor | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-descriptor-parses` |
+| The descriptor's own `extensionId` is the provider's `extensionId` | `release_descriptor_mismatch` | `providers[i].extensionId` | `provider-descriptor-identity` |
+| The descriptor's `version` is the provider's `version` | `release_descriptor_mismatch` | `providers[i].version` | `provider-descriptor-version` |
+| Every artifact's claims name the descriptor's `extensionId` and `version`, as publication already requires | `release_descriptor_mismatch` | `providers[i].descriptorTarget` | `provider-claims-identity` |
+| Each bound artifact (`artifactTarget`) and package (`packageTarget`) is authenticated with its digest | `target_not_authenticated`, `target_digest_mismatch` | the bound member | `provider-artifact-bound` |
+| The descriptor lists the artifact in its own directory | `release_descriptor_mismatch` | `…artifactTarget` | `provider-artifact-listed` |
+| The listed artifact has the delivery's runtime (`process` or `wasm`) | `release_descriptor_mismatch` | `…artifactTarget` | `provider-artifact-runtime` |
+| The listed artifact has the bound digest | `target_digest_mismatch` | `…artifactSha256` | `provider-artifact-digest-listed` |
+| A process artifact's target triple is the bound platform's | `artifact_platform_mismatch` | `…artifactTarget` | `provider-artifact-platform` |
+| The claims list the capability kind: `frontend` for `compile`, `backend` for `generate` | `release_descriptor_mismatch` | `providers[i].operation` | `provider-claims-kind` |
+| The claims list the provider's MEP version in `protocolVersions` | `release_descriptor_mismatch` | `providers[i].protocolVersion` | `provider-claims-protocol` |
+| The claims support the language (`capabilities.frontend.compile` is `true` and `languages` has its `id`) or the target (`capabilities.backend.generate` is `true` and `targets` has it) | `release_descriptor_mismatch` | `providers[i].language`, `providers[i].target` | `provider-claims-operand` |
+| For MEP `0.2.0-draft.1`, `capabilities.modelTransport.tuples` contains the provider's `modelTuple` exactly; for MEP `0.1`, the capability's `irVersions` contains the IR version or its major | `release_descriptor_mismatch` | `providers[i].modelTuple`, `providers[i].modelInput.irVersion` | `provider-claims-model` |
 
-A `dotnet-tool` provider's capability is checked against every artifact's claims in its descriptor. Authentication alone is never enough: the signed fixtures publish a validly signed recipe for each refusal above.
+A process provider's platforms are checked in platform table order, and for each platform the artifact rows apply in the order above. A `wasm` provider has one artifact, at `providers[i].artifactTarget` and `providers[i].artifactSha256`. A `dotnet-tool` provider's package is checked by the bound-member row, and its capability rows are checked against every artifact's claims in its descriptor.
+
+Authentication alone is never enough: for each refusal in these three tables the signed fixtures publish a validly signed recipe, or declare a trust case, that is refused for exactly that reason. The coverage test in this repository fails when a row names no case and is not marked as having none.
 
 ### What revocation reaches
 
@@ -152,30 +173,41 @@ Resolution is pure: it reads a recipe, a request and a platform and performs no 
    - A provider that does not fit is never skipped in favor of another. Resolution fails, naming why.
 4. Write the host and each selected provider into the lock closure.
 
-| Failure | Code | Path |
-| --- | --- | --- |
-| The recipe is for another preset | `unsupported_artifact` | `toolset.preset` |
-| No offering for the implementation and deployment | `unsupported_artifact` | `host` |
-| The offering's release is not the exact requested one | `unsupported_artifact` | `host.version` |
-| The offering has no artifact for the platform | `unsupported_artifact` | `platforms` |
-| The preferred provider needs a WASM ABI the host lacks | `abi_unavailable` | `toolset` |
-| The preferred provider does not fit for another reason, or no provider performs the operation | `unsupported_artifact` | `toolset` |
-| No built-in or provider matches an explicit choice | `unsupported_artifact` | `toolset.providers[i]` |
-| The chosen provider needs a WASM ABI the host lacks | `abi_unavailable` | `toolset.providers[i]` |
-| The chosen provider does not fit for another reason | `unsupported_artifact` | `toolset.providers[i]` |
+The failures are checked in this order, and the operations in the recipe's order. `toolset.providers[i]` names the request's choice for the operation.
+
+| Failure | Code | Path | Cases |
+| --- | --- | --- | --- |
+| The recipe is for another preset | `unsupported_artifact` | `toolset.preset` | `resolve-preset` |
+| No offering for the implementation and deployment | `unsupported_artifact` | `host` | `resolve-offering` |
+| The offering's release is not the exact requested one | `unsupported_artifact` | `host.version` | `resolve-release` |
+| The offering has no artifact for the platform | `unsupported_artifact` | `platforms` | `resolve-platform` |
+| The preferred provider needs a WASM ABI the host lacks | `abi_unavailable` | `toolset` | `resolve-preferred-abi` |
+| The preferred provider does not fit for another reason | `unsupported_artifact` | `toolset` | `resolve-preferred-misfit` |
+| No built-in or provider performs the operation | `unsupported_artifact` | `toolset` | No fixture: a recipe that passes its consistency rules has a built-in or a provider for every operation, so a reader refuses such a recipe before resolution can reach this row |
+| No built-in or provider matches an explicit choice | `unsupported_artifact` | `toolset.providers[i]` | `resolve-choice-unmatched` |
+| The chosen provider needs a WASM ABI the host lacks | `abi_unavailable` | `toolset.providers[i]` | `resolve-choice-abi` |
+| The chosen provider does not fit for another reason | `unsupported_artifact` | `toolset.providers[i]` | `resolve-choice-misfit` |
 
 A WASM guest for another ABI is therefore chosen only when the request names that ABI. Otherwise setup reports the missing ABI and does not report ready. Plan-only setup may refresh metadata, but it never runs an acquired artifact. Readiness probes happen after staging, under the existing launch controls.
 
 ## Open questions for the maintainer
 
 - **Dotted provider identities.** The approved lock example and morphir-dotnet's real frontend guest use the dotted identity `org.finos.morphir.fsharp-frontend`. The version-2 extension release descriptor requires a single portable token for `extensionId`, and publication requires artifact claims to name that same identity. A recipe binding therefore cannot bind an external provider whose identity is dotted; the lock grammar still accepts dotted identities, and built-in identities such as `morphir.fsharp` are unaffected. Supporting dotted identities for external providers would need a separately reviewed change to the descriptor contract. The signed fixtures use `morphir-fsharp-frontend` for both the descriptor and the claims.
+- **Providers shipped only as a NuGet tool.** A `dotnet-tool` provider binds the version-2 extension release descriptor of its release, because that descriptor's claims are the only authenticated statement of what the guest does. A provider published only as a NuGet package, with no version-2 descriptor, therefore cannot be bound by a recipe or recorded in a lock. Whether such providers should be supported, and with what authenticated statement of their capabilities, is undecided.
 - **`compatibility.morphirCli` for offerings.** Version 1 requires every release descriptor to state the Morphir CLI versions that may acquire it, and its resolver filters by the acquiring CLI's version. A manager is not the Morphir CLI and has no honest value to pass. The comparator `>=0.0.0` used by the fixture offerings matches no prerelease CLI, so it does not mean "any". A manager does not use version 1 channel resolution for offerings: it resolves the recipe, then checks each host binding against the authenticated release and its targets as above, which never evaluates `morphirCli`. What offering descriptors should publish there is undecided. The fixtures' `referenceClient.cliVersion` exists only to drive this repository's existing v1 client in its own test.
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator. It is unsigned and binds nothing, so it keeps the dotted frontend identity of the approved example. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`; its `resolve` cases show that resolution reports `abi_unavailable` unless the request chooses the other ABI. `critical-nested-platform-member.json` names a platform member as critical. `recipe/negative/` has the fixtures in the consistency table plus a later draft, an unknown critical member and an unknown nested critical member, a WASM provider without an ABI, an uppercase identity, an identity token over 64 characters, an unknown source kind and a credential member.
+`fixtures/0.1.0-draft.1/recipe/fsharp-synthetic.json` describes the four .NET offerings on the six first-delivery platforms, the F# frontend as a process guest and as the existing framework-dependent .NET tool, and the standalone F# backend process guest. Every offering keeps the built-in `morphir.fsharp` generator. It is unsigned and binds nothing, so it keeps the dotted frontend identity of the approved example. `wasm-abi-alternatives.json` offers a backend for two WASM ABIs to a host that supports only `morphir-bytes-v1`; its `resolve` cases show that resolution reports `abi_unavailable` unless the request chooses the other ABI. `critical-nested-platform-member.json` names a platform member as critical. `provider-misfit.json` has a frontend that fits its host on one of the host's two platforms. `recipe/negative/` has the fixtures in the consistency table plus a later draft, an unknown critical member and an unknown nested critical member, a WASM provider without an ABI, an uppercase identity, an identity token over 64 characters, an unknown source kind, a `dotnet-tool` provider without its descriptor, credential members (`apiKey`, and `APIKEY` to pin case-insensitive matching), and two documents that break two rules at once (`precedence-*.json`).
 
-The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes the three archive offerings as version 1 tool releases on the six first-delivery platforms, the `Morphir.Tool` package, the F# frontend `morphir-fsharp-frontend` 0.6.0 and the standalone backend `morphir-fsharp-backend` 0.1.0 as version-2 extension releases, the `fsharp-builtin` and `fsharp` recipes, and a validly signed recipe for each refusal in the tables above. `signed/cases.json` lists them in `recipeChecks`, together with the trust cases, frozen locks and lock-against-recipe cases described in the [overview](./index.md#fixtures-and-conformance). Three frozen requests and their locks record complete closures on all six first-delivery platforms:
+The TEST-ONLY signed repository in `fixtures/0.1.0-draft.1/signed/repository.json` publishes:
+
+- the three archive offerings as version 1 tool releases on the six first-delivery platforms, and the `Morphir.Tool` package;
+- the F# frontend `morphir-fsharp-frontend` 0.6.0 and the standalone backend `morphir-fsharp-backend` 0.1.0 as version-2 extension releases, with the frontend's .NET tool package;
+- a portable WASM frontend for `morphir-bytes-v1`, two MEP `0.1` frontends whose claims list IR `3` and IR `4`, and releases whose claims or descriptors are each wrong in one way;
+- the `fsharp-builtin` and `fsharp` recipes, six `channel-example` recipes on different channels and statuses, and a validly signed recipe for each refusal in the tables above.
+
+`signed/cases.json` lists the recipes in `recipeChecks`, together with the trust cases, channel selection, version 1 client selections, frozen locks and lock-against-recipe cases described in the [overview](./index.md#fixtures-and-conformance). Three frozen requests and their locks record complete closures on all six first-delivery platforms:
 
 | Files | Selection |
 | --- | --- |

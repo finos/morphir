@@ -106,7 +106,7 @@ Publication is journaled. The new lock and selection are written to a new genera
 
 ## F# as capabilities (FS-1)
 
-Ada's host is AOT. Setup resolves the self-contained `morphir-fsharp-frontend` process guest, which carries the F# compiler services and its own managed runtime and talks to the host over the existing Content-Length MEP transport. Generation stays with the host's built-in `morphir.fsharp`. An explicit provider selection always wins over a built-in.
+Ada's host is AOT. Setup resolves the self-contained `morphir-fsharp-frontend` process guest (the lock example below records it as `org.finos.morphir.fsharp-frontend`; which spelling a recipe can bind is an [open question](../../spec/toolchain/toolset-recipe.md#open-questions-for-the-maintainer)), which carries the F# compiler services and its own managed runtime and talks to the host over the existing Content-Length MEP transport. Generation stays with the host's built-in `morphir.fsharp`. An explicit provider selection always wins over a built-in.
 
 ![The AOT host sends source to the F# frontend process, which carries its own runtime and compiler services and returns Morphir IR for a declared model tuple. A built-in or process F# backend produces F# source.](../../assets/toolchain-fsharp-aot.svg)
 
@@ -337,7 +337,7 @@ An override selects an installed complete generation. `morphirup show` explains 
 }
 ```
 
-A broken explicit or project selection fails; it does not fall through to the user default. If the project lock names a generation that is not installed, the run reports how to restore it and neither runs the default nor acquires anything. `run` never downloads.
+A broken explicit or project selection fails; it does not fall through to the user default. A lock holds exact identities, not a generation id. If no installed generation has a receipt that binds the project lock's bytes for this platform, the run reports how to restore it and neither runs the default nor acquires anything. This is the approved "missing project generation" scenario. `run` never downloads.
 
 The manager owns a bin directory containing `morphirup` and an optional `morphir` dispatch proxy. On Windows the proxy is a real executable, so normal launch needs neither symlink privileges nor a PowerShell execution-policy exception. Dispatch resolves the selected executable to an absolute path and spawns it with an argument vector, never a shell string. It preserves argument boundaries, working directory, standard streams, exit status and cancellation. Background child windows stay hidden on Windows, and cancellation ends the whole process tree. A selected child cannot find the proxy again through PATH.
 

@@ -38,15 +38,15 @@ A plan names `implementation`, `deployment`, `platform`, the `recipe`, whether `
 
 `planSha256` is the SHA-256 of the plan's canonical JSON bytes. `--expect-plan <digest>` compares against it and refuses a different plan. A result whose `planSha256` does not match its plan is `inconsistent_document` at `planSha256`.
 
-The canonical form is the OLPC canonical JSON that TUF uses, which tool release metadata v1 already uses for repository identity:
+The canonical form is the OLPC canonical JSON encoding of the `olpc-cjson` encoder that the TUF client uses, which tool release metadata v1 already uses for repository identity. "OLPC canonical JSON" is not one fixed format across implementations, so the rules below govern; where another canonical JSON library differs from them, these rules apply:
 
-- No whitespace outside strings.
-- Object members are sorted by the bytes of their encoded keys.
-- Strings are converted to Unicode Normalization Form C. Only `"` and `\` are escaped, as `\"` and `\\`. Every other character is written as its UTF-8 bytes, including `<`, `>`, `&`, `+`, `'` and non-ASCII characters. There is no `\uXXXX` escape.
-- Numbers are integers in plain decimal; a floating-point number makes the plan invalid.
+- There is no whitespace outside strings.
+- A string is converted to Unicode Normalization Form C and written as `"`, its UTF-8 bytes, and `"`. Only `"` and `\` are escaped, as `\"` and `\\`. Every other character is written as its own UTF-8 bytes, with no `\uXXXX` or other escape: `<`, `>`, `&`, `+`, `'`, non-ASCII characters, and the control characters U+0000 to U+001F. A line feed is therefore the single byte `0x0A`, not `\n`, and the canonical bytes are not always valid JSON; they are only hashed.
+- An object's members are sorted by the bytes of each key as written by the previous rule, including its enclosing quotation marks, compared byte by byte as unsigned values. Because the closing `"` is part of the comparison, `"a!"` sorts before `"a"` (`!` is `0x21`, `"` is `0x22`), and the order is UTF-8 byte order, not UTF-16 code-unit order: U+FF76 sorts before U+1D11E. Keys are normalized before they are sorted.
+- A number is an integer written in plain decimal. A number with a fraction or an exponent cannot be encoded, and a plan with one is invalid; the reader refuses it before the digest is computed, because every integer member of a result is written that way (see [numbers](./index.md#numbers)).
 - `true`, `false` and `null` are written as such.
 
-Many JSON libraries escape by default (.NET writes `>` as `>`), so an implementation must configure or write its own encoder. `fixtures/0.1.0-draft.1/result/setup-plan-escaping.json` has a plan whose strings contain `>`, `<`, `&`, `+`, `é`, `"` and `\`, and `setup-plan-escaping.plan.canonical.json` holds its exact canonical bytes.
+Many JSON libraries escape by default: .NET's `System.Text.Json` writes `>` as `>` and a line feed as `\n`, and .NET's ordinal string comparison orders by UTF-16 code units. An implementation must configure or write its own encoder. `fixtures/0.1.0-draft.1/result/setup-plan-escaping.json` has a plan whose strings contain `>`, `<`, `&`, `+`, a precomposed `é`, a decomposed `e` followed by U+0301, a line feed, `"` and `\`, and an unknown `keyOrder` member whose keys (`a`, `a!`, a decomposed `é`, U+FF76, U+1D11E and `Z`) pin the key order. `setup-plan-escaping.plan.canonical.json` holds its exact canonical bytes, and `planSha256` is their SHA-256.
 
 ## Diagnostics
 
@@ -64,13 +64,25 @@ Every diagnostic has `kind`, `code`, `severity` (`error` or `warning`), a human 
 | `selection-unavailable` | `generation_not_installed` | `source` | |
 | `lock-binding` | `request_changed`, `platform_not_locked`, `lock_changed`, `receipt_lock_mismatch`, `lock_recipe_mismatch` | `document`, `path`; `platform` exactly for `platform_not_locked` | |
 
-A frozen restore whose request bytes changed reports a `lock-binding` diagnostic with code `request_changed`, `document` `lock` and `path` `requestSha256`. A `readiness-failed` diagnostic reports the readiness reached, which is below the state its failed check would reach. A `mirror` carries no user information, query or fragment. No result carries a secret value.
+A `lock-binding` diagnostic's `document` is the document whose member its `path` names, so each code reports a fixed `document`:
+
+| `code` | `document` | `path` | Fixture |
+| --- | --- | --- | --- |
+| `request_changed` | `lock` | `requestSha256` | `restore-request-changed.json` |
+| `platform_not_locked` | `lock` | `platforms`, with `platform` naming the missing platform | `restore-platform-not-locked.json` |
+| `lock_changed` | `receipt` | `lockSha256` | `repair-lock-changed.json` |
+| `receipt_lock_mismatch` | `receipt` | the receipt member, such as `providers[0].identity` | `repair-receipt-lock-mismatch.json` |
+| `lock_recipe_mismatch` | `lock` | the lock member, such as `platforms.win-x64.providers[0]` | `restore-lock-recipe-mismatch.json` |
+
+Only `platform_not_locked` has `platform`. A `lock-binding` diagnostic with `platform` and another code is `inconsistent_document` at its `platform`, and the schema refuses it too. A diagnostic without `code` is `invalid_document` at its `code`. A `readiness-failed` diagnostic reports the readiness reached, which is below the state its failed check would reach. A `mirror` carries no user information, query or fragment. No result carries a secret value.
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, a `show` result explaining a project selection, an offline restore missing a locked archive, a frozen restore whose request changed, and a `doctor` result with a diagnostic of every kind. `result/negative/` covers:
+`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, a `show` result explaining a project selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, and one failed result for each `lock-binding` code in the table above. `result/negative/` covers:
 
 - a later draft, an unknown critical member, an unknown command and an unknown diagnostic kind;
+- a diagnostic without a code, and a `lock-binding` diagnostic with `platform` on another code;
+- `downloadBytes` written as `41943040.0` and as `1e3`;
 - mirrors carrying user information or a query;
 - a succeeded outcome with an error, a failed outcome without one, and a planned outcome without a plan;
 - an unknown code, a code of another kind, and `abi_unavailable` without `abi`;
