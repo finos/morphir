@@ -2,7 +2,7 @@
 
 This is the OpenSpec implementation breakdown. Beads remains the task tracker. No bead exists yet: the shared database rejects writes with a Dolt merge conflict. Create the bead and link it here after the conflict is resolved and before claiming a task.
 
-Dependencies: #1148 merges first, because decision record 0004 in it makes finos/morphir-dotnet the runner's home. Group 1 changes documentation only and can start then. Group 2 is in finos/morphir-dotnet and needs that repository's own approved OpenSpec change. Group 3 needs group 2's evidence.
+Dependencies: #1148 merged on 10 November 2026 as `ac4ec5fc8`, so decision record 0004 making finos/morphir-dotnet the runner's home is now on `main`. Group 1 changes documentation only and can start once this proposal is approved. Group 2 is in finos/morphir-dotnet and needs that repository's own approved OpenSpec change. Group 3 needs group 2's evidence.
 
 ## 1. Kit documentation, finos/morphir
 

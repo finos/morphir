@@ -52,7 +52,8 @@ None.
 
 - This change follows `add-dotnet-wasm-extension-host` (#1148), whose task 4.3
   runs the kit against the .NET host and whose decision record 0004 moves the
-  conformance runner to finos/morphir-dotnet. Merge this change after #1148.
+  conformance runner to finos/morphir-dotnet. #1148 merged on 10 November 2026
+  as `ac4ec5fc8`; the runner ownership prerequisite is now on `main`.
 - The .NET work is tracked in finos/morphir-dotnet#563 and built in
   finos/morphir-dotnet#570.
 - No bead exists yet. The shared Beads database rejects writes with a Dolt

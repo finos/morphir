@@ -139,7 +139,7 @@ svg { max-width: 100%; height: auto; }
 <p>Alternative considered: raise <code>contractVersion</code> to <code>0.1.0-draft.2</code>, so that a runner written for the earlier plan refuses the file. The Rust runner's tests read this file, so the change would force work in <code>crates/morphir-mck</code>, which <a href="#run-1">RUN-1</a> avoids. The report check gives the same protection where it matters: a report made under the earlier plan has other cases than the plan the check rebuilds, and fails.</p>
 
 <h3 id="run-1">RUN-1. The .NET runner carries the changed profile; the Rust runner is left alone</h3>
-<p>Decision record 0004, in #1148, moves the conformance runner to finos/morphir-dotnet and leaves the Rust <code>morphir mck</code> open to fixes only. On 10 November 2026 the maintainer also decided that the Rust CLI is to be deleted from this repository (recorded on #1146). So the changed plan is built once, in the .NET runner, and <code>crates/morphir-mck</code> is not touched.</p>
+<p>Decision record 0004, merged through #1148 on 10 November 2026, moves the conformance runner to finos/morphir-dotnet and leaves the Rust <code>morphir mck</code> open to fixes only. On 10 November 2026 the maintainer also decided that the Rust CLI is to be deleted from this repository (recorded on #1146). So the changed plan is built once, in the .NET runner, and <code>crates/morphir-mck</code> is not touched.</p>
 <p>Until the Rust CLI is deleted, <code>morphir mck mep guest-run</code> with this kit still runs the earlier plan. <code>spec/mep/mck/README.md</code> says so, and says that such a report does not pass the changed check. The two runners cannot be confused in a stored report, because the report check rebuilds the plan from the recorded claim and compares the case order.</p>
 <p>Alternatives considered:</p>
 <ul>
@@ -160,7 +160,7 @@ svg { max-width: 100%; height: auto; }
 
 <h2 id="migration">Migration plan</h2>
 <ol>
-<li>Merge #1148 first. It carries decision record 0004, which this change relies on for the runner's home.</li>
+<li>The runner ownership prerequisite is met: #1148 merged as <code>ac4ec5fc8</code> on 10 November 2026, putting decision record 0004 on <code>main</code>.</li>
 <li>Update the kit README (task group 1). The kit file does not change, so nothing that reads it breaks.</li>
 <li>Build the plan in the .NET runner and run it on Python <code>0.6.0</code> (task group 2).</li>
 <li>Sync the delta into <code>openspec/specs/mep/generic-guest-profile/spec.md</code> and archive.</li>
