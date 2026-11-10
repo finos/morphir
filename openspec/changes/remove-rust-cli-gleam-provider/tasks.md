@@ -24,4 +24,5 @@
 
 ## Workflow follow-up
 
+- 10 November 2026: implemented in #1123 but not archived, and superseded by the deletion of the Rust CLI (`move-cli-delivery-to-umbrella`). Do not archive with spec sync: `cli/builtin-providers` would describe a deleted CLI. The owner decides between archiving without specs and withdrawing.
 - Follow AGENTS.md for review, merge approval, archive and closing bead `morphir-ukvn.1.17`.

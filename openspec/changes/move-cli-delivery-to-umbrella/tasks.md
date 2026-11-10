@@ -4,12 +4,14 @@ Tracking: GitHub [#1153](https://github.com/finos/morphir/issues/1153) (Decision
 
 ## 1. Source pin and release orchestration
 
-- [x] 1.1 Pin finos/morphir-dotnet as `ecosystem/morphir-dotnet` at `7c263485547598085ea83d7d12bf6328056affba` and record it in `.config/cli-release.json`; verified by `bun run tools/cli-release.ts verify-source` and the source-pin tests in `tools/cli-release.test.ts`.
+- [x] 1.1 Pin finos/morphir-dotnet as `ecosystem/morphir-dotnet` (first `7c263485547598085ea83d7d12bf6328056affba`, now the marked candidate `8c15df59ce902c3ec06bb2df0c8ab4a88445a39d` of draft #590) and record it in `.config/cli-release.json`; verified by `bun run tools/cli-release.ts verify-source` and the source-pin tests in `tools/cli-release.test.ts`.
 - [x] 1.2 Check the expected deployments, platforms and legacy platforms against the pinned `build/Helpers/ReleaseProfiles.cs`; verified by `bun test tools/cli-release.test.ts`.
-- [x] 1.3 Rewrite `release.yml`: `cli/v*` tags only, per-platform `PackRelease` builds, launch qualification, legacy aliases from the Native AOT executable, a manifest, one create step that refuses an existing release; verified by the routing tests in `tools/cli-release.test.ts` and `python3 -B -m unittest discover -s tests/ci`.
+- [x] 1.3 Rewrite `release.yml`: `cli/v*` tags only, builds through the source's `cli-offering.yml` at the pinned commit, per-platform launch qualification, legacy aliases from the Native AOT executable, a manifest, one create step that refuses an existing release; verified by the routing tests in `tools/cli-release.test.ts` and `python3 -B -m unittest discover -s tests/ci`.
 - [x] 1.4 Qualify by launching the produced executable, apphost, `dotnet-morphir` and `dotnet morphir`, with macOS packaged input recorded as pending triage; verified by the qualification tests in `tools/cli-release.test.ts`.
 - [ ] 1.5 Run the release workflow end to end on GitHub against a disposable `cli/v*` tag in a fork, without publishing in finos/morphir; verified by the qualification JSON and manifest of that run.
-- [ ] 1.6 Choose the final delivery pin after finos/morphir-dotnet #590 (MCK dispatch, `cli-offering.yml`) is merged, and optionally move the build steps to that workflow; verified by `verify-source` at the new pin and 1.5 repeated.
+- [x] 1.6 Wire the build to `cli-offering.yml` at the candidate pin, with the commit identical in the gitlink, the config, `uses` and `ref`, and publication refused while `source.candidate` is set; verified by the routing and candidate tests in `tools/cli-release.test.ts`.
+- [x] 1.7 Fix the review findings on #1155: paths resolved before subprocesses change directory, hidden qualification reports uploaded, assets collected recursively into an exact list that fails on missing or repeated artifacts, zip read on every platform, `--version` compared before `+`; verified by the regression tests in `tools/cli-release.test.ts` (a real packed executable qualified from an unrelated working directory with relative paths).
+- [ ] 1.8 After finos/morphir-dotnet #590 merges, move the pin, `uses` and `ref` to the merged `main` commit and remove `source.candidate`; verified by `verify-source` and 1.5 repeated.
 
 ## 2. Standalone MCK runner
 
@@ -34,6 +36,8 @@ Tracking: GitHub [#1153](https://github.com/finos/morphir/issues/1153) (Decision
 
 - Fresh independent review of both repository implementations, as #1153 asks.
 - The user guides and examples that describe Rust CLI commands need rewriting against the .NET CLI; `test:examples` stays unavailable until then.
-- `openspec/config.yaml` still calls the Rust CLI the repository's product; it is outside this change's authorized files.
+- `openspec/config.yaml` still says the repository owns "the Rust CLI" and should "use the shared native Morphir MCK runner"; it is protected here. Proposed replacement for its first two sentences, for its owner: "finos/morphir is the ecosystem umbrella repository, owning official Morphir CLI delivery (builds, qualification and releases of the .NET CLI from finos/morphir-dotnet, pinned as ecosystem/morphir-dotnet), the documentation website, shared specifications and ecosystem integration. Follow AGENTS.md and CONTRIBUTING.md. Keep domain logic pure and immutable, preserve versioned contracts and use the shared MCK runner, morphir-mck."
+- The tag prefix `cli/v*` is a proposal for review, and the version comes from the pinned CHANGELOG. The first .NET release would number below the last Rust release; it must not jump silently to clear the Rust numbers.
+- Command availability: the deleted Rust CLI's `package`, `metadata`, `decoration`, `eval`, `itest`, `ui`, `desktop`, `playground`, `diagnostics`, `cache`, `schema`, `transform`, `kb` and IR `migrate` have no .NET equivalent at the pin (`docs/getting-started/morphir-cli.md#command-availability-after-the-move`); the pages that rely on them are marked.
 - The unarchived `remove-rust-cli-gleam-provider` change describes the deleted CLI; its owner decides whether to withdraw or archive it.
-- Archive this change once 1.5, 1.6 and 2.4 are done.
+- Archive this change once 1.5, 1.8 and 2.4 are done.
