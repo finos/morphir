@@ -1507,6 +1507,133 @@
         "code": "inconsistent_document",
         "path": "platforms.win-x64.providers[0].modelInput"
       }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-without-lock.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.lock"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-lock-without-platform.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.lock.platforms"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-lock-other-recipe.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.lock.recipe"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-provider-not-locked.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-source-other-repository.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.repositoryId"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/host-probe-none.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].probe"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/built-in-probe-none.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[2].probe"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-prerequisite-with-platforms.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].prerequisites[0].platforms"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-changed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-document-unavailable.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-request-changed-crlf.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/cause-on-other-code.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].cause"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/comparator-caret.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[2].prerequisites[0].versions[0]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/comparator-partial-version.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[2].prerequisites[0].versions[0]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/comparator-wildcard.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[2].prerequisites[0].versions[0]"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/draft-build-metadata.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      }
     }
   ],
   "bindings": [
@@ -1845,6 +1972,67 @@
             "version": "1.2.3"
           }
         ]
+      }
+    },
+    {
+      "name": "a plan carries the complete lock its command writes",
+      "kind": "plan-lock",
+      "result": "result/setup-plan.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": "valid"
+    },
+    {
+      "name": "the exact request bytes bind the lock",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved.toml",
+      "expected": "valid"
+    },
+    {
+      "name": "a CRLF checkout of the request is refused and names line endings",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved-crlf.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256",
+        "cause": "crlf-line-endings"
+      }
+    },
+    {
+      "name": "a request with a byte order mark is refused and names it",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved-bom.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256",
+        "cause": "byte-order-mark"
+      }
+    },
+    {
+      "name": "a request with both is refused and names both",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved-bom-crlf.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256",
+        "cause": "crlf-line-endings-and-byte-order-mark"
+      }
+    },
+    {
+      "name": "a changed request names no cause",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/exact-host-version.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256"
       }
     }
   ]

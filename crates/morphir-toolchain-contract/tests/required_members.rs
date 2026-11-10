@@ -41,13 +41,13 @@ const OPTIONAL: &[&str] = &[
     "request: toolset.providers.delivery",
     "request: toolset.providers.extensionId",
     "result: diagnostics.alternatives",
+    "result: diagnostics.cause",
     "result: diagnostics.alternatives.deployment",
     "result: diagnostics.alternatives.implementation",
     "result: diagnostics.alternatives.platform",
     "result: diagnostics.instruction",
     "result: diagnostics.mirror",
     "result: diagnostics.role",
-    "result: plan.components.prerequisites.platforms",
     "result: plan.components.prerequisites.versions",
     "result: plan.keyOrder",
     "result: plan.keyOrder.Z",
@@ -207,6 +207,11 @@ fn schema_and_reader_require_the_same_members() {
         let mut paths = Vec::new();
         member_paths(&original, &mut Vec::new(), &mut paths);
         for steps in paths {
+            // `plan.lock` is a complete lock document: the lock schema and
+            // reader govern its members, and the lock fixtures sweep them.
+            if generic(&steps).starts_with("plan.lock") {
+                continue;
+            }
             let mut changed = without(&original, &steps);
             // A plan member's removal changes the plan's digest; recompute
             // it so that only the removal is judged.

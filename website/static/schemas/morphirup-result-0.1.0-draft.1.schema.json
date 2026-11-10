@@ -294,7 +294,8 @@
         "versions": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^(?:=|>|>=|<|<=)(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
           }
         },
         "phase": {
@@ -488,7 +489,8 @@
                   "invalid_value",
                   "non_portable_path",
                   "credential_in_document",
-                  "inconsistent_document"
+                  "inconsistent_document",
+                  "document_unavailable"
                 ]
               }
             }
@@ -528,7 +530,8 @@
                   "platform_not_locked",
                   "lock_changed",
                   "receipt_lock_mismatch",
-                  "lock_recipe_mismatch"
+                  "lock_recipe_mismatch",
+                  "plan_changed"
                 ]
               }
             }
@@ -576,6 +579,19 @@
             "then": {
               "not": {
                 "required": [ "platform" ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "cause" ]
+          },
+          "then": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "request_changed"
               }
             }
           }
@@ -665,6 +681,13 @@
         },
         "abi": {
           "$ref": "#/$defs/token"
+        },
+        "cause": {
+          "enum": [
+            "crlf-line-endings",
+            "byte-order-mark",
+            "crlf-line-endings-and-byte-order-mark"
+          ]
         }
       }
     },
@@ -703,6 +726,26 @@
         },
         {
           "if": {
+            "properties": {
+              "component": {
+                "properties": {
+                  "role": {
+                    "const": "host"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "probe": {
+                "const": "process-with-user-rights"
+              }
+            }
+          }
+        },
+        {
+          "if": {
             "required": [ "delivery" ],
             "properties": {
               "delivery": {
@@ -716,11 +759,21 @@
                 "const": "process-with-user-rights"
               }
             }
+          }
+        },
+        {
+          "if": {
+            "required": [ "delivery" ],
+            "properties": {
+              "delivery": {
+                "enum": [ "built-in", "wasm" ]
+              }
+            }
           },
-          "else": {
+          "then": {
             "properties": {
               "probe": {
-                "enum": [ "none", "in-host" ]
+                "const": "in-host"
               }
             }
           }
@@ -796,7 +849,10 @@
         "prerequisites": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/prerequisite"
+            "$ref": "#/$defs/prerequisite",
+            "not": {
+              "required": [ "platforms" ]
+            }
           }
         },
         "probe": {
@@ -812,7 +868,8 @@
         "platform",
         "recipe",
         "metadataRefresh",
-        "components"
+        "components",
+        "lock"
       ],
       "properties": {
         "implementation": {
@@ -847,6 +904,17 @@
           "items": {
             "$ref": "#/$defs/planComponent"
           }
+        },
+        "lock": {
+          "description": "The complete toolchain lock the command writes on success, every platform included. The lock schema and reader define its members; the result reader checks it against the plan",
+          "type": "object",
+          "required": [
+            "schemaVersion",
+            "requestSha256",
+            "recipe",
+            "host",
+            "platforms"
+          ]
         }
       }
     }

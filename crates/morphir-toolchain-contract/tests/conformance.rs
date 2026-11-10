@@ -122,6 +122,18 @@ fn every_document_case_matches_its_reader_and_schema() {
             .unwrap_or_else(|| panic!("{document} is not a parsable {contract}"));
         let validator = jsonschema::validator_for(&schema(contract)).expect("schema compiles");
         let accepted = validator.is_valid(&instance);
+        // A plan's `lock` is a complete lock document, which the lock schema
+        // governs; the result schema only requires its top-level members.
+        if wanted.is_ok()
+            && let Some(lock) = instance.get("plan").and_then(|plan| plan.get("lock"))
+        {
+            let lock_validator = jsonschema::validator_for(&schema("lock")).unwrap();
+            if !lock_validator.is_valid(lock) {
+                failures.push(format!(
+                    "{document}: plan.lock does not follow the lock schema"
+                ));
+            }
+        }
         if accepted != (schema_expectation == "accepts") {
             let errors = validator
                 .iter_errors(&instance)
@@ -179,6 +191,26 @@ fn every_binding_case_matches_the_reference_checks() {
                 let request = read_request(&file("request"))
                     .unwrap_or_else(|error| panic!("{name}: {error}"));
                 lock().1.check_request(&request)
+            }
+            "lock-request-bytes" => {
+                let (_, lock) = lock();
+                let bytes = file("request");
+                let cause = lock
+                    .request_change_cause(&bytes)
+                    .map(|cause| cause.as_str());
+                if cause != case["expected"]["cause"].as_str() {
+                    failures.push(format!("{name}: cause {cause:?}"));
+                }
+                lock.check_request_bytes(&bytes)
+            }
+            "plan-lock" => {
+                let result = read_result(&file("result")).unwrap();
+                let (_, lock) = lock();
+                let (plan, _) = result.plan().expect("a plan");
+                if plan.lock() != &lock {
+                    failures.push(format!("{name}: the plan's lock is not {}", case["lock"]));
+                }
+                Ok(())
             }
             "lock-platform" => {
                 let platform = PlatformId::parse(case["platform"].as_str().unwrap()).unwrap();

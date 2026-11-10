@@ -100,6 +100,9 @@ codes! {
     CredentialInDocument = "credential_in_document" => UnsupportedContract,
     /// Members are individually valid but contradict each other.
     InconsistentDocument = "inconsistent_document" => UnsupportedContract,
+    /// A document the command needs, such as the project request or lock,
+    /// cannot be read: it is absent or unreadable.
+    DocumentUnavailable = "document_unavailable" => UnsupportedContract,
     /// The lock's request digest differs from the SHA-256 of the request bytes.
     RequestChanged = "request_changed" => LockBinding,
     /// Frozen restore needs a platform closure the lock does not record.
@@ -110,6 +113,8 @@ codes! {
     ReceiptLockMismatch = "receipt_lock_mismatch" => LockBinding,
     /// A lock closure is not a resolution the recipe allows.
     LockRecipeMismatch = "lock_recipe_mismatch" => LockBinding,
+    /// `--expect-plan` named another digest than the plan the command made.
+    PlanChanged = "plan_changed" => LockBinding,
     /// No artifact matches the requested implementation, deployment, release,
     /// platform or protocol; nothing is substituted.
     UnsupportedArtifact = "unsupported_artifact" => UnsupportedArtifact,

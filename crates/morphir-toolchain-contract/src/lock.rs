@@ -64,6 +64,48 @@ pub const UNDERSTOOD_PATHS: &[&str] = &[
     "platforms.*.providers.modelOutput.irVersion",
 ];
 
+/// Why request bytes no longer hash to a lock's `requestSha256`, when the
+/// only difference is an encoding detail a checkout or editor introduces.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RequestChangeCause {
+    /// CRLF line endings where the locked bytes have LF.
+    CrlfLineEndings,
+    /// A UTF-8 byte order mark the locked bytes do not have.
+    ByteOrderMark,
+    /// Both.
+    CrlfLineEndingsAndByteOrderMark,
+}
+
+impl RequestChangeCause {
+    /// The `cause` spelling a result diagnostic uses.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::CrlfLineEndings => "crlf-line-endings",
+            Self::ByteOrderMark => "byte-order-mark",
+            Self::CrlfLineEndingsAndByteOrderMark => "crlf-line-endings-and-byte-order-mark",
+        }
+    }
+
+    fn describe(self) -> &'static str {
+        match self {
+            Self::CrlfLineEndings => "CRLF line endings",
+            Self::ByteOrderMark => "a UTF-8 byte order mark",
+            Self::CrlfLineEndingsAndByteOrderMark => {
+                "CRLF line endings and a UTF-8 byte order mark"
+            }
+        }
+    }
+
+    pub(crate) const CASES: &'static [(&'static str, Self)] = &[
+        ("crlf-line-endings", Self::CrlfLineEndings),
+        ("byte-order-mark", Self::ByteOrderMark),
+        (
+            "crlf-line-endings-and-byte-order-mark",
+            Self::CrlfLineEndingsAndByteOrderMark,
+        ),
+    ];
+}
+
 /// The exact host release a lock selects on every platform.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LockedHost {
@@ -129,7 +171,7 @@ pub(crate) fn locked_host(node: Node<'_>) -> Result<LockedHost> {
     })
 }
 
-fn read_lock_value(value: &Value) -> Result<ToolchainLock> {
+pub(crate) fn read_lock_value(value: &Value) -> Result<ToolchainLock> {
     envelope::check(value, UNDERSTOOD_PATHS)?;
     let root = Node::root(value).object()?;
     let request_sha256 = root.req("requestSha256", model::sha256)?;
@@ -218,6 +260,61 @@ impl ToolchainLock {
                     request.identity()
                 ),
             ))
+        }
+    }
+
+    /// Refuse the lock unless these exact request bytes are the ones it was
+    /// resolved from. Frozen restore needs no parse of the request for this.
+    /// When the bytes differ only by a byte order mark or CRLF line endings,
+    /// the refusal names that likely cause.
+    pub fn check_request_bytes(&self, bytes: &[u8]) -> Result<()> {
+        if Sha256::of_bytes(bytes) == self.request_sha256 {
+            return Ok(());
+        }
+        let cause = self
+            .request_change_cause(bytes)
+            .map(|cause| {
+                format!(
+                    "; the bytes differ only by {}, which a Git line-ending conversion or an editor usually introduces. Mark .morphir/toolchain.toml `text eol=lf` in .gitattributes",
+                    cause.describe()
+                )
+            })
+            .unwrap_or_default();
+        Err(Diagnostic::new(
+            Code::RequestChanged,
+            "requestSha256",
+            format!(
+                "the lock was resolved from request {}, but the request bytes hash to {}{cause}",
+                self.request_sha256,
+                Sha256::of_bytes(bytes)
+            ),
+        ))
+    }
+
+    /// Whether removing a UTF-8 byte order mark, converting CRLF line endings
+    /// to LF, or both, gives exactly the bytes the lock was resolved from.
+    pub fn request_change_cause(&self, bytes: &[u8]) -> Option<RequestChangeCause> {
+        let without_bom = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF][..]);
+        let lf = |bytes: &[u8]| {
+            let mut out = Vec::with_capacity(bytes.len());
+            let mut iter = bytes.iter().peekable();
+            while let Some(&byte) = iter.next() {
+                if byte == b'\r' && iter.peek() == Some(&&b'\n') {
+                    continue;
+                }
+                out.push(byte);
+            }
+            out
+        };
+        let matches = |candidate: &[u8]| Sha256::of_bytes(candidate) == self.request_sha256;
+        let has_crlf = bytes.windows(2).any(|pair| pair == b"\r\n");
+        match without_bom {
+            Some(rest) if matches(rest) => Some(RequestChangeCause::ByteOrderMark),
+            Some(rest) if has_crlf && matches(&lf(rest)) => {
+                Some(RequestChangeCause::CrlfLineEndingsAndByteOrderMark)
+            }
+            _ if has_crlf && matches(&lf(bytes)) => Some(RequestChangeCause::CrlfLineEndings),
+            _ => None,
         }
     }
 

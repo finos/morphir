@@ -54,7 +54,7 @@ pub use ids::{
     LanguageId, ModelToken, PackageId, PackageManagerId, PathStyle, PresetId, ProtocolVersion,
     Sha256, TargetDigest, TargetPath, WasmAbi, WorkflowId,
 };
-pub use lock::{LockedHost, PlatformClosure, ToolchainLock, read_lock};
+pub use lock::{LockedHost, PlatformClosure, RequestChangeCause, ToolchainLock, read_lock};
 pub use model::{
     DeliveryKind, LockedDelivery, LockedProvider, ModelInput, ModelTuple, Operation, Prerequisite,
     Protocol, RecipeRef, SdkPhase,

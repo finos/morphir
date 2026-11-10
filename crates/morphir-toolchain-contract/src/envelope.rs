@@ -29,9 +29,14 @@ pub(crate) fn check(root: &Value, understood: &[&str]) -> Result<()> {
                 .map_err(|error| format!("'{text}' is not a SemVer version: {error}"))
         })
     })?;
-    let supported = SUPPORTED_VERSIONS.iter().any(|requirement| {
-        VersionReq::parse(requirement).is_ok_and(|requirement| requirement.matches(&version))
-    });
+    // An exact draft requirement such as `=0.1.0-draft.1` also matches
+    // `0.1.0-draft.1+build`, because SemVer precedence ignores build metadata.
+    // A contract version names one document format, so it must also have no
+    // build metadata.
+    let supported = version.build.is_empty()
+        && SUPPORTED_VERSIONS.iter().any(|requirement| {
+            VersionReq::parse(requirement).is_ok_and(|requirement| requirement.matches(&version))
+        });
     if !supported {
         return Err(Diagnostic::new(
             Code::UnsupportedContractVersion,

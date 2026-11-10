@@ -6,7 +6,9 @@ status: draft
 
 # morphirup JSON result 0.1.0-draft.1
 
-With `--json`, a `morphirup` command writes exactly one result document to standard output. Progress and logs go to standard error. Version authority: this page. Schema: [morphirup-result-0.1.0-draft.1.schema.json](/schemas/morphirup-result-0.1.0-draft.1.schema.json).
+With `--json`, a `morphirup` command writes exactly one result document to standard output. Progress and logs go to standard error.
+
+The exit status is `0` when the outcome is `planned` or `succeeded`, and `1` when it is `failed`. A command line the manager cannot parse (an unknown option, a missing argument) exits `2` and writes no result, only a usage message on standard error. A command that runs but cannot read a document it needs, such as an absent project lock for `restore --locked`, fails with `document_unavailable` (`unsupported-contract`, with `document` and the empty `path`; `result/restore-document-unavailable.json`). Version authority: this page. Schema: [morphirup-result-0.1.0-draft.1.schema.json](/schemas/morphirup-result-0.1.0-draft.1.schema.json).
 
 ## Members
 
@@ -26,17 +28,43 @@ Understood critical paths: `schemaVersion`, `critical`, `command`, `outcome`, `p
 
 ## Plans
 
-A plan names `implementation`, `deployment`, `platform`, the `recipe`, whether `metadataRefresh` is `required` or `not-required`, and its `components`. Each component has:
+A plan says everything the command will do and write, so that its digest pins all of it. It names:
+
+- `implementation`, `deployment` and `platform`: the host offering and the platform it installs now;
+- the `recipe`;
+- `metadataRefresh`: `required` when the command refreshes the repository metadata before acting, which `setup` and `update` always do unless they run offline, and `not-required` when it runs offline from the verified metadata it holds;
+- its `components`: what it installs for `platform`;
+- `lock`: the complete [lock](./toolchain-lock.md) the command writes when it succeeds, with every platform's closure, not only `platform`'s. After success the written lock equals `lock` as a parsed value.
+
+Because `lock` is inside the plan, `--expect-plan` pins every closure that setup records, for the other platforms too (binding case `plan-lock`). The reader checks the plan against its lock, refusing each mismatch with `inconsistent_document`:
+
+- `lock.recipe` is the plan's `recipe`, at `plan.lock.recipe`;
+- `lock.host` has the plan's implementation and deployment, at `plan.lock.host`;
+- `lock.platforms` records `platform`, at `plan.lock.platforms`;
+- there is exactly one host component and one provider component per provider of that closure, at `plan.components`;
+- the host component's `version` and source target are the lock's host release and that platform's host artifact;
+- each provider component's `extensionId`, `version` and `delivery` are its operation's locked provider, at `plan.components[i]`;
+- each source names that provider's artifact or package, or is `built-in` for a built-in, at its `source`;
+- every `repository-target` and `recipe-digest` source, the host's included, names the recipe's repository, at `source.repositoryId` (one repository per binding check).
+
+`lock` itself follows the lock schema and reader: a refusal inside it carries its path under `plan.lock`.
+
+Each component has:
 
 - `component`: `{ "role": "host", "implementation", "deployment" }` or `{ "role": "provider", "operation", "language" | "target" }`, where a `compile` provider requires `language` and a `generate` provider requires `target`. Diagnostics name components the same way;
 - `version`, and for a provider `extensionId` and `delivery`. A provider component without `delivery` or `extensionId`, or a host component with either, is `inconsistent_document` at that member, checked `delivery` first (`result/negative/provider-component-without-extension-id.json`, `host-component-with-extension-id.json`);
 - `source`: `repository-target` or `recipe-digest` with `repositoryId`, `target` and `sha256`, or `built-in`, or `external-owner`;
-- `downloadBytes`, `installedBytes`, `updateOwner` (an ownership case) and `prerequisites`, all required; `prerequisites` may be empty;
-- `probe`: `none`, `in-host`, or `process-with-user-rights`. A `process` or `dotnet-tool` provider's readiness probe runs acquired code with the user's rights, so its `probe` is `process-with-user-rights`, and no other component's is. Anything else is `inconsistent_document`.
+- `downloadBytes`: the authenticated length of the target the component downloads, from the TUF targets metadata, or `0` when it downloads nothing;
+- `installedBytes`: the bytes the component occupies once installed. Its source is **not settled** in `0.1.0-draft.1`: the recipe states no installed size yet, so a manager reports its own measurement of the staged component;
+- `updateOwner`, an ownership case;
+- `prerequisites`, possibly empty: the component's prerequisites that apply on the plan's `platform`. They are already filtered, so a plan prerequisite names no `platforms`; one that does is `inconsistent_document` at its `platforms`;
+- `probe`: how setup runs the component's code. Setup's readiness runs the staged host to check it and its built-ins, so the host component's `probe` is `process-with-user-rights`. Installation runs `describe` on every `process` guest unless `--no-probe` is given, and readiness runs every `process` and `dotnet-tool` guest; both are `process-with-user-rights`. A `built-in` or `wasm` provider runs inside the host and is `in-host`. `none` names a component setup never runs, and no component of a `0.1.0-draft.1` setup or update plan is one. Any other value is `inconsistent_document`.
+
+All of this is required because a plan's digest covers it: every member of a plan has one fixed value for the same inputs.
 
 ### The plan digest
 
-`planSha256` is the SHA-256 of the plan's canonical JSON bytes. `--expect-plan <digest>` compares against it and refuses a different plan. A result whose `planSha256` does not match its plan is `inconsistent_document` at `planSha256`.
+`planSha256` is the SHA-256 of the plan's canonical JSON bytes. `--expect-plan <digest>` compares against it, and a different plan fails with `plan_changed` (`lock-binding`, `document` `result`, `path` `planSha256`; `result/setup-plan-changed.json`) before anything is changed. A result whose `planSha256` does not match its plan is `inconsistent_document` at `planSha256`.
 
 The canonical form is the OLPC canonical JSON encoding of the `olpc-cjson` encoder that the TUF client uses, which tool release metadata v1 already uses for repository identity. "OLPC canonical JSON" is not one fixed format across implementations, so the rules below govern; where another canonical JSON library differs from them, these rules apply:
 
@@ -45,6 +73,8 @@ The canonical form is the OLPC canonical JSON encoding of the `olpc-cjson` encod
 - An object's members are sorted by the bytes of each key as written by the previous rule, including its enclosing quotation marks, compared byte by byte as unsigned values. Because the closing `"` is part of the comparison, `"a!"` sorts before `"a"` (`!` is `0x21`, `"` is `0x22`), and the order is UTF-8 byte order, not UTF-16 code-unit order: U+FF76 sorts before U+1D11E. Keys are normalized before they are sorted.
 - A number is an integer written in plain decimal. A number with a fraction or an exponent cannot be encoded, and a plan with one is invalid; the reader refuses it before the digest is computed, because every integer member of a result is written that way (see [numbers](./index.md#numbers)).
 - `true`, `false` and `null` are written as such.
+
+**Unicode normalization is a dependency, and a decision in waiting.** The NFC rule needs Unicode normalization data. On .NET on Linux, `string.Normalize` uses ICU: with `InvariantGlobalization` on, or without libicu, it does not normalize, and the digest of a plan with non-NFC text differs. A .NET manager therefore needs ICU on Linux, or its own NFC tables. Whether the canonical form keeps NFC is a maintainer decision that has not been taken; until it is, the rule above stands, and an implementation that cannot normalize must fail rather than produce another digest.
 
 Many JSON libraries escape by default: .NET's `System.Text.Json` writes `>` as `>` and a line feed as `\n`, and .NET's ordinal string comparison orders by UTF-16 code units. An implementation must configure or write its own encoder. `fixtures/0.1.0-draft.1/result/setup-plan-escaping.json` has a plan whose strings contain `>`, `<`, `&`, `+`, a precomposed `é`, a decomposed `e` followed by U+0301, a line feed, `"` and `\`, and an unknown `keyOrder` member whose keys (`a`, `a!`, a decomposed `é`, U+FF76, U+1D11E and `Z`) pin the key order. `setup-plan-escaping.plan.canonical.json` holds its exact canonical bytes, and `planSha256` is their SHA-256.
 
@@ -60,9 +90,9 @@ Every diagnostic has `kind`, `code`, `severity` (`error` or `warning`), a human 
 | `offline-content-unavailable` | `offline_content_unavailable` | `component`, `target`, `sha256` | |
 | `ownership-conflict` | `ownership_conflict` | `component`, `ownership` | |
 | `readiness-failed` | `readiness_failed` | `component`, `check`, `readiness` | |
-| `unsupported-contract` | the eight reader codes | `document` (`request`, `lock`, `recipe`, `receipt`, `result`), `path` | |
+| `unsupported-contract` | the eight reader codes and `document_unavailable` | `document` (`request`, `lock`, `recipe`, `receipt`, `result`), `path` | |
 | `selection-unavailable` | `generation_not_installed` | `source` | |
-| `lock-binding` | `request_changed`, `platform_not_locked`, `lock_changed`, `receipt_lock_mismatch`, `lock_recipe_mismatch` | `document`, `path`; `platform` exactly for `platform_not_locked` | |
+| `lock-binding` | `request_changed`, `platform_not_locked`, `lock_changed`, `receipt_lock_mismatch`, `lock_recipe_mismatch`, `plan_changed` | `document`, `path`; `platform` exactly for `platform_not_locked` | `cause`, only for `request_changed` |
 
 A `lock-binding` diagnostic's `document` is the document whose member its `path` names, so each code reports a fixed `document`:
 
@@ -73,12 +103,18 @@ A `lock-binding` diagnostic's `document` is the document whose member its `path`
 | `lock_changed` | `receipt` | `lockSha256` | `repair-lock-changed.json` |
 | `receipt_lock_mismatch` | `receipt` | the receipt member, such as `providers[0].identity` | `repair-receipt-lock-mismatch.json` |
 | `lock_recipe_mismatch` | `lock` | the lock member, such as `platforms.win-x64.providers[0]` | `restore-lock-recipe-mismatch.json` |
+| `plan_changed` | `result` | `planSha256` | `setup-plan-changed.json` |
+
+A `request_changed` diagnostic may carry `cause`, when the request bytes differ from the locked ones only by encoding: `crlf-line-endings` (converting CRLF to LF gives the locked bytes), `byte-order-mark` (removing a leading UTF-8 byte order mark does), or `crlf-line-endings-and-byte-order-mark` (both). Its message then names the cause and the `.gitattributes` entry that prevents it (`result/restore-request-changed-crlf.json`). Only `request_changed` has `cause`; another code with it is `inconsistent_document` at `cause`.
 
 Only `platform_not_locked` has `platform`. A `lock-binding` diagnostic with `platform` and another code is `inconsistent_document` at its `platform`, and the schema refuses it too. A diagnostic without `code` is `invalid_document` at its `code`. A `readiness-failed` diagnostic reports the readiness reached, which is below the state its failed check would reach. A `mirror` carries no user information, query or fragment. No result carries a secret value.
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, a `show` result explaining a project selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, and one failed result for each `lock-binding` code in the table above. `result/negative/` covers:
+`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, a `show` result explaining a project selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, one failed result for each `lock-binding` code in the table above, a `request_changed` naming CRLF line endings as its cause, and a restore whose lock is absent (`document_unavailable`). Both plans carry `lock/two-platforms-bound.json` as their `lock`. `result/negative/` covers:
+
+- a plan without `lock`, a lock that does not record the plan's platform, a lock for another recipe, a provider component that is not the locked provider, a source from another repository, a host and a built-in whose `probe` is `none`, and a plan prerequisite that names platforms;
+- `cause` on a code other than `request_changed`;
 
 - a later draft, an unknown critical member, an unknown command and an unknown diagnostic kind;
 - a diagnostic without a code, and a `lock-binding` diagnostic with `platform` on another code;

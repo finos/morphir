@@ -261,14 +261,23 @@ pub fn exact_version(value: &str) -> Result<Version, String> {
     }
 }
 
-/// Parse one SemVer comparator such as `>=10.0.0`. Ranges that cross
-/// languages are lists of single comparators.
+/// Parse one SemVer comparator such as `>=10.0.0`: exactly one of `=`, `>`,
+/// `>=`, `<` or `<=`, then a complete version in canonical SemVer spelling,
+/// with no space. Ranges that cross languages are lists of single
+/// comparators, so `^`, `~`, wildcards, partial versions and combined ranges
+/// are refused: Rust, TypeScript and .NET give them different meanings.
 pub fn comparator(value: &str) -> Result<Comparator, String> {
     if value.contains(',') {
         return Err(format!(
             "'{value}' is a combined range; write a list of single comparators"
         ));
     }
+    let version = [">=", "<=", "=", ">", "<"]
+        .iter()
+        .find_map(|operator| value.strip_prefix(operator))
+        .ok_or_else(|| format!("'{value}' does not start with one of =, >, >=, <, <="))?;
+    exact_version(version)
+        .map_err(|message| format!("'{value}' does not name a complete version: {message}"))?;
     Comparator::parse(value)
         .map_err(|error| format!("'{value}' is not a SemVer comparator: {error}"))
 }

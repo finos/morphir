@@ -7,10 +7,10 @@ use crate::ids::{
     AbsolutePath, DeploymentId, ExtensionIdentity, GenerationId, ImplementationId, PathStyle,
     Sha256, TargetDigest, TargetPath, WasmAbi,
 };
-use crate::lock::{LockedHost, locked_host};
-use crate::model::{self, DeliveryKind, Operation, Prerequisite, RecipeRef};
+use crate::lock::{LockedHost, RequestChangeCause, ToolchainLock, locked_host};
+use crate::model::{self, DeliveryKind, LockedDelivery, Operation, Prerequisite, RecipeRef};
 use crate::platform::PlatformId;
-use crate::reader::{Node, Obj, inconsistent};
+use crate::reader::{Node, Obj, inconsistent, index, join};
 use crate::receipt::{CheckKind, Ownership, Readiness, ownership};
 use serde_json::Value;
 
@@ -250,6 +250,9 @@ pub enum ResultDiagnosticKind {
         path: String,
         /// The platform, for `platform_not_locked`.
         platform: Option<PlatformId>,
+        /// For `request_changed`, the likely cause when the bytes differ only
+        /// by line endings or a byte order mark.
+        cause: Option<RequestChangeCause>,
     },
 }
 
@@ -417,6 +420,8 @@ pub struct Plan {
     metadata_refresh: MetadataRefresh,
     /// Components.
     components: Vec<PlanComponent>,
+    /// The complete lock the command will write, every platform included.
+    lock: ToolchainLock,
 }
 
 impl Plan {
@@ -443,6 +448,11 @@ impl Plan {
     /// The `components` member.
     pub fn components(&self) -> &[PlanComponent] {
         &self.components
+    }
+    /// The `lock` member: the lock the command writes on success, so the
+    /// plan digest covers every platform's closure.
+    pub fn lock(&self) -> &ToolchainLock {
+        &self.lock
     }
 }
 
@@ -785,10 +795,18 @@ fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
                     "platform_not_locked names the platform, and only it does",
                 ));
             }
+            let cause = object.opt("cause", |node| node.case(RequestChangeCause::CASES))?;
+            if cause.is_some() && code != Code::RequestChanged {
+                return Err(inconsistent(
+                    object.member_path("cause"),
+                    "only request_changed names the likely cause of a request change",
+                ));
+            }
             ResultDiagnosticKind::LockBinding {
                 document: object.case("document", DocumentKind::CASES)?,
                 path: object.str("path")?.to_owned(),
                 platform,
+                cause,
             }
         }
     };
@@ -811,7 +829,7 @@ enum PlanSourceTag {
 
 fn plan(node: Node<'_>) -> Result<Plan> {
     let plan = node.object()?;
-    Ok(Plan {
+    Plan {
         implementation: plan.req("implementation", model::token(ImplementationId::parse))?,
         deployment: plan.req("deployment", model::token(DeploymentId::parse))?,
         platform: plan.req("platform", model::platform)?,
@@ -824,7 +842,132 @@ fn plan(node: Node<'_>) -> Result<Plan> {
             ],
         )?,
         components: plan.req("components", |node| node.array(plan_component))?,
-    })
+        lock: plan.req("lock", |node| {
+            crate::lock::read_lock_value(node.value()).map_err(|mut refusal| {
+                refusal.path = if refusal.path.is_empty() {
+                    node.path().to_owned()
+                } else {
+                    join(node.path(), &refusal.path)
+                };
+                refusal
+            })
+        })?,
+    }
+    .checked(plan.path())
+}
+
+impl Plan {
+    /// The plan installs the current platform's closure of `lock`, from the
+    /// recipe's one repository, and nothing else.
+    fn checked(self, path: &str) -> Result<Self> {
+        let at = |member: &str| join(path, member);
+        if self.lock.recipe() != &self.recipe {
+            return Err(inconsistent(
+                at("lock.recipe"),
+                "the lock binds the plan's recipe",
+            ));
+        }
+        let host = self.lock.host();
+        if host.implementation != self.implementation || host.deployment != self.deployment {
+            return Err(inconsistent(
+                at("lock.host"),
+                "the lock's host is the plan's implementation and deployment",
+            ));
+        }
+        let closure = self.lock.platforms().get(&self.platform).ok_or_else(|| {
+            inconsistent(at("lock.platforms"), "the lock records the plan's platform")
+        })?;
+        let mut hosts = 0;
+        let mut providers = 0;
+        for (position, component) in self.components.iter().enumerate() {
+            let component_path = index(&at("components"), position);
+            let source_path = join(&component_path, "source");
+            let target = match &component.source {
+                PlanSource::RepositoryTarget {
+                    repository_id,
+                    target,
+                }
+                | PlanSource::RecipeDigest {
+                    repository_id,
+                    target,
+                } => {
+                    // One repository per binding check.
+                    if repository_id != &self.recipe.repository_id {
+                        return Err(inconsistent(
+                            join(&source_path, "repositoryId"),
+                            "a plan acquires from the recipe's repository",
+                        ));
+                    }
+                    Some(target)
+                }
+                PlanSource::BuiltIn | PlanSource::ExternalOwner => None,
+            };
+            match &component.component {
+                ComponentRef::Host { .. } => {
+                    hosts += 1;
+                    if component.version != host.version {
+                        return Err(inconsistent(
+                            join(&component_path, "version"),
+                            "the host component is the lock's host release",
+                        ));
+                    }
+                    if target.is_some_and(|target| target != closure.host()) {
+                        return Err(inconsistent(
+                            join(&source_path, "target"),
+                            "the host component installs the lock's host artifact",
+                        ));
+                    }
+                }
+                ComponentRef::Provider(operation) => {
+                    providers += 1;
+                    let locked = closure
+                        .providers()
+                        .iter()
+                        .find(|provider| provider.operation() == operation)
+                        .ok_or_else(|| {
+                            inconsistent(
+                                join(&component_path, "component"),
+                                "the lock's closure has no provider for this operation",
+                            )
+                        })?;
+                    let same = Some(locked.extension_id()) == component.extension_id.as_ref()
+                        && locked.version() == &component.version
+                        && Some(locked.delivery().kind()) == component.delivery;
+                    if !same {
+                        return Err(inconsistent(
+                            component_path,
+                            "a provider component is the lock's provider for its operation",
+                        ));
+                    }
+                    let artifact = match locked.delivery() {
+                        LockedDelivery::BuiltIn { .. } => None,
+                        LockedDelivery::Process { artifact, .. }
+                        | LockedDelivery::Wasm { artifact, .. } => Some(artifact),
+                        LockedDelivery::DotnetTool { package, .. } => Some(package),
+                    };
+                    let consistent = match (&component.source, artifact) {
+                        (PlanSource::BuiltIn, None) => true,
+                        (PlanSource::ExternalOwner, Some(_)) => true,
+                        (_, Some(artifact)) => target == Some(artifact),
+                        _ => false,
+                    };
+                    if !consistent {
+                        return Err(inconsistent(
+                            source_path,
+                            "a provider component's source is its locked artifact, or built-in for a built-in",
+                        ));
+                    }
+                }
+            }
+        }
+        if hosts != 1 || providers != closure.providers().len() {
+            return Err(inconsistent(
+                at("components"),
+                "a plan has one host component and one component per locked provider",
+            ));
+        }
+        Ok(self)
+    }
 }
 
 fn plan_component(node: Node<'_>) -> Result<PlanComponent> {
@@ -876,15 +1019,33 @@ fn plan_component(node: Node<'_>) -> Result<PlanComponent> {
             ("process-with-user-rights", Probe::ProcessWithUserRights),
         ],
     )?;
-    let runs_a_process = matches!(
-        delivery,
-        Some(DeliveryKind::Process | DeliveryKind::DotnetTool)
-    );
-    if runs_a_process != (probe == Probe::ProcessWithUserRights) {
+    // Setup's readiness runs the staged host, and installation and readiness
+    // run every process and .NET tool guest, all with the user's rights. A
+    // built-in or WASM provider runs inside the host.
+    let expected = match (&component, delivery) {
+        (ComponentRef::Host { .. }, _)
+        | (_, Some(DeliveryKind::Process | DeliveryKind::DotnetTool)) => {
+            Probe::ProcessWithUserRights
+        }
+        _ => Probe::InHost,
+    };
+    if probe != expected {
         return Err(inconsistent(
             probe_path,
-            "a process probe runs acquired code with the user's rights, and the plan says so",
+            "the probe says how setup runs this component: the host and process or .NET tool guests with the user's rights, built-in and WASM providers inside the host",
         ));
+    }
+    let prerequisites_path = object.member_path("prerequisites");
+    // Every plan component lists its prerequisites, possibly none, already
+    // filtered to the plan's platform: a plan prerequisite names no platforms.
+    let prerequisites = object.req("prerequisites", |node| node.array(model::prerequisite))?;
+    for (position, prerequisite) in prerequisites.iter().enumerate() {
+        if matches!(prerequisite, Prerequisite::Native { platforms, .. } if !platforms.is_empty()) {
+            return Err(inconsistent(
+                join(&index(&prerequisites_path, position), "platforms"),
+                "a plan lists only the prerequisites of its own platform, without platforms",
+            ));
+        }
     }
     Ok(PlanComponent {
         component,
@@ -895,8 +1056,7 @@ fn plan_component(node: Node<'_>) -> Result<PlanComponent> {
         download_bytes: object.req("downloadBytes", |node| node.u64())?,
         installed_bytes: object.req("installedBytes", |node| node.u64())?,
         update_owner: object.req("updateOwner", ownership)?,
-        // Every plan component lists its prerequisites, possibly none.
-        prerequisites: object.req("prerequisites", |node| node.array(model::prerequisite))?,
+        prerequisites,
         probe,
     })
 }

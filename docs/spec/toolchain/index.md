@@ -55,7 +55,7 @@ Some words are used with more than one meaning across the toolchain, MEP and mor
 
 ### Versions
 
-`schemaVersion` is a SemVer string. A reader lists the versions it supports as SemVer requirements and refuses anything else before it reads another member. A `0.1.0-draft.1` reader lists exactly `=0.1.0-draft.1`, so it refuses `0.1.0-draft.2` and the released `0.1.0` with `unsupported_contract_version`. A string that is not SemVer, such as `0.1`, is `invalid_value`. Drafts promise no compatibility with each other. Use a SemVer library, never a hand-written version type.
+`schemaVersion` is a SemVer string. A reader lists the versions it supports as SemVer requirements and refuses anything else before it reads another member. A `0.1.0-draft.1` reader lists exactly `=0.1.0-draft.1`, so it refuses `0.1.0-draft.2` and the released `0.1.0` with `unsupported_contract_version`. A contract version carries no build metadata: `=0.1.0-draft.1` would match `0.1.0-draft.1+build.5` by SemVer precedence, so a reader also refuses any version with build metadata (`lock/negative/draft-build-metadata.json`). Every other version member is compared as exact text in canonical SemVer spelling, so `1.2.3` and `1.2.3+build` are different versions. A string that is not SemVer, such as `0.1`, is `invalid_value`. Drafts promise no compatibility with each other. Use a SemVer library, never a hand-written version type.
 
 ### Unknown and critical members
 
@@ -114,7 +114,7 @@ The provider delivery cases are:
 
 The public runtime name for WASM stays `wasm`. The ABI, such as `morphir-bytes-v1` or `extism-kernel-v1`, is a separate member, and a host that supports one ABI never accepts a guest for another.
 
-Prerequisites are `runtime`, `sdk` (with `phase` `install` or `run`) and `native` (optionally limited to `platforms`). Every prerequisite has `kind` and `name`. `versions` is required for `runtime` and `sdk` and optional for `native`; `phase` is required for `sdk`. Versions are lists of single SemVer comparators, `[">=10.0.0", "<11.0.0"]`, because Rust and TypeScript separate combined ranges differently. A native library's version is written as SemVer with missing parts as zero: glibc 2.28 is `2.28.0`, so the comparator is `>=2.28.0`.
+Prerequisites are `runtime`, `sdk` (with `phase` `install` or `run`) and `native` (optionally limited to `platforms`). Every prerequisite has `kind` and `name`. `versions` is required for `runtime` and `sdk` and optional for `native`; `phase` is required for `sdk`. A comparator is exactly one of `=`, `>`, `>=`, `<` or `<=`, then a complete version in canonical SemVer spelling, with no space. `^`, `~`, wildcards, partial versions such as `>=10`, and combined ranges are `invalid_value`, because Rust, TypeScript and .NET give them different meanings (`recipe/negative/comparator-*.json`). Versions are lists of single SemVer comparators, `[">=10.0.0", "<11.0.0"]`, because Rust and TypeScript separate combined ranges differently. A native library's version is written as SemVer with missing parts as zero: glibc 2.28 is `2.28.0`, so the comparator is `>=2.28.0`.
 
 ### Identifiers
 
@@ -186,11 +186,13 @@ Every code has exactly one result diagnostic kind, so a [manager result](./manag
 | `non_portable_path` | `unsupported-contract` | A target path breaks the target path rules |
 | `credential_in_document` | `unsupported-contract` | A credential member or a URL carrying credentials |
 | `inconsistent_document` | `unsupported-contract` | Valid members that contradict each other |
+| `document_unavailable` | `unsupported-contract` | A document the command needs, such as the project request or lock, is absent or unreadable |
 | `request_changed` | `lock-binding` | A lock's `requestSha256` differs from the SHA-256 of the request bytes |
 | `platform_not_locked` | `lock-binding` | Frozen restore needs a platform closure the lock does not record |
 | `lock_changed` | `lock-binding` | A receipt's `lockSha256` differs from the SHA-256 of the lock bytes |
 | `receipt_lock_mismatch` | `lock-binding` | A receipt identity differs from the lock's closure for its platform |
 | `lock_recipe_mismatch` | `lock-binding` | A lock closure is not one its recipe allows |
+| `plan_changed` | `lock-binding` | `--expect-plan` named another digest than the plan the command made |
 | `unsupported_artifact` | `unsupported-artifact` | No artifact matches the requested implementation, deployment, release, platform or protocol |
 | `abi_unavailable` | `unsupported-artifact` | The preferred provider needs a WASM ABI the host does not support |
 | `no_compatible_release` | `unsupported-artifact` | Tool release metadata v1: no release matches the selection |

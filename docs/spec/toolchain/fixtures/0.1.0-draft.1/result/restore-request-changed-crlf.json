@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "restore",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "lock-binding",
+      "code": "request_changed",
+      "severity": "error",
+      "message": "The request bytes no longer hash to the lock's requestSha256, but they differ only by CRLF line endings, which a Git line-ending conversion usually introduces. Mark .morphir/toolchain.toml text eol=lf in .gitattributes and check it out again.",
+      "document": "lock",
+      "path": "requestSha256",
+      "instruction": [
+        "morphirup",
+        "setup",
+        "--yes"
+      ],
+      "cause": "crlf-line-endings"
+    }
+  ]
+}
