@@ -131,6 +131,14 @@ When the user cancels a command or its session deadline passes, the host SHALL s
 - **WHEN** the user presses Ctrl+C while a guest is inside `handle`
 - **THEN** the call stops, the outcome is `cancelled` and the exit status is 130
 
+### Requirement: Failures report memory use
+The engine cannot tell the host that a growth was refused, so the host SHALL report `extension.memory_limit` when a call fails with the guest's memory at the ceiling, and SHALL state the guest's memory size and the ceiling in every call failure diagnostic.
+
+#### Scenario: Large allocation refused below the ceiling
+- **WHEN** a guest at 100 MiB asks for 200 MiB more, is refused and aborts
+- **THEN** the session fails with the guest's own failure
+- **AND** the diagnostic reports a memory size of 100 MiB against a ceiling of 256 MiB
+
 ### Requirement: Guest output stays out of results
 The host SHALL keep guest log messages and guest stdout and stderr separate from command results. It SHALL write them to the host's stderr or diagnostics, bounded to a fixed size per session with a truncation marker, and SHALL NOT write them to stdout.
 

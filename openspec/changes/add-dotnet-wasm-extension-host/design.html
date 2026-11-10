@@ -203,7 +203,7 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <p>The Python guest links <code>http_request</code> and WASI's <code>path_open</code> even though compiling a Morphir model needs neither. Refusing those imports would refuse every published bundle. The contract's policy table accepts them and gives the guest nothing through them. The .NET host implements that table exactly:</p>
 <ul>
 <li>WASI is configured with no preopened directory, no arguments, no environment and an empty stdin. Standard output and error go to a bounded buffer that becomes guest output.</li>
-<li><code>http_request</code> returns a failure and records the method and URL. The host never resolves the name.</li>
+<li><code>http_request</code> records the method and URL as guest output, stops the call and fails the session, as the MoonBit host does. The host never resolves the name.</li>
 <li>The variable store and IR cache are plain in-memory maps owned by the session, with the contract's limits, and are dropped with the store.</li>
 <li><code>morphir_get_workspace_info</code> reports a private empty directory created for the session and removed with it.</li>
 </ul>
@@ -228,7 +228,7 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 <div class="table-wrap"><table>
 <thead><tr><th>Bound</th><th>Mechanism</th><th>Engine signal</th><th>Reported as</th></tr></thead>
 <tbody>
-<tr><td>Instruction budget</td><td>Fuel set before each call: 2,147,483,647 on MEP <code>0.2.0-draft.1</code>, 1,000,000,000 on MEP <code>0.1</code></td><td>Out-of-fuel trap</td><td><code>extension.budget_exhausted</code></td></tr>
+<tr><td>Instruction budget</td><td>Fuel set before each call: 5,000,000,000 on MEP <code>0.2.0-draft.1</code>, 1,000,000,000 on MEP <code>0.1</code></td><td>Out-of-fuel trap</td><td><code>extension.budget_exhausted</code></td></tr>
 <tr><td>Call deadline</td><td>Epoch deadline set before each call: 30 s</td><td>Interrupt trap</td><td>outcome <code>deadline</code></td></tr>
 <tr><td>Cancellation</td><td>The cancellation handler moves the epoch deadline to now</td><td>Interrupt trap</td><td>outcome <code>cancelled</code></td></tr>
 <tr><td>Memory ceiling</td><td>Store limit of 256 MiB per memory</td><td>Growth returns -1</td><td>See BND-2</td></tr>
@@ -239,7 +239,8 @@ svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
 
 <h3 id="bnd-2">BND-2. Report the memory limit when a call fails at the ceiling</h3>
 <p>The PRD left this open: Wasmtime refuses growth by returning -1 to the guest, and the guest may carry on. The engine's C API takes numeric limits only. It has no callback that tells the host a growth was refused, so the host cannot know the cause of a later abort for certain.</p>
-<p>The rule is the one the host can observe exactly. When a call fails and the guest's memory is at the ceiling, the failure is <code>extension.memory_limit</code>. Otherwise the failure keeps its own code. Every failure diagnostic states the guest's memory size and the ceiling, so a guest that aborted after one large refused request is still explained: the user sees a trap at 100 MiB of a 256 MiB ceiling. A guest that handles the refusal and answers is a success.</p>
+<p>The MoonBit host does know: its engine calls back on every refused growth, so it reports the memory limit for any failing call in which one happened. The contract requires the part both hosts can do, and lets a host that sees more report more.</p>
+<p>For .NET the rule is the one the host can observe exactly. When a call fails and the guest's memory is at the ceiling, the failure is <code>extension.memory_limit</code>. Otherwise the failure keeps its own code. Every failure diagnostic states the guest's memory size and the ceiling, so a guest that aborted after one large refused request is still explained: the user sees a trap at 100 MiB of a 256 MiB ceiling. A guest that handles the refusal and answers is a success.</p>
 <p><em>Alternatives.</em> Treat any trap as a possible memory failure: it would mislabel ordinary guest bugs. Rewrite the module to report failed growth: it changes the bytes the host runs, so the digest in every report would no longer be the publisher's.</p>
 
 <p class="stage">Stage 9. The same executable must work on another machine</p>

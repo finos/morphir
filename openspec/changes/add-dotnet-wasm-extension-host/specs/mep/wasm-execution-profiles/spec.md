@@ -21,7 +21,7 @@ flowchart LR
   F --> G[Response bytes]
 ```
 
-The step that surprises people is the first. The host decides the profile from the module's imports, before it runs any guest code. A release descriptor may declare an ABI, but the declaration can only confirm what the imports show. It cannot grant a module imports its profile lacks.
+The first import from a profile namespace decides the profile, and every other import must then belong to it. The step that surprises people is the first. The host decides the profile from the module's imports, before it runs any guest code. A release descriptor may declare an ABI, but the declaration can only confirm what the imports show. It cannot grant a module imports its profile lacks.
 
 ### The two profiles
 
@@ -66,7 +66,7 @@ An Extism PDK links host functions whether or not the guest uses them, so refusi
 | `config_get` | No value |
 | `var_get`, `var_set` | A store of at most 1 MiB that lives for the session |
 | `log_*`, `morphir_log` | Its text recorded as guest output; `get_log_level` answers `info` |
-| `http_request` | A failure; the method and URL are recorded, and no connection is made |
+| `http_request` | The call is stopped and the session fails. The method and URL are recorded as guest output, and no connection is made |
 | `morphir_get_workspace_info` | `{"root": <private directory>, "output_dir": ""}` |
 | `morphir_cache_ir`, `morphir_get_cached_ir` | A session cache of at most 16 MiB and 1,024 entries |
 | WASI `path_open`, sockets, arguments, environment | An error code or an empty answer |
@@ -159,7 +159,7 @@ An `extism-kernel-v1` module SHALL import only the Extism kernel and host functi
 - **AND** a module that imports it as `(i64) -> i64` is refused with `extension.abi_unsupported`
 
 ### Requirement: Extism profile calls
-For `extism-kernel-v1` the host SHALL keep one instance for the session and call `handle` once per request, with the request as Extism input and the response read from Extism output. A call that sets an Extism error SHALL fail the session. `morphir.exit` SHALL end the instance.
+For `extism-kernel-v1` the host SHALL keep one instance for the session and call `handle` once per request, with the request as Extism input and the response read from Extism output. A call that sets an Extism error, returns a non-zero result or gives no output for a request SHALL fail the session. `morphir.exit` SHALL end the instance.
 
 #### Scenario: Compile session
 - **WHEN** the host runs `morphir.initialize`, `morphir.frontend.compile` and `morphir.shutdown` on the Python guest
@@ -187,7 +187,7 @@ A host SHALL deliver a notification to an `extism-kernel-v1` guest only after th
 - **THEN** the host stops the guest, and no `$/cancelRequest` call is attempted
 
 ### Requirement: One message per call
-A host SHALL pass exactly one complete JSON-RPC message per `handle` call, as UTF-8 bytes without a `Content-Length` header, and SHALL accept at most one response per call. A request over the session's request byte limit SHALL be refused with `extension.request_limit` before the guest is called. A response over the response byte limit SHALL fail the session with `extension.response_limit`.
+A host SHALL pass exactly one complete JSON-RPC message per `handle` call, as UTF-8 text without a `Content-Length` header, and SHALL accept at most one response per call. A request frame over the session's request byte limit SHALL be refused with `extension.request_limit` before the guest is called, and the session SHALL end. A response over the response byte limit SHALL fail the session.
 
 #### Scenario: Oversized request
 - **WHEN** a request exceeds the session's request byte limit
@@ -196,14 +196,26 @@ A host SHALL pass exactly one complete JSON-RPC message per `handle` call, as UT
 
 #### Scenario: Oversized response
 - **WHEN** a guest returns a response larger than the session's response byte limit
-- **THEN** the session fails with `extension.response_limit` and no part of the response reaches the MEP session
+- **THEN** the session fails and no part of the response reaches the MEP session
+
+### Requirement: Messages are JSON values, not byte strings
+A host MAY parse a message and write it again in either direction. A guest SHALL NOT depend on receiving the exact bytes the host was given, and nothing SHALL depend on a guest's response being forwarded byte for byte. A response that is not UTF-8 text holding one JSON object SHALL fail the session.
+
+#### Scenario: Whitespace differs
+- **WHEN** a request frame contains insignificant whitespace
+- **THEN** the guest receives the same JSON value, possibly with different whitespace
+
+#### Scenario: Response is not an object
+- **WHEN** a guest returns the JSON text `42`
+- **THEN** the session fails
 
 ### Requirement: Host function policy
-The Extism and Morphir host functions SHALL behave as the policy table under Purpose states. `http_request` SHALL fail without opening a connection. Session stores and caches SHALL start empty and SHALL NOT outlive the session. A store or cache write over its limit SHALL fail that call.
+The Extism and Morphir host functions SHALL behave as the policy table under Purpose states. `http_request` SHALL stop the call and fail the session without opening a connection. Session stores and caches SHALL start empty and SHALL NOT outlive the session. A store or cache write over its limit SHALL fail that call.
 
 #### Scenario: Guest requests HTTP
 - **WHEN** a guest calls `http_request` for `https://example.org/`
-- **THEN** the call fails, no connection is made and the host records the method and URL
+- **THEN** the call is stopped, the session fails and no connection is made
+- **AND** the host records the method and URL as guest output before the failure
 
 #### Scenario: IR cache between calls
 - **WHEN** a guest stores IR with `morphir_cache_ir` during compile and reads it in the same session
@@ -223,19 +235,20 @@ A guest that imports WASI preview 1 SHALL see no preopened directory, no argumen
 - **AND** it never appears in a MEP response
 
 ### Requirement: Memory ceiling
-A host SHALL cap a guest's linear memory at 256 MiB, including a module that declares no maximum or a larger one. Growth past the ceiling SHALL NOT be granted. A call that fails while the guest's memory is at the ceiling SHALL fail the session with `extension.memory_limit`. An initial memory above the ceiling SHALL be refused before instantiation. Every call failure SHALL report the guest's memory size.
+A host SHALL cap each linear memory of a session at 256 MiB, including one that declares no maximum or a larger one, and SHALL NOT grant growth past it. A call that fails while the guest's memory is at the ceiling SHALL fail the session with `extension.memory_limit`. A host that observes refused growth SHALL report the same for any failing call in which growth was refused. An initial memory above the ceiling SHALL fail with `extension.memory_limit` before any request.
 
 #### Scenario: Module without a maximum
 - **WHEN** a module that declares no memory maximum grows until it reaches 256 MiB and then traps
 - **THEN** the session fails with `extension.memory_limit`
 
 #### Scenario: Guest recovers from a refused growth
-- **WHEN** a growth is refused and the guest still returns a valid response
+- **WHEN** an Extism guest has a growth refused and still returns a valid response
 - **THEN** the call succeeds
 
 #### Scenario: Large allocation refused below the ceiling
 - **WHEN** a guest at 100 MiB asks for 200 MiB more, is refused and aborts
-- **THEN** the session fails, and the diagnostic reports a memory size of 100 MiB against a ceiling of 256 MiB
+- **THEN** the session fails
+- **AND** a host that observes refused growth reports `extension.memory_limit`, while another host reports the guest's own failure
 
 ### Requirement: Call deadline
 Each `handle` call SHALL have a deadline of 30 seconds for `extism-kernel-v1` and 10 seconds for `morphir-bytes-v1`, inside any session deadline. At the deadline the host SHALL stop the guest, discard the instance and end the session with outcome `deadline`. Time spent in host functions SHALL count toward the deadline.
@@ -245,7 +258,7 @@ Each `handle` call SHALL have a deadline of 30 seconds for `extism-kernel-v1` an
 - **THEN** the call stops at its deadline, the outcome is `deadline` and the instance is discarded
 
 ### Requirement: Instruction budget where the engine meters
-Where a host's engine meters execution, the host SHALL apply a per-call budget of 2,147,483,647 units on MEP `0.2.0-draft.1` and 1,000,000,000 on MEP `0.1`, and SHALL fail an exhausted call with `extension.budget_exhausted`. The unit is engine-defined. A host SHALL report which bounds it enforced and the engine that enforced them.
+Where a host's engine meters execution, the host SHALL apply a per-call budget of 5,000,000,000 units on MEP `0.2.0-draft.1` and 1,000,000,000 on MEP `0.1`, and SHALL fail an exhausted call with `extension.budget_exhausted`. The unit is engine-defined. A host SHALL report which bounds it enforced and the engine that enforced them.
 
 #### Scenario: Budget exhausted
 - **WHEN** a guest runs past its per-call budget on a metering engine
