@@ -111,7 +111,7 @@ A host SHALL refuse an entry path that contains `\` with `package.backslash`, st
 A host SHALL refuse a component that contains a control character (U+0000 to U+001F, U+007F), U+2028, U+2029 or one of `< > : " | ? *` with `package.reserved_character`, a component that ends in `.` or a space with `package.trailing_dot_or_space`, and a component that is a Windows device name, as the toolchain contracts define one for target paths, with `package.device_name`.
 
 #### Scenario: Windows names that cannot be stored
-- **WHEN** archives hold the entries `lib/CON.dll`, `com1`, `notes.`, `notes ` and `a:b`
+- **WHEN** archives hold the entries `lib/CON.dll`, `com1`, `notes.`, `notes ` and `lib/a:b`
 - **THEN** the host refuses them with `package.device_name`, `package.device_name`, `package.trailing_dot_or_space`, `package.trailing_dot_or_space` and `package.reserved_character`
 
 ### Requirement: Entry paths are NFC under Unicode 17.0.0
