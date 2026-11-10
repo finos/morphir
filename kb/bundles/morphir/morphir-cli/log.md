@@ -1,5 +1,10 @@
 # Log
 
+## 2026-11-10
+
+* **Update**: Clarified [One version per contract family, carried by a published schema](/decisions/0004-one-preview-version-per-contract-family.md): any valid SemVer prerelease identifier is allowed; `preview` is the extension state family's chosen label, not a requirement.
+* **Creation**: Added [One version per contract family, carried by a published schema](/decisions/0004-one-preview-version-per-contract-family.md), which supersedes [SemVer is the default contract versioning scheme](/decisions/0003-semver-is-the-default-contract-versioning-scheme.md) (finos/morphir#1146, Decision 15).
+
 ## 2026-09-25
 
 * **Update**: [Example-driven CLI validation](/example-driven-validation.md) describes `.feature` and `.feature.md` scenarios on the `morphir-bdd` suite. `morphir itest` no longer runs notebooks, and the single-file Elm example is a `.feature.md` file (finos/morphir#946).
