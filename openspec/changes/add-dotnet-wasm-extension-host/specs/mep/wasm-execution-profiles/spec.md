@@ -27,15 +27,18 @@ The step that surprises people is the first. The host decides the profile from t
 
 | | `morphir-bytes-v1` | `extism-kernel-v1` |
 | --- | --- | --- |
+| Status | Transitional: a host may run it, no new guest should target it | Required of every host |
 | Who builds it | Any language that emits core WASM (Gleam, MoonBit) | An Extism PDK (Rust, Python, the Morphir extension SDK) |
 | Imports | Exactly three byte callbacks | Extism kernel and host functions, four Morphir functions, WASI preview 1 |
 | Request reaches the guest | Guest pulls it one byte at a time | Extism input |
 | Response leaves the guest | Guest pushes it one byte at a time | Extism output |
 | `handle` result | Response length, or a code | Success or error |
-| Notifications from the host | Delivered | Not delivered |
+| Notifications from the host | Delivered | Delivered when the guest advertises that it accepts them |
 | Ambient authority | None | None beyond clocks and random bytes |
 
-`morphir-bytes-v1` exists so that a runtime with no Extism support can host an extension. `extism-kernel-v1` exists because that is what the published bundles are.
+`extism-kernel-v1` is what the published bundles are, and it is the one profile every host runs. `morphir-bytes-v1` was added when one host could not yet run Extism modules everywhere. That host now can, so the byte profile is kept only until its three guests have moved, and is then removed.
+
+An Extism guest does not need a PDK. A module that imports five kernel functions (`input_length`, `input_load_u8`, `alloc`, `store_u8`, `output_set`) reads and writes bytes the way a byte-profile guest does.
 
 ### A message crossing the boundary
 
@@ -109,6 +112,14 @@ When a descriptor, configuration entry or command argument declares an ABI, the 
 - **WHEN** a declaration says `morphir-bytes-v1` for a module that imports the Extism kernel
 - **THEN** the host refuses with `extension.abi_mismatch` and names both profiles
 
+### Requirement: Every host runs the Extism profile
+A host SHALL run `extism-kernel-v1` modules. `morphir-bytes-v1` is transitional: a host MAY run it and SHALL state in its runtime report which profiles it runs. A host that does not run a module's classified profile SHALL refuse the module with `extension.abi_unsupported`, naming the profile.
+
+#### Scenario: Byte-profile module on an Extism-only host
+- **WHEN** a host that runs only `extism-kernel-v1` reads the Gleam extension `0.4.0` module
+- **THEN** it classifies the module as `morphir-bytes-v1` and refuses it with `extension.abi_unsupported`, naming `morphir-bytes-v1`
+- **AND** the module is not instantiated
+
 ### Requirement: Handle export
 A module of either profile SHALL export `handle` with no parameters and one `i32` result. A module without that export SHALL be refused with `extension.abi_unsupported`.
 
@@ -148,12 +159,32 @@ An `extism-kernel-v1` module SHALL import only the Extism kernel and host functi
 - **AND** a module that imports it as `(i64) -> i64` is refused with `extension.abi_unsupported`
 
 ### Requirement: Extism profile calls
-For `extism-kernel-v1` the host SHALL keep one instance for the session and call `handle` once per request, with the request as Extism input and the response read from Extism output. It SHALL deliver no notification to the guest, and `morphir.exit` SHALL end the instance. A call that sets an Extism error SHALL fail the session.
+For `extism-kernel-v1` the host SHALL keep one instance for the session and call `handle` once per request, with the request as Extism input and the response read from Extism output. A call that sets an Extism error SHALL fail the session. `morphir.exit` SHALL end the instance.
 
 #### Scenario: Compile session
 - **WHEN** the host runs `morphir.initialize`, `morphir.frontend.compile` and `morphir.shutdown` on the Python guest
 - **THEN** each request is one `handle` call on the same instance
-- **AND** `morphir.initialized` and `morphir.exit` are not delivered to the guest
+
+### Requirement: Notifications reach an Extism guest that accepts them
+A host SHALL deliver a notification to an `extism-kernel-v1` guest only after the guest advertised, in its `morphir.initialize` result, that it accepts notifications. Each delivered notification SHALL be one `handle` call that returns no output; output SHALL fail the session. A guest that advertised nothing SHALL receive no notification.
+
+#### Scenario: Published guest that advertises nothing
+- **WHEN** the host completes the handshake with the Python `0.4.2` guest and later ends the session
+- **THEN** `morphir.initialized` and `morphir.exit` are not delivered to the guest
+- **AND** the instance ends without a further call
+
+#### Scenario: Guest that accepts notifications
+- **WHEN** a guest advertises that it accepts notifications and the host completes the handshake
+- **THEN** `morphir.initialized` is one `handle` call that returns no output
+- **AND** `morphir.exit` is one `handle` call, after which the instance ends
+
+#### Scenario: Guest answers a notification
+- **WHEN** a guest that accepts notifications returns output for `morphir.initialized`
+- **THEN** the session fails
+
+#### Scenario: Cancellation during a call
+- **WHEN** the host cancels a request while the guest is inside `handle`
+- **THEN** the host stops the guest, and no `$/cancelRequest` call is attempted
 
 ### Requirement: One message per call
 A host SHALL pass exactly one complete JSON-RPC message per `handle` call, as UTF-8 bytes without a `Content-Length` header, and SHALL accept at most one response per call. A request over the session's request byte limit SHALL be refused with `extension.request_limit` before the guest is called. A response over the response byte limit SHALL fail the session with `extension.response_limit`.

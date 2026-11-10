@@ -35,7 +35,7 @@ $ morphir extension runtimes --json
         "kind": "wasm",
         "available": true,
         "engine": {"name": "wasmtime", "version": "50.0.1"},
-        "profiles": ["morphir-bytes-v1", "extism-kernel-v1"],
+        "profiles": ["extism-kernel-v1"],
         "bounds": {"memoryBytes": 268435456, "deadline": "enforced", "budget": "enforced"}
       }
     ]
@@ -58,20 +58,25 @@ Content-Length: 129                                                             
 
 ## ADDED Requirements
 
-### Requirement: Both profiles in every offering
-Each of the `native-aot`, `self-contained`, `framework-dependent` and `dotnet-tool` offerings SHALL run `morphir-bytes-v1` and `extism-kernel-v1` guests as `mep/wasm-execution-profiles` defines, on every platform where that offering declares the WASM runtime available. All offerings of one release SHALL use the same engine version.
+### Requirement: The Extism profile in every offering
+Each of the `native-aot`, `self-contained`, `framework-dependent` and `dotnet-tool` offerings SHALL run `extism-kernel-v1` guests as `mep/wasm-execution-profiles` defines, on every platform where that offering declares the WASM runtime available. All offerings of one release SHALL use the same engine version. The host SHALL NOT run `morphir-bytes-v1` guests.
 
 #### Scenario: Same guest across offerings
 - **WHEN** the Python extension compiles the fixed generic package under each offering on Linux x64
 - **THEN** every offering returns the same IR
 - **AND** each reports the same engine name and version
 
+#### Scenario: Byte-profile module
+- **WHEN** `extensions.gleam.path` names the Gleam extension `0.4.0` module and a command selects it
+- **THEN** the host refuses it with `extension.abi_unsupported`, naming `morphir-bytes-v1`
+- **AND** the diagnostic states that this host runs Extism modules
+
 ### Requirement: Runtime availability is reported
 The host SHALL report, without loading a module, whether its WASM runtime is available, the engine name and version, the supported profiles and the bounds it enforces. When the runtime is unavailable it SHALL state a reason. The report SHALL come from the running executable and not from its name or install path.
 
 #### Scenario: Supported platform
 - **WHEN** a user asks the Native AOT host on Linux x64 for its runtimes
-- **THEN** the report lists `wasm` as available with both profiles and the enforced bounds
+- **THEN** the report lists `wasm` as available with the profile `extism-kernel-v1` and the enforced bounds
 
 #### Scenario: Unsupported platform
 - **WHEN** a user asks a host running on Linux musl
@@ -164,11 +169,11 @@ With `--json` the worker SHALL write `started`, `output`, `fault`, `refused` and
 - **THEN** it exits with status 2 and writes no frame to stdout
 
 ### Requirement: Packaged engine is qualified
-A release SHALL claim the WASM runtime for an offering and platform only after the released artifact, on a clean machine of that platform, has run one guest of each profile and one refusal of each bound. A run from the build directory SHALL NOT count.
+A release SHALL claim the WASM runtime for an offering and platform only after the released artifact, on a clean machine of that platform, has run one published Extism guest and one crafted module for each bound. A run from the build directory SHALL NOT count.
 
 #### Scenario: Single-file artifact
 - **WHEN** release qualification runs the single-file Native AOT artifact for Windows x64 in a clean environment
-- **THEN** both profile guests answer and the runaway guest ends with outcome `deadline`
+- **THEN** the published guest answers and the runaway guest is stopped no later than its deadline
 - **AND** the receipt records the artifact digest and how the engine was loaded
 
 #### Scenario: Platform where static linking failed

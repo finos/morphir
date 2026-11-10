@@ -22,11 +22,11 @@ flowchart LR
   K --> R[Host qualification report]
 ```
 
-Each crafted module is a few lines of WebAssembly text that does one wrong thing. This one loops forever, and its expected observation is outcome `deadline`:
+Each crafted module is a few lines of WebAssembly text that does one wrong thing. This one loops forever, and its expected observation is that the host stops it no later than the call deadline:
 
 ```wat
 (module
-  (import "morphir_bytes_v1" "input_len" (func (result i32)))
+  (import "extism:host/env" "input_length" (func (result i64)))
   (memory 1)
   (func (export "handle") (result i32)
     (loop $spin (br $spin))
@@ -41,10 +41,10 @@ Illustrative record. Field names are fixed with the report contract.
 
 ```json
 {
-  "caseId": "bounds/deadline-bytes",
-  "module": {"sha256": "9c1e...", "declaredAbi": "morphir-bytes-v1"},
-  "expected": {"outcome": "deadline", "withinSeconds": [10, 12]},
-  "observed": {"outcome": "deadline", "elapsedSeconds": 10.03},
+  "caseId": "bounds/spin-extism",
+  "module": {"sha256": "9c1e...", "declaredAbi": "extism-kernel-v1"},
+  "expected": {"fault": "call-deadline", "withinSeconds": [30, 32]},
+  "observed": {"fault": "call-deadline", "elapsedSeconds": 30.04},
   "result": "pass"
 }
 ```
@@ -81,11 +81,19 @@ The runner SHALL drive a host through a command that answers Content-Length fram
 - **THEN** both runs use the same runner code path and the same corpus
 
 ### Requirement: Published guests as positive evidence
-The kit SHALL run the generic guest kit through the host for at least one published `extism-kernel-v1` guest and one published `morphir-bytes-v1` guest, each pinned by digest. A host SHALL NOT qualify on crafted cases alone.
+The kit SHALL run the generic guest kit through the host for at least one published `extism-kernel-v1` guest, pinned by digest. A host that declares `morphir-bytes-v1` SHALL also run one published guest of that profile. A host SHALL NOT qualify on crafted cases alone.
 
 #### Scenario: Refusals pass but compile fails
 - **WHEN** a host passes every crafted case and the Python guest's compile returns a different IR
 - **THEN** the host is not qualified
+
+### Requirement: Cases follow the profiles a host declares
+Every case for `extism-kernel-v1` SHALL apply to every host. A case that needs a `morphir-bytes-v1` session SHALL apply only to a host that declares that profile, and SHALL be recorded as `not_applicable` for any other. A host that does not declare the profile SHALL still pass the case that refuses a byte-profile module by name.
+
+#### Scenario: Extism-only host
+- **WHEN** the .NET host, which declares only `extism-kernel-v1`, is qualified
+- **THEN** the byte-profile result-code cases are recorded as `not_applicable`
+- **AND** the case that offers it a byte-profile module passes when the host refuses with `extension.abi_unsupported`
 
 ### Requirement: Unenforced bounds stay visible
 The report SHALL record, for each bound, whether the host declared it enforced. A case for a bound the host does not enforce SHALL be recorded as `not_enforced`, not as passed. Qualification SHALL require the memory ceiling and the call deadline; the instruction budget MAY be `not_enforced`.
@@ -102,12 +110,12 @@ The report SHALL record, for each bound, whether the host declared it enforced. 
 A case whose module never returns SHALL pass when the host ends the call no later than the profile's call deadline plus a fixed margin, by the instruction budget or by the deadline. The report SHALL record which bound ended it. A call still running after the margin SHALL fail the case.
 
 #### Scenario: Metering host
-- **WHEN** a host that enforces the instruction budget runs the spinning byte-profile module
-- **THEN** the call ends with fault `budget-exhausted` before 10 seconds and the case passes
+- **WHEN** a host that enforces the instruction budget runs the spinning Extism module
+- **THEN** the call ends with fault `budget-exhausted` before 30 seconds and the case passes
 
 #### Scenario: Host without metering
 - **WHEN** a host without metering runs the same module
-- **THEN** the call ends with fault `call-deadline` between 10 and 12 seconds and the case passes
+- **THEN** the call ends with fault `call-deadline` between 30 and 32 seconds and the case passes
 
 ### Requirement: Report identity
 A host qualification report SHALL identify the runner, the corpus digest, the profile contract version, the host executable's path and digest, its declared offering, platform and engine, and each module's digest. `report-check` SHALL recompute the verdict from the recorded observations.
