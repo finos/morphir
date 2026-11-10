@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" role="img" aria-labelledby="title desc">
+  <title id="title">F# setup on a machine without .NET</title>
+  <desc id="desc">The user runs setup with the fsharp preset. morphirup verifies the host, frontend and provider bindings, then asks the AOT morphir host to check locked readiness. The host negotiates with the F# process frontend and compiles a fixed package, then asks the F# backend to generate fixed F# output. morphirup reports readiness with exact identities and checks.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#475569"/></marker></defs>
+  <rect width="760" height="380" rx="16" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#172554" font-size="15">
+    <g font-weight="700">
+      <rect x="15" y="15" width="120" height="40" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="75" y="40">User</text>
+      <rect x="170" y="15" width="120" height="40" rx="8" fill="#172554"/><text x="230" y="40" fill="#ffffff">morphirup</text>
+      <rect x="325" y="15" width="130" height="40" rx="8" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/><text x="390" y="40">AOT morphir</text>
+      <rect x="490" y="15" width="120" height="40" rx="8" fill="#fef3c7" stroke="#a16207" stroke-width="2"/><text x="550" y="40">F# frontend</text>
+      <rect x="635" y="15" width="110" height="40" rx="8" fill="#dcfce7" stroke="#15803d" stroke-width="2"/><text x="690" y="40">F# backend</text>
+    </g>
+    <g stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 4"><path d="M75 55 V365"/><path d="M230 55 V365"/><path d="M390 55 V365"/><path d="M550 55 V365"/><path d="M690 55 V365"/></g>
+    <g fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)">
+      <path d="M75 95 H224"/><path d="M230 145 C270 145 270 175 236 175"/><path d="M230 220 H384"/><path d="M390 265 H544"/><path d="M390 305 H684"/>
+    </g>
+    <path d="M224 345 H81" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+    <text x="152" y="88">setup --preset fsharp</text>
+    <text x="320" y="152" text-anchor="start">verify host, frontend and</text><text x="320" y="170" text-anchor="start">provider bindings</text>
+    <text x="310" y="213">check locked readiness</text>
+    <text x="470" y="258">negotiate, compile fixed package</text>
+    <text x="545" y="298">generate fixed F# output</text>
+    <text x="152" y="338">ready: exact identities and checks</text>
+  </g>
+</svg>

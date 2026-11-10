@@ -89,6 +89,10 @@ jobs:
               - 'website/static/schemas/toolset-recipe-*.schema.json'
               - 'website/static/schemas/toolchain-*.schema.json'
               - 'website/static/schemas/morphirup-result-*.schema.json'
+              # the narrative's examples, links and diagrams are checked by that crate's tests
+              - 'docs/design/proposals/toolchain-acquisition.md'
+              - 'docs/design/proposals/index.md'
+              - 'docs/assets/toolchain-*.svg'
               - 'completions/**'
               # asserts every workspace package follows the current Rust baseline
               - 'tests/rust/test_workspace_rust_baseline.py'

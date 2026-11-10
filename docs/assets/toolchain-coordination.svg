@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="270" viewBox="0 0 760 270" role="img" aria-labelledby="title desc">
+  <title id="title">One manager coordinates two acquisition authorities</title>
+  <desc id="desc">morphirup resolves a toolchain request and recipe, obtains a host through authenticated tool release metadata and extensions through their existing descriptors, claims and locks, then activates a generation with the exact host and providers. MEP remains the contract for running an extension.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#475569"/></marker></defs>
+  <rect width="760" height="270" rx="16" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#172554" font-size="16">
+    <rect x="15" y="18" width="205" height="66" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="118" y="46" font-weight="700">Request + recipe</text><text x="118" y="68">Host, profile, toolset</text>
+    <rect x="280" y="18" width="205" height="66" rx="10" fill="#172554"/>
+    <text x="382" y="46" font-weight="700" fill="#ffffff">morphirup</text><text x="382" y="68" fill="#ffffff">Resolve and coordinate</text>
+    <rect x="540" y="18" width="205" height="66" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+    <text x="642" y="46" font-weight="700">Active generation</text><text x="642" y="68">Exact host + providers</text>
+    <rect x="130" y="160" width="230" height="70" rx="10" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+    <text x="245" y="190" font-weight="700">Tool authority</text><text x="245" y="213">TUF release metadata</text>
+    <rect x="410" y="160" width="230" height="70" rx="10" fill="#fef3c7" stroke="#a16207" stroke-width="2"/>
+    <text x="525" y="190" font-weight="700">Extension authority</text><text x="525" y="213">Descriptors, claims, locks</text>
+    <g fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)">
+      <path d="M220 51 H274"/><path d="M485 51 H534"/><path d="M350 84 L250 154"/><path d="M415 84 L520 154"/>
+    </g>
+    <text x="380" y="258" font-size="14" fill="#475569">The manager joins existing contracts. MEP remains the contract for running an extension.</text>
+  </g>
+</svg>

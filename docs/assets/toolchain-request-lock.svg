@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="200" viewBox="0 0 780 200" role="img" aria-labelledby="title desc">
+  <title id="title">A checked-in request and lock</title>
+  <desc id="desc">The toolchain.toml request goes through explicit resolution into toolchain.lock.json. Restore installs the exact locked artifacts, the toolchain then runs offline, and compilation and generation write to the configured workspace out root.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#475569"/></marker></defs>
+  <rect width="780" height="200" rx="16" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#172554" font-size="15">
+    <rect x="10" y="40" width="115" height="70" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="67" y="70" font-weight="700">toolchain</text><text x="67" y="92">.toml request</text>
+    <rect x="140" y="40" width="115" height="70" rx="10" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/><text x="197" y="70" font-weight="700">Explicit</text><text x="197" y="92">resolution</text>
+    <rect x="270" y="40" width="115" height="70" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="327" y="70" font-weight="700">toolchain</text><text x="327" y="92">.lock.json</text>
+    <rect x="400" y="40" width="115" height="70" rx="10" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/><text x="457" y="70" font-weight="700">Restore exact</text><text x="457" y="92">artifacts</text>
+    <rect x="530" y="40" width="105" height="70" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="2"/><text x="582" y="70" font-weight="700">Run</text><text x="582" y="92">offline</text>
+    <rect x="650" y="40" width="120" height="70" rx="10" fill="#fef3c7" stroke="#a16207" stroke-width="2"/><text x="710" y="70" font-weight="700">Workspace</text><text x="710" y="92">out root</text>
+    <g fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)">
+      <path d="M125 75 H134"/><path d="M255 75 H264"/><path d="M385 75 H394"/><path d="M515 75 H524"/><path d="M635 75 H644"/>
+    </g>
+    <text x="197" y="150" font-size="14" fill="#475569">Checked in: request and lock</text>
+    <text x="582" y="150" font-size="14" fill="#475569">Local: installed artifacts, receipts, launch paths</text>
+    <path d="M10 165 H385" stroke="#2563eb" stroke-width="3"/><path d="M400 165 H770" stroke="#15803d" stroke-width="3"/>
+  </g>
+</svg>
