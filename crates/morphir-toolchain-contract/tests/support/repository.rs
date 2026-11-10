@@ -514,6 +514,30 @@ pub const BACKEND_ID: &str = "morphir-fsharp-backend";
 pub const BACKEND_VERSION: &str = "0.1.0";
 pub const BACKEND_DIR: &str = "extensions/fsharp-backend/0.1.0";
 
+/// A release whose descriptor lists its archive with a digest that is not
+/// the archive's.
+pub const LISTED_DIGEST_DIR: &str = "extensions/fsharp-frontend-listed-digest/0.6.0";
+/// MEP 0.1 frontends claiming IR 3 and IR 4.
+pub const LEGACY_IR3_DIR: &str = "extensions/fsharp-frontend-legacy-ir3/0.6.0";
+pub const LEGACY_IR4_DIR: &str = "extensions/fsharp-frontend-legacy-ir4/0.6.0";
+/// A portable WASM frontend release and its module.
+pub const WASM_DIR: &str = "extensions/fsharp-frontend-wasm/0.6.0";
+pub const WASM_FILE: &str = "morphir-bytes-v1.wasm";
+/// A tool whose authenticated release state is a tool release but whose
+/// release bytes are not one.
+pub const NOT_A_RELEASE_TOOL: &str = "morphir-dotnet-not-a-release";
+/// The preset whose recipes exercise channel selection, and those recipes:
+/// version, channels and status.
+pub const CHANNEL_PRESET: &str = "channel-example";
+pub const CHANNEL_RECIPES: [(&str, &[&str], &str); 6] = [
+    ("1.0.0", &["stable"], "active"),
+    ("1.1.0", &["stable"], "active"),
+    ("1.2.0", &["stable"], "yanked"),
+    ("1.3.0", &["stable"], "revoked"),
+    ("2.0.0-rc.1", &["stable", "preview"], "active"),
+    ("2.0.0-preview.2", &["preview/next"], "active"),
+];
+
 pub fn extension_artifact(dir: &str, platform: PlatformId) -> String {
     format!("{dir}/{platform}.zip")
 }
@@ -576,19 +600,54 @@ pub fn add_extension_release(
 ) {
     let artifacts = on
         .iter()
-        .map(|platform| {
-            let path = extension_artifact(dir, *platform);
+        .map(|platform| ReleaseArtifact::Process(*platform))
+        .collect::<Vec<_>>();
+    add_release(targets, dir, store_id, version, claims, &artifacts, |_| {});
+}
+
+/// One artifact of a version-2 extension release.
+#[derive(Clone, Copy)]
+pub enum ReleaseArtifact {
+    /// A process archive for one platform, `<platform>.zip`.
+    Process(PlatformId),
+    /// A portable WASM module with this file name.
+    Wasm(&'static str),
+}
+
+/// Publish a version-2 extension release descriptor with the listed
+/// artifacts. `edit` adjusts the descriptor before it is written.
+pub fn add_release(
+    targets: &mut Targets,
+    dir: &str,
+    store_id: &str,
+    version: &str,
+    claims: &Claims,
+    artifacts: &[ReleaseArtifact],
+    edit: impl FnOnce(&mut Value),
+) {
+    let artifacts = artifacts
+        .iter()
+        .map(|artifact| {
+            let (filename, what) = match artifact {
+                ReleaseArtifact::Process(platform) => (
+                    format!("{platform}.zip"),
+                    format!("{platform} process archive"),
+                ),
+                ReleaseArtifact::Wasm(filename) => {
+                    ((*filename).to_owned(), "portable WASM module".to_owned())
+                }
+            };
+            let path = format!("{dir}/{filename}");
             targets.insert(
                 path.clone(),
                 Target {
-                    bytes: synthetic(&format!("{store_id} {version} {platform} process archive")),
+                    bytes: synthetic(&format!("{store_id} {version} {what}")),
                     custom: None,
                 },
             );
-            json!({
-                "platform": platform.target_triple(),
+            let mut entry = json!({
                 "runtime": "process",
-                "filename": format!("{platform}.zip"),
+                "filename": filename,
                 "sha256": digest_of(targets, &path),
                 "claims": {
                     "claimsVersion": "0.1.0-draft.2",
@@ -602,10 +661,17 @@ pub fn add_extension_release(
                     "capabilities": claims.capabilities
                 },
                 "claimCheck": "unchecked"
-            })
+            });
+            match artifact {
+                ReleaseArtifact::Process(platform) => {
+                    entry["platform"] = json!(platform.target_triple());
+                }
+                ReleaseArtifact::Wasm(_) => entry["runtime"] = json!("wasm"),
+            }
+            entry
         })
         .collect::<Vec<_>>();
-    let descriptor = json!({
+    let mut descriptor = json!({
         "schemaVersion": "2.0.0-draft.2",
         "extensionId": store_id,
         "shortId": store_id.trim_start_matches("morphir-"),
@@ -613,6 +679,7 @@ pub fn add_extension_release(
         "platformDifferences": "none",
         "artifacts": artifacts
     });
+    edit(&mut descriptor);
     targets.insert(
         format!("{dir}/release.json"),
         Target {
@@ -679,6 +746,32 @@ pub fn tool_frontend_provider(targets: &Targets, repository: &str, dir: &str) ->
         "protocolVersion": "0.2.0-draft.1",
         "modelTuple": tuple("morphir.frontend.compileModel", "4.0.0"),
         "prerequisites": [runtime(), sdk()]
+    })
+}
+
+/// A MEP 0.1 process frontend bound to the win-x64 archive of `dir`.
+pub fn legacy_frontend_provider(targets: &Targets, repository: &str, dir: &str) -> Value {
+    let mut provider = frontend_provider(targets, repository, dir, &[platform("win-x64")]);
+    let object = provider.as_object_mut().unwrap();
+    object.remove("modelTuple");
+    object.insert("protocolVersion".into(), json!("0.1"));
+    object.insert("modelInput".into(), model_input());
+    provider
+}
+
+/// A WASM frontend for `morphir-bytes-v1` bound to `artifact`, with the
+/// portable WASM release's descriptor.
+pub fn wasm_frontend_provider(targets: &Targets, repository: &str, artifact: &str) -> Value {
+    let (descriptor, digest) = descriptor_binding(targets, WASM_DIR);
+    json!({
+        "operation": "compile", "language": "fsharp", "delivery": "wasm",
+        "abi": "morphir-bytes-v1",
+        "extensionId": FRONTEND_ID, "version": FRONTEND_VERSION,
+        "repositoryId": repository,
+        "descriptorTarget": descriptor, "descriptorSha256": digest,
+        "artifactTarget": artifact, "artifactSha256": digest_of(targets, artifact),
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTuple": tuple("morphir.frontend.compileModel", "4.0.0")
     })
 }
 
@@ -855,6 +948,49 @@ pub fn published() -> Targets {
     });
     let revoked_recipe = offering_recipe(&targets, "negative-recipe-revoked");
     add_recipe(&mut targets, &revoked_recipe, &[], "revoked", |_| {});
+    // An authenticated recipe whose document is a later contract draft.
+    let mut unreadable = offering_recipe(&targets, "negative-recipe-unreadable");
+    unreadable["schemaVersion"] = json!("0.1.0-draft.2");
+    add_recipe(&mut targets, &unreadable, &[], "active", |_| {});
+
+    // Host offerings whose release descriptor is unpublished, or published
+    // with bytes that are not a version 1 tool release.
+    let mut unpublished_source = offering_recipe(&targets, "negative-host-source-unpublished");
+    unpublished_source["hosts"][0]["source"]["toolId"] = json!("morphir-dotnet-unpublished");
+    add_recipe(&mut targets, &unpublished_source, &[], "active", |_| {});
+    let not_a_release = format!("releases/{NOT_A_RELEASE_TOOL}/{HOST_VERSION}.json");
+    targets.insert(
+        not_a_release,
+        Target {
+            bytes: String::from_utf8(canonical(&json!({
+                "schemaVersion": 1,
+                "kind": "morphir-tool-release",
+                "note": "TEST-ONLY: the authenticated state says tool-release, the bytes are not one"
+            })))
+            .unwrap(),
+            custom: Some(json!({
+                "schemaVersion": 1,
+                "kind": "tool-release",
+                "toolId": NOT_A_RELEASE_TOOL,
+                "version": HOST_VERSION,
+                "channels": [],
+                "status": "active",
+                "compatibility": { "morphirCli": ">=0.0.0" },
+                "platforms": [v1_platform(windows)]
+            })),
+        },
+    );
+    let mut not_v1 = offering_recipe(&targets, "negative-host-release-not-v1");
+    not_v1["hosts"][0]["source"]["toolId"] = json!(NOT_A_RELEASE_TOOL);
+    add_recipe(&mut targets, &not_v1, &[], "active", |_| {});
+
+    // Recipes of one preset on several channels and statuses, for channel
+    // selection. Only their authenticated state is read.
+    for (version, channels, status) in CHANNEL_RECIPES {
+        let mut recipe = offering_recipe(&targets, CHANNEL_PRESET);
+        recipe["version"] = json!(version);
+        add_recipe(&mut targets, &recipe, channels, status, |_| {});
+    }
 
     add_extension_release(
         &mut targets,
@@ -899,6 +1035,50 @@ pub fn published() -> Targets {
         BACKEND_VERSION,
         &csharp,
         &[windows],
+    );
+
+    // A release whose descriptor lists its win-x64 archive with another digest.
+    add_release(
+        &mut targets,
+        LISTED_DIGEST_DIR,
+        FRONTEND_ID,
+        FRONTEND_VERSION,
+        &Claims::frontend(),
+        &[ReleaseArtifact::Process(windows)],
+        |descriptor| descriptor["artifacts"][0]["sha256"] = json!("8".repeat(64)),
+    );
+    // MEP 0.1 frontends, whose claims state IR versions instead of tuples.
+    for (dir, ir_versions) in [(LEGACY_IR3_DIR, "3"), (LEGACY_IR4_DIR, "4")] {
+        let claims = Claims {
+            id: FRONTEND_ID,
+            types: vec!["frontend"],
+            protocols: vec!["0.1"],
+            capabilities: json!({
+                "frontend": {
+                    "languages": [{ "id": "fsharp", "fileExtensions": [".fs"] }],
+                    "compile": true,
+                    "irVersions": [ir_versions]
+                }
+            }),
+        };
+        add_extension_release(
+            &mut targets,
+            dir,
+            FRONTEND_ID,
+            FRONTEND_VERSION,
+            &claims,
+            &[windows],
+        );
+    }
+    // A portable WASM frontend for the morphir-bytes-v1 ABI.
+    add_release(
+        &mut targets,
+        WASM_DIR,
+        FRONTEND_ID,
+        FRONTEND_VERSION,
+        &Claims::frontend(),
+        &[ReleaseArtifact::Wasm(WASM_FILE)],
+        |_| {},
     );
 
     let repository = repository_id();
@@ -949,6 +1129,60 @@ pub fn published() -> Targets {
                 &repository,
                 "extensions/fsharp-frontend-elm-claims/0.6.0",
             );
+        }),
+        provider("negative-descriptor-unpublished", &|providers| {
+            providers[0]["descriptorTarget"] =
+                json!(format!("{FRONTEND_DIR}/missing-release.json"));
+        }),
+        provider("negative-descriptor-not-a-release", &|providers| {
+            let archive = extension_artifact(FRONTEND_DIR, windows);
+            providers[0]["descriptorTarget"] = json!(archive);
+            providers[0]["descriptorSha256"] = json!(digest_of(&targets, &archive));
+        }),
+        provider("negative-provider-version", &|providers| {
+            providers[0]["version"] = json!("0.6.1");
+        }),
+        provider("negative-artifact-not-listed", &|providers| {
+            let other = extension_artifact(BACKEND_DIR, windows);
+            providers[0]["platforms"]["win-x64"] =
+                json!({ "artifactTarget": other, "artifactSha256": digest_of(&targets, &other) });
+        }),
+        provider("negative-listed-artifact-digest", &|providers| {
+            providers[0] =
+                frontend_provider(&targets, &repository, LISTED_DIGEST_DIR, &windows_only);
+        }),
+        provider("negative-package-unpublished", &|providers| {
+            providers[1]["packageTarget"] =
+                json!("packages/nuget/morphir.frontend.fsharp.extension/0.6.0/missing.nupkg");
+        }),
+        provider("negative-package-digest", &|providers| {
+            providers[1]["packageSha256"] = json!("5".repeat(64));
+        }),
+        provider("legacy-ir-major", &|providers| {
+            providers[0] = legacy_frontend_provider(&targets, &repository, LEGACY_IR4_DIR);
+        }),
+        provider("negative-legacy-ir-version", &|providers| {
+            providers[0] = legacy_frontend_provider(&targets, &repository, LEGACY_IR3_DIR);
+        }),
+        provider("wasm-frontend", &|providers| {
+            providers[0] =
+                wasm_frontend_provider(&targets, &repository, &format!("{WASM_DIR}/{WASM_FILE}"));
+        }),
+        provider("negative-wasm-artifact-not-listed", &|providers| {
+            providers[0] = wasm_frontend_provider(
+                &targets,
+                &repository,
+                &extension_artifact(FRONTEND_DIR, windows),
+            );
+        }),
+        provider("negative-process-bound-to-wasm", &|providers| {
+            let (descriptor, digest) = descriptor_binding(&targets, WASM_DIR);
+            let module = format!("{WASM_DIR}/{WASM_FILE}");
+            providers[0]["descriptorTarget"] = json!(descriptor);
+            providers[0]["descriptorSha256"] = json!(digest);
+            providers[0]["platforms"] = json!({
+                "win-x64": { "artifactTarget": module, "artifactSha256": digest_of(&targets, &module) }
+            });
         }),
     ];
     for (preset, dir, _, _) in claim_variants() {
@@ -1186,4 +1420,35 @@ pub fn lock_with_unbound_provider(lock: &Value) -> Value {
     let mut lock = lock.clone();
     lock["platforms"]["win-x64"]["providers"][0]["artifactSha256"] = json!("4".repeat(64));
     lock
+}
+
+/// Frozen-lock variants that each break one lock-against-recipe rule, by
+/// file name under `signed/negative/`.
+pub fn lock_recipe_negatives(lock: &Value, targets: &Targets) -> Vec<(&'static str, Value)> {
+    let mut host_not_offered = lock.clone();
+    host_not_offered["host"]["version"] = json!("1.2.4");
+
+    let mut host_artifact = lock.clone();
+    let other = host_target("morphir-dotnet-self-contained", platform("win-x64"));
+    host_artifact["platforms"]["win-x64"]["hostTarget"] = json!(other);
+    host_artifact["platforms"]["win-x64"]["hostSha256"] = json!(digest_of(targets, &other));
+
+    // Every closure drops the generator, so the lock itself stays consistent
+    // while its operations are not the recipe's.
+    let mut operations = lock.clone();
+    for closure in operations["platforms"]
+        .as_object_mut()
+        .unwrap()
+        .values_mut()
+    {
+        closure["providers"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|provider| provider["operation"] != "generate");
+    }
+    vec![
+        ("lock-host-not-offered.lock.json", host_not_offered),
+        ("lock-host-artifact-substituted.lock.json", host_artifact),
+        ("lock-operations-differ.lock.json", operations),
+    ]
 }

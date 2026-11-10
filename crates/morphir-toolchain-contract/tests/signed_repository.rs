@@ -96,6 +96,9 @@ fn committed_fixtures_are_reproducible_from_their_labels() {
         signed_dir().join("negative/lock-provider-not-in-recipe.lock.json"),
         &repository::lock_with_unbound_provider(&locks[0].2),
     );
+    for (name, lock) in repository::lock_recipe_negatives(&locks[0].2, &repository::published()) {
+        store(signed_dir().join("negative").join(name), &lock);
+    }
 }
 
 #[test]
@@ -146,40 +149,122 @@ async fn the_v1_tool_client_selects_each_offering_by_tool_id_and_platform() {
         .await
         .unwrap();
     let (_keep, targets) = authenticated(&fixture, &fixture["metadata"]).await;
+    let cases = cases();
+    let section = &cases["v1Client"];
     let recipe = targets
-        .check_recipe("toolchains/recipes/fsharp-builtin/1.0.0.json")
+        .check_recipe(section["recipe"].as_str().unwrap())
         .await
         .unwrap();
-    let cli = Version::parse(cases()["referenceClient"]["cliVersion"].as_str().unwrap()).unwrap();
+    let cli = Version::parse(cases["referenceClient"]["cliVersion"].as_str().unwrap()).unwrap();
+    let selections = section["selections"].as_array().unwrap();
     let mut selected = BTreeSet::new();
-    for offering in &ARCHIVE_OFFERINGS {
+    for case in selections {
+        let tool_id = case["toolId"].as_str().unwrap();
+        assert_eq!(case["channel"], "stable");
+        let platform = morphir_distribution::Platform::new(
+            case["platform"]["os"].as_str().unwrap(),
+            case["platform"]["arch"].as_str().unwrap(),
+        )
+        .unwrap();
+        let resolved = client
+            .resolve(
+                &ToolId::parse(tool_id).unwrap(),
+                &Selection::Channel(Channel::Stable),
+                &platform,
+                &cli,
+            )
+            .await
+            .unwrap_or_else(|error| panic!("{tool_id} {platform:?}: {error}"));
+        let expected = case["expected"]["targetPath"].as_str().unwrap();
+        assert_eq!(resolved.artifact().target_path().as_str(), expected);
+        assert_eq!(
+            Some(resolved.digest()),
+            targets.digest(expected).map(|d| d.digest())
+        );
+        // The recipe binds the same artifact for that deployment and platform.
         let host = recipe
             .hosts()
             .iter()
-            .find(|host| host.deployment().as_str() == offering.deployment)
+            .find(|host| host.deployment().as_str() == case["deployment"])
             .unwrap();
-        for platform in repository::platforms() {
-            let resolved = client
-                .resolve(
-                    &ToolId::parse(offering.tool_id).unwrap(),
-                    &Selection::Channel(Channel::Stable),
-                    &platform.tool_platform().unwrap(),
-                    &cli,
-                )
-                .await
-                .unwrap_or_else(|error| panic!("{} {platform}: {error}", offering.tool_id));
-            let binding = &host.platforms()[&platform];
-            assert_eq!(
-                resolved.artifact().target_path().as_str(),
-                binding.target.as_str()
-            );
-            assert_eq!(resolved.digest(), binding.sha256.digest());
-            selected.insert(resolved.digest().clone());
-        }
+        let binding = &host.platforms()
+            [&PlatformId::parse(case["recipePlatform"].as_str().unwrap()).unwrap()];
+        assert_eq!(binding.target.as_str(), expected);
+        assert_eq!(resolved.digest(), binding.sha256.digest());
+        selected.insert(resolved.digest().clone());
     }
     // Implementation, deployment and platform are each part of the identity,
     // although every Windows archive's entry point is morphir.exe.
-    assert_eq!(selected.len(), 18);
+    assert_eq!(selections.len(), ARCHIVE_OFFERINGS.len() * 6);
+    assert_eq!(selected.len(), selections.len());
+}
+
+/// Recipe channel selection reads only the authenticated recipe state: the
+/// greatest `active` recipe of the preset on the channel, final versions only
+/// for `stable`.
+#[tokio::test]
+async fn channel_selection_cases() {
+    let fixture = fixture();
+    let (_keep, targets) = authenticated(&fixture, &fixture["metadata"]).await;
+    let mut failures = Vec::new();
+    for case in cases()["channelSelection"].as_array().unwrap() {
+        let name = case["name"].as_str().unwrap();
+        let preset = PresetId::parse(case["preset"].as_str().unwrap()).unwrap();
+        let channel = Channel::parse(case["channel"].as_str().unwrap()).unwrap();
+        let result = targets.select_recipe(&preset, &channel);
+        let matches = match (&result, case["expected"]["recipe"].as_str()) {
+            (Ok(path), Some(wanted)) => path.as_str() == wanted,
+            (Err(_), None) => outcome(result.clone()) == expected(case),
+            _ => false,
+        };
+        if !matches {
+            failures.push(format!("{name}: {result:?}"));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The TUF client compares expiry with the wall clock and has no way to take
+/// another time. The fixtures are therefore built so every case has the same
+/// outcome at any instant after the expired timestamp's expiry and before
+/// every other expiry; `referenceTime` names one such instant, and the
+/// current time must be inside that window too.
+#[test]
+fn every_case_has_one_outcome_across_the_reference_window() {
+    let fixture = fixture();
+    let instant = |text: &str| {
+        // RFC 3339 UTC timestamps of one fixed shape compare as strings.
+        assert!(text.len() == 20 && text.ends_with('Z'), "{text}");
+        text.to_owned()
+    };
+    let reference = instant(fixture["referenceTime"].as_str().unwrap());
+    let expired = instant(
+        fixture["rejectionMetadata"]["expiredTimestamp"]["signed"]["expires"]
+            .as_str()
+            .unwrap(),
+    );
+    let mut expiries = vec![instant(
+        fixture["trustedRoot"]["signed"]["expires"]
+            .as_str()
+            .unwrap(),
+    )];
+    for set in ["metadata", "learnedRevocation"] {
+        for role in ["timestamp", "snapshot", "targets"] {
+            expiries.push(instant(
+                fixture[set][role]["signed"]["expires"].as_str().unwrap(),
+            ));
+        }
+    }
+    let earliest = expiries.iter().min().unwrap().clone();
+    assert!(expired < reference && reference < earliest);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    // 2020-01-01T00:00:00Z and 2999-01-01T00:00:00Z as Unix seconds.
+    assert_eq!(expired, "2020-01-01T00:00:00Z");
+    assert_eq!(earliest, "2999-01-01T00:00:00Z");
+    assert!((1_577_836_800..32_472_144_000).contains(&now));
 }
 
 /// `>=0.0.0` matches no prerelease, so a v1 offering published with it is
@@ -201,12 +286,18 @@ async fn offering_releases_are_unchanged_v1_descriptors() {
             .join("../../website/static/schemas/tool-release-v1.schema.json"),
     );
     let validator = jsonschema::validator_for(&schema).unwrap();
-    let mut releases = 0;
-    for path in fixture["targetFiles"].as_object().unwrap().keys() {
-        if !path.starts_with("releases/") {
-            continue;
-        }
-        releases += 1;
+    let cases = cases();
+    assert_eq!(
+        cases["v1Descriptors"]["schema"],
+        "tool-release-v1.schema.json"
+    );
+    let listed = cases["v1Descriptors"]["releases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|path| path.as_str().unwrap().to_owned())
+        .collect::<BTreeSet<_>>();
+    for path in &listed {
         let bytes = targets.read(path).await.unwrap();
         let record: ToolReleaseRecord = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(record.schema_version(), 1, "{path}");
@@ -216,7 +307,17 @@ async fn offering_releases_are_unchanged_v1_descriptors() {
         );
         assert_eq!(targets.custom(path).unwrap()["kind"], "tool-release");
     }
-    assert_eq!(releases, ARCHIVE_OFFERINGS.len() + 1);
+    // Every published release is listed except the deliberate negative.
+    let published = fixture["targetFiles"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .filter(|path| path.starts_with("releases/"))
+        .filter(|path| !path.contains(repository::NOT_A_RELEASE_TOOL))
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    assert_eq!(listed, published);
+    assert_eq!(listed.len(), ARCHIVE_OFFERINGS.len() + 1);
 }
 
 fn summarize(closure: &morphir_toolchain_contract::PlatformClosure) -> Vec<Value> {
@@ -381,24 +482,41 @@ async fn trust_cases() {
 async fn frozen_locks_equal_the_resolution_of_their_requests() {
     let fixture = fixture();
     let (_keep, targets) = authenticated(&fixture, &fixture["metadata"]).await;
-    let six = PlatformId::FIRST_DELIVERY
-        .iter()
-        .map(|name| PlatformId::parse(name).unwrap())
-        .collect::<BTreeSet<_>>();
     for case in cases()["frozen"].as_array().unwrap() {
-        assert_eq!(case["expected"], "lock-equals-resolution");
+        let wanted = &case["expected"];
+        assert_eq!(wanted["lockEqualsResolution"], true);
         let recipe_path = case["recipe"].as_str().unwrap();
         let recipe = targets.check_recipe(recipe_path).await.unwrap();
         let read = |member: &str| {
             std::fs::read(signed_dir().join(case[member].as_str().unwrap())).unwrap()
         };
-        let request = read_request(&read("request")).unwrap();
+        let request_bytes = read("request");
+        let request = read_request(&request_bytes).unwrap();
         let lock = read_lock(&read("lock")).unwrap();
+        // The lock binds the exact request bytes and the authenticated recipe.
+        assert_eq!(
+            morphir_toolchain_contract::Sha256::of_bytes(&request_bytes).to_string(),
+            wanted["requestSha256"]
+        );
         lock.check_request(&request).unwrap();
+        assert_eq!(lock.recipe().sha256.to_string(), wanted["recipeSha256"]);
         assert_eq!(Some(&lock.recipe().sha256), targets.digest(recipe_path));
+        let platforms = wanted["platforms"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|name| PlatformId::parse(name.as_str().unwrap()).unwrap())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            platforms,
+            PlatformId::FIRST_DELIVERY
+                .iter()
+                .map(|name| PlatformId::parse(name).unwrap())
+                .collect::<BTreeSet<_>>()
+        );
         assert_eq!(
             lock.platforms().keys().copied().collect::<BTreeSet<_>>(),
-            six
+            platforms
         );
         for (platform, closure) in lock.platforms() {
             assert_eq!(

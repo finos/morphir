@@ -15,12 +15,13 @@ use crate::model::{Operation, Protocol};
 use crate::platform::PlatformId;
 use crate::reader::{index, join};
 use crate::recipe::{HostSource, RecipeDelivery, RecipeProvider, ToolsetRecipe};
+use futures_core::Stream;
 use morphir_distribution::{ArtifactRuntime, Channel, ReleaseBundleDescriptor, ToolReleaseRecord};
 use semver::Version;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
-use tough::{FilesystemTransport, IntoVec, Limits, RepositoryLoader, TargetName};
+use tough::{FilesystemTransport, Limits, RepositoryLoader, TargetName};
 
 /// One authenticated target entry.
 #[derive(Debug, Clone)]
@@ -222,14 +223,19 @@ impl AuthenticatedTargets {
 
     /// Read a target's bytes through the TUF client, which verifies their
     /// length and digest. Refusals have the empty path.
+    ///
+    /// As in [`Self::authenticate`], the length is decided first: bytes that
+    /// are longer or shorter than the authenticated length are
+    /// `target_length_mismatch`, and bytes of the right length that hash to
+    /// another digest are `target_digest_mismatch`.
     pub async fn read(&self, path: &str) -> Result<Vec<u8>> {
-        if !self.targets.contains_key(path) {
+        let Some(authenticated) = self.targets.get(path) else {
             return Err(Diagnostic::new(
                 Code::TargetNotAuthenticated,
                 "",
                 format!("{path} is not an authenticated target"),
             ));
-        }
+        };
         let name = TargetName::new(path)
             .map_err(|error| Diagnostic::new(Code::NonPortablePath, "", error.to_string()))?;
         let stream = self
@@ -244,10 +250,37 @@ impl AuthenticatedTargets {
                     format!("{path} is not available"),
                 )
             })?;
-        stream
-            .into_vec()
-            .await
-            .map_err(|error| Diagnostic::new(trust_code(&error, true), "", error.to_string()))
+        let mut stream = std::pin::pin!(stream);
+        let mut bytes = Vec::new();
+        while let Some(chunk) =
+            std::future::poll_fn(|context| stream.as_mut().poll_next(context)).await
+        {
+            match chunk {
+                Ok(chunk) => bytes.extend_from_slice(&chunk),
+                Err(error) => {
+                    let code = match trust_code(&error, true) {
+                        Code::TargetDigestMismatch
+                            if bytes.len() as u64 != authenticated.length =>
+                        {
+                            Code::TargetLengthMismatch
+                        }
+                        code => code,
+                    };
+                    return Err(Diagnostic::new(code, "", error.to_string()));
+                }
+            }
+        }
+        Ok(bytes)
+    }
+
+    /// Read a target that a recipe binding names. A refusal concerns the
+    /// binding, so it is reported at `member`, the binding member that named
+    /// the target, rather than at the empty path.
+    async fn read_bound(&self, path: &str, member: &str) -> Result<Vec<u8>> {
+        self.read(path).await.map_err(|mut refusal| {
+            refusal.path = member.to_owned();
+            refusal
+        })
     }
 
     /// A recipe target's authenticated state, or a refusal when the target is
@@ -378,7 +411,7 @@ impl AuthenticatedTargets {
                             format!("{tool_id} {} is revoked", host.version()),
                         ));
                     }
-                    let bytes = self.read(&path).await?;
+                    let bytes = self.read_bound(&path, &join(&host_path, "source")).await?;
                     let record: ToolReleaseRecord =
                         serde_json::from_slice(&bytes).map_err(|error| {
                             Diagnostic::new(
@@ -442,7 +475,9 @@ impl AuthenticatedTargets {
             let path = index("providers", position);
             let descriptor = provider.delivery().descriptor();
             self.bound(&path, "descriptorTarget", "descriptorSha256", descriptor)?;
-            let bytes = self.read(descriptor.target.as_str()).await?;
+            let bytes = self
+                .read_bound(descriptor.target.as_str(), &join(&path, "descriptorTarget"))
+                .await?;
             let release = read_descriptor(&bytes, &path)?;
             check_release_identity(&release, provider, &path)?;
             match provider.delivery() {

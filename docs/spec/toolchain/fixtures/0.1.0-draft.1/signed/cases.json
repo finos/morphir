@@ -127,6 +127,7 @@
     },
     {
       "name": "a musl machine is not given a glibc archive",
+      "rule": "resolve-platform",
       "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
       "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
       "platform": "linux-musl-x64",
@@ -137,6 +138,7 @@
     },
     {
       "name": "an unpublished deployment is not substituted",
+      "rule": "resolve-offering",
       "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
       "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"trimmed\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
       "platform": "win-x64",
@@ -147,6 +149,7 @@
     },
     {
       "name": "another implementation is not substituted",
+      "rule": "resolve-offering",
       "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
       "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"moonbit\"\ndeployment = \"native-aot\"\nchannel = \"stable\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
       "platform": "win-x64",
@@ -157,6 +160,7 @@
     },
     {
       "name": "an absent exact host version is not substituted",
+      "rule": "resolve-release",
       "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
       "request": "schemaVersion = \"0.1.0-draft.1\"\n[host]\nimplementation = \"dotnet\"\ndeployment = \"native-aot\"\nversion = \"1.2.2\"\n[toolset]\npreset = \"fsharp-builtin\"\n",
       "platform": "win-x64",
@@ -179,6 +183,7 @@
     },
     {
       "name": "a substituted host digest is refused",
+      "rule": "host-target-digest",
       "recipe": "toolchains/recipes/negative-digest-substituted/1.0.0.json",
       "expected": {
         "code": "target_digest_mismatch",
@@ -187,6 +192,7 @@
     },
     {
       "name": "another platform's host artifact is refused",
+      "rule": "host-target-platform",
       "recipe": "toolchains/recipes/negative-platform-substituted/1.0.0.json",
       "expected": {
         "code": "artifact_platform_mismatch",
@@ -195,6 +201,7 @@
     },
     {
       "name": "another deployment's host artifact is refused",
+      "rule": "host-target-listed",
       "recipe": "toolchains/recipes/negative-deployment-substituted/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -203,6 +210,7 @@
     },
     {
       "name": "an unpublished host target is refused",
+      "rule": "host-target-authenticated",
       "recipe": "toolchains/recipes/negative-unauthenticated-target/1.0.0.json",
       "expected": {
         "code": "target_not_authenticated",
@@ -211,6 +219,7 @@
     },
     {
       "name": "tool-artifact metadata that disagrees with its release is refused",
+      "rule": "host-target-metadata",
       "recipe": "toolchains/recipes/negative-artifact-metadata/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -219,6 +228,7 @@
     },
     {
       "name": "a recipe target of another contract version is refused",
+      "rule": "recipe-target-state",
       "recipe": "toolchains/recipes/negative-recipe-contract-version/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -227,6 +237,7 @@
     },
     {
       "name": "a recipe whose document disagrees with its authenticated version is refused",
+      "rule": "recipe-document-identity",
       "recipe": "toolchains/recipes/negative-recipe-preset/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -235,6 +246,7 @@
     },
     {
       "name": "a revoked recipe target is refused",
+      "rule": "recipe-target-revoked",
       "recipe": "toolchains/recipes/negative-recipe-revoked/1.0.0.json",
       "expected": {
         "code": "release_revoked",
@@ -243,6 +255,7 @@
     },
     {
       "name": "another platform's frontend archive is refused",
+      "rule": "provider-artifact-platform",
       "recipe": "toolchains/recipes/negative-frontend-platform-substituted/1.0.0.json",
       "expected": {
         "code": "artifact_platform_mismatch",
@@ -251,6 +264,7 @@
     },
     {
       "name": "a substituted frontend archive digest is refused",
+      "rule": "provider-artifact-bound",
       "recipe": "toolchains/recipes/negative-frontend-artifact-digest/1.0.0.json",
       "expected": {
         "code": "target_digest_mismatch",
@@ -259,6 +273,7 @@
     },
     {
       "name": "another release's descriptor digest is refused",
+      "rule": "provider-descriptor-bound",
       "recipe": "toolchains/recipes/negative-descriptor-digest-substituted/1.0.0.json",
       "expected": {
         "code": "target_digest_mismatch",
@@ -267,6 +282,7 @@
     },
     {
       "name": "a descriptor for another extension is refused",
+      "rule": "provider-descriptor-identity",
       "recipe": "toolchains/recipes/negative-descriptor-identity/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -275,6 +291,7 @@
     },
     {
       "name": "claims that name another extension than their descriptor are refused",
+      "rule": "provider-claims-identity",
       "recipe": "toolchains/recipes/negative-claims-identity/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -283,6 +300,7 @@
     },
     {
       "name": "claims for another language are refused",
+      "rule": "provider-claims-operand",
       "recipe": "toolchains/recipes/negative-claims-language/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -291,6 +309,7 @@
     },
     {
       "name": "claims without the exact model tuple are refused",
+      "rule": "provider-claims-model",
       "recipe": "toolchains/recipes/negative-claims-tuple/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -299,6 +318,7 @@
     },
     {
       "name": "claims of another capability kind are refused",
+      "rule": "provider-claims-kind",
       "recipe": "toolchains/recipes/negative-claims-kind/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -307,6 +327,7 @@
     },
     {
       "name": "claims without the MEP version are refused",
+      "rule": "provider-claims-protocol",
       "recipe": "toolchains/recipes/negative-claims-protocol/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -315,6 +336,7 @@
     },
     {
       "name": "a backend whose claims name another target is refused",
+      "rule": "provider-claims-operand",
       "recipe": "toolchains/recipes/negative-backend-target/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -323,6 +345,7 @@
     },
     {
       "name": "an artifact of another runtime is refused",
+      "rule": "provider-artifact-runtime",
       "recipe": "toolchains/recipes/negative-artifact-runtime/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
@@ -331,10 +354,161 @@
     },
     {
       "name": "a .NET tool delivery whose release claims another language is refused",
+      "rule": "provider-claims-operand",
       "recipe": "toolchains/recipes/negative-tool-claims-language/1.0.0.json",
       "expected": {
         "code": "release_descriptor_mismatch",
         "path": "providers[1].language"
+      }
+    },
+    {
+      "name": "a recipe target the repository does not list is refused",
+      "rule": "recipe-target-authenticated",
+      "recipe": "toolchains/recipes/absent/1.0.0.json",
+      "expected": {
+        "code": "target_not_authenticated",
+        "path": ""
+      }
+    },
+    {
+      "name": "a non-portable recipe target path is refused before anything is read",
+      "rule": "recipe-target-portable",
+      "recipe": "toolchains/recipes/con/1.0.0.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": ""
+      }
+    },
+    {
+      "name": "an authenticated recipe that is a later contract draft is refused by the reader",
+      "rule": "recipe-document-reads",
+      "recipe": "toolchains/recipes/negative-recipe-unreadable/1.0.0.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "name": "a yanked recipe is still read by its exact target",
+      "recipe": "toolchains/recipes/channel-example/1.2.0.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a host release descriptor that is not published is refused",
+      "rule": "host-release-authenticated",
+      "recipe": "toolchains/recipes/negative-host-source-unpublished/1.0.0.json",
+      "expected": {
+        "code": "target_not_authenticated",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "a host release descriptor that is not a version 1 tool release is refused",
+      "rule": "host-release-v1",
+      "recipe": "toolchains/recipes/negative-host-release-not-v1/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "an unpublished extension descriptor is refused",
+      "rule": "provider-descriptor-bound",
+      "recipe": "toolchains/recipes/negative-descriptor-unpublished/1.0.0.json",
+      "expected": {
+        "code": "target_not_authenticated",
+        "path": "providers[0].descriptorTarget"
+      }
+    },
+    {
+      "name": "a descriptor target that is not an extension release descriptor is refused",
+      "rule": "provider-descriptor-parses",
+      "recipe": "toolchains/recipes/negative-descriptor-not-a-release/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].descriptorTarget"
+      }
+    },
+    {
+      "name": "a provider version the descriptor does not describe is refused",
+      "rule": "provider-descriptor-version",
+      "recipe": "toolchains/recipes/negative-provider-version/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].version"
+      }
+    },
+    {
+      "name": "an archive the descriptor does not list in its own directory is refused",
+      "rule": "provider-artifact-listed",
+      "recipe": "toolchains/recipes/negative-artifact-not-listed/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].platforms.win-x64.artifactTarget"
+      }
+    },
+    {
+      "name": "a WASM module the descriptor does not list in its own directory is refused",
+      "rule": "provider-artifact-listed",
+      "recipe": "toolchains/recipes/negative-wasm-artifact-not-listed/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].artifactTarget"
+      }
+    },
+    {
+      "name": "a process delivery bound to a WASM module is refused",
+      "rule": "provider-artifact-runtime",
+      "recipe": "toolchains/recipes/negative-process-bound-to-wasm/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].platforms.win-x64.artifactTarget"
+      }
+    },
+    {
+      "name": "an archive the descriptor lists with another digest is refused",
+      "rule": "provider-artifact-digest-listed",
+      "recipe": "toolchains/recipes/negative-listed-artifact-digest/1.0.0.json",
+      "expected": {
+        "code": "target_digest_mismatch",
+        "path": "providers[0].platforms.win-x64.artifactSha256"
+      }
+    },
+    {
+      "name": "an unpublished .NET tool package is refused",
+      "rule": "provider-artifact-bound",
+      "recipe": "toolchains/recipes/negative-package-unpublished/1.0.0.json",
+      "expected": {
+        "code": "target_not_authenticated",
+        "path": "providers[1].packageTarget"
+      }
+    },
+    {
+      "name": "a substituted .NET tool package digest is refused",
+      "rule": "provider-artifact-bound",
+      "recipe": "toolchains/recipes/negative-package-digest/1.0.0.json",
+      "expected": {
+        "code": "target_digest_mismatch",
+        "path": "providers[1].packageSha256"
+      }
+    },
+    {
+      "name": "a WASM frontend for a listed module binds",
+      "recipe": "toolchains/recipes/wasm-frontend/1.0.0.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a MEP 0.1 frontend whose claims list the IR major version binds",
+      "recipe": "toolchains/recipes/legacy-ir-major/1.0.0.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a MEP 0.1 frontend whose claims lack the IR version is refused",
+      "rule": "provider-claims-model",
+      "recipe": "toolchains/recipes/negative-legacy-ir-version/1.0.0.json",
+      "expected": {
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].modelInput.irVersion"
       }
     }
   ],
@@ -410,6 +584,7 @@
     },
     {
       "name": "a learned revocation refuses the native-aot binding",
+      "rule": "host-release-revoked",
       "metadata": "learnedRevocation",
       "mutations": [],
       "action": {
@@ -461,6 +636,7 @@
     },
     {
       "name": "tampered descriptor bytes are refused",
+      "rule": "provider-descriptor-read",
       "metadata": "metadata",
       "mutations": [
         {
@@ -476,7 +652,7 @@
       },
       "expected": {
         "code": "target_digest_mismatch",
-        "path": ""
+        "path": "providers[0].descriptorTarget"
       }
     },
     {
@@ -495,6 +671,7 @@
     },
     {
       "name": "a recipe cannot bind an unsigned developer artifact",
+      "rule": "provider-artifact-bound",
       "metadata": "metadata",
       "mutations": [],
       "action": {
@@ -511,6 +688,108 @@
         "code": "target_not_authenticated",
         "path": "providers[0].platforms.win-x64.artifactTarget"
       }
+    },
+    {
+      "name": "recipe bytes of another length are refused",
+      "rule": "recipe-target-authenticated",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "replace-target-bytes",
+          "target": "toolchains/recipes/fsharp/1.0.0.json",
+          "with": "toolchains/recipes/fsharp-builtin/1.0.0.json"
+        }
+      ],
+      "action": {
+        "op": "check-recipe",
+        "recipe": "toolchains/recipes/fsharp/1.0.0.json"
+      },
+      "expected": {
+        "code": "target_length_mismatch",
+        "path": ""
+      }
+    },
+    {
+      "name": "recipe bytes of the same length with another digest are refused",
+      "rule": "recipe-target-authenticated",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "replace-target-text",
+          "target": "toolchains/recipes/fsharp/1.0.0.json",
+          "find": "\"preset\":\"fsharp\"",
+          "replace": "\"preset\":\"fsharq\""
+        }
+      ],
+      "action": {
+        "op": "check-recipe",
+        "recipe": "toolchains/recipes/fsharp/1.0.0.json"
+      },
+      "expected": {
+        "code": "target_digest_mismatch",
+        "path": ""
+      }
+    },
+    {
+      "name": "host release bytes of another length are refused at the offering",
+      "rule": "host-release-read",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "replace-target-bytes",
+          "target": "releases/morphir-dotnet-native-aot/1.2.3.json",
+          "with": "releases/morphir-dotnet-self-contained/1.2.3.json"
+        }
+      ],
+      "action": {
+        "op": "check-recipe",
+        "recipe": "toolchains/recipes/fsharp/1.0.0.json"
+      },
+      "expected": {
+        "code": "target_length_mismatch",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "tampered host release bytes are refused at the offering",
+      "rule": "host-release-read",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "replace-target-text",
+          "target": "releases/morphir-dotnet-native-aot/1.2.3.json",
+          "find": "\"status\":\"active\"",
+          "replace": "\"status\":\"activE\""
+        }
+      ],
+      "action": {
+        "op": "check-recipe",
+        "recipe": "toolchains/recipes/fsharp/1.0.0.json"
+      },
+      "expected": {
+        "code": "target_digest_mismatch",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "name": "descriptor bytes of another length are refused at the provider",
+      "rule": "provider-descriptor-read",
+      "metadata": "metadata",
+      "mutations": [
+        {
+          "op": "replace-target-bytes",
+          "target": "extensions/fsharp-frontend/0.6.0/release.json",
+          "with": "extensions/fsharp-backend/0.1.0/release.json"
+        }
+      ],
+      "action": {
+        "op": "check-recipe",
+        "recipe": "toolchains/recipes/fsharp/1.0.0.json"
+      },
+      "expected": {
+        "code": "target_length_mismatch",
+        "path": "providers[0].descriptorTarget"
+      }
     }
   ],
   "frozen": [
@@ -518,19 +797,55 @@
       "request": "fsharp-native-aot.toml",
       "lock": "fsharp-native-aot.lock.json",
       "recipe": "toolchains/recipes/fsharp/1.0.0.json",
-      "expected": "lock-equals-resolution"
+      "expected": {
+        "lockEqualsResolution": true,
+        "requestSha256": "c7ba6ffcee4849885baf99d9b18fbb9a4a4c1096117473264fc9c7050bc7b22f",
+        "recipeSha256": "3606a334b66335429e4d21c3831c075af4fa43627107c5aa2b8093730879aaf8",
+        "platforms": [
+          "win-x64",
+          "win-arm64",
+          "osx-x64",
+          "osx-arm64",
+          "linux-x64",
+          "linux-arm64"
+        ]
+      }
     },
     {
       "request": "fsharp-native-aot-external-backend.toml",
       "lock": "fsharp-native-aot-external-backend.lock.json",
       "recipe": "toolchains/recipes/fsharp/1.0.0.json",
-      "expected": "lock-equals-resolution"
+      "expected": {
+        "lockEqualsResolution": true,
+        "requestSha256": "435127e4a6317af8eca632f3f1f3b74f8cb3546d462c12660c641240c5bd05b9",
+        "recipeSha256": "3606a334b66335429e4d21c3831c075af4fa43627107c5aa2b8093730879aaf8",
+        "platforms": [
+          "win-x64",
+          "win-arm64",
+          "osx-x64",
+          "osx-arm64",
+          "linux-x64",
+          "linux-arm64"
+        ]
+      }
     },
     {
       "request": "fsharp-framework-dependent-tool-frontend.toml",
       "lock": "fsharp-framework-dependent-tool-frontend.lock.json",
       "recipe": "toolchains/recipes/fsharp/1.0.0.json",
-      "expected": "lock-equals-resolution"
+      "expected": {
+        "lockEqualsResolution": true,
+        "requestSha256": "1745807f06a03ab7c1f5f85adfbfd83ab0d5b7c35e93c45c6ce5f7a7b81d6304",
+        "recipeSha256": "3606a334b66335429e4d21c3831c075af4fa43627107c5aa2b8093730879aaf8",
+        "platforms": [
+          "win-x64",
+          "win-arm64",
+          "osx-x64",
+          "osx-arm64",
+          "linux-x64",
+          "linux-arm64"
+        ]
+      }
     }
   ],
   "lockRecipe": [
@@ -554,6 +869,7 @@
     },
     {
       "name": "a lock that binds other recipe bytes is refused",
+      "rule": "lock-recipe-bytes",
       "lock": "../lock/two-platforms-bound.json",
       "recipe": "toolchains/recipes/fsharp/1.0.0.json",
       "expected": {
@@ -563,12 +879,353 @@
     },
     {
       "name": "a lock provider the recipe does not bind is refused",
+      "rule": "lock-recipe-provider",
       "lock": "negative/lock-provider-not-in-recipe.lock.json",
       "recipe": "toolchains/recipes/fsharp/1.0.0.json",
       "expected": {
         "code": "lock_recipe_mismatch",
         "path": "platforms.win-x64.providers[0]"
       }
+    },
+    {
+      "name": "a lock whose host release the recipe does not offer is refused",
+      "rule": "lock-recipe-host",
+      "lock": "negative/lock-host-not-offered.lock.json",
+      "recipe": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "code": "lock_recipe_mismatch",
+        "path": "host"
+      }
+    },
+    {
+      "name": "a lock whose host artifact is another offering's is refused",
+      "rule": "lock-recipe-host-artifact",
+      "lock": "negative/lock-host-artifact-substituted.lock.json",
+      "recipe": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "code": "lock_recipe_mismatch",
+        "path": "platforms.win-x64.hostTarget"
+      }
+    },
+    {
+      "name": "a lock whose closures lack a recipe operation is refused",
+      "rule": "lock-recipe-operations",
+      "lock": "negative/lock-operations-differ.lock.json",
+      "recipe": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "code": "lock_recipe_mismatch",
+        "path": "platforms.win-x64.providers"
+      }
     }
-  ]
+  ],
+  "channelSelection": [
+    {
+      "name": "stable selects the greatest active final version",
+      "preset": "channel-example",
+      "channel": "stable",
+      "expected": {
+        "recipe": "toolchains/recipes/channel-example/1.1.0.json"
+      }
+    },
+    {
+      "name": "preview selects the greatest active version on any preview channel",
+      "preset": "channel-example",
+      "channel": "preview",
+      "expected": {
+        "recipe": "toolchains/recipes/channel-example/2.0.0-rc.1.json"
+      }
+    },
+    {
+      "name": "insiders selects like an unnamed preview channel",
+      "preset": "channel-example",
+      "channel": "insiders",
+      "expected": {
+        "recipe": "toolchains/recipes/channel-example/2.0.0-rc.1.json"
+      }
+    },
+    {
+      "name": "a named preview channel selects only its members",
+      "preset": "channel-example",
+      "channel": "preview/next",
+      "expected": {
+        "recipe": "toolchains/recipes/channel-example/2.0.0-preview.2.json"
+      }
+    },
+    {
+      "name": "a channel no active recipe is on selects nothing",
+      "preset": "channel-example",
+      "channel": "preview/other",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.preset"
+      }
+    },
+    {
+      "name": "a preset with no recipe selects nothing",
+      "preset": "elm",
+      "channel": "stable",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.preset"
+      }
+    },
+    {
+      "name": "the F# recipe is the stable fsharp recipe",
+      "preset": "fsharp",
+      "channel": "stable",
+      "expected": {
+        "recipe": "toolchains/recipes/fsharp/1.0.0.json"
+      }
+    }
+  ],
+  "v1Client": {
+    "note": "Each selection runs the tool release metadata v1 client by tool id, channel and v1 platform. The selected artifact is the one the fsharp-builtin recipe binds for that deployment and platform, with its authenticated digest; the 18 digests are distinct.",
+    "recipe": "toolchains/recipes/fsharp-builtin/1.0.0.json",
+    "selections": [
+      {
+        "toolId": "morphir-dotnet-native-aot",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "deployment": "native-aot",
+        "recipePlatform": "win-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-native-aot",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "aarch64"
+        },
+        "deployment": "native-aot",
+        "recipePlatform": "win-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-native-aot",
+        "channel": "stable",
+        "platform": {
+          "os": "macos",
+          "arch": "x86_64"
+        },
+        "deployment": "native-aot",
+        "recipePlatform": "osx-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-native-aot",
+        "channel": "stable",
+        "platform": {
+          "os": "macos",
+          "arch": "aarch64"
+        },
+        "deployment": "native-aot",
+        "recipePlatform": "osx-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-native-aot",
+        "channel": "stable",
+        "platform": {
+          "os": "linux",
+          "arch": "x86_64"
+        },
+        "deployment": "native-aot",
+        "recipePlatform": "linux-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-native-aot",
+        "channel": "stable",
+        "platform": {
+          "os": "linux",
+          "arch": "aarch64"
+        },
+        "deployment": "native-aot",
+        "recipePlatform": "linux-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-self-contained",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "deployment": "self-contained",
+        "recipePlatform": "win-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-self-contained",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "aarch64"
+        },
+        "deployment": "self-contained",
+        "recipePlatform": "win-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-self-contained",
+        "channel": "stable",
+        "platform": {
+          "os": "macos",
+          "arch": "x86_64"
+        },
+        "deployment": "self-contained",
+        "recipePlatform": "osx-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-self-contained",
+        "channel": "stable",
+        "platform": {
+          "os": "macos",
+          "arch": "aarch64"
+        },
+        "deployment": "self-contained",
+        "recipePlatform": "osx-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-self-contained",
+        "channel": "stable",
+        "platform": {
+          "os": "linux",
+          "arch": "x86_64"
+        },
+        "deployment": "self-contained",
+        "recipePlatform": "linux-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-self-contained",
+        "channel": "stable",
+        "platform": {
+          "os": "linux",
+          "arch": "aarch64"
+        },
+        "deployment": "self-contained",
+        "recipePlatform": "linux-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-framework-dependent",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "deployment": "framework-dependent",
+        "recipePlatform": "win-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-framework-dependent/1.2.3/win-x64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-framework-dependent",
+        "channel": "stable",
+        "platform": {
+          "os": "windows",
+          "arch": "aarch64"
+        },
+        "deployment": "framework-dependent",
+        "recipePlatform": "win-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-framework-dependent/1.2.3/win-arm64.zip"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-framework-dependent",
+        "channel": "stable",
+        "platform": {
+          "os": "macos",
+          "arch": "x86_64"
+        },
+        "deployment": "framework-dependent",
+        "recipePlatform": "osx-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-x64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-framework-dependent",
+        "channel": "stable",
+        "platform": {
+          "os": "macos",
+          "arch": "aarch64"
+        },
+        "deployment": "framework-dependent",
+        "recipePlatform": "osx-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-framework-dependent/1.2.3/osx-arm64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-framework-dependent",
+        "channel": "stable",
+        "platform": {
+          "os": "linux",
+          "arch": "x86_64"
+        },
+        "deployment": "framework-dependent",
+        "recipePlatform": "linux-x64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-x64.tar.gz"
+        }
+      },
+      {
+        "toolId": "morphir-dotnet-framework-dependent",
+        "channel": "stable",
+        "platform": {
+          "os": "linux",
+          "arch": "aarch64"
+        },
+        "deployment": "framework-dependent",
+        "recipePlatform": "linux-arm64",
+        "expected": {
+          "targetPath": "artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz"
+        }
+      }
+    ]
+  },
+  "v1Descriptors": {
+    "note": "Each listed release target, read through the TUF client, is an unchanged tool release metadata v1 descriptor: it validates against tool-release-v1.schema.json, has schemaVersion 1, and its target's custom.morphir kind is tool-release. The one release target not listed is the deliberate negative releases/morphir-dotnet-not-a-release/1.2.3.json.",
+    "schema": "tool-release-v1.schema.json",
+    "releases": [
+      "releases/morphir-dotnet-framework-dependent/1.2.3.json",
+      "releases/morphir-dotnet-metadata-mismatch/1.2.3.json",
+      "releases/morphir-dotnet-native-aot/1.2.3.json",
+      "releases/morphir-dotnet-self-contained/1.2.3.json"
+    ]
+  }
 }
