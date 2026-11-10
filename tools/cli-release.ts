@@ -11,7 +11,7 @@
 //   bun run tools/cli-release.ts release-info --tag cli/v0.4.0-alpha.4 [--kit-status <file>]
 //   bun run tools/cli-release.ts qualify --release-dir <dir> --deployment <id> [--rid <rid>] --version <v> --out <file>
 //   bun run tools/cli-release.ts legacy-aliases --assets <dir> --version <v> --out <dir>
-//   bun run tools/cli-release.ts manifest --tag <tag> --version <v> --assets <dir> --kit-status <file> [--legacy <file>] --out <dir>
+//   bun run tools/cli-release.ts manifest --tag <tag> --version <v> --commit <sha> --assets <dir> --kit-status <file> [--legacy <file>] --out <dir> [--dry-run]
 //
 // The expectations live in .config/cli-release.json.
 import { format, parse } from "@std/semver";
@@ -194,18 +194,20 @@ export function launchPlan(launch: LaunchMetadata, extracted: string, toolPath: 
 }
 
 /**
- * Whether `--version` output names the release. The executable prints the release, optionally followed by `+` and
- * build metadata (the commit it was built from, for example `0.4.0-alpha.4+<sha>`); the launch metadata's
- * `release` is the authority and carries the release alone. The part before the first `+` must equal it exactly, on
- * one line. The build metadata is kept as evidence, not compared (as finos/morphir-dotnet#590's cli-offering.yml
- * does).
+ * Whether `--version` output names the release built from the pinned commit. The executable prints the release,
+ * normally followed by `+` and the commit it was built from (`0.4.0-alpha.4+<sha>`); the launch metadata's `release`
+ * carries the release alone and is the authority for the part before `+`. This repository owns the provenance, so it
+ * is stricter than the source's own start check: build metadata, when printed, must be at least 7 hex digits that
+ * prefix the pinned commit, and anything else after `+` fails. The pack origin in the build contents binds the bytes
+ * to the commit either way (`buildOriginProblems`).
  */
-export function versionReported(output: string, release: string): boolean {
+export function versionReported(output: string, release: string, commit: string): boolean {
 	const text = output.trim();
 	if (text.length === 0 || /\s/.test(text)) return false;
 	const plus = text.indexOf("+");
-	const reported = plus < 0 ? text : text.slice(0, plus);
-	return reported === release && (plus < 0 || text.length > plus + 1);
+	if (plus < 0) return text === release;
+	const metadata = text.slice(plus + 1);
+	return text.slice(0, plus) === release && /^[0-9a-f]{7,40}$/.test(metadata) && commit.startsWith(metadata);
 }
 /** A scenario's status. A result under a recorded pending triage is kept but never counted as qualified. */
 export function scenarioStatus(config: CliReleaseConfig, rid: string, scenario: string, exitCode: number): ScenarioStatus {
@@ -240,6 +242,69 @@ export function offeringMatrix(config: CliReleaseConfig): { include: { deploymen
 export function releaseBlocker(config: CliReleaseConfig): string | undefined {
 	const candidate = config.source.candidate;
 	return candidate === undefined ? undefined : `the CLI source pin is an unmerged candidate (${candidate.pullRequest}); ${candidate.reason}`;
+}
+
+export type ToolInstallEvidence = { configFile: string; packagesFolder: string; installedCopies: { path: string; sha256: string }[] };
+
+/** The package copies NuGet keeps for an installed package: files named `<id>.<version>.nupkg`, any case, under `roots`. */
+export function installedPackageCopies(roots: string[], id: string, version: string): string[] {
+	const wanted = `${id}.${version}.nupkg`.toLowerCase();
+	const walk = (dir: string): string[] =>
+		existsSync(dir)
+			? readdirSync(dir).flatMap(name => {
+					const full = path.join(dir, name);
+					return statSync(full).isDirectory() ? walk(full) : name.toLowerCase() === wanted ? [full] : [];
+				})
+			: [];
+	return roots.flatMap(walk);
+}
+
+/**
+ * Installs the produced tool package twice (into a tool path, and as a local tool) so that nothing but its own bytes
+ * can be installed. `dotnet tool install` queries every configured source in parallel and takes the fastest one that
+ * has the version, and it reuses the global packages folder; a feed or cache holding another Morphir.Tool of the same
+ * version could win. So the installs use only a generated NuGet configuration (`<clear />` and one feed holding this
+ * package, through `--configfile`) and fresh packages and HTTP cache folders, and every package copy NuGet kept, in
+ * the tool store and in the packages folder, must have the artifact's SHA-256. Returns the environment that runs the
+ * installed tool (the local tool resolves from that packages folder) and the evidence.
+ */
+export function isolatedToolInstall(artifact: string, fileName: string, id: string, version: string, work: string, toolPath: string): { env: Record<string, string | undefined>; evidence: ToolInstallEvidence } {
+	const feed = path.join(work, "feed");
+	mkdirSync(feed, { recursive: true });
+	copyFileSync(artifact, path.join(feed, fileName));
+	const configFile = path.join(work, "nuget.isolated.config");
+	const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+	writeFileSync(configFile, `<?xml version="1.0" encoding="utf-8"?>\n<configuration>\n  <packageSources>\n    <clear />\n    <add key="produced" value="${escape(feed)}" />\n  </packageSources>\n</configuration>\n`);
+	const packagesFolder = path.join(work, "nuget-packages");
+	const env: Record<string, string | undefined> = {
+		...process.env,
+		NUGET_PACKAGES: packagesFolder,
+		NUGET_HTTP_CACHE_PATH: path.join(work, "nuget-http-cache"),
+		NUGET_PLUGINS_CACHE_PATH: path.join(work, "nuget-plugins-cache"),
+		DOTNET_CLI_TELEMETRY_OPTOUT: "1",
+		DOTNET_NOLOGO: "1",
+	};
+	const install = (target: string[]) => ["dotnet", "tool", "install", id, "--version", version, "--configfile", configFile, ...target];
+	check(run(install(["--tool-path", toolPath]), { cwd: work, env }), "dotnet tool install --tool-path");
+	check(run(["dotnet", "new", "tool-manifest", "--force"], { cwd: work, env }), "dotnet new tool-manifest");
+	check(run(install(["--local"]), { cwd: work, env }), "dotnet tool install --local");
+	const installedCopies = verifyInstalledCopies(toolPath, packagesFolder, id, version, sha256(artifact));
+	return { env, evidence: { configFile, packagesFolder, installedCopies } };
+}
+
+/** Every package copy NuGet kept in the tool store and the packages folder; each must have `expected` as SHA-256. */
+export function verifyInstalledCopies(toolPath: string, packagesFolder: string, id: string, version: string, expected: string): { path: string; sha256: string }[] {
+	const verified: { path: string; sha256: string }[] = [];
+	for (const [label, root] of [["tool path", path.join(toolPath, ".store")], ["packages folder", packagesFolder]] as const) {
+		const copies = installedPackageCopies([root], id, version);
+		if (copies.length === 0) throw new Error(`no installed copy of ${id} ${version} in the ${label} (${root})`);
+		for (const copy of copies) {
+			const digest = sha256(copy);
+			if (digest !== expected) throw new Error(`the ${label} holds ${copy} with SHA-256 ${digest}, not the produced package's ${expected}`);
+			verified.push({ path: copy, sha256: digest });
+		}
+	}
+	return verified;
 }
 
 function sha256(file: string): string {
@@ -289,6 +354,7 @@ export type Qualification = {
 	invocations: { invocation: string; reportedVersion: string; scenarios: { scenario: string; status: ScenarioStatus; exitCode: number }[] }[];
 	qualified: boolean;
 	pending: string[];
+	toolInstall?: ToolInstallEvidence;
 };
 
 function readLaunch(releaseDir: string, deployment: string, rid: string | undefined): LaunchMetadata {
@@ -307,20 +373,21 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 	const artifact = path.join(releaseDir, launch.artifact);
 	const digest = sha256(artifact);
 	if (digest !== launch.sha256) throw new Error(`${launch.artifact} has SHA-256 ${digest}, but its launch metadata records ${launch.sha256}`);
+	const contentsFile = path.join(releaseDir, `${launch.artifact}.build-contents.json`);
+	const origin = buildOriginProblems(config, launch, existsSync(contentsFile) ? (JSON.parse(readFileSync(contentsFile, "utf8")) as BuildContents) : undefined);
+	if (origin.length > 0) throw new Error(origin.join("; "));
 
 	const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), `cli-${deployment}-`));
 	const extracted = path.join(work, "extracted");
 	const toolPath = path.join(work, "tools");
 	mkdirSync(extracted);
 	let env: Record<string, string | undefined> = { ...process.env };
+	let toolEvidence: ToolInstallEvidence | undefined;
 	if (launch.layout === "tool-package") {
-		const feed = path.join(work, "feed");
-		mkdirSync(feed);
-		copyFileSync(artifact, path.join(feed, launch.artifact));
 		const pkg = config.deployments.find(d => d.id === deployment)?.package ?? "Morphir.Tool";
-		check(run(["dotnet", "tool", "install", pkg, "--version", version, "--add-source", feed, "--tool-path", toolPath], { cwd: work }), "dotnet tool install --tool-path");
-		check(run(["dotnet", "new", "tool-manifest"], { cwd: work }), "dotnet new tool-manifest");
-		check(run(["dotnet", "tool", "install", pkg, "--version", version, "--add-source", feed, "--local"], { cwd: work }), "dotnet tool install --local");
+		const installed = isolatedToolInstall(artifact, launch.artifact, pkg, version, work, toolPath);
+		env = installed.env;
+		toolEvidence = installed.evidence;
 	} else {
 		// bsdtar (Windows, macOS) reads zip and tar.gz; Linux archives are tar.gz.
 		check(run(extractCommand(artifact, extracted), { cwd: work }), `extract ${launch.artifact}`);
@@ -336,7 +403,7 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		if (!existsSync(step.command[0]!) && step.command[0] !== "dotnet") throw new Error(`${launch.artifact} has no ${step.command[0]}`);
 		const scenarios: Qualification["invocations"][number]["scenarios"] = [];
 		const version_ = run([...step.command, "--version"], { cwd: work, env });
-		const versionMatches = version_.exitCode === 0 && versionReported(version_.stdout, launch.release);
+		const versionMatches = version_.exitCode === 0 && versionReported(version_.stdout, launch.release, config.source.commit);
 		scenarios.push({ scenario: "launch", status: scenarioStatus(config, launch.platform === "any" ? platform : launch.platform, "launch", versionMatches ? 0 : 1), exitCode: version_.exitCode });
 		const help = run([...step.command, "--help"], { cwd: work, env });
 		scenarios.push({ scenario: "help", status: help.exitCode === 0 ? "passed" : "failed", exitCode: help.exitCode });
@@ -358,6 +425,7 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		invocations,
 		qualified: all.every(s => s.status === "passed"),
 		pending: all.filter(s => s.status === "pending-triage").map(s => s.scenario),
+		...(toolEvidence === undefined ? {} : { toolInstall: toolEvidence }),
 	};
 }
 
@@ -387,20 +455,123 @@ export function expectedLaunches(config: CliReleaseConfig, launches: LaunchMetad
 export type KitStatus = { path: string; algorithm: string; corpusHash: string; revision: string };
 
 /** The release manifest: release evidence that names the exact source, kit and artifact digests. Not a contract. */
-export function releaseManifest(config: CliReleaseConfig, tag: string, version: string, commit: string, kit: KitStatus, launches: LaunchMetadata[], qualifications: Qualification[], legacy: LegacyAlias[] = []) {
+/** The pack origin and identity the source's build writes beside an artifact (`<artifact>.build-contents.json`). */
+export type BuildContents = {
+	artifact: string;
+	release: string;
+	deployment: string;
+	platform: string;
+	sha256: string;
+	origin?: { commit: string; workingTreeClean: boolean; packedAt?: string } | null;
+};
+
+/**
+ * Ties an artifact to the pinned source: its build contents must name the same artifact, release, deployment,
+ * platform and SHA-256 as its launch metadata, and it must have been packed from the pinned commit with a clean
+ * working tree. Returns the problems; none means the binding holds.
+ */
+export function buildOriginProblems(config: CliReleaseConfig, launch: LaunchMetadata, contents: BuildContents | undefined): string[] {
+	if (contents === undefined) return [`${launch.artifact} has no build contents (.build-contents.json), so its source commit is unknown`];
+	const problems: string[] = [];
+	for (const key of ["artifact", "release", "deployment", "platform", "sha256"] as const) {
+		if (contents[key] !== launch[key]) problems.push(`${launch.artifact}: build contents ${key} is ${contents[key]}, launch metadata says ${launch[key]}`);
+	}
+	if (contents.origin == null) problems.push(`${launch.artifact}: build contents record no pack origin`);
+	else {
+		if (contents.origin.commit !== config.source.commit) problems.push(`${launch.artifact} was packed from ${contents.origin.commit}, not the pinned ${config.source.commit}`);
+		if (contents.origin.workingTreeClean !== true) problems.push(`${launch.artifact} was packed from a working tree with uncommitted changes`);
+	}
+	return problems;
+}
+
+/** The entries under `## [Unreleased]` in a Keep a Changelog file: every line that is not blank and not a heading. */
+export function unreleasedEntries(changelog: string): string[] {
+	const start = changelog.search(/^## \[Unreleased\]/m);
+	if (start < 0) return [];
+	const rest = changelog.slice(start).split(/\r?\n/).slice(1);
+	const end = rest.findIndex(line => /^## \[/.test(line));
+	return (end < 0 ? rest : rest.slice(0, end)).filter(line => line.trim().length > 0 && !/^#{3,}\s/.test(line) && !/^\[[^\]]+\]:\s/.test(line));
+}
+
+/**
+ * Why the pinned source must not be published as `version`. A dry run records these and stops before creating a
+ * release; a publication refuses them. The pin is publishable only when it is not a marked candidate, its CHANGELOG
+ * has nothing unreleased, and the source's own release tag `v<version>` names exactly the pinned commit: otherwise
+ * the bytes would differ from the release the source already published under that version.
+ */
+export function publicationBlockers(config: CliReleaseConfig, version: string, changelog: string, sourceTagCommit: string | undefined): string[] {
+	const blockers: string[] = [];
+	const candidate = releaseBlocker(config);
+	if (candidate !== undefined) blockers.push(candidate);
+	const unreleased = unreleasedEntries(changelog);
+	if (unreleased.length > 0) blockers.push(`the pinned CHANGELOG has ${unreleased.length} unreleased entr${unreleased.length === 1 ? "y" : "ies"}, so the pin is not the source's release ${version}`);
+	if (sourceTagCommit === undefined) blockers.push(`${config.source.repository} has no tag v${version}`);
+	else if (sourceTagCommit !== config.source.commit) blockers.push(`${config.source.repository} tag v${version} is ${sourceTagCommit}, not the pinned ${config.source.commit}: the pin is not the source's release ${version}`);
+	return blockers;
+}
+
+/** The commit a tag of the source repository names (peeled), or undefined when there is no such tag. */
+export function sourceTagCommit(repository: string, tag: string): string | undefined {
+	const result = Bun.spawnSync(["git", "ls-remote", "--tags", `${repository}.git`, `refs/tags/${tag}`, `refs/tags/${tag}^{}`], { stdout: "pipe", stderr: "pipe", windowsHide: true, timeout: 60_000 });
+	if (result.exitCode !== 0) throw new Error(`git ls-remote ${repository} failed: ${result.stderr.toString()}`);
+	const refs = new Map(result.stdout.toString().trim().split(/\r?\n/).filter(Boolean).map(line => { const [sha, ref] = line.split("\t"); return [ref!, sha!] as const; }));
+	return refs.get(`refs/tags/${tag}^{}`) ?? refs.get(`refs/tags/${tag}`);
+}
+
+/**
+ * Binds the run to what it releases: the workflow must run from the tag's own ref (so its definition, and the literal
+ * `uses`/`ref` commit, are the tag's), the checked-out commit must be the tag's commit, and the workflow's literal
+ * source commit must equal the pinned one. Returns the problems; a release with any problem builds nothing.
+ */
+export function workflowBindingProblems(config: CliReleaseConfig, run: { tag: string; githubRef: string | undefined; head: string; tagCommit: string | undefined; workflow: string }): string[] {
+	const problems: string[] = [];
+	if (run.githubRef !== `refs/tags/${run.tag}`) problems.push(`the workflow runs from ${run.githubRef ?? "an unknown ref"}, not refs/tags/${run.tag}; dispatch it from the tag`);
+	if (!/^[0-9a-f]{40}$/.test(run.head)) problems.push(`the checked-out commit is unknown (${run.head})`);
+	if (run.tagCommit !== run.head) problems.push(`${run.tag} is ${run.tagCommit ?? "missing"}, but the checkout is ${run.head}`);
+	const uses = [...run.workflow.matchAll(/uses:\s*finos\/morphir-dotnet\/\.github\/workflows\/cli-offering\.yml@([0-9a-f]+)/g)].map(m => m[1]);
+	const refs = [...run.workflow.matchAll(/^\s+ref:\s*([0-9a-f]{40})\s*$/gm)].map(m => m[1]);
+	if (uses.length !== 1 || uses[0] !== config.source.commit) problems.push(`release.yml builds with cli-offering.yml@${uses.join(",") || "nothing"}, not the pinned ${config.source.commit}`);
+	if (refs.length !== 1 || refs[0] !== config.source.commit) problems.push(`release.yml passes ref ${refs.join(",") || "nothing"}, not the pinned ${config.source.commit}`);
+	return problems;
+}
+
+/**
+ * Validates the release evidence and returns the manifest. Every qualification must be the one expected record for
+ * its deployment and platform and match that artifact's launch metadata; a missing, failed, wrong, extra or repeated
+ * record, an artifact of another release, or a tag that does not name the release, is an error in a dry run too.
+ * Publication readiness is recorded separately (`publication`) and decided by the caller.
+ */
+export function releaseManifest(config: CliReleaseConfig, tag: string, version: string, commit: string, kit: KitStatus, launches: LaunchMetadata[], qualifications: Qualification[], legacy: LegacyAlias[] = [], publication: { dryRun: boolean; blockers: string[] } = { dryRun: false, blockers: [] }) {
 	if (parseReleaseTag(config, tag) !== version) throw new Error(`${tag} does not name release ${version}`);
-	const blocker = releaseBlocker(config);
-	if (blocker !== undefined) throw new Error(`no release manifest: ${blocker}`);
+	if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error(`the finos/morphir commit is unknown (${commit})`);
 	const stray = launches.filter(launch => launch.release !== version);
 	if (stray.length > 0) throw new Error(`artifacts of another release: ${stray.map(launch => `${launch.artifact} (${launch.release})`).join(", ")}`);
-	const failed = qualifications.filter(q => q.invocations.some(i => i.scenarios.some(s => s.status === "failed")));
-	if (failed.length > 0) throw new Error(`qualification failed: ${failed.map(q => `${q.deployment} ${q.runnerPlatform}`).join(", ")}`);
+	const problems: string[] = [];
+	const seen = new Set<string>();
+	for (const q of qualifications) {
+		const key = `${q.deployment} ${q.runnerPlatform}`;
+		const deployment = config.deployments.find(d => d.id === q.deployment);
+		if (deployment === undefined || !config.platforms.some(p => p.rid === q.runnerPlatform)) {
+			problems.push(`unexpected qualification ${key}`);
+			continue;
+		}
+		if (seen.has(key)) problems.push(`repeated qualification ${key}`);
+		seen.add(key);
+		const launch = launches.find(l => l.deployment === q.deployment && l.platform === (deployment.portable ? "any" : q.runnerPlatform));
+		if (launch === undefined) problems.push(`qualification ${key} has no artifact`);
+		else {
+			if (q.release !== version) problems.push(`qualification ${key} is of release ${q.release}`);
+			if (q.artifact !== launch.artifact) problems.push(`qualification ${key} launched ${q.artifact}, not ${launch.artifact}`);
+			if (q.sha256 !== launch.sha256) problems.push(`qualification ${key} launched bytes ${q.sha256}, not ${launch.artifact}'s ${launch.sha256}`);
+		}
+		if (q.invocations.some(i => i.scenarios.some(s => s.status === "failed"))) problems.push(`qualification failed: ${key}`);
+	}
 	for (const deployment of config.deployments) {
 		for (const platform of config.platforms) {
-			const found = qualifications.some(q => q.deployment === deployment.id && q.runnerPlatform === platform.rid);
-			if (!found) throw new Error(`no qualification of ${deployment.id} on ${platform.rid}`);
+			if (!seen.has(`${deployment.id} ${platform.rid}`)) problems.push(`no qualification of ${deployment.id} on ${platform.rid}`);
 		}
 	}
+	if (problems.length > 0) throw new Error(problems.join("; "));
 	return {
 		note: "Release evidence of finos/morphir, not a contract.",
 		tag,
@@ -408,6 +579,7 @@ export function releaseManifest(config: CliReleaseConfig, tag: string, version: 
 		finosMorphirCommit: commit,
 		source: config.source,
 		kit,
+		publication: { dryRun: publication.dryRun, publishable: publication.blockers.length === 0 && !publication.dryRun, blockers: publication.blockers },
 		artifacts: launches
 			.map(launch => ({ artifact: launch.artifact, sha256: launch.sha256, deployment: launch.deployment, platform: launch.platform }))
 			.sort((a, b) => a.artifact.localeCompare(b.artifact)),
@@ -418,9 +590,9 @@ export function releaseManifest(config: CliReleaseConfig, tag: string, version: 
 		pendingTriage: config.pendingTriage,
 	};
 }
-
 function releaseNotes(manifest: ReturnType<typeof releaseManifest>): string {
 	const lines = [
+		...(manifest.publication.publishable ? [] : [`**Not a release.** Dry run or blocked publication: ${manifest.publication.blockers.join("; ") || "dry run"}.`, ""]),
 		`Morphir CLI ${manifest.release}, built from [${manifest.source.repository}](${manifest.source.repository}) at \`${manifest.source.commit}\` by finos/morphir \`${manifest.finosMorphirCommit}\`.`,
 		"",
 		`Compatibility kit \`${manifest.kit.path}\` at \`${manifest.kit.revision}\`, ${manifest.kit.algorithm} \`${manifest.kit.corpusHash}\`.`,
@@ -441,26 +613,49 @@ function releaseNotes(manifest: ReturnType<typeof releaseManifest>): string {
 	return `${lines.join("\n")}\n`;
 }
 
-export type ReleaseInputs = { tag: string; version: string; assets: string; kitStatus: string; legacy?: string; out: string; commit: string };
+export type ReleaseInputs = {
+	tag: string;
+	version: string;
+	assets: string;
+	kitStatus: string;
+	legacy?: string;
+	out: string;
+	/** The finos/morphir commit release-info bound the run to; the checkout in `cwd` must be it. */
+	commit: string;
+	/** Write the evidence and the asset list, and refuse nothing on publication grounds; never a release. */
+	dryRun: boolean;
+	/** The pinned source's CHANGELOG and the commit of its tag `v<version>`, for the publication gate. */
+	changelog: string;
+	sourceTagCommit: string | undefined;
+};
 
 /**
  * Verifies the downloaded artifacts and writes the release manifest, the notes and `release-assets.txt`: the exact
- * files the release attaches, one absolute path per line. Relative paths resolve against `cwd`, the directory the
- * command was started from. Returns that list.
+ * files the release attaches, one absolute path per line. Relative paths resolve against `cwd`. Every validation
+ * failure throws, in a dry run too. Publication blockers (`publicationBlockers`) are recorded in the manifest; outside a
+ * dry run they throw after the evidence is written, so no asset list for a blocked release can be used. Returns the list.
  */
 export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: ReleaseInputs): string[] {
+	const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd, stdout: "pipe", stderr: "pipe", windowsHide: true });
+	const checkedOut = head.exitCode === 0 ? head.stdout.toString().trim() : "unknown";
+	if (checkedOut !== inputs.commit) throw new Error(`the checkout is ${checkedOut}, not the bound commit ${inputs.commit}`);
 	const assets = path.resolve(cwd, inputs.assets);
 	const launches = files(assets, ".build-launch.json").map(file => JSON.parse(readFileSync(file, "utf8")) as LaunchMetadata);
 	const expected = expectedLaunches(config, launches);
 	const releaseFiles: string[] = [];
+	const problems: string[] = [];
 	for (const launch of expected) {
 		const found = files(assets, launch.artifact).filter(file => path.basename(file) === launch.artifact);
 		if (found.length === 0) throw new Error(`${launch.artifact} is missing from ${assets}`);
 		if (found.length > 1) throw new Error(`${launch.artifact} appears ${found.length} times under ${assets}`);
 		const artifact = found[0]!;
 		if (sha256(artifact) !== launch.sha256) throw new Error(`${launch.artifact} does not match its recorded SHA-256`);
+		const contents = files(assets, `${launch.artifact}.build-contents.json`).filter(file => path.basename(file) === `${launch.artifact}.build-contents.json`);
+		if (contents.length > 1) problems.push(`${launch.artifact} has ${contents.length} build contents files`);
+		problems.push(...buildOriginProblems(config, launch, contents.length === 1 ? (JSON.parse(readFileSync(contents[0]!, "utf8")) as BuildContents) : undefined));
 		releaseFiles.push(artifact);
 	}
+	if (problems.length > 0) throw new Error(problems.join("; "));
 	const qualifications = files(assets, ".qualification.json").map(file => JSON.parse(readFileSync(file, "utf8")) as Qualification);
 	const kit = readKitStatus(readFileSync(path.resolve(cwd, inputs.kitStatus), "utf8"), config.kit);
 	const legacyFile = inputs.legacy === undefined ? undefined : path.resolve(cwd, inputs.legacy);
@@ -470,7 +665,8 @@ export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: Re
 		if (!existsSync(file) || sha256(file) !== alias.sha256) throw new Error(`${alias.asset} is missing or does not match its recorded SHA-256`);
 		releaseFiles.push(file);
 	}
-	const manifest = releaseManifest(config, inputs.tag, inputs.version, inputs.commit, kit, expected, qualifications, legacy);
+	const blockers = publicationBlockers(config, inputs.version, inputs.changelog, inputs.sourceTagCommit);
+	const manifest = releaseManifest(config, inputs.tag, inputs.version, inputs.commit, kit, expected, qualifications, legacy, { dryRun: inputs.dryRun, blockers });
 	const out = path.resolve(cwd, inputs.out);
 	mkdirSync(out, { recursive: true });
 	writeFileSync(path.join(out, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -479,10 +675,10 @@ export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: Re
 	const names = releaseFiles.map(file => path.basename(file));
 	const repeated = names.filter((name, index) => names.indexOf(name) !== index);
 	if (repeated.length > 0) throw new Error(`release asset names repeat: ${[...new Set(repeated)].join(", ")}`);
-	writeFileSync(path.join(out, "release-assets.txt"), `${releaseFiles.join("\n")}\n`);
+	if (!inputs.dryRun && blockers.length > 0) throw new Error(`publication refused: ${blockers.join("; ")}`);
+	writeFileSync(path.join(out, inputs.dryRun ? "dry-run-assets.txt" : "release-assets.txt"), `${releaseFiles.join("\n")}\n`);
 	return releaseFiles;
 }
-
 // ---- Command line --------------------------------------------------------
 
 function option(args: string[], name: string): string | undefined {
@@ -540,16 +736,30 @@ function main(args: string[]): number {
 			const version = parseReleaseTag(config, tag);
 			const changelog = changelogReleaseVersion(readFileSync(path.join(root, config.source.submodule, "CHANGELOG.md"), "utf8"));
 			if (changelog !== version) throw new Error(`${tag} names ${version}, but the pinned source releases ${changelog} (its CHANGELOG.md)`);
+			const git = (args: string[]) => {
+				const result = Bun.spawnSync(["git", ...args], { cwd: root, stdout: "pipe", stderr: "pipe", windowsHide: true });
+				return result.exitCode === 0 ? result.stdout.toString().trim() : undefined;
+			};
+			const head = git(["rev-parse", "HEAD"]) ?? "unknown";
+			const binding = workflowBindingProblems(config, {
+				tag,
+				githubRef: process.env.GITHUB_REF,
+				head,
+				tagCommit: git(["rev-parse", `refs/tags/${tag}^{commit}`]),
+				workflow: readFileSync(path.join(root, ".github/workflows/release.yml"), "utf8"),
+			});
+			if (binding.length > 0) throw new Error(binding.join("\n"));
 			output("tag", tag);
 			output("version", version);
+			output("commit", head);
 			output("prerelease", (parse(version).prerelease ?? []).length > 0 ? "true" : "false");
 			output("matrix", JSON.stringify(releaseMatrix(config)));
 			output("offerings", JSON.stringify(offeringMatrix(config)));
-			// Building and qualifying may run from a candidate pin, so the interface can be exercised; the
-			// manifest, and so publication, refuses it.
-			const blocker = releaseBlocker(config);
-			if (blocker !== undefined) console.error(`::warning::${blocker}. Building and qualifying only; publication will refuse.`);
-			output("publishable", blocker === undefined ? "true" : "false");
+			// Building and qualifying may run while publication is blocked, so the interface can be exercised in a
+			// dry run; the manifest step refuses a blocked publication on its own as well.
+			const blockers = publicationBlockers(config, version, readFileSync(path.join(root, config.source.submodule, "CHANGELOG.md"), "utf8"), sourceTagCommit(config.source.repository, `v${version}`));
+			for (const blocker of blockers) console.error(`::warning::publication blocked: ${blocker}`);
+			output("publishable", blockers.length === 0 ? "true" : "false");
 			return 0;
 		}
 		case "qualify": {
@@ -595,14 +805,18 @@ function main(args: string[]): number {
 			return 0;
 		}
 		case "manifest": {
+			const version = required(rest, "--version");
 			prepareRelease(config, process.cwd(), {
 				tag: required(rest, "--tag"),
-				version: required(rest, "--version"),
+				version,
 				assets: required(rest, "--assets"),
 				kitStatus: required(rest, "--kit-status"),
 				legacy: option(rest, "--legacy"),
 				out: required(rest, "--out"),
-				commit: process.env.GITHUB_SHA ?? "unknown",
+				commit: required(rest, "--commit"),
+				dryRun: rest.includes("--dry-run"),
+				changelog: readFileSync(path.join(root, config.source.submodule, "CHANGELOG.md"), "utf8"),
+				sourceTagCommit: sourceTagCommit(config.source.repository, `v${version}`),
 			});
 			return 0;
 		}		default:

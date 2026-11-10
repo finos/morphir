@@ -23,9 +23,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing official CLI tag to release (for example, cli/v0.4.0-alpha.4)'
+        description: 'Existing official CLI tag to release (for example, cli/v0.4.0-alpha.4). Dispatch from that tag.'
         required: true
         type: string
+      dry-run:
+        description: 'Build, qualify and write the release evidence without creating a release'
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -40,6 +45,8 @@ env:
   DOTNET_NOLOGO: "true"
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  # A tag push publishes; a dispatch is a dry run unless dry-run is explicitly false.
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run && 'true' || 'false' }}
 
 jobs:
   release-info:
@@ -52,6 +59,7 @@ jobs:
       matrix: ${{ steps.release.outputs.matrix }}
       offerings: ${{ steps.release.outputs.offerings }}
       publishable: ${{ steps.release.outputs.publishable }}
+      commit: ${{ steps.release.outputs.commit }}
     steps:
       - name: Check out the tag
         uses: actions/checkout@v7
@@ -70,7 +78,9 @@ jobs:
         run: bun install --frozen-lockfile
         working-directory: tools
 
-      - name: Validate the tag against the pinned source
+      # Refuses a run whose workflow ref is not refs/tags/<tag>, whose checkout is not the tag's commit, or whose
+      # literal cli-offering.yml commit differs from the pin. Later jobs check out the commit it outputs.
+      - name: Validate the tag, the run's ref and the pinned source
         id: release
         run: bun run tools/cli-release.ts release-info --tag "$RELEASE_TAG"
 
@@ -113,10 +123,10 @@ jobs:
         if: runner.os == 'Windows'
         run: git config --global core.longpaths true
 
-      - name: Check out the tag
+      - name: Check out the bound commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.release-info.outputs.tag }}
+          ref: ${{ needs.release-info.outputs.commit }}
           persist-credentials: false
 
       - name: Check out the pinned CLI source
@@ -188,16 +198,17 @@ jobs:
       TAG: ${{ needs.release-info.outputs.tag }}
       VERSION: ${{ needs.release-info.outputs.version }}
     steps:
-      - name: Check out the tag
+      - name: Check out the bound commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.release-info.outputs.tag }}
+          ref: ${{ needs.release-info.outputs.commit }}
           persist-credentials: false
 
       - name: Check out the pinned CLI source
         run: git submodule update --init --depth 1 ecosystem/morphir-dotnet ecosystem/morphir-rust
 
       - name: Refuse a release that already exists
+        if: env.DRY_RUN != 'true'
         run: |
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Release $TAG already exists. A published release is never replaced; tag a new version."
@@ -240,14 +251,35 @@ jobs:
       # artifact whose bytes or release differ from its launch metadata. It
       # writes the exact asset list the create step attaches.
       - name: Write the release manifest
+        env:
+          COMMIT: ${{ needs.release-info.outputs.commit }}
         run: |
-          bun run tools/cli-release.ts manifest --tag "$TAG" --version "$VERSION" \
+          DRY=()
+          if [ "$DRY_RUN" = "true" ]; then DRY=(--dry-run); fi
+          bun run tools/cli-release.ts manifest --tag "$TAG" --version "$VERSION" --commit "$COMMIT" \
             --assets .dev/out/cli-release/assets --kit-status .dev/out/cli-release/kit-status.json \
-            --legacy .dev/out/cli-release/legacy/legacy-aliases.json --out .dev/out/cli-release/publish
+            --legacy .dev/out/cli-release/legacy/legacy-aliases.json --out .dev/out/cli-release/publish "${DRY[@]}"
+
+      # The evidence of every run, dry or not: the manifest (with its publication record), the notes, the asset list
+      # and the legacy names. Only these files, named explicitly.
+      - name: Upload the release evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-release-evidence
+          path: |
+            .dev/out/cli-release/publish/release-manifest.json
+            .dev/out/cli-release/publish/release-notes.md
+            .dev/out/cli-release/publish/*-assets.txt
+            .dev/out/cli-release/legacy/legacy-aliases.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
 
       # One create call with every listed asset. The tag must already exist (it
       # is never created here), and nothing is uploaded into a release afterwards.
       - name: Create the release
+        if: env.DRY_RUN != 'true' && needs.release-info.outputs.publishable == 'true'
         run: |
           set -euo pipefail
           mapfile -t ASSETS < .dev/out/cli-release/publish/release-assets.txt
