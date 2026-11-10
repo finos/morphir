@@ -7,7 +7,8 @@ This directory contains [git submodules](https://git-scm.com/book/en/v2/Git-Tool
 | Submodule        | Repository | Branch | Purpose |
 |------------------|------------|--------|---------|
 | **morphir-elm** | [finos/morphir-elm](https://github.com/finos/morphir-elm) | vnext | Reference Elm implementation; IR definition, compilers, visualization, and backend processors |
-| **morphir-rust** | [finos/morphir-rust](https://github.com/finos/morphir-rust) | main | Rust libraries (morphir-core, morphir-common, etc.) used by the morphir CLI in this repo |
+| **morphir-dotnet** | [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet) | main | The Morphir CLI source; built, qualified and released by this repository |
+| **morphir-rust** | [finos/morphir-rust](https://github.com/finos/morphir-rust) | main | Rust libraries (morphir-core, morphir-common, etc.) used by this repository's development tools |
 | **morphir-examples** | [finos/morphir-examples](https://github.com/finos/morphir-examples) | main | Example Morphir projects; used for docs, tests, and reference |
 | **morphir-moonbit** | [finos/morphir-moonbit](https://github.com/finos/morphir-moonbit) | main | MoonBit implementation of Morphir tooling |
 | **morphir-python** | [finos/morphir-python](https://github.com/finos/morphir-python) | main | Python implementation of Morphir tooling; owns the Python compiler and the `morphir-python` WASM extension |
@@ -63,7 +64,8 @@ mise run submodules:status
 ## How morphir uses them
 
 - **morphir-elm**: The reference implementation containing the IR definition, Elm compiler, visualization components, and backend processors (Scala, JSON Schema, TypeScript, etc.). Tracks the `vnext` branch and uses mise plus Bun for builds.
-- **morphir-rust**: The morphir CLI (in `crates/`) depends on morphir-rust crates via Cargo path dependencies (e.g. `morphir-core`, `morphir-common`). The submodule is required to build those crates.
+- **morphir-dotnet**: The Morphir CLI source, pinned at the commit recorded in `.config/cli-release.json`. `release.yml` builds its four offerings with its own `PackRelease` target and qualifies the produced artifacts.
+- **morphir-rust**: The development tools in `crates/` (`morphir-mck`, `morphir-dev`) depend on morphir-rust crates via Cargo path dependencies (e.g. `morphir-core`, `morphir-common`). The submodule is required to build them.
 - **morphir-examples**: Used for examples, documentation, and tests. See each submodule's own README for build and usage.
 - **morphir-moonbit**: MoonBit implementation with packages for SDK, core types, and WASM bindings. See below for build commands.
 - **morphir-python**: Python implementation of Morphir tooling. It owns the Python compiler (the Rust crate `rust/crates/morphir-python-binding`) and the `morphir-python` WASM extension that the CLI installs, and releases new `extension/python/v<version>` bundles. Bundles up to `extension/python/v0.4.0` were released from finos/morphir-rust and stay there. The CLI in this repository does not build the extension; CI runs it against the bundle pinned in `.config/published-extension-bundles.toml`. See the submodule's own README, `docs/python-extension.md` and `docs/python-compiler.md` for build and usage.

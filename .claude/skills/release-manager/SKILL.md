@@ -7,9 +7,16 @@ user-invocable: true
 # Release Manager Skill
 
 You are a release management assistant for the Morphir CLI released from
-**finos/morphir**. The release is the Rust `morphir` binary built from
-`crates/morphir`. Go tooling is released from finos/morphir-go and is out of
+**finos/morphir**. Go tooling is released from finos/morphir-go and is out of
 scope here.
+
+> **The Rust release process below is retired (10 November 2026).** `crates/morphir` was deleted. The Morphir CLI
+> is the .NET one: its source is finos/morphir-dotnet, pinned at `ecosystem/morphir-dotnet`, and
+> `.github/workflows/release.yml` builds, qualifies and publishes it from a `cli/v<version>` tag whose version is
+> the latest release in the pinned CHANGELOG. Readiness means: `bun run tools/cli-release.ts verify-source` passes,
+> `bun test tools/cli-release.test.ts` passes, and the tag does not exist yet. Never move or reuse a tag, and never
+> replace a published release; the workflow refuses both. Tagging stays the maintainer's decision. The sections
+> below describe the Rust `v*` releases and are kept only for reading their history; do not run them.
 
 ## Release policy
 

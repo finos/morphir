@@ -4,6 +4,8 @@ This is the OpenSpec implementation breakdown, not an execution ledger. Beads re
 
 Dependencies: group 1 establishes contracts and fixed cases. Groups 2 and 3 can follow independently. Group 4 needs group 1 and packaged fixtures from groups 2/3. Group 5 needs generation activation from group 4. Group 6 integrates the previous groups. Group 7 consumes the separate WASM-host change and does not block the process-based F# delivery. The bounded-access readers are independent of this manager.
 
+> **Ownership note added 10 November 2026.** Task numbers and texts are unchanged. Official CLI release assembly, acquired-artifact qualification and publication now run in finos/morphir (`release.yml`, `move-cli-delivery-to-umbrella`) against the pinned `ecosystem/morphir-dotnet`, so the release-assembly part of 2.5 and the release lanes of group 6 are carried out there, using morphir-dotnet's publish profiles and receipts. Groups 2 to 5 and 7 stay in morphir-dotnet.
+
 ## 1. Shared acquisition contracts and fixed examples, finos/morphir
 
 - [x] 1.1 Define the `0.1.0-draft.1` recipe, project request, portable lock, local receipt and manager-result contracts using established SemVer types, tagged delivery/prerequisite cases and must-ignore/critical rules. Verify fixed positive/negative examples, exact draft refusal and unsupported critical paths through existing contract validation; document each contract and its separate version authority.

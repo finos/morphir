@@ -4,22 +4,11 @@ This guide covers the development workflow for contributing to Morphir.
 
 ## Prerequisites
 
-- Rust 1.98.0 or later (for Morphir CLI development)
+- Rust 1.98.0 or later (for the development tools: `morphir-mck` and `morphir-dev`)
 - Node.js 24+ (for website development)
 - Git
 - Mise (task runner) - Install from https://mise.jdx.dev
-- On Windows (MSVC): the Visual Studio **Spectre-mitigated libs** for your architecture, in addition to the C++ build tools. The `regorus` dependency of `morphir-opa` links against them, and without them `cargo build -p morphir` stops in the `msvc_spectre_libs` build script with `No spectre-mitigated libs were found`. Add them in the Visual Studio Installer under Individual components ("MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs (Latest)", or the ARM64 entry), or from an elevated prompt:
-
-  ```powershell
-  & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
-    --installPath "<your VS or Build Tools path>" `
-    --add Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre --quiet --norestart
-  ```
-
-  Use `Microsoft.VisualStudio.Component.VC.Runtimes.ARM64.Spectre` on Windows ARM64. Crates that do not depend on `morphir-opa` build without them.
-
-  If you cannot install the component (locked-down machine, or you are not touching Rego evaluation), build `morphir` with the `rego` feature turned off instead: `cargo build -p morphir --no-default-features`. That drops `morphir-opa`/`regorus` from the dependency graph entirely, so `msvc_spectre_libs` is never compiled. The `rego` feature is on by default, so a normal `cargo build`/`test`/`clippy` (and CI) is unaffected; opting out only disables `morphir eval`'s Rego provider and itest's Rego-backed assertions. See [issue #886](https://github.com/finos/morphir/issues/886).
-
+- The Morphir CLI itself is .NET and lives in [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet), pinned here at `ecosystem/morphir-dotnet`; work on it there. The deleted Rust CLI's MSVC Spectre-library requirement ([#886](https://github.com/finos/morphir/issues/886)) went with it.
 ## Quick Start
 
 ### 1. Clone the Repository
@@ -67,11 +56,15 @@ links and bundle updates.
 
 ## Development Workflow
 
-### Working on the Morphir CLI (Rust)
+### Working on the development tools (Rust)
 
 ```bash
-cargo run --package morphir -- --help
+mise run mck -- --help   # morphir-mck, the shared compatibility kit runner
+mise run kb -- check     # morphir-dev kb, the knowledge base commands
 ```
+
+Neither tool is the Morphir CLI or is released. The CLI's release is built from `ecosystem/morphir-dotnet` by
+`.github/workflows/release.yml`; `bun test tools/cli-release.test.ts` checks that orchestration.
 
 ### Working on the Website (Docusaurus)
 
@@ -112,8 +105,10 @@ mise run check
 ```
 morphir/
 ├── crates/
-│   ├── morphir/          # Morphir CLI
-│   └── integration-tests/ # Cross-crate CLI integration tests
+│   ├── morphir-mck/      # MCK engine
+│   ├── morphir-mck-cli/  # morphir-mck: the standalone runner (development only)
+│   ├── morphir-dev-tools/ # morphir-dev: kb and repository gates (internal)
+│   └── morphir-toolchain-contract/ # reference checker of the toolchain contracts
 ├── ecosystem/            # Vendored Morphir implementation submodules
 ├── website/               # Docusaurus documentation site
 │   ├── docs/
@@ -159,17 +154,16 @@ gh pr create
 
 ## Common Tasks
 
-### Building for Release
+### Building a CLI release
 
-```bash
-cargo build --locked --release --package morphir
-```
+Releases are built by `.github/workflows/release.yml` from a `cli/v<version>` tag; see [INSTALLING.md](INSTALLING.md).
+Nothing in this repository builds the CLI by hand.
 
 ### Adding Dependencies
 
 ```bash
 # Add to a specific crate
-cd crates/morphir
+cd crates/morphir-mck-cli
 cargo add some-crate
 
 # Add to workspace (shared)
