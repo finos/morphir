@@ -338,7 +338,7 @@ $ morphir mck mep guest-run \
 </figure>
 <p>The change is complete when:</p>
 <ol>
-<li>The generic guest kit passes through the .NET worker mode for the Python <code>0.6.0</code> guest and the SDK fixture, on the kit's model tier, with IR equal to the kit's expectations.</li>
+<li>The generic guest kit passes through the .NET worker mode for the Python <code>0.6.0</code> guest, on the kit's model tier, with IR equal to the kit's expectations. The SDK fixture guest speaks MEP <code>0.1</code> only and is not part of this until it is rebuilt.</li>
 <li>Every crafted case for the Extism profile gives its expected observation on the .NET host, and a byte-profile module is refused by name, with the memory ceiling and call deadline reported as enforced.</li>
 <li>One published bundle from <code>.config/published-extension-bundles.toml</code> runs in both the Native AOT host and <code>dotnet-morphir</code>. This is the roadmap's own completion evidence for step 5.</li>
 <li>Each offering and platform that claims the runtime has a report produced from its released artifact on a clean machine.</li>
