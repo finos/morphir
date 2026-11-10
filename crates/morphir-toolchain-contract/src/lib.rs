@@ -52,7 +52,8 @@ pub use envelope::{CONTRACT_VERSION, SUPPORTED_VERSIONS};
 pub use ids::{
     AbsolutePath, CommandName, DeploymentId, ExtensionIdentity, GenerationId, ImplementationId,
     LanguageId, ModelToken, PackageId, PackageManagerId, PathStyle, PresetId, ProtocolVersion,
-    Sha256, TargetDigest, TargetPath, WasmAbi, WorkflowId,
+    Sha256, TargetDigest, TargetPath, WasmAbi, WorkflowId, comparator, exact_version,
+    version_bounds,
 };
 pub use lock::{LockedHost, PlatformClosure, RequestChangeCause, ToolchainLock, read_lock};
 pub use model::{

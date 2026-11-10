@@ -2007,6 +2007,22 @@
     },
     {
       "contract": "lock",
+      "document": "lock/negative/schema-version-at-bound.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/schema-version-past-bound.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "contract": "lock",
       "document": "lock/target-path-non-ascii-nfc.json",
       "expected": "valid"
     },
@@ -2597,16 +2613,22 @@
       "expected": "valid"
     },
     {
-      "name": "mep version: a patch at the largest component, 2^64 - 1",
+      "name": "mep version: a patch of 20 digits, past the 15-digit bound",
       "kind": "mep-version",
       "version": "0.2.18446744073709551615",
-      "expected": "valid"
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
     },
     {
-      "name": "mep version: a prerelease of 0.2.0 of 1,100 letters",
+      "name": "mep version: a prerelease of 1,100 letters, past the 256-character bound",
       "kind": "mep-version",
       "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "expected": "valid"
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
     },
     {
       "name": "mep version: a partial version",
@@ -2663,15 +2685,13 @@
       }
     },
     {
-      "name": "mep version: a patch one past the largest component",
+      "name": "mep version: a patch of 20 digits, past 2^64 - 1 as well",
       "kind": "mep-version",
       "version": "0.2.18446744073709551616",
       "expected": {
         "code": "invalid_value",
         "path": ""
-      },
-      "schema": "accepts",
-      "schemaGap": "A pattern cannot bound a decimal component's value; the page limits each of major, minor and patch to 2^64 - 1."
+      }
     },
     {
       "name": "a provider at MEP 0.2.0 does not fit a host that lists only 0.2.0-draft.1",
@@ -2913,6 +2933,246 @@
       "start": "Workspace/loans",
       "expected": {
         "request": "Workspace/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "mep version: 255 characters",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: 256 characters, the bound",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: 257 characters, one past the bound",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a patch of 15 digits",
+      "kind": "mep-version",
+      "version": "0.2.100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a patch of 16 digits",
+      "kind": "mep-version",
+      "version": "0.2.1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a major of 15 digits, which is SemVer but off the line",
+      "kind": "mep-version",
+      "version": "100000000000000.2.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a major of 16 digits",
+      "kind": "mep-version",
+      "version": "1000000000000000.2.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a minor of 15 digits, which is SemVer but off the line",
+      "kind": "mep-version",
+      "version": "0.100000000000000.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a minor of 16 digits",
+      "kind": "mep-version",
+      "version": "0.1000000000000000.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a numeric prerelease identifier of 15 digits",
+      "kind": "mep-version",
+      "version": "0.2.0-100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a numeric prerelease identifier of 16 digits",
+      "kind": "mep-version",
+      "version": "0.2.0-1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: long build metadata within 256 characters, which MEP refuses",
+      "kind": "mep-version",
+      "version": "0.2.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: build metadata past 256 characters",
+      "kind": "mep-version",
+      "version": "0.2.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: 255 characters",
+      "kind": "version",
+      "version": "1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: 256 characters, the bound",
+      "kind": "version",
+      "version": "1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: 257 characters, one past the bound",
+      "kind": "version",
+      "version": "1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a major of 15 digits",
+      "kind": "version",
+      "version": "100000000000000.0.0",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a major of 16 digits",
+      "kind": "version",
+      "version": "1000000000000000.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a minor of 15 digits",
+      "kind": "version",
+      "version": "1.100000000000000.0",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a minor of 16 digits",
+      "kind": "version",
+      "version": "1.1000000000000000.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a patch of 15 digits",
+      "kind": "version",
+      "version": "1.0.100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a patch of 16 digits",
+      "kind": "version",
+      "version": "1.0.1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a numeric prerelease identifier of 15 digits",
+      "kind": "version",
+      "version": "1.0.0-rc.100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a numeric prerelease identifier of 16 digits",
+      "kind": "version",
+      "version": "1.0.0-rc.1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a 16-digit alphanumeric prerelease identifier, which is not numeric",
+      "kind": "version",
+      "version": "1.0.0-1000000000000000a",
+      "expected": "valid"
+    },
+    {
+      "name": "version: build metadata within 256 characters",
+      "kind": "version",
+      "version": "1.0.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a 16-digit build metadata identifier, bounded only by the length",
+      "kind": "version",
+      "version": "1.0.0+1000000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "version: build metadata past 256 characters",
+      "kind": "version",
+      "version": "1.0.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a comparator whose version has 256 characters",
+      "kind": "version",
+      "comparator": true,
+      "version": ">=1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a comparator whose version has 257 characters",
+      "kind": "version",
+      "comparator": true,
+      "version": ">=1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a comparator with a 16-digit major",
+      "kind": "version",
+      "comparator": true,
+      "version": ">=1000000000000000.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
       }
     }
   ]

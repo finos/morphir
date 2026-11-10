@@ -263,11 +263,50 @@ pub struct TargetDigest {
 
 /// Parse an exact SemVer version in canonical spelling.
 pub fn exact_version(value: &str) -> Result<Version, String> {
+    version_bounds(value)?;
     match Version::parse(value) {
         Ok(version) if version.to_string() == value => Ok(version),
         Ok(_) => Err(format!("'{value}' is not in canonical SemVer spelling")),
         Err(error) => Err(format!("'{value}' is not a SemVer version: {error}")),
     }
+}
+
+/// The longest version string, in characters: npm semver's `MAX_LENGTH`.
+pub const MAX_VERSION_LENGTH: usize = 256;
+
+/// The most digits in a numeric identifier: major, minor, patch, or an
+/// all-digit prerelease identifier. Every 15-digit number is below 2^53, so
+/// it is exact in a JavaScript number, and it fits any signed 64-bit integer.
+pub const MAX_NUMERIC_DIGITS: usize = 15;
+
+/// The bound on a version string, checked on the text before any SemVer
+/// parser runs, so that no reader spends unbounded time or memory on one.
+/// Build metadata identifiers are bounded only by the total length.
+pub fn version_bounds(value: &str) -> Result<(), String> {
+    let length = value.chars().count();
+    if length > MAX_VERSION_LENGTH {
+        return Err(format!(
+            "a version has at most {MAX_VERSION_LENGTH} characters; this one has {length}"
+        ));
+    }
+    let without_build = value.split('+').next().unwrap_or_default();
+    let (core, prerelease) = match without_build.split_once('-') {
+        Some((core, prerelease)) => (core, Some(prerelease)),
+        None => (without_build, None),
+    };
+    let too_long = core
+        .split('.')
+        .chain(prerelease.into_iter().flat_map(|text| text.split('.')))
+        .find(|part| {
+            part.len() > MAX_NUMERIC_DIGITS && part.bytes().all(|byte| byte.is_ascii_digit())
+        });
+    if let Some(part) = too_long {
+        return Err(format!(
+            "a numeric identifier has at most {MAX_NUMERIC_DIGITS} digits; '{part}' has {}",
+            part.len()
+        ));
+    }
+    Ok(())
 }
 
 /// Parse one SemVer comparator such as `>=10.0.0`: exactly one of `=`, `>`,

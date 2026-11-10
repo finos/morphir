@@ -25,6 +25,7 @@ pub(crate) fn check(root: &Value, understood: &[&str]) -> Result<()> {
     let object = Node::root(root).object()?;
     let version = object.req("schemaVersion", |node| {
         node.parse(Code::InvalidValue, |text| {
+            crate::ids::version_bounds(text)?;
             Version::parse(text)
                 .map_err(|error| format!("'{text}' is not a SemVer version: {error}"))
         })

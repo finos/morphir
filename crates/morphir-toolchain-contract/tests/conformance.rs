@@ -6,9 +6,9 @@
 //! `valid` or the exact diagnostic code and member path a reader reports.
 
 use morphir_toolchain_contract::{
-    Code, Operation, PlatformId, ProtocolVersion, canonical_json, canonical_sha256,
-    discover_request, prerequisite_met, read_lock, read_receipt, read_recipe, read_request,
-    read_result, resolve_closure, understood,
+    Code, Operation, PlatformId, ProtocolVersion, canonical_json, canonical_sha256, comparator,
+    discover_request, exact_version, prerequisite_met, read_lock, read_receipt, read_recipe,
+    read_request, read_result, resolve_closure, understood,
 };
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -188,8 +188,39 @@ fn every_binding_case_matches_the_reference_checks() {
         );
     }
     let mep_version_schema = jsonschema::validator_for(&mep_version).expect("mepVersion compiles");
+    let recipe_schema = schema("recipe");
+    let version_schemas = (
+        jsonschema::validator_for(&recipe_schema["$defs"]["semanticVersion"]).unwrap(),
+        jsonschema::validator_for(&recipe_schema["$defs"]["comparators"]["items"]).unwrap(),
+    );
     for case in cases()["bindings"].as_array().expect("binding cases") {
         let name = case["name"].as_str().unwrap();
+        if case["kind"] == "version" {
+            // A version member, or a comparator, on its own: a refusal is
+            // invalid_value at the member that holds it.
+            let text = case["version"].as_str().unwrap();
+            let is_comparator = case["comparator"] == true;
+            let actual = if is_comparator {
+                comparator(text).map(drop)
+            } else {
+                exact_version(text).map(drop)
+            }
+            .map_err(|_| (Code::InvalidValue.as_str().to_owned(), String::new()));
+            if actual != expected(case) {
+                failures.push(format!("{name}: gave {actual:?}"));
+            }
+            let pattern = if is_comparator {
+                &version_schemas.1
+            } else {
+                &version_schemas.0
+            };
+            if pattern.is_valid(&Value::String(text.to_owned())) != actual.is_ok() {
+                failures.push(format!(
+                    "{name}: the schema pattern disagrees with the reader"
+                ));
+            }
+            continue;
+        }
         if case["kind"] == "setup-platforms" {
             let request =
                 read_request(&read(&fixtures().join(case["request"].as_str().unwrap()))).unwrap();

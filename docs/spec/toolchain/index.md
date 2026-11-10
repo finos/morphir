@@ -57,7 +57,15 @@ Some words are used with more than one meaning across the toolchain, MEP and mor
 
 `schemaVersion` is a SemVer string. A reader lists the versions it supports as SemVer requirements and refuses anything else before it reads another member. A `0.1.0-draft.1` reader lists exactly `=0.1.0-draft.1`, so it refuses `0.1.0-draft.2` and the released `0.1.0` with `unsupported_contract_version`. A contract version carries no build metadata: `=0.1.0-draft.1` would match `0.1.0-draft.1+build.5` by SemVer precedence, so a reader also refuses any version with build metadata (`lock/negative/draft-build-metadata.json`). Every other version member is compared as exact text in canonical SemVer spelling, so `1.2.3` and `1.2.3+build` are different versions. A string that is not SemVer, such as `0.1`, is `invalid_value`. Drafts promise no compatibility with each other. Use a SemVer library, never a hand-written version type.
 
-A version's major, minor and patch are each at most 18446744073709551615 (2<sup>64</sup> − 1); a larger component is `invalid_value`. A library that holds components in a narrower type, such as a 32-bit integer, must still accept every value up to that bound. A version string has no length bound of its own: it is bounded only by the [size of the document](#document-size-and-files) that holds it, and a reader never refuses a valid version for its length. A prerelease of 1,100 letters is valid (`mep-version` cases).
+**The bound on a version.** This applies to every version string: `schemaVersion`, every version member, the version in a comparator, and a MEP version.
+
+- **Length:** at most 256 characters. This is npm semver's `MAX_LENGTH`, so a reader built on it already refuses longer. A version holds only ASCII, so this is also 256 bytes.
+- **Numeric identifiers:** major, minor, patch, and every all-digit prerelease identifier, at most 15 digits each. Every 15-digit number is below 2<sup>53</sup>, so it is exact in a JavaScript number, and it fits Rust's `u64`, MoonBit's `Int64` and any signed 64-bit integer.
+- **Build metadata:** bounded only by the 256 characters.
+
+A reader checks the bound on the text before any SemVer parser runs, because parsing an unbounded version with an arbitrary-precision library takes time that grows with the square of its length. A version past the bound is `invalid_value` at the member that holds it, and so is a comparator whose version is past it; a `schemaVersion` past it is `invalid_value` too (`lock/negative/schema-version-past-bound.json`), where one at the bound is only unlisted (`schema-version-at-bound.json`). The schemas' version patterns carry the same bound. The `version` and `mep-version` binding cases pin it at 255, 256 and 257 characters, at 15 and 16 digits in each numeric identifier, and for long build metadata inside and past 256 characters.
+
+This bound is the one the released `morphirup` (finos/morphir-dotnet `v0.4.0-alpha.4`) ships as provisional. No maintainer decision records it yet; the maintainer has been told of it and may still change it.
 
 The schemas' patterns are ECMA-262 regular expressions. In ECMA-262, `$` matches only at the end of the string, so `"0.2.0\n"` is refused; some engines, .NET's among them, also let `$` match before a final line feed, and a validator built on one must anchor at the end of the string instead.
 
@@ -67,7 +75,7 @@ A provider's `protocolVersion` and a host offering's `protocolVersions` are MEP 
 
 Two codes apply, following their definitions in the [code table](#stable-codes):
 
-- a string that is not a version in canonical SemVer spelling fails its type and is `invalid_value`, as for every other version member: `0.1`, `0.2`, `v0.2.0`, `00.2.0`, `0.2.0-`, `0.2.0-01`, `"0.2.0\n"`, the empty string, and `0.2.18446744073709551616`, whose patch is past the bound above;
+- a string that is not a version in canonical SemVer spelling fails its type and is `invalid_value`, as for every other version member: `0.1`, `0.2`, `v0.2.0`, `00.2.0`, `0.2.0-`, `0.2.0-01`, `"0.2.0\n"`, the empty string, and any version past the [bound](#versions), such as a patch of 16 digits or a prerelease of 1,100 letters. Under this split a version past the bound is `invalid_value` even when it would be off the line: it is not a version in the contract's grammar at all, so its type fails before the line is consulted. A 15-digit major is SemVer and off the line, `unsupported_case`; a 16-digit one is `invalid_value`;
 - a SemVer version that is not on the line, build metadata included, names a protocol this contract does not support and is `unsupported_case`, as an unknown case of a tagged member is: `0.1.0`, `0.2.1-rc.1`, `0.3.0-draft.1`, `0.3.0`, `1.0.0` and `0.2.0+build.1`.
 
 Either refusal is at the member that holds the version.
@@ -212,7 +220,7 @@ No document carries a credential. Every reader refuses, at any depth and includi
 
 ### Document size and files
 
-A manager reads a document only from a regular file, after following symbolic links. A FIFO, a device or a directory in its place is `document_unavailable`, so a checked-in `.morphir/toolchain.toml` cannot make a manager wait forever or read without end. A request, lock, receipt or manager result is at most 1 MiB (1,048,576 bytes), and a recipe at most 16 MiB. A larger one is `document_unavailable` without being parsed. A recipe read through TUF is also bounded by its authenticated target length. These bounds also bound every string in a document; no string, version strings included, has a length bound of its own. No fixture: a file past the bound is not committed, and a FIFO cannot be.
+A manager reads a document only from a regular file, after following symbolic links. A FIFO, a device or a directory in its place is `document_unavailable`, so a checked-in `.morphir/toolchain.toml` cannot make a manager wait forever or read without end. A request, lock, receipt or manager result is at most 1 MiB (1,048,576 bytes), and a recipe at most 16 MiB. A larger one is `document_unavailable` without being parsed. A recipe read through TUF is also bounded by its authenticated target length. These bounds also bound every string in a document. A version string has a tighter bound of its own ([versions](#versions)). No fixture: a file past the bound is not committed, and a FIFO cannot be.
 
 ## Stable codes
 
@@ -282,7 +290,8 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 | `setup-platforms` | `request`, `platform` | A setup of `request` on `platform` locks exactly `expected.platforms`, in platform table order ([plans](./manager-result.md#plans)) |
 | `prerequisite-versions` | `versions`, `installed` | An installed version `installed` meets the comparator list `versions` exactly when `expected.met` is `true` ([tagged cases](#tagged-cases)) |
 | `nfc` | `input`, `expected` | The canonical encoder writes the string `input` as `"`, then `expected`, then `"`: `expected` is the Unicode 17.0.0 NFC of `input` ([the plan digest](./manager-result.md#the-plan-digest)). The inputs hold no `"` or `\` |
-| `mep-version` | `version` | Read as a `protocolVersion` value, the string is `valid`, or refused with `invalid_value` or `unsupported_case` ([MEP versions](#mep-versions)). It is the one kind that checks a bare string; `path` is empty because the member's path belongs to the document that holds it. The string is also checked against the schemas' shared `$defs.mepVersion`, and a refused string the pattern accepts says so with `"schema": "accepts"` and a `schemaGap` |
+| `mep-version` | `version` | Read as a `protocolVersion` value, the string is `valid`, or refused with `invalid_value` or `unsupported_case` ([MEP versions](#mep-versions)). This kind and `version` check a bare string; `path` is empty because the member's path belongs to the document that holds it. The string is also checked against the schemas' shared `$defs.mepVersion`, and a refused string the pattern accepts says so with `"schema": "accepts"` and a `schemaGap` |
+| `version` | `version`, optional `comparator` | Read as a version member, or with `"comparator": true` as one comparator, the string is `valid` or `invalid_value` ([the bound on a version](#versions)); it is also checked against the schemas' `semanticVersion` or comparator pattern, which must agree |
 | `discover` | `files`, `boundary`, `start` | [Discovery](./toolchain-request.md#discovery) from `start` finds `expected.request`, or no request when it is `null`. Paths are relative, `/`-separated, and name files under one synthetic root |
 
 `fixtures/0.1.0-draft.1/signed/` holds a TEST-ONLY repository in the tool release metadata v1 profile. Its `cases.json` has these sections:
