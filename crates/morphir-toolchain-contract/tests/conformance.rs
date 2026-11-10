@@ -7,8 +7,8 @@
 
 use morphir_toolchain_contract::{
     Code, Operation, PlatformId, ProtocolVersion, canonical_json, canonical_sha256,
-    discover_request, read_lock, read_receipt, read_recipe, read_request, read_result,
-    resolve_closure, understood,
+    discover_request, prerequisite_met, read_lock, read_receipt, read_recipe, read_request,
+    read_result, resolve_closure, understood,
 };
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -190,6 +190,40 @@ fn every_binding_case_matches_the_reference_checks() {
     let mep_version_schema = jsonschema::validator_for(&mep_version).expect("mepVersion compiles");
     for case in cases()["bindings"].as_array().expect("binding cases") {
         let name = case["name"].as_str().unwrap();
+        if case["kind"] == "setup-platforms" {
+            let request =
+                read_request(&read(&fixtures().join(case["request"].as_str().unwrap()))).unwrap();
+            let current = PlatformId::parse(case["platform"].as_str().unwrap()).unwrap();
+            let actual: Vec<&str> = request
+                .setup_platforms(current)
+                .iter()
+                .map(PlatformId::as_str)
+                .collect();
+            let wanted: Vec<&str> = case["expected"]["platforms"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|platform| platform.as_str().unwrap())
+                .collect();
+            if actual != wanted {
+                failures.push(format!("{name}: locks {actual:?}"));
+            }
+            continue;
+        }
+        if case["kind"] == "prerequisite-versions" {
+            let versions: Vec<semver::Comparator> = case["versions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|text| semver::Comparator::parse(text.as_str().unwrap()).unwrap())
+                .collect();
+            let installed = semver::Version::parse(case["installed"].as_str().unwrap()).unwrap();
+            let met = prerequisite_met(&versions, &installed);
+            if Some(met) != case["expected"]["met"].as_bool() {
+                failures.push(format!("{name}: met is {met}"));
+            }
+            continue;
+        }
         if case["kind"] == "nfc" {
             // The canonical encoder writes a string as its NFC form between
             // quotation marks; the inputs hold no `"` or `\`.

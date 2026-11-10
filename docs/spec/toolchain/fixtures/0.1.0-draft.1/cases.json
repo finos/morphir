@@ -8,6 +8,11 @@
     },
     {
       "contract": "request",
+      "document": "request/choice-for-unrequired-operation.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
       "document": "request/team-platforms-external-backend.toml",
       "expected": "valid"
     },
@@ -390,6 +395,11 @@
     },
     {
       "contract": "recipe",
+      "document": "recipe/wasm-abi-and-protocol-misfit.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
       "document": "recipe/negative/draft-2.json",
       "expected": {
         "code": "unsupported_contract_version",
@@ -685,6 +695,11 @@
     {
       "contract": "result",
       "document": "result/setup-plan.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-providers-swapped.json",
       "expected": "valid"
     },
     {
@@ -1619,6 +1634,120 @@
     },
     {
       "contract": "result",
+      "document": "result/negative/lock-binding-other-document.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].document"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/platform-not-locked-without-platform.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].platform"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/abi-on-other-code.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].abi"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/document-unavailable-with-path.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].path"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/critical-not-array.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "critical"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-without-plan-sha256.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "planSha256"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-sha256-without-plan.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "planSha256"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/diagnostic-path-without-document.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].path"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-component-other-deployment.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-component-other-implementation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-component-other-version.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-provider-repository-target-source.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].source"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not tie a component's source kind to its role and delivery."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-built-in-source.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not tie a component's source kind to its role and delivery."
+    },
+    {
+      "contract": "result",
       "document": "result/negative/plan-lock-without-platform.json",
       "expected": {
         "code": "inconsistent_document",
@@ -1689,6 +1818,21 @@
     {
       "contract": "result",
       "document": "result/restore-document-unavailable.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-provider-repository-mismatch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-choice-unsupported.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-preset-unsupported.json",
       "expected": "valid"
     },
     {
@@ -2481,6 +2625,157 @@
       "kind": "nfc",
       "input": "a￾́",
       "expected": "a￾́"
+    },
+    {
+      "name": "setup on linux-x64 locks win-x64, osx-arm64, linux-x64",
+      "kind": "setup-platforms",
+      "request": "request/team-platforms-external-backend.toml",
+      "platform": "linux-x64",
+      "expected": {
+        "platforms": [
+          "win-x64",
+          "osx-arm64",
+          "linux-x64"
+        ]
+      }
+    },
+    {
+      "name": "setup on osx-arm64 locks win-x64, osx-arm64",
+      "kind": "setup-platforms",
+      "request": "request/team-platforms-external-backend.toml",
+      "platform": "osx-arm64",
+      "expected": {
+        "platforms": [
+          "win-x64",
+          "osx-arm64"
+        ]
+      }
+    },
+    {
+      "name": "setup on linux-arm64 locks linux-arm64",
+      "kind": "setup-platforms",
+      "request": "request/approved.toml",
+      "platform": "linux-arm64",
+      "expected": {
+        "platforms": [
+          "linux-arm64"
+        ]
+      }
+    },
+    {
+      "name": "prerequisite versions: a release inside the range",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=10.0.0",
+        "<11.0.0"
+      ],
+      "installed": "10.0.5",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease of the excluded upper bound",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=10.0.0",
+        "<11.0.0"
+      ],
+      "installed": "11.0.0-preview.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease below the bound by precedence, which no comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        "<11.0.0"
+      ],
+      "installed": "11.0.0-preview.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease of the lower bound",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=10.0.0"
+      ],
+      "installed": "10.0.0-rc.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: a later prerelease of a version a comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=11.0.0-preview.1",
+        "<12.0.0"
+      ],
+      "installed": "11.0.0-preview.2",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "prerequisite versions: a release candidate of a version a comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=11.0.0-preview.1",
+        "<12.0.0"
+      ],
+      "installed": "11.0.0-rc.1",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease of a version no comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=11.0.0-preview.1",
+        "<12.0.0"
+      ],
+      "installed": "11.1.0-preview.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: no comparators",
+      "kind": "prerequisite-versions",
+      "versions": [],
+      "installed": "11.0.0-preview.1",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "a provider that misfits by ABI and by protocol is reported by its ABI",
+      "rule": "resolve-preferred-abi",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-and-protocol-misfit.json",
+      "request": "request/wasm-example-default.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "abi_unavailable",
+        "path": "toolset"
+      }
+    },
+    {
+      "name": "a choice for an operation the recipe does not require is refused",
+      "rule": "resolve-choice-unrequired",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/choice-for-unrequired-operation.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.providers[0]"
+      }
     }
   ]
 }

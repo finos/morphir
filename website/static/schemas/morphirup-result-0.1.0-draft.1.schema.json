@@ -101,7 +101,8 @@
     }
   },
   "dependentRequired": {
-    "plan": [ "planSha256" ]
+    "plan": [ "planSha256" ],
+    "planSha256": [ "plan" ]
   },
   "$defs": {
     "token": {
@@ -595,6 +596,125 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "request_changed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "document": {
+                "const": "lock"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "platform_not_locked"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "document": {
+                "const": "lock"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "lock_recipe_mismatch"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "document": {
+                "const": "lock"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "lock_changed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "document": {
+                "const": "receipt"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "receipt_lock_mismatch"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "document": {
+                "const": "receipt"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "plan_changed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "document": {
+                "const": "result"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "code" ],
+            "properties": {
+              "code": {
+                "const": "document_unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "const": ""
+              }
+            }
+          }
         }
       ],
       "required": [ "kind", "code", "severity", "message" ],
@@ -689,6 +809,10 @@
             "crlf-line-endings-and-byte-order-mark"
           ]
         }
+      },
+      "dependentRequired": {
+        "document": [ "path" ],
+        "path": [ "document" ]
       }
     },
     "planComponent": {

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "setup",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "unsupported-artifact",
+      "severity": "error",
+      "code": "unsupported_artifact",
+      "message": "No native-aot offering exists for linux-musl-x64.",
+      "component": {
+        "role": "host",
+        "implementation": "dotnet",
+        "deployment": "native-aot"
+      },
+      "platform": "linux-musl-x64",
+      "abi": "morphir-bytes-v1"
+    }
+  ]
+}

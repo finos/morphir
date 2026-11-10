@@ -539,6 +539,13 @@ pub(crate) fn provider_fits(
     host: &HostOffering,
     platform: Option<PlatformId>,
 ) -> std::result::Result<(), Misfit> {
+    // A missing WASM ABI is reported before any other misfit: it is the one
+    // a request can fix by choosing the provider for another ABI.
+    if let RecipeDelivery::Wasm { abi, .. } = &provider.delivery
+        && !host.wasm_abis.contains(abi)
+    {
+        return Err(Misfit::Abi(abi.clone()));
+    }
     let protocol = provider.delivery.protocol().version();
     if !host.protocol_versions.contains(protocol) {
         return Err(Misfit::Protocol(protocol.clone()));

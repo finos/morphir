@@ -8,7 +8,7 @@ status: draft
 
 With `--json`, a `morphirup` command writes exactly one result document to standard output. Progress and logs go to standard error.
 
-The exit status is `0` when the outcome is `planned` or `succeeded`, and `1` when it is `failed`. A command line the manager cannot parse (an unknown option, a missing argument) exits `2` and writes no result, only a usage message on standard error. A command that runs but cannot read a document it needs, such as an absent project lock for `restore --locked`, fails with `document_unavailable` (`unsupported-contract`, with `document` and the empty `path`; `result/restore-document-unavailable.json`). Version authority: this page. Schema: [morphirup-result-0.1.0-draft.1.schema.json](/schemas/morphirup-result-0.1.0-draft.1.schema.json).
+The exit status is `0` when the outcome is `planned` or `succeeded`, and `1` when it is `failed`. A command line the manager cannot parse (an unknown option, a missing argument) exits `2` and writes no result, only a usage message on standard error. An internal error, a defect in the manager or an exhausted resource, exits `3` with nothing on standard output and the error on standard error, so a script never mistakes it for a usage error or for a failed result. `morphirup --version` prints only the manager's version, in canonical SemVer, and a line feed on standard output and exits `0`; it writes no result, even with `--json`. A command that runs but cannot read a document it needs, such as an absent project lock for `restore --locked`, fails with `document_unavailable` (`unsupported-contract`, with `document` and the empty `path`; `result/restore-document-unavailable.json`). Version authority: this page. Schema: [morphirup-result-0.1.0-draft.1.schema.json](/schemas/morphirup-result-0.1.0-draft.1.schema.json).
 
 ## Members
 
@@ -53,13 +53,13 @@ Understood critical paths: `schemaVersion`, `critical`, `command`, `outcome`, `p
 
 ## Plans
 
-A plan says everything the command will do and write, so that its digest pins all of it. It names:
+A plan says everything the command will do and write, so that its digest pins all of it. A plan made without acting, such as the result of plan-only setup, states what the planned command would do when applied: its `metadataRefresh`, for example, is `required` when the applied command would refresh metadata, whatever the plan-only run itself read. It names:
 
 - `implementation`, `deployment` and `platform`: the host offering and the platform it installs now;
 - the `recipe`;
 - `metadataRefresh`: `required` when the command refreshes the repository metadata before acting, which `setup` and `update` always do unless they run offline, and `not-required` when it runs offline from the verified metadata it holds;
 - its `components`: what it installs for `platform`;
-- `lock`: the complete [lock](./toolchain-lock.md) the command writes when it succeeds, with every platform's closure, not only `platform`'s. After success the written lock equals `lock` as a parsed value.
+- `lock`: the complete [lock](./toolchain-lock.md) the command writes when it succeeds, with every platform's closure, not only `platform`'s. After success the written lock equals `lock` as a parsed value. A setup locks the request's `platforms` together with the platform it runs on, each once, in [platform table](./index.md#platforms) order: a request listing `win-x64` and `osx-arm64`, set up on `linux-x64`, locks all three (binding kind `setup-platforms`).
 
 Because `lock` is inside the plan, `--expect-plan` pins every closure that setup records, for the other platforms too (binding case `plan-lock`). The reader checks the plan against its lock, refusing each mismatch with `inconsistent_document`:
 
@@ -67,9 +67,10 @@ Because `lock` is inside the plan, `--expect-plan` pins every closure that setup
 - `lock.host` has the plan's implementation and deployment, at `plan.lock.host`;
 - `lock.platforms` records `platform`, at `plan.lock.platforms`;
 - there is exactly one host component and one provider component per provider of that closure, at `plan.components`;
-- the host component's `version` and source target are the lock's host release and that platform's host artifact;
-- each provider component's `extensionId`, `version` and `delivery` are its operation's locked provider, at `plan.components[i]`;
-- each source names that provider's artifact or package, or is `built-in` for a built-in, at its `source`;
+- the host component's `implementation`, `deployment` and `version` are the lock's host, at `plan.components[i]` (`result/negative/plan-host-component-other-deployment.json`, `-other-implementation.json`, `-other-version.json`), and its source target is that platform's host artifact, at `source.target`;
+- each provider component's `extensionId`, `version` and `delivery` are its operation's locked provider, at `plan.components[i]`. Provider components are matched to the lock by operation, so their order in `components` is free (`result/setup-plan-providers-swapped.json` is valid);
+- each source has the kind its component's role allows, at its `source`: a host's is `repository-target`, for a release authenticated by its own TUF target, or `external-owner`; an external provider's is `recipe-digest`, because the recipe binds its bytes by digest, or `external-owner`; a built-in's is `built-in` (`result/negative/plan-provider-repository-target-source.json`, `plan-host-built-in-source.json`);
+- each source names that provider's artifact or package, at its `source`;
 - every `repository-target` and `recipe-digest` source, the host's included, names the recipe's repository, at `source.repositoryId` (one repository per binding check).
 
 `lock` itself follows the lock schema and reader: a refusal inside it carries its path under `plan.lock`.
@@ -80,7 +81,7 @@ Each component has:
 - `version`, and for a provider `extensionId` and `delivery`. A provider component without `delivery` or `extensionId`, or a host component with either, is `inconsistent_document` at that member, checked `delivery` first (`result/negative/provider-component-without-extension-id.json`, `host-component-with-extension-id.json`);
 - `source`: `repository-target` or `recipe-digest` with `repositoryId`, `target` and `sha256`, or `built-in`, or `external-owner`;
 - `downloadBytes`: the authenticated length of the target the component downloads, from the TUF targets metadata, or `0` when it downloads nothing;
-- `installedBytes`: the bytes the component occupies once installed. Its source is **not settled** in `0.1.0-draft.1`: the recipe states no installed size yet, so a manager reports its own measurement of the staged component;
+- `installedBytes`: the bytes the component occupies once installed. Its source is **deferred**: it will be a recipe member that release assembly writes for each artifact, and it is defined together with the multi-file package form (see [toolset recipe limits](./toolset-recipe.md#limits-of-this-contract-version)), because that form defines what an installed extension is. Until then a manager reports its own measurement, so `installedBytes`, and with it `planSha256`, can differ between two managers for the same inputs;
 - `updateOwner`, an ownership case;
 - `prerequisites`, possibly empty: the component's prerequisites that apply on the plan's `platform`. They are already filtered, so a plan prerequisite names no `platforms`; one that does is `inconsistent_document` at its `platforms`;
 - `probe`: how setup runs the component's code. Setup's readiness runs the staged host to check it and its built-ins, so the host component's `probe` is `process-with-user-rights`. Installation runs `describe` on every `process` guest unless `--no-probe` is given, and readiness runs every `process` and `dotnet-tool` guest; both are `process-with-user-rights`. A `built-in` or `wasm` provider runs inside the host and is `in-host`. `none` names a component setup never runs, and no component of a `0.1.0-draft.1` setup or update plan is one. Any other value is `inconsistent_document`.
@@ -125,9 +126,9 @@ Every diagnostic has `kind`, `code`, `severity` (`error` or `warning`), a human 
 
 | `kind` | Codes | Required members | Optional members |
 | --- | --- | --- | --- |
-| `unsupported-artifact` | `unsupported_artifact`, `abi_unavailable`, `no_compatible_release` | `component`, `platform`; `abi` exactly for `abi_unavailable` | `alternatives` (`implementation`, `deployment`, `platform`) |
+| `unsupported-artifact` | `unsupported_artifact`, `abi_unavailable`, `no_compatible_release` | `component`, `platform`; `abi` exactly for `abi_unavailable` | `alternatives` (`implementation`, `deployment`, `platform`); `document` and `path` |
 | `missing-prerequisite` | `missing_prerequisite` | `component`, `prerequisite` | `alternatives` |
-| `trust-failure` | `target_not_authenticated`, `target_length_mismatch`, `target_digest_mismatch`, `release_descriptor_mismatch`, `artifact_platform_mismatch`, `repository_mismatch`, `release_revoked`, the `metadata_*` codes, `offline_metadata_unavailable`, `repository_unavailable` | `repositoryId` | `role` (`root`, `timestamp`, `snapshot`, `targets`), `target`, `mirror` |
+| `trust-failure` | `target_not_authenticated`, `target_length_mismatch`, `target_digest_mismatch`, `release_descriptor_mismatch`, `artifact_platform_mismatch`, `repository_mismatch`, `release_revoked`, the `metadata_*` codes, `offline_metadata_unavailable`, `repository_unavailable` | `repositoryId` | `role` (`root`, `timestamp`, `snapshot`, `targets`), `target`, `mirror`; `document` and `path` |
 | `offline-content-unavailable` | `offline_content_unavailable` | `component`, `target`, `sha256` | |
 | `ownership-conflict` | `ownership_conflict` | `component`, `ownership` | |
 | `readiness-failed` | `readiness_failed` | `component`, `check`, `readiness` | |
@@ -135,7 +136,9 @@ Every diagnostic has `kind`, `code`, `severity` (`error` or `warning`), a human 
 | `selection-unavailable` | `generation_not_installed` | `source` | |
 | `lock-binding` | `request_changed`, `platform_not_locked`, `lock_changed`, `receipt_lock_mismatch`, `lock_recipe_mismatch`, `plan_changed` | `document`, `path`; `platform` exactly for `platform_not_locked` | `cause`, only for `request_changed` |
 
-A `lock-binding` diagnostic's `document` is the document whose member its `path` names, so each code reports a fixed `document`:
+An `unsupported-artifact` or `trust-failure` diagnostic that a check of one document reported names that member with `document` and `path`, as `unsupported-contract` diagnostics do. So a binding check's `repository_mismatch` says which provider named the wrong repository (`result/setup-provider-repository-mismatch.json`, `document` `recipe`, `path` `providers[2].repositoryId`), and a resolution refusal says which request member it concerns (`result/setup-choice-unsupported.json`, `path` `toolset.providers[1]`). A refusal of the request's preset names the host component, because no provider is involved (`result/setup-preset-unsupported.json`, `path` `toolset.preset`). `document` and `path` come together: one without the other is `inconsistent_document` at the one present (`result/negative/diagnostic-path-without-document.json`). A diagnostic about no single document, such as an expired timestamp, has neither.
+
+A `lock-binding` diagnostic's `document` is the document whose member its `path` names, so each code reports a fixed `document`, and another `document` is `inconsistent_document` at `document` (`result/negative/lock-binding-other-document.json`):
 
 | `code` | `document` | `path` | Fixture |
 | --- | --- | --- | --- |
@@ -148,13 +151,15 @@ A `lock-binding` diagnostic's `document` is the document whose member its `path`
 
 A `request_changed` diagnostic may carry `cause`, when the request bytes differ from the locked ones only by encoding: `crlf-line-endings` (converting CRLF to LF gives the locked bytes), `byte-order-mark` (removing a leading UTF-8 byte order mark does), or `crlf-line-endings-and-byte-order-mark` (both). Its message then names the cause and the `.gitattributes` entry that prevents it (`result/restore-request-changed-crlf.json`). Only `request_changed` has `cause`; another code with it is `inconsistent_document` at `cause`.
 
-Only `platform_not_locked` has `platform`. A `lock-binding` diagnostic with `platform` and another code is `inconsistent_document` at its `platform`, and the schema refuses it too. A diagnostic without `code` is `invalid_document` at its `code`. A `readiness-failed` diagnostic reports the readiness reached, which is below the state its failed check would reach. A `mirror` carries no user information, query or fragment. No result carries a secret value.
+Only `platform_not_locked` has `platform`. A `lock-binding` diagnostic with `platform` and another code, or `platform_not_locked` without it, is `inconsistent_document` at its `platform`, and the schema refuses both. `abi` on any code but `abi_unavailable` is `inconsistent_document` at `abi`. A `document_unavailable` diagnostic concerns a document that was never read, so its `path` is empty; another path is `inconsistent_document` at `path`. A result with `plan` and without `planSha256` is `invalid_document` at `planSha256`, a required member being absent; a `planSha256` without `plan` is `inconsistent_document` at `planSha256`. A diagnostic without `code` is `invalid_document` at its `code`. A `readiness-failed` diagnostic reports the readiness reached, which is below the state its failed check would reach. A `mirror` carries no user information, query or fragment. No result carries a secret value.
 
 ## Fixtures
 
-`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, two `show` results explaining a project selection and a `MORPHIRUP_TOOLCHAIN` selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, one failed result for each `lock-binding` code in the table above, a `request_changed` naming CRLF line endings as its cause, and a restore whose lock is absent (`document_unavailable`). Both plans carry `lock/two-platforms-bound.json` as their `lock`. `result/negative/` covers:
+`fixtures/0.1.0-draft.1/result/` holds an AOT F# setup plan with its digest, the escaping plan and its canonical bytes, two `show` results explaining a project selection and a `MORPHIRUP_TOOLCHAIN` selection, an offline restore missing a locked archive, a `doctor` result with a diagnostic of every kind, one failed result for each `lock-binding` code in the table above, a `request_changed` naming CRLF line endings as its cause, a restore whose lock is absent (`document_unavailable`), the setup plan with its provider components in the other order, a `repository_mismatch` and two `unsupported_artifact` refusals that name the document member they concern. The plans carry `lock/two-platforms-bound.json` as their `lock`. `result/negative/` covers:
 
 - a plan without `lock`, a lock that does not record the plan's platform, a lock for another recipe, a provider component that is not the locked provider, a source from another repository, a host and a built-in whose `probe` is `none`, and a plan prerequisite that names platforms;
+- a host component of another deployment, implementation or release than the lock's, a provider with a `repository-target` source, and a host with a `built-in` source;
+- a diagnostic `path` without `document`, a `lock-binding` diagnostic with another document, `platform_not_locked` without `platform`, `abi` on another code, a `document_unavailable` with a path, a `critical` that is not an array, a plan without `planSha256` and a `planSha256` without a plan;
 - `cause` on a code other than `request_changed`;
 
 - a later draft, an unknown critical member, an unknown command and an unknown diagnostic kind;

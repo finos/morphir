@@ -186,6 +186,9 @@ pub enum ResultDiagnosticKind {
         abi: Option<WasmAbi>,
         /// Alternatives.
         alternatives: Vec<Alternative>,
+        /// The document member the refusal concerns, when a check of a
+        /// document reported it, such as `request` `toolset.providers[1]`.
+        at: Option<(DocumentKind, String)>,
     },
     /// A declared runtime, SDK or native prerequisite is absent.
     MissingPrerequisite {
@@ -206,6 +209,9 @@ pub enum ResultDiagnosticKind {
         target: Option<TargetPath>,
         /// Mirror, without credentials.
         mirror: Option<String>,
+        /// The document member a binding check reported, such as `recipe`
+        /// `providers[2].repositoryId`.
+        at: Option<(DocumentKind, String)>,
     },
     /// Offline work needs content absent from the verified store.
     OfflineContentUnavailable {
@@ -553,6 +559,12 @@ pub fn read_result(bytes: &[u8]) -> Result<ManagerResult> {
         }
         Ok((plan, digest))
     })?;
+    if plan.is_none() && root.has("planSha256") {
+        return Err(inconsistent(
+            "planSha256",
+            "a result names a plan digest only together with its plan",
+        ));
+    }
     let selection = root.opt("selection", |node| {
         let selection = node.object()?;
         Ok(Selection {
@@ -665,6 +677,26 @@ fn mirror(node: Node<'_>) -> Result<String> {
     Ok(text.to_owned())
 }
 
+/// The optional `document` and `path` of a diagnostic that a check of one
+/// document reported. They come together: one without the other is
+/// `inconsistent_document` at the member that is present.
+fn document_member(object: &Obj<'_>) -> Result<Option<(DocumentKind, String)>> {
+    let document = object.opt("document", |node| node.case(DocumentKind::CASES))?;
+    let path = object.opt("path", |node| node.str().map(str::to_owned))?;
+    match (document, path) {
+        (Some(document), Some(path)) => Ok(Some((document, path))),
+        (None, None) => Ok(None),
+        (Some(_), None) => Err(inconsistent(
+            object.member_path("document"),
+            "a diagnostic names a document only together with the path in it",
+        )),
+        (None, Some(_)) => Err(inconsistent(
+            object.member_path("path"),
+            "a diagnostic names a path only together with its document",
+        )),
+    }
+}
+
 fn alternatives(object: &Obj<'_>) -> Result<Vec<Alternative>> {
     Ok(object
         .opt("alternatives", |node| {
@@ -734,6 +766,7 @@ fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
                 platform: object.req("platform", model::platform)?,
                 abi,
                 alternatives: alternatives(&object)?,
+                at: document_member(&object)?,
             }
         }
         DiagnosticKind::MissingPrerequisite => ResultDiagnosticKind::MissingPrerequisite {
@@ -753,6 +786,7 @@ fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
             })?,
             target: object.opt("target", model::target_path)?,
             mirror: object.opt("mirror", mirror)?,
+            at: document_member(&object)?,
         },
         DiagnosticKind::OfflineContentUnavailable => {
             ResultDiagnosticKind::OfflineContentUnavailable {
@@ -780,10 +814,19 @@ fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
                 readiness,
             }
         }
-        DiagnosticKind::UnsupportedContract => ResultDiagnosticKind::UnsupportedContract {
-            document: object.case("document", DocumentKind::CASES)?,
-            path: object.str("path")?.to_owned(),
-        },
+        DiagnosticKind::UnsupportedContract => {
+            let document = object.case("document", DocumentKind::CASES)?;
+            let path = object.str("path")?.to_owned();
+            // An unavailable document was never read, so no member of it
+            // can be named.
+            if code == Code::DocumentUnavailable && !path.is_empty() {
+                return Err(inconsistent(
+                    object.member_path("path"),
+                    "document_unavailable concerns the whole document, so its path is empty",
+                ));
+            }
+            ResultDiagnosticKind::UnsupportedContract { document, path }
+        }
         DiagnosticKind::SelectionUnavailable => ResultDiagnosticKind::SelectionUnavailable {
             source: object.req("source", selection_source)?,
         },
@@ -802,8 +845,21 @@ fn diagnostic(node: Node<'_>) -> Result<ResultDiagnostic> {
                     "only request_changed names the likely cause of a request change",
                 ));
             }
+            let document = object.case("document", DocumentKind::CASES)?;
+            // Each lock-binding code concerns a member of one fixed document.
+            let fixed = match code {
+                Code::LockChanged | Code::ReceiptLockMismatch => DocumentKind::Receipt,
+                Code::PlanChanged => DocumentKind::Result,
+                _ => DocumentKind::Lock,
+            };
+            if document != fixed {
+                return Err(inconsistent(
+                    object.member_path("document"),
+                    format!("{code} always concerns the same document"),
+                ));
+            }
             ResultDiagnosticKind::LockBinding {
-                document: object.case("document", DocumentKind::CASES)?,
+                document,
                 path: object.str("path")?.to_owned(),
                 platform,
                 cause,
@@ -903,12 +959,29 @@ impl Plan {
                 PlanSource::BuiltIn | PlanSource::ExternalOwner => None,
             };
             match &component.component {
-                ComponentRef::Host { .. } => {
+                ComponentRef::Host {
+                    implementation,
+                    deployment,
+                } => {
                     hosts += 1;
-                    if component.version != host.version {
+                    if implementation != &host.implementation
+                        || deployment != &host.deployment
+                        || component.version != host.version
+                    {
                         return Err(inconsistent(
-                            join(&component_path, "version"),
-                            "the host component is the lock's host release",
+                            component_path,
+                            "the host component names the lock's host implementation, deployment and release",
+                        ));
+                    }
+                    // A host release is authenticated by its own TUF target,
+                    // or installed by an external owner.
+                    if !matches!(
+                        component.source,
+                        PlanSource::RepositoryTarget { .. } | PlanSource::ExternalOwner
+                    ) {
+                        return Err(inconsistent(
+                            source_path,
+                            "a host component's source is repository-target or external-owner",
                         ));
                     }
                     if target.is_some_and(|target| target != closure.host()) {
@@ -945,10 +1018,15 @@ impl Plan {
                         | LockedDelivery::Wasm { artifact, .. } => Some(artifact),
                         LockedDelivery::DotnetTool { package, .. } => Some(package),
                     };
+                    // A built-in comes with the host; an external provider's
+                    // bytes are bound by the recipe digest, or installed by an
+                    // external owner.
                     let consistent = match (&component.source, artifact) {
                         (PlanSource::BuiltIn, None) => true,
                         (PlanSource::ExternalOwner, Some(_)) => true,
-                        (_, Some(artifact)) => target == Some(artifact),
+                        (PlanSource::RecipeDigest { .. }, Some(artifact)) => {
+                            target == Some(artifact)
+                        }
                         _ => false,
                     };
                     if !consistent {

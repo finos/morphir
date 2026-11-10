@@ -101,6 +101,16 @@ impl ToolchainRequest {
     }
 }
 
+impl ToolchainRequest {
+    /// The platforms a setup on `current` locks: the request's `platforms`
+    /// together with `current`, each once, in platform table order.
+    pub fn setup_platforms(&self, current: PlatformId) -> Vec<PlatformId> {
+        let mut platforms: BTreeSet<PlatformId> = self.platforms().iter().copied().collect();
+        platforms.insert(current);
+        platforms.into_iter().collect()
+    }
+}
+
 /// The project request a command started in `start` uses: the
 /// `.morphir/toolchain.toml` of `start` or of its nearest ancestor that has
 /// one, searching no higher than the host's discovery `boundary`. A

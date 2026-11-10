@@ -196,12 +196,15 @@ The failures are checked in this order, and the operations in the recipe's order
 | No offering for the implementation and deployment | `unsupported_artifact` | `host` | `resolve-offering` |
 | The offering's release is not the exact requested one | `unsupported_artifact` | `host.version` | `resolve-release` |
 | The offering has no artifact for the platform | `unsupported_artifact` | `platforms` | `resolve-platform` |
-| The preferred provider needs a WASM ABI the host lacks | `abi_unavailable` | `toolset` | `resolve-preferred-abi` |
+| The preferred provider needs a WASM ABI the host lacks, checked before any other misfit of the same provider | `abi_unavailable` | `toolset` | `resolve-preferred-abi` |
 | The preferred provider does not fit for another reason | `unsupported_artifact` | `toolset` | `resolve-preferred-misfit` |
 | No built-in or provider performs the operation | `unsupported_artifact` | `toolset` | No fixture: a recipe that passes its consistency rules has a built-in or a provider for every operation, so a reader refuses such a recipe before resolution can reach this row |
 | No built-in or provider matches an explicit choice | `unsupported_artifact` | `toolset.providers[i]` | `resolve-choice-unmatched` |
 | The chosen provider needs a WASM ABI the host lacks | `abi_unavailable` | `toolset.providers[i]` | `resolve-choice-abi` |
 | The chosen provider does not fit for another reason | `unsupported_artifact` | `toolset.providers[i]` | `resolve-choice-misfit` |
+| A choice names an operation the recipe does not require, checked after every required operation has resolved | `unsupported_artifact` | `toolset.providers[i]` | `resolve-choice-unrequired` |
+
+A provider can misfit in more than one way. A missing WASM ABI is reported first, as `abi_unavailable`, because it is the misfit a request can fix by choosing the provider for another ABI. The other misfits are then checked in this order: the MEP version, then the platform (`recipe/wasm-abi-and-protocol-misfit.json` has a preferred provider whose ABI and protocol version both misfit, and is refused for its ABI).
 
 A WASM guest for another ABI is therefore chosen only when the request names that ABI. Otherwise setup reports the missing ABI and does not report ready. Plan-only setup may refresh metadata, but it never runs an acquired artifact. Readiness probes happen after staging, under the existing launch controls.
 

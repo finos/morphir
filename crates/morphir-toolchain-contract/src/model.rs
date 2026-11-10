@@ -494,6 +494,19 @@ pub(crate) fn protocol(object: &Obj<'_>, provider: &Operation) -> Result<Protoco
     })
 }
 
+/// Whether an installed version meets a prerequisite's comparators: it
+/// satisfies every comparator by SemVer precedence, and, when it is a
+/// prerelease, at least one comparator names its own major, minor and patch
+/// with a prerelease. So `[">=10.0.0", "<11.0.0"]` is not met by
+/// `11.0.0-preview.1`. An empty list is always met.
+pub fn prerequisite_met(versions: &[Comparator], installed: &Version) -> bool {
+    versions.is_empty()
+        || semver::VersionReq {
+            comparators: versions.to_vec(),
+        }
+        .matches(installed)
+}
+
 #[derive(Clone, Copy)]
 enum PrerequisiteTag {
     Runtime,

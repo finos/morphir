@@ -272,5 +272,17 @@ pub fn resolve_closure(
         };
         providers.push(selected);
     }
+    // A choice for an operation the recipe does not require selects nothing,
+    // so it is refused once every required operation has resolved.
+    if let Some(position) = request
+        .providers()
+        .iter()
+        .position(|selection| !recipe.operations().contains(&selection.operation))
+    {
+        return Err(unsupported(
+            index("toolset.providers", position),
+            "the recipe does not require this operation",
+        ));
+    }
     Ok(PlatformClosure::new(host_artifact.clone(), providers))
 }
