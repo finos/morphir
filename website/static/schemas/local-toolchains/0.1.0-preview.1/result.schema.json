@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.1/result.schema.json",
+  "title": "Local developer toolchain result",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.1/result.schema.json"
+    },
+    "command": {
+      "enum": [
+        "setup",
+        "select",
+        "show"
+      ]
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "installed",
+        "selected",
+        "shown",
+        "refused"
+      ]
+    },
+    "origin": {
+      "const": "local-developer"
+    },
+    "candidateSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "receiptPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "selectionPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "diagnostic": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "$schema",
+    "command",
+    "status",
+    "origin"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "const": "refused"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "diagnostic"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "installed",
+              "selected",
+              "shown"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "candidateSha256",
+          "receiptPath"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "const": "planned"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "candidateSha256"
+        ]
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "command": {
+          "const": "setup"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "installed",
+            "refused"
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "command": {
+          "const": "select"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "selected",
+            "refused"
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "command": {
+          "const": "show"
+        },
+        "status": {
+          "enum": [
+            "shown",
+            "refused"
+          ]
+        }
+      }
+    }
+  ]
+}
