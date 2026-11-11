@@ -6,6 +6,8 @@ Dependencies: group 1 establishes contracts and fixed cases. Groups 2 and 3 can 
 
 > **Ownership note added 10 November 2026.** Task numbers and texts are unchanged. Official CLI release assembly, acquired-artifact qualification and publication now run in finos/morphir (`release.yml`, `move-cli-delivery-to-umbrella`) against the pinned `ecosystem/morphir-dotnet`, so the release-assembly part of 2.5 and the release lanes of group 6 are carried out there, using morphir-dotnet's publish profiles and receipts. Groups 2 to 5 and 7 stay in morphir-dotnet.
 
+> **Integration note, 11 November 2026.** #1147's external .NET acquisition corpus job and metadata-only gates are retained. The contract-test pin stays separate from the merged #590 CLI delivery candidate; source-test success is not artifact qualification. The family-version policy from #1152 and the extension package VERIFY-B/LAUNCH-A decisions from #1151 remain controlling. Task numbers, approved texts and completion states below are unchanged by this integration.
+
 ## 1. Shared acquisition contracts and fixed examples, finos/morphir
 
 - [x] 1.1 Define the `0.1.0-draft.1` recipe, project request, portable lock, local receipt and manager-result contracts using established SemVer types, tagged delivery/prerequisite cases and must-ignore/critical rules. Verify fixed positive/negative examples, exact draft refusal and unsupported critical paths through existing contract validation; document each contract and its separate version authority.

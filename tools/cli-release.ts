@@ -238,7 +238,7 @@ export function offeringMatrix(config: CliReleaseConfig): { include: { deploymen
 /** Why a release cannot run from this pin, or undefined when it can. */
 export function releaseBlocker(config: CliReleaseConfig): string | undefined {
 	const candidate = config.source.candidate;
-	return candidate === undefined ? undefined : `the CLI source pin is an unmerged candidate (${candidate.pullRequest}); ${candidate.reason}`;
+	return candidate === undefined ? undefined : `the CLI source pin is a marked candidate (${candidate.pullRequest}); ${candidate.reason}`;
 }
 
 /** The package copies NuGet keeps for an installed package: files named `<id>.<version>.nupkg`, any case, under `roots`. */

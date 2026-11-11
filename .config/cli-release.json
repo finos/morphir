@@ -3,10 +3,10 @@
 	"source": {
 		"repository": "https://github.com/finos/morphir-dotnet",
 		"submodule": "ecosystem/morphir-dotnet",
-		"commit": "51be09f25107145f10c3046da333cc781dc2724a",
+		"commit": "0885f17264856521f0218151693c2b08810790ec",
 		"candidate": {
 			"pullRequest": "https://github.com/finos/morphir-dotnet/pull/590",
-			"reason": "The head of draft, unmerged finos/morphir-dotnet#590 (MCK dispatch, the reusable cli-offering.yml and the shared install-tool-package.ps1), pinned to wire and test the interface after its CI run 42898613660 passed on Ubuntu, Windows and macOS. That is build evidence, not qualification. A release refuses to publish while this entry exists; remove it only when the pin is a commit on the source's main that the publication gates accept."
+			"reason": "Merged finos/morphir-dotnet#590 at 0885f17264856521f0218151693c2b08810790ec contains the MCK dispatch, reusable cli-offering.yml and shared install-tool-package.ps1. It is a delivery candidate on source main, not an accepted source release or acquired-artifact qualification. Keep this marker until the source version/tag, forward-only parent version and release qualification gates pass. No version, tag, release or dispatch is authorized by this pin."
 		}
 	},
 	"tagPrefix": "v",

@@ -6,7 +6,8 @@ Implemented: `check`, `kit status`, `kit vendor`, `kit update`, `run`, `coverage
 The IR commands retain their approved contract. The package addition under
 [#852](https://github.com/finos/morphir/issues/852) uses its existing separate versioned protocols and reports.
 Ownership is recorded in
-[decision 0003](../../kb/bundles/morphir/morphir-package-system/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md).
+[decision 0004](../../kb/bundles/morphir/morphir-package-system/decisions/0004-the-mck-runner-moves-to-the-dotnet-host.md),
+which supersedes decision 0003 and keeps the existing gates on the previous runner until replaced.
 
 The proposed [Workbench codec slice](../workbench/mck/README.md) adds `workbench run`
 and `workbench check`, using the same bounded transport and a separate
@@ -28,8 +29,7 @@ in the deleted Rust CLI; the standalone spelling drops the space and nothing els
 
 The commands, options, adapters, exit codes, output routing and report formats below are unchanged by the move
 ([`move-cli-delivery-to-umbrella`](../../openspec/changes/move-cli-delivery-to-umbrella/proposal.md)). The
-runner's destination is the .NET host (maintainer direction of 9 November 2026; its decision record is proposed in
-[#1148](https://github.com/finos/morphir/pull/1148)). Until that runner replaces this one, its gaps are stated, not
+runner's destination is the .NET host, as recorded in decision 0004. Until that runner replaces this one, its gaps are stated, not
 hidden.
 
 Each behaviour below is marked **kept** (same as the TypeScript driver at the

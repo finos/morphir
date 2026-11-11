@@ -79,6 +79,17 @@ describe("source pin", () => {
 		expect(verifySource(root, config)).toEqual([]);
 	});
 
+	test("contract-test source and CLI delivery are independently pinned", () => {
+		const contracts = JSON.parse(read(".config/toolchain-contract-tests.json")) as { repository: string; commit: string };
+		expect(contracts.repository).toBe("finos/morphir-dotnet");
+		expect(contracts.commit).toMatch(/^[0-9a-f]{40}$/);
+		expect(contracts.commit).not.toBe(config.source.commit);
+		const corpus = runs(ci.jobs["toolchain-contracts"]);
+		expect(corpus).toContain("tools/check-toolchain-contracts.ts source");
+		expect(corpus).toContain("tools/check-toolchain-contracts.ts check --source .dev/toolchain-contract-source");
+		expect(corpus).not.toContain("tools/cli-release.ts");
+	});
+
 	test("a moved gitlink, another repository or a short commit is refused", () => {
 		const moved: CliReleaseConfig = { ...config, source: { ...config.source, commit: "0".repeat(40) } };
 		expect(verifySource(root, moved).join("\n")).toContain("is pinned at");
@@ -198,7 +209,7 @@ describe("release workflow routing", () => {
 
 	test("a candidate pin builds and qualifies but cannot publish", () => {
 		expect(config.source.candidate?.pullRequest).toBe("https://github.com/finos/morphir-dotnet/pull/590");
-		expect(releaseBlocker(config)).toContain("unmerged candidate");
+		expect(releaseBlocker(config)).toContain("marked candidate");
 		expect(releaseBlocker({ ...config, source: { ...config.source, candidate: undefined } })).toBeUndefined();
 	});
 });
@@ -328,7 +339,7 @@ describe("publication gate", () => {
 	});
 
 	test("the candidate marker, unreleased source changes, or a source tag elsewhere each block publication", () => {
-		expect(publicationBlockers(config, "0.4.0-alpha.4", released, config.source.commit, []).join()).toContain("unmerged candidate");
+		expect(publicationBlockers(config, "0.4.0-alpha.4", released, config.source.commit, []).join()).toContain("marked candidate");
 		expect(publicationBlockers(publishable, "0.4.0-alpha.4", unreleased, config.source.commit, []).join()).toContain("1 unreleased entry");
 		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, undefined, []).join()).toContain("has no tag v0.4.0-alpha.4");
 		// The source's v0.4.0-alpha.4 is bec7df3; publishing the pinned 8c15df5 under that version would ship other bytes.
@@ -339,7 +350,7 @@ describe("publication gate", () => {
 		const blockers = publicationBlockers(config, changelogReleaseVersion(read(`${config.source.submodule}/CHANGELOG.md`)), read(`${config.source.submodule}/CHANGELOG.md`), "bec7df31eb813396e0e119c557e0a319adbe1ebb", ["v0.4.0-alpha.4", "v0.4.0-beta.12"]);
 		expect(blockers.join()).toContain("is not newer than");
 		expect(blockers.length).toBeGreaterThanOrEqual(2);
-		expect(blockers.join()).toContain("unmerged candidate");
+		expect(blockers.join()).toContain("marked candidate");
 	});
 });
 
@@ -533,7 +544,7 @@ describe("archives are read wherever the command runs", () => {
 		// The candidate pin: a dry run validates everything and writes the evidence and the list it would attach...
 		const dry = prepareRelease(config, work, { ...inputs, out: "dry", dryRun: true });
 		const dryManifest = JSON.parse(readFileSync(path.join(work, "dry/release-manifest.json"), "utf8"));
-		expect(dryManifest.publication).toEqual({ dryRun: true, publishable: false, blockers: [expect.stringContaining("unmerged candidate")] });
+		expect(dryManifest.publication).toEqual({ dryRun: true, publishable: false, blockers: [expect.stringContaining("marked candidate")] });
 		expect(readFileSync(path.join(work, "dry/dry-run-assets.txt"), "utf8").trim().split("\n")).toEqual(dry);
 		expect(existsSync(path.join(work, "dry/release-assets.txt"))).toBe(false);
 		// ...and a publication refuses it, leaving no release asset list.

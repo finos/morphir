@@ -66,6 +66,13 @@ mise run kb -- check     # morphir-dev kb, the knowledge base commands
 Neither tool is the Morphir CLI or is released. The CLI's release is built from `ecosystem/morphir-dotnet` by
 `.github/workflows/release.yml`; `bun test tools/cli-release.test.ts` checks that orchestration.
 
+Acquisition contract behavior runs through the .NET implementation against this checkout's fixed corpus.
+The CI `toolchain-contracts` job reads `.config/toolchain-contract-tests.json` and checks out that exact
+source separately. Its pin is independent of the CLI delivery tuple in `.config/cli-release.json`,
+the `ecosystem/morphir-dotnet` gitlink and `release.yml`. Metadata-only checks remain in
+`tools/check-toolchain-corpus.ts`; no Rust acquisition checker remains. See
+[the contract guide](docs/spec/toolchain/index.md) for the external-corpus command.
+
 ### Working on the Website (Docusaurus)
 
 ```bash

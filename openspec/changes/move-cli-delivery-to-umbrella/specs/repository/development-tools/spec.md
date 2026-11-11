@@ -27,6 +27,13 @@ Each gate that ran on the deleted Rust CLI SHALL either run on `morphir-mck` or 
 - **WHEN** a contributor runs `mise run test:examples`
 - **THEN** it exits non-zero and says the scenarios are pending qualification against the .NET Morphir CLI
 
+### Requirement: Acquisition contracts retain their external .NET corpus gate
+The acquisition contract gate SHALL retain main's external .NET corpus job, path filter and required aggregate gate, with metadata-only TypeScript checks in the parent. Its source pin SHALL remain independent of the CLI delivery tuple. No Rust acquisition reader or resolver SHALL be restored.
+
+#### Scenario: Acquisition corpus changes
+- **WHEN** a fixed acquisition case, schema or narrative input changes
+- **THEN** CI runs the independently pinned .NET tests against the current parent corpus and requires their success, preserving the metadata-only gates
+
 ### Requirement: The Rust submodule stays while development tools need it
 `ecosystem/morphir-rust` SHALL remain pinned while `morphir-mck`, `morphir-dev` or another retained development tool builds on its crates, and SHALL NOT be removed by this change.
 

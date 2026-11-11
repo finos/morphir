@@ -19,7 +19,9 @@ The first official .NET release has not been published yet, and its version is n
 
 Platforms: Windows x64 and ARM64, macOS x64 and ARM64, and Linux (glibc) x64 and ARM64. No offering is
 production-qualified yet: the official release workflow has not run, and the pinned source is an unreleased
-candidate.
+candidate on the source's `main`, containing merged [#590](https://github.com/finos/morphir-dotnet/pull/590).
+The candidate marker remains until the source version and release gates pass. A merged source pin does not
+establish artifact qualification.
 
 ### Operating system prerequisites
 
