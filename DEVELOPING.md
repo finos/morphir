@@ -66,6 +66,11 @@ mise run kb -- check     # morphir-dev kb, the knowledge base commands
 Neither tool is the Morphir CLI or is released. The CLI's release is built from `ecosystem/morphir-dotnet` by
 `.github/workflows/release.yml`; `bun test tools/cli-release.test.ts` checks that orchestration.
 
+Release validation requires the checkout, the selected tag and the workflow's triggering `GITHUB_SHA` to name the
+same commit. This prevents a moved tag from changing the source after a run starts. `GITHUB_SHA` is supplied by
+[GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/variables), rather than derived
+from the fetched tag. A missing or mismatched triggering SHA fails validation, including in a dry run.
+
 Acquisition contract behavior runs through the .NET implementation against this checkout's fixed corpus.
 The CI `toolchain-contracts` job reads `.config/toolchain-contract-tests.json` and checks out that exact
 source separately. Its pin is independent of the CLI delivery tuple in `.config/cli-release.json`,

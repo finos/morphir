@@ -614,13 +614,15 @@ export function sourceTagCommit(repository: string, tag: string): string | undef
 
 /**
  * Binds the run to what it releases: the workflow must run from the tag's own ref (so its definition, and the literal
- * `uses`/`ref` commit, are the tag's), the checked-out commit must be the tag's commit, and the workflow's literal
+ * `uses`/`ref` commit, are the tag's), the checkout must match both the triggering commit and the tag, and the workflow's literal
  * source commit must equal the pinned one. Returns the problems; a release with any problem builds nothing.
  */
-export function workflowBindingProblems(config: CliReleaseConfig, run: { tag: string; githubRef: string | undefined; head: string; tagCommit: string | undefined; workflow: string }): string[] {
+export function workflowBindingProblems(config: CliReleaseConfig, run: { tag: string; githubRef: string | undefined; githubSha: string | undefined; head: string; tagCommit: string | undefined; workflow: string }): string[] {
 	const problems: string[] = [];
 	if (run.githubRef !== `refs/tags/${run.tag}`) problems.push(`the workflow runs from ${run.githubRef ?? "an unknown ref"}, not refs/tags/${run.tag}; dispatch it from the tag`);
 	if (!/^[0-9a-f]{40}$/.test(run.head)) problems.push(`the checked-out commit is unknown (${run.head})`);
+	if (run.githubSha === undefined || !/^[0-9a-f]{40}$/.test(run.githubSha)) problems.push(`the triggering commit is unknown (${run.githubSha ?? "missing GITHUB_SHA"})`);
+	else if (run.githubSha !== run.head) problems.push(`the triggering commit is ${run.githubSha}, but the checkout is ${run.head}; the tag may have moved after this run started`);
 	if (run.tagCommit !== run.head) problems.push(`${run.tag} is ${run.tagCommit ?? "missing"}, but the checkout is ${run.head}`);
 	const uses = [...run.workflow.matchAll(/uses:\s*finos\/morphir-dotnet\/\.github\/workflows\/cli-offering\.yml@([0-9a-f]+)/g)].map(m => m[1]);
 	const refs = [...run.workflow.matchAll(/^\s+ref:\s*([0-9a-f]{40})\s*$/gm)].map(m => m[1]);
@@ -839,6 +841,7 @@ function main(args: string[]): number {
 			const binding = workflowBindingProblems(config, {
 				tag,
 				githubRef: process.env.GITHUB_REF,
+				githubSha: process.env.GITHUB_SHA,
 				head,
 				tagCommit: git(["rev-parse", `refs/tags/${tag}^{commit}`]),
 				workflow: readFileSync(path.join(root, ".github/workflows/release.yml"), "utf8"),

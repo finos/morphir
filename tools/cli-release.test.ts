@@ -383,10 +383,16 @@ describe("the shared v* namespace", () => {
 
 describe("the run is bound to the tag, its commit and the pin", () => {
 	const workflow = read(".github/workflows/release.yml");
-	const good = { tag: "v0.4.0-alpha.4", githubRef: "refs/tags/v0.4.0-alpha.4", head: "e".repeat(40), tagCommit: "e".repeat(40), workflow };
+	const good = { tag: "v0.4.0-alpha.4", githubRef: "refs/tags/v0.4.0-alpha.4", githubSha: "e".repeat(40), head: "e".repeat(40), tagCommit: "e".repeat(40), workflow };
 
 	test("a run from the tag, checked out at the tag's commit, with the workflow's literal pin", () => {
 		expect(workflowBindingProblems(config, good)).toEqual([]);
+	});
+
+	test("a moved tag cannot substitute another checkout for the immutable triggering commit", () => {
+		expect(workflowBindingProblems(config, { ...good, githubSha: "f".repeat(40) }).join()).toContain("triggering commit");
+		expect(workflowBindingProblems(config, { ...good, githubSha: undefined }).join()).toContain("triggering commit is unknown");
+		expect(workflowBindingProblems(config, { ...good, githubSha: "unknown" }).join()).toContain("triggering commit is unknown");
 	});
 
 	test("a dispatch from another ref, another checkout, an unknown commit or another literal pin is refused", () => {
