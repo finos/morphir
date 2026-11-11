@@ -326,3 +326,111 @@ binary payload is **499 bytes**, with SHA-256
 
 Changes to a fixture's intended meaning require a reviewed corpus change. Do
 not regenerate expected admission outcomes from the implementation under test.
+
+## WASM host qualification corpus
+
+[`wasm-host.cases.json`](wasm-host.cases.json) qualifies a WASM extension host
+against the execution profile contract,
+[`../wasm-execution-profiles.json`](../wasm-execution-profiles.json), version
+`0.1.0-draft.1`. Each case names one crafted module in
+[`fixtures/wasm/`](fixtures/wasm/), the profile it applies to, the ABI the
+runner declares, any worker options, the frames the runner sends, and the
+observation it expects. A runner drives the host through its worker mode,
+`<host> extension worker --abi <abi> --module <wasm> --build-identity <id> --json`,
+so the same cases apply to the MoonBit host, the .NET host and any later one.
+The runner reads `<id>` from `<host> extension worker --help --json`, member
+`result.buildIdentity`. The runner is `morphir mck wasm-host run` in
+finos/morphir-dotnet, which is experimental.
+
+The first run was against the MoonBit native CLI built from `89f8924`, with
+the corpus as it stood at `7b049c223`: 51 of 56 cases passed. Two failures
+are the notification rule that MoonBit does not have yet
+(finos/morphir-moonbit#329). One was a runaway case that required the budget
+to win; it now accepts either bound. Two were memory cases whose modules grew
+one page at a time and reached the call deadline before the ceiling on a slow
+engine; those modules now grow in halving steps. A rerun with the
+corpus at `48d10706f` passed 56 of 58; the two failures are the notification
+cases, and both memory cases ended with `memory-limit` after about a second.
+A third run at `8d678d2b8` passed 57 of 59, with `bounds/error-at-ceiling` among the
+passes. The runs used an x64 binary under emulation, so the timings need a run
+on native hardware.
+
+The first run against the .NET host was the Native AOT `morphir` on Windows
+ARM64, with the corpus at `48d10706f`: of 58 cases, 48 passed and the 10
+byte-profile cases were not applicable. The evidence for every run is in
+finos/morphir-dotnet#570.
+
+Each module is a `.wat` file of a few lines that does one thing, with the
+`.wasm` built from it committed beside it. The leading comment says what the
+module does, and its `;; Cases:` line names the cases that use it. The kit
+records each binary's SHA-256.
+
+Every case has an `appliesTo` profile. The 49 cases for `extism-kernel-v1`
+apply to every host, because every host must run that profile. The 10 cases
+for `morphir-bytes-v1`, a transitional profile, apply only to a host that
+declares it, and a runner records them as `not_applicable` for any other. One
+Extism case, `classification/bytes-profile-unsupported`, offers a byte-profile
+module to every host: a host that does not run the profile must refuse it with
+`extension.abi_unsupported` naming `morphir-bytes-v1`, and a host that does
+must serve it. The runner takes the profiles a host declares as an input.
+
+| Group | What its cases check |
+| --- | --- |
+| `classification/` (14) | Refusals before any guest code runs: an unknown namespace, a known import with another signature, which every host must report before it checks whether it runs the profile, WASI in a byte module, a missing or mistyped `handle`, a wrong declaration, the workspace-info signature, the first import deciding the profile, a byte-profile module on a host that does not run it, and shared, 64-bit and second memories. Also the profile a declaration gives a module with no profile imports, and a module that imports the whole Extism table. |
+| `worker/` (2) | The worker's own rules: a missing `--abi` and another build identity. |
+| `bytes/` (6) | The `morphir-bytes-v1` handle results: a response, 0 for a request, a consumed notification, -2 for a request, -1, and a response that is not UTF-8. |
+| `extism/` (9) | The Extism handle results: a response, an error, a non-zero result, no output, and a response that is not an object. Notifications: not delivered to a guest that advertises nothing, delivered to one that advertises `call` delivery, not delivered to one that advertises a value the contract does not list, and a failure when the guest answers one. |
+| `limits/` (2) | A request over `--request-bytes` and a response over `--response-bytes`, both far from the limit. |
+| `bounds/` (10) | Runaway guests on both profiles, a runaway guest under a small instruction budget, memory growth to the ceiling followed by a trap and followed by an error the guest reports, a refused growth an Extism guest survives, a refused growth on the byte profile, a refused growth below the ceiling, a trap, and an initial memory above the ceiling. |
+| `sandbox/` (16) | The host function and WASI policy: HTTP with and without a request, `path_open` on fd 3, unsupported WASI functions, `proc_exit(0)`, stdout and stderr, arguments, environment, stdin and preopens, clocks and random bytes, configuration, vars, the IR cache and its limits, workspace info, and logging. |
+
+The expectations are written by hand from the contract and the profile spec.
+None comes from running a host, so two hosts that share a bug cannot qualify
+each other. Where the contract leaves part of an observation open, the case
+stops there and says so in its `gaps`. A runaway case under the default budget
+accepts either bound. A host that declares the instruction budget enforced may
+report `budget-exhausted` before the call deadline, or `call-deadline` between
+the deadline and two seconds after it: the budget unit is engine-defined, so
+the deadline can come first. A host without metering must report
+`call-deadline` in that range. `bounds/small-budget` runs the same guest with
+`--instructions 1000000` and accepts only `budget-exhausted`; it is recorded as
+`not_enforced` for a host without metering. The `conventions` object of the kit
+defines the matchers.
+
+Some contract elements cannot be seen through a worker: the host session's
+codes for each fault kind, its request and response limits and JSON-RPC
+checks, and the default profile of a module with no declaration, which worker
+mode never applies because `--abi` is required. The kit's `withoutCase` lists
+each with its reason, and the check fails when a listed element gains a case
+or an unlisted one has none.
+
+The notification cases advertise with the contract's string member
+`capabilities.notificationDelivery`: `call` for delivery, and `unlisted` for a
+value the contract does not list.
+
+[`tools/check-wasm-host-kit.ts`](../../../tools/check-wasm-host-kit.ts) checks
+the corpus. It assembles every `.wat` with the `wabt` version that
+`tools/package.json` pins and fails when a `.wasm` or a digest differs; when a
+contract element (a refusal code, fault kind, host outcome, handle result,
+profile status, notification or memory rule, classification rule, bound,
+policy entry, host-session or worker rule, known deviation or table import)
+has no case and no `withoutCase` entry; when a case names a requirement or
+scenario the specs lack, or has an `appliesTo` its module's profile does not
+give; when a module meant to load imports something outside the contract's
+table; and when
+[`../wasm-execution-profiles.md`](../wasm-execution-profiles.md) leaves out an
+import, code, bound, policy value or worker argument of the JSON. Its tests
+also run each runnable module against a small model of the two ABIs, the
+Extism notification rule and the WASI answers, to show that the module does
+what its case says. That model never produces an expectation.
+
+```bash
+mise run spec:mep-wasm-check                  # or: bun run tools/check-wasm-host-kit.ts
+bun run tools/check-wasm-host-kit.ts --write  # reassemble the .wasm files and refresh the digests
+bun test tools/check-wasm-host-kit.test.ts
+```
+
+To add a case, add the module and the case, run `--write`, and write the
+expectation from the contract. The tests require each case to be the only one
+that covers some contract element or uses some module, so add a case only for a
+contract element that would otherwise have none.

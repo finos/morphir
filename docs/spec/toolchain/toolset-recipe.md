@@ -82,7 +82,7 @@ The last consistency rule asks about a recipe, not about one platform, so it use
 
 A recipe is published as a TUF target at `toolchains/recipes/<preset>/<version>.json` in a repository that follows [tool release metadata v1](../tool-release-metadata/index.md#offering-specific-tool-ids).
 
-The manager's TUF client is decided (9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6760090078)). It is project-owned, in `Morphir.Toolchain` in finos/morphir-dotnet, implements only the subset of TUF that the tool release metadata profile uses, and has BouncyCastle's Ed25519 as its only cryptographic dependency. It is tested against the signed fixtures in this repository, the cases of the evaluation in finos/morphir-dotnet#568 and the upstream `tuf-conformance` suite, and it needs the maintainer's security review before any production use. This repository's reference checker uses tough 0.24 instead; the cases do not depend on which client runs them.
+The manager's TUF client is decided (9 November 2026, [finos/morphir#1146](https://github.com/finos/morphir/issues/1146#issuecomment-6760090078)). It is project-owned, in `Morphir.Toolchain` in finos/morphir-dotnet, implements only the subset of TUF that the tool release metadata profile uses, and has BouncyCastle's Ed25519 as its only cryptographic dependency. It is tested against the signed fixtures in this repository, the cases of the evaluation in finos/morphir-dotnet#568 and the upstream `tuf-conformance` suite, and it needs the maintainer's security review before any production use. Parent CI uses this .NET implementation against the shared corpus; there is no additional Rust reference client for these contracts.
 
 ### Metadata rules for toolchain readers
 

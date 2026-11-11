@@ -2803,26 +2803,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "morphir-toolchain-contract"
-version = "0.4.0-beta.12"
-dependencies = [
- "ed25519-dalek",
- "futures-core",
- "jsonschema 0.26.2",
- "morphir-distribution",
- "olpc-cjson",
- "semver",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
- "tough",
- "unicode-normalization",
- "url",
-]
-
-[[package]]
 name = "morphir-workspace"
 version = "0.2.0"
 dependencies = [

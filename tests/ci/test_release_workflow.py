@@ -164,7 +164,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_ci_requires_selected_jobs(self) -> None:
         self.assertIn(
-            "needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, package-mck]",
+            "needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, package-mck, toolchain-contracts]",
             self.ci_workflow,
         )
         for retired in ("\n  morphir-cli-test:\n", "\n  library-publish-macos:\n", "\n  check-cli-docs:\n", "\n  desktop-demo:\n"):

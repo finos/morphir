@@ -137,7 +137,6 @@ Every number in these documents' known members, and every number anywhere inside
 
 **The integer bound.** Every integer in these documents is at most 2<sup>53</sup> − 1 (9007199254740991), the I-JSON (RFC 7493) range: it is exact in a JavaScript number and in any 64-bit integer, so every reader language holds every integer exactly. A larger integer is `invalid_value` at the member (`result/setup-plan-integer-at-bound.json` is valid at the bound, and `result/negative/download-bytes-past-bound.json`, one past it, is refused). The schemas give every integer the same `maximum`. A reader under these contracts applies the same bound to every integer of the TUF metadata it loads, where past it is `metadata_signature_invalid` ([metadata rules for toolchain readers](./toolset-recipe.md#metadata-rules-for-toolchain-readers)). That is a rule of these contracts, not of tool release metadata v1 (Decision 12). No fixture valid before the bound was stated is refused by it.
 
-This repository's reference reader parses JSON with 64-bit integers. It reports a plain decimal integer past 2<sup>64</sup> − 1 as `invalid_document`, because its JSON parser reads such a number as floating point and cannot tell its spelling from an exponent's. The page's rule is `invalid_value` for every integer past the bound, so that is a defect of the reader, recorded here; no fixture depends on it.
 
 ### Tagged cases
 
@@ -320,7 +319,7 @@ Cases that pin a row of a check table carry a `rule`, which that row's Cases col
 The metadata is served as files. Each role is the canonical JSON bytes, by the [plan digest rules](./manager-result.md#the-plan-digest), of its envelope (`signatures` and `signed`) as stored in `repository.json`; every signature is over the canonical bytes of `signed`. The repository uses consistent snapshots:
 
 - the metadata directory holds `1.root.json` (also given to the client out of band as the trusted root), `timestamp.json`, `<version>.snapshot.json` and `<version>.targets.json`, each version taken from that role's `signed.version`;
-- each entry of `targetFiles` that the targets metadata lists is served under its SHA-256. tough 0.24, the client used here, requests `<sha256>.<target path>` from the targets directory, and its filesystem transport opens the percent-encoded URL path without decoding it, so the non-ASCII target is served from a file named with `%C3%A9` and the like. The TUF specification puts the digest in front of the file name inside the target's directory, as in `toolchains/recipes/fsharp/<sha256>.1.0.0.json`. A runner serves each target where its own client asks for it; the expected outcomes do not depend on the layout;
+- each entry of `targetFiles` that the targets metadata lists is served under its SHA-256. The TUF specification puts the digest in front of the file name inside the target's directory, as in `toolchains/recipes/fsharp/<sha256>.1.0.0.json`. A runner serves each target where its client asks for it; the expected outcomes do not depend on the layout. The former Rust reference client's percent-encoded filesystem layout is not a requirement of this corpus;
 - a `targetFiles` entry the targets metadata does not list is not served.
 
 A trust case starts from the committed `repository.json`, takes the named metadata set, applies its `mutations` in order and serves the result as a consistent-snapshot repository trusted from `trustedRoot`:
@@ -355,9 +354,9 @@ The `action` is one of:
 
 A refused load has the empty path, as does a refused `read` or `authenticate` of a target named directly. A binding check reports the binding member that named the target.
 
-The TUF client used here compares expiry with the wall clock and cannot be given another time. So every case has the same outcome at any instant after `2020-01-01T00:00:00Z`, when `rejectionMetadata.expiredTimestamp` expires, and before `2999-01-01T00:00:00Z`, when every other role expires. `referenceTime` (`2030-01-01T00:00:00Z`) is one instant in that window; a runner whose client takes a reference time uses it. A test checks that the window holds and that the current time is inside it.
+Every case has the same outcome at any instant after `2020-01-01T00:00:00Z`, when `rejectionMetadata.expiredTimestamp` expires, and before `2999-01-01T00:00:00Z`, when every other role expires. `referenceTime` (`2030-01-01T00:00:00Z`) is one instant in that window. A client that accepts an explicit time uses it; the former Rust client's reliance on the wall clock is not part of the contract.
 
-One outcome stays in a Rust-only test, `a_non_portable_recipe_target_is_refused_without_panicking`: channel selection over a repository that lists a recipe under `toolchains/recipes/con/`. `con` is a device name that older Windows versions cannot create as a directory, so it is kept out of the shared repository that every runner writes to disk. The `recipeChecks` case for `toolchains/recipes/con/1.0.0.json` pins the same `non_portable_path` at the empty path without listing the target, because the path check comes first.
+Channel selection must also refuse a repository that lists a recipe under `toolchains/recipes/con/`. `con` is a device name that older Windows versions cannot create as a directory, so it is kept out of the shared repository that every runner writes to disk. The .NET tests must exercise that selection without creating a device-named directory. The `recipeChecks` case for `toolchains/recipes/con/1.0.0.json` pins the same `non_portable_path` at the empty path without listing the target, because the path check comes first.
 
 Every key in the signed repository is the Ed25519 key whose 32-byte seed is the SHA-256 of a public UTF-8 label recorded in `testOnlyKeys`. Anyone can therefore sign with it, which is what makes the `relink` mutation reproducible in any language and why the keys can never serve as a production root. A production configuration must refuse that `repositoryId` and those keys.
 
@@ -365,23 +364,25 @@ The [F# readiness workflow case](./readiness-workflow.md) in `spec/toolchain/wor
 
 Digests and versions in these fixtures are synthetic. A repeated-character digest (`aaaa…`) or the SHA-256 of a `synthetic:<label>` string names no released artifact, and version `1.2.3` is illustrative.
 
-## The reference reader
+## Checking the contracts with the .NET implementation
 
-This repository checks the cases with the `morphir-toolchain-contract` crate. It is this repository's reference reader for these document contracts: it parses each document into domain types and runs the cases above. It is ordinary schema and conformance testing, not a compatibility runner, and it implements no acquisition.
+The maintainer directed removal of the Rust reference crate on 10 November 2026. This repository keeps the specifications, schemas, cases and fixed expected results. Behavioral checks use the actual `Morphir.Toolchain` implementation and its conformance tests in finos/morphir-dotnet, rather than another reader or resolver in the parent repository.
 
-IR and MEP behavior is qualified by the compatibility kit. Following the maintainer's decision of 9 November 2026, the kit's runner lives in finos/morphir-dotnet (`src/Morphir.Conformance`, with the `cli`, `library` and `mep-guest` adapters), and its cases, fixed expectations and report contracts stay in this repository as data. The [F# readiness workflow case](./readiness-workflow.md) is one of them. AGENTS.md still describes the earlier arrangement, in which the runner was the Rust `morphir-mck` crate here.
+The parent CI job checks out finos/morphir-dotnet at the exact commit in `.config/toolchain-contract-tests.json`. It passes the absolute path of the current parent checkout as `MORPHIR_TOOLCHAIN_CONTRACT_ROOT`. The suite reads that checkout's corpus; passing only the implementation's older pinned copy is not sufficient. Missing cases, a different or modified implementation checkout, or a suite that does not acknowledge the external corpus fails the check.
 
-Resolution (`resolve_closure`), recipe selection and the authenticated-target checks make resolution behavior normative. Each rule they apply is therefore stated on the [toolset recipe](./toolset-recipe.md) page and pinned by fixtures, so an implementation never has to read the Rust code.
+Parent TypeScript checks only corpus metadata: listed paths and references, check-table coverage, example bytes, links, anchors and diagrams. The .NET suite runs the document readers, schemas, bindings, trust mutations, required-member oracle and readiness workflow checks. It also checks every load case across the reference window and reproduces the TEST-ONLY signed repository and locks as parsed JSON values, the requests as exact TOML text, and the recorded `referenceTuf` text with a test-only encoder. That differential encoder is evidence, not a choice of production TUF encoding.
 
-The pages are the authority over everything else in the contract: the schemas, the case manifests and their fixtures, and the crate. When any of them disagrees with a page, that one has a defect, and the fix is to change it to match the page. When a page is silent or contradicts itself, the page is fixed first, and the others follow it.
+Resolution, recipe selection and authenticated-target checks follow the rules on the [toolset recipe](./toolset-recipe.md) page and the fixed outcomes in the case manifests. An implementation must not derive expected outcomes from its own behavior.
 
-The maintainer treats the Rust CLI as legacy and puts first-delivery work into the morphir-dotnet and morphir-moonbit hosts (9 November 2026). In that light, the crate is a reference checker for these documents, kept while it is cheap to keep. It is not the implementation that other hosts must match, and keeping it signals no investment in the Rust CLI. It takes its identities, channels, digests, target path checks and its TUF client (tough) from `morphir-distribution` in the legacy `ecosystem/morphir-rust` submodule, so it stays cheap only while that library keeps building here. Whether it stays is a question for the maintainer.
+The pages remain the authority over the schemas, manifests, fixtures and implementation. A disagreement is investigated against the page; it is never resolved by regenerating expected results from the implementation. When a page is silent or contradicts itself, the page is clarified first.
 
-```sh
-cargo test --locked --package morphir-toolchain-contract
+With a checkout of the pinned .NET source and its recorded SDK installed:
+
+```powershell
+mise run ci:validate-toolchain-contracts -- --source C:/path/to/morphir-dotnet
 ```
 
-CI runs the same command through `mise run ci:validate-toolchain-contracts`, and checks the schemas with `mise run fmt-check:schema` and `mise run lint:schema`.
+The script `tools/check-toolchain-contracts.ts` builds and runs the .NET test project with capped parallelism. It implements no contract behavior. CI also checks schema formatting and lint through the existing tasks. These are contract and corpus checks, not acquired-artifact or platform qualification; the [F# readiness workflow](./readiness-workflow.md) and the shared MCK retain their separate responsibilities.
 
 ## Decided
 
@@ -416,13 +417,13 @@ These are the questions still open for the maintainer. Each rule that depends on
   - **2C. Refuse every non-ASCII character in target paths.** Simplest to state and to check, but it reverses the decision to allow non-ASCII NFC paths, and those four fixtures become negative.
   - **Recommendation:** 2B. It closes the spoofing cases at the cost of one table, and keeps the non-ASCII paths the contract already allows.
 - **Q3. Should the canonical JSON of these contracts be the TUF reference implementations' encoding?**
-  - **What exists.** One encoding, defined with the [plan digest](./manager-result.md#the-plan-digest), produces plan digests, repository identity and TUF signature input. It sorts keys by their encoded bytes with quotation marks and normalizes strings to NFC. securesystemslib, which python-tuf uses, sorts raw keys and writes strings unnormalized. So standard TUF tooling cannot be assumed to sign this repository's metadata ([the difference](../tool-release-metadata/index.md#canonical-json-and-the-reference-tuf-implementations)). The released `morphirup` (finos/morphir-dotnet `v0.4.0-alpha.4`) and the reference checker compute digests with the current rule.
+  - **What exists.** One encoding, defined with the [plan digest](./manager-result.md#the-plan-digest), produces plan digests, repository identity and TUF signature input. It sorts keys by their encoded bytes with quotation marks and normalizes strings to NFC. securesystemslib, which python-tuf uses, sorts raw keys and writes strings unnormalized. So standard TUF tooling cannot be assumed to sign this repository's metadata ([the difference](../tool-release-metadata/index.md#canonical-json-and-the-reference-tuf-implementations)). The released `morphirup` (finos/morphir-dotnet `v0.4.0-alpha.4`) computes digests with the current rule.
   - **3A. Keep the current rule** and state the difference, as the profile now does. No digest moves. The cost is that a repository's signing tool must use this encoding, not python-tuf or go-tuf as they are.
   - **3B. Adopt the reference encoding**: raw key order, and no normalization. Strings that are not NFC are then refused instead of normalized, as the [signed text](../tool-release-metadata/index.md#signed-text) rules already refuse them in TUF metadata. Standard TUF tooling then signs for this profile. The cost:
     - every plan digest whose plan has a key pair that orders differently changes; the committed fixtures have two, the `keyOrder` member of `result/setup-plan-escaping.json` and `result/setup-plan-key-order.json`;
     - every plan with non-NFC text is refused, so `result/setup-plan-escaping.json` loses its decomposed `é`;
     - the released tool's recorded digests and `--expect-plan` values for such plans become invalid;
-    - the .NET encoder and the reference checker change, and the checker can no longer use `olpc-cjson` as it is.
+    - the .NET encoder changes; the fixed canonical bytes and signed expectations need explicit review rather than regeneration from that encoder.
   - **Recommendation:** 3A for now. Keys that order differently are rare in real TUF metadata, and the cost of 3B grows with every release that records digests. If the official repository will be signed with standard TUF tooling, choose 3B before the first production repository exists, while only test digests depend on the rule.
 - **Q4. Should a binding check evaluate a provider's `requires.host`?**
   - **What exists.** A capability claim set may state `requires.host`: single SemVer comparators over the host version, all of which must hold, listed in `critical` ([extension protocol](../../design/draft/extensions/protocol.md#capability-claims)). No binding row evaluates it. Under the [critical-path rule](./toolset-recipe.md#what-a-binding-check-reads) a binding check refuses it with `release_descriptor_mismatch` at `providers[i].descriptorTarget`, because it does not read the member. No provider in the fixtures states it. Rust's existing extension reader understands it, because a Rust host evaluates it against its own version; the .NET reader refuses it.

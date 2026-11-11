@@ -107,8 +107,7 @@ morphir/
 ├── crates/
 │   ├── morphir-mck/      # MCK engine
 │   ├── morphir-mck-cli/  # morphir-mck: the standalone runner (development only)
-│   ├── morphir-dev-tools/ # morphir-dev: kb and repository gates (internal)
-│   └── morphir-toolchain-contract/ # reference checker of the toolchain contracts
+│   └── morphir-dev-tools/ # morphir-dev: kb and repository gates (internal)
 ├── ecosystem/            # Vendored Morphir implementation submodules
 ├── website/               # Docusaurus documentation site
 │   ├── docs/

@@ -39,6 +39,7 @@ jobs:
       mck: ${{ steps.filter.outputs.mck }}
       package-mck: ${{ steps.filter.outputs.package-mck }}
       release: ${{ steps.filter.outputs.release }}
+      toolchain-contracts: ${{ steps.filter.outputs.toolchain-contracts }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -70,22 +71,30 @@ jobs:
               # signed fixtures and schemas are executable acquisition contracts
               - 'docs/spec/tool-release-metadata/**'
               - 'website/static/schemas/tool-release-v1.schema.json'
-              # the morphirup toolchain contracts and their fixed cases
-              - 'docs/spec/toolchain/**'
-              - 'website/static/schemas/toolset-recipe-*.schema.json'
-              - 'website/static/schemas/toolchain-*.schema.json'
-              - 'website/static/schemas/morphirup-result-*.schema.json'
-              # the fixed F# readiness workflow case; the docs job validates its
-              # expected IR against the IR v4 schema
-              - 'spec/toolchain/**'
-              # the narrative's examples, links and diagrams are checked by that crate's tests
-              - 'docs/design/proposals/toolchain-acquisition.md'
-              - 'docs/design/proposals/index.md'
-              - 'docs/assets/toolchain-*.svg'
               # asserts every workspace package follows the current Rust baseline
               - 'tests/rust/test_workspace_rust_baseline.py'
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-rust-ci/**'
+            toolchain-contracts:
+              - 'LICENSE'
+              - 'NOTICE'
+              - 'docs/spec/toolchain/**'
+              - 'docs/spec/tool-release-metadata/**'
+              - 'website/static/schemas/toolset-recipe-*.schema.json'
+              - 'website/static/schemas/toolchain-*.schema.json'
+              - 'website/static/schemas/morphirup-result-*.schema.json'
+              - 'website/static/schemas/tool-release-v1.schema.json'
+              - 'website/static/schemas/morphir-ir-v4.json'
+              - 'spec/toolchain/**'
+              - 'docs/design/proposals/toolchain-acquisition.md'
+              - 'docs/design/proposals/index.md'
+              - 'docs/assets/toolchain-*.svg'
+              - 'tools/check-toolchain-contracts*'
+              - 'tools/check-toolchain-corpus*'
+              - 'tools/spec-mep-smithy.ts'
+              - '.config/toolchain-contract-tests.json'
+              - '.config/mise/config.toml'
+              - '.github/workflows/ci.yml'
             # Kit and schema changes run binding conformance here and focused
             # native MCK tests in docs, without the full Rust extension pipeline.
             # That job also runs for every `rust` change, so the inputs both
@@ -203,6 +212,39 @@ jobs:
               - '.github/actions/**'
               - '.github/workflows/ci.yml'
 
+  toolchain-contracts:
+    name: Toolchain acquisition contracts (.NET)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.toolchain-contracts == 'true' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Read the exact .NET source pin
+        id: source
+        run: bun run tools/check-toolchain-contracts.ts source --github-output "$GITHUB_OUTPUT"
+      - name: Checkout the implementation
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ steps.source.outputs.repository }}
+          ref: ${{ steps.source.outputs.commit }}
+          path: .dev/toolchain-contract-source
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: .dev/toolchain-contract-source/global.json
+      - name: Check this checkout's corpus using the .NET implementation
+        env:
+          TMPDIR: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        run: bun run tools/check-toolchain-contracts.ts check --source .dev/toolchain-contract-source
+
   # Fast feedback: formatting + lint
   lint:
     name: Lint (fmt + clippy)
@@ -277,10 +319,6 @@ jobs:
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
-
-      # A library crate of its own.
-      - name: Validate the toolchain acquisition contracts
-        run: mise run ci:validate-toolchain-contracts
 
   docs:
     name: Docs
@@ -521,7 +559,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, package-mck]
+    needs: [changes, lint, rust-dev-tools, docs, rust-conformance, release-workflow, package-mck, toolchain-contracts]
     if: always()
     steps:
       - name: Check results
@@ -553,6 +591,7 @@ jobs:
           fi
           require "${{ needs.changes.outputs.release }}" release-workflow "${{ needs.release-workflow.result }}"
           require "${{ needs.changes.outputs.package-mck }}" package-mck "${{ needs.package-mck.result }}"
+          require "${{ needs.changes.outputs.toolchain-contracts }}" toolchain-contracts "${{ needs.toolchain-contracts.result }}"
           if [[ "$failed" != "0" ]]; then
             exit 1
           fi

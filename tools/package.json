@@ -13,6 +13,7 @@
 	},
 	"devDependencies": {
 		"@types/bun": "1.4.0",
-		"typescript": "~7.0.0"
+		"typescript": "~7.0.0",
+		"wabt": "1.0.39"
 	}
 }
