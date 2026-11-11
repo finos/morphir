@@ -115,6 +115,13 @@ host-identity case changes the authenticated descriptor's own tool id while
 retaining its original authenticated release state. Expected paths use the
 existing binding order, not a new diagnostic vocabulary.
 
+The protocol-disagreement variant also advertises `0.2.0` in every host while
+retaining `0.2.0-draft.1` in the descriptor's claims. This preserves the recipe's
+operation-consistency rule so that reading can reach the intended claim
+membership comparison. The first authored variant omitted the host change and
+would instead have failed earlier at `operations[0]`; independent review caught
+that ordering error. A targeted data regression failed before the correction.
+
 All 48 JSON payloads across these variants pass their own schemas. Parent tests
 also check byte links, manifest inventory and fixed expectations. They execute
 no signature verifier or binding checker. No case has yet established its

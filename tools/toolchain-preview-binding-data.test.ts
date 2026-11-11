@@ -67,6 +67,18 @@ describe("preview signed binding fixture integrity", () => {
 		}
 	});
 
+	test("the protocol disagreement preserves host compatibility before comparing descriptor claims", () => {
+		const variant = load("binding-repositories.json").variants["provider-protocol-disagreement-refused"];
+		const recipe = JSON.parse(variant.targetFiles["toolchains/recipes/fsharp/1.0.0.json"]);
+		const provider = recipe.providers[0];
+		expect(provider.protocolVersion).toBe("0.2.0");
+		for (const host of recipe.hosts) expect(host.protocolVersions).toContain(provider.protocolVersion);
+		const descriptor = JSON.parse(variant.targetFiles[provider.descriptorTarget]);
+		for (const artifact of descriptor.artifacts) {
+			expect(artifact.claims.protocolVersions).toEqual(["0.2.0-draft.1"]);
+		}
+	});
+
 	test("binding refusals remain schema-valid inputs rather than malformed-document controls", () => {
 		const repositories = load("binding-repositories.json");
 		const scratch = mkdtempSync(join(tmpdir(), "morphir-preview-binding-"));

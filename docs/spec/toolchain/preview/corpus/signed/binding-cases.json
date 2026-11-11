@@ -1,7 +1,7 @@
 {
   "recipeSchema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/recipe.schema.json",
   "repositories": "binding-repositories.json",
-  "repositoriesSha256": "bc12ae28dc04b21e6dab549edb420cf19483c04372763a4eacbcb6315a4e4527",
+  "repositoriesSha256": "870427179015be0857b16f549475385fcc42ea26f0aa14a6f8c8283a78dc5346",
   "cases": [
     {
       "id": "complete-bindings-accepted",
