@@ -13,7 +13,7 @@ Depends on: maintainer approval of this change, and the approval of finos/morphi
   - any extension repository the morphir-dotnet documentation names.
 
   Replace "the package version" in this change's spec with the chosen version, `0.1.0-preview.1` or `0.1.0-preview.2`, and under `PKGVER-B` change the examples that show `0.1.0-preview.1`, such as the tree manifest header. Under `PKGVER-A`, also add the `package` member to #1149's definition of `0.1.0-preview.1`, so that #1150's task 1.7 publishes it in the first schemas. Verify by listing each place checked and what it held.
-- [ ] 1.2 In `docs/design/draft/extensions/distribution-and-acquisition.md`, as part of or after #1149's task 1.4:
+- [x] 1.2 In `docs/design/draft/extensions/distribution-and-acquisition.md`, as part of or after #1149's task 1.4:
   - define the `package` member (`format`, `root`, `entryPoint`, `executables`, `treeSha256`) in the release descriptor, the index record, the installed catalog entry and the extension lock at the package version, with the rule that `artifacts.package` or `extensions.package` is listed in `critical`, and with the family's `$schema` URLs in every example;
   - give the package store layout of [STORE-1](design.html#store-1), with the owner and lease files beside their directories;
   - replace the page's `.tgz` process example with a package, and state the refusal of an archive-named single-file artifact;
@@ -28,7 +28,7 @@ Depends on: maintainer approval of this change, and the approval of finos/morphi
 
   Verify its examples match the spec scenarios and its links resolve.
 - [x] 1.4 Add the case data of [CONF-1](design.html#conf-1) beside that page. It comprises a deterministic generator script under `tools/` (TypeScript run by Bun) that writes each archive's bytes, the checked-in archives, and a JSON manifest of cases with the expected outcome, code and entry name. The `archive_too_large` case states a length without bytes. Verify with a data-integrity test that regenerating changes no byte, that every refusal code except `install_path_too_long`, `publish_busy` and `store_not_one_volume` has a case, and that every spec scenario is covered by a case or named as a host test.
-- [ ] 1.5 Publish the `package` member in the family's JSON Schemas ([VER-1](design.html#ver-1)), following the member definitions of 1.2:
+- [x] 1.5 Publish the `package` member in the family's JSON Schemas ([VER-1](design.html#ver-1)), following the member definitions of 1.2:
   - under `PKGVER-A`, add it to `release.schema.json`, `index-record.schema.json`, `catalog.schema.json` and `lock.schema.json` under `website/static/schemas/extensions/0.1.0-preview.1/` as part of #1150's task 1.7, before those schemas are first published;
   - under `PKGVER-B`, publish all seven schemas of the family again under `website/static/schemas/extensions/0.1.0-preview.2/`, each with its `$id` under `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/` and requiring that exact `$schema`, the four above with `package`; leave the `0.1.0-preview.1/` files unchanged.
 
@@ -41,13 +41,15 @@ Group 1 implementation evidence is in `docs/spec/extensions/publication-audit.md
 and its JSON inventory. The audit selects PKGVER-A at approval, so the seven
 `0.1.0-preview.1` schemas first publish with package members in all four shared
 documents. The deterministic Bun generator, checked-in archives, package case
-manifest and data/schema tests are delivered. Tasks 1.2 and 1.5 remain pending
-only for actual Docusaurus output and schema-serving evidence from the PR's
-Netlify Deploy Preview at its full head SHA. Static mapping alone does not close
-them. VERIFY-B and LAUNCH-A stay the approved behavior. A bounded local website build passed at `27dcc1110a9d9fc08cea1338151966174d91dea9`,
-with all seven emitted schemas byte-identical to source. The current corrections
-require another coordinated site verification; hosted schema availability stays
-pending. No Cargo or .NET build was run. Host implementation and toolchain
+manifest and data/schema tests are delivered. Tasks 1.2 and 1.5's build/preview
+acceptance is verified at `78844290c0697b036143b6bc94f9facb2336ddc5`: Node
+24.21.0 locked installation and the full Docusaurus build passed, emitting all
+six owned pages. All seven built schemas and the exact-head successful Netlify
+Deploy Preview responses matched source bytes, SHA-256 and `$id`; the preview
+deploy was `6af4496cd84527e1981732d6`. The later nested-lock identity data
+correction leaves these schema and page sources unchanged, and all 18
+data/schema tests pass. Production URL availability still requires merge/deploy.
+VERIFY-B and LAUNCH-A stay the approved behavior. No Cargo or .NET build was run. Host implementation and toolchain
 transition stay later work. STORE-1 reuse hashing and repair leases are corrections
 of inherited procedure, preserving VERIFY-B only at activation and LAUNCH-A.
 

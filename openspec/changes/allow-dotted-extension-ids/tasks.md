@@ -9,7 +9,7 @@ Depends on: maintainer approval of this change.
 - [x] 1.1 Add a normative extension id page under `docs/spec/` ([Q-PAGE](design.html#q-page), recommendation `PAGE-A`) stating the grammar, the device-name rule with the Microsoft list it follows, the rule order (`grammar`, `length`, `device-name`), exact comparison, derived names, the equality of descriptor, claims and session ids, that an id carries no trust, and the family's `$schema` URLs that carry the new grammar; verify its examples match the spec scenarios and its links resolve.
 - [x] 1.2 Add the language-neutral case manifest of [CONF-1](design.html#conf-1) beside that page, each case with an input, an expected outcome and, for a refusal, the expected rule or file, covering every scenario in `specs/extensions/extension-identity/spec.md` except the state lock; verify with a data-integrity test that the manifest parses and every scenario but the state lock's is covered by at least one case.
 - [x] 1.3 Read every extension id in the catalogs and bundles pinned by `.config/published-extension-bundles.toml` and record that each is valid under the new rule, and record the versions those documents are at; verify by listing the ids, versions and sources in the change's evidence.
-- [ ] 1.4 Update `docs/design/draft/extensions/distribution-and-acquisition.md` so it defines, as the authority, every shared file of [DEF-1](design.html#def-1) with its path, schema URL, members, values and recursive unknown-member rule, including open nested packages and closed lock claims. This task is what lets an installer be built: until it lands, the change does not define the members of a catalog entry, a lock or the repositories file, and finos/morphir-dotnet#567 cannot be written from the change alone. The page gives a member table (name, type, required or optional, whether `null` is allowed) for each:
+- [x] 1.4 Update `docs/design/draft/extensions/distribution-and-acquisition.md` so it defines, as the authority, every shared file of [DEF-1](design.html#def-1) with its path, schema URL, members, values and recursive unknown-member rule, including open nested packages and closed lock claims. This task is what lets an installer be built: until it lands, the change does not define the members of a catalog entry, a lock or the repositories file, and finos/morphir-dotnet#567 cannot be written from the change alone. The page gives a member table (name, type, required or optional, whether `null` is allowed) for each:
   - the release descriptor and the index record, `$schema` on every history line, and the history rules of [HIST-1](design.html#hist-1);
   - the installed catalog, with `extensions` as an array of entries in ascending byte order of `extensionId`;
   - the extension lock;
@@ -34,20 +34,23 @@ Depends on: maintainer approval of this change.
 
   Include the four readings confirmed as Decision 11 ([Q-OLDHOME-READINGS](design.html#q-oldhome-readings)): the refusal without a terminal or on a declined prompt, the report-only `doctor` and the prompt in `doctor --fix`. Verify the "Old home" cases of 1.2 match the page.
 
-- [ ] 1.7 Publish a JSON Schema for each file of the extension state family under `website/static/schemas/extensions/0.1.0-preview.1/`: `release.schema.json`, `index-record.schema.json`, `catalog.schema.json`, `lock.schema.json`, `journal.schema.json`, `repositories.schema.json` and `claims.schema.json`. Each schema's `$id` is its URL under `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/`, and each requires `$schema` with that exact value. The schemas follow the member tables of 1.4, so this task follows 1.4. Verify that every accepted case of 1.2 validates against its schema, that the documented refusals that a schema can express fail it, and that the site build serves each file at its URL.
+- [x] 1.7 Publish a JSON Schema for each file of the extension state family under `website/static/schemas/extensions/0.1.0-preview.1/`: `release.schema.json`, `index-record.schema.json`, `catalog.schema.json`, `lock.schema.json`, `journal.schema.json`, `repositories.schema.json` and `claims.schema.json`. Each schema's `$id` is its URL under `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/`, and each requires `$schema` with that exact value. The schemas follow the member tables of 1.4, so this task follows 1.4. Verify that every accepted case of 1.2 validates against its schema, that the documented refusals that a schema can express fail it, and that the site build serves each file at its URL.
 
 ## 2. finos/morphir-dotnet
 
 Group 1 implementation evidence is in `docs/spec/extensions/publication-audit.md`
 and its JSON inventory, the normative identity/package pages and their case
 manifests, and `tools/extension-contract-data.test.ts`. Task 1.4's member tables
-and task 1.7's seven schema files are implemented, with lightweight schema and
-static URL mapping checks passing. Those checkboxes remain pending only for
-actual Docusaurus output and schema-serving evidence from the PR's Netlify
-Deploy Preview at its full head SHA. Static mapping alone does not close them.
-A bounded local website build passed at `27dcc1110a9d9fc08cea1338151966174d91dea9`,
-with all seven emitted schemas byte-identical to source. Current corrections need
-another coordinated site verification; hosted schema availability stays pending.
+and task 1.7's seven schema files are implemented. At
+`78844290c0697b036143b6bc94f9facb2336ddc5`, Node 24.21.0 locked installation
+and the full Docusaurus build passed; all six owned pages were emitted. All seven
+schema files matched source bytes, SHA-256 and `$id` both in local build output
+and from the exact-head successful Netlify Deploy Preview, deploy
+`6af4496cd84527e1981732d6`. Each preview response was HTTP 200/application-json.
+The later nested-lock identity correction changes only case data and its
+integrity test; schema and page sources remain unchanged. Its 18 data/schema
+tests pass, including every schema example. These checks close 1.4 and 1.7's
+build/preview acceptance, not production URL availability before merge/deploy.
 No Cargo or .NET build was run. Host adoption and frozen toolchain fixture
 transition remain their later groups. The existing Smithy example inventory
 separates current preview claims from historical claims without changing MEP
