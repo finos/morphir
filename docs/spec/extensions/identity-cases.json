@@ -7289,8 +7289,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "org.finos.morphir.fsharp-frontend",
-          "name": "org.finos.morphir.fsharp-frontend",
+          "extensionId": "morphir-elm",
+          "name": "morphir-elm",
           "version": "0.6.0",
           "index": {
             "kind": "local-directory",
@@ -7412,8 +7412,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -7531,8 +7531,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -7651,8 +7651,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -7771,8 +7771,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -7891,8 +7891,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8011,8 +8011,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8131,8 +8131,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8251,8 +8251,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8371,8 +8371,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8491,8 +8491,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8611,8 +8611,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8731,8 +8731,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -8851,8 +8851,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",
@@ -9491,8 +9491,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "org.finos.morphir.fsharp-frontend",
-          "name": "org.finos.morphir.fsharp-frontend",
+          "extensionId": "morphir-elm",
+          "name": "morphir-elm",
           "version": "0.6.0",
           "index": {
             "kind": "local-directory",
@@ -9617,8 +9617,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "org.finos.morphir.fsharp-frontend",
-            "name": "org.finos.morphir.fsharp-frontend",
+            "extensionId": "morphir-elm",
+            "name": "morphir-elm",
             "version": "0.6.0",
             "index": {
               "kind": "local-directory",

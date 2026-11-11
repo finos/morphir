@@ -14,6 +14,17 @@ const scenarios = (change: string) => [...readFileSync(`openspec/changes/${chang
 const schemaRoot = "website/static/schemas/extensions/0.1.0-preview.1";
 
 describe("shared extension contract data", () => {
+ test("nested lock examples bind the same identity in the lock, claims and filename", () => {
+  const cases = load("identity-cases.json").cases;
+  for (const id of ["nested-members-lock-claims", "nested-closed-lock-claims"]) {
+   const c = cases.find((c: any) => c.id === id);
+   for (const lock of [c.input.document, ...c.schemaDocuments.map((d: any) => d.document)]) {
+    expect(lock.extensionId, id).toBe(lock.index.claims.extension.id);
+    expect(lock.name, id).toBe(lock.index.claims.extension.name);
+   }
+   if (c.input.file) expect(c.input.file).toBe(`locks/extensions/${c.input.document.extensionId}.json`);
+  }
+ });
  test("published requirements match the approved OpenSpec deltas", () => {
   for (const [page, change, capability] of [["identity", "allow-dotted-extension-ids", "extension-identity"], ["packages", "add-extension-packages", "extension-packages"]]) {
    const body = (s: string) => s.slice(s.indexOf("### Requirement:"));
