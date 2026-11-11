@@ -26,7 +26,7 @@ concept files, and optionally a register name per file.
    - **Diagrams**: prose that narrates a flow, structure, or state machine a diagram would show better
      (flag per diagrams.md); existing figures with no numbered `Figure N:` caption, numbering out of document
      order, unlabeled edges, more than one idea, or content that drifted from the claims around them.
-     `morphir kb check` catches caption presence and sequence mechanically; review for what it cannot judge,
+     `morphir-dev kb check` catches caption presence and sequence mechanically; review for what it cannot judge,
      the caption's accuracy.
    - **Voice**: banned patterns from voice.md, passive constructions hiding the actor, synonym rotation,
      sentence and paragraph length.

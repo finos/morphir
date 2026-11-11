@@ -1,151 +1,122 @@
 # Installing Morphir
 
-This repository publishes the Morphir CLI as a prebuilt executable for Linux,
-macOS, and Windows. Both x86-64 and ARM64 packages are available.
+The Morphir CLI comes from [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet). This repository
+builds it from a pinned commit of that source, launches every produced artifact on its own platform, and publishes
+official releases under tags `v<version>`, the namespace the Rust CLI's releases used; a new release must be newer than every existing `v*` release. Each release carries a `release-manifest.json` that names the
+source commit, the compatibility kit and the SHA-256 of every asset.
 
-To use the CLI as a private compatibility-testing backend, see the
-[prebuilt MCK guide](docs/getting-started/prebuilt-mck.md) for pinned executables,
-canonical kits, explicit adapters and independent report checking.
+The first official .NET release has not been published yet, and its version is not decided. Until it is, install from the
+[finos/morphir-dotnet releases](https://github.com/finos/morphir-dotnet/releases) or the `Morphir.Tool` package.
 
-## Install with mise
+## Choose an offering
 
-[mise](https://mise.jdx.dev/) can download the correct executable from the
-Morphir GitHub release for your operating system and processor.
-
-Install the current prerelease globally:
-
-```shell
-mise use -g github:finos/morphir@0.4.0-beta.12
-```
-
-To pin Morphir in a project's `mise.toml`, add:
-
-```toml
-[tools]
-"github:finos/morphir" = "0.4.0-beta.12"
-```
-
-Run `mise install` after changing the configuration. Prereleases must be
-selected explicitly. A request for `latest` does not select them by default.
-
-Check the installation:
-
-```shell
-morphir version
-```
-
-## Install a release archive manually
-
-Download the archive for your system from
-[GitHub Releases](https://github.com/finos/morphir/releases).
-
-| System | Processor | Asset suffix |
+| Offering | What you get | Needs |
 | --- | --- | --- |
-| Linux | x86-64 | `x86_64-unknown-linux-gnu.tgz` |
-| Linux | ARM64 | `aarch64-unknown-linux-gnu.tgz` |
-| macOS | Intel | `x86_64-apple-darwin.tgz` |
-| macOS | Apple silicon | `aarch64-apple-darwin.tgz` |
-| Windows | x86-64 | `x86_64-pc-windows-msvc.zip` |
-| Windows | ARM64 | `aarch64-pc-windows-msvc.zip` |
+| `native-aot` | One native `morphir` executable | No .NET installation; the operating system libraries below. No in-process F# frontend. |
+| `self-contained` | A folder with the `morphir` apphost and its own .NET runtime | No .NET installation; the operating system libraries below. Includes the F# frontend. |
+| `framework-dependent` | A folder with the `morphir` apphost | An installed .NET 10 runtime and its prerequisites. Includes the F# frontend. |
+| `dotnet-tool` | The `Morphir.Tool` package, command `dotnet-morphir` | The .NET 10 SDK to install it. |
 
-Each archive contains one executable named `morphir`, or `morphir.exe` on
-Windows. Extract it and move it to a directory on `PATH`.
+Platforms: Windows x64 and ARM64, macOS x64 and ARM64, and Linux (glibc) x64 and ARM64. No offering is
+production-qualified yet: the official release workflow has not run, and the pinned source is an unreleased
+candidate on the source's `main`, containing merged [#590](https://github.com/finos/morphir-dotnet/pull/590).
+The candidate marker remains until the source version and release gates pass. A merged source pin does not
+establish artifact qualification.
 
-Linux and macOS:
+### Operating system prerequisites
+
+What is known, and what is not measured yet, for the pinned source (from finos/morphir-dotnet's own analysis in
+[#584](https://github.com/finos/morphir-dotnet/pull/584)):
+
+- **Linux.** The executables use ICU for globalization (the pinned build does not set invariant mode), so expect to
+  need `libicu`. They reach OpenSSL (`libssl`, `libcrypto`) for SHA-256 hashing and for HTTPS, and HTTPS also needs CA
+  certificates. Whether each offering starts without these in a clean image has not been measured for the pinned
+  source.
+- **glibc floor: unqualified.** No floor is stated for these artifacts. A probe of a build without the WASM engine,
+  linked in `ubuntu:22.04`, measured glibc 2.34; a separate branch with the WASM engine, linked on Ubuntu 24.04,
+  measured 2.38. Neither measured the artifacts of the pinned source, and the release workflow links on its
+  runners. musl-based Linux is not supported.
+- **macOS.** The artifacts are not signed with a Developer ID and not notarized; the pinned build has no signing
+  step. Gatekeeper may refuse a downloaded executable until you allow it. The minimum macOS version is not measured.
+- **Windows.** The executables are not Authenticode-signed, so SmartScreen may warn on first run.
+
+## Install a release archive
+
+Download the archive for your offering and platform from the release:
+
+```text
+morphir-dotnet-<version>-<offering>-<rid>.zip      Windows (win-x64, win-arm64)
+morphir-dotnet-<version>-<offering>-<rid>.tar.gz   macOS (osx-x64, osx-arm64) and Linux (linux-x64, linux-arm64)
+```
+
+Files sit at the archive root. Extract the archive into a folder of its own and run `morphir` (`morphir.exe` on
+Windows) from there, or put that folder on `PATH`. Keep the whole folder for `self-contained` and
+`framework-dependent`: the apphost loads the files beside it.
+
+Check the download against the release manifest before you extract it:
 
 ```shell
-mkdir -p "$HOME/.local/bin"
-tar -xzf morphir-<version>-<target>.tgz
-install -m 0755 morphir "$HOME/.local/bin/morphir"
+sha256sum morphir-dotnet-<version>-native-aot-linux-x64.tar.gz      # Linux
+shasum -a 256 morphir-dotnet-<version>-native-aot-osx-arm64.tar.gz   # macOS
 ```
-
-Windows PowerShell:
 
 ```powershell
-Expand-Archive morphir-<version>-<target>.zip
-Move-Item .\morphir.exe $env:LOCALAPPDATA\Microsoft\WindowsApps\morphir.exe
+(Get-FileHash morphir-dotnet-<version>-native-aot-win-x64.zip -Algorithm SHA256).Hash.ToLower()
 ```
 
-The release also includes a `.sha256` file for every archive. Verify the
-download before extracting it:
+Then check the installation:
 
 ```shell
-# Linux
-sha256sum -c morphir-<version>-<target>.tgz.sha256
-
-# macOS
-shasum -a 256 -c morphir-<version>-<target>.tgz.sha256
+morphir --version
 ```
 
-```powershell
-$expected = (Get-Content morphir-<version>-<target>.zip.sha256).Split()[0]
-$actual = (Get-FileHash morphir-<version>-<target>.zip -Algorithm SHA256).Hash
-if ($actual -ne $expected) { throw "Checksum verification failed" }
+### Earlier asset names
+
+Links and scripts that fetch `morphir-<rid>` (`morphir-<rid>.exe` on Windows) or `morphir-<rid>-v<version>.tar.gz`
+keep working for win-x64, osx-arm64, linux-x64 and linux-arm64. In releases from this repository those names
+carry the same Native AOT executable as the `native-aot` offering. Assets already published under them are
+unchanged.
+
+## Install the .NET tool
+
+```shell
+dotnet tool install --global Morphir.Tool
+dotnet-morphir --version
+dotnet morphir --version
 ```
+
+To install the package from a release instead of a feed, download `Morphir.Tool.<version>.nupkg` into a folder and
+add `--add-source <folder> --version <version>`.
+
+## The Rust CLI
+
+The Rust `morphir` CLI that this repository used to build was deleted on 10 November 2026. Its releases up to
+[`v0.4.0-beta.12`](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.12) stay downloadable and unchanged,
+but they receive no updates. They speak only MEP `0.1`, so they cannot list a Morphir Home that a current host
+has installed into.
 
 ## Install the Python extension
 
-The CLI ships separately from language extensions. The `morphir-python` WASM
-extension compiles supported Python ADTs, fixed tuples, conditional functions,
-typed calls and unary lambdas to Morphir IR v3 or v4 and generates Python.
+The CLI ships separately from language extensions. [finos/morphir-python](https://github.com/finos/morphir-python)
+owns the `morphir-python` WASM extension and publishes `extension/python/v<version>` bundles; bundles up to
+`extension/python/v0.4.0` stay in the [finos/morphir-rust releases](https://github.com/finos/morphir-rust/releases).
+The installation notes in the
+[Python extension guide](https://github.com/finos/morphir-python/blob/main/docs/python-extension.md) were written for
+the Rust CLI releases (`0.4.0-beta.7` and later take `extension/python/v0.4.0`). Running WASM extensions in the .NET
+CLI is separate, unfinished work.
 
-[finos/morphir-python](https://github.com/finos/morphir-python) owns the
-extension. It holds the compiler crate,
-[`morphir-python-binding`](https://github.com/finos/morphir-python/blob/main/rust/crates/morphir-python-binding/README.md),
-and publishes new `extension/python/v<version>` bundles in its releases. The
-bundles up to `extension/python/v0.4.0` were released from finos/morphir-rust and
-stay in the [finos/morphir-rust releases](https://github.com/finos/morphir-rust/releases).
-
-With CLI `0.4.0-beta.7` or later, install the bundle `extension/python/v0.4.0`. Its
-version-2 descriptor needs CLI `0.4.0-beta.7` to publish; with CLI `0.4.0-beta.1`
-to `0.4.0-beta.6`, use `extension/python/v0.3.0`. The earlier `v0.1.0` bundle does
-not compile with this CLI. See the
-[Python extension guide](https://github.com/finos/morphir-python/blob/main/docs/python-extension.md)
-for download, repository publication and installation commands, and the
-[binding README](https://github.com/finos/morphir-python/blob/main/rust/crates/morphir-python-binding/README.md)
-for the supported subset and conformance limits.
-
-finos/morphir-python also packages the same compiler for Python. From the first
-`morphir-python` release on PyPI that includes it, `pip install morphir-python`
-gives a Python API and a `morphir-python` command that compile and generate
-without the Morphir CLI. See the
+finos/morphir-python also packages the same compiler for Python: `pip install morphir-python` gives a Python API and
+a `morphir-python` command that compile and generate without the Morphir CLI. See the
 [Python compiler guide](https://github.com/finos/morphir-python/blob/main/docs/python-compiler.md).
 
 ## Build from source
 
-Building from source requires Git, [mise](https://mise.jdx.dev/), and the
-platform build tools required by Rust.
+Build the CLI in [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet); its README covers the .NET SDK and
+the build. An official offering is built with that repository's release profile, for example:
 
 ```shell
-git clone --recurse-submodules https://github.com/finos/morphir.git
-cd morphir
-mise install
-cargo build --locked --release --package morphir
+dotnet run --project build/_build.csproj -- --target PackRelease --deployment native-aot --rid linux-x64
 ```
 
-The executable is written to `target/release/morphir` on Linux and macOS, or
-`target\release\morphir.exe` on Windows.
-
-### Windows: MSVC Spectre-mitigated libs
-
-`cargo build`, `cargo test`, and `cargo clippy` fail on Windows with this error if your
-Visual Studio install is missing an optional component:
-
-```
-error: failed to run custom build command for `msvc_spectre_libs v0.1.3`
-
-  cargo:warning=No spectre-mitigated libs were found. Please modify the VS Installation to add these.
-
-  thread 'main' panicked at msvc_spectre_libs-0.1.3/build.rs:38:13:
-  No spectre-mitigated libs were found. Please modify the VS Installation to add these.
-```
-
-The CLI's embedded Rego evaluator (`morphir-opa`, via `regorus`) depends on the
-`msvc_spectre_libs` crate, which requires the **Spectre-mitigated MSVC libraries**.
-Either install the **"MSVC v143 - VS 2022 C++ x64/x86 Spectre-mitigated libs
-(Latest)"** component from the Visual Studio Installer, or skip it entirely with
-`cargo build --no-default-features --package morphir`, which drops `regorus` from
-the dependency graph (and disables `morphir eval`'s Rego provider along with
-itest's Rego-backed assertions). See [DEVELOPING.md](DEVELOPING.md#prerequisites)
-for the elevated-install one-liner and [issue #886](https://github.com/finos/morphir/issues/886)
-for the full analysis.
+This repository's own Rust crates are development tools (`morphir-mck`, `morphir-dev`), not the CLI. See
+[DEVELOPING.md](DEVELOPING.md).

@@ -6,6 +6,10 @@ sidebar_position: 5
 
 # Publish Libraries to a local registry
 
+:::warning Rust CLI only
+The `morphir package` commands used here exist only in the deleted Rust CLI (releases up to `v0.4.0-beta.12`). The Morphir CLI from finos/morphir-dotnet does not have them yet; see [command availability](/docs/getting-started/morphir-cli#command-availability-after-the-move).
+:::
+
 Local publication makes a Library release discoverable and verifiable in a
 directory registry. That registry holds package files plus signed information
 about which releases it offers and who published them. Consumers use the directory

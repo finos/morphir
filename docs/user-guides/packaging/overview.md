@@ -6,6 +6,10 @@ sidebar_position: 1
 
 # Packaging overview
 
+:::warning Rust CLI only
+The `morphir package` commands used here exist only in the deleted Rust CLI (releases up to `v0.4.0-beta.12`). The Morphir CLI from finos/morphir-dotnet does not have them yet; see [command availability](/docs/getting-started/morphir-cli#command-availability-after-the-move).
+:::
+
 Morphir packages let you share a model as a versioned Library, select its dependencies,
 and restore verified copies into another project. A Library contains Morphir IR and
 a release manifest describing its identity, public modules, dependencies, and files.

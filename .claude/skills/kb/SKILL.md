@@ -1,10 +1,10 @@
 ---
 name: kb
 description: "Manages the Morphir knowledge base under kb/ — OKF bundles and concept documents. Use when adding content to a bundle, creating a new bundle, checking the knowledge base for conformance or provenance drift, building or querying its SQLite index, managing intent through its lifecycle, recording or reading architectural decisions as Decision Records, or navigating, searching and listing its bundles, concepts and links."
-allowed-tools: Bash(morphir kb *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git *), Read, Edit, Write
+allowed-tools: Bash(morphir-dev kb *), Bash(mise run kb *), Bash(cargo run --locked -q -p morphir-dev-tools -- kb *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git *), Read, Edit, Write
 metadata:
   version: 0.1.0
-  lineage: descends from the morphir-scala kb skill 0.7.0, retargeted at the morphir CLI
+  lineage: descends from the morphir-scala kb skill 0.7.0, retargeted at the morphir CLI, now morphir-dev
 ---
 
 # kb — Morphir Knowledge Base Assistant
@@ -13,19 +13,23 @@ Manages `kb/`, the Open Knowledge Format knowledge base. Bundles live under `kb/
 deeper. [kb/AGENTS.md](../../../kb/AGENTS.md) is the source of truth for the conventions; this skill automates the
 mechanical parts of following them.
 
-## The `morphir kb` command
+## The `morphir-dev kb` command
 
-Everything runs through the `kb` subcommand of the Morphir CLI. It takes the same subcommands, flags, defaults,
+Everything runs through the `kb` subcommand of `morphir-dev`, this repository's internal development tool
+(`crates/morphir-dev-tools`). It was `morphir kb` in the Rust CLI, which was deleted; the commands are unchanged.
+Run it from the repository root as `mise run kb -- <subcommand> ...` or
+`cargo run --locked -q -p morphir-dev-tools -- kb <subcommand> ...`; the examples below write `morphir-dev kb` for
+short. It takes the same subcommands, flags, defaults,
 JSON shapes and exit codes as the Scala `kb` tool from morphir-scala, so a playbook written against that tool runs
 here. Where the reference implementation was wrong it is corrected rather than reproduced — a filter you pass is a
 filter that applies, and `--json` means JSON.
 
 ```bash
-morphir kb list
+morphir-dev kb list
 ```
 
 ```bash
-morphir kb check --verbose
+morphir-dev kb check --verbose
 ```
 
 **Every command accepts `--json`.** Progress output goes to stderr, so `--json` on stdout is clean and pipeable —
@@ -87,24 +91,24 @@ search over bodies, "what links here", orphaned concepts, tag or provenance dist
 once and query it.
 
 ```bash
-morphir kb index
+morphir-dev kb index
 ```
 
 ```bash
-morphir kb search --query "entry point" --index
+morphir-dev kb search --query "entry point" --index
 ```
 
 The index is derived state under `.dev/kb/index.db`, gitignored, and rebuilt from the markdown. It has no automatic
-invalidation — `morphir kb index --status` lists files changed since the last build.
+invalidation — `morphir-dev kb index --status` lists files changed since the last build.
 
-**Keeping derived state honest.** `morphir kb refresh` does both halves in one pass: it rewrites index bullets that
+**Keeping derived state honest.** `morphir-dev kb refresh` does both halves in one pass: it rewrites index bullets that
 have drifted from their concept's `description`, then rebuilds the SQLite index if anything changed.
 
 ```bash
-morphir kb refresh --dry-run
+morphir-dev kb refresh --dry-run
 ```
 
-Narrow it when you only want one half — `morphir kb refresh markdown` or `morphir kb refresh db`, equivalently
+Narrow it when you only want one half — `morphir-dev kb refresh markdown` or `morphir-dev kb refresh db`, equivalently
 `--no-db` and `--no-markdown`. Reach for it after editing descriptions or adding concepts, and before relying on a
 query. `--add-missing` also appends entries for unindexed concepts, which is opt-in because it has to pick a section.
 
@@ -117,18 +121,18 @@ whose obligations are enforced — most importantly, releasing requires linking 
 [references/commands.md](references/commands.md) for flags.
 
 **Recording a decision.** Architectural decisions are the knowledge base's third register, alongside Intent and
-Capability: past-tense, immutable, and **superseded rather than edited**. `morphir kb decision list` and
-`morphir kb decision show` read them; `morphir kb check` validates their supersession links.
+Capability: past-tense, immutable, and **superseded rather than edited**. `morphir-dev kb decision list` and
+`morphir-dev kb decision show` read them; `morphir-dev kb check` validates their supersession links.
 
 → [references/decisions.md](references/decisions.md) for the frontmatter, the checks and how to supersede one.
 
 **Mirroring an upstream repository.** A bundle may declare a `sync.yaml` and carry upstream's own files rather than
 a paraphrase of them. Markdown lands as concepts with an injected, fenced block of kb-owned frontmatter; everything
-else lands as byte-identical assets. `morphir kb sync push` deletes exactly that fenced region, so what goes back
+else lands as byte-identical assets. `morphir-dev kb sync push` deletes exactly that fenced region, so what goes back
 upstream is what came from it.
 
 ```bash
-morphir kb sync status
+morphir-dev kb sync status
 ```
 
 → [references/sync.md](references/sync.md) for the manifest, the lockfile and the state model.
@@ -149,6 +153,6 @@ concepts assert — the thing that actually matters in a knowledge base — cann
 
 ## Where the implementation lives
 
-The `morphir kb` command is implemented in Rust, in the `morphir-okf` (format model and parsing) and `morphir-kb`
+The `morphir-dev kb` command is implemented in Rust, in the `morphir-okf` (format model and parsing) and `morphir-kb`
 (knowledge-base operations) crates under `ecosystem/morphir-rust/crates/`, wired into the CLI in `crates/morphir`.
 Develop and test it there with `cargo test`; this skill only documents the command surface.

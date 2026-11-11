@@ -7,7 +7,7 @@ is the primary source of truth for authoring and consuming knowledge bundles her
 
 `kb/` is the knowledge base root. Bundles land under `kb/bundles/`, one directory per bundle. Nothing under `kb/` is
 compiled, referenced by the Cargo workspaces or the Docusaurus site, or shipped as part of a published artifact — it
-is documentation-as-data, read by humans and agents, operated by the `morphir kb` CLI.
+is documentation-as-data, read by humans and agents, operated by the `morphir-dev kb` CLI.
 
 Bundles conform to the **Open Knowledge Format (OKF)**, currently **v0.2**:
 
@@ -59,25 +59,25 @@ edited with the edits sent back. Use it when a paraphrase will not do; use `sour
 
 - **Markdown in the mirror is a concept document**, but its frontmatter is upstream's. The knowledge base owns one
   fenced `# kb:begin` … `# kb:end` region inside it, holding the `type` OKF requires and the upstream path.
-  `morphir kb sync push` deletes exactly that region to recover upstream's bytes, so do not edit inside the fence by
+  `morphir-dev kb sync push` deletes exactly that region to recover upstream's bytes, so do not edit inside the fence by
   hand, and do not reformat anything outside it.
-- **The fence is generated from `sync.yaml`.** `morphir kb sync pull` rewrites it whenever the manifest implies
+- **The fence is generated from `sync.yaml`.** `morphir-dev kb sync pull` rewrites it whenever the manifest implies
   different keys, so an edit to `type`, `title`, `description` or `kb_upstream` there will not survive; change the
   manifest instead. A mirrored document is typed by what it *is* — `Decision Source`, not `Decision Record` — because
   the registers below discover their records by `type:` wherever those sit, and upstream's file would be judged
-  against a schema it was never written to. `morphir kb sync` refuses a `type_map` that names a register-owned type.
+  against a schema it was never written to. `morphir-dev kb sync` refuses a `type_map` that names a register-owned type.
 - **Everything that is not markdown is an asset** — schemas, fixtures, `.mdx` pages, sidebar descriptors. Assets are
   mirrored byte-for-byte and tracked, but never parsed, so they carry no frontmatter and need no `type`.
 - **`index.md` and `log.md` are reserved only outside the mirror.** Inside it those names belong to upstream,
   frontmatter and all, and the files are treated as ordinary concepts.
-- **The bundle-root `index.md` carries `sync: true`.** That is the marker the `morphir kb sync` commands discover the
+- **The bundle-root `index.md` carries `sync: true`.** That is the marker the `morphir-dev kb sync` commands discover the
   bundle by; the `sync.yaml` itself is what makes the subtree vendored.
 - `sync.lock.yaml` is generated: it records the upstream commit the import came from and, per file, a hash of its
-  upstream form. Never edit it by hand, and let `morphir kb sync pull` regenerate the index region it maintains.
+  upstream form. Never edit it by hand, and let `morphir-dev kb sync pull` regenerate the index region it maintains.
 
 Mirrored documents are held to a looser standard than authored ones — checks that would judge upstream's frontmatter
 or upstream's link rot are relaxed — so review a mirror by reading its diff against upstream, not by trusting a
-clean `morphir kb check`.
+clean `morphir-dev kb check`.
 
 → the `kb` skill's [sync reference](../.claude/skills/kb/references/sync.md) for the manifest format and commands.
 
@@ -172,11 +172,11 @@ the same work. Picking the wrong one is the most common modelling mistake here.
 | Decision Record | `Decision Record` | past | terminal only | why is it shaped this way |
 
 - **Intent** lives in the bundle whose index carries `intent: true`, is numbered `NNNN-slug.md`, and its lifecycle
-  obligations are enforced by `morphir kb intent check` — most importantly, releasing requires linking the Capability
+  obligations are enforced by `morphir-dev kb intent check` — most importantly, releasing requires linking the Capability
   it produced.
 - **Capability** is plain prose with no extra schema. It is either true or stale.
 - **Decision Record** is numbered `NNNN-slug.md` in a `decisions/` directory, carries `state`, `decided` and
-  `supersedes`/`superseded_by`, and is validated by `morphir kb check`. **It is immutable**: superseded by a later
+  `supersedes`/`superseded_by`, and is validated by `morphir-dev kb check`. **It is immutable**: superseded by a later
   record rather than edited, because its value is the reasoning available at the time.
 
 The distinction that most often needs care is **Decision Record vs Design Note**. A Design Note is updated as
@@ -209,7 +209,7 @@ Do not copy glossary entries back onto the narrative page. [kb/CONTEXT.md](./CON
   link itself. Say what the relationship is.
 - Broken links are legitimate *to a consumer*: they mark not-yet-written knowledge, and nothing reading a bundle
   should fail because of one. Do not delete a link merely because its target does not exist yet.
-- `morphir kb check` is a producer-side linter, not a consumer, and it reports a dangling link as an **error** —
+- `morphir-dev kb check` is a producer-side linter, not a consumer, and it reports a dangling link as an **error** —
   inside one repository it is nearly always a typo, and the cost of the occasional false positive is lower than the
   cost of silent rot. Pass `--allow-dangling` to restore OKF's lenient stance where a knowledge base genuinely links
   forward to unwritten work.
@@ -256,7 +256,7 @@ anything in it.
 6. Re-read the [spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) if you are doing
    anything the sections above do not cover — this file is a working summary, not a replacement.
 
-`morphir kb new-bundle` scaffolds steps 1, 2 and 4 and prints a reminder for step 5.
+`morphir-dev kb new-bundle` scaffolds steps 1, 2 and 4 and prints a reminder for step 5.
 
 ## Consuming a bundle
 

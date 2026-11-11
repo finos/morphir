@@ -6,6 +6,10 @@ sidebar_label: Signed local Libraries
 
 # Use signed local Libraries
 
+:::warning Rust CLI only
+The `morphir package` commands used here exist only in the deleted Rust CLI (releases up to `v0.4.0-beta.12`). The Morphir CLI from finos/morphir-dotnet does not have them yet; see [command availability](/docs/getting-started/morphir-cli#command-availability-after-the-move).
+:::
+
 :::caution Early access
 This guide describes Morphir CLI **v0.4.0-beta.12**. Packaging commands and formats
 may change between releases. For the full introduction, including bundle creation,

@@ -1,0 +1,258 @@
+//! Package argument parsing and output. Corpus and execution belong to the MCK engine.
+use std::ffi::OsString;
+use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
+
+use crate::AppResult;
+use clap::{Args, ValueEnum};
+use morphir_mck::json::to_tab_json;
+use morphir_mck::package::{Contract, Report, load_kit, run_kit};
+use morphir_mck::report::iso_timestamp;
+use morphir_mck::transport::{Limits, Session};
+
+use super::{Outcome, finish};
+
+/// A definition contract that can be inspected without an executor.
+#[derive(ValueEnum, Clone, Debug)]
+pub enum InspectionContract {
+    #[value(name = "0.1.0-draft.3")]
+    LocalRegistryDraft3,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct InspectArgs {
+    /// Repository root containing spec/package and its referenced schemas and assets
+    #[arg(long, value_name = "DIR")]
+    pub source: PathBuf,
+    /// Candidate-definition contract to inspect
+    #[arg(long, value_name = "VERSION", value_enum)]
+    pub contract: InspectionContract,
+}
+
+pub fn inspect(args: InspectArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::local_registry::{
+        DefinitionSummary, RepositorySource, inspect_local_registry,
+    };
+    let summary = match RepositorySource::new(&args.source) {
+        Ok(source) => inspect_local_registry(&source),
+        Err(error) => DefinitionSummary::error(error),
+    };
+    println!("{}", to_tab_json(&summary));
+    finish(if summary.errors.is_empty() {
+        Outcome::Passed
+    } else {
+        Outcome::Failed
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct RunArgs {
+    /// Package corpus directory, for example spec/package/mck
+    #[arg(long, value_name = "DIR")]
+    pub kit: PathBuf,
+    /// Package contract: 0.1.0-draft.1 integrity or 0.1.0-draft.2 resolution
+    #[arg(long, value_name = "VERSION", default_value = "0.1.0-draft.1")]
+    pub contract: Contract,
+    /// Adapter executable, launched directly without a shell
+    #[arg(long, value_name = "PROGRAM")]
+    pub adapter: OsString,
+    /// An argument for the adapter; repeat for more
+    #[arg(long = "adapter-arg", value_name = "ARG", allow_hyphen_values = true)]
+    pub adapter_args: Vec<OsString>,
+    /// Write the package contract's JSON report to this file
+    #[arg(long, value_name = "FILE")]
+    pub report: Option<PathBuf>,
+    /// Maximum duration of one adapter request and response, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 30_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub timeout: u64,
+    /// Maximum duration of the adapter session, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 1_800_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub session_timeout: u64,
+}
+
+pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
+    let kit = load_kit(&args.kit, args.contract);
+    let version = env!("CARGO_PKG_VERSION");
+    let started_at = iso_timestamp(SystemTime::now());
+    let limits = Limits {
+        request_timeout: Duration::from_millis(args.timeout),
+        session_timeout: Duration::from_millis(args.session_timeout),
+        ..Limits::DEFAULT
+    };
+    let report = if !kit.errors.is_empty() || kit.cases.is_empty() {
+        Report::kit_error(&kit, version, &started_at)
+    } else {
+        match Session::spawn(&args.adapter, &args.adapter_args, limits) {
+            Err(error) => Report::adapter_error(&kit, version, &started_at, error.to_string()),
+            Ok(session) => {
+                let terminator = session.terminator();
+                let interrupt = tokio::spawn(async move {
+                    if tokio::signal::ctrl_c().await.is_ok() {
+                        terminator.kill();
+                        eprintln!("error: interrupted; the adapter was terminated");
+                        std::process::exit(130);
+                    }
+                });
+                let report =
+                    tokio::task::block_in_place(|| run_kit(&kit, session, version, &started_at));
+                interrupt.abort();
+                report
+            }
+        }
+    };
+    if let Some(path) = &args.report {
+        let write = || -> std::io::Result<()> {
+            if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(path, format!("{}\n", to_tab_json(&report)))
+        };
+        if let Err(error) = write() {
+            return finish(Outcome::Error(format!(
+                "cannot write {}: {error}",
+                path.display()
+            )));
+        }
+    }
+    println!("package: {}", report.summary_line());
+    for record in &report.records {
+        if let Some(message) = &record.message {
+            println!("{}: {message}", record.case_id);
+        }
+    }
+    finish(if report.exit_code() == 0 {
+        Outcome::Passed
+    } else {
+        Outcome::Failed
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MvpRunArgs {
+    /// Repository root containing the closed MVP inventory and signed fixtures
+    #[arg(long, value_name = "DIR")]
+    pub source: PathBuf,
+    /// Adapter executable, launched directly without a shell
+    #[arg(long, value_name = "PROGRAM")]
+    pub adapter: OsString,
+    /// An argument for the adapter; repeat for more
+    #[arg(long = "adapter-arg", value_name = "ARG", allow_hyphen_values = true)]
+    pub adapter_args: Vec<OsString>,
+    /// Write one versioned JSON report, including failures, to this file
+    #[arg(long, value_name = "FILE")]
+    pub report: Option<PathBuf>,
+    /// Maximum duration of one adapter request and response, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 30_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub timeout: u64,
+    /// Maximum duration of the adapter session, in milliseconds
+    #[arg(long, value_name = "MS", default_value_t = 1_800_000, value_parser = clap::value_parser!(u64).range(1..))]
+    pub session_timeout: u64,
+}
+
+pub async fn mvp_run(args: MvpRunArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    use morphir_mck::package::run_mvp_process;
+    let source = match MvpRepositorySource::new(&args.source) {
+        Ok(source) => source,
+        Err(error) => return finish(Outcome::Error(error)),
+    };
+    let inventory = match admit_mvp_inventory(&source) {
+        Ok(inventory) => inventory,
+        Err(error) => return finish(Outcome::Error(error)),
+    };
+    let limits = Limits {
+        request_timeout: Duration::from_millis(args.timeout),
+        session_timeout: Duration::from_millis(args.session_timeout),
+        ..Limits::DEFAULT
+    };
+    let run = tokio::task::block_in_place(|| {
+        run_mvp_process(&inventory, &args.adapter, &args.adapter_args, limits)
+    });
+    if let Some(path) = &args.report {
+        let text = format!("{}\n", to_tab_json(&run));
+        if let Err(error) = super::report::write_atomic(path, text.as_bytes()) {
+            return finish(Outcome::Error(format!(
+                "cannot write {}: {error}",
+                path.display()
+            )));
+        }
+    }
+    println!("MVP local Library: {}", run.summary_line());
+    for (case, message) in run.failures() {
+        println!("{case}: {message}");
+    }
+    finish(if run.exit_code() == 0 {
+        Outcome::Passed
+    } else {
+        Outcome::Failed
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MvpReportCheckArgs {
+    /// Versioned local Library MVP JSON report
+    pub report: PathBuf,
+    /// Repository root containing the independent admitted MVP inventory
+    #[arg(long, value_name = "DIR")]
+    pub source: PathBuf,
+}
+
+pub fn mvp_report_check(args: MvpReportCheckArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::MvpRun;
+    use morphir_mck::package::local_registry::{MvpRepositorySource, admit_mvp_inventory};
+    let result = (|| {
+        let text = std::fs::read_to_string(&args.report)
+            .map_err(|error| format!("cannot read {}: {error}", args.report.display()))?;
+        let report = MvpRun::from_json(&text)?;
+        let source = MvpRepositorySource::new(&args.source)?;
+        let inventory = admit_mvp_inventory(&source)?;
+        let count = report.check_inventory(&inventory)?;
+        println!("Verified MVP inventory: {count} required cases, all passing");
+        Ok::<_, String>(())
+    })();
+    finish(match result {
+        Ok(()) => Outcome::Passed,
+        Err(error) => Outcome::Error(error),
+    })
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct MvpReportRenderArgs {
+    /// Versioned local Library MVP JSON report
+    pub report: PathBuf,
+    /// Standalone HTML output file; cannot overwrite the JSON input
+    #[arg(short, long, value_name = "FILE")]
+    pub output: PathBuf,
+}
+
+pub fn mvp_report_render(args: MvpReportRenderArgs) -> AppResult<miette::Report> {
+    use morphir_mck::package::MvpRun;
+    if args.output.exists() {
+        match same_file::is_same_file(&args.report, &args.output) {
+            Ok(true) => {
+                return finish(Outcome::Usage(
+                    "HTML output must not overwrite its JSON input".into(),
+                ));
+            }
+            Ok(false) => {}
+            Err(error) => {
+                return finish(Outcome::Error(format!(
+                    "cannot compare input and output: {error}"
+                )));
+            }
+        }
+    }
+    let result = (|| {
+        let text = std::fs::read_to_string(&args.report)
+            .map_err(|error| format!("cannot read {}: {error}", args.report.display()))?;
+        let report = MvpRun::from_json(&text)?;
+        super::report::write_atomic(&args.output, report.render_html().as_bytes())
+            .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+        println!("Wrote {}", args.output.display());
+        Ok::<_, String>(())
+    })();
+    finish(match result {
+        Ok(()) => Outcome::Passed,
+        Err(error) => Outcome::Error(error),
+    })
+}

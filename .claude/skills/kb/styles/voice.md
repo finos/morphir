@@ -76,7 +76,7 @@ Applies to new kb content and to any document already being edited for another r
 grandfathered until touched. Repository documents outside `kb/` follow their own conventions, though a
 changelog that ships with a release is read as widely as anything in `kb/` and deserves the same care.
 
-Nothing checks any of this. `morphir kb check` validates structure, frontmatter and links, not prose, so
+Nothing checks any of this. `morphir-dev kb check` validates structure, frontmatter and links, not prose, so
 the table above holds only as far as the author applies it. The gap is measurable: when this card was
 adopted in the morphir-scala knowledge base, its authored content outside the mirrored `sources/`
 subtrees already contained 826 em-dashes across 145 of its 159 files, written after this table existed.

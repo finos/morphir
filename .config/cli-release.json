@@ -1,0 +1,40 @@
+{
+	"$comment": "Official Morphir CLI delivery from finos/morphir. The CLI source is finos/morphir-dotnet, pinned as the ecosystem/morphir-dotnet submodule; its build (build/Build.ReleaseProfiles.cs) produces every artifact. This file holds what finos/morphir expects of that build independently of it: the offerings and platforms it must deliver, the runner that builds and qualifies each platform, the tag a release carries and the qualification results that are not yet accepted. tools/cli-release.ts reads it; tools/cli-release.test.ts checks it against the pinned source and the release workflow.",
+	"source": {
+		"repository": "https://github.com/finos/morphir-dotnet",
+		"submodule": "ecosystem/morphir-dotnet",
+		"commit": "0885f17264856521f0218151693c2b08810790ec",
+		"candidate": {
+			"pullRequest": "https://github.com/finos/morphir-dotnet/pull/590",
+			"reason": "Merged finos/morphir-dotnet#590 at 0885f17264856521f0218151693c2b08810790ec contains the MCK dispatch, reusable cli-offering.yml and shared install-tool-package.ps1. It is a delivery candidate on source main, not an accepted source release or acquired-artifact qualification. Keep this marker until the source version/tag, forward-only parent version and release qualification gates pass. No version, tag, release or dispatch is authorized by this pin."
+		}
+	},
+	"tagPrefix": "v",
+	"kit": "spec/ir/mck",
+	"deployments": [
+		{ "id": "native-aot", "portable": false, "invocations": ["morphir"] },
+		{ "id": "self-contained", "portable": false, "invocations": ["morphir"] },
+		{ "id": "framework-dependent", "portable": false, "invocations": ["morphir"] },
+		{ "id": "dotnet-tool", "portable": true, "package": "Morphir.Tool", "invocations": ["dotnet-morphir", "dotnet morphir"] }
+	],
+	"platforms": [
+		{ "rid": "win-x64", "runner": "windows-2025" },
+		{ "rid": "win-arm64", "runner": "windows-11-arm" },
+		{ "rid": "osx-x64", "runner": "macos-15-intel" },
+		{ "rid": "osx-arm64", "runner": "macos-15" },
+		{ "rid": "linux-x64", "runner": "ubuntu-24.04" },
+		{ "rid": "linux-arm64", "runner": "ubuntu-24.04-arm" }
+	],
+	"legacyAliases": {
+		"of": "native-aot",
+		"decision": "Maintainer decision of 9 November 2026 (finos/morphir#1146, REL-1 of the morphir-dotnet adoption): future legacy morphir-<rid>[.exe] and morphir-<rid>-v<version>.tar.gz names carry the same Native AOT bytes as the native-aot offering. Published assets stay as they are; the trimmed managed single-file build is retired. The aliases are names, not a fifth offering."
+	},
+	"pendingTriage": [
+		{
+			"scenario": "packaged-input",
+			"platforms": ["osx-x64", "osx-arm64"],
+			"reason": "A packaged input scenario fails on macOS where /var resolves to /private/var. Its result is recorded but never counted as qualified until the failure is triaged.",
+			"evidence": ["https://github.com/finos/morphir-dotnet/pull/570", "finos/morphir-dotnet workflow wasm-offerings.yml, run 42851276092"]
+		}
+	]
+}

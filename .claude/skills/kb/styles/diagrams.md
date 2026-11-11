@@ -30,7 +30,7 @@ still gets the structure from the text.
   reader should know why the figure is there without decoding it, and prose then cites it by number in text:
   "see Figure 2". Do not add HTML anchors or `#figure-N` links; no anchor form renders reliably across the
   renderers the kb meets.
-- Number figures 1..N in document order. `morphir kb check` verifies this (`figure-caption-missing`,
+- Number figures 1..N in document order. `morphir-dev kb check` verifies this (`figure-caption-missing`,
   `figure-number-out-of-sequence`); section-aware schemes such as `Figure 2.1` are not yet supported.
 - Keep one idea per diagram. A drawing that needs a legend of ten node types is three drawings.
 - Label edges with the relationship ("blocks", "emits", "handles"), not just arrows. An unlabeled arrow is the

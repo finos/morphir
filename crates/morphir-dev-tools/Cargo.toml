@@ -1,0 +1,58 @@
+[package]
+name = "morphir-dev-tools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+# The internal development tool of this repository. It is not the Morphir CLI
+# (finos/morphir-dotnet) and is never released.
+publish = false
+description = "morphir-dev: internal development tool of finos/morphir (knowledge base commands and repository contract gates)"
+
+[[bin]]
+name = "morphir-dev"
+path = "src/main.rs"
+
+[dependencies]
+chrono = "0.4"
+clap = { workspace = true, features = ["derive"] }
+miette.workspace = true
+morphir-kb = { path = "../../ecosystem/morphir-rust/crates/morphir-kb" }
+morphir-okf = { path = "../../ecosystem/morphir-rust/crates/morphir-okf" }
+serde_json.workspace = true
+
+# The repository contract gates below are tests of this crate. They read
+# checked-in specifications and fixtures through the libraries that implement
+# them and never start a Morphir CLI.
+[dev-dependencies]
+base64.workspace = true
+cucumber = { workspace = true }
+ed25519-dalek = { workspace = true }
+jsonschema.workspace = true
+# `mep_contract`: the committed MEP contract IR (spec/mep).
+morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
+morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
+# `tool_release_metadata_conformance`: the signed v1 fixtures (docs/spec/tool-release-metadata).
+morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-distribution" }
+# `package_runtime`: assurance, publisher and decode vectors (spec/package/mck/fixtures).
+morphir-package = { path = "../../ecosystem/morphir-rust/crates/morphir-package" }
+semver.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+toml.workspace = true
+
+# Called by .config/mise/tasks/ci/validate_tool_release_metadata.py: the application side of the
+# signed tool release metadata gate. It reads each descriptor as the shipped acquisition type, so a
+# descriptor the schema accepts but the client would refuse fails the gate.
+[[example]]
+name = "validate-tool-release-metadata"
+path = "examples/validate-tool-release-metadata.rs"
+
+[[test]]
+name = "kb_acceptance"
+path = "tests/kb_acceptance.rs"
+harness = false

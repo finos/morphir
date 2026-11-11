@@ -18,7 +18,7 @@ Start here if you're new to Morphir!
 - [Quick Start Tutorial](getting-started/tutorials.md) - Get up and running quickly
 - [Editor Setup](getting-started/editor-setup.md) - Configure your development environment
 - [Morphir Web UI](getting-started/Morphir%20Web%20UI.md) - Browse and visualize Morphir models
-- [Morphir CLI](getting-started/morphir-cli.md) - Rust CLI shipped from finos/morphir
+- [Morphir CLI](getting-started/morphir-cli.md) - the .NET Morphir CLI (finos/morphir-dotnet), released from finos/morphir
 - [Morphir Go](getting-started/morphir-go-preview.md) - Go CLI in finos/morphir-go
 
 ### [CLI Preview (Archived)](cli-preview/)

@@ -5,6 +5,10 @@ description: Use when adding, adopting, debugging or updating Morphir CLI exampl
 
 # Morphir example tests
 
+> **Paused.** These scenarios ran through the `itest` driver of the deleted Rust CLI and are pending qualification
+> against the Morphir CLI (finos/morphir-dotnet). `mise run test:examples` stops with a pointer until then. Do not
+> add scenarios that need the Rust CLI.
+
 Read [the scenario contract](../../../docs/developers/example-integration-tests.md)
 and [the example catalog](../../../examples/README.md). Use
 [the single-file Elm scenario](../../../examples/elm/single-file/scenarios.feature.md)

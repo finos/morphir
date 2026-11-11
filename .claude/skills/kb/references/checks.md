@@ -1,4 +1,4 @@
-# `morphir kb check` — Findings and Fixes
+# `morphir-dev kb check` — Findings and Fixes
 
 Two families. **Structural** checks ask whether the knowledge base obeys OKF and the conventions in
 [kb/AGENTS.md](../../../../kb/AGENTS.md). **Provenance** checks ask whether commit-pinned sources still line up with
@@ -30,7 +30,7 @@ Exit code is non-zero when there is at least one error, or with `--strict`, at l
 | `decision-superseded-unknown` | `superseded_by` names no record in the bundle | Fix the id |
 | `decision-supersedes-unknown` | `supersedes` names no record in the bundle | Fix the id |
 | `decision-withdrawn-no-reason` | `state: Withdrawn` with no `reason` | Say why. A withdrawal without a reason is worthless six months on |
-| `intent-duplicate-id` | Two intent records share a numeric id prefix | Renumber one. Reported by `morphir kb intent check`; this check is new in the Rust port — the Scala tool lacks it |
+| `intent-duplicate-id` | Two intent records share a numeric id prefix | Renumber one. Reported by `morphir-dev kb intent check`; this check is new in the Rust port — the Scala tool lacks it |
 | `sync-projection-broken` | A mirrored file cannot be reduced to its upstream form — its `# kb:begin` … `# kb:end` region is damaged | See below |
 | `sync-lock-drift` | `sync.lock.yaml` lists a mirrored file that is not in the mirror | See below |
 | `sync-manifest-invalid` | A bundle has a `sync.yaml` this tooling refuses — most often a `type_map` naming a type one of the registers owns | See below |
@@ -40,7 +40,7 @@ describing *consumers*, and this is a producer-side linter. Nothing reading a bu
 a linter may still complain about one. Within a single repository a dangling link is nearly always a typo, and the
 cost of the occasional false positive is lower than the cost of silent rot.
 
-Where a knowledge base genuinely links forward to unwritten work, `morphir kb check --allow-dangling` downgrades it
+Where a knowledge base genuinely links forward to unwritten work, `morphir-dev kb check --allow-dangling` downgrades it
 to a warning. Otherwise, if you mean to point at something unwritten, say so in prose rather than linking.
 
 ---
@@ -63,12 +63,12 @@ to a warning. Otherwise, if you mean to point at something unwritten, say so in 
 | `decision-decided-missing` | A decision record has no valid `decided` date | Add `decided: YYYY-MM-DD`. Without it the records cannot be read in sequence |
 | `decision-supersede-not-mutual` | A supersession link points only one way — either a record supersedes another that does not name it in `superseded_by`, or a record names a successor that does not list it in `supersedes` | Write both halves. One-way supersession is how a chain silently breaks — the old record still reads as current |
 | `link-broken-upstream` | A link in a **mirrored** document does not resolve | Upstream's own link rot. Fix it upstream and export, or leave it |
-| `sync-untracked` | Upstream has a file a manifest mapping selects, and `sync.lock.yaml` does not list it | `morphir kb sync pull` imports it |
-| `sync-upstream-drift` | Upstream has moved on since the last import, and the local copy has no edits | `morphir kb sync pull` takes it. Nothing here is lost — that is what "no edits" means |
-| `sync-diverged` | A mirrored file changed both here and upstream since the last import | Reconcile by hand; `morphir kb sync diff <path>` shows both sides. `morphir kb sync pull --theirs` discards the local side |
-| `sync-deleted-upstream` | A mirrored file is no longer present upstream | `morphir kb sync pull --prune` removes it here too, if that is what you want |
+| `sync-untracked` | Upstream has a file a manifest mapping selects, and `sync.lock.yaml` does not list it | `morphir-dev kb sync pull` imports it |
+| `sync-upstream-drift` | Upstream has moved on since the last import, and the local copy has no edits | `morphir-dev kb sync pull` takes it. Nothing here is lost — that is what "no edits" means |
+| `sync-diverged` | A mirrored file changed both here and upstream since the last import | Reconcile by hand; `morphir-dev kb sync diff <path>` shows both sides. `morphir-dev kb sync pull --theirs` discards the local side |
+| `sync-deleted-upstream` | A mirrored file is no longer present upstream | `morphir-dev kb sync pull --prune` removes it here too, if that is what you want |
 | `sync-deleted-upstream-edited` | Gone upstream, but carrying local edits — an **error**, because the edit is unrecoverable if discarded | Restore the file upstream and export, or revert the edit. Nothing prunes or overwrites it in the meantime. |
-| `sync-injection-stale` | A mirrored file's `# kb:begin` block does not say what `sync.yaml` now implies — usually a `type_map` edit that was never applied | `morphir kb sync pull` rewrites the block in place. Keys you added inside the fence are kept |
+| `sync-injection-stale` | A mirrored file's `# kb:begin` block does not say what `sync.yaml` now implies — usually a `type_map` edit that was never applied | `morphir-dev kb sync pull` rewrites the block in place. Keys you added inside the fence are kept |
 
 ### On `index-description-drift`
 
@@ -103,14 +103,14 @@ manifest no command will accept:
 - **`sync-projection-broken`.** The `# kb:begin` … `# kb:end` region is the only part of a mirrored file the
   knowledge base owns, and removing exactly that region is what recovers upstream's bytes. When the fence is
   damaged — unmatched, or closing before it opens — that removal cannot be trusted, so it is refused rather than
-  guessed at. Restore the fence by hand, or re-run `morphir kb sync pull --theirs` for the bundle to take upstream's
+  guessed at. Restore the fence by hand, or re-run `morphir-dev kb sync pull --theirs` for the bundle to take upstream's
   copy and re-inject. Any local edit to that file is lost by the second route, so check
-  `morphir kb sync diff <path>` first.
+  `morphir-dev kb sync diff <path>` first.
 - **`sync-lock-drift`.** The lockfile names a file the mirror does not have, so the two disagree about what is
-  vendored. `morphir kb sync pull` restores it from upstream. If upstream dropped the file deliberately,
-  `morphir kb sync pull --prune` removes the entry instead.
+  vendored. `morphir-dev kb sync pull` restores it from upstream. If upstream dropped the file deliberately,
+  `morphir-dev kb sync pull --prune` removes the entry instead.
 - **`sync-manifest-invalid`.** The manifest itself is refused, so no sync command will run — this finding is how you
-  see that from `morphir kb check` rather than only from `morphir kb sync`. The usual cause is a `type_map` entry
+  see that from `morphir-dev kb check` rather than only from `morphir-dev kb sync`. The usual cause is a `type_map` entry
   naming a type a register discovers by, such as `Decision Record`: a mirrored document injected with one is pulled
   into that register and judged against a schema it was never written to. Type a mirrored file by what it *is* —
   `Decision Source` — and → [sync.md](sync.md#type_map-may-not-name-a-register-owned-type) for why the constraint is
@@ -127,10 +127,10 @@ Mirrored documents are also held to a *looser* structural standard than authored
 belongs to upstream. `concept-missing-title`, `concept-missing-description`, `status-unknown`, `stale-after-passed`,
 `duplicate-title` and `frontmatter-unknown-key` are all suppressed for them; demanding OKF's vocabulary of somebody
 else's Docusaurus keys would bury the findings that are actually yours to fix. `concept-missing-type` still applies,
-with a different message: `morphir kb sync pull` injects `type`, so its absence means the injection failed.
+with a different message: `morphir-dev kb sync pull` injects `type`, so its absence means the injection failed.
 
 What is *not* relaxed is `concept-not-indexed`. Mirrored concepts must still be reachable from an index, which is
-why `morphir kb sync pull` regenerates the bundle index below its `<!-- kb:sources -->` marker.
+why `morphir-dev kb sync pull` regenerates the bundle index below its `<!-- kb:sources -->` marker.
 
 ---
 

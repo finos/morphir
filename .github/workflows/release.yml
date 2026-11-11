@@ -1,5 +1,23 @@
 name: Release
 
+# The official Morphir CLI release. The CLI source is finos/morphir-dotnet,
+# pinned as ecosystem/morphir-dotnet. That source's own reusable workflow
+# (cli-offering.yml, at the pinned commit) builds each offering with its
+# maintained release profiles and starts the produced executable. This
+# workflow then launches every artifact again on each platform as users do,
+# and publishes one release whose manifest names the exact source commit, kit
+# digest and artifact digests. .config/cli-release.json holds the
+# expectations; tools/cli-release.ts does the checks; tools/cli-release.test.ts
+# tests both and this workflow.
+#
+# Official CLI releases use `v<version>` tags (maintainer decision, 10 November
+# 2026), the namespace the deleted Rust CLI's releases used. Those tags and their
+# releases stay as they are. A new release must be newer than every existing
+# v* tag and never reuse one; the workflow refuses a tag whose release already
+# exists and never uploads into a release. While any publication gate blocks
+# (a candidate pin, unreleased source, a source tag elsewhere, an old version),
+# it builds and qualifies but refuses to publish.
+
 on:
   push:
     tags:
@@ -7,224 +25,270 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to release (for example, v0.4.0-beta.12)'
+        description: 'Existing official CLI tag to release, v<version>. Dispatch from that tag.'
         required: true
         type: string
+      dry-run:
+        description: 'Build, qualify and write the release evidence without creating a release'
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
 
 # One release run per tag at a time. A second run for the same tag waits; a
-# release that is packaging or uploading is never cancelled.
+# release that is building or publishing is never cancelled.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 env:
-  CARGO_TERM_COLOR: always
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  # A tag push publishes; a dispatch is a dry run unless dry-run is explicitly false.
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run && 'true' || 'false' }}
 
 jobs:
   release-info:
-    name: Validate release tag
+    name: Validate release tag and source pin
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      matrix: ${{ steps.release.outputs.matrix }}
+      offerings: ${{ steps.release.outputs.offerings }}
+      publishable: ${{ steps.release.outputs.publishable }}
+      commit: ${{ steps.release.outputs.commit }}
     steps:
-      - name: Checkout code
+      - name: Check out the tag
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
 
-      - name: Validate release tag
+      - name: Check out the pinned CLI source
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install tooling dependencies
+        run: bun install --frozen-lockfile
+        working-directory: tools
+
+      # Refuses a run whose workflow ref is not refs/tags/<tag>, whose checkout is not the tag's commit, or whose
+      # literal cli-offering.yml commit differs from the pin. Later jobs check out the commit it outputs.
+      - name: Validate the tag, the run's ref and the pinned source
         id: release
-        shell: bash
-        run: |
-          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
-          VERSION=$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')
-          EXPECTED_TAG="v${VERSION}"
-          if [ "$TAG" != "$EXPECTED_TAG" ]; then
-            echo "Release tag $TAG does not match workspace version $VERSION."
-            exit 1
-          fi
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+        run: bun run tools/cli-release.ts release-info --tag "$RELEASE_TAG"
 
-  package-cli:
-    name: Package Morphir CLI (${{ matrix.target }})
+  # The source's own build, one job per offering and platform. `uses` must name
+  # the commit literally, and `ref` passes the same commit; the release tests
+  # check both against .config/cli-release.json. Native AOT compiles only on
+  # its own operating system, so each runner is the platform's own.
+  offering:
+    name: Build ${{ matrix.deployment }} ${{ matrix.rid }}
     needs: release-info
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
-            archive: tgz
-          - os: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-            archive: tgz
-          - os: macos-15-intel
-            target: x86_64-apple-darwin
-            archive: tgz
-          - os: macos-15
-            target: aarch64-apple-darwin
-            archive: tgz
-          - os: windows-2025
-            target: x86_64-pc-windows-msvc
-            archive: zip
-          - os: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            archive: zip
-    runs-on: ${{ matrix.os }}
+      matrix: ${{ fromJSON(needs.release-info.outputs.offerings) }}
+    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@0885f17264856521f0218151693c2b08810790ec
+    with:
+      repository: finos/morphir-dotnet
+      ref: 0885f17264856521f0218151693c2b08810790ec
+      deployment: ${{ matrix.deployment }}
+      rid: ${{ matrix.rid }}
+      os: ${{ matrix.runner }}
+      configuration: Release
+
+  # Each artifact is launched as users launch it, on its platform: the
+  # extracted executable or apphost itself (never `dotnet exec`), and the tool
+  # as `dotnet-morphir` and `dotnet morphir`. Standalone offerings run with no
+  # .NET on the search path. This is the parent's qualification; the source
+  # workflow's start check is not.
+  qualify-platform:
+    name: Qualify (${{ matrix.rid }})
+    needs: [release-info, offering]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.release-info.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      # Git must accept long submodule fixture names during checkout itself.
       - name: Configure Windows Git paths
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          git config --global core.longpaths true
-          "CARGO_NET_GIT_FETCH_WITH_CLI=true" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        run: git config --global core.longpaths true
 
-      - name: Checkout code
+      - name: Check out the bound commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.release-info.outputs.tag }}
-          fetch-depth: 0
-          submodules: recursive
+          ref: ${{ needs.release-info.outputs.commit }}
+          persist-credentials: false
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Check out the pinned CLI source
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet
+
+      - uses: oven-sh/setup-bun@v2
         with:
-          targets: ${{ matrix.target }}
+          bun-version: 1.4.4
 
-      - name: Set up Rust CI
-        uses: ./.github/actions/setup-rust-ci
+      - name: Install tooling dependencies
+        run: bun install --frozen-lockfile
+        working-directory: tools
+
+      - name: Verify the source pin
+        run: bun run tools/cli-release.ts verify-source
+
+      - uses: actions/setup-dotnet@v5
         with:
-          install-mold: ${{ runner.os == 'Linux' }}
-          enable-sccache: ${{ runner.arch != 'ARM64' }}
-          shared-key: morphir-release-${{ matrix.target }}
-          save-cache: "true"
+          global-json-file: ecosystem/morphir-dotnet/global.json
 
-      - name: Build CLI
-        run: cargo build --locked --release --package morphir --target ${{ matrix.target }}
+      # Each offering's artifact is flat: the archive or package, its launch
+      # metadata, its contents listing and its .sha256.
+      - name: Download this platform's offerings
+        uses: actions/download-artifact@v8
+        with:
+          pattern: morphir-dotnet-*-${{ matrix.rid }}
+          path: .dev/out/cli-release/offerings
+          merge-multiple: true
 
-      - name: Package CLI
-        if: runner.os != 'Windows'
-        shell: bash
+      - name: Download the tool package
+        uses: actions/download-artifact@v8
+        with:
+          name: morphir-dotnet-dotnet-tool-any
+          path: .dev/out/cli-release/tool
+
+      - name: Qualify the produced artifacts
+        env:
+          VERSION: ${{ needs.release-info.outputs.version }}
+          RID: ${{ matrix.rid }}
         run: |
-          ARCHIVE="morphir-${{ needs.release-info.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}"
-          mkdir release-assets
-          tar -C "target/${{ matrix.target }}/release" -czf "release-assets/${ARCHIVE}" morphir
-          (
-            cd release-assets
-            shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
-          )
+          set -euo pipefail
+          OUT=.dev/out/cli-release/qualification
+          for deployment in native-aot self-contained framework-dependent; do
+            bun run tools/cli-release.ts qualify --release-dir .dev/out/cli-release/offerings --deployment "$deployment" --rid "$RID" \
+              --platform "$RID" --version "$VERSION" --out "$OUT/$deployment-$RID.qualification.json"
+          done
+          bun run tools/cli-release.ts qualify --release-dir .dev/out/cli-release/tool --deployment dotnet-tool \
+            --platform "$RID" --version "$VERSION" --out "$OUT/dotnet-tool-$RID.qualification.json"
 
-      - name: Package CLI
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $archive = "morphir-${{ needs.release-info.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}"
-          New-Item -ItemType Directory -Path release-assets
-          Compress-Archive `
-            -Path "target/${{ matrix.target }}/release/morphir.exe" `
-            -DestinationPath "release-assets/$archive"
-          $hash = (Get-FileHash "release-assets/$archive" -Algorithm SHA256).Hash.ToLower()
-          "$hash  $archive" | Set-Content "release-assets/$archive.sha256"
-
-      - name: Extract packaged CLI
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          mkdir release-smoke
-          tar -xzf "release-assets/morphir-${{ needs.release-info.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}" -C release-smoke
-          echo "MORPHIR_MCK_INSTALLED_CLI=${GITHUB_WORKSPACE}/release-smoke/morphir" >> "$GITHUB_ENV"
-
-      - name: Extract packaged CLI
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Expand-Archive -Path "release-assets/morphir-${{ needs.release-info.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}" -DestinationPath release-smoke
-          $cli = (Resolve-Path "release-smoke/morphir.exe").Path
-          "MORPHIR_MCK_INSTALLED_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      # The native harness doubles as a transcript adapter for IR and package
-      # suites. The copied CLI runs with an empty tool path against a managed IR
-      # kit and explicit package snapshots, using fixed recorded answers.
-      - name: Verify packaged MCK CLI
-        run: cargo test --locked --release --package morphir --target ${{ matrix.target }} --test mck_run installed_cli_runs_vendored_kit_without_tool_runtimes
-
-      - name: Upload CLI artifact
+      # .dev is a hidden folder, which upload-artifact leaves out unless told.
+      - name: Upload the qualification
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: morphir-cli-${{ matrix.target }}
-          path: release-assets/*
+          name: cli-qualification-${{ matrix.rid }}
+          path: .dev/out/cli-release/qualification/*.qualification.json
+          include-hidden-files: true
           if-no-files-found: error
-          overwrite: true
           retention-days: 7
 
   publish-release:
-    name: Publish GitHub release
+    name: Publish the GitHub release
+    needs: [release-info, offering, qualify-platform]
     runs-on: ubuntu-latest
-    needs: [release-info, package-cli]
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-info.outputs.tag }}
+      VERSION: ${{ needs.release-info.outputs.version }}
     steps:
-      - name: Checkout release tooling
+      - name: Check out the bound commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.release-info.outputs.tag }}
-          sparse-checkout: .github/scripts
+          ref: ${{ needs.release-info.outputs.commit }}
+          persist-credentials: false
 
-      - name: Download artifacts
+      - name: Check out the pinned CLI source
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet ecosystem/morphir-rust
+
+      - name: Refuse a release that already exists
+        if: env.DRY_RUN != 'true'
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. A published release is never replaced; tag a new version."
+            exit 1
+          fi
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install tooling dependencies
+        run: bun install --frozen-lockfile
+        working-directory: tools
+
+      # The kit digest the manifest records is the shared runner's own kit
+      # identity (`morphir-mck kit status`), not a second hashing scheme.
+      - name: Identify the compatibility kit
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          mkdir -p .dev/out/cli-release
+          cargo +1.98.1 run --locked -q -p morphir-mck-cli -- kit status --kit spec/ir/mck --json > .dev/out/cli-release/kit-status.json
+
+      # Every artifact of this run, each in a folder of its own name: the
+      # offerings (morphir-dotnet-*) and the qualification (cli-qualification-*).
+      - name: Download the offerings and their qualification
         uses: actions/download-artifact@v8
         with:
-          path: release-assets
-          pattern: morphir-*
-          merge-multiple: true
+          path: .dev/out/cli-release/assets
 
-      - name: Read published checksums
-        shell: bash
+      # Maintainer decision of 9 November 2026: future legacy names
+      # (morphir-<rid>[.exe], morphir-<rid>-v<version>.tar.gz) carry the same
+      # bytes as the qualified Native AOT executable. They are copied from the
+      # packed native-aot archive, not built again, and are not an offering.
+      - name: Derive the legacy names from the Native AOT executable
         run: |
-          mkdir -p published-checksums
-          if gh release view "$TAG" --json assets --jq '.assets[].name' > published-assets.txt 2>/dev/null; then
-            gh release download "$TAG" --pattern '*.sha256' --dir published-checksums || true
-          else
-            : > published-assets.txt
-          fi
+          bun run tools/cli-release.ts legacy-aliases --assets .dev/out/cli-release/assets \
+            --version "$VERSION" --out .dev/out/cli-release/legacy
 
-      - name: Select changed artifacts
+      # Refuses a candidate pin, a missing or failed qualification, or an
+      # artifact whose bytes or release differ from its launch metadata. It
+      # writes the exact asset list the create step attaches.
+      - name: Write the release manifest
+        env:
+          COMMIT: ${{ needs.release-info.outputs.commit }}
         run: |
-          python3 .github/scripts/select_release_assets.py \
-            --release-assets release-assets \
-            --published-checksums published-checksums \
-            --published-assets published-assets.txt \
-            --upload-dir upload-assets
+          DRY=()
+          if [ "$DRY_RUN" = "true" ]; then DRY=(--dry-run); fi
+          bun run tools/cli-release.ts manifest --tag "$TAG" --version "$VERSION" --commit "$COMMIT" \
+            --assets .dev/out/cli-release/assets --kit-status .dev/out/cli-release/kit-status.json \
+            --legacy .dev/out/cli-release/legacy/legacy-aliases.json --out .dev/out/cli-release/publish "${DRY[@]}"
 
-      - name: Create GitHub release if needed
-        shell: bash
+      # The evidence of every run, dry or not: the manifest (with its publication record), the notes, the asset list
+      # and the legacy names. Only these files, named explicitly.
+      - name: Upload the release evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-release-evidence
+          path: |
+            .dev/out/cli-release/publish/release-manifest.json
+            .dev/out/cli-release/publish/release-notes.md
+            .dev/out/cli-release/publish/*-assets.txt
+            .dev/out/cli-release/legacy/legacy-aliases.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+      # One create call with every listed asset. The tag must already exist (it
+      # is never created here), and nothing is uploaded into a release afterwards.
+      - name: Create the release
+        if: env.DRY_RUN != 'true' && needs.release-info.outputs.publishable == 'true'
         run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists."
-            exit 0
+          set -euo pipefail
+          mapfile -t ASSETS < .dev/out/cli-release/publish/release-assets.txt
+          if [ "${#ASSETS[@]}" -eq 0 ]; then
+            echo "::error::The release manifest listed no assets."
+            exit 1
           fi
-
-          CREATE_ARGS=("$TAG" --title "Release $TAG" --generate-notes)
-          if [[ "$TAG" == *-* ]]; then
-            CREATE_ARGS+=(--prerelease)
-          fi
-          gh release create "${CREATE_ARGS[@]}"
-
-      - name: Upload changed artifacts
-        shell: bash
-        run: |
-          shopt -s nullglob
-          ASSETS=(upload-assets/*)
-          if (( ${#ASSETS[@]} == 0 )); then
-            echo "All release artifacts already match their published hashes."
-            exit 0
-          fi
-          gh release upload "$TAG" "${ASSETS[@]}" --clobber
+          PRERELEASE=()
+          if [ "${{ needs.release-info.outputs.prerelease }}" = "true" ]; then PRERELEASE=(--prerelease); fi
+          gh release create "$TAG" --verify-tag --title "Morphir CLI $VERSION" --notes-file .dev/out/cli-release/publish/release-notes.md "${PRERELEASE[@]}" "${ASSETS[@]}"

@@ -44,16 +44,16 @@ under `bundles/` or be grouped one level deeper by subject.
 | [morphir/morphir-ir](bundles/morphir/morphir-ir/index.md) | The Morphir IR: its data model, naming, canonical serialization and distribution formats. |
 | [morphir/morphir-package-system](bundles/morphir/morphir-package-system/index.md) | The proposed Morphir model package system defines artifact boundaries, release identity, dependency resolution, registry behavior, trust, and staged delivery. |
 
-`morphir kb new-bundle` scaffolds a bundle and reminds you to add its row here — the wording of the row is a
+`morphir-dev kb new-bundle` scaffolds a bundle and reminds you to add its row here — the wording of the row is a
 judgement call, so the command does not write it for you.
 
 ## Tooling
 
-The knowledge base is operated by the `morphir kb` subcommand of the Morphir CLI (`crates/morphir`):
+The knowledge base is operated by the `morphir-dev kb` subcommand of the Morphir CLI (`crates/morphir`):
 
 ```bash
-morphir kb list
-morphir kb check
+morphir-dev kb list
+morphir-dev kb check
 ```
 
 The `kb` skill at [`.claude/skills/kb/SKILL.md`](../.claude/skills/kb/SKILL.md) wraps the CLI for agents: it says
