@@ -1,0 +1,722 @@
+{
+  "contract": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+  "description": "Fixed expectations. Runtime behavior executes only in the shared .NET runner; schemaDocuments describe schema-expressible structure independently.",
+  "cases": [
+    {
+      "id": "project-local-inventory",
+      "operation": "select",
+      "input": {
+        "platform": "win-x64",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "layers": {
+          "project": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          }
+        },
+        "inventory": [
+          {
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0",
+            "runtime": "process",
+            "platform": "win-x64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "available": true
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "source": "project",
+        "version": "0.6.0",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          },
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "overlay-precedes-project",
+      "operation": "select",
+      "input": {
+        "platform": "win-x64",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "layers": {
+          "overlay": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.7.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          },
+          "project": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          }
+        },
+        "inventory": [
+          {
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0",
+            "runtime": "process",
+            "platform": "win-x64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "available": true
+          },
+          {
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.7.0",
+            "runtime": "process",
+            "platform": "win-x64",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "available": true
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "source": "overlay",
+        "version": "0.7.0",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    {
+      "id": "broken-pin-no-fallback",
+      "operation": "select",
+      "input": {
+        "platform": "win-x64",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "layers": {
+          "project": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.7.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          },
+          "catalog": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          }
+        },
+        "inventory": [
+          {
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0",
+            "runtime": "process",
+            "platform": "win-x64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "available": true
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "refuse",
+        "code": "extension.not_installed"
+      }
+    },
+    {
+      "id": "isolated-omits-catalog-system",
+      "operation": "select",
+      "input": {
+        "platform": "win-x64",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "isolation": true,
+        "layers": {
+          "catalog": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          },
+          "system": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          }
+        },
+        "inventory": [
+          {
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0",
+            "runtime": "process",
+            "platform": "win-x64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "available": true
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "refuse",
+        "code": "extension.not_installed"
+      }
+    },
+    {
+      "id": "relative-overlay-refused",
+      "operation": "overlay-root",
+      "input": {
+        "value": "relative/generation"
+      },
+      "expected": {
+        "outcome": "refuse"
+      }
+    },
+    {
+      "id": "missing-platform-refused",
+      "operation": "select",
+      "input": {
+        "platform": "linux-x64",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "layers": {
+          "project": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          }
+        },
+        "inventory": [
+          {
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0",
+            "runtime": "process",
+            "platform": "win-x64",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "available": true
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "refuse"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          },
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "duplicate-id-refused",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+          "extensions": [
+            {
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "version": "0.6.0",
+              "runtime": "process",
+              "platforms": {
+                "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            },
+            {
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "version": "0.7.0",
+              "runtime": "process",
+              "platforms": {
+                "win-x64": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "refuse"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              },
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.7.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          },
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "unknown-schema-refused",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.2/selection.schema.json",
+          "extensions": [
+            {
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "version": "0.6.0",
+              "runtime": "process",
+              "platforms": {
+                "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "refuse",
+        "code": "extension.unsupported_contract_version"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.2/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          },
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "portable-wasm",
+      "operation": "select",
+      "input": {
+        "platform": "linux-arm64",
+        "extensionId": "acme.formatter",
+        "layers": {
+          "workspace": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "acme.formatter",
+                "version": "1.0.0",
+                "runtime": "wasm",
+                "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              }
+            ]
+          }
+        },
+        "inventory": [
+          {
+            "extensionId": "acme.formatter",
+            "version": "1.0.0",
+            "runtime": "wasm",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "available": true
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "source": "workspace",
+        "version": "1.0.0",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "acme.formatter",
+                "version": "1.0.0",
+                "runtime": "wasm",
+                "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              }
+            ]
+          },
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "missing-local-object",
+      "operation": "select",
+      "input": {
+        "platform": "win-x64",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "layers": {
+          "project": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ]
+          }
+        },
+        "inventory": []
+      },
+      "expected": {
+        "outcome": "refuse",
+        "code": "extension.not_installed"
+      }
+    },
+    {
+      "id": "credential-refused",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+          "extensions": [
+            {
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "version": "0.6.0",
+              "runtime": "process",
+              "platforms": {
+                "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              "token": "fixture-not-a-secret"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "refuse"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                },
+                "token": "fixture-not-a-secret"
+              }
+            ]
+          },
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "absolute-path-refused",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+          "extensions": [
+            {
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "version": "0.6.0",
+              "runtime": "process",
+              "platforms": {
+                "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              "path": "C:\\developer\\guest.exe"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "refuse"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                },
+                "path": "C:\\developer\\guest.exe"
+              }
+            ]
+          },
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "empty-selection",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+          "extensions": []
+        }
+      },
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": []
+          },
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "process-portable-digest-refused",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+          "extensions": [
+            {
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "version": "0.6.0",
+              "runtime": "process",
+              "platforms": {
+                "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "refuse"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                },
+                "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              }
+            ]
+          },
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "wasm-platform-map-refused",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+          "extensions": [
+            {
+              "extensionId": "acme.formatter",
+              "version": "1.0.0",
+              "runtime": "wasm",
+              "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "platforms": {
+                "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "refuse"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "acme.formatter",
+                "version": "1.0.0",
+                "runtime": "wasm",
+                "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              }
+            ]
+          },
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "unknown-optional-member",
+      "operation": "read-selection",
+      "input": {
+        "document": {
+          "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+          "extensions": [
+            {
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "version": "0.6.0",
+              "runtime": "process",
+              "platforms": {
+                "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            }
+          ],
+          "note": "reader ignores this"
+        }
+      },
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaDocuments": [
+        {
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platforms": {
+                  "win-x64": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "osx-arm64": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              }
+            ],
+            "note": "reader ignores this"
+          },
+          "valid": true
+        }
+      ]
+    }
+  ]
+}

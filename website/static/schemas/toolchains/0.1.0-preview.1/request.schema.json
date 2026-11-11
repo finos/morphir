@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/request.schema.json",
+  "title": "Morphir project toolchain request 0.1.0-preview.1",
+  "description": "The TOML document .morphir/toolchain.toml, validated as the JSON value its TOML parses to. Unknown members are ignored unless critical names them. The TOML file requires #:schema https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/request.schema.json as its first line; that directive is checked by the reader, not represented as a TOML body member.",
+  "examples": [
+    {
+      "host": {
+        "implementation": "dotnet",
+        "deployment": "native-aot",
+        "channel": "stable"
+      },
+      "toolset": {
+        "preset": "fsharp"
+      }
+    }
+  ],
+  "type": "object",
+  "required": [
+    "host",
+    "toolset"
+  ],
+  "properties": {
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "critical",
+          "platforms",
+          "host",
+          "host.implementation",
+          "host.deployment",
+          "host.channel",
+          "host.version",
+          "toolset",
+          "toolset.preset",
+          "toolset.providers",
+          "toolset.providers.operation",
+          "toolset.providers.language",
+          "toolset.providers.target",
+          "toolset.providers.delivery",
+          "toolset.providers.extensionId",
+          "toolset.providers.abi"
+        ]
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/platformId"
+      }
+    },
+    "host": {
+      "type": "object",
+      "oneOf": [
+        {
+          "not": {
+            "required": [
+              "version"
+            ]
+          },
+          "required": [
+            "channel"
+          ]
+        },
+        {
+          "not": {
+            "required": [
+              "channel"
+            ]
+          },
+          "required": [
+            "version"
+          ]
+        }
+      ],
+      "required": [
+        "implementation",
+        "deployment"
+      ],
+      "properties": {
+        "implementation": {
+          "$ref": "#/$defs/token"
+        },
+        "deployment": {
+          "$ref": "#/$defs/token"
+        },
+        "channel": {
+          "$ref": "#/$defs/channel"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        }
+      }
+    },
+    "toolset": {
+      "type": "object",
+      "required": [
+        "preset"
+      ],
+      "properties": {
+        "preset": {
+          "$ref": "#/$defs/token"
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/providerSelection"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "extensionIdentity": {
+      "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/id"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,14})\\.(0|[1-9][0-9]{0,14})\\.(0|[1-9][0-9]{0,14})(?:-(?:0|[1-9][0-9]{0,14}|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]{0,14}|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "maxLength": 256
+    },
+    "channel": {
+      "type": "string",
+      "pattern": "^(?:stable|preview|insiders|preview/[a-z](?:[a-z0-9-]*[a-z0-9])?)$"
+    },
+    "platformId": {
+      "enum": [
+        "win-x64",
+        "win-arm64",
+        "osx-x64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64",
+        "linux-musl-x64",
+        "linux-musl-arm64"
+      ]
+    },
+    "providerSelection": {
+      "type": "object",
+      "anyOf": [
+        {
+          "required": [
+            "delivery"
+          ]
+        },
+        {
+          "required": [
+            "extensionId"
+          ]
+        }
+      ],
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "compile"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "language"
+        ]
+      },
+      "else": {
+        "required": [
+          "target"
+        ]
+      },
+      "required": [
+        "operation"
+      ],
+      "properties": {
+        "operation": {
+          "enum": [
+            "compile",
+            "generate"
+          ]
+        },
+        "language": {
+          "$ref": "#/$defs/token"
+        },
+        "target": {
+          "$ref": "#/$defs/token"
+        },
+        "delivery": {
+          "enum": [
+            "built-in",
+            "process",
+            "wasm",
+            "dotnet-tool"
+          ]
+        },
+        "extensionId": {
+          "$ref": "#/$defs/extensionIdentity"
+        },
+        "abi": {
+          "$ref": "#/$defs/token"
+        }
+      },
+      "dependentSchemas": {
+        "abi": {
+          "required": [
+            "delivery"
+          ],
+          "properties": {
+            "delivery": {
+              "const": "wasm"
+            }
+          }
+        }
+      }
+    }
+  },
+  "not": {
+    "required": [
+      "schemaVersion"
+    ]
+  }
+}
