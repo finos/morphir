@@ -529,7 +529,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | `index` | object | required | no | Exact repository provenance. The lock also pins embedded claims inside this object. |
 | `source` | object | required | no | Controlled local-file artifact source. |
 | `runtime` | `process`, `wasm` | required | no | process or wasm. |
-| `platform` | object | optional | no | Target triple string in a release descriptor; {os, arch} in index, catalog and lock. Required for process and absent for wasm. |
+| `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
 | `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
 | `digest` | string | required | no | Lowercase SHA-256 of delivered bytes; the archive digest for a package. |
 | `capabilities` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
@@ -574,7 +574,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | `filename` | string | required | no | Portable single filename of the delivered artifact. A process archive without package is refused. |
 | `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
 | `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
-| `platform` | string | optional | no | Target triple string in a release descriptor; {os, arch} in index, catalog and lock. Required for process and absent for wasm. |
+| `platform` | string | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
 
 ### Index artifact members
 
@@ -585,7 +585,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | `filename` | string | required | no | Portable single filename of the delivered artifact. A process archive without package is refused. |
 | `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
 | `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
-| `platform` | object | optional | no | Target triple string in a release descriptor; {os, arch} in index, catalog and lock. Required for process and absent for wasm. |
+| `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
 | `source` | object | required | no | Controlled local-file artifact source. |
 | `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
 | `executable` | boolean | required | no | Runtime execution mode; false for wasm. Package file modes come from the tree manifest. |
@@ -600,10 +600,10 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | `name` | string | required | no | Nonempty display name. |
 | `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
 | `runtime` | `process`, `wasm` | required | no | process or wasm. |
-| `platform` | object | optional | no | Target triple string in a release descriptor; {os, arch} in index, catalog and lock. Required for process and absent for wasm. |
+| `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
 | `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
 | `digest` | string | required | no | Lowercase SHA-256 of delivered bytes; the archive digest for a package. |
-| `storePath` | string | required | no | Home-relative forward-slash artifact path. A package records store/extensions/packages/sha256/<treeSha256>/tree/<entryPoint>. |
+| `storePath` | string | required | no | Home-relative forward-slash artifact path. A package records `store/extensions/packages/sha256/<treeSha256>/tree/<entryPoint>`. |
 | `capabilities` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
 | `mepVersions` | array of string | required | no | Protocol versions projected unchanged from claims.protocolVersions. |
 | `index` | object | required | no | Exact repository provenance. The lock also pins embedded claims inside this object. |

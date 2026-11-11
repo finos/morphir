@@ -88,6 +88,12 @@ describe("shared extension contract data", () => {
   }
  });
 
+ test("shared-file member tables quote path and object placeholders for MDX", () => {
+  const page = readFileSync("docs/design/draft/extensions/distribution-and-acquisition.md", "utf8");
+  const prose = page.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+  expect(prose.match(/<(?:treeSha256|entryPoint)>|[{}]/g)).toBeNull();
+ });
+
  test("the published id schema expresses every grammar, length and device-name example", () => {
   const temp = mkdtempSync(join(tmpdir(), "morphir-extension-ids-"));
   try {
