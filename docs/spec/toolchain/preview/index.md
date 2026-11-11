@@ -53,6 +53,44 @@ They do not impose the historical 64-character segment limit. The extension
 family, MEP, IR and tool release metadata retain their own version authorities.
 The candidate result's embedded lock uses the same new-family lock schema.
 
+## Authenticated recipe targets
+
+A preview recipe is read only after the existing TUF client has authenticated
+the target record and verified the target's exact byte length and digest. Its
+`custom.morphir` object uses the following candidate projection. This projection
+does not change the outer tool-release-metadata-v1 profile or its role envelopes.
+
+| Member | Required | Meaning |
+| --- | --- | --- |
+| `$schema` | Yes | The exact preview `recipe.schema.json` URL, identifying the target payload contract |
+| `kind` | Yes | Exactly `toolset-recipe`, distinct from a v1 tool release or artifact |
+| `preset` | Yes | The selected recipe preset, equal to the verified payload's `preset` |
+| `version` | Yes | Canonical SemVer, equal to the verified payload's exact `version` |
+| `channels` | Yes | Nonempty channel labels used for recipe discovery |
+| `status` | Yes | `active` or `revoked`; a learned revocation prevents recipe use |
+
+The `$schema` value identifies the target payload; it is not a claim that the
+custom projection itself validates as a whole recipe document. No
+`schemaVersion` member replaces or accompanies it in this preview projection.
+Existing v1 tool-release target metadata and release descriptors keep their
+numeric v1 identity. Historical draft.1 recipe metadata keeps its own version
+member and fixed signatures. Readers do not convert either representation into
+the other, infer a schema from a filename, or retry a historical codec after a
+preview refusal.
+
+After verifying target bytes, read the payload through the exact-schema recipe
+reader and compare preset/version against the authenticated projection. Refuse
+disagreement before resolving, downloading or executing any host or provider.
+Channel discovery uses only accepted current metadata. Once a later trusted
+refresh marks the recipe revoked, the same previously accepted recipe digest
+does not authorize a new resolution or launch contrary to the existing learned
+revocation policy. Durable trust handoff remains an implementation prerequisite.
+
+The [signed candidate inputs](./corpus/signed/README.md) supply an independent
+TEST-ONLY repository and fixed positive/refusal expectations. Parent schema and
+integrity checks are not trust or behavioral qualification. This projection
+requires independent review and shared-runner adoption before production use.
+
 ## A portable extension selection
 
 A project or workspace uses `.morphir/extensions/selection.json`. A manager
@@ -197,5 +235,7 @@ silently relabeled as new evidence. The [preview reader inputs](./corpus/README.
 now provide 25 fixed document cases across all seven family documents, including
 a version-specific workflow manifest that references the existing frozen
 resources. Their integrity and schema results do not establish .NET reader or
-workflow execution. Signed target binding and the remaining cutover gates are
-still pending.
+workflow execution. A separate signed TEST-ONLY recipe fixture supplies six
+authentication expectations and complete inert target records. Its actual
+signature verification, semantic target binding and the remaining cutover gates
+are still pending.
