@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-09
+
+* **Approval**: Accepted [decision 0004](/decisions/0004-the-mck-runner-moves-to-the-dotnet-host.md), which supersedes [decision 0003](/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md) on the runner's home. New runner code goes to the .NET host in finos/morphir-dotnet. Kit data stays in finos/morphir and names no runner. No gate is retired: the IR and package gates still run under Rust `morphir mck`, which takes no new runner features.
+
 ## 2026-09-18
 
 * **Approval**: Accepted [decision 0003](/decisions/0003-mck-tooling-lives-in-the-rust-morphir-cli.md), which supersedes the ownership portion of [decision 0001](/decisions/0001-package-compatibility-uses-the-shared-mck-core.md). Shared MCK tooling moves to finos/morphir in Rust as `morphir mck`, with a required `--adapter` and CLI-managed kit vendoring. No Rust MCK code exists yet; the TypeScript driver stays the authoritative gate until cutover. Tracking: [#849](https://github.com/finos/morphir/issues/849), IR first in [#851](https://github.com/finos/morphir/issues/851).

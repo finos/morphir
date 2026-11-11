@@ -33,7 +33,7 @@ Metadata follows TUF 1.0 JSON with these constraints:
 | Concern | Version 1 rule |
 | --- | --- |
 | TUF version | `spec_version` must be compatible with `1.0`. The conformance fixture uses `1.0.36`. |
-| Encoding | UTF-8 JSON. Signed objects use TUF canonical JSON for signature verification. Floating-point values are forbidden. |
+| Encoding | UTF-8 JSON. Signed objects use canonical JSON for signature verification, with exactly the rules stated for the [plan digest](../toolchain/manager-result.md#the-plan-digest). Those rules govern wherever canonical JSON libraries differ; the same encoding produces repository identity, signature input and plan digests. Target paths are NFC (see [target paths](../toolchain/index.md#target-paths)). Floating-point values are forbidden. See [canonical JSON and the reference TUF implementations](#canonical-json-and-the-reference-tuf-implementations) and [signed text](#signed-text). |
 | Keys | Ed25519. An implementation may add a TUF-defined scheme only after adding conformance fixtures. |
 | Target hashes | SHA-256 is required. Other TUF hashes may accompany it. |
 | Snapshots | `consistent_snapshot` must be `true`. |
@@ -42,6 +42,40 @@ Metadata follows TUF 1.0 JSON with these constraints:
 | Delegations | Version 1 does not assign Morphir semantics to delegated role names. A conforming TUF client may process standard delegations when repository policy enables them. |
 
 Clients apply bounded download limits before parsing metadata. The initial limits are 64 KiB for each root or timestamp file, 1 MiB for a snapshot, 8 MiB for targets metadata, and 1 MiB for a release descriptor. A trusted target's declared length limits every artifact download.
+
+### Canonical JSON and the reference TUF implementations
+
+This profile's canonical JSON is **not** the canonical JSON that the TUF reference implementations write. securesystemslib's `encode_canonical`, which python-tuf uses, and, by its documented sort, go-securesystemslib's `cjson` differ from it in two ways:
+
+- **Key order.** This profile sorts each key's encoded bytes, enclosing quotation marks and escapes included. The reference implementations sort the raw keys. The orders differ when a key is a prefix of another that continues with a character below `"` (U+0022), and when a key contains `"` or `\`. For `{"a b":2,"a":1}` this profile writes `{"a b":2,"a":1}` and securesystemslib 1.6.0 writes `{"a":1,"a b":2}`. For `{"a#":1,"a\"":2}` this profile writes the `a#` member first and securesystemslib the `a"` member.
+- **NFC.** This profile writes every string in NFC; the reference implementations write strings as they are.
+
+So the reference TUF implementations cannot be assumed to sign this repository's metadata. A signature they make over a `signed` object that holds such keys, or text that is not NFC, does not verify here: it is `metadata_signature_invalid`.
+
+A tool that signs metadata for this profile must:
+
+- encode `signed` by the plan digest rules;
+- refuse to sign text that is not already NFC, which the [signed text](#signed-text) rules refuse anyway;
+- sign those bytes.
+
+A signing tool that only reorders keys can use the reference implementations when no key in `signed` differs in order between the two encodings. That holds for metadata whose keys are TUF's own member names, key ids and target paths without such prefixes or characters. Whether the profile should adopt the reference encoding instead is [open question Q3](../toolchain/index.md#open-questions).
+
+The cases pin both encodings:
+
+- the `canonical-json` binding cases in the toolchain `cases.json` give this profile's bytes beside securesystemslib's for each key pair and for a decomposed string;
+- the plan digest case `result/setup-plan-key-order.json` carries both key pairs;
+- the signed metadata sets `keyOrder` and `keyOrderReferenceTuf` hold the same targets, signed over this profile's bytes and over the reference encoder's bytes, and their trust cases load and refuse them.
+
+### Signed text
+
+Canonical encoding normalizes strings to NFC, so two `signed` objects whose strings differ only in NFC-equivalent spelling have one signature input. Someone holding the online snapshot and timestamp keys, but not the offline targets key, could then serve targets text that differs from what was signed and re-link it. That attack works against any version 1 repository, whatever targets it publishes, and a client checks root, timestamp and snapshot before it has read targets, so the rule cannot be limited to repositories that carry toolset recipes. Every version 1 client therefore checks the text of every role's `signed` object, as served (maintainer decision of 10 November 2026, [Decision 12](https://github.com/finos/morphir/issues/1146#issuecomment-6772788150)):
+
+- a string or member name that is not already NFC by the [Unicode 17.0.0 rule](../toolchain/manager-result.md#the-plan-digest) is refused with `metadata_signature_invalid`. Then the signature input is one-to-one on accepted metadata, and normalization never changes signed text;
+- target paths are member names of the targets role, so a target path that is not NFC is refused by the same rule. A reader under the toolchain contracts checks [target paths](../toolchain/index.md#target-paths) first and reports one that is not NFC with its own code, `non_portable_path`.
+
+The Rust tool client in `morphir-distribution` does not apply these rules yet; that follow-up is finos/morphir-rust#331. This repository's toolchain checker applies them. Readers under the toolchain contracts also apply two stricter rules, about [case variants of defined members and an integer bound](../toolchain/toolset-recipe.md#metadata-rules-for-toolchain-readers), which are not version 1 rules.
+
+The signed set `customText` pins the NFC rule: its targets load, and one trust case serves them with the custom text decomposed, under the original targets signature with the snapshot and timestamp re-linked, and is refused. Another trust case serves the non-ASCII target path decomposed the same way, and a toolchain reader refuses it with `non_portable_path`.
 
 ### Root rotation
 
@@ -149,6 +183,43 @@ A resolver performs these steps without network or filesystem effects:
 An exact request ignores channel membership and may select a prerelease or yanked release. It still enforces the current authenticated status, CLI compatibility, platform availability, and immutable descriptor consistency.
 
 One repository cannot contain two records with the same exact version. It also cannot contain versions with equal semantic precedence but different build metadata. Both would make the selected record depend on document order.
+
+## Offering-specific tool ids
+
+A host published in several deployments uses one tool id per separately published offering. Each id is an ordinary version 1 tool release; this section adds no descriptor member and leaves `schemaVersion` at `1`. The .NET host publishes:
+
+| Deployment | Tool id | Example artifact target |
+| --- | --- | --- |
+| `native-aot` | `morphir-dotnet-native-aot` | `artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip` |
+| `self-contained` | `morphir-dotnet-self-contained` | `artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip` |
+| `framework-dependent` | `morphir-dotnet-framework-dependent` | `artifacts/morphir-dotnet-framework-dependent/1.2.3/linux-arm64.tar.gz` |
+| `dotnet-tool` | none: the `Morphir.Tool` NuGet package | `packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg` |
+
+All three archive offerings launch `morphir` (`morphir.exe` on Windows). The executable name therefore identifies none of them; the tool id, version and platform do. Version 1.2.3 is illustrative.
+
+A [toolset recipe](../toolchain/toolset-recipe.md) maps each offering to its implementation and deployment identity and binds each platform to an exact target and digest:
+
+```json
+{
+  "implementation": "dotnet",
+  "version": "1.2.3",
+  "deployment": "native-aot",
+  "execution": "native-aot",
+  "source": { "kind": "tool-release", "toolId": "morphir-dotnet-native-aot" },
+  "platforms": {
+    "win-x64": {
+      "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+      "sha256": "<the authenticated SHA-256 of that target>"
+    }
+  }
+}
+```
+
+A recipe binding is accepted only when the target is authenticated, its digest equals the authenticated digest, the offering's release descriptor `releases/<tool-id>/<version>.json` lists that target, and the artifact's version 1 platform is the bound platform. Version 1 platforms do not state a C library, so an offering's Linux artifacts bind only to glibc platforms (`linux-x64`, `linux-arm64`); a musl machine is told that no artifact matches.
+
+Version 1 requires `compatibility.morphirCli`, and its resolver filters releases by the acquiring Morphir CLI's version. A host offering publishes `<0.0.0-0`, which no version satisfies, so the Morphir CLI never selects a .NET host offering through version 1 resolution: there is no second installer. `>=0.0.0` would not do, because it starts matching at the first final CLI release. A manager acquiring an offering through a recipe is not the Morphir CLI and never evaluates the member; it checks the recipe's exact bindings against the authenticated release instead (see [toolset recipe limits](../toolchain/toolset-recipe.md#limits-of-this-contract-version)).
+
+Recipe targets are a separate target kind. Their `custom.morphir` object is `{ "kind": "toolset-recipe", "schemaVersion": "0.1.0-draft.1", "preset", "version", "channels", "status" }`, versioned by the recipe contract. A version 1 client ignores, for resolution, every target whose `custom.morphir.kind` it does not define. Such targets are authenticated like any other target, but never selected as a tool release. The reference tool client in `morphir-distribution` resolves only `tool-release` targets, and its tests read a repository that also publishes recipe and extension targets. Channel and status follow the [release states](#release-states) and [channel resolution](#channel-and-exact-version-resolution) above.
 
 ## Mirrors
 

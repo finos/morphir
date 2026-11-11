@@ -1,0 +1,200 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "critical": [
+    "host",
+    "platforms"
+  ],
+  "requestSha256": "27b50b72893ec4150bf6faf7d15c4b765e765040b9d118841e8cd50783f0168d",
+  "recipe": {
+    "repositoryId": "33efcef7f7f18088e9b9560081d40ef4cafe3dd438152fe5c417d13f264ea83b",
+    "target": "toolchains/recipes/fsharp/1.0.0.json",
+    "sha256": "717f32a8df8d187af96ae27feb01420f1eb6ace57a39476234676ba8913b5fb2"
+  },
+  "host": {
+    "implementation": "dotnet",
+    "version": "1.2.3",
+    "deployment": "self-contained"
+  },
+  "platforms": {
+    "win-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/win-x64.zip",
+      "hostSha256": "accdd97b028b1008678a86552f1efc3a148236429ffd821720aaecd4f311723b",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "win-arm64": {
+      "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/win-arm64.zip",
+      "hostSha256": "89f6514820a581a9635359ec0af0ef24e556f4c290797db10dfba7946d5806e7",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "osx-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/osx-x64.tar.gz",
+      "hostSha256": "33a52aa3865ce885a822e7df57b8daf012b02e4589e04e3fda61f0ab65a66d5d",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "osx-arm64": {
+      "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/osx-arm64.tar.gz",
+      "hostSha256": "59022e9ca6ec4f41b123603e0f2fe71f10721f7cbbb50a9deca6716758e779aa",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "linux-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/linux-x64.tar.gz",
+      "hostSha256": "bca86ec9b78520733e9d5a778a22f58d2a471224228e3463e77f8f43c71fa112",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    },
+    "linux-arm64": {
+      "hostTarget": "artifacts/morphir-dotnet-self-contained/1.2.3/linux-arm64.tar.gz",
+      "hostSha256": "98ed1ab1b3ed808c6b4bc9fc7488d6aa025511a08757d08441d6d4e7d520d140",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "version": "1.2.3",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        }
+      ]
+    }
+  }
+}

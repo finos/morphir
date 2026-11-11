@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "generationId": "gen-0004",
+  "platform": "win-x64",
+  "lockSha256": "4826e7f6970fa2506c39c3de2b8f641ef0037312e07a663baa8efb002124f95e",
+  "recipe": {
+    "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "target": "toolchains/recipes/fsharp/1.0.0.json",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "host": {
+    "identity": {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "dotnet-tool",
+      "target": "packages/nuget/morphir.tool/1.2.3/morphir.tool.1.2.3.nupkg",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "execution": {
+      "mode": "jit",
+      "runtime": {
+        "kind": "system",
+        "version": "10.0.3"
+      }
+    },
+    "installation": {
+      "ownership": {
+        "kind": "dotnet-tool",
+        "packageId": "Morphir.Tool",
+        "scope": "global"
+      },
+      "authentication": {
+        "kind": "external-owner"
+      },
+      "launch": {
+        "program": "C:\\Users\\fixture\\.dotnet\\tools\\dotnet-morphir.exe",
+        "args": []
+      }
+    },
+    "readiness": "capability-checked",
+    "checks": [
+      {
+        "check": "integrity",
+        "status": "passed"
+      },
+      {
+        "check": "capability",
+        "status": "passed"
+      }
+    ]
+  },
+  "providers": [
+    {
+      "identity": {
+        "operation": "compile",
+        "language": "fsharp",
+        "delivery": "dotnet-tool",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "version": "0.6.0",
+        "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+        "descriptorSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "packageId": "Morphir.Frontend.FSharp.Extension",
+        "command": "morphir-fsharp-frontend",
+        "packageTarget": "packages/nuget/morphir.frontend.fsharp.extension/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg",
+        "packageSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTuple": {
+          "operation": "morphir.frontend.compileModel",
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "envelopeVersion": "0.1.0-draft.1",
+          "irVersion": "4.0.0"
+        }
+      },
+      "installation": {
+        "ownership": {
+          "kind": "manager-owned"
+        },
+        "authentication": {
+          "kind": "recipe-digest",
+          "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "recipeTarget": "toolchains/recipes/fsharp/1.0.0.json",
+          "recipeSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "claimCheck": "unchecked",
+        "launch": {
+          "program": "C:\\Users\\fixture\\.morphir\\tools\\morphir.frontend.fsharp.extension\\0.6.0\\morphir-fsharp-frontend.exe",
+          "args": []
+        }
+      },
+      "readiness": "integrity-verified",
+      "checks": [
+        {
+          "check": "integrity",
+          "status": "passed"
+        },
+        {
+          "check": "capability",
+          "status": "skipped",
+          "reason": "--no-probe"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "operation": "generate",
+        "target": "fsharp",
+        "delivery": "built-in",
+        "extensionId": "morphir.fsharp",
+        "version": "1.2.3",
+        "modelInput": {
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "irVersion": "4.0.0"
+        }
+      },
+      "readiness": "capability-checked",
+      "checks": [
+        {
+          "check": "integrity",
+          "status": "passed"
+        },
+        {
+          "check": "capability",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "readiness": "integrity-verified",
+  "checks": [
+    {
+      "check": "workflow",
+      "status": "skipped",
+      "workflow": "fsharp-compile-generate",
+      "reason": "a provider is not capability-checked"
+    }
+  ]
+}

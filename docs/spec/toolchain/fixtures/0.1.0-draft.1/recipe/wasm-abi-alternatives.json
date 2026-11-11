@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "preset": "wasm-example",
+  "version": "1.0.0",
+  "operations": [
+    {
+      "operation": "generate",
+      "target": "example"
+    }
+  ],
+  "hosts": [
+    {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "native-aot",
+      "execution": "native-aot",
+      "source": {
+        "kind": "tool-release",
+        "toolId": "morphir-dotnet-native-aot"
+      },
+      "protocolVersions": [
+        "0.2.0-draft.1"
+      ],
+      "wasmAbis": [
+        "morphir-bytes-v1"
+      ],
+      "prerequisites": [
+        {
+          "kind": "native",
+          "name": "glibc",
+          "versions": [
+            ">=2.28.0"
+          ],
+          "platforms": [
+            "linux-x64",
+            "linux-arm64"
+          ]
+        }
+      ],
+      "builtIns": [],
+      "platforms": {
+        "win-x64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+          "sha256": "6944e383ec3ba68670822417ce485fc4f2706752753bec33958c04d6e08df3d8"
+        },
+        "win-arm64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-arm64.zip",
+          "sha256": "29d3b2d81343ed1dc3c276b57b94602609d645670dc05afc81ea68c4d5c5f088"
+        },
+        "osx-x64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/osx-x64.zip",
+          "sha256": "1d1b9a470d3d3df463de032ecca38c394f4fd5a0fa1dd6412153191d16307290"
+        },
+        "osx-arm64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/osx-arm64.zip",
+          "sha256": "ef457e0de23368cfa730a93d435030c8932869a88527c44b8b694cb2c39aa729"
+        },
+        "linux-x64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/linux-x64.zip",
+          "sha256": "030e6e0e8a6f8b5fac8ca3a0796f13305d419337959e321d84b6a02d344ba697"
+        },
+        "linux-arm64": {
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/linux-arm64.zip",
+          "sha256": "549ae3970c5eff041ac31313b867ea1f0f63bd3382355e3e59d6f965fa33680d"
+        }
+      }
+    }
+  ],
+  "providers": [
+    {
+      "operation": "generate",
+      "target": "example",
+      "delivery": "wasm",
+      "abi": "extism-kernel-v1",
+      "extensionId": "morphir-example-backend",
+      "version": "2.0.0",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "descriptorTarget": "extensions/example-backend/2.0.0/release.json",
+      "descriptorSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "artifactTarget": "extensions/example-backend/2.0.0/example-backend.wasm",
+      "artifactSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.backend.generateModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "prerequisites": []
+    },
+    {
+      "operation": "generate",
+      "target": "example",
+      "delivery": "wasm",
+      "abi": "morphir-bytes-v1",
+      "extensionId": "morphir-example-backend",
+      "version": "1.9.0",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "descriptorTarget": "extensions/example-backend/1.9.0/release.json",
+      "descriptorSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "artifactTarget": "extensions/example-backend/1.9.0/example-backend.wasm",
+      "artifactSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.backend.generateModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "prerequisites": []
+    }
+  ]
+}

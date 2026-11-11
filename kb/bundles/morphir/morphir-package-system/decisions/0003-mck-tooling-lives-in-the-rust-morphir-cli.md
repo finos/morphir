@@ -2,7 +2,8 @@
 type: Decision Record
 title: MCK tooling lives in the Rust Morphir CLI
 description: finos/morphir owns all shared MCK tooling, written in Rust and delivered as `morphir mck`, with an explicit adapter on every run and CLI-managed kit vendoring.
-state: Accepted
+state: Superseded
+superseded_by: "0004"
 decided: 2026-09-18
 supersedes: ["0001"]
 tags: [mck, tooling, rust, cli, adapters, ir, packages]

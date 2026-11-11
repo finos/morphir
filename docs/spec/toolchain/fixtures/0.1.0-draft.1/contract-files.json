@@ -1,0 +1,46 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "note": "Every file an implementation of the 0.1.0-draft.1 toolchain contracts pins, by repository path. A pin copies each tree whole and each file as is. `references` are documents the pages link to that are not pinned, with the reason; an implementation must not depend on more of them than the reason allows. A test requires every listed path to exist, every toolchain page and schema to be listed, and every repository file a pinned page links to to be pinned or referenced.",
+  "trees": [
+    "docs/spec/toolchain/fixtures/0.1.0-draft.1",
+    "spec/toolchain/workflows/fsharp-compile-generate"
+  ],
+  "files": [
+    "LICENSE",
+    "NOTICE",
+    "docs/spec/toolchain/index.md",
+    "docs/spec/toolchain/toolset-recipe.md",
+    "docs/spec/toolchain/toolchain-request.md",
+    "docs/spec/toolchain/toolchain-lock.md",
+    "docs/spec/toolchain/installation-receipt.md",
+    "docs/spec/toolchain/manager-result.md",
+    "docs/spec/toolchain/readiness-workflow.md",
+    "website/static/schemas/toolset-recipe-0.1.0-draft.1.schema.json",
+    "website/static/schemas/toolchain-request-0.1.0-draft.1.schema.json",
+    "website/static/schemas/toolchain-lock-0.1.0-draft.1.schema.json",
+    "website/static/schemas/toolchain-receipt-0.1.0-draft.1.schema.json",
+    "website/static/schemas/morphirup-result-0.1.0-draft.1.schema.json",
+    "website/static/schemas/toolchain-workflow-case-0.1.0-draft.1.schema.json",
+    "docs/spec/tool-release-metadata/index.md",
+    "website/static/schemas/tool-release-v1.schema.json",
+    "docs/spec/tool-release-metadata/fixtures/v1/conformance.json"
+  ],
+  "references": [
+    {
+      "path": "docs/design/draft/extensions/distribution-and-acquisition.md",
+      "reason": "A design draft that defines the version-2 extension release descriptor by example. A binding check relies only on the descriptor members listed in the toolset recipe page's table of what a binding check reads; the descriptor's own member table or schema belongs to the extension contract changes."
+    },
+    {
+      "path": "docs/design/draft/extensions/protocol.md",
+      "reason": "A design draft that defines the capability claim set. A binding check relies only on the claim set members listed in the toolset recipe page's table of what a binding check reads; the claim set's own member table or schema belongs to the extension contract changes."
+    },
+    {
+      "path": "docs/spec/ir/format-version.md",
+      "reason": "The IR has its own version authority. The toolchain contracts read only an IR document's formatVersion, in the readiness workflow's expected files."
+    },
+    {
+      "path": "website/static/schemas/morphir-ir-v4.json",
+      "reason": "The IR v4 schema, which the readiness workflow's expected IR follows. It is pinned with the IR contract, not with these contracts."
+    }
+  ]
+}

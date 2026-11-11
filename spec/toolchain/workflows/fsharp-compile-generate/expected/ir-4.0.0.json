@@ -1,0 +1,154 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "acme/demo",
+      "dependencies": {},
+      "def": {
+        "modules": {
+          "pricing": {
+            "Public": {
+              "types": {
+                "car": {
+                  "Public": {
+                    "TypeAliasDefinition": {
+                      "typeParams": [],
+                      "typeExp": {
+                        "Record": {
+                          "attributes": {
+                            "source": {
+                              "startLine": 3,
+                              "startColumn": 10,
+                              "endLine": 3,
+                              "endColumn": 13
+                            }
+                          },
+                          "fields": {
+                            "plate": {
+                              "Reference": {
+                                "attributes": {
+                                  "source": {
+                                    "startLine": 3,
+                                    "startColumn": 18,
+                                    "endLine": 3,
+                                    "endColumn": 31
+                                  }
+                                },
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            },
+                            "seats": {
+                              "Reference": {
+                                "attributes": {
+                                  "source": {
+                                    "startLine": 3,
+                                    "startColumn": 33,
+                                    "endLine": 3,
+                                    "endColumn": 43
+                                  }
+                                },
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {
+                "seats": {
+                  "Public": {
+                    "ExpressionBody": {
+                      "inputTypes": {
+                        "car": {
+                          "Reference": {
+                            "attributes": {
+                              "source": {
+                                "startLine": 4,
+                                "startColumn": 15,
+                                "endLine": 4,
+                                "endColumn": 25
+                              }
+                            },
+                            "fqname": "acme/demo:pricing#car"
+                          }
+                        }
+                      },
+                      "outputType": {
+                        "Reference": {
+                          "attributes": {
+                            "source": {
+                              "startLine": 4,
+                              "startColumn": 9,
+                              "endLine": 4,
+                              "endColumn": 25
+                            }
+                          },
+                          "fqname": "morphir/SDK:basics#int"
+                        }
+                      },
+                      "body": {
+                        "Field": {
+                          "attributes": {
+                            "source": {
+                              "startLine": 4,
+                              "startColumn": 34,
+                              "endLine": 4,
+                              "endColumn": 43
+                            },
+                            "inferredType": {
+                              "Reference": {
+                                "attributes": {
+                                  "source": {
+                                    "startLine": 4,
+                                    "startColumn": 34,
+                                    "endLine": 4,
+                                    "endColumn": 43
+                                  }
+                                },
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          },
+                          "target": {
+                            "Variable": {
+                              "attributes": {
+                                "source": {
+                                  "startLine": 4,
+                                  "startColumn": 34,
+                                  "endLine": 4,
+                                  "endColumn": 37
+                                },
+                                "inferredType": {
+                                  "Reference": {
+                                    "attributes": {
+                                      "source": {
+                                        "startLine": 4,
+                                        "startColumn": 34,
+                                        "endLine": 4,
+                                        "endColumn": 37
+                                      }
+                                    },
+                                    "fqname": "acme/demo:pricing#car"
+                                  }
+                                }
+                              },
+                              "name": "car"
+                            }
+                          },
+                          "name": "seats"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,244 @@
+{
+  "contract": "morphir/mep-wasm-execution-profiles",
+  "version": "0.1.0-draft.1",
+  "handleExport": { "name": "handle", "params": [], "results": ["i32"] },
+  "statuses": {
+    "required": "Every host runs the profile.",
+    "transitional": "A host may run the profile and no new guest should target it. A host that does not run it refuses a module of the profile with extension.abi_unsupported, naming the profile."
+  },
+  "profiles": {
+    "morphir-bytes-v1": {
+      "status": "transitional",
+      "namespaces": ["morphir_bytes_v1"],
+      "imports": [
+        { "module": "morphir_bytes_v1", "name": "input_len", "params": [], "results": ["i32"] },
+        { "module": "morphir_bytes_v1", "name": "input_byte", "params": ["i32"], "results": ["i32"] },
+        { "module": "morphir_bytes_v1", "name": "output_byte", "params": ["i32"], "results": [] }
+      ],
+      "wasi": false,
+      "notifications": [
+        { "id": "every-message", "rule": "Every message is delivered, notifications included. A guest consumes a notification by returning -2." }
+      ],
+      "memory": [
+        { "id": "refused-growth-fails", "rule": "A refused growth fails the session with memory-limit, also when handle returns." }
+      ],
+      "callDeadlineSeconds": 10,
+      "handleResults": [
+        { "result": "positive", "meaning": "response", "detail": "The guest pushed a response of that many bytes." },
+        { "result": "0", "meaning": "exit", "detail": "The guest pushed nothing and its instance ends, for any message, not only morphir.exit." },
+        { "result": "-2", "meaning": "notification", "detail": "The guest consumed a notification. For a message with an id this is a failure." },
+        { "result": "-1", "meaning": "failure", "detail": "The guest failed; the session fails." }
+      ]
+    },
+    "extism-kernel-v1": {
+      "status": "required",
+      "namespaces": ["extism:host/env", "extism:host/user", "wasi_snapshot_preview1"],
+      "imports": [
+        { "module": "extism:host/env", "name": "alloc", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "free", "params": ["i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "length_unsafe", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "length", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "load_u8", "params": ["i64"], "results": ["i32"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "load_u64", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_load_u8", "params": ["i64"], "results": ["i32"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_load_u64", "params": ["i64"], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "store_u8", "params": ["i64", "i32"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "store_u64", "params": ["i64", "i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_set", "params": ["i64", "i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "output_set", "params": ["i64", "i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_length", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "input_offset", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "output_length", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "output_offset", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "reset", "params": [], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "error_set", "params": ["i64"], "results": [], "group": "kernel" },
+        { "module": "extism:host/env", "name": "error_get", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "memory_bytes", "params": [], "results": ["i64"], "group": "kernel" },
+        { "module": "extism:host/env", "name": "config_get", "params": ["i64"], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/env", "name": "var_get", "params": ["i64"], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/env", "name": "var_set", "params": ["i64", "i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_trace", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_debug", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_info", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_warn", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "log_error", "params": ["i64"], "results": [], "group": "host" },
+        { "module": "extism:host/env", "name": "get_log_level", "params": [], "results": ["i32"], "group": "host" },
+        { "module": "extism:host/env", "name": "http_request", "params": ["i64", "i64"], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/env", "name": "http_status_code", "params": [], "results": ["i32"], "group": "host" },
+        { "module": "extism:host/env", "name": "http_headers", "params": [], "results": ["i64"], "group": "host" },
+        { "module": "extism:host/user", "name": "morphir_get_workspace_info", "params": [], "results": ["i64"], "group": "morphir" },
+        { "module": "extism:host/user", "name": "morphir_cache_ir", "params": ["i64", "i64"], "results": [], "group": "morphir" },
+        { "module": "extism:host/user", "name": "morphir_get_cached_ir", "params": ["i64"], "results": ["i64"], "group": "morphir" },
+        { "module": "extism:host/user", "name": "morphir_log", "params": ["i64", "i64"], "results": [], "group": "morphir" }
+      ],
+      "wasi": "wasi_snapshot_preview1",
+      "wasiSurface": { "functions": 46, "signatures": "wasi_snapshot_preview1.witx", "note": "Every function of WASI preview 1 is accepted, with the core WASM signature its witx definition gives. The policy says what each one answers." },
+      "notifications": [
+        { "id": "advertised", "rule": "A notification is delivered only after the guest's morphir.initialize result gave capabilities.notificationDelivery the value call. Each delivered notification is one handle call that gives no output. morphir.exit is delivered, and then the instance ends." },
+        { "id": "output-fails", "rule": "Output for a delivered notification fails the session." },
+        { "id": "unadvertised", "rule": "A guest whose result has no capabilities.notificationDelivery, or gives it the value none, receives no notification, and morphir.exit ends its instance without a call." },
+        { "id": "unlisted-value", "rule": "A value of capabilities.notificationDelivery that this contract does not list is read as none." }
+      ],
+      "notificationDelivery": {
+        "member": "capabilities.notificationDelivery",
+        "of": "morphir.initialize result",
+        "type": "string",
+        "default": "none",
+        "values": [
+          { "value": "none", "meaning": "The host delivers no notification to the guest." },
+          { "value": "call", "meaning": "The host delivers each notification as one handle call, between requests." }
+        ],
+        "reserved": [
+          { "value": "poll", "meaning": "The guest asks the host for pending notifications while a call runs. It needs a host function this draft does not define, so a host on this draft reads it as none." }
+        ],
+        "note": "MEP 0.2.0-draft.1 reads the member as an extra capability member. The MEP draft that follows names it in the handshake model."
+      },
+      "memory": [
+        { "id": "recovered", "rule": "A guest that has a growth refused and still answers has succeeded." }
+      ],
+      "callDeadlineSeconds": 30,
+      "handleResults": [
+        { "result": "0", "meaning": "response", "detail": "With output and no error set, the output is the response." },
+        { "result": "0 without output", "meaning": "failure", "detail": "For a request, a failure. For a delivered notification, the expected result." },
+        { "result": "non-zero", "meaning": "failure", "detail": "A failure, also when no error is set and the guest gave output." },
+        { "result": "error set", "meaning": "failure", "detail": "The guest set an Extism error; a failure whatever handle returns." }
+      ]
+    }
+  },
+  "classification": {
+    "rules": [
+      { "id": "first-import", "rule": "The first import from a profile namespace decides the profile: morphir_bytes_v1 makes the module morphir-bytes-v1; extism:host/env, extism:host/user or wasi_snapshot_preview1 makes it extism-kernel-v1." },
+      { "id": "declared", "rule": "A module that imports from no profile namespace takes the declared profile." },
+      { "id": "default", "rule": "A module that imports from no profile namespace, with no profile declared, is extism-kernel-v1.", "scope": "host-session" },
+      { "id": "order", "rule": "A host makes the checks in the order given by order and reports the first that fails." }
+    ],
+    "order": ["profile", "imports", "handle-export", "declared-abi", "host-runs-profile"],
+    "orderNote": "A host makes these checks in this order and reports the first that fails. A byte-profile module with an import outside the table is therefore refused naming the import, also by a host that does not run the profile. The WASM feature check has no fixed place: an engine may validate a module before the host classifies it.",
+    "defaultProfile": "extism-kernel-v1"
+  },
+  "bounds": {
+    "memoryCeilingBytes": 268435456,
+    "memoryCeilingScope": "each-linear-memory",
+    "kernelMemoryCeilingBytes": 268435456,
+    "instructionBudget": { "session": 5000000000, "probe": 1000000000 },
+    "instructionBudgetUnit": "engine-defined",
+    "requiredForQualification": ["memoryCeiling", "callDeadline"],
+    "optionalForQualification": ["instructionBudget"]
+  },
+  "memory": [
+    { "id": "at-ceiling", "rule": "A call that ends in a trap while the guest's memory, or the Extism kernel's memory, is at its ceiling is memory-limit. A call that the host stopped for the instruction budget, the call deadline or a cancellation keeps that result." },
+    { "id": "guest-reported", "rule": "A call that the guest ended itself, with an Extism error, a non-zero result or no output, is failure, also at the ceiling and after a refused growth. So is a failure the host detected, such as a response over its limit." },
+    { "id": "observed-refusal", "rule": "A host that observes refused growth, of the guest's memory or of the Extism kernel's, reports memory-limit for a trap in a call in which growth was refused. Another host reports the trap." },
+    { "id": "initial-above-ceiling", "rule": "A module whose initial memory is above the ceiling fails with memory-limit before any request. This is a fault, not a refusal." }
+  ],
+  "policy": {
+    "config": { "missing": "handle-0" },
+    "var": { "storeBytes": 1048576, "missing": "handle-0", "zeroValueDeletes": true, "overLimit": "failure", "lifetime": "session" },
+    "irCache": { "bytes": 16777216, "entries": 1024, "missing": "null", "overLimit": "failure", "lifetime": "session" },
+    "logging": {
+      "getLogLevel": 2,
+      "levels": ["trace", "debug", "info", "warn", "error"],
+      "dropped": ["trace", "debug"],
+      "recorded": "guest-output",
+      "morphirLog": "unfiltered"
+    },
+    "http": { "request": "stops-call-fails-session", "recorded": ["method", "url"], "statusCodeWithoutRequest": 0, "headersWithoutRequest": "handle-0" },
+    "workspaceInfo": { "root": "private-empty-directory", "output_dir": "" },
+    "wasi": {
+      "preopens": 0,
+      "arguments": 0,
+      "environment": 0,
+      "stdin": "empty",
+      "clocks": "available",
+      "random": "available",
+      "stdout": "guest-output",
+      "stderr": "guest-output",
+      "fdAboveTwoErrno": 8,
+      "unsupportedErrno": 76,
+      "procExitZero": "call-succeeds"
+    }
+  },
+  "refusals": [
+    { "code": "extension.abi_unsupported", "when": "An import is outside the classified profile's surface or has another signature, handle is missing or has another type, or the host does not run the classified profile. The message names the import as module.name, says that the module does not export handle as () -> i32, or names the profile." },
+    { "code": "extension.abi_mismatch", "when": "A declared ABI differs from the classified profile. The message names both." },
+    { "code": "extension.wasm_feature_unsupported", "when": "The module needs a WASM feature the engine lacks, or has a shared, 64-bit or second memory." }
+  ],
+  "faults": [
+    { "kind": "trap", "hostCode": "extension.guest_trap", "when": "The guest trapped for a reason that is not a bound." },
+    { "kind": "memory-limit", "hostCode": "extension.memory_limit", "when": "A memory rule applies: a trap at the ceiling, a trap after an observed refused growth, a refused growth on the byte profile, or an initial memory above the ceiling." },
+    { "kind": "budget-exhausted", "hostCode": "extension.budget_exhausted", "when": "The guest ran past its per-call instruction budget on a metering engine." },
+    { "kind": "call-deadline", "hostOutcome": "deadline", "when": "The call did not return before its deadline." },
+    { "kind": "failure", "hostCode": "extension.incomplete_session", "when": "Any other end of a session that the guest caused: -1, a misused -2 or a 0 with output on the byte profile; an Extism error, a non-zero result or no output for a request; output for a notification; a message that is not UTF-8 text holding one JSON object; a response frame over its limit; a request frame over a worker's --request-bytes; a host function that stops the call; proc_exit with a code that is not 0." }
+  ],
+  "hostSession": {
+    "frameLimits": { "counted": "whole-frame", "requestBytes": 6291456, "responseBytes": 16777216 },
+    "rules": [
+      { "id": "request-limit", "code": "extension.request_limit", "rule": "A request frame over the session's request byte limit is refused before the guest is called, and the session ends. The diagnostic names the limit and the frame's size." },
+      { "id": "response-limit", "code": "extension.incomplete_session", "rule": "A response over the session's response byte limit fails the session, and no part of it reaches the MEP session." },
+      { "id": "jsonrpc", "code": "extension.unexpected_response", "rule": "The host session checks the JSON-RPC version of a response and that its id answers the request." },
+      { "id": "profiles-reported", "rule": "A host states in its runtime report which profiles it runs." },
+      { "id": "cancelled", "rule": "A call that the host stops because the user cancelled the command is not a guest fault and has no fault kind. The session outcome is cancelled." }
+    ]
+  },
+  "worker": {
+    "command": "extension worker",
+    "arguments": [
+      { "name": "--abi", "required": true, "value": "the declared profile" },
+      { "name": "--module", "required": true, "value": "the path of the module" },
+      { "name": "--build-identity", "required": true, "value": "the host's build identity, 64 hexadecimal digits" },
+      { "name": "--request-bytes", "default": 6291456 },
+      { "name": "--response-bytes", "default": 16777216 },
+      { "name": "--call-ms", "default": { "extism-kernel-v1": 30000, "morphir-bytes-v1": 10000 } },
+      { "name": "--instructions", "default": 5000000000, "range": [1, 9007199254740991] },
+      { "name": "--memory-pages", "default": 4096, "note": "The ceiling of the guest's memory. A host whose engine has one limit for every memory of a session applies it to the Extism kernel's memory too." },
+      { "name": "--json", "flag": true },
+      { "name": "--help", "flag": true }
+    ],
+    "exitStatus": {
+      "0": "The guest served until its instance ended.",
+      "1": "A fault, an invalid frame, or stdin ended first.",
+      "2": "Invalid arguments.",
+      "3": "A refusal before any request."
+    },
+    "events": {
+      "started": ["abi", "moduleSha256", "buildIdentity", "bounds"],
+      "output": ["output", "droppedBytes"],
+      "fault": ["fault.kind", "fault.message"],
+      "refused": ["error.code", "error.message"],
+      "exited": ["exitCode"]
+    },
+    "startedBounds": {
+      "members": ["memoryCeiling", "instructionBudget", "callDeadline"],
+      "notEnforcedReasons": ["no-memory-ceiling", "no-instruction-metering", "no-call-interruption"]
+    },
+    "refusals": [
+      { "code": "extension.worker_runtime_mismatch", "when": "--build-identity is not the worker's own build identity." },
+      { "code": "extension.runtime_unavailable", "when": "The host has no usable WASM engine. The message gives the reason." }
+    ],
+    "rules": [
+      { "id": "required-arguments", "rule": "--abi, --module and --build-identity are required. Without one the worker serves nothing and exits with 2." },
+      { "id": "build-identity", "rule": "A worker started with another build identity refuses with extension.worker_runtime_mismatch and exits with 3." },
+      { "id": "help", "rule": "--help writes the help to stdout and serves nothing. --help --json writes one morphir/command-result whose result.buildIdentity is the identity to pass." },
+      { "id": "defaults", "rule": "An optional argument that is left out takes its default." },
+      { "id": "started-after-load", "rule": "started is emitted only after the module has loaded, so refused never follows it, and a fault before it is a load fault." },
+      { "id": "started-bounds", "rule": "started.bounds has exactly the members memoryCeiling, instructionBudget and callDeadline. Each is {\"enforced\": true} or {\"enforced\": false, \"reason\": <reason>}." },
+      { "id": "fault-members", "rule": "A fault event carries fault.kind and, optionally, fault.message, and nothing else. The extension.* codes and the outcome deadline exist only in the host session's outcome." },
+      { "id": "refusal-names", "rule": "A refusal names an import as module.name, and reports a missing or mistyped handle as not exporting handle as () -> i32." },
+      { "id": "message-checks", "rule": "The worker checks that each request and response is UTF-8 text holding one JSON object, and reports anything else as fault failure. It does not check the JSON-RPC version or ids." },
+      { "id": "request-frame-limit", "rule": "A request frame over --request-bytes is fault failure and the worker exits with 1. The guest is not called." },
+      { "id": "response-frame-limit", "rule": "A response over --response-bytes is fault failure and the worker exits with 1. No part of it reaches stdout." },
+      { "id": "start-order", "rule": "Before any request a worker checks its arguments, then the build identity, then that the host has a usable engine, then the module, and reports the first that fails. A worker without a usable engine refuses with extension.runtime_unavailable, exits with 3 and does not read the module." },
+      { "id": "load-failure", "rule": "A module file that cannot be read, or that is not a well-formed WASM module, is fault failure before started, and the worker exits with 1." }
+    ]
+  },
+  "knownDeviations": [
+    {
+      "host": "finos/morphir-rust morphir-host-native",
+      "observedAt": "extension/rust/v0.4.0-2",
+      "import": "extism:host/user morphir_get_workspace_info",
+      "contract": "() -> i64",
+      "hostDeclares": "(i64) -> i64",
+      "tracking": "https://github.com/finos/morphir-rust/issues/330"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "repair",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "lock-binding",
+      "severity": "error",
+      "code": "lock_changed",
+      "message": "The receipt was installed from other lock bytes. Repair restores only the generation its receipt binds.",
+      "document": "receipt",
+      "path": "lockSha256"
+    }
+  ]
+}

@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>add-dotnet-wasm-extension-host</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; --ok: #1f7a4d; --stop: #b3261e; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; --ok: #6fd3a0; --stop: #ff9a92; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; vertical-align: top; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+.table-wrap { overflow-x: auto; }
+figure { margin: 1.5rem 0; overflow-x: auto; } figcaption { color: var(--muted); font-size: .95rem; }
+svg { display: block; width: 100%; min-width: 640px; } .toc ol { padding-left: 1.3rem; }
+svg text { fill: var(--fg); font: 13px system-ui, sans-serif; }
+svg .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+svg .edge { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+svg .small { font-size: 11.5px; fill: var(--muted); }
+svg .ok { stroke: var(--ok); } svg .stop { stroke: var(--stop); }
+.stage { color: var(--muted); font-size: .95rem; margin-bottom: 0; }
+</style>
+</head>
+<body>
+<main>
+<h1>add-dotnet-wasm-extension-host</h1>
+<p class="meta">Proposed design | 9 November 2026 | Commands, field names and report shapes below are proposals, not shipped interfaces.</p>
+<p><a href="proposal.md">Proposal</a> · <a href="tasks.md">Implementation tasks</a> ·
+<a href="specs/mep/wasm-execution-profiles/spec.md">Execution profiles</a> ·
+<a href="specs/extensions/dotnet-wasm-host/spec.md">.NET host</a> ·
+<a href="specs/mck/wasm-host-qualification/spec.md">Host qualification</a></p>
+<nav class="toc" aria-label="Contents"><ol>
+<li><a href="#context">Context and evidence</a></li>
+<li><a href="#goals">Goals and boundaries</a></li>
+<li><a href="#decisions">One module's journey and the decisions along it</a></li>
+<li><a href="#acceptance">Acceptance and delivery sequence</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration and rollback</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+<li><a href="#references">References</a></li>
+</ol></nav>
+
+<h2 id="context">Context and evidence</h2>
+<p>See <a href="proposal.md">the proposal</a> for motivation. This section records what exists today, because three repositories each hold part of the answer and none holds all of it.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Where</th><th>Observed</th><th>What it means here</th></tr></thead>
+<tbody>
+<tr><td>morphir-dotnet <code>origin/main</code> at <code>b1f4e19</code></td>
+<td>No Wasmtime or Extism reference in <code>src</code>. <code>Morphir.Mep</code> has a single-message dispatcher for guests only; its <code>HostSession</code> takes two streams. <code>Morphir.Extensions</code> knows one delivery, <code>BuiltIn</code>. The config schema already has <code>extensions.&lt;name&gt;.path</code>.</td>
+<td>The host needs a message-based session, a new delivery kind and the runtime itself. Configuration needs no new key to name a module.</td></tr>
+<tr><td>morphir-dotnet extension-model PRD and its WASM runtime spike</td>
+<td>Wasmtime 50.0.1 was the only candidate that enforced memory, fuel and a deadline with zero AOT warnings. A static link into the AOT executable was measured on macOS arm64 only: 11,949,456 bytes, 10,647,232 more than the baseline. Untyped host callbacks echoed 1 MiB in 149 ms; typed callbacks took 18 ms but raised an IL3050 warning. The Extism .NET SDK hid the result of <code>handle</code>, set the ceiling one page too high, turned a refused growth into a trap and added 5.6 MB.</td>
+<td>The engine choice is settled. The spike left the callback binding, the Extism approach and five of six platforms open. Task 5.1 has since linked the engine statically on all six (PKG-1).</td></tr>
+<tr><td>morphir-moonbit <code>main</code> at <code>28271c6</code></td>
+<td>A complete worker host for both profiles, with a written spec (<code>extensions/wasm-workers</code>), a classifier, a host-function policy and a worker mode that today's runner already drives.</td>
+<td>The behavior to match exists and is tested. This design copies its observable rules and does not reinvent them.</td></tr>
+<tr><td>morphir-rust at <code>extension/rust/v0.4.0-2</code></td>
+<td>An Extism host on <code>extism</code> 1.30.0 and Wasmtime 43.0.2: 4096 pages, 30 s, 1,000,000,000 fuel, WASI on. It declares <code>morphir_get_workspace_info</code> as <code>(i64) -&gt; i64</code>; the Rust SDK and MoonBit both use <code>() -&gt; i64</code>.</td>
+<td>Two shipped hosts already disagree on a signature, with no contract to say which is right.</td></tr>
+<tr><td>This repository</td>
+<td><code>morphir-bytes-v1</code> and <code>extism-kernel-v1</code> appear in the MCK README and a few documents. Neither is defined in <code>spec/mep</code>, the Smithy model or <code>openspec/specs</code>. The MCK runner drives hosts over Content-Length stdio only.</td>
+<td>The shared definition is missing, and any host that wants shared qualification needs a stdio mode.</td></tr>
+</tbody></table></div>
+
+<h2 id="goals">Goals and boundaries</h2>
+<p><strong>Goals.</strong> Published Extism bundles run under the .NET host, in every offering, with the bounds and refusals the MoonBit host already applies. The Native AOT executable keeps zero trim and AOT warnings. A conformance runner can qualify the .NET host over stdio alone, with no code path that exists only for .NET.</p>
+<p><strong>Boundaries.</strong> This design delivers a runtime and one way to reach it directly, the worker mode. It does not decide which product commands select a WASM analyzer or generator: morphir-dotnet's roadmap steps 2a and 4 and <code>add-bounded-model-access</code> task 5.2 consume the runtime. It grants a guest nothing beyond the fixed policy; user-granted capabilities, which the roadmap places in step 5, stay a follow-up because they need a consent model this change does not have. It installs nothing and scans no folders. It does not change the Rust host.</p>
+
+<h2 id="decisions">One module's journey and the decisions along it</h2>
+<p>The running example is the published Python extension <code>0.6.0</code>, the bundle pinned in <code>.config/published-extension-bundles.toml</code>: one 4.8 MB Extism module that imports eight kernel functions. The earlier <code>0.4.2</code> module speaks only MEP <code>0.1</code>, which the .NET host does not offer (MEP-1). A developer sets <code>extensions.python.path</code> to it. Each stage below is a point where the host must choose, and the decision is introduced there.</p>
+
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-labelledby="arch-title arch-desc">
+<title id="arch-title">Layers of the .NET WASM host</title>
+<desc id="arch-desc">The MEP session core talks to a message channel. A process guest implements the channel with streams. A WASM guest implements it with the Extism adapter over one engine and one set of bounds.</desc>
+<rect class="box" x="20" y="20" width="720" height="44" rx="6"/><text x="380" y="47" text-anchor="middle">MEP host session: negotiation, requests, lifecycle (existing)</text>
+<rect class="box" x="20" y="84" width="720" height="40" rx="6"/><text x="380" y="109" text-anchor="middle">Message channel: one whole MEP message in, at most one out (SES-1)</text>
+<rect class="box" x="20" y="144" width="200" height="86" rx="6"/><text x="120" y="172" text-anchor="middle">Stream framing</text><text class="small" x="120" y="192" text-anchor="middle">process guests, stdio</text><text class="small" x="120" y="210" text-anchor="middle">(existing)</text>
+<rect class="box" x="240" y="144" width="500" height="40" rx="6"/><text x="490" y="169" text-anchor="middle">Extism adapter: kernel, host policy, notifications (KRN-1, SBX-1, NTF-1)</text>
+<rect class="box" x="240" y="194" width="500" height="36" rx="6"/><text x="490" y="217" text-anchor="middle">Classifier, engine, bounds (CLS-1, ENG-1, BND-1)</text>
+<path class="edge" d="M380 64v20M120 124v20M490 124v20"/>
+</svg>
+<figcaption>Figure 1. New work is the channel, the adapter and the layer beneath it. The session core does not learn that WASM exists.</figcaption>
+</figure>
+
+<p class="stage">Before the journey starts</p>
+<h3 id="prof-1">PROF-1. Write the profile contract once, in this repository, from what MoonBit already does</h3>
+<p>The .NET host needs rules to implement. They exist today as MoonBit source and one MoonBit spec. If .NET copied them into its own spec, a third description would start to drift, and the Rust host shows that drift is already real.</p>
+<p>The contract therefore lives here as <code>mep/wasm-execution-profiles</code>, version <code>0.1.0-draft.1</code>. It states MoonBit's observable rules in host-neutral terms and fixes <code>morphir_get_workspace_info</code> as <code>() -&gt; i64</code>, the signature the SDK that builds the guests uses. MoonBit's spec keeps what is specific to MoonBit: worker processes, Node threads and Web Workers.</p>
+<p><em>Alternatives.</em> Specify only in morphir-dotnet: fastest, but it leaves the parent documents naming profiles nobody defines. Move MoonBit's spec here unchanged: it mixes shared rules with MoonBit's process model, and the .NET host deliberately differs on that (see ENG-1).</p>
+
+<p class="stage">Stage 1. The host opens the file</p>
+<h3 id="cls-1">CLS-1. Classify from the engine's validated view of the module, before instantiation</h3>
+<p>The first question is which profile the Python module has. Its imports answer it: functions from <code>extism:host/env</code> make it <code>extism-kernel-v1</code>. A module that imports <code>env.open_socket</code> has no profile and is refused by name.</p>
+<p>The host reads imports and exports from the module the engine has already validated, then checks each one against the contract's table. No guest code has run at that point, because WASM runs nothing until instantiation. The engine is configured without threads, 64-bit memory and multiple memories, so a module that needs one fails validation and becomes <code>extension.wasm_feature_unsupported</code>.</p>
+<p><em>Alternative.</em> A separate managed reader of the binary format, as MoonBit has. It would refuse a bad module a little sooner, but it is a second parser that can disagree with the engine about what the module contains. MoonBit needs one because its reader must build on targets its engine does not.</p>
+<p><em>Cost.</em> Validation includes compilation, so refusing a large module takes as long as compiling it. That is acceptable for a refusal.</p>
+
+<p class="stage">Stage 2. The host needs something to run it on</p>
+<h3 id="eng-1">ENG-1. One Wasmtime engine in the host process, one store per session</h3>
+<p>The spike settled the engine: Wasmtime 50.0.1. What remains is where it runs. MoonBit starts a worker process per guest because its engine cannot be stopped safely from the same process on every target. Wasmtime can interrupt a guest from another thread, so the .NET host runs guests in its own process:</p>
+<ul>
+<li>One engine per process, with fuel metering and epoch interruption on. A thread of the host's own advances the epoch every 10 ms. It is not a thread-pool timer. When every processor is busy, which a spinning guest causes, the .NET pool adds no thread and a pool timer stops: a 500 ms deadline took 4.3 s on a CI runner before this was changed.</li>
+<li>One store per session. The store owns the instance, its memory, its fuel and its deadline, and is disposed when the session ends for any reason.</li>
+<li>Compiled modules are kept in memory for the life of the process, keyed by module digest, so a frontend and backend from one module compile once.</li>
+</ul>
+<p><em>Why not a worker process per guest.</em> It would double the start-up cost, require the AOT single-file executable to find and re-launch itself, and duplicate process-group clean-up that the engine makes unnecessary. A trap in Wasmtime is a returned error, not a crash.</p>
+<p><em>What this gives up.</em> A fault in the engine's native code takes the host down with it. Process isolation would contain that. The risk table records it, and the worker mode (WRK-1) remains available as an out-of-process way to run a guest.</p>
+
+<p class="stage">Stage 3. The host has a session core that only speaks streams</p>
+<h3 id="ses-1">SES-1. Give the host session a message channel, and make streams one implementation of it</h3>
+<p>A WASM guest cannot be read like a pipe. Each <code>handle</code> call takes one message and returns at most one. <code>Morphir.Mep</code> already has this shape on the guest side and lacks it on the host side.</p>
+<p>The host session is changed to talk to a channel with two operations: send a request and receive its response, and send a notification. The existing stream framing becomes one channel. The WASM adapter is another. Negotiation, id counting, limits and lifecycle stay in one place, so a process guest and a WASM guest cannot diverge on protocol behavior.</p>
+<pre><code class="language-json">{"jsonrpc": "2.0", "id": 2, "method": "morphir.frontend.compile", "params": {"language": "python", "documents": [{"uri": "orders.py"}]}}</code></pre>
+<p>That message is one <code>handle</code> call. What differs from a stream is below the channel: the adapter decides whether a notification such as <code>morphir.initialized</code> reaches the guest at all (NTF-1).</p>
+<p><em>Alternative.</em> Wrap each guest in an in-memory stream pair and keep the session unchanged. It needs a thread per guest to pump frames and it reintroduces Content-Length parsing between two pieces of code in the same process.</p>
+
+<p class="stage">Stage 4. There is a second kind of module the host could meet</p>
+<h3 id="abi-1">ABI-1. Host one profile; do not carry the byte profile into .NET</h3>
+<p>The Gleam extension <code>0.4.0</code> is not an Extism module. It is a <code>morphir-bytes-v1</code> guest: it reads its request by calling <code>input_byte</code> once per byte and writes its response with <code>output_byte</code>. The first draft of this design hosted both profiles. This one hosts only Extism, and the shared contract marks the byte profile as transitional.</p>
+<p>The byte profile was introduced for one reason, recorded in the Gleam extension's own design: at the time, the MoonBit CLI could run Extism modules only for Python on macOS arm64 and had no browser route. That is no longer true. The MoonBit worker host runs Extism guests on native, Node and browser through one shared kernel, and the Extism project itself is active. Its users today are the Gleam extension, which was an Extism plugin through 0.3.0, the MoonBit portable guest and the Elm preview built from it.</p>
+<p>Nothing the byte profile offers is out of reach for Extism. A guest needs no PDK: importing five kernel functions (<code>input_length</code>, <code>input_load_u8</code>, <code>alloc</code>, <code>store_u8</code>, <code>output_set</code>) gives the same pull-bytes, push-bytes shape, so any language that can import a function can be an Extism guest. Morphir-specific host functions already live in Extism's <code>extism:host/user</code> namespace. The one real difference, notifications, is closed by NTF-1.</p>
+<p>Keeping it has a measured cost in this host. A 1 MiB message is more than two million host calls, and the spike timed the two ways to serve them:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Binding</th><th>1 MiB echo (measured)</th><th>64 MiB message (projected)</th><th>AOT warnings</th></tr></thead>
+<tbody>
+<tr><td>Wasmtime.Dotnet untyped callbacks</td><td>149 ms</td><td>about 9.5 s of a 10 s deadline</td><td>0</td></tr>
+<tr><td>Wasmtime.Dotnet typed callbacks</td><td>18 ms</td><td>about 1.2 s</td><td>1 or more (IL3050)</td></tr>
+</tbody></table></div>
+<p>The untyped path spends the whole deadline moving bytes, and the typed path breaks the zero-warning rule. Hosting the byte profile would therefore need a hand-written unmanaged binding to the engine's C API, for a profile with three users. An Extism guest moves its bytes through the kernel, WASM to WASM, and never asks the host for one.</p>
+<p>The .NET host still classifies a byte-profile module correctly, so that it can refuse it by name: <code>extension.abi_unsupported</code>, stating that the host does not run <code>morphir-bytes-v1</code>.</p>
+<p><em>Alternatives.</em> Host both, as first drafted: the binding above, a second adapter, a second deadline and a third of the qualification corpus, to run one published extension. Keep the byte profile and drop Extism: the published Python, Avro, OpenAPI and Rust bundles would all need rebuilding, and the Rust host runs nothing else.</p>
+<p><em>What this asks of others.</em> The Gleam extension ships a release on Extism again; its byte adapter is about 100 lines over the dispatcher the SDK's Extism macro already uses. The MoonBit portable guest and the Elm preview retarget. The MoonBit host keeps the byte profile until those releases exist, then removes it. None of that gates this change. See <a href="#migration">Migration</a>.</p>
+<p class="stage">Stage 5. The Python module expects an Extism runtime</p>
+<h3 id="krn-1">KRN-1. Run the Extism kernel module on our engine; do not ship the Extism library</h3>
+<p>The Python module imports functions such as <code>alloc</code>, <code>input_length</code> and <code>output_set</code>. In Extism these are not native host code. They are exported by a small WASM module, the Extism kernel, which holds the input and output buffers in its own memory. The Extism runtime links the kernel to the plugin and adds a handful of native functions on top.</p>
+<figure>
+<svg viewBox="0 0 760 230" role="img" aria-labelledby="krn-title krn-desc">
+<title id="krn-title">How an Extism guest is linked</title>
+<desc id="krn-desc">The guest module calls the kernel module for memory, input and output. Both run in one store on the same engine. Only configuration, variables, logging, HTTP, the Morphir functions and WASI are host code.</desc>
+<rect class="box" x="20" y="30" width="470" height="180" rx="8"/><text class="small" x="34" y="50">one store: one memory ceiling each, one fuel budget, one deadline</text>
+<rect class="box" x="44" y="70" width="190" height="110" rx="6"/><text x="139" y="110" text-anchor="middle">Python guest</text><text class="small" x="139" y="130" text-anchor="middle">exports handle</text><text class="small" x="139" y="148" text-anchor="middle">own linear memory</text>
+<rect class="box" x="290" y="70" width="180" height="110" rx="6"/><text x="380" y="103" text-anchor="middle">Extism kernel</text><text class="small" x="380" y="123" text-anchor="middle">alloc, input_*, output_set,</text><text class="small" x="380" y="139" text-anchor="middle">error_set, load, store</text><text class="small" x="380" y="157" text-anchor="middle">pinned by digest</text>
+<path class="edge ok" d="M234 110h56"/><text class="small" x="262" y="102" text-anchor="middle">wasm</text>
+<rect class="box" x="540" y="40" width="200" height="56" rx="6"/><text x="640" y="63" text-anchor="middle">Host policy (SBX-1)</text><text class="small" x="640" y="82" text-anchor="middle">config, var, log, http</text>
+<rect class="box" x="540" y="106" width="200" height="44" rx="6"/><text x="640" y="133" text-anchor="middle">Morphir functions</text>
+<rect class="box" x="540" y="160" width="200" height="44" rx="6"/><text x="640" y="187" text-anchor="middle">WASI sandbox</text>
+<path class="edge" d="M234 150c150 60 220 40 306 30M234 90c120-50 220-30 306-22M234 128h20c120 0 200 0 286 0"/>
+</svg>
+<figcaption>Figure 2. The frequent calls stay inside WASM. Host code sees only the rare ones.</figcaption>
+</figure>
+<p>The .NET host does the same linking itself. It instantiates the kernel module, pinned by digest and embedded in the host, in the session's store, links its 20 exports under <code>extism:host/env</code>, and implements the remaining functions in managed code. Per call it sets the input through the kernel, calls <code>handle</code>, and reads the output and error back from the kernel.</p>
+<p>The kernel it embeds is the one MoonBit already ships: the module from <code>moonrockz/extism</code>, built from Zig and differentially tested against upstream <code>extism-runtime.wasm</code>. It has the same 20 exports and handle values as upstream, with three differences that suit a strict host. It uses no reference types and omits upstream's <code>extism_context</code> global, so the engine needs no extra WASM features. <code>alloc</code> returns 0 when memory is exhausted where upstream traps. An out-of-bounds load or store returns 0 or does nothing where upstream traps. Sharing the bytes means a guest sees the same kernel under both hosts, down to the digest in the report.</p>
+<p>This gives four things the alternative does not:</p>
+<ul>
+<li><strong>One engine and one native library.</strong> The Extism library is itself built on Wasmtime, so shipping it means a second copy of the engine in every offering on every platform.</li>
+<li><strong>One set of bounds.</strong> Fuel, the deadline and the memory limit apply to the store, so they cover the guest and the kernel together.</li>
+<li><strong>The result of <code>handle</code>.</strong> The host calls the export directly. The SDK's <code>Plugin.Call</code> hid it.</li>
+<li><strong>No host call per byte.</strong> A PDK reads its input through kernel calls in a loop. Those are WASM-to-WASM calls and never cross into managed code, so the host needs no fast callback binding (ABI-1).</li>
+</ul>
+<p><em>Alternatives.</em> <code>libextism</code> through the Extism .NET SDK: least code, but the spike recorded four defects against it, listed in the context table. Reimplement the kernel's functions in managed code: possible, but every byte the guest loads would become a host call, which is the cost ABI-1 removes. Embed upstream <code>extism-runtime.wasm</code>: it works, but it needs reference types enabled and traps where the shared kernel returns 0, so the two hosts would differ on a guest that runs out of memory.</p>
+<p><em>Assumption to prove first.</em> The kernel links and runs under the AOT host with zero warnings, the limiter applies to the kernel's memory as well as the guest's, and the <code>moonrockz/extism</code> licence allows embedding its kernel bytes in morphir-dotnet. Task 3.1 proves this with the Python module before any other Extism work. If it fails, this decision returns for review. The implementation does not switch to an alternative on its own.</p>
+<p><em>Consequence to state plainly.</em> The engine's limit is per memory, and an Extism session has two. The resident bound for an Extism guest is therefore twice the ceiling, 512 MiB, and the runtime report says so.</p>
+
+<h3 id="mep-1">MEP-1. The .NET host speaks the MEP 0.2 line only</h3>
+<p>On 9 November 2026 the maintainer decided that MEP <code>0.1</code> is not supported: the hosts have no users on it, and carrying two protocol versions costs more than it returns. The .NET host offers versions of the <code>0.2</code> line and does not offer, bridge or test <code>0.1</code>. Three things follow here.</p>
+<ul>
+<li>There is one instruction budget, 5,000,000,000. The MoonBit host also has 1,000,000,000 for <code>0.1</code> sessions; the contract no longer carries it.</li>
+<li>The guest for sessions is Python <code>0.6.0</code>. Python <code>0.4.2</code> answers <code>0.1</code> only.</li>
+<li>The host's <code>morphir.initialize</code> carries a model transport offer. Measured on the pinned bundles (Python <code>0.6.0</code>, Avro <code>0.4.0</code>, OpenAPI <code>0.5.0</code>, Rust <code>0.4.0</code>): each answers <code>0.2.0-draft.1</code> only to a request that has one. To a bare <code>0.2.0-draft.1</code> request each replies with error -32011, and the message wrongly says the extension supports only <code>0.1</code>.</li>
+</ul>
+<p>The generic guest kit still requires a tier that negotiates <code>0.1</code>, and the Rust <code>guest-run</code> command cannot skip it. On 10 November 2026 the maintainer decided that the kit drops that tier. The separate change <code>drop-generic-guest-legacy-tier</code> removes the requirement and gives the kit one session on the <code>0.2</code> line. Until it is applied, a run against the .NET host covers the kit's model tier only. New runner code goes to morphir-dotnet (decision record 0004); how task 4.3 is carried out there is decided in finos/morphir-dotnet#570.</p>
+
+<p class="stage">Stage 6. The host has something to tell the guest that is not a request</p>
+<h3 id="ntf-1">NTF-1. Deliver notifications to an Extism guest that asks for them</h3>
+<p>After the handshake the host sends <code>morphir.initialized</code>, and at the end <code>morphir.exit</code>. Both are notifications: messages with no <code>id</code> and no response. Today every host drops them for an Extism guest, because the published guests were written to answer requests and nobody knows what their <code>handle</code> does with anything else. A byte-profile guest does receive them. Retiring that profile should not remove the ability.</p>
+<p>The guest opts in. In its <code>morphir.initialize</code> result it says how it wants notifications delivered, the same way MEP already gates <code>$/cancelRequest</code> on what the extension advertises. With the value <code>call</code> the host passes each notification to <code>handle</code> as it would a request, and the guest returns with no output. An output of zero bytes is how Extism already says "nothing to return". <code>morphir.exit</code> is delivered and then the instance ends.</p>
+<pre><code class="language-json">{"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "0.2.0-draft.1", "capabilities": {"notificationDelivery": "call"}}}</code></pre>
+<p>The member is a string with a fixed set of values, not a flag. A flag can say only whether the guest wants notifications. There are three ways to answer how they arrive:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Value</th><th>How a notification reaches the guest</th><th>In this draft</th></tr></thead>
+<tbody>
+<tr><td><code>none</code></td><td>It does not. This is also what an absent member means</td><td>Defined, and the default</td></tr>
+<tr><td><code>call</code></td><td>One <code>handle</code> call between requests</td><td>Defined</td></tr>
+<tr><td><code>poll</code></td><td>The guest asks the host for pending notifications while a call runs</td><td>Reserved. It needs a new host function</td></tr>
+</tbody></table></div>
+<p>A host reads a value it does not know as <code>none</code>. That keeps one rule for every case in which a guest gets no delivery: a host on the earlier contract ignores the member, a host on this draft does not know <code>poll</code>, and a guest spelled the value wrong. A guest therefore cannot depend on delivery, and no session fails over a value added later.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Guest</th><th>Host sends <code>morphir.initialized</code></th><th>Host sends <code>morphir.exit</code></th></tr></thead>
+<tbody>
+<tr><td>Published bundle, advertises nothing</td><td>Not delivered, as today</td><td>Instance ends without a call, as today</td></tr>
+<tr><td>Advertises <code>call</code></td><td>One <code>handle</code> call, no output expected</td><td>One <code>handle</code> call, then the instance ends</td></tr>
+<tr><td>Advertises <code>call</code>, then returns output for a notification</td><td colspan="2">The session fails: a notification has no response</td></tr>
+<tr><td>Advertises a value the contract does not list</td><td>Not delivered</td><td>Instance ends without a call</td></tr>
+</tbody></table></div>
+<p>MEP <code>0.2.0-draft.1</code> already lets an extension send capability members the draft does not name, so the member is valid on that draft. The next MEP draft names it in the handshake model (task 1.7).</p>
+<p>This needs no new import and no ABI change, so every published bundle keeps running unchanged and an old host simply never delivers. It is a contract rule for hosts, which is why it belongs in the shared profile and not in .NET alone.</p>
+<p><em>What it does not do.</em> <code>call</code> delivery cannot deliver <code>$/cancelRequest</code> during a call. A WASM guest runs one call at a time, so the host cancels by interrupting the engine (BND-1). Cooperative cancellation is what the reserved <code>poll</code> value is for. This decision also does not let the guest send a notification to the host, such as <code>morphir.progress</code>. Both need a new host function, which changes the import surface, and are left as an open question.</p>
+<p><em>Alternatives.</em> A boolean such as <code>capabilities.notifications</code>, matching <code>cancellation</code> and <code>progress</code>: it cannot express polling, so adding that later would need a second member and a rule for when the two disagree. A list of the methods the guest accepts: MEP already gates each notification on its own capability, so the list would repeat it. Deliver to every Extism guest: it risks failing published bundles whose behavior for a message without an <code>id</code> is unknown. Signal with a marker export in the module: it works before the handshake, but it puts protocol capability in the binary, where MEP's own negotiation cannot see it.</p>
+
+<p class="stage">Stage 7. The guest reaches outside</p><h3 id="sbx-1">SBX-1. Accept the imports, bound the calls</h3>
+<p>The Python guest links <code>http_request</code> and WASI's <code>path_open</code> even though compiling a Morphir model needs neither. Refusing those imports would refuse every published bundle. The contract's policy table accepts them and gives the guest nothing through them. The .NET host implements that table exactly:</p>
+<ul>
+<li>WASI is configured with no preopened directory, no arguments, no environment and an empty stdin. Standard output and error go to a bounded buffer that becomes guest output.</li>
+<li><code>http_request</code> records the method and URL as guest output, stops the call and fails the session, as the MoonBit host does. The host never resolves the name.</li>
+<li>The variable store and IR cache are plain in-memory maps owned by the session, with the contract's limits, and are dropped with the store.</li>
+<li><code>morphir_get_workspace_info</code> reports a private empty directory created for the session and removed with it.</li>
+</ul>
+<p>The roadmap's later "host grants" would relax individual rows for a named extension with the user's consent. Nothing in this design prevents that. This change adds no configuration that could do it.</p>
+<p><em>Alternative.</em> Link Extism's own host functions unchanged. Its HTTP function makes real requests when the manifest allows a host, and a policy that depends on never setting a field is weaker than code that cannot connect.</p>
+
+<p class="stage">Stage 8. The guest does not return</p>
+<h3 id="bnd-1">BND-1. Three independent bounds, each mapped to its own outcome</h3>
+<p>Suppose a model sends the Python guest into a loop. Three mechanisms can stop it, and they exist for different failures:</p>
+<figure>
+<svg viewBox="0 0 760 170" role="img" aria-labelledby="bnd-title bnd-desc">
+<title id="bnd-title">What stops a call</title>
+<desc id="bnd-desc">A timeline of one handle call. The instruction budget stops a busy loop early. The deadline stops a guest that is slow or blocked in a host call. Cancellation can arrive at any time. The memory ceiling refuses growth without stopping the call.</desc>
+<path class="edge" d="M40 60h680"/><text x="40" y="45">handle starts</text><text x="720" y="45" text-anchor="end">30 s</text>
+<path class="edge stop" d="M250 40v40"/><text x="250" y="100" text-anchor="middle">budget exhausted</text><text class="small" x="250" y="117" text-anchor="middle">extension.budget_exhausted</text>
+<path class="edge stop" d="M720 40v40"/><text x="716" y="100" text-anchor="end">deadline</text><text class="small" x="716" y="117" text-anchor="end">outcome deadline</text>
+<path class="edge stop" d="M470 40v40"/><text x="470" y="100" text-anchor="middle">Ctrl+C</text><text class="small" x="470" y="117" text-anchor="middle">outcome cancelled, exit 130</text>
+<text class="small" x="40" y="150">Memory ceiling: growth returns -1 at any time. The call continues unless the guest gives up.</text>
+</svg>
+<figcaption>Figure 3. A busy loop ends at the budget. Measured on one ARM64 machine, a tight loop uses about 1,000,000,000 units a second, so the default budget ends it after about 5 seconds. The deadline is for a guest that is slow without being busy.</figcaption>
+</figure>
+<div class="table-wrap"><table>
+<thead><tr><th>Bound</th><th>Mechanism</th><th>Engine signal</th><th>Reported as</th></tr></thead>
+<tbody>
+<tr><td>Instruction budget</td><td>Fuel set before each call: 5,000,000,000</td><td>Out-of-fuel trap</td><td><code>extension.budget_exhausted</code></td></tr>
+<tr><td>Call deadline</td><td>Epoch deadline set before each call: 30 s</td><td>Interrupt trap</td><td>outcome <code>deadline</code></td></tr>
+<tr><td>Cancellation</td><td>The cancellation handler moves the epoch deadline to now</td><td>Interrupt trap</td><td>outcome <code>cancelled</code></td></tr>
+<tr><td>Memory ceiling</td><td>Store limit of 256 MiB per memory</td><td>Growth returns -1</td><td>See BND-2</td></tr>
+<tr><td>Anything else</td><td>None</td><td>Any other trap</td><td><code>extension.guest_trap</code></td></tr>
+</tbody></table></div>
+<p>The budget value is MoonBit's. Its engine counts differently from Wasmtime, so the same number is not the same amount of work. The contract says the unit is engine-defined. No qualification case depends on where the default budget runs out: a runaway call may end at the budget or at the deadline, and a separate case with a budget of 1,000,000 tests exhaustion. The .NET host measured the published guests at no more than 3,321,411 units of Wasmtime fuel per call on the kit's input.</p>
+<p><em>Alternative.</em> Deadline only, as an engine without metering must. Then a tight loop holds a core for the full 30 seconds before anything stops it.</p>
+
+<h3 id="bnd-2">BND-2. Report the memory limit when a call fails at the ceiling</h3>
+<p>The PRD left this open: Wasmtime refuses growth by returning -1 to the guest, and the guest may carry on. The engine's C API takes numeric limits only. It has no callback that tells the host a growth was refused, so the host cannot know the cause of a later abort for certain.</p>
+<p>The MoonBit host does know: its engine calls back on every refused growth, so it reports the memory limit for any failing call in which one happened. The contract requires the part both hosts can do, and lets a host that sees more report more.</p>
+<p>For .NET the rule is the one the host can observe exactly. When a call ends in a trap and the guest's memory, or the kernel's, is at its ceiling, the failure is <code>extension.memory_limit</code>. A trap carries no cause, so the host infers one from the memory. The kernel's memory counts because an Extism guest's input and output live there. Every other end keeps its own code, also at the ceiling: a failure the guest reported itself, such as an Extism error, a failure the host detected, such as a response over its limit, and a stop by the host for the budget, the deadline or a cancellation. MoonBit does the same: it reports the memory limit only for a call its engine stopped. Every failure diagnostic states the guest's memory size and the ceiling, so a guest that aborted after one large refused request is still explained: the user sees a trap at 100 MiB of a 256 MiB ceiling. A guest that handles the refusal and answers is a success.</p>
+<p>Reading a memory's size needs a handle on it, and Wasmtime gives a host a memory only through an export. Many modules do not export theirs. Most crafted modules with a memory do not, the module of <code>bounds/grow-to-ceiling-then-trap</code> among them. For such a module the host compiles a copy with one added export entry, the memory under the name <code>morphir:host/guest-memory</code>. The code, the memory, the classification and the digest in every report are the original's, and a module that exports its memory runs unchanged. The maintainer accepted this on 9 November 2026.</p>
+<p><em>Alternatives.</em> Treat any trap as a possible memory failure: it would mislabel ordinary guest bugs. Rewrite the module's code to report failed growth: it changes what the guest executes, so the digest in every report would no longer describe it. The added export changes no instruction and is not that. Require every guest to export its memory: published bundles and the crafted corpus would both have to change for a host's convenience.</p>
+
+<p class="stage">Stage 9. The same executable must work on another machine</p>
+<h3 id="pkg-1">PKG-1. One engine version, four ways to carry its native library</h3>
+<p>Everything so far is the same code in all four offerings. Packaging is where they differ, and where a run in the build directory proves nothing.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Offering</th><th>How the engine arrives</th><th>Still to prove</th></tr></thead>
+<tbody>
+<tr><td><code>native-aot</code></td><td>The engine's static library is linked into <code>morphir</code>. The build downloads the C API archive for the platform and checks its SHA-256. Its version must equal the managed package's.</td><td>Nothing for the link itself. Task 5.1 linked the engine statically on all six platforms, each on its own runner, and ran the executable alone in an empty directory. The released executable must be linked the same way before an offering claims single-file delivery (tasks 5.2 and 5.3).</td></tr>
+<tr><td><code>self-contained</code></td><td>The native library ships inside the single file and is extracted on first run.</td><td>Extraction on a clean machine with a read-only install directory.</td></tr>
+<tr><td><code>framework-dependent</code></td><td>The native library sits beside <code>morphir</code> in a platform-specific archive.</td><td>That the archive for each platform holds the matching library.</td></tr>
+<tr><td><code>dotnet-tool</code></td><td>See PKG-2.</td><td>See PKG-2.</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Platform</th><th>Runner</th><th>Static executable, bytes</th></tr></thead>
+<tbody>
+<tr><td>linux-x64</td><td>ubuntu-24.04</td><td>21,511,576</td></tr>
+<tr><td>linux-arm64</td><td>ubuntu-24.04-arm</td><td>18,222,520</td></tr>
+<tr><td>osx-x64</td><td>macos-15-intel</td><td>20,088,952</td></tr>
+<tr><td>osx-arm64</td><td>macos-15</td><td>17,354,608</td></tr>
+<tr><td>win-x64</td><td>windows-2025</td><td>19,913,728</td></tr>
+<tr><td>win-arm64</td><td>windows-11-arm</td><td>16,028,672</td></tr>
+</tbody></table></div>
+<p>These are the Native AOT probe from <a href="https://github.com/finos/morphir-dotnet/actions/runs/42801833498">the task 5.1 run</a> in finos/morphir-dotnet, linked against the C API archives of Wasmtime <code>v50.0.1</code>, pinned by SHA-256. Each ran the Python <code>0.6.0</code> guest with no engine library beside it, and the publish reported no IL2026 or IL3050 warning. The static executable is smaller than the dynamic pair: on win-arm64 the executable and <code>wasmtime.dll</code> together are 22,821,888 bytes.</p>
+<p>If static linking fails on a later platform or engine version, that platform ships the library beside the AOT executable and its release metadata stops claiming single-file delivery there. The spec makes this an explicit, visible outcome. It does not block the release. Linux musl is unchanged: the managed package has no musl native asset, and nobody has tried the musl C API archives.</p>
+<p>At start-up the host does not touch the engine. The first command that needs a WASM extension, or the runtime report, probes for it once and turns a missing or unloadable library into <code>extension.runtime_unavailable</code> with a reason. Commands that never use WASM pay nothing and cannot be broken by a packaging fault.</p>
+<p><em>Alternative.</em> A separately installed runtime component that the host downloads when first needed. It keeps the base executable small, but it makes a build depend on the network, which <code>add-deployment-and-acquisition</code> rules out for ordinary commands.</p>
+
+<h3 id="pkg-2">PKG-2. The tool becomes platform-specific, with a fallback package that has no engine</h3>
+<p><code>Morphir.Tool</code> is one platform-neutral package today. A native library forces platform-specific packages: one per supported platform, plus the pointer package that <code>dotnet tool install</code> resolves. Left there, a user on Linux musl could no longer install the tool at all, and they would lose commands that never needed WASM.</p>
+<p>The package set therefore includes a platform-neutral fallback with no engine. On a platform without its own package the tool installs, every existing command works, and the runtime report lists <code>wasm</code> as unavailable.</p>
+<p><em>Assumption to verify.</em> .NET 10 platform-specific tools accept an <code>any</code> fallback package alongside the specific ones. Task 5.4 checks this against the SDK the repository pins. If the SDK cannot do it, the change keeps a second, neutral package identity for those platforms and does not drop them.</p>
+
+<p class="stage">Stage 10. Someone has to check all of this</p>
+<h3 id="wrk-1">WRK-1. A worker mode with MoonBit's command shape</h3>
+<p>A conformance runner starts a host executable and speaks Content-Length framed MEP over stdio. The .NET host gains <code>morphir extension worker</code> with the arguments MoonBit's worker takes, so one invocation serves both hosts by changing the host path.</p>
+<p>The runner itself is the Rust <code>morphir mck</code> today, and it is moving to the .NET host in morphir-dotnet. This decision does not depend on where the runner lives: the worker mode is a stdio contract, and any runner that can start a process can use it. The example shows today's runner:</p>
+<pre><code class="language-console"># Proposed worker arguments, shown with today's runner. Identical to the MoonBit invocation except for the host path.
+$ morphir mck mep guest-run \
+    --kit spec/mep/mck/guest-generic-json.json \
+    --host /path/to/dotnet/morphir \
+    --host-arg extension --host-arg worker \
+    --host-arg --abi --host-arg extism-kernel-v1 \
+    --host-arg --module --host-arg /path/to/morphir-python-binding.wasm \
+    --report .dev/mep-generic-dotnet.json</code></pre>
+<p>Inside, the worker is a stream channel on one side and a WASM channel on the other, joined by the same session code product commands use. It is not a second implementation. The command is internal and marked experimental, as it is in MoonBit.</p>
+<p><em>Alternative.</em> Have the runner load the .NET runtime as a library. That ties the runner to one host, which the qualification spec forbids, and it tests a different path from the one users run. The same holds if the runner moves into morphir-dotnet: it would still drive its own host through the worker, as it drives every other.</p>
+
+<h3 id="qual-1">QUAL-1. Qualify the host with modules that misbehave on purpose</h3>
+<p>The corpus is authored as JSON in this repository. The .NET runner does not execute that JSON directly: it generates Gherkin features from it, never edited by hand, and a test requires the JSON and the features to give the same cases. On 9 November 2026 the maintainer decided that the compatibility kit as a whole moves from JSON to Gherkin. Until that move, the JSON here is the source and the features are derived from it.</p>
+<p>Running the Python guest through the worker shows the happy path. It cannot show that the host refuses a socket import or stops a loop, because the Python guest does neither. The <a href="specs/mck/wasm-host-qualification/spec.md">qualification spec</a> adds a corpus of crafted modules, each a few lines of WebAssembly text with one fault, with expectations written from the contract.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Group</th><th>Example module</th><th>Expected</th></tr></thead>
+<tbody>
+<tr><td>Classification</td><td>Imports <code>env.open_socket</code></td><td><code>extension.abi_unsupported</code>, import named, not instantiated</td></tr>
+<tr><td>Classification</td><td>Extism imports, declared as bytes</td><td><code>extension.abi_mismatch</code></td></tr>
+<tr><td>Classification</td><td>A byte-profile module on a host without that profile</td><td><code>extension.abi_unsupported</code>, profile named</td></tr>
+<tr><td>Bounds</td><td>Loops forever</td><td>Stopped by the budget or the deadline on a metering host, by the deadline otherwise, and never later than the deadline</td></tr>
+<tr><td>Bounds</td><td>Loops forever, with a budget of 1,000,000</td><td>Stopped by the budget on a metering host</td></tr>
+<tr><td>Bounds</td><td>Grows to the ceiling in halving steps, then traps</td><td><code>extension.memory_limit</code></td></tr>
+<tr><td>Sandbox</td><td>Calls <code>http_request</code>, returns the result</td><td>URL recorded as guest output, call stopped, session fails</td></tr>
+<tr><td>Sandbox</td><td>Calls WASI <code>path_open</code> on <code>/etc/passwd</code></td><td>Error code, session continues</td></tr>
+</tbody></table></div>
+<p>One limit is worth stating. A module that only computes cannot tell the budget from the deadline: on a metering host the budget always ends a busy loop first. The corpus therefore checks the property users depend on, that a runaway guest is stopped no later than its deadline, and records which bound stopped it. A metering host's deadline is observed only where the budget is not enforced.</p>
+<p>The corpus is built from text in this repository, so it needs no guest toolchain and belongs to no host. MoonBit already has crafted fixtures of its own. Adopting the shared ones is a MoonBit follow-up that this change makes possible and does not require.</p>
+
+<h3 id="cache-1">CACHE-1. No compiled-module cache on disk</h3>
+<p>Compiling the Python module takes time on every process start, and the engine can serialize compiled code to skip it. The spike recommended doing so. This design does not, yet.</p>
+<p>A serialized module is native machine code, and the engine trusts it when it loads it. A cache file that another process can write is therefore a way to run arbitrary code inside the host. Making that safe needs a cache location, an integrity check and a clean-up rule, which is a design of its own. The first delivery measures the compile time and reports it; the in-memory cache in ENG-1 covers repeated use within one process.</p>
+
+<h2 id="acceptance">Acceptance and delivery sequence</h2>
+<figure>
+<svg viewBox="0 0 760 220" role="img" aria-labelledby="seq-title seq-desc">
+<title id="seq-title">Delivery order and what it unblocks</title>
+<desc id="seq-desc">The profile contract and corpus come first. The engine with the kernel proof, then the Extism profile and sandbox, follow in the .NET host. Packaging and qualification complete the change, which then unblocks the bounded model access WASM path and deployment readiness for WASM extensions.</desc>
+<rect class="box" x="20" y="30" width="150" height="56" rx="6"/><text x="95" y="54" text-anchor="middle">1. Contract and</text><text x="95" y="72" text-anchor="middle">crafted corpus</text>
+<rect class="box" x="210" y="30" width="150" height="56" rx="6"/><text x="285" y="54" text-anchor="middle">2. Engine, channel,</text><text x="285" y="72" text-anchor="middle">kernel proof</text>
+<rect class="box" x="400" y="30" width="150" height="56" rx="6"/><text x="475" y="54" text-anchor="middle">3. Extism profile</text><text x="475" y="72" text-anchor="middle">and sandbox</text>
+<rect class="box" x="590" y="30" width="150" height="56" rx="6"/><text x="665" y="54" text-anchor="middle">4-6. Worker, packaging,</text><text x="665" y="72" text-anchor="middle">qualification</text>
+<path class="edge" d="M170 58h40M360 58h40M550 58h40"/>
+<rect class="box" x="210" y="140" width="240" height="56" rx="6"/><text x="330" y="164" text-anchor="middle">add-bounded-model-access</text><text class="small" x="330" y="182" text-anchor="middle">task 5.2: neutral WASM generator</text>
+<rect class="box" x="500" y="140" width="240" height="56" rx="6"/><text x="620" y="164" text-anchor="middle">add-deployment-and-acquisition</text><text class="small" x="620" y="182" text-anchor="middle">group 7: WASM readiness per offering</text>
+<path class="edge" d="M285 86v54M665 86v54"/>
+</svg>
+<figcaption>Figure 4. The bounded-access WASM path needs the Extism profile and the worker mode. Deployment readiness needs the packaged, qualified host.</figcaption>
+</figure>
+<p>The change is complete when:</p>
+<ol>
+<li>The generic guest kit passes through the .NET worker mode for the Python <code>0.6.0</code> guest, on the kit's model tier, with IR equal to the kit's expectations. The SDK fixture guest speaks MEP <code>0.1</code> only and is not part of this until it is rebuilt.</li>
+<li>Every crafted case for the Extism profile gives its expected observation on the .NET host, and a byte-profile module is refused by name, with the memory ceiling and call deadline reported as enforced.</li>
+<li>One published bundle from <code>.config/published-extension-bundles.toml</code> runs in both the Native AOT host and <code>dotnet-morphir</code>. This is the roadmap's own completion evidence for step 5.</li>
+<li>Each offering and platform that claims the runtime has a report produced from its released artifact on a clean machine.</li>
+<li>The Native AOT publish shows zero IL2026 and IL3050 warnings and no suppressions.</li>
+</ol>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Static linking fails on a later platform or engine version.</td><td>Task 5.1 linked all six current platforms. A platform that fails later ships the library beside the executable and says so in release metadata (PKG-1).</td></tr>
+<tr><td>The Extism kernel does not link cleanly under the AOT host, or the limiter does not cover its memory.</td><td>Task 3.1 is a proving slice with the real Python module. Failure returns KRN-1 for review before further Extism work.</td></tr>
+<tr><td>A fault in the engine's native code crashes the host process.</td><td>Accepted for product commands in exchange for start-up cost and simplicity (ENG-1). The worker mode runs the same guest out of process when isolation matters.</td></tr>
+<tr><td>The Native AOT executable grows by about 10 MB and passes the roadmap's 20 MB guideline.</td><td>The PRD already states that size alone does not reject a native runtime. Size per offering is reported from shipped files. A slimmer engine build is an open question.</td></tr>
+<tr><td>The fuel budget is too small or too large for real generators, because the numbers come from another engine.</td><td>Task 2.4 measures the published guests' fuel use on the kit package and records it. The contract keeps the unit engine-defined, so .NET can change its value without a contract change.</td></tr>
+<tr><td>A guest aborts after a large refused allocation and is reported as a trap, not a memory limit.</td><td>BND-2 reports memory size and ceiling on every failure, so the cause is visible even when the code is <code>extension.guest_trap</code>.</td></tr>
+<tr><td>Changing <code>Morphir.Tool</code> to platform-specific packages breaks an installation path.</td><td>PKG-2 keeps a fallback package. Task 5.4 tests install, update and uninstall from a local feed on a supported and an unsupported platform before release.</td></tr>
+<tr><td>A user points the .NET host at the Gleam <code>0.4.0</code> module and it does not run.</td><td>The refusal names the profile and says the host runs Extism modules. The runtime report lists the profiles it supports. The Gleam release on Extism removes the case.</td></tr>
+<tr><td>A guest advertises notifications and mishandles them.</td><td>NTF-1 fails the session when a notification produces output. The crafted corpus has a case for it.</td></tr>
+<tr><td>The .NET host and MoonBit drift after this change.</td><td>Both qualify against one contract and one corpus. A difference shows as a failed case in one report.</td></tr>
+<tr><td>Compiling a large module on every start makes short commands slow.</td><td>Measured and reported in task 2.5. Persistent caching is deferred with its security constraint recorded (CACHE-1).</td></tr>
+</tbody></table></div>
+
+<h2 id="migration">Migration and rollback</h2>
+<p>Nothing existing changes behavior. Process guests keep their stream channel, and no configuration key changes meaning. The runtime is reachable only through the experimental worker mode until a product command adopts it, so a release can ship the runtime before any user-facing command depends on it.</p>
+<p>The tool packaging change is the one step users can notice. It ships with release notes and updated installation guidance in the same release, as the PRD requires. Rollback is to publish the next release with the previous single package; the fallback package keeps the tool installable in the meantime.</p>
+<p><strong>Retiring the byte profile.</strong> The shared contract marks <code>morphir-bytes-v1</code> as transitional from <code>0.1.0-draft.1</code>: a host may run it, no new host has to, and no new guest should target it. The order is: the Gleam extension, the MoonBit portable guest and the Elm preview each ship on Extism; the MoonBit host then removes its byte adapters and the contract drops the profile in its next draft. The crafted byte-profile cases stay in the corpus until then and apply only to a host that declares the profile. Each of those steps is tracked in its own repository and none gates this change.</p>
+<p>There is no switch that turns the runtime off. An engine defect found after release is fixed by a patch release. Until then a user avoids it by not configuring a WASM extension: nothing else in the CLI loads the engine, so every other command is unaffected.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<p>None of these changes the specs or the task breakdown.</p>
+<ul>
+<li>Should loading errors have codes? A file that cannot be read, a file that is not a WASM module and a declared digest that differs have no <code>extension.*</code> code in the contract. A worker reports the first two as fault <code>failure</code> before <code>started</code>, and a host session reports all three with a diagnostic only.</li>
+<li>Is a slimmer engine build, without the compiler features Morphir never uses, worth maintaining? The spike did not measure one.</li>
+<li>What location, integrity check and clean-up rule would make an on-disk compiled-module cache safe (CACHE-1)?</li>
+<li>Should the worker mode become a documented public command once a second host uses the same shape? finos/morphir-moonbit#297 asks the same of MoonBit.</li>
+<li>Should a guest be able to send the host a notification, such as <code>morphir.progress</code>? It needs a new function in <code>extism:host/user</code>, and a module that imports it would be refused by hosts on the current contract (NTF-1). The same holds for the reserved <code>poll</code> delivery, which would let a guest see <code>$/cancelRequest</code> during a call.</li>
+<li>When the roadmap's host grants are designed, do they belong in the shared profile contract or stay host-specific?</li>
+</ul>
+
+<h2 id="references">References</h2>
+<ul>
+<li>morphir-dotnet: <code>docs/content/contributing/design/prds/morphir-extension-model.md</code> and <code>docs/content/contributing/design/spikes/extension-model/wasm-runtime.md</code>, read at <code>b1f4e19</code>.</li>
+<li>morphir-moonbit: <code>openspec/changes/host-extensions-as-workers/specs/extensions/wasm-workers/spec.md</code> and <code>pkgs/morphir-host/worker/wasm/</code>, read at <code>28271c6</code>.</li>
+<li>morphir-rust: <code>crates/morphir-host-native/src/extism/</code>, read at <code>extension/rust/v0.4.0-2</code>.</li>
+<li>This repository: <code>spec/mep/mck/README.md</code>, <code>openspec/specs/mep/generic-guest-profile/spec.md</code>, <code>.config/published-extension-bundles.toml</code>.</li>
+<li>Wasmtime C API, <code>wasmtime/store.h</code>: <code>wasmtime_store_limiter</code> takes numeric limits and has no growth callback.</li>
+<li>Sibling changes: <a href="../add-bounded-model-access/proposal.md">add-bounded-model-access</a>, <a href="../add-deployment-and-acquisition/proposal.md">add-deployment-and-acquisition</a>.</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="215" viewBox="0 0 760 215" role="img" aria-labelledby="title desc">
+  <title id="title">AOT does not prevent F# workflows</title>
+  <desc id="desc">The Native AOT morphir host orchestrates the workflow. It sends source to the F# frontend process, which carries its own runtime and compiler services and returns Morphir IR for a declared model tuple. A built-in or process F# backend produces F# source. The host never loads compiler-service assemblies.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#475569"/></marker></defs>
+  <rect width="760" height="215" rx="16" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#172554" font-size="16">
+    <rect x="10" y="25" width="180" height="65" rx="10" fill="#172554"/>
+    <text x="100" y="52" font-weight="700" fill="#ffffff">AOT morphir</text><text x="100" y="75" fill="#ffffff">Orchestrate workflow</text>
+    <rect x="285" y="25" width="200" height="65" rx="10" fill="#fef3c7" stroke="#a16207" stroke-width="2"/>
+    <text x="385" y="52" font-weight="700">F# frontend process</text><text x="385" y="75">Own runtime + FCS</text>
+    <rect x="570" y="25" width="180" height="65" rx="10" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+    <text x="660" y="52" font-weight="700">Morphir IR</text><text x="660" y="75">Declared model tuple</text>
+    <rect x="285" y="135" width="200" height="55" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+    <text x="385" y="158" font-weight="700">F# backend</text><text x="385" y="179">Built-in or process</text>
+    <g fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)">
+      <path d="M190 57 H279"/><path d="M485 57 H564"/><path d="M660 90 V162 H491"/><path d="M285 162 H100 V96"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "doctor",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "unsupported-artifact",
+      "code": "unsupported_artifact",
+      "severity": "error",
+      "message": "No native-aot host artifact exists for linux-musl-x64.",
+      "component": {
+        "role": "host",
+        "implementation": "dotnet",
+        "deployment": "native-aot"
+      },
+      "platform": "linux-musl-x64",
+      "alternatives": [
+        {
+          "implementation": "dotnet",
+          "deployment": "native-aot",
+          "platform": "linux-x64"
+        }
+      ]
+    },
+    {
+      "kind": "missing-prerequisite",
+      "code": "missing_prerequisite",
+      "severity": "error",
+      "message": "The framework-dependent host needs Microsoft.NETCore.App 10.x.",
+      "component": {
+        "role": "host",
+        "implementation": "dotnet",
+        "deployment": "framework-dependent"
+      },
+      "prerequisite": {
+        "kind": "runtime",
+        "name": "Microsoft.NETCore.App",
+        "versions": [
+          ">=10.0.0",
+          "<11.0.0"
+        ]
+      },
+      "alternatives": [
+        {
+          "implementation": "dotnet",
+          "deployment": "self-contained",
+          "platform": "win-x64"
+        }
+      ]
+    },
+    {
+      "kind": "trust-failure",
+      "code": "metadata_expired",
+      "severity": "error",
+      "message": "Timestamp metadata has expired.",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "role": "timestamp",
+      "mirror": "file:///srv/mirror"
+    },
+    {
+      "kind": "offline-content-unavailable",
+      "code": "offline_content_unavailable",
+      "severity": "error",
+      "message": "The locked F# frontend archive is not in the verified local store. Run morphirup restore --locked with network access.",
+      "component": {
+        "role": "provider",
+        "operation": "compile",
+        "language": "fsharp"
+      },
+      "target": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "kind": "ownership-conflict",
+      "code": "ownership_conflict",
+      "severity": "error",
+      "message": "Morphir.Tool is owned by dotnet tool; update it with the dotnet tool mechanism.",
+      "component": {
+        "role": "host",
+        "implementation": "dotnet",
+        "deployment": "dotnet-tool"
+      },
+      "ownership": {
+        "kind": "dotnet-tool",
+        "packageId": "Morphir.Tool",
+        "scope": "global"
+      },
+      "instruction": [
+        "dotnet",
+        "tool",
+        "update",
+        "--global",
+        "Morphir.Tool"
+      ]
+    },
+    {
+      "kind": "readiness-failed",
+      "code": "readiness_failed",
+      "severity": "error",
+      "message": "The host and frontend share no operation/model tuple.",
+      "component": {
+        "role": "provider",
+        "operation": "compile",
+        "language": "fsharp"
+      },
+      "check": "capability",
+      "readiness": "integrity-verified"
+    },
+    {
+      "kind": "unsupported-contract",
+      "code": "unsupported_contract_version",
+      "severity": "error",
+      "message": "This manager reads toolchain requests 0.1.0-draft.1 only.",
+      "document": "request",
+      "path": "schemaVersion"
+    },
+    {
+      "kind": "selection-unavailable",
+      "code": "generation_not_installed",
+      "severity": "error",
+      "message": "The project lock names a generation that is not installed.",
+      "source": {
+        "kind": "project",
+        "path": "C:\\Users\\fixture\\src\\loans\\.morphir\\toolchain.toml"
+      },
+      "instruction": [
+        "morphirup",
+        "restore",
+        "--locked"
+      ]
+    },
+    {
+      "kind": "lock-binding",
+      "code": "request_changed",
+      "severity": "error",
+      "message": "The request changed since the lock was written. Run an explicit setup or update.",
+      "document": "lock",
+      "path": "requestSha256",
+      "instruction": [
+        "morphirup",
+        "setup",
+        "--yes"
+      ]
+    },
+    {
+      "kind": "unsupported-artifact",
+      "code": "abi_unavailable",
+      "severity": "error",
+      "message": "The preferred backend needs the extism-kernel-v1 WASM ABI, which this host does not support.",
+      "component": {
+        "role": "provider",
+        "operation": "generate",
+        "target": "example"
+      },
+      "platform": "win-x64",
+      "abi": "extism-kernel-v1"
+    }
+  ]
+}

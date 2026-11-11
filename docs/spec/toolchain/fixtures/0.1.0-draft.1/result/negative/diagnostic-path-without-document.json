@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "setup",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "unsupported-artifact",
+      "severity": "error",
+      "code": "unsupported_artifact",
+      "message": "No provider in the recipe matches the second provider choice of the request.",
+      "component": {
+        "role": "provider",
+        "operation": "generate",
+        "target": "fsharp"
+      },
+      "platform": "win-x64",
+      "path": "toolset.providers[1]"
+    }
+  ]
+}

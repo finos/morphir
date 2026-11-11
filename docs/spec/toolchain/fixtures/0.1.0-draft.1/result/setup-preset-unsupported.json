@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "setup",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "unsupported-artifact",
+      "severity": "error",
+      "code": "unsupported_artifact",
+      "message": "The recipe is for the elm preset, and the request asks for fsharp.",
+      "component": {
+        "role": "host",
+        "implementation": "dotnet",
+        "deployment": "native-aot"
+      },
+      "platform": "win-x64",
+      "document": "request",
+      "path": "toolset.preset"
+    }
+  ]
+}

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>add-bounded-model-access</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --doc-muted: #526071; --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) { :root { --bg: #111827; --fg: #e5e7eb; --doc-muted: #b0bdce; --line: #475569; --panel: #1e293b; --link: #8cc8ff; } }
+* { box-sizing: border-box; }
+html, body { background: transparent; }
+body { margin: 0; color: var(--foreground, var(--fg)); font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: 0; }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h1 { font-size: 1.8rem; }
+h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--border, var(--line)); padding-bottom: .4rem; }
+h3 { margin-top: 2rem; }
+a { color: var(--link); }
+a:focus-visible, summary:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta, figcaption { color: var(--muted-foreground, var(--doc-muted)); }
+.toc, pre, details { background: var(--secondary, var(--panel)); border: 1px solid var(--border, var(--line)); border-radius: .4rem; padding: 1rem; }
+.toc ul { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; list-style: none; margin: 0; padding: 0; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; white-space: pre-wrap; } pre code { overflow-wrap: anywhere; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--border, var(--line)); padding: .6rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+figure { margin: 1.3rem 0; }
+figcaption { font-size: .9rem; margin-top: .5rem; }
+.journey { display: grid; grid-template-columns: minmax(250px, 360px) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+svg { display: block; width: 100%; max-width: 360px; height: auto; color: var(--foreground, var(--fg)); }
+svg text { fill: currentColor; font: 15px system-ui, sans-serif; text-anchor: middle; }
+svg .node { fill: var(--secondary, var(--panel)); stroke: var(--border, var(--line)); stroke-width: 1.5; }
+svg .edge { fill: none; stroke: currentColor; stroke-width: 1.5; }
+svg .life { stroke: var(--border, var(--line)); stroke-dasharray: 4 5; }
+.step { color: var(--muted-foreground, var(--doc-muted)); font-weight: 500; }
+summary { font-weight: 500; cursor: pointer; }
+details { margin: 1rem 0; }
+@media (max-width: 700px) { .journey { grid-template-columns: 1fr; gap: .5rem; } h1 { font-size: 1.5rem; } th, td { padding: .4rem; } }
+@media print { main { max-width: none; padding: 0; } pre, tr, figure { break-inside: avoid; } details { display: block; } }
+</style>
+</head>
+<body>
+<main>
+<h1>add-bounded-model-access</h1>
+<p class="meta">OpenSpec design | 2026-11-09 | proposed for review | .NET and MoonBit first</p>
+<p>Follow <code>acme/orders</code> from a completed compile to installed generated files. The package can grow beyond a WASM guest's memory ceiling; each stage still knows where its inputs live, which revision it is reading and how much work it can retain.</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#context">Context</a></li><li><a href="#goals">Goals and boundaries</a></li><li><a href="#decisions">The generation journey</a></li><li><a href="#risks">Risks and trade-offs</a></li><li><a href="#migration">Delivery and rollback</a></li><li><a href="#open-questions">Remaining tuning</a></li><li><a href="#references">References</a></li>
+</ul></nav>
+
+<h2 id="context">Context</h2>
+<p>See <a href="proposal.md">the proposal</a> for motivation and scope. The existing v3.1 and v4 JSON/YAML document-tree contracts already settle paths, escaped names, dependency directories and file roles. This design changes how implementations consume those artifacts and adds an opt-in contextual encoding.</p>
+<p>At the inspected revisions, Rust's tree source assembles the full tree before replaying events. MoonBit's reader accepts a map of every file's text. .NET's Ion tree reader opens individual files but returns a complete distribution. These are useful starting points, not evidence of bounded large-model generation.</p>
+<p><strong>Agreed direction:</strong> generation first, the configured workspace out root, file contexts, reversible compaction, .NET/MoonBit conformance first, and measured investigation of indexed lookup. <strong>Proposed mechanics:</strong> the envelope below, resumable access sessions, exact draft identifiers and qualification protocol. These remain reviewable choices.</p>
+<table><thead><tr><th>Term</th><th>Meaning in this design</th></tr></thead><tbody>
+<tr><td>Distribution</td><td>The logical IR package and dependency context, interpreted under an explicit semantic version.</td></tr>
+<tr><td>Snapshot</td><td>One fixed model revision, dependency context and document inventory.</td></tr>
+<tr><td>Read lease</td><td>The lifetime during which the host keeps the snapshot's backing artifacts available and unchanged.</td></tr>
+<tr><td>Node / document / location</td><td>A semantic identity, an extensionless logical document identity, and a physical storage location, respectively.</td></tr>
+<tr><td>Context</td><td>A file-local collection of typed, fully expanded name tables.</td></tr>
+<tr><td>Access session</td><td>A finite generation operation advancing through bounded exchanges.</td></tr>
+</tbody></table>
+
+<h2 id="goals">Goals and boundaries</h2>
+<p>A caller can generate from supported v3.1 and v4 trees while retaining a bounded working set. Both host and guest are measured. Artifact outputs, inventories and indexes also have limits; moving the body to disk does not excuse an unbounded symbol map or output buffer.</p>
+<p>The first gate covers native .NET and native MoonBit hosts, their in-process reader paths and a shared WASM generation fixture on each host. The same contracts admit later hosts. Evaluation, a live daemon, retained build generations, shared context imports and arbitrary subexpression splitting are later work. Frontend document-batch publication has a defined boundary but is not a first-delivery implementation claim.</p>
+
+<h2 id="decisions">The generation journey</h2>
+
+<h3 id="out-1">OUT-1. Start with a producer's result</h3>
+<p class="step">1. Compilation has finished. The generator finds the product.</p>
+<div class="journey"><figure>
+<svg viewBox="0 0 340 380" role="img" aria-labelledby="out-title out-desc">
+<title id="out-title">Artifacts move between recorded task stages</title><desc id="out-desc">Compile result identifies its document tree. A snapshot reader supplies bounded batches to a generator, which stages its own products before install.</desc>
+<defs><marker id="arrow-out" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="currentColor"/></marker></defs>
+<rect class="node" x="20" y="10" width="300" height="56" rx="6"/><text x="170" y="34">compile.json</text><text x="170" y="54">IR artifact descriptor</text>
+<path class="edge" d="M170 66 V94" marker-end="url(#arrow-out)"/>
+<rect class="node" x="20" y="95" width="300" height="56" rx="6"/><text x="170" y="120">compile.dest/morphir-ir/</text><text x="170" y="140">snapshot reader + lease</text>
+<path class="edge" d="M170 151 V179" marker-end="url(#arrow-out)"/>
+<rect class="node" x="20" y="180" width="300" height="56" rx="6"/><text x="170" y="205">bounded generation</text><text x="170" y="225">input pages and output chunks</text>
+<path class="edge" d="M170 236 V264" marker-end="url(#arrow-out)"/>
+<rect class="node" x="20" y="265" width="300" height="56" rx="6"/><text x="170" y="290">generate/example.dest/</text><text x="170" y="310">staged products + bookkeeping</text>
+<path class="edge" d="M170 321 V349" marker-end="url(#arrow-out)"/><text x="170" y="371">successful result, then install</text>
+</svg><figcaption>The out root is resolved once. The producer record, rather than a guessed filename, selects the stage input.</figcaption></figure>
+<div><p>The established Mill-style task convention gives each task a destination and a result record. Zig's install distinction also matters: working artifacts live under the out root; <code>-o</code> installs selected products elsewhere. Bazel's declared-artifact model informs the explicit dependency between stages, without adding a new build engine.</p>
+<pre><code class="language-console">&lt;out&gt;/packages/orders/
+  compile.json
+  compile.dest/morphir-ir/manifest.json
+  compile.dest/morphir-ir/pkg/acme/orders/domain/
+    module.json
+    order.type.json
+    total.value.json
+  generate/example.json
+  generate/example.dest/</code></pre>
+<p>Follow the existing precedence: flag, environment, workspace setting, default. Use the declared workspace-member path even when its sources are reached through a supported symlink. Definition paths keep the existing escaping and bare <code>@</code> dependency segment.</p>
+<p><strong>Alternative:</strong> scanning a conventional compile folder is convenient but can consume stale files or the wrong transform output. A result record supplies provenance and the IR descriptor. A tombstone means no usable product.</p></div></div>
+<p>Observable requirements: <a href="specs/ir/model-snapshots/spec.md">model snapshots</a>.</p>
+
+<h3 id="snap-1">SNAP-1. Keep that revision alive through the last read</h3>
+<p class="step">2. The first page is small, but the generator will ask for more later.</p>
+<p>The host takes the producer's shared task lock before reading its record and retains it until generation completes, fails or cancels. A competing compile waits for the exclusive lock. The lifetime must span all lazy reads, not only initial discovery.</p>
+<figure><svg viewBox="0 0 340 240" role="img" aria-labelledby="lease-title lease-desc">
+<title id="lease-title">Read lease prevents a producer from clearing active input</title><desc id="lease-desc">Open and each later read keep the shared lease. The next compile waits until release.</desc>
+<defs><marker id="arrow-lease" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="currentColor"/></marker></defs>
+<path class="edge" d="M40 40 V205" marker-end="url(#arrow-lease)"/><text x="180" y="30">shared lease remains held</text>
+<rect class="node" x="70" y="50" width="245" height="38" rx="5"/><text x="192" y="75">open and read first page</text>
+<rect class="node" x="70" y="103" width="245" height="38" rx="5"/><text x="192" y="128">read later definition batches</text>
+<rect class="node" x="70" y="156" width="245" height="38" rx="5"/><text x="192" y="181">finish or cancel: release</text>
+<text x="185" y="225">waiting compile can now rerun</text>
+</svg><figcaption>Current task destinations are reusable scratch locations. Their paths alone are not immutable snapshot identities.</figcaption></figure>
+<p>Explicit mutable directory inputs need a bounded capture into task-owned storage or equivalent immutable backing. Integrity checks must identify changed sources rather than mixing revisions. A trusted digest or stable captured bytes can bind the inventory; a byte digest does not certify semantic validity.</p>
+<p><strong>Alternative:</strong> retained content-addressed build generations allow concurrent recompilation, but require retention and garbage-collection policy. Start with the existing lock lifecycle, leaving that optimization for a later change.</p>
+
+<h3 id="read-1">READ-1. Ask for documents, not the complete distribution</h3>
+<p class="step">3. The generator visits the model in pages and releases bodies.</p>
+<p>The host provides a pure version-specific decoder behind an effectful reader. The reader pages through module/member inventory and reads selected logical documents. The guest retains only its bounded working set. Oversized inventories spill to disk; they do not move into a single ever-growing map.</p>
+<pre><code class="language-console">inspect(snapshot)                 -&gt; distribution description
+listModules(snapshot, page)       -&gt; bounded page + continuation
+listMembers(snapshot, module, page) -&gt; bounded page + continuation
+readDocuments(snapshot, ids)      -&gt; bounded document batch
+release(snapshotLease)            -&gt; backing resources can retire</code></pre>
+<p>These are conceptual operations, not prescribed language classes or final RPC methods. The role distinction between a type, a value, a definition and a specification remains typed. Existing semantic node addresses remain independent of document stems and aliases.</p>
+<p>A structural pass can validate every file under bounded memory before generation. Opening an inventory alone cannot claim that unread bodies are valid. Semantic prerequisites are separate evidence tied to the exact revision and dependency context.</p>
+<p><strong>Alternative:</strong> assembling a full distribution is useful as a compatibility convenience for small inputs, but cannot satisfy this resource contract. A single huge inline module or definition can also exceed a bound; reject it precisely rather than silently inventing subexpression chunks.</p>
+
+<h3 id="name-1">NAME-1. Give each document an independently usable context</h3>
+<p class="step">4. Repeated SDK references use one typed local alias.</p>
+<p>The proposed contextual-document envelope has its own exact <code>contextVersion: 0.1.0-draft.1</code>. Its <code>document</code> holds an existing file-kind payload. Expansion removes the envelope and restores that payload's version-specific name spelling before ordinary validation.</p>
+<pre><code class="language-json">{
+  "contextVersion": "0.1.0-draft.1",
+  "context": {"fqNames": {"q0": "morphir/SDK:basics#int"}},
+  "document": {
+    "formatVersion": 4,
+    "name": "amount",
+    "def": {"Public": {"TypeAliasDefinition": {
+      "typeParams": [],
+      "typeExp": {"Reference": {"fqname": {"$name": "q0"}}}
+    }}}
+  }
+}</code></pre>
+<p>The expanded type reference is <code>{"Reference":{"fqname":"morphir/SDK:basics#int"}}</code>. The same table spelling can resolve to classic arrays in a typed v3 FQName position. The enclosing document still obeys v3 semantics.</p>
+<figure><svg viewBox="0 0 340 270" role="img" aria-labelledby="names-title names-desc">
+<title id="names-title">Compaction preserves the typed model</title><desc id="names-desc">An expanded typed document compacts into a contextual representation and expands back to equivalent typed content. Original and compact bytes have separate digests.</desc>
+<defs><marker id="arrow-names" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="currentColor"/></marker></defs>
+<rect class="node" x="20" y="10" width="300" height="44" rx="5"/><text x="170" y="38">expanded typed document</text>
+<path class="edge" d="M170 54 V100" marker-end="url(#arrow-names)"/><text x="232" y="82">compactNames</text>
+<rect class="node" x="20" y="102" width="300" height="44" rx="5"/><text x="170" y="130">context + alias references</text>
+<path class="edge" d="M170 146 V192" marker-end="url(#arrow-names)"/><text x="231" y="174">expandNames</text>
+<rect class="node" x="20" y="194" width="300" height="44" rx="5"/><text x="170" y="222">equivalent typed document</text>
+<text x="170" y="263">semantic identity stays stable</text>
+</svg><figcaption>Round-trip equality preserves attributes and meaningful ordering. Representation digests still cover the actual bytes.</figcaption></figure>
+<p>Tables distinguish Names, package paths, module paths and FQNames. Entries contain fully expanded validated spellings. Alias references only occur in typed value positions; name-keyed map keys remain expanded in draft.1. A document literal containing <code>{"$name":"q0"}</code> is just a document literal.</p>
+<p>A deterministic writer policy sorts typed spellings, allocates stable aliases and accounts for the encoded cost of every table and reference. It keeps a name expanded when aliasing increases size. The little example above illustrates syntax, not a measured saving.</p>
+<p><strong>Alternatives:</strong> prefix aliases can shorten FQNames but do not address repeated complete identities uniformly. Shared tables can improve tiny-file overhead but add retrieval dependencies. Begin with file-local tables, no remote context loading, no shadowing and no alias chains. Ion symbol tables are a codec optimization for symbols; repeated string-valued FQNames need separate treatment.</p>
+<p>Observable requirements and the full worked example: <a href="specs/ir/name-compaction/spec.md">name compaction</a>.</p>
+
+<h3 id="mep-1">MEP-1. Resume the operation between bounded calls</h3>
+<p class="step">5. The WASM guest requests a working set and returns output chunks.</p>
+<div class="journey"><figure><svg viewBox="0 0 340 435" role="img" aria-labelledby="session-title session-desc">
+<title id="session-title">Host-mediated resumable generation</title><desc id="session-desc">The host starts the guest, receives requests, reads the snapshot, delivers a batch, stages output chunks and repeats until completion.</desc>
+<defs><marker id="arrow-session" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="currentColor"/></marker></defs>
+<text x="65" y="24">Host</text><text x="275" y="24">Guest</text><path class="life" d="M65 40 V420 M275 40 V420"/>
+<text x="170" y="61">start(snapshot, bounds)</text><path class="edge" d="M65 73 H275" marker-end="url(#arrow-session)"/>
+<text x="170" y="111">continue: request page</text><path class="edge" d="M275 123 H65" marker-end="url(#arrow-session)"/>
+<rect class="node" x="10" y="145" width="190" height="38" rx="5"/><text x="105" y="170">read snapshot on disk</text>
+<text x="170" y="212">advance: bounded batch</text><path class="edge" d="M65 224 H275" marker-end="url(#arrow-session)"/>
+<text x="170" y="262">continue: output + requests</text><path class="edge" d="M275 274 H65" marker-end="url(#arrow-session)"/>
+<rect class="node" x="10" y="296" width="190" height="38" rx="5"/><text x="105" y="321">stage chunks; repeat</text>
+<text x="170" y="365">complete: close all artifacts</text><path class="edge" d="M275 377 H65" marker-end="url(#arrow-session)"/>
+<text x="170" y="415">publish success; release lease</text>
+</svg><figcaption>Every call can return before the next begins. No new nested WASM callback is needed.</figcaption></figure>
+<div><p>Use a new exact MEP draft, proposed as <code>0.2.0-draft.2</code>, with access contract <code>0.1.0-draft.1</code>. Existing <code>0.1</code> and <code>0.2.0-draft.1</code> exchanges keep their meaning. The canonical Gleam/Smithy contract and transcripts must fix final wire fields before SDK implementation.</p>
+<p>Negotiate complete tuples including operation, semantic IR version, codec, model profile, layout, contextual encoding and access version. The host keeps preference order. A missing default is harmless when another offered tuple agrees; a required bounded mode is not silently downgraded.</p>
+<p>The result is a tagged sum: <code>continue</code>, <code>complete</code> or <code>failed</code>. Continue carries bounded requests, chunks and diagnostics. Deliveries match request ids, snapshot identity and expected round. No stale response can append artifacts twice.</p>
+<p><strong>Alternative:</strong> reverse JSON-RPC calls or imported WASM host functions can expose a pull API directly, but add ABI and re-entry obligations. Resumable exchanges work with the existing byte-call shape. In-process adapters can expose the same behavior as an ordinary reader.</p></div></div>
+<details><summary>Limits, artifacts and compatibility</summary>
+<table><thead><tr><th>Bound</th><th>What it constrains</th></tr></thead><tbody>
+<tr><td>Frame and batch</td><td>Outer encoded bytes, decoded bytes, documents, contexts, depth, nodes and diagnostics, checked before oversized allocation.</td></tr>
+<tr><td>Resident state</td><td>Decoded bodies, retained names, contexts, inventories, indexes and artifact buffers. Host caches and guest state are measured separately.</td></tr>
+<tr><td>Cumulative operation</td><td>Total work, disk use, rounds and elapsed time. These remain finite while allowing model bytes to exceed resident memory.</td></tr>
+<tr><td>Artifact chunk</td><td>Safe relative path, contiguous offset, encoding, end marker and per-file/aggregate output allowances.</td></tr>
+</tbody></table>
+<p>Stage chunks under the generation task. The host builds its file ledger incrementally on disk. It admits complete only when artifacts are closed and required validation passes. Failure leaves the task tombstoned and never installs partial products. Previously installed outputs follow the existing install contract; the previous mutable task destination is not promised to survive a rerun.</p>
+<p>A small legacy-compatible model can still use a supported operation within its limits, with a protocol-fallback diagnostic. That run does not establish bounded-session qualification. Lossy conversion follows existing explicit permission and reporting rules, and converted revisions cannot inherit evidence automatically.</p>
+<p>The future frontend path emits document batches into a host-owned stage and publishes a model descriptor only after complete. It reuses artifact ownership and validation rules; implementing it is outside the first generation gate.</p>
+</details>
+<p>Observable requirements: <a href="specs/mep/model-access-sessions/spec.md">model access sessions</a>.</p>
+
+<h3 id="idx-1">IDX-1. Prove whether indexes avoid reading bodies</h3>
+<p class="step">6. Ask which definitions reference an SDK name.</p>
+<p>A dictionary answers what an alias means. It does not prove where it occurs, or that a fully spelled reference is absent. An occurrence index needs its own completeness contract. A location index needs exact source digests, byte ranges and the decoding context for each region.</p>
+<pre><code class="language-console">dictionary: q0 -&gt; morphir/SDK:basics#int
+occurrences: semantic name -&gt; definitions that use it
+locations: definition -&gt; document, range, context, source digest</code></pre>
+<p>General JSON objects remain unordered. A context-last document can require bounded spill or another pass. A separately declared streaming form requires the envelope version and context before the document. Seekable storage and independently decodable compression are also necessary for byte-range savings; a whole-file compression stream can erase that benefit.</p>
+<p><strong>Alternative:</strong> forcing context-first ordering on all existing JSON would change current acceptance rules. Keep general compatibility, explicitly negotiate streaming guarantees, and bind optional derived indexes to the exact encoded artifacts under the consuming task's destination.</p>
+<p>The experiment compares scan, dictionary-only and indexed lookup. Include cold index construction, warm reads, unused aliases, literal references, reordered fields and recompaction. One full read to build or verify an index is a real cost and must be reported. A rejected hypothesis does not block bounded generation.</p>
+
+<h3 id="mck-1">MCK-1. Let .NET and MoonBit establish the first evidence</h3>
+<p class="step">7. Run the same cases, then inspect separate receipts.</p>
+<p>The parent repository owns the corpus, frozen expected results and report contract. The kit keeps one runner. It is moving from the Rust <code>morphir mck</code> to the .NET host in morphir-dotnet, so the cases and expectations are written as data any host can consume. .NET and MoonBit supply independent adapters. Initial runner work is limited to executing and checking these cases; Rust library/host adoption is deferred.</p>
+<p>Freeze a tiny package's expected output before writing either adapter. A neutral test generator consumes signatures and body facts, including a value in the final page. Cross-host execution of the same WASM fixture has identical expected artifacts. A production generator compares its own target output across equivalent representations and only claims the paths it has qualified.</p>
+<table><thead><tr><th>Evidence</th><th>Passing observation</th></tr></thead><tbody>
+<tr><td>Representation correctness</td><td>Plain, contextual and expanded trees preserve v3/v4 semantics and produce the fixed expected artifacts.</td></tr>
+<tr><td>Resource qualification</td><td>Input bytes exceed declared host and guest memory ceilings while measured peaks, resident data and output batches remain bounded.</td></tr>
+<tr><td>Lifecycle correctness</td><td>Recompile waits for a lazy reader; cancellation releases it; stale rounds, contexts and indexes cannot change the selected revision.</td></tr>
+<tr><td>Coverage scope</td><td>Separate receipts name the .NET and MoonBit revisions, native hosts, in-process readers and WASM guest path. No claim extends to an untested host or backend.</td></tr>
+</tbody></table>
+<p><strong>Alternative:</strong> a tiny full-model round trip can establish codec correctness but not a large-model memory bound. Self-reported counters alone also cannot prove an enforced ceiling. Use host/runtime measurements, state their scope and leave unsupported measurement gates unproven.</p>
+<p>Observable requirements: <a href="specs/mck/bounded-generation/spec.md">bounded generation qualification</a>.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table><thead><tr><th>Risk</th><th>Mitigation and remaining cost</th></tr></thead><tbody>
+<tr><td>Long generation blocks recompilation.</td><td>Cancellation and leases are explicit. Retained immutable build generations can remove this contention later.</td></tr>
+<tr><td>One body or inline module is too large.</td><td>Reject it at the named document limit. A separate reviewed chunking contract would be needed to admit it.</td></tr>
+<tr><td>A generator needs a global graph.</td><td>Use bounded disk-backed indexes or declare a prerequisite the selected implementation can satisfy. The shared fixture does not qualify every algorithm.</td></tr>
+<tr><td>Tables increase small-file size or shift costs into names.</td><td>Account for table overhead, entry count and spelling length; alias only beneficial occurrences. Include compressed and uncompressed sizes in the experiment.</td></tr>
+<tr><td>Offsets or reference summaries become stale.</td><td>Bind them to exact artifact and context digests; rebuild or scan when optional indexes are invalid. Never infer completeness from dictionary presence.</td></tr>
+<tr><td>Large output or many diagnostics exhaust memory.</td><td>Bound chunks, spool ledgers, cap diagnostics and measure the complete host/guest path.</td></tr>
+<tr><td>A protocol draft is mistaken for deployed support.</td><td>Keep exact offers, generated transcripts, separate adapter receipts and explicit unsupported outcomes. Existing bare profiles remain unchanged.</td></tr>
+</tbody></table>
+
+<h2 id="migration">Delivery and rollback</h2>
+<ol>
+<li>Review these artifacts. Create the owning Beads epic after the existing shared database conflict is resolved; link discussion #214, related issue #965 and this change. No epic id was returned by the rejected local creation.</li>
+<li>Freeze the parent contract models, contextual examples, access transcripts and MCK expectations. Keep existing IR gates and the small generic guest profile.</li>
+<li>Implement .NET and MoonBit readers, name contexts and adapters in their own repositories. Keep separate issue and revision receipts. Do not update pinned parent submodules as an incidental step.</li>
+<li>Add resumable generation and disk-backed output on their native hosts, then qualify the same WASM fixture through both. Use focused failing cases before implementation and retain them as regressions.</li>
+<li>Run large resource qualification with enforced host and guest ceilings and publish the exact measurement scope. Run the index experiment independently. Reuse existing CI jobs; heavier qualification belongs in an existing manual lane or a justified manual run.</li>
+<li>Promote only the qualified tuple set. Roll back by disabling the new draft/profile offers and retaining ordinary artifacts and existing readers. Never offer an inline fallback that exceeds limits or silently discards model content.</li>
+</ol>
+<p>The implementation work breakdown is in <a href="tasks.md">tasks.md</a>. This proposal captures planning only. No implementation, merge or release is performed here.</p>
+
+<h2 id="open-questions">Remaining tuning</h2>
+<p>Batch sizes, cache budgets, the corpus scale required to exceed measured runtime baselines and the disk index's private representation can be tuned without changing the specified identities, lifecycle or equality rules. Record the chosen values in qualification receipts. Shared contexts and new subexpression chunking require later proposals rather than an undocumented implementation choice.</p>
+
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://github.com/finos/morphir/discussions/214">Discussion #214: Morphir file based layout</a>.</li>
+<li><a href="https://github.com/finos/morphir/blob/ecb3c781c3cc334821588392cf81ee1346455090/docs/design/out-directory.md">Implemented task output and install contract</a>; <a href="https://github.com/finos/morphir/blob/ecb3c781c3cc334821588392cf81ee1346455090/docs/spec/ir/schemas/v3/document-tree-files.md">v3 trees</a>; <a href="https://github.com/finos/morphir/blob/ecb3c781c3cc334821588392cf81ee1346455090/docs/spec/ir/schemas/v4/document-tree-files.md">v4 trees</a>.</li>
+<li><a href="https://github.com/finos/morphir/blob/ecb3c781c3cc334821588392cf81ee1346455090/spec/mep/model-transport.md">Existing single-document MEP transport</a>. Its draft.1 grammar does not admit document trees.</li>
+<li><a href="https://github.com/finos/morphir-dotnet/blob/14a38194d97cff711b409cba3fc93a4e2f9bfe44/src/Morphir.Ion/README.md">.NET Ion reader inspection</a>; <a href="https://github.com/finos/morphir-dotnet/blob/14a38194d97cff711b409cba3fc93a4e2f9bfe44/src/Morphir.Mep/README.md">.NET MEP layers</a>; <a href="https://github.com/finos/morphir-moonbit/blob/28271c61379523f28312f1989baed4f368722bcd/pkgs/morphir-ir/yaml/tree.mbt">MoonBit tree reader inspection</a>. These remote snapshots differ from the parent's older MoonBit pin.</li>
+<li><a href="https://www.w3.org/TR/json-ld11-api/#compaction">JSON-LD compaction</a> and <a href="https://www.w3.org/TR/json-ld11-streaming/">streaming document form</a> inform the alias and ordering distinction.</li>
+<li><a href="https://amazon-ion.github.io/ion-docs/docs/binary.html">Ion binary symbols and length-delimited values</a>; <a href="https://parquet.apache.org/docs/file-format/pageindex/">Parquet page indexes</a>. Codec dictionaries and access indexes solve different problems.</li>
+</ul>
+</main>
+</body>
+</html>

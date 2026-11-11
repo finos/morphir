@@ -1,0 +1,16 @@
+# The team prepares Windows and macOS closures and selects the external F# backend.
+schemaVersion = "0.1.0-draft.1"
+platforms = ["win-x64", "osx-arm64"]
+
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+channel = "stable"
+
+[toolset]
+preset = "fsharp"
+
+[[toolset.providers]]
+operation = "generate"
+target = "fsharp"
+delivery = "process"

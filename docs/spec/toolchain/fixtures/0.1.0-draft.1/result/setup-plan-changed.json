@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "setup",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "kind": "lock-binding",
+      "code": "plan_changed",
+      "message": "--expect-plan named another plan: the plan this setup would perform hashes to another digest. Nothing was changed.",
+      "document": "result",
+      "path": "planSha256"
+    }
+  ]
+}

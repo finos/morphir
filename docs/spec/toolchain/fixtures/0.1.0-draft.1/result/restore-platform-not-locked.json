@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "restore",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "lock-binding",
+      "severity": "error",
+      "code": "platform_not_locked",
+      "message": "The lock records no linux-x64 closure. Frozen restore changes nothing; extend the lock with an explicit setup.",
+      "document": "lock",
+      "path": "platforms",
+      "platform": "linux-x64",
+      "instruction": [
+        "morphirup",
+        "setup",
+        "--platform",
+        "linux-x64"
+      ]
+    }
+  ]
+}
