@@ -6,6 +6,22 @@ Users should be able to acquire Morphir and its language tools without assemblin
 
 ## What Changes
 
+> **User-approved delivery priority, 11 November 2026.** The next user-facing
+> milestone is a real local Windows x64 journey through the actual native
+> morphirup manager and official self-contained managed Morphir folder. An
+> explicitly supplied, digest-pinned local developer candidate is installed,
+> selected and explained, then compiles the fixed F# package and generates the
+> frozen F# output. The installed selection repeats offline with system .NET
+> unavailable. Deliver the candidate and a short exact-command walkthrough for
+> user feedback before extending breadth. The local provenance delta is the
+> separately versioned [local candidate contract](../../../docs/spec/toolchain/local-developer-candidate.md).
+> It never fabricates an authenticated recipe or production release. External
+> providers, exact portable-lock CI restore and recovery extend this same
+> working path next. All four offerings, platforms and final security and
+> acceptance requirements remain; WASM completion is not a prerequisite for
+> this managed slice. No release version, tag or production publication is
+> authorized by this sequencing change.
+
 Follow a developer who installs Morphir on a machine without .NET, selects the F# toolset, compiles a small package and generates F#. A colleague restores the checked-in toolchain selection in CI, offline after acquisition, with the same providers and exact artifact identities.
 
 ```text

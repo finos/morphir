@@ -4,6 +4,54 @@ This is the OpenSpec implementation breakdown, not an execution ledger. Beads re
 
 Dependencies: group 1 establishes contracts and fixed cases. Groups 2 and 3 can follow independently. Group 4 needs group 1 and packaged fixtures from groups 2/3. Group 5 needs generation activation from group 4. Group 6 integrates the previous groups. Group 7 consumes the separate WASM-host change and does not block the process-based F# delivery. The bounded-access readers are independent of this manager.
 
+## Next usable milestone, user-approved 11 November 2026
+
+These execution priorities preserve the final numbered requirements below.
+They do not close those requirements or turn source-built artifacts into
+production acquisition qualification. Track usable demonstrations separately
+from full acceptance. Shared Beads conflict recovery remains outstanding; no
+database repair or remote Dolt push is authorized here.
+
+- [x] U1 Inventory the actual manager and official self-contained managed host and identify the missing local install/selection/run composition. The manager currently only plans setup; the full folder profile includes runtime and FCS dependencies.
+- [ ] U2 Connect explicit local candidate setup, verified complete-folder installation, immutable receipt, atomic select, identity explanation and owned execution through existing product boundaries. Publish the small local-developer provenance contract without changing old families.
+- [x] U3 Demonstrate and retain one real empty-Home manager install/select/compile/generate regression and installed offline repeat with system .NET unavailable, fixed IR/F# expectations and exact artifact/receipt identity.
+- [ ] U4 Deliver the candidate and a short exact-command walkthrough for user feedback, marked by a cohesive implementation milestone PR and the companion parent contract/docs PR. No production release/tag or acquired-release qualification claim.
+- [ ] U5 Extend that same working journey to independent process providers, exact portable-lock CI restore and failure recovery, then complete offering/platform breadth and final acceptance.
+
+The actual native-manager journey has demonstrated empty-Home installation,
+explicit selection, fixed-source compile and generate, and the installed
+selected offline repeat with hostile PATH/runtime controls. Both IR outputs
+matched the frozen semantic IR; both generated F# files matched the frozen
+112-byte output. All 320 installed files, receipt and default selection stayed
+stable. This is local developer evidence on Windows ARM64 running AMD64
+artifacts under emulation, not acquired production-release qualification.
+
+Independent review found and then cleared the LAUNCH-A correction. The final
+launcher uses a non-inheritable kill-on-close Windows job assigned at process
+creation and awaits zero job membership before releasing the mutation lease.
+Nine ownership controls pass in Release and Debug, including cancellation,
+output failure and final-disposal provenance. The actual corrected native
+manager completed the online/offline journey. The exact PowerShell walkthrough
+also passed after quoting the literal separator through its helper function.
+Historical failures and their raw evidence remain preserved.
+
+The cohesive morphir-dotnet milestone is tracked in PR #594, with the shared
+parent local-developer contract/docs in PR #1158. The implementation checkpoint
+preserves the existing reviewed installer/acquisition history and normally
+merges current main. Seven unrelated preview-reader drafts are preserved and
+excluded. The committed checkpoint is being qualified for the PR and candidate
+handoff; source/producer head and final artifact hashes are recorded separately.
+U2's published-contract gate and U4's handoff/feedback gate remain open. U5 and all
+numbered full acquisition/platform/lifecycle acceptance below remain open.
+Resource policy: up to four agents per change, subject to the actual provider
+hard limit. Two independent focused build/test batches may use separate
+checkouts/output trees, initially two processors each and single-node MSBuild,
+with shared compilation/node reuse disabled. Full builds and AOT publishes
+remain exclusive. Refresh RAM/disk observations before batches; preserve
+12 GiB free RAM and 20 GiB free disk operating floors. Owners receive complete
+implement/test/fix batches, not new approval for every selector. Preserve
+bounded hidden execution, whole-tree termination and actual cleanup settlement.
+
 > **Ownership note added 10 November 2026.** Task numbers and texts are unchanged. Official CLI release assembly, acquired-artifact qualification and publication now run in finos/morphir (`release.yml`, `move-cli-delivery-to-umbrella`) against the pinned `ecosystem/morphir-dotnet`, so the release-assembly part of 2.5 and the release lanes of group 6 are carried out there, using morphir-dotnet's publish profiles and receipts. Groups 2 to 5 and 7 stay in morphir-dotnet.
 
 > **Integration note, 11 November 2026.** #1147's external .NET acquisition corpus job and metadata-only gates are retained. The contract-test pin stays separate from the merged #590 CLI delivery candidate; source-test success is not artifact qualification. The family-version policy from #1152 and the extension package VERIFY-B/LAUNCH-A decisions from #1151 remain controlling. Task numbers, approved texts and completion states below are unchanged by this integration.
