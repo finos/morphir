@@ -6,7 +6,7 @@ Tracking: [finos/morphir#1146](https://github.com/finos/morphir/issues/1146). Be
 
 Depends on: maintainer approval of this change, and the approval of finos/morphir#1149 (merged as a proposal at `9690dfc37`).
 
-- [ ] 1.1 Record which outcome of [VER-1](design.html#ver-1) applies. `PKGVER-A` applies if, when this change is approved, the extension state family's `0.1.0-preview.1` schemas are not yet published under `website/static/schemas/extensions/0.1.0-preview.1/` on `main`, and no released host, publisher or tool reads or writes `0.1.0-preview.1`; otherwise `PKGVER-B`. "Released" means a tagged release, a published package or a release asset. Check at least:
+- [x] 1.1 Record which outcome of [VER-1](design.html#ver-1) applies. `PKGVER-A` applies if, when this change is approved, the extension state family's `0.1.0-preview.1` schemas are not yet published under `website/static/schemas/extensions/0.1.0-preview.1/` on `main`, and no released host, publisher or tool reads or writes `0.1.0-preview.1`; otherwise `PKGVER-B`. "Released" means a tagged release, a published package or a release asset. Check at least:
   - the schema directory on `main`, and whether #1150's task 1.7 has been delivered;
   - the releases and tags of finos/morphir, finos/morphir-dotnet (and the `Morphir.Tool` NuGet package), finos/morphir-rust and the MoonBit host's repository;
   - the release assets of every repository named in `.config/published-extension-bundles.toml`;
@@ -20,22 +20,32 @@ Depends on: maintainer approval of this change, and the approval of finos/morphi
   - use the lock calls and opening rules from #1150, merged as `ec363c61dd955d6979e1c9f7cf94592d19f348ad`.
 
   Verify the page builds in the docs job and its examples validate against the spec's rules.
-- [ ] 1.3 Add a normative package page under `docs/spec/` with:
+- [x] 1.3 Add a normative package page under `docs/spec/` with:
   - the reading rules of [RD-1](design.html#rd-1) for each format;
   - the ASCII name rule and the ASCII case-collision rule;
   - the manifest format and the refusal codes in their order;
   - the bounds, read-only modes, store, publication and recording, launch, lease, collection and trust rules.
 
   Verify its examples match the spec scenarios and its links resolve.
-- [ ] 1.4 Add the case data of [CONF-1](design.html#conf-1) beside that page. It comprises a deterministic generator script under `tools/` (TypeScript run by Bun) that writes each archive's bytes, the checked-in archives, and a JSON manifest of cases with the expected outcome, code and entry name. The `archive_too_large` case states a length without bytes. Verify with a data-integrity test that regenerating changes no byte, that every refusal code except `install_path_too_long`, `publish_busy` and `store_not_one_volume` has a case, and that every spec scenario is covered by a case or named as a host test.
+- [x] 1.4 Add the case data of [CONF-1](design.html#conf-1) beside that page. It comprises a deterministic generator script under `tools/` (TypeScript run by Bun) that writes each archive's bytes, the checked-in archives, and a JSON manifest of cases with the expected outcome, code and entry name. The `archive_too_large` case states a length without bytes. Verify with a data-integrity test that regenerating changes no byte, that every refusal code except `install_path_too_long`, `publish_busy` and `store_not_one_volume` has a case, and that every spec scenario is covered by a case or named as a host test.
 - [ ] 1.5 Publish the `package` member in the family's JSON Schemas ([VER-1](design.html#ver-1)), following the member definitions of 1.2:
   - under `PKGVER-A`, add it to `release.schema.json`, `index-record.schema.json`, `catalog.schema.json` and `lock.schema.json` under `website/static/schemas/extensions/0.1.0-preview.1/` as part of #1150's task 1.7, before those schemas are first published;
   - under `PKGVER-B`, publish all seven schemas of the family again under `website/static/schemas/extensions/0.1.0-preview.2/`, each with its `$id` under `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/` and requiring that exact `$schema`, the four above with `package`; leave the `0.1.0-preview.1/` files unchanged.
 
   A schema states the `package` members and their types; the rules a schema cannot express, such as `critical` listing `artifacts.package`, stay in the page and the cases. Verify that every valid descriptor, catalog and lock of 1.4's cases validates against its schema, and that the site build serves each file at its URL.
-- [ ] 1.6 Run `mise exec -- openspec validate add-extension-packages --strict` and `mise run openspec:verify`, and `python -B -m unittest discover -s tests/ci` if a path filter changes; verify each passes.
+- [x] 1.6 Run `mise exec -- openspec validate add-extension-packages --strict` and `mise run openspec:verify`, and `python -B -m unittest discover -s tests/ci` if a path filter changes; verify each passes.
 
 ## 2. finos/morphir-dotnet
+
+Group 1 implementation evidence is in `docs/spec/extensions/publication-audit.md`
+and its JSON inventory. The audit selects PKGVER-A at approval, so the seven
+`0.1.0-preview.1` schemas first publish with package members in all four shared
+documents. The deterministic Bun generator, checked-in archives, package case
+manifest and data/schema tests are delivered. Tasks 1.2 and 1.5 remain pending
+only for actual Docusaurus output and schema-serving evidence from the PR's
+Netlify Deploy Preview at its full head SHA. Static mapping alone does not close
+them. VERIFY-B and LAUNCH-A stay the approved behavior. No local website, Cargo
+or .NET build was run; host implementation and toolchain transition stay later work.
 
 Depends on: 1.2, 1.3, 1.4 and 1.5.
 

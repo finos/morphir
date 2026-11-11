@@ -30,7 +30,7 @@ Terms used on this page:
 
 Entry names are ASCII in this version. That removes Unicode normalization, unassigned code points and Unicode case mapping from the unpacking rules. The maintainer may lift the limit in a later version.
 
-The descriptor, index record, catalog and extension lock belong to the extension state family, which has one version carried by a `$schema` URL (maintainer, Decision 15, 10 November 2026). The package version depends on the order in which this change and finos/morphir#1149 are delivered. Task 1.1 fixes it by this rule:
+The descriptor, index record, catalog and extension lock belong to the extension state family, which has one version carried by a `$schema` URL (maintainer, Decision 15, 10 November 2026). The package version depends on the order in which this change and finos/morphir#1149 are delivered. The approval-time audit in `docs/spec/extensions/publication-audit.md` establishes PKGVER-A and selects `0.1.0-preview.1`. The approved rule is:
 
 | Outcome | When | Package version | Its schema URLs |
 | --- | --- | --- | --- |
@@ -44,7 +44,7 @@ A worked example: morphir-dotnet's F# frontend `org.finos.morphir.fsharp-fronten
 ## ADDED Requirements
 
 ### Requirement: A package is declared by its descriptor artifact
-A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of the package version SHALL refuse a `package` member on any other runtime with `package.runtime`.
+A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of `0.1.0-preview.1` SHALL refuse a `package` member on any other runtime with `package.runtime`.
 
 #### Scenario: A process package
 - **WHEN** a descriptor artifact has `runtime` `process`, `filename` `fsharp-frontend-0.6.0-win-x64.zip` and a `package` member with `format` `zip`, `entryPoint` `morphir-fsharp-frontend.exe` and a `treeSha256`
@@ -55,25 +55,25 @@ A release descriptor artifact SHALL be a package when it has a `package` member,
 - **THEN** the reader refuses the descriptor with `package.runtime`
 
 ### Requirement: The family's published schemas carry the package member
-The published schemas of the release descriptor, index record, catalog and extension lock at the package version SHALL define the `package` member, its members and their types. A document that carries `package` SHALL be valid against them.
+The published schemas of the release descriptor, index record, catalog and extension lock at `0.1.0-preview.1` SHALL define the `package` member, its members and their types. A document that carries `package` SHALL be valid against them.
 
 #### Scenario: A package descriptor validates
 - **WHEN** an editor validates the F# frontend's `release.json` against the schema its `$schema` names
 - **THEN** the schema accepts its `package` member with `format`, `root`, `entryPoint` and `treeSha256`
 
 ### Requirement: A document that carries a package lists it as critical
-A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of the package version SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
+A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of `0.1.0-preview.1` SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
 
 #### Scenario: A host built without this change meets a package
 - **WHEN** a host that implements the family version without this change reads a descriptor at that version whose artifact has `package` and whose `critical` lists `artifacts.package`
 - **THEN** it refuses the descriptor as naming a critical member it does not understand, and stores and starts nothing
 
 #### Scenario: A package that is not marked critical
-- **WHEN** a reader of the package version reads a descriptor with a `package` member and no `artifacts.package` in `critical`
+- **WHEN** a reader of `0.1.0-preview.1` reads a descriptor with a `package` member and no `artifacts.package` in `critical`
 - **THEN** it refuses the descriptor with `package.not_critical`
 
 ### Requirement: A single-file artifact is the executable itself
-An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of the package version SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
+An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of `0.1.0-preview.1` SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
 
 #### Scenario: A raw executable is unchanged
 - **WHEN** a descriptor lists the process artifact `morphir-scala-elm-linux-amd64-0.5.0-M13`, a raw executable, with no `package` member
@@ -270,7 +270,7 @@ The artifact's `sha256` SHALL be the SHA-256 of the archive's bytes. `package.tr
 - **THEN** its extension lock records the archive's SHA-256 as the artifact digest and the descriptor's `package` member, including `treeSha256`
 
 ### Requirement: The tree manifest is canonical text
-The tree manifest SHALL be ASCII text without a byte order mark: the line `morphir-package-tree <package version>`, then one line per file in ascending byte order of its tree path. Each file line SHALL be its kind (`x` for executable, `f` otherwise), its size in decimal without leading zeros (`0` for an empty file), its SHA-256 in lowercase hexadecimal and its tree path, separated by one space. Every line SHALL end with one LF. A reader SHALL split a line at its first three spaces only.
+The tree manifest SHALL be ASCII text without a byte order mark: the line `morphir-package-tree 0.1.0-preview.1`, then one line per file in ascending byte order of its tree path. Each file line SHALL be its kind (`x` for executable, `f` otherwise), its size in decimal without leading zeros (`0` for an empty file), its SHA-256 in lowercase hexadecimal and its tree path, separated by one space. Every line SHALL end with one LF. A reader SHALL split a line at its first three spaces only.
 
 #### Scenario: A tree with an empty file and a space in a name
 - **WHEN** a tree holds `run` (5 bytes, executable), `lib/a.dll` (3 bytes) and `docs/read me.txt` (0 bytes)
@@ -400,7 +400,7 @@ A package SHALL NOT change who is trusted. A host MAY conclude from a verified p
 - **THEN** the host treats the release as unauthenticated developer content, and the signature grants nothing
 
 ### Requirement: A host that cannot install packages refuses them
-A host that reads the package version but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
+A host that reads `0.1.0-preview.1` but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
 
 #### Scenario: A host without package support
 - **WHEN** a host without package support selects the F# frontend's package artifact

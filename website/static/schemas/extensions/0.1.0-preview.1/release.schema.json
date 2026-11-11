@@ -1,0 +1,781 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+  "title": "Extension release descriptor",
+  "type": "object",
+  "required": [
+    "$schema",
+    "extensionId",
+    "shortId",
+    "version",
+    "platformDifferences",
+    "artifacts"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json"
+    },
+    "extensionId": {
+      "type": "string",
+      "not": {
+        "pattern": "^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\\.|$)"
+      },
+      "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?(\\.[a-z]([a-z0-9-]*[a-z0-9])?)*$",
+      "maxLength": 238
+    },
+    "shortId": {
+      "type": "string",
+      "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "platformDifferences": {
+      "enum": [ "none", "declared" ]
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/bundleArtifact"
+      }
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "requires": {
+      "type": "object",
+      "required": [ "host" ],
+      "properties": {
+        "host": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "id": {
+      "type": "string",
+      "not": {
+        "pattern": "^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\\.|$)"
+      },
+      "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?(\\.[a-z]([a-z0-9-]*[a-z0-9])?)*$",
+      "maxLength": 238
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+      "minLength": 1
+    },
+    "absolutePath": {
+      "type": "string",
+      "not": {
+        "pattern": "^\\\\\\\\\\?\\\\"
+      },
+      "pattern": "^(?:/|[A-Z]:\\\\|\\\\\\\\(?!\\?\\\\))"
+    },
+    "package": {
+      "type": "object",
+      "required": [ "format", "entryPoint", "treeSha256" ],
+      "properties": {
+        "format": {
+          "enum": [ "zip", "tar.gz" ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+          "maxLength": 239,
+          "minLength": 1
+        },
+        "entryPoint": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+          "maxLength": 120,
+          "minLength": 1
+        },
+        "executables": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+            "maxLength": 120,
+            "minLength": 1
+          }
+        },
+        "treeSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "platform": {
+      "type": "object",
+      "required": [ "os", "arch" ],
+      "properties": {
+        "os": {
+          "type": "string",
+          "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "arch": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [ "kind", "path" ],
+      "properties": {
+        "kind": {
+          "const": "local-file"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": [ "kind", "identity", "revision" ],
+      "properties": {
+        "kind": {
+          "const": "local-directory"
+        },
+        "identity": {
+          "type": "string",
+          "not": {
+            "pattern": "^\\\\\\\\\\?\\\\"
+          },
+          "pattern": "^(?:/|[A-Z]:\\\\|\\\\\\\\(?!\\?\\\\))"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "lockedIndex": {
+      "type": "object",
+      "required": [ "kind", "identity", "revision", "claims" ],
+      "properties": {
+        "kind": {
+          "const": "local-directory"
+        },
+        "identity": {
+          "type": "string",
+          "not": {
+            "pattern": "^\\\\\\\\\\?\\\\"
+          },
+          "pattern": "^(?:/|[A-Z]:\\\\|\\\\\\\\(?!\\?\\\\))"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "claims": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json#/$defs/embedded"
+        }
+      },
+      "additionalProperties": false
+    },
+    "frontend": {
+      "type": "object",
+      "required": [ "languages", "irVersions", "compile" ],
+      "properties": {
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [ "id", "fileExtensions" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fileExtensions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "irVersions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "compile": {
+          "type": "boolean"
+        },
+        "incremental": {
+          "type": "boolean"
+        },
+        "fragments": {
+          "type": "boolean"
+        },
+        "multiDocument": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "backend": {
+      "type": "object",
+      "required": [ "targets", "irVersions", "generate" ],
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "irVersions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "generate": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "bundleArtifact": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "required": [ "runtime" ],
+            "properties": {
+              "runtime": {
+                "const": "wasm"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [ "platform" ]
+                },
+                {
+                  "required": [ "package" ]
+                }
+              ]
+            },
+            "properties": {
+              "args": {
+                "maxItems": 0
+              },
+              "executable": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "runtime" ],
+            "properties": {
+              "runtime": {
+                "const": "process"
+              }
+            }
+          },
+          "then": {
+            "required": [ "platform" ],
+            "properties": {
+              "platform": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "required": [ "runtime", "filename", "sha256", "claims" ],
+      "properties": {
+        "runtime": {
+          "enum": [ "process", "wasm" ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "filename": {
+          "type": "string",
+          "pattern": "^[^/\\\\]+$",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "claims": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json#/$defs/embedded"
+        },
+        "package": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/package"
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "indexArtifact": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "required": [ "runtime" ],
+            "properties": {
+              "runtime": {
+                "const": "wasm"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [ "platform" ]
+                },
+                {
+                  "required": [ "package" ]
+                }
+              ]
+            },
+            "properties": {
+              "args": {
+                "maxItems": 0
+              },
+              "executable": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "runtime" ],
+            "properties": {
+              "runtime": {
+                "const": "process"
+              }
+            }
+          },
+          "then": {
+            "required": [ "platform" ],
+            "properties": {
+              "platform": {
+                "type": "object",
+                "required": [ "os", "arch" ],
+                "properties": {
+                  "os": {
+                    "type": "string",
+                    "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$"
+                  },
+                  "arch": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_]+$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "runtime",
+        "filename",
+        "sha256",
+        "claims",
+        "source",
+        "args",
+        "executable",
+        "claimCheck"
+      ],
+      "properties": {
+        "runtime": {
+          "enum": [ "process", "wasm" ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "filename": {
+          "type": "string",
+          "pattern": "^[^/\\\\]+$",
+          "maxLength": 255,
+          "minLength": 1
+        },
+        "claims": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json#/$defs/embedded"
+        },
+        "package": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/package"
+        },
+        "platform": {
+          "type": "object",
+          "required": [ "os", "arch" ],
+          "properties": {
+            "os": {
+              "type": "string",
+              "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$"
+            },
+            "arch": {
+              "type": "string",
+              "pattern": "^[a-z0-9_]+$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "object",
+          "required": [ "kind", "path" ],
+          "properties": {
+            "kind": {
+              "const": "local-file"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "executable": {
+          "type": "boolean"
+        },
+        "claimCheck": {
+          "enum": [ "probed", "unchecked" ]
+        },
+        "probeSource": {
+          "enum": [ "describe", "session-fallback" ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "catalogEntry": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "required": [ "runtime" ],
+            "properties": {
+              "runtime": {
+                "const": "wasm"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [ "platform" ]
+                },
+                {
+                  "required": [ "package" ]
+                }
+              ]
+            },
+            "properties": {
+              "args": {
+                "maxItems": 0
+              },
+              "executable": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "runtime" ],
+            "properties": {
+              "runtime": {
+                "const": "process"
+              }
+            }
+          },
+          "then": {
+            "required": [ "platform" ],
+            "properties": {
+              "platform": {
+                "type": "object",
+                "required": [ "os", "arch" ],
+                "properties": {
+                  "os": {
+                    "type": "string",
+                    "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$"
+                  },
+                  "arch": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_]+$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "extensionId",
+        "name",
+        "version",
+        "runtime",
+        "args",
+        "digest",
+        "storePath",
+        "capabilities",
+        "mepVersions",
+        "index",
+        "executable",
+        "claims",
+        "claimCheck"
+      ],
+      "properties": {
+        "extensionId": {
+          "type": "string",
+          "not": {
+            "pattern": "^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\\.|$)"
+          },
+          "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?(\\.[a-z]([a-z0-9-]*[a-z0-9])?)*$",
+          "maxLength": 238
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+        },
+        "runtime": {
+          "enum": [ "process", "wasm" ]
+        },
+        "platform": {
+          "type": "object",
+          "required": [ "os", "arch" ],
+          "properties": {
+            "os": {
+              "type": "string",
+              "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$"
+            },
+            "arch": {
+              "type": "string",
+              "pattern": "^[a-z0-9_]+$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "storePath": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+          "minLength": 1
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "frontend",
+              "backend",
+              "transform",
+              "validator",
+              "workspace"
+            ]
+          }
+        },
+        "mepVersions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+          }
+        },
+        "index": {
+          "type": "object",
+          "required": [ "kind", "identity", "revision" ],
+          "properties": {
+            "kind": {
+              "const": "local-directory"
+            },
+            "identity": {
+              "type": "string",
+              "not": {
+                "pattern": "^\\\\\\\\\\?\\\\"
+              },
+              "pattern": "^(?:/|[A-Z]:\\\\|\\\\\\\\(?!\\?\\\\))"
+            },
+            "revision": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "frontend": {
+          "type": "object",
+          "required": [ "languages", "irVersions", "compile" ],
+          "properties": {
+            "languages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [ "id", "fileExtensions" ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fileExtensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "irVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "compile": {
+              "type": "boolean"
+            },
+            "incremental": {
+              "type": "boolean"
+            },
+            "fragments": {
+              "type": "boolean"
+            },
+            "multiDocument": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "backend": {
+          "type": "object",
+          "required": [ "targets", "irVersions", "generate" ],
+          "properties": {
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "irVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "generate": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "executable": {
+          "type": "boolean"
+        },
+        "claims": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json#/$defs/embedded"
+        },
+        "claimCheck": {
+          "enum": [ "probed", "unchecked" ]
+        },
+        "probeSource": {
+          "enum": [ "describe", "session-fallback" ]
+        },
+        "critical": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requires": {
+          "type": "object",
+          "required": [ "host" ],
+          "properties": {
+            "host": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "package": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/package"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

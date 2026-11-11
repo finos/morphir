@@ -35,6 +35,14 @@ These files, with the capability claim set, form one contract family, the extens
 A document's current schema URL is the URL of its file at `0.1.0-preview.1`. A JSONL history has no header, so each line carries its own `$schema`.
 Paths in the home are relative to the home root, and paths in a repository are relative to the repository root.
 
+The approval-time publication audit for `add-extension-packages`, recorded in
+`docs/spec/extensions/publication-audit.md`, selects PKGVER-A. The first
+`0.1.0-preview.1` definitions therefore include the `package` member in release
+artifacts, index artifacts, installed catalog entries and extension locks. The
+member tables in `docs/design/draft/extensions/distribution-and-acquisition.md`
+define it; the package capability specifies its behavior. This resolves the
+approved version condition without changing any published earlier asset.
+
 This capability fixes each file's path, schema URL, encoding, unknown-member rule, locking and recovery. It does not list the members of a catalog entry, an extension lock or the repositories configuration. Those member tables are written by task 1.4 on `docs/design/draft/extensions/distribution-and-acquisition.md`. Until that page lands, an installer cannot be built from this change alone, and the Rust source is the only statement of those members.
 
 A host can find a home in a state it cannot use: files without the current schema URL, such as those an older host wrote with a `schemaVersion` member, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. The maintainer decided what a host does with it on 10 November 2026 (Decision 10, recorded on finos/morphir#1146): it moves the old state to a marked backup, asking first; `--yes` skips the question; `morphir doctor --fix` makes the same move by hand. The maintainer confirmed four readings of it the same day (Decision 11): the refusal without a terminal or on a decline, `morphir doctor` reporting only, and `morphir doctor --fix` asking first.

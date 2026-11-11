@@ -6,9 +6,9 @@ Tracking: [finos/morphir#1146](https://github.com/finos/morphir/issues/1146). Be
 
 Depends on: maintainer approval of this change.
 
-- [ ] 1.1 Add a normative extension id page under `docs/spec/` ([Q-PAGE](design.html#q-page), recommendation `PAGE-A`) stating the grammar, the device-name rule with the Microsoft list it follows, the rule order (`grammar`, `length`, `device-name`), exact comparison, derived names, the equality of descriptor, claims and session ids, that an id carries no trust, and the family's `$schema` URLs that carry the new grammar; verify its examples match the spec scenarios and its links resolve.
-- [ ] 1.2 Add the language-neutral case manifest of [CONF-1](design.html#conf-1) beside that page, each case with an input, an expected outcome and, for a refusal, the expected rule or file, covering every scenario in `specs/extensions/extension-identity/spec.md` except the state lock; verify with a data-integrity test that the manifest parses and every scenario but the state lock's is covered by at least one case.
-- [ ] 1.3 Read every extension id in the catalogs and bundles pinned by `.config/published-extension-bundles.toml` and record that each is valid under the new rule, and record the versions those documents are at; verify by listing the ids, versions and sources in the change's evidence.
+- [x] 1.1 Add a normative extension id page under `docs/spec/` ([Q-PAGE](design.html#q-page), recommendation `PAGE-A`) stating the grammar, the device-name rule with the Microsoft list it follows, the rule order (`grammar`, `length`, `device-name`), exact comparison, derived names, the equality of descriptor, claims and session ids, that an id carries no trust, and the family's `$schema` URLs that carry the new grammar; verify its examples match the spec scenarios and its links resolve.
+- [x] 1.2 Add the language-neutral case manifest of [CONF-1](design.html#conf-1) beside that page, each case with an input, an expected outcome and, for a refusal, the expected rule or file, covering every scenario in `specs/extensions/extension-identity/spec.md` except the state lock; verify with a data-integrity test that the manifest parses and every scenario but the state lock's is covered by at least one case.
+- [x] 1.3 Read every extension id in the catalogs and bundles pinned by `.config/published-extension-bundles.toml` and record that each is valid under the new rule, and record the versions those documents are at; verify by listing the ids, versions and sources in the change's evidence.
 - [ ] 1.4 Update `docs/design/draft/extensions/distribution-and-acquisition.md` so it defines, as the authority, every shared file of [DEF-1](design.html#def-1) with its path, schema URL, members, values and unknown-member rule. This task is what lets an installer be built: until it lands, the change does not define the members of a catalog entry, a lock or the repositories file, and finos/morphir-dotnet#567 cannot be written from the change alone. The page gives a member table (name, type, required or optional, whether `null` is allowed) for each:
   - the release descriptor and the index record, `$schema` on every history line, and the history rules of [HIST-1](design.html#hist-1);
   - the installed catalog, with `extensions` as an array of entries in ascending byte order of `extensionId`;
@@ -23,8 +23,8 @@ Depends on: maintainer approval of this change.
   - the detection of old state before journal recovery, and one journal at a time.
 
   In the same page, rewrite the three places that contradict [VER-2](design.html#ver-2), not add a sentence beside them: lines 410–415 (rule 2, "Schema ranges") become the exact versions read; lines 420–431 (rules 5 and 6, the draft.1 and version-1 conversions) are removed; lines 433–444 (the release-path table and the paragraph after it) say that the host compatibility suite belonged to the Rust CLI, which is to be deleted (Decision 16), and that a current host's "host only" path is gated by the shared cases and task 5.1. State that rule 1 applies to the descriptor, the index record and the catalog. State that a reader SHALL NOT read earlier versions. Update `protocol.md` to say the MEP `extension.id` follows the same grammar when bound to a release, and that a claim set `describe` returns carries the claims `$schema` in place of `claimsVersion`; the MEP versions stay the 0.2 line. Verify the pages build in the docs job, that their examples use valid ids, that no sentence on the page still says a reader reads or converts an earlier version, and that the home-layout cases of 1.2 carry whole expected documents that the member tables produce.
-- [ ] 1.5 Run `mise exec -- openspec validate allow-dotted-extension-ids --strict` and `mise run openspec:verify`, and run `python -B -m unittest discover -s tests/ci` if a path filter changes; verify each passes.
-- [ ] 1.6 Add the old-home rule of [OLD-1](design.html#old-1) (Decision 10) and the `morphir doctor` command of [DOC-1](design.html#doc-1) to the page:
+- [x] 1.5 Run `mise exec -- openspec validate allow-dotted-extension-ids --strict` and `mise run openspec:verify`, and run `python -B -m unittest discover -s tests/ci` if a path filter changes; verify each passes.
+- [x] 1.6 Add the old-home rule of [OLD-1](design.html#old-1) (Decision 10) and the `morphir doctor` command of [DOC-1](design.html#doc-1) to the page:
   - the trigger, detected before journal recovery;
   - the prompt, and `--yes` with the meaning the approved deployment change gives it;
   - releasing the state lock while asking, then detecting again;
@@ -37,6 +37,16 @@ Depends on: maintainer approval of this change.
 - [ ] 1.7 Publish a JSON Schema for each file of the extension state family under `website/static/schemas/extensions/0.1.0-preview.1/`: `release.schema.json`, `index-record.schema.json`, `catalog.schema.json`, `lock.schema.json`, `journal.schema.json`, `repositories.schema.json` and `claims.schema.json`. Each schema's `$id` is its URL under `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/`, and each requires `$schema` with that exact value. The schemas follow the member tables of 1.4, so this task follows 1.4. Verify that every accepted case of 1.2 validates against its schema, that the documented refusals that a schema can express fail it, and that the site build serves each file at its URL.
 
 ## 2. finos/morphir-dotnet
+
+Group 1 implementation evidence is in `docs/spec/extensions/publication-audit.md`
+and its JSON inventory, the normative identity/package pages and their case
+manifests, and `tools/extension-contract-data.test.ts`. Task 1.4's member tables
+and task 1.7's seven schema files are implemented, with lightweight schema and
+static URL mapping checks passing. Those checkboxes remain pending only for
+actual Docusaurus output and schema-serving evidence from the PR's Netlify
+Deploy Preview at its full head SHA. Static mapping alone does not close them.
+No local website, Cargo or .NET build was run. Host adoption and frozen toolchain
+fixture transition remain their later groups.
 
 Depends on: 1.2 and 1.4; 2.3's old-home part and 2.6 also on 1.6.
 
