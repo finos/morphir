@@ -167,6 +167,11 @@ function build(output: string): void {
  cases.push({ id: "raw-executable", scenarios: ["A raw executable is unchanged"], input: { operation: "read-descriptor", artifact: { runtime: "process", filename: "morphir-scala-elm-linux-amd64-0.5.0-M13", sha256: sha(run), platform: "x86_64-unknown-linux-gnu" } }, expected: { outcome: "accept", shape: "single-file" } });
  cases.push({ id: "archive-without-package", scenarios: ["An executable shipped inside an archive"], input: { operation: "read-descriptor", artifact: { runtime: "process", filename: "morphir-elm-extension-0.4.1-x86_64-unknown-linux-gnu.tgz", sha256: sha(run), platform: "x86_64-unknown-linux-gnu" } }, expected: { outcome: "refuse", code: "package.archive_without_package", entry: null } });
  cases.push({ id: "tree-changed", scenarios: ["A file is missing"], input: { operation: "activate-package", package: packageFor("zip"), manifest, tree: files.filter(f => f.path !== "lib/a.dll").map(f => ({ path: f.path, size: f.data.length, mode: f.path === "run" || f.path === "tools/helper" ? "0555" : "0444" })) }, expected: { outcome: "refuse", code: "package.tree_changed", entry: "lib/a.dll" } });
+ const verifiedTree = files.map(f => ({ path: f.path, bytes: [...f.data], mode: f.path === "run" || f.path === "tools/helper" ? "0555" : "0444" }));
+ const existingTree = structuredClone(verifiedTree); existingTree[0]!.bytes[0] = existingTree[0]!.bytes[0]! ^ 1;
+ const reuseInput = { operation: "publish-package", package: packageFor("zip"), manifest, verifiedTree, existingTree, stateLock: "exclusive", leaseFileIdentity: "existing-lease-1" };
+ cases.push({ id: "reuse-same-size-corruption", scenarios: ["A same-size changed tree is not reused at install"], input: { ...reuseInput, existingLease: "free" }, expected: { outcome: "accept", reuseExisting: false, repair: "replace-with-verified-staging", fullHashMismatch: "run", lease: "exclusive-nonwaiting-before-mutation", leaseFileIdentity: "existing-lease-1", recordedTree: verifiedTree } });
+ cases.push({ id: "repair-leased-corrupt-tree", scenarios: ["A corrupt tree with a live lease is left unchanged"], input: { ...reuseInput, existingLease: "shared-live-guest" }, expected: { outcome: "refuse", code: "package.publish_busy", entry: null, fullHashMismatch: "run", mutations: [], reuseExisting: false, leaseFileIdentity: "existing-lease-1", staging: "retained-for-cleanup", lockAndCatalog: "unchanged" } });
  cases.push({ id: "older-reader-critical", scenarios: ["A host built without this change meets a package"], input: { ...goodZip.input, operation: "read-descriptor", readerUnderstands: ["runtime", "filename", "sha256", "claims"] }, expected: { outcome: "refuse", rule: "critical", file: "release.json", entry: "artifacts.package" } });
  // Whole-document schema examples are data, with every package copy unchanged.
  const claims = { protocolVersions: ["0.2.0-draft.1"], extension: { id: "org.finos.morphir.fsharp-frontend", name: "F# frontend", version: "0.6.0", types: ["frontend"] }, capabilities: { frontend: { languages: [{ id: "fsharp", fileExtensions: [".fs"] }], irVersions: ["4"], compile: true } } };
@@ -189,11 +194,27 @@ function build(output: string): void {
   { schema: "release.schema.json", valid: false, document: { ...descriptor, artifacts: [{ ...artifact, package: { ...artifact.package, treeSha256: null } }] } }
  ];
  goodZip.scenarios.push("A package descriptor validates");
+ // Exercise the member policy at every object in the package-bearing documents.
+ // These are fixed schema examples, not a behavioral implementation.
+ const objectPaths = (value: any, path: (string | number)[] = []): (string | number)[][] => {
+  if (Array.isArray(value)) return value.flatMap((v, i) => objectPaths(v, [...path, i]));
+  if (!value || typeof value !== "object") return [];
+  return [path, ...Object.entries(value).flatMap(([k, v]) => objectPaths(v, [...path, k]))];
+ };
+ for (const [schema, document, valid] of [["release.schema.json", descriptor, true], ["index-record.schema.json", record, true], ["catalog.schema.json", catalog, true], ["lock.schema.json", lock, false]] as const) {
+  for (const path of objectPaths(document)) {
+   const copy: any = structuredClone(document); let target = copy;
+   for (const key of path) target = target[key];
+   target.futureNote = { value: "optional extension metadata" };
+   goodZip.schemaDocuments.push({ schema, valid, document: copy });
+  }
+ }
  const hostTests = [
   { id: "schema-editor", scenarios: [], purpose: "Validate all package-bearing whole documents through the shared schemas." },
   { id: "publish-store", scenarios: ["The F# frontend in the store", "An interrupted unpack is never selected", "Collection cannot run between publication and recording"], purpose: "Use the real store, owner lock and journal; inject interruption at each publication boundary." },
   { id: "read-only", scenarios: ["A guest that writes beside itself"], purpose: "Start a guest on Unix and verify directory mode 0555 prevents its write." },
   { id: "rename-busy", code: "package.publish_busy", scenarios: ["A scanner holds a new file open"], purpose: "Hold a Windows file open and verify no-replace publication retries for at most ten seconds." },
+  { id: "repair-lease", code: "package.publish_busy", scenarios: ["A corrupt tree with a live lease is left unchanged", "A same-size changed tree is not reused at install", "Repair retains the existing lease file"], purpose: "With a real guest holding the shared lease, corrupt one byte without changing size. Install fully hashes the existing tree, refuses repair immediately with package.publish_busy, and leaves tree, modes, manifest, lease identity, lock and catalog unchanged. After guest exit, exclusive nonwaiting repair retains the same lease file identity, replaces the tree from verified staging and records only verified bytes." },
   { id: "one-volume", code: "package.store_not_one_volume", scenarios: [], purpose: "Attempt a real cross-volume rename; verify no copy or recording occurs." },
   { id: "launch", scenarios: ["Starting the F# frontend"], purpose: "Observe absolute argv[0], locked arguments and project working directory in the started guest." },
   { id: "full-verification", scenarios: ["A changed byte is found on request"], purpose: "Modify one byte without changing size; explicit full verification reports package.tree_changed with its path." },

@@ -531,6 +531,3596 @@
               "artifacts.package"
             ]
           }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ],
+            "futureNote": {
+              "value": "optional extension metadata"
+            }
+          }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu",
+                "futureNote": {
+                  "value": "optional extension metadata"
+                }
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98",
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  },
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ],
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    },
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true,
+                      "futureNote": {
+                        "value": "optional extension metadata"
+                      }
+                    }
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "release.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "shortId": "fsharp-frontend",
+            "version": "0.6.0",
+            "platformDifferences": "none",
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ],
+                          "futureNote": {
+                            "value": "optional extension metadata"
+                          }
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": "x86_64-unknown-linux-gnu"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ],
+            "futureNote": {
+              "value": "optional extension metadata"
+            }
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked",
+                "futureNote": {
+                  "value": "optional extension metadata"
+                }
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98",
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  },
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ],
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    },
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true,
+                      "futureNote": {
+                        "value": "optional extension metadata"
+                      }
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ],
+                          "futureNote": {
+                            "value": "optional extension metadata"
+                          }
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64",
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip"
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "index-record.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json",
+            "id": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "channels": [
+              "stable"
+            ],
+            "artifacts": [
+              {
+                "runtime": "process",
+                "filename": "valid-zip.zip",
+                "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "source": {
+                  "kind": "local-file",
+                  "path": "artifacts/valid-zip.zip",
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "args": [],
+                "executable": true,
+                "claimCheck": "unchecked"
+              }
+            ],
+            "critical": [
+              "artifacts.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ],
+            "futureNote": {
+              "value": "optional extension metadata"
+            }
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                },
+                "futureNote": {
+                  "value": "optional extension metadata"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64",
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true,
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true,
+                      "futureNote": {
+                        "value": "optional extension metadata"
+                      }
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ],
+                      "futureNote": {
+                        "value": "optional extension metadata"
+                      }
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ],
+                          "futureNote": {
+                            "value": "optional extension metadata"
+                          }
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  },
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ],
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    },
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true,
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true,
+                      "futureNote": {
+                        "value": "optional extension metadata"
+                      }
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ],
+                      "futureNote": {
+                        "value": "optional extension metadata"
+                      }
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ],
+                          "futureNote": {
+                            "value": "optional extension metadata"
+                          }
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "catalog.schema.json",
+          "valid": true,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json",
+            "extensions": [
+              {
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
+                "version": "0.6.0",
+                "runtime": "process",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                },
+                "args": [],
+                "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+                "storePath": "store/extensions/packages/sha256/b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98/tree/run",
+                "capabilities": [
+                  "frontend"
+                ],
+                "mepVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "index": {
+                  "kind": "local-directory",
+                  "identity": "/repo",
+                  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "frontend": {
+                  "languages": [
+                    {
+                      "id": "fsharp",
+                      "fileExtensions": [
+                        ".fs"
+                      ]
+                    }
+                  ],
+                  "irVersions": [
+                    "4"
+                  ],
+                  "compile": true
+                },
+                "executable": true,
+                "claims": {
+                  "protocolVersions": [
+                    "0.2.0-draft.1"
+                  ],
+                  "extension": {
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
+                    "version": "0.6.0",
+                    "types": [
+                      "frontend"
+                    ]
+                  },
+                  "capabilities": {
+                    "frontend": {
+                      "languages": [
+                        {
+                          "id": "fsharp",
+                          "fileExtensions": [
+                            ".fs"
+                          ]
+                        }
+                      ],
+                      "irVersions": [
+                        "4"
+                      ],
+                      "compile": true
+                    }
+                  }
+                },
+                "claimCheck": "unchecked",
+                "package": {
+                  "format": "zip",
+                  "root": "bundle",
+                  "entryPoint": "run",
+                  "executables": [
+                    "tools/helper"
+                  ],
+                  "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98",
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                }
+              }
+            ],
+            "critical": [
+              "extensions.package"
+            ]
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            },
+            "futureNote": {
+              "value": "optional extension metadata"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0",
+              "futureNote": {
+                "value": "optional extension metadata"
+              }
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              },
+              "futureNote": {
+                "value": "optional extension metadata"
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                },
+                "futureNote": {
+                  "value": "optional extension metadata"
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ],
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  },
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true,
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true,
+              "futureNote": {
+                "value": "optional extension metadata"
+              }
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ],
+                        "futureNote": {
+                          "value": "optional extension metadata"
+                        }
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ],
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip",
+              "futureNote": {
+                "value": "optional extension metadata"
+              }
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64",
+              "futureNote": {
+                "value": "optional extension metadata"
+              }
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true,
+                    "futureNote": {
+                      "value": "optional extension metadata"
+                    }
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true,
+              "futureNote": {
+                "value": "optional extension metadata"
+              }
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ],
+                        "futureNote": {
+                          "value": "optional extension metadata"
+                        }
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ],
+                  "futureNote": {
+                    "value": "optional extension metadata"
+                  }
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          }
+        },
+        {
+          "schema": "lock.schema.json",
+          "valid": false,
+          "document": {
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json",
+            "selection": {
+              "kind": "exact",
+              "value": "0.6.0"
+            },
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
+            "version": "0.6.0",
+            "index": {
+              "kind": "local-directory",
+              "identity": "/repo",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claims": {
+                "protocolVersions": [
+                  "0.2.0-draft.1"
+                ],
+                "extension": {
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
+                  "version": "0.6.0",
+                  "types": [
+                    "frontend"
+                  ]
+                },
+                "capabilities": {
+                  "frontend": {
+                    "languages": [
+                      {
+                        "id": "fsharp",
+                        "fileExtensions": [
+                          ".fs"
+                        ]
+                      }
+                    ],
+                    "irVersions": [
+                      "4"
+                    ],
+                    "compile": true
+                  }
+                }
+              }
+            },
+            "source": {
+              "kind": "local-file",
+              "path": "artifacts/valid-zip.zip"
+            },
+            "runtime": "process",
+            "platform": {
+              "os": "linux",
+              "arch": "x86_64"
+            },
+            "args": [],
+            "digest": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "capabilities": [
+              "frontend"
+            ],
+            "mepVersions": [
+              "0.2.0-draft.1"
+            ],
+            "frontend": {
+              "languages": [
+                {
+                  "id": "fsharp",
+                  "fileExtensions": [
+                    ".fs"
+                  ]
+                }
+              ],
+              "irVersions": [
+                "4"
+              ],
+              "compile": true
+            },
+            "executable": true,
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98",
+              "futureNote": {
+                "value": "optional extension metadata"
+              }
+            }
+          }
         }
       ]
     },
@@ -2431,6 +6021,259 @@
       }
     },
     {
+      "id": "reuse-same-size-corruption",
+      "scenarios": [
+        "A same-size changed tree is not reused at install"
+      ],
+      "input": {
+        "operation": "publish-package",
+        "package": {
+          "format": "zip",
+          "root": "bundle",
+          "entryPoint": "run",
+          "executables": [
+            "tools/helper"
+          ],
+          "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+        },
+        "manifest": "morphir-package-tree 0.1.0-preview.1\nf 0 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 docs/read me.txt\nf 3 0343b13708cd52d33ecbb1043b5ae145e73a532bdccf7de6925db5cce6054fd3 lib/a.dll\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 run\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 tools/helper\n",
+        "verifiedTree": [
+          {
+            "path": "run",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          },
+          {
+            "path": "lib/a.dll",
+            "bytes": [
+              100,
+              108,
+              108
+            ],
+            "mode": "0444"
+          },
+          {
+            "path": "docs/read me.txt",
+            "bytes": [],
+            "mode": "0444"
+          },
+          {
+            "path": "tools/helper",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          }
+        ],
+        "existingTree": [
+          {
+            "path": "run",
+            "bytes": [
+              115,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          },
+          {
+            "path": "lib/a.dll",
+            "bytes": [
+              100,
+              108,
+              108
+            ],
+            "mode": "0444"
+          },
+          {
+            "path": "docs/read me.txt",
+            "bytes": [],
+            "mode": "0444"
+          },
+          {
+            "path": "tools/helper",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          }
+        ],
+        "stateLock": "exclusive",
+        "leaseFileIdentity": "existing-lease-1",
+        "existingLease": "free"
+      },
+      "expected": {
+        "outcome": "accept",
+        "reuseExisting": false,
+        "repair": "replace-with-verified-staging",
+        "fullHashMismatch": "run",
+        "lease": "exclusive-nonwaiting-before-mutation",
+        "leaseFileIdentity": "existing-lease-1",
+        "recordedTree": [
+          {
+            "path": "run",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          },
+          {
+            "path": "lib/a.dll",
+            "bytes": [
+              100,
+              108,
+              108
+            ],
+            "mode": "0444"
+          },
+          {
+            "path": "docs/read me.txt",
+            "bytes": [],
+            "mode": "0444"
+          },
+          {
+            "path": "tools/helper",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          }
+        ]
+      }
+    },
+    {
+      "id": "repair-leased-corrupt-tree",
+      "scenarios": [
+        "A corrupt tree with a live lease is left unchanged"
+      ],
+      "input": {
+        "operation": "publish-package",
+        "package": {
+          "format": "zip",
+          "root": "bundle",
+          "entryPoint": "run",
+          "executables": [
+            "tools/helper"
+          ],
+          "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+        },
+        "manifest": "morphir-package-tree 0.1.0-preview.1\nf 0 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 docs/read me.txt\nf 3 0343b13708cd52d33ecbb1043b5ae145e73a532bdccf7de6925db5cce6054fd3 lib/a.dll\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 run\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 tools/helper\n",
+        "verifiedTree": [
+          {
+            "path": "run",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          },
+          {
+            "path": "lib/a.dll",
+            "bytes": [
+              100,
+              108,
+              108
+            ],
+            "mode": "0444"
+          },
+          {
+            "path": "docs/read me.txt",
+            "bytes": [],
+            "mode": "0444"
+          },
+          {
+            "path": "tools/helper",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          }
+        ],
+        "existingTree": [
+          {
+            "path": "run",
+            "bytes": [
+              115,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          },
+          {
+            "path": "lib/a.dll",
+            "bytes": [
+              100,
+              108,
+              108
+            ],
+            "mode": "0444"
+          },
+          {
+            "path": "docs/read me.txt",
+            "bytes": [],
+            "mode": "0444"
+          },
+          {
+            "path": "tools/helper",
+            "bytes": [
+              114,
+              117,
+              110,
+              33,
+              10
+            ],
+            "mode": "0555"
+          }
+        ],
+        "stateLock": "exclusive",
+        "leaseFileIdentity": "existing-lease-1",
+        "existingLease": "shared-live-guest"
+      },
+      "expected": {
+        "outcome": "refuse",
+        "code": "package.publish_busy",
+        "entry": null,
+        "fullHashMismatch": "run",
+        "mutations": [],
+        "reuseExisting": false,
+        "leaseFileIdentity": "existing-lease-1",
+        "staging": "retained-for-cleanup",
+        "lockAndCatalog": "unchanged"
+      }
+    },
+    {
       "id": "older-reader-critical",
       "scenarios": [
         "A host built without this change meets a package"
@@ -2502,6 +6345,16 @@
         "A scanner holds a new file open"
       ],
       "purpose": "Hold a Windows file open and verify no-replace publication retries for at most ten seconds."
+    },
+    {
+      "id": "repair-lease",
+      "code": "package.publish_busy",
+      "scenarios": [
+        "A corrupt tree with a live lease is left unchanged",
+        "A same-size changed tree is not reused at install",
+        "Repair retains the existing lease file"
+      ],
+      "purpose": "With a real guest holding the shared lease, corrupt one byte without changing size. Install fully hashes the existing tree, refuses repair immediately with package.publish_busy, and leaves tree, modes, manifest, lease identity, lock and catalog unchanged. After guest exit, exclusive nonwaiting repair retains the same lease file identity, replaces the tree from verified staging and records only verified bytes."
     },
     {
       "id": "one-volume",

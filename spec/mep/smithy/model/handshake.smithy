@@ -213,17 +213,21 @@ structure ClaimsRequirements {
 /// The result of `morphir.extension.describe`: the capabilities that an
 /// extension claims, without a session.
 ///
-/// Writers send `claimsVersion` `0.1.0-draft.2`. Readers also accept
-/// draft.1, which names the member `statementVersion`.
-// GAP smithy-2qe.34.21: exactly one of `claimsVersion` and
-// `statementVersion` must be present. Both are optional here, so a claim set
-// with neither or both is accepted.
+/// Current standalone claims carry the extension family's published schema
+/// URL. Historical transcripts keep claimsVersion or statementVersion.
+/// This document version does not change the MEP wire or protocol versions.
+// GAP smithy-2qe.34.21: this structure cannot express the disjoint current
+// and historical forms. The current JSON Schema requires only $schema;
+// historical examples are inventoried separately and are not current inputs.
 // GAP smithy-2qe.34.17: unknown top-level members are dropped when
 // read, but the validator refuses them.
 // GAP smithy-2qe.34.17: a reader refuses a claim set whose
 // `critical` names a path that it does not understand. The validator cannot
 // check this rule.
 structure CapabilityClaimSet {
+    @jsonName("$schema")
+    schema: String
+
     claimsVersion: String
 
     statementVersion: String

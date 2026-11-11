@@ -44,8 +44,12 @@ documents. The deterministic Bun generator, checked-in archives, package case
 manifest and data/schema tests are delivered. Tasks 1.2 and 1.5 remain pending
 only for actual Docusaurus output and schema-serving evidence from the PR's
 Netlify Deploy Preview at its full head SHA. Static mapping alone does not close
-them. VERIFY-B and LAUNCH-A stay the approved behavior. No local website, Cargo
-or .NET build was run; host implementation and toolchain transition stay later work.
+them. VERIFY-B and LAUNCH-A stay the approved behavior. A bounded local website build passed at `27dcc1110a9d9fc08cea1338151966174d91dea9`,
+with all seven emitted schemas byte-identical to source. The current corrections
+require another coordinated site verification; hosted schema availability stays
+pending. No Cargo or .NET build was run. Host implementation and toolchain
+transition stay later work. STORE-1 reuse hashing and repair leases are corrections
+of inherited procedure, preserving VERIFY-B only at activation and LAUNCH-A.
 
 Depends on: 1.2, 1.3, 1.4 and 1.5.
 
@@ -55,7 +59,8 @@ Depends on: 1.2, 1.3, 1.4 and 1.5.
   - the reading rules of [RD-1](design.html#rd-1);
   - the entry rules and order of [EXT-1](design.html#ext-1) and the bounds of [EXT-2](design.html#ext-2);
   - the read-only modes of [MODE-1](design.html#mode-1);
-  - staging, publication and recording of [STORE-1](design.html#store-1) in one state-lock scope;
+  - staging outside the state lock, then full existing-tree install hashing, publication and recording of [STORE-1](design.html#store-1) in one state-lock scope;
+  - repair only after an exclusive nonwaiting lease, preserving its file identity through the commit; refuse with `package.publish_busy` and leave published state unchanged on a live shared lease;
   - the lock and catalog `package` member.
 
   Keep the installer plan's ASCII name rule (ARC-1), and replace its "target archive holds exactly one executable" rule (Q-ARCHIVE). Decode ZIP external attributes and check local headers against the central directory, through `ZipArchive` or by reading those structures directly; read tar entry types and pax records the same way. Implement the decided [VERIFY-B](design.html#q-verify) activation check: manifest digest, exact file names, sizes and modes, with full per-file verification at install and on request. Verify with every shared case.
@@ -65,13 +70,15 @@ Depends on: 1.2, 1.3, 1.4 and 1.5.
   - record whether a Windows directory rename fails while a file inside it is open (knowledge-base Q130589), and show the publication works either way;
   - an abandoned staging directory is removed only when its owner lock is free, and a host's fresh staging directory is never removed;
   - collection cannot fall between publication and recording;
+  - full hashing catches same-size corruption before reuse; repair preserves the existing lease identity;
+  - a live shared lease refuses corrupt-tree repair with `package.publish_busy` and no mutation;
   - two sessions share a lease;
   - on Unix, a guest that outlives a killed host keeps the inherited lease, so collection keeps the package;
   - on Windows, killing the host ends every process in the guest's job;
   - at the end of a session the host ends a guest's leftover child before it releases the lease.
 
   Check that .NET can start a child in a new process group with one inherited descriptor, and inside a job object, through platform calls. Verify the tests pass on each platform.
-- [ ] 2.4 Measure on the first-delivery platforms, for the F# frontend package: install time, the decided VERIFY-B activation structure check, a full rehash and a private copy. Record the numbers in this change and report any difference from the design's estimates. The measurements verify the estimates; they do not reopen the maintainer's Q-VERIFY decision. Verify the numbers come from at least three runs on each platform.
+- [ ] 2.4 Measure on the first-delivery platforms, for the F# frontend package: install time, existing-tree reuse hashing and its state-lock duration, the decided VERIFY-B activation structure check, a full rehash and a private copy. Record the numbers in this change and report any difference from the design's estimates. The measurements verify the estimates; they do not reopen the maintainer's Q-VERIFY decision. Verify the numbers come from at least three runs on each platform.
 - [ ] 2.5 Check the launch assumptions:
   - on Windows, that `CreateProcessW` and the frontend's runtime accept store paths up to 259 UTF-16 code units, and directories up to 247, without long-path support;
   - on macOS, that an entry point written by the host carries no quarantine attribute and starts without a Gatekeeper prompt.

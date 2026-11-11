@@ -469,7 +469,17 @@ by parsed value, not spacing, member order or line endings.
 
 The URL is required and written first. No document has `schemaVersion`.
 Embedded claims have neither URL nor version; the enclosing schema covers them.
-Unknown members follow the enclosing document's rule. JSON Schemas express shape;
+Unknown members follow the enclosing document's rule recursively at every object,
+including package metadata, platform/source/provenance, capability summaries,
+languages and embedded claims. The release, index, catalog and standalone claims
+contexts are open unless critical; lock, journal and repositories contexts are
+closed, including claims embedded in a lock. The journal's byte arrays are checked
+as bytes here; decoded saved documents retain their own schema's member policy.
+Known protocol fields of workspace, validator and model transport follow the
+[MEP Smithy model](https://github.com/finos/morphir/blob/main/spec/mep/smithy/model/handshake.smithy) and
+[model transport](https://github.com/finos/morphir/blob/main/spec/mep/smithy/model/model-transport.smithy).
+A transform capability has no named fields in this version.
+JSON Schemas express shape;
 the host still checks critical paths, sorted ids, binding equality, SemVer ranges,
 runtime constraints, safe paths, recovery and archive contents.
 
@@ -709,6 +719,9 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | `types` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Known kinds: frontend, backend, transform, validator, workspace. |
 | `description` | string | optional | no | Optional publisher description. |
 | `license` | string | optional | no | Optional license identifier. |
+| `author` | string | optional | no | Protocol-defined publisher display text; grants no trust. |
+| `homepage` | string | optional | no | Protocol-defined homepage text. |
+| `min_sdk_version` | string | optional | no | Protocol-defined minimum SDK version, retaining its wire spelling. |
 
 ### Claim capability members
 
@@ -724,6 +737,23 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | `incremental` | boolean | optional | no | Optional protocol capability flag. |
 | `cancellation` | boolean | optional | no | Protocol-defined value; see the capability claims section. |
 | `progress` | boolean | optional | no | Protocol-defined value; see the capability claims section. |
+
+The following nested protocol members are named in both open and closed claims
+contexts. Their presence and types follow the existing MEP model, with the
+enclosing document's recursive member policy. They do not add protocol versions.
+
+| Object | Members and types | Required members |
+| --- | --- | --- |
+| `workspace` | `protocolVersions`: array of string; `discover`: boolean | both |
+| `validator` | `irVersions`: array of string; `rules`: array of rule objects | `irVersions`; absent `rules` means empty |
+| validator rule | `id`: string; `code`: string | both |
+| `modelTransport` | `tuples`: array of tuple objects; `limits`: limits object; `guarantees`: array of string | `tuples`, `limits`; absent `guarantees` means empty |
+| model transport tuple | `operation`, `profile`, `codec`, `envelopeVersion`, `irVersion`: string | all five |
+| model transport limits | `maxEncodedBytes`, `maxDecodedBytes`, `maxDepth`, `maxNodes`: positive integer | all four |
+| `transform` | no named members in this version | none |
+
+None of these named members permits null. A closed lock refuses extra members at
+each of these levels. An open document ignores them unless critical.
 
 ### Host requirement members
 
@@ -806,7 +836,10 @@ Listing readers ignore dot-prefixed entries and nonregular files.
 ### Transactions and recovery
 
 Only one journal exists at a time. Its two saved members hold exact bytes as
-decimal integers 0 through 255, or null for absence. Under the state lock first
+decimal integers 0 through 255, or null for absence. The journal cases supply
+explicit UTF-8 writer output strings; their saved arrays equal those bytes.
+Parsed expected documents constrain content without mandating a serializer.
+Under the state lock first
 detect old state, before replaying anything. A catalog, extension lock, journal
 or repositories file with missing/other schema URL is old state. More than one
 journal or a journal failing full saved-document validation is old state too.
@@ -861,9 +894,19 @@ or when its owner file is absent.
 
 Publish at `store/extensions/packages/sha256/<treeSha256>/`, containing
 `manifest` and `tree/`; its `<treeSha256>.lease` is beside the directory.
-Under one state-lock hold use an existing tree that passes VERIFY-B or move a
-bad one to .trash, publish staging by a no-replace rename, set read-only modes,
-and journal the lock/catalog. Use Linux renameat2 RENAME_NOREPLACE, macOS
+Under one state-lock hold fully verify an existing tree before reuse, including
+manifest digest, exact regular-file names, sizes, modes and every file's hash.
+VERIFY-B is only the activation check. If full verification fails, first take the
+existing tree's exclusive nonwaiting lease before changing modes, moving it to
+trash or replacing it. A live shared lease causes `package.publish_busy` with no
+change to the published tree, manifest, modes, lease, lock or catalog; leave
+staging for cleanup. Never unlink or replace the lease file during repair, and
+retain its identity and exclusive lease through the journal commit. Publish
+verified staging by a no-replace rename, set read-only modes and journal the
+lock/catalog. This corrects the inherited STORE-1 reuse and repair procedure;
+VERIFY-B at activation and LAUNCH-A remain approved. Hashing an existing tree
+under the state lock takes time proportional to its bytes, so install lock holds
+are not promised to last milliseconds. Use Linux renameat2 RENAME_NOREPLACE, macOS
 renamex_np RENAME_EXCL, Windows MoveFileExW without REPLACE_EXISTING. Retry
 sharing/access errors for up to ten seconds; refuse cross-volume errors without
 copying. Modes are 0555 for executable files/directories and 0444 otherwise on

@@ -14,6 +14,73 @@ const scenarios = (change: string) => [...readFileSync(`openspec/changes/${chang
 const schemaRoot = "website/static/schemas/extensions/0.1.0-preview.1";
 
 describe("shared extension contract data", () => {
+ test("published requirements match the approved OpenSpec deltas", () => {
+  for (const [page, change, capability] of [["identity", "allow-dotted-extension-ids", "extension-identity"], ["packages", "add-extension-packages", "extension-packages"]]) {
+   const body = (s: string) => s.slice(s.indexOf("### Requirement:"));
+   expect(body(readFileSync(join(root, `${page}.md`), "utf8"))).toBe(body(readFileSync(`openspec/changes/${change}/specs/extensions/${capability}/spec.md`, "utf8")));
+  }
+ });
+ test("accepted CRLF history has distinct versions and consistent embedded claims", () => {
+  const c = load("identity-cases.json").cases.find((c: any) => c.id === "crlf-history");
+  expect(c.input.text).toContain("\r\n\r\n");
+  const records = c.input.text.split("\n").filter((s: string) => s.trim()).map((s: string) => JSON.parse(s));
+  expect(new Set(records.map((r: any) => r.version)).size).toBe(records.length);
+  expect(records).toEqual(c.expected.records);
+  for (const r of records) for (const a of r.artifacts) expect(a.claims.extension.version).toBe(r.version);
+ });
+
+ test("journal input supplies writer bytes rather than prescribing a serializer", () => {
+  const c = load("identity-cases.json").cases.find((c: any) => c.input.operation === "commit-state");
+  const journal: any = Object.values(c.expected.files)[0];
+  for (const [input, saved] of [["lockBytes", "nextLock"], ["catalogBytes", "nextCatalog"]]) {
+   expect(typeof c.input[input!]).toBe("string");
+   expect([...Buffer.from(c.input[input!], "utf8")]).toEqual(journal[saved!]);
+   expect(JSON.parse(c.input[input!])).toEqual(c.input[input === "lockBytes" ? "lock" : "catalog"]);
+  }
+ });
+
+ test("each schema context applies the enclosing document's member policy recursively", () => {
+  const visit = (schema: any, open: boolean, at: string, seen = new Set<string>()) => {
+   if (!schema || typeof schema !== "object") return;
+   if (schema.$ref) {
+    if (seen.has(schema.$ref)) return;
+    const next = new Set(seen).add(schema.$ref);
+    const [url, fragment] = schema.$ref.split("#");
+    let target = JSON.parse(readFileSync(join(schemaRoot, url.split("/").pop()), "utf8"));
+    for (const key of (fragment ?? "").split("/").filter(Boolean)) target = target[key];
+    visit(target, open, at, next);
+   }
+   if (schema.type === "object") expect(schema.additionalProperties, at).toBe(open);
+   for (const [key, value] of Object.entries(schema.properties ?? {})) visit(value, open, `${at}.${key}`, seen);
+   if (schema.items) visit(schema.items, open, `${at}[]`, seen);
+   for (const key of ["allOf", "anyOf", "oneOf"]) for (const value of schema[key] ?? []) visit(value, open, at, seen);
+   for (const key of ["if", "then", "else"]) visit(schema[key], open, at, seen);
+  };
+  for (const name of readdirSync(schemaRoot).filter(n => n.endsWith(".schema.json"))) visit(JSON.parse(readFileSync(join(schemaRoot, name), "utf8")), !["lock.schema.json", "journal.schema.json", "repositories.schema.json"].includes(name), name);
+  const withoutPolicy = (s: any): any => Array.isArray(s) ? s.map(withoutPolicy) : s && typeof s === "object" ? Object.fromEntries(Object.entries(s).filter(([k]) => k !== "additionalProperties").map(([k, v]) => [k, withoutPolicy(v)])) : s;
+  const claims = JSON.parse(readFileSync(join(schemaRoot, "claims.schema.json"), "utf8"));
+  const release = JSON.parse(readFileSync(join(schemaRoot, "release.schema.json"), "utf8"));
+  expect(withoutPolicy(claims.$defs.closedEmbedded)).toEqual(withoutPolicy(claims.$defs.embedded));
+  expect(withoutPolicy(release.$defs.closedPackage)).toEqual(withoutPolicy(release.$defs.package));
+ });
+
+ test("install reuse includes same-size corruption and a live lease refusal", () => {
+  const m = load("package-cases.json");
+  const c = m.cases.find((c: any) => c.id === "reuse-same-size-corruption");
+  expect(c).toBeDefined();
+  expect(c.input.existingTree[0].bytes.length).toBe(c.input.verifiedTree[0].bytes.length);
+  expect(c.input.existingTree[0].bytes).not.toEqual(c.input.verifiedTree[0].bytes);
+  expect(c.expected.reuseExisting).toBe(false);
+  expect(c.expected.recordedTree).toEqual(c.input.verifiedTree);
+  for (const f of c.input.verifiedTree) {
+   const line: string | undefined = c.input.manifest.split("\n").find((s: string) => s.endsWith(` ${f.path}`));
+   expect(line ?? "", String(f.path)).toContain(digest(Buffer.from(f.bytes)));
+  }
+  const leased = m.cases.find((c: any) => c.id === "repair-leased-corrupt-tree");
+  expect(leased.expected.code).toBe("package.publish_busy");
+  expect(leased.expected.mutations).toEqual([]);
+  expect(m.hostTests.some((t: any) => t.id === "repair-lease")).toBe(true);
+ });
  for (const [file, change] of [["identity-cases.json", "allow-dotted-extension-ids"], ["package-cases.json", "add-extension-packages"]]) {
   test(`${file} covers approved scenarios with concrete cases or explicit host tests`, () => {
    const manifest = load(file!);

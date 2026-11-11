@@ -22,6 +22,7 @@ this model in the same pull request. The check below compares the two.
   and `morphir.validator.validateModel`. So one model covers legacy `0.1`
   sessions and `0.2.0-draft.1` sessions. The services have
   `version: "0.2.0-draft.1"`.
+- **Claims document family:** current standalone claims use the required `$schema` URL at `0.1.0-preview.1`. The model maps its `schema` member through `@jsonName("$schema")`; that inventory entry uses JSON member naming. Historical claim sets stay labeled in the inventory and transcripts. This does not change MEP wire or protocol versions.
 - **JSON-RPC version:** 2.0 only.
 - **Not in scope:** Content-Length framing, which is transport, and admission
   rules that need decoded payloads or trust decisions: payload length and
@@ -117,7 +118,7 @@ match that list.
 | `doc-compile-failure.md` | protocol.md compile request, failure result | Valid |
 | `doc-cancel.md` | protocol.md compile request, cancel, then -32800 | Valid |
 | `doc-generate.md` | protocol.md generate request and result, backend capability | Valid |
-| `session-legacy.md` | a complete `0.1` session, with the protocol.md claim set | Valid |
+| `session-legacy.md` | historical `0.1` session with claims draft.2, separate from the current preview example | Valid |
 | `session-model-transport.md` | a `0.2.0-draft.1` session with MCK cases model-0028 and model-0001 | Valid |
 | `session-validate-model.md` | a `0.2.0-draft.1` validator session with MCK case model-0036 | Valid |
 | `validate-model-failure.md` | a validator that cannot run, then -32003 | Valid |
@@ -148,7 +149,7 @@ model marks each place with a `GAP smithy-2qe.34.N` comment.
 | smithy-2qe.34.18 | `ExtensionCapabilities` and `CompileOptions` carry extra members beside the named members, and `CompileOptions` refuses `sourceRootUri` and `sourceRoot`. |
 | smithy-2qe.34.19 | The extension refuses a request in the wrong state with -32014, and a capability that is not advertised with -32013; the reply code is not checked. |
 | smithy-2qe.34.20 | Rich methods need `protocolVersion` `0.2.0-draft.1` and a session tuple for the method; validate and transform need the extension type. A pointer only tests presence. |
-| smithy-2qe.34.21 | `CompileModelResult` requires `model` when `success` is true and forbids it when false; a claim set has exactly one of `claimsVersion` and `statementVersion`. |
+| smithy-2qe.34.21 | `CompileModelResult` requires `model` when `success` is true and forbids it when false; a claim set has the disjoint current `$schema` form and historical `claimsVersion` / `statementVersion` forms. Current JSON Schema checks the preview form; historical transcripts remain separate. |
 | smithy-2qe.34.22 | A request id is a number or a string; the model uses a `document`. |
 | smithy-2qe.34.23 | An unknown `PeerKind` is read as `unspecified`; the validator refuses it. |
 | smithy-2qe.34.24 | Relations between values: the selected version and tuples come from the offers, `options.irVersion` equals `output.irVersion`, a validateModel `model` matches its `input`, rule ids and codes are unique in `validator.rules`, progress names an active request, `baseline` only for an incremental frontend. |

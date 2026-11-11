@@ -133,7 +133,7 @@
           "pattern": "^[0-9a-f]{64}$"
         },
         "claims": {
-          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json#/$defs/embedded"
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json#/$defs/closedEmbedded"
         }
       },
       "additionalProperties": false
@@ -218,7 +218,7 @@
                 }
               }
             },
-            "additionalProperties": true
+            "additionalProperties": false
           }
         },
         "irVersions": {
@@ -240,7 +240,7 @@
           "type": "boolean"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "backend": {
       "type": "object",
@@ -262,13 +262,13 @@
           "type": "boolean"
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "executable": {
       "type": "boolean"
     },
     "package": {
-      "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/package"
+      "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/closedPackage"
     }
   },
   "additionalProperties": false

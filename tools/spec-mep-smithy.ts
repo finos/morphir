@@ -218,7 +218,7 @@ export const CONTRACT_EXCEPTIONS: Record<string, ContractException> = {
 	ExtensionInfo: { snakeCase: true, reason: "the wire names stay snake_case" },
 	ExtensionCapabilities: { missing: ["extra"], reason: "extra members beside named members (smithy-2qe.34.18)" },
 	CompileOptions: { missing: ["extra"], reason: "extra members beside named members (smithy-2qe.34.18)" },
-	CapabilityClaimSet: { added: ["statementVersion"], reason: "the draft.1 name of claimsVersion (smithy-2qe.34.21)" },
+	CapabilityClaimSet: { added: ["statementVersion", "schema"], reason: "historical draft.1 name and current standalone claims family URL (smithy-2qe.34.21); MEP wire/protocol versions are unchanged" },
 	CompileModelResult: { tag: "success", reason: "a sum tagged by success (smithy-2qe.34.21)" },
 };
 
@@ -315,6 +315,7 @@ type ValueEntry = {
 	source: string;
 	value?: unknown;
 	pointer?: string;
+	memberNames?: "smithy" | "json";
 	expect: string[];
 };
 
@@ -376,7 +377,7 @@ async function main(): Promise<void> {
 	await inParallel(values, 8, async (entry) => {
 		const value = entry.pointer === undefined ? entry.value : pointerValue(JSON.parse(read(entry.source)), entry.pointer);
 		const run = await smithy(
-			["validate", "value", "--shape", entry.shape, "--value", "-", "--diagnostics", "json", ...models],
+			["validate", "value", "--shape", entry.shape, "--value", "-", "--diagnostics", "json", "--member-names", entry.memberNames ?? "smithy", ...models],
 			JSON.stringify(value),
 		);
 		const difference = codeDifference(entry.expect, findingCodes(run.stdout));

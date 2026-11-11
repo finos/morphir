@@ -132,7 +132,7 @@
           "pattern": "^[0-9a-f]{64}$"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "platform": {
       "type": "object",
@@ -147,7 +147,7 @@
           "pattern": "^[a-z0-9_]+$"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "source": {
       "type": "object",
@@ -162,7 +162,7 @@
           "minLength": 1
         }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "provenance": {
       "type": "object",
@@ -183,7 +183,7 @@
           "pattern": "^[0-9a-f]{64}$"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "lockedIndex": {
       "type": "object",
@@ -207,7 +207,7 @@
           "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json#/$defs/embedded"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "frontend": {
       "type": "object",
@@ -414,7 +414,7 @@
                     "pattern": "^[a-z0-9_]+$"
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": true
               }
             }
           }
@@ -463,7 +463,7 @@
               "pattern": "^[a-z0-9_]+$"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "source": {
           "type": "object",
@@ -478,7 +478,7 @@
               "minLength": 1
             }
           },
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "args": {
           "type": "array",
@@ -556,7 +556,7 @@
                     "pattern": "^[a-z0-9_]+$"
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": true
               }
             }
           }
@@ -610,7 +610,7 @@
               "pattern": "^[a-z0-9_]+$"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "args": {
           "type": "array",
@@ -668,7 +668,7 @@
               "pattern": "^[0-9a-f]{64}$"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": true
         },
         "frontend": {
           "type": "object",
@@ -776,6 +776,42 @@
         }
       },
       "additionalProperties": true
+    },
+    "closedPackage": {
+      "type": "object",
+      "required": [ "format", "entryPoint", "treeSha256" ],
+      "properties": {
+        "format": {
+          "enum": [ "zip", "tar.gz" ]
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+          "maxLength": 239,
+          "minLength": 1
+        },
+        "entryPoint": {
+          "type": "string",
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+          "maxLength": 120,
+          "minLength": 1
+        },
+        "executables": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[^/]+(?:/[^/]+)*$",
+            "maxLength": 120,
+            "minLength": 1
+          }
+        },
+        "treeSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

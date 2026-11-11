@@ -4,6 +4,7 @@
 // spec-mep-smithy.ts guards its CLI body behind `if (import.meta.main)`, so
 // importing it here does not run the smithy CLI.
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
 	canonical,
 	codeDifference,
@@ -39,6 +40,16 @@ const draft = [
 	"sequenceDiagram",
 	"```",
 ].join("\n");
+
+test("the current protocol values are inventoried separately from historical claims", () => {
+	const source = "docs/design/draft/extensions/protocol.md";
+	const examples = protocolExamples(readFileSync(source, "utf8"));
+	const { values } = JSON.parse(readFileSync("spec/mep/smithy/values.json", "utf8"));
+	expect(uncovered(examples.values, values.filter((v: any) => v.source === source).map((v: any) => v.value))).toEqual([]);
+	const current = values.find((v: any) => v.value?.$schema?.endsWith("/claims.schema.json"));
+	expect(current?.memberNames).toBe("json");
+	expect(values.find((v: any) => v.value?.claimsVersion)?.name).toContain("historical");
+});
 
 test("reads fences with their info string and opening line", () => {
 	expect(fences(draft).map((fence) => [fence.info, fence.line])).toEqual([

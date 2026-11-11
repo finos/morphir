@@ -9,7 +9,7 @@ Depends on: maintainer approval of this change.
 - [x] 1.1 Add a normative extension id page under `docs/spec/` ([Q-PAGE](design.html#q-page), recommendation `PAGE-A`) stating the grammar, the device-name rule with the Microsoft list it follows, the rule order (`grammar`, `length`, `device-name`), exact comparison, derived names, the equality of descriptor, claims and session ids, that an id carries no trust, and the family's `$schema` URLs that carry the new grammar; verify its examples match the spec scenarios and its links resolve.
 - [x] 1.2 Add the language-neutral case manifest of [CONF-1](design.html#conf-1) beside that page, each case with an input, an expected outcome and, for a refusal, the expected rule or file, covering every scenario in `specs/extensions/extension-identity/spec.md` except the state lock; verify with a data-integrity test that the manifest parses and every scenario but the state lock's is covered by at least one case.
 - [x] 1.3 Read every extension id in the catalogs and bundles pinned by `.config/published-extension-bundles.toml` and record that each is valid under the new rule, and record the versions those documents are at; verify by listing the ids, versions and sources in the change's evidence.
-- [ ] 1.4 Update `docs/design/draft/extensions/distribution-and-acquisition.md` so it defines, as the authority, every shared file of [DEF-1](design.html#def-1) with its path, schema URL, members, values and unknown-member rule. This task is what lets an installer be built: until it lands, the change does not define the members of a catalog entry, a lock or the repositories file, and finos/morphir-dotnet#567 cannot be written from the change alone. The page gives a member table (name, type, required or optional, whether `null` is allowed) for each:
+- [ ] 1.4 Update `docs/design/draft/extensions/distribution-and-acquisition.md` so it defines, as the authority, every shared file of [DEF-1](design.html#def-1) with its path, schema URL, members, values and recursive unknown-member rule, including open nested packages and closed lock claims. This task is what lets an installer be built: until it lands, the change does not define the members of a catalog entry, a lock or the repositories file, and finos/morphir-dotnet#567 cannot be written from the change alone. The page gives a member table (name, type, required or optional, whether `null` is allowed) for each:
   - the release descriptor and the index record, `$schema` on every history line, and the history rules of [HIST-1](design.html#hist-1);
   - the installed catalog, with `extensions` as an array of entries in ascending byte order of `extensionId`;
   - the extension lock;
@@ -45,8 +45,14 @@ and task 1.7's seven schema files are implemented, with lightweight schema and
 static URL mapping checks passing. Those checkboxes remain pending only for
 actual Docusaurus output and schema-serving evidence from the PR's Netlify
 Deploy Preview at its full head SHA. Static mapping alone does not close them.
-No local website, Cargo or .NET build was run. Host adoption and frozen toolchain
-fixture transition remain their later groups.
+A bounded local website build passed at `27dcc1110a9d9fc08cea1338151966174d91dea9`,
+with all seven emitted schemas byte-identical to source. Current corrections need
+another coordinated site verification; hosted schema availability stays pending.
+No Cargo or .NET build was run. Host adoption and frozen toolchain fixture
+transition remain their later groups. The existing Smithy example inventory
+separates current preview claims from historical claims without changing MEP
+wire/protocol versions. Journal inputs supply explicit writer bytes rather than
+prescribing a serializer, and CRLF history uses distinct versions.
 
 Depends on: 1.2 and 1.4; 2.3's old-home part and 2.6 also on 1.6.
 

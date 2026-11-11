@@ -199,14 +199,13 @@ A member that is absent SHALL differ from a member whose value is `null`. A read
 - **THEN** each host reads the other's catalog as the same catalog
 
 ### Requirement: Documents that carry a claim set ignore unknown members unless critical
-A reader of a release descriptor, an index record or an installed catalog SHALL ignore a member it does not understand unless the document's top-level `critical` list names its path, and SHALL refuse a document whose `critical` list names a path it does not understand. A path names an array element's member through the array's name, as in `extensions.note` for a catalog entry's `note`.
-
+A reader of a release descriptor, index record or installed catalog SHALL ignore unknown members recursively, including package metadata and embedded claims, unless the top-level `critical` list names their path. It SHALL refuse an unknown critical path. Paths pass through array names, for example `extensions.note`.
 #### Scenario: An unknown member in an open document
 - **WHEN** a host reads a current catalog whose entry holds an optional member `note` that it does not understand, and another catalog whose top-level `critical` list names `extensions.note`
 - **THEN** it reads the first catalog and ignores `note`, and refuses the second
 
 ### Requirement: Locks, journals and the repositories configuration refuse unknown members
-A reader of an extension lock, a transaction journal or the repositories configuration SHALL refuse a document that holds a member the contract does not define for it, and SHALL name the file and the member.
+A reader of an extension lock, a transaction journal or the repositories configuration SHALL refuse a document that holds a member the contract does not define for it, and SHALL name the file and the member. This rule applies recursively to every nested object, including claims stored in a lock. Saved journal byte arrays retain exact bytes; each decoded saved document is validated under its own schema and member policy.
 
 #### Scenario: An unknown member in a closed document
 - **WHEN** a host reads a current extension lock that holds a member `installedBy`
