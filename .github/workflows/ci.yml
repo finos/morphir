@@ -339,6 +339,10 @@ jobs:
 
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
+        with:
+          # Documentation and contract tools use the toolchain's default linker.
+          # Installing the optional linker must not require apt before these checks.
+          install-mold: "false"
 
       # The pinned mission-control-tools binary checks the managed html-design
       # files against the lock and against its own bundle.
