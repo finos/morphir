@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "restore",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "severity": "error",
+      "kind": "unsupported-contract",
+      "code": "document_unavailable",
+      "message": "Frozen restore needs .morphir/toolchain.lock.json, which does not exist.",
+      "document": "lock",
+      "path": "",
+      "instruction": [
+        "morphirup",
+        "setup"
+      ]
+    }
+  ],
+  "critical": "planSha256"
+}

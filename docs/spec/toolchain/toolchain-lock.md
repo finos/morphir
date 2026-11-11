@@ -1,0 +1,139 @@
+---
+title: Portable toolchain lock 0.1.0-draft.1
+sidebar_label: Portable lock
+status: draft
+---
+
+# Portable toolchain lock 0.1.0-draft.1
+
+`.morphir/toolchain.lock.json` is the exact resolution of a [request](./toolchain-request.md). It is checked in beside the request and contains no absolute path and no credential. Version authority: this page. Schema: [toolchain-lock-0.1.0-draft.1.schema.json](/schemas/toolchain-lock-0.1.0-draft.1.schema.json).
+
+The approved example records one platform. Digests and versions are synthetic:
+
+```json
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "critical": ["host", "platforms"],
+  "requestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "recipe": {
+    "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "target": "toolchains/recipes/fsharp/1.0.0.json",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "host": { "implementation": "dotnet", "version": "1.2.3", "deployment": "native-aot" },
+  "platforms": {
+    "win-x64": {
+      "hostTarget": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+      "hostSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "providers": [
+        {
+          "operation": "compile",
+          "language": "fsharp",
+          "delivery": "process",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "version": "0.6.0",
+          "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+          "descriptorSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+          "artifactSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "operation": "generate",
+          "target": "fsharp",
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "version": "1.2.3",
+          "modelInput": { "profile": "morphir-ir", "codec": "morphir-json", "irVersion": "4.0.0" }
+        }
+      ]
+    }
+  }
+}
+```
+
+## Members
+
+| Member | Meaning |
+| --- | --- |
+| `requestSha256` | SHA-256 of the exact request bytes the lock was resolved from |
+| `recipe` | The authenticated recipe: `repositoryId` (SHA-256 of the canonical initial root `signed` object, as in tool release metadata v1), `target` and `sha256` |
+| `host` | The exact `implementation`, `version` and `deployment`, the same on every platform |
+| `platforms` | At least one closure, keyed by platform id |
+| `platforms.<id>.hostTarget`, `hostSha256` | The authenticated host artifact for that platform |
+| `platforms.<id>.providers` | One provider per required operation. Never empty, and every platform has a provider for the same set of operations |
+
+Each provider has `operation` (`compile` with `language`, or `generate` with `target`), `delivery`, `extensionId` and `version`, plus the identities its delivery needs:
+
+| `delivery` | Additional members |
+| --- | --- |
+| `built-in` | `modelOutput` for `compile` and `modelInput` for `generate`: the model the built-in writes or reads in process. A built-in has no MEP session and so no `modelTuple`; this model is what readiness and the capability check compare. The other model member, `protocolVersion` and `modelTuple` are each `inconsistent_document` at that member (`lock/negative/built-in-with-protocol-version.json`) |
+| `process` | `repositoryId`, `descriptorTarget`, `descriptorSha256`, `artifactTarget`, `artifactSha256`, protocol members |
+| `wasm` | `abi` and the `process` members |
+| `dotnet-tool` | `repositoryId`, `descriptorTarget`, `descriptorSha256` (the release's extension descriptor, whose claims describe the guest), `packageId`, `command`, `packageTarget`, `packageSha256`, protocol members |
+
+The protocol members are `protocolVersion`, a MEP version on the [supported 0.2 line](./index.md#mep-versions), and one `modelTuple`. Both are required, so a provider without `modelTuple` is `invalid_document` there (`lock/negative/external-provider-without-model-tuple.json`). The tuple's five members are compared exactly, and its `operation` is `morphir.frontend.compileModel` for `compile` and `morphir.backend.generateModel` for `generate`. A string that is not canonical SemVer is `invalid_value` at `protocolVersion`, and a version off the line is `unsupported_case` there (`lock/negative/protocol-version-*.json`). An external provider with `modelInput` or `modelOutput`, which only a built-in has, is `inconsistent_document` at that member (`lock/negative/external-provider-with-model-input.json`). These are checked in that order, `protocolVersion` first ([order of checks](./index.md#order-of-checks)).
+
+For a `dotnet-tool` host offering, `hostTarget` names the authenticated package bytes.
+
+Understood critical paths: `schemaVersion`, `critical`, `requestSha256`, `recipe`, `recipe.repositoryId`, `recipe.target`, `recipe.sha256`, `host`, `host.implementation`, `host.version`, `host.deployment`, `platforms`, `platforms.*`, `platforms.*.hostTarget`, `platforms.*.hostSha256`, `platforms.*.providers`, and `platforms.*.providers.<member>` for each provider member above, including `modelTuple.<member>`, `modelInput.<member>` and `modelOutput.<member>` for each tuple and model member. A lock that needs every reader to understand a provider member lists it, for example `platforms.*.providers.modelTuple`. A platform is named only by `*`: `platforms.win-x64.hostTarget` is not an understood path and is refused with `unsupported_critical_member` (`lock/negative/critical-concrete-platform-key.json`).
+
+## Frozen restore
+
+`morphirup restore --locked` never resolves a channel again and never rewrites the lock; explicit setup or update creates or extends a closure. It checks, in this order:
+
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| The SHA-256 of the request bytes equals `requestSha256`. The bytes are hashed as read; the request need not parse | `request_changed` | `requestSha256` | `lock-request` |
+| The lock records a closure for the current platform. A musl machine never takes a glibc closure | `platform_not_locked` | `platforms` | `lock-platform` |
+
+Request identity is the SHA-256 of the request file's exact bytes, and the lock's own identity, in a receipt, is the SHA-256 of its exact bytes. Both files live in user projects, where Git for Windows commonly converts line endings on checkout (`core.autocrlf=true`), so a Windows checkout would otherwise fail frozen restore with `request_changed`. To prevent this:
+
+- when setup creates `.morphir/toolchain.toml` or `.morphir/toolchain.lock.json`, it also adds `.morphir/toolchain.toml text eol=lf` and `.morphir/toolchain.lock.json text eol=lf` to the project's `.gitattributes`. It creates that file if needed, adds only missing lines, and never rewrites other entries;
+- when the request bytes differ from the locked ones only by CRLF line endings, a leading UTF-8 byte order mark, or both, `request_changed` names that likely cause. Its result diagnostic carries `cause` (`crlf-line-endings`, `byte-order-mark` or `crlf-line-endings-and-byte-order-mark`), and the message names the `.gitattributes` entry. The `lock-request-bytes` cases pin this with CRLF, byte-order-mark and combined copies of `request/approved.toml` against `lock/two-platforms-bound.json`.
+
+The rule itself is unchanged: the bytes are compared exactly, and a converted file is never accepted.
+
+**Extending a lock to a new platform.** An explicit setup that adds a platform resolves it from the lock's exact recipe target, `recipe.target` with `recipe.sha256`, not from a channel. A `yanked` recipe is still read by its exact target path, so a lock bound to a yanked recipe can still be extended. A `revoked` recipe is refused with `release_revoked` at `recipe.target`. The lock then cannot be extended, and a full `update` that resolves a new recipe is required.
+
+A lock records each platform's complete dependency closure. A closure with no provider is `inconsistent_document` at its `providers`. Closures that cover different operations from each other are `inconsistent_document` at `platforms`: the rule relates the closures to each other, so no single platform is named (`lock/negative/closure-operations-differ.json`). Two closures never come from independent channel resolutions: setup resolves one recipe and writes every requested platform from it.
+
+### Checking a lock against its recipe
+
+Given the recipe's exact bytes, a lock is refused with `lock_recipe_mismatch` at the first failure of these checks, in this order. The closures are visited in [platform table order](./index.md#order-of-checks), and for each closure the host artifact, then the operations, then each provider in index order (its repository, then its identity):
+
+| Check | Code | Path | Cases |
+| --- | --- | --- | --- |
+| The SHA-256 of the recipe bytes equals `recipe.sha256` | `lock_recipe_mismatch` | `recipe.sha256` | `lock-recipe-bytes` |
+| `recipe.repositoryId` is the identity of the authenticated repository the recipe bytes were read from | `repository_mismatch` | `recipe.repositoryId` | `lock-recipe-repository` |
+| The recipe offers a host with the lock's implementation, deployment and version | `lock_recipe_mismatch` | `host` | `lock-recipe-host` |
+| A closure's host artifact is the offering's artifact for that platform. A closure for a platform the offering does not list has no such artifact and is refused the same way (`signed/negative/lock-platform-not-offered.lock.json`) | `lock_recipe_mismatch` | `platforms.<id>.hostTarget` | `lock-recipe-host-artifact` |
+| A closure's operations are exactly the recipe's operations | `lock_recipe_mismatch` | `platforms.<id>.providers` | `lock-recipe-operations` |
+| Each provider's `repositoryId`, when its delivery has one, is that same repository identity | `repository_mismatch` | `platforms.<id>.providers[i].repositoryId` | `lock-provider-repository` |
+| Each provider is the offering's built-in for its operation or a recipe provider that fits the host on that platform, in its locked form | `lock_recipe_mismatch` | `platforms.<id>.providers[i]` | `lock-recipe-provider` |
+
+The two repository rows apply the [one repository per binding check](./toolset-recipe.md#one-repository-per-binding-check) rule: a lock resolved from a recipe names that recipe's repository, and so does every provider in it.
+
+## Fixtures
+
+`fixtures/0.1.0-draft.1/lock/approved-fragment.json` is the example above. `two-platforms-bound.json` adds an `osx-arm64` closure and binds `request/approved.toml` by its real digest. `dotnet-tool-host.json` locks a `dotnet-tool` host with the .NET tool frontend and binds `request/critical-understood-member.toml`. `critical-nested-provider-member.json` names a provider member as critical. `target-path-512-utf8-bytes.json` and `target-path-240-utf16-units.json` hold host targets exactly at the [target path](./index.md#target-paths) byte and code-unit limits, written with non-ASCII characters. `protocol-version-later-prerelease.json`, `protocol-version-final.json` and `protocol-version-patch.json` are `two-platforms-bound.json` with its external providers at MEP `0.2.0-draft.2`, `0.2.0` and `0.2.3`, and `lock/negative/protocol-version-*.json` put them at `0.1`, `0.1.0`, `0.3.0-draft.1`, `0.3.0` and `1.0.0`. `lock/negative/` covers:
+
+- a later draft, an unknown critical member, an unknown nested critical member, a concrete platform key named as critical and a repeated critical path;
+- a drive path, a rooted path, a traversing path, a device-name component, a component ending in `.`, a path over 240 code units, a line separator, and non-ASCII paths one past each limit: 513 UTF-8 bytes, 241 UTF-16 code units, and a 256-byte component;
+- an uppercase digest, a short digest, an unknown platform key, no platforms, an empty closure, a closure missing an operation (two variants), a process provider without its artifact digest, a `dotnet-tool` provider without its descriptor, an unknown delivery, two providers for one operation, a non-SemVer version and a WASM provider without an ABI;
+- credential members (`authorization`, and a mixed-case `Authorization`);
+- a repeated member name and a leading byte order mark;
+- MEP versions off the line or not SemVer (`protocol-version-*.json`), an external provider with `modelInput` or without `modelTuple`, and a built-in with `protocolVersion`;
+- documents that break two rules at once (`precedence-*.json`), described under [order of checks](./index.md#order-of-checks).
+
+`lock/unknown-member-fraction.json` is valid: a number in an unknown member is ignored with it.
+
+The signed fixtures add the frozen locks and the `lockRecipe` cases, with one negative lock for each check above.

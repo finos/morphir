@@ -18,6 +18,11 @@ spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/** -text
 spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/v4-bom-crlf.json whitespace=-blank-at-eol,cr-at-eol
 crates/morphir/tests/support/model_originals_host/model-primary.ionb -text
 
+# Toolchain contract fixtures are identified by the SHA-256 of their exact bytes.
+docs/spec/toolchain/fixtures/** -text
+# The readiness workflow case lists the SHA-256 of every source and expected file.
+spec/toolchain/workflows/** -text
+
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads
 

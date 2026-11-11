@@ -1,0 +1,63 @@
+# Tasks
+
+This is the OpenSpec implementation breakdown, not an execution ledger. Beads remains the tracker. Owning Beads/GitHub links are pending recovery of the shared Dolt conflict encountered during the preceding planning work; no issue id is invented here. Link this change and create repository-specific implementation tasks before claiming work. Do not run `bd dolt push` on this Windows machine.
+
+Dependencies: group 1 establishes contracts and fixed cases. Groups 2 and 3 can follow independently. Group 4 needs group 1 and packaged fixtures from groups 2/3. Group 5 needs generation activation from group 4. Group 6 integrates the previous groups. Group 7 consumes the separate WASM-host change and does not block the process-based F# delivery. The bounded-access readers are independent of this manager.
+
+## 1. Shared acquisition contracts and fixed examples, finos/morphir
+
+- [x] 1.1 Define the `0.1.0-draft.1` recipe, project request, portable lock, local receipt and manager-result contracts using established SemVer types, tagged delivery/prerequisite cases and must-ignore/critical rules. Verify fixed positive/negative examples, exact draft refusal and unsupported critical paths through existing contract validation; document each contract and its separate version authority.
+- [x] 1.2 Model offering-specific tool ids and authenticated recipe targets using the existing tool release metadata v1 profile. Verify fixture selection distinguishes implementation/deployment/platform, preserves legacy descriptor bytes and rejects incompatible or substituted artifacts; add the mapping example to the tool metadata guide without silently changing its numeric version.
+- [x] 1.3 Add a signed test-only F# recipe binding host, frontend/backend descriptors and artifacts to exact targets/digests, with frozen per-platform closures. Verify tamper, expiry, learned revocation and unsigned developer provenance through existing trust fixtures; document that extension claim checks and publisher authentication are separate facts.
+- [ ] 1.4 Freeze a small F# source package, expected semantic IR and expected generated F# files, including built-in/external backend selections and model/protocol tuples. Verify the shared MCK uses explicit .NET adapters and fixed expectations rather than a second checker; document supported source compilation separately from SDK/project builds.
+- [x] 1.5 Publish the shared lifecycle/selection narrative with diagrams, command examples and recovery behavior. Verify example document parsing, internal links, `openspec validate add-deployment-and-acquisition --strict` and `mise run openspec:verify`; retain the current MEP generic profile and historical evidence.
+
+## 2. Four .NET offerings and managed composition, morphir-dotnet
+
+- [ ] 2.1 Extract the current tool's F#-enabled managed composition so self-contained, framework-dependent and tool entry points share it while the AOT entry point excludes FCS. Start with command/capability parity cases, verify AOT dependency and warning checks, and document the composition boundary beside the existing entry-point guidance.
+- [ ] 2.2 Consolidate `build/Build.Packaging.cs` and the existing publish scripts into maintained named release profiles for AOT, self-contained, framework-dependent and `Morphir.Tool`. Verify packaged artifact names and launch metadata are unique across release/profile/platform, and that existing tool invocation and package identity remain valid; document the exact publish commands.
+- [ ] 2.3 Add offering identity and prerequisite/capability reporting without reinterpreting existing host strings. Update the .NET `extension-registry` requirements in that repository. Verify registry/command agreement, unavailable delivery reasons and equivalent shared commands across profiles; document runtime versus SDK requirements.
+- [ ] 2.4 Qualify native dependencies and any single-file loading/extraction claims from packaged artifacts. Keep FCS managed profiles untrimmed initially. Verify clean-directory startup, paths with spaces, the configured extraction arrangement and complete shipped-size reporting; document remaining OS prerequisites and unsupported combinations.
+- [ ] 2.5 Extend release assembly with an authenticated catalog of the four offerings and platform support across Windows x64/ARM64, macOS x64/ARM64 and Linux glibc x64/ARM64. Verify each advertised combination has acquired-artifact smoke evidence, and mark absent combinations unsupported; document download selection and update ownership.
+
+## 3. F# process deliveries and toolset readiness, morphir-dotnet
+
+- [ ] 3.1 Publish self-contained process archives from `Morphir.Frontend.FSharp.Extension`, including compiler-service and reference dependencies needed by the fixed package, alongside its existing .NET tool. Write the no-system-dotnet failing scenario first; verify compilation in a clean environment with no SDK/runtime or ambient package restore, and document the supported source boundary.
+- [ ] 3.2 Add an independently versioned F# backend process guest reusing `Morphir.CodeGeneration.FSharp` and current MEP backend methods, with a distinct external identity. Verify exact claims, negotiated tuples and frozen generated files through the shared runner and adapter; document explicit external selection while retaining the built-in default.
+- [ ] 3.3 Produce extension descriptors, archives and recipe bindings from the exact frontend/backend release artifacts. Verify the production extension installer can select and lock those artifacts, and record actual probe status without upgrading unchecked WASM records; document release/host compatibility and the independent version paths.
+- [ ] 3.4 Implement F# readiness checks through the selected providers and generation-scoped configuration, distinguishing acquired/verified/capability-checked/workflow-qualified states. Verify a failed handshake or compile preserves the prior selection, and exercise both the built-in and external backend; document diagnostic states and separate SDK prerequisites for consumer builds.
+
+## 4. Standalone manager and acquisition lifecycle, morphir-dotnet
+
+- [ ] 4.1 Add the small Native AOT `morphirup` entry point with pure plan/resolution logic and bounded acquisition adapters. Start with fixture plans, verify a bootstrap-free executable runs without Morphir/.NET, and document supported commands and the implementation/deployment/toolset distinction.
+- [ ] 4.2 Implement production bootstrap using out-of-band trusted release roots, authenticated manager artifacts and a user-owned install prefix. Verify tampered bootstrap content is refused, fixture signing keys cannot enter production configuration and no elevation/shell edit is required; document direct downloads and the bootstrap trust boundary.
+- [ ] 4.3 Implement plan-only, explicit setup and exact-plan digest checks using existing tool and extension authorities. Verify plans execute no guest or install mutation, applied receipts identify exact selections and missing compatibility/prerequisites fail before activation; document `--yes`, `--plan` and `--expect-plan` behavior.
+- [ ] 4.4 Implement immutable generation receipts and generation-scoped provider overlays without replacing global extension selections. Verify two projects can select different provider versions against the shared stores, duplicate ids cannot enter one registry and old global catalogs remain readable; document overlay discovery in the host installation guidance.
+- [ ] 4.5 Implement staged readiness, activation journal and atomic selection publication under interprocess locks. Verify interruption at every publication step, competing setups and a running command using the prior generation never expose a mixed host/provider set; document restart recovery and exact failure outcomes.
+- [ ] 4.6 Implement list/default/update/rollback/repair/remove and self-update with installation ownership. Verify external NuGet/package-manager files are never overwritten, known revoked generations cannot launch, in-use generations cannot be removed and Windows self-replacement recovers after interruption; document owner-specific update commands.
+
+## 5. Project selection, proxy and CI restore, morphir-dotnet
+
+- [ ] 5.1 Implement project request/lock parsing and explicit resolution into complete platform closures, preserving existing morphir.toml task adapters. Verify request-byte hashes, portable paths, unknown optional/critical members and exact draft matching against group 1 cases; document source control conventions and lock extension for another platform.
+- [ ] 5.2 Implement frozen and offline restore from exact locks, durable trust/revocation state and verified objects. Verify stable-channel movement cannot change a locked restore, missing platforms/content fail without a network request, and expired metadata does not prevent an installed valid generation from running; document explicit update versus repair.
+- [ ] 5.3 Implement the selection precedence and `show`/`doctor` explanations using existing discovery boundaries. Verify CLI/environment/project/default precedence, a broken project selection never falls back and PATH conflicts remain diagnostic; document each selection source and explicit overrides.
+- [ ] 5.4 Implement the native proxy and `morphirup run` using absolute launch paths and argument vectors. Verify arguments containing spaces/quotes, streams, exit codes, working directory, cancellation and Windows process-tree cleanup, including a selected `dotnet-morphir` entry point; document invocation without a PATH change.
+- [ ] 5.5 Implement explicit reversible `env --install` shell setup. Verify repeated setup adds no duplicate PATH entries, removal preserves foreign entries and default/bootstrap/CI setup edits no shell profile; document PowerShell, POSIX shell and absolute-path usage with their actual supported workflows.
+
+## 6. Acquired-release qualification, parent contracts plus morphir-dotnet receipts
+
+- [ ] 6.1 Exercise the fixed F# workflow through all four offerings from acquired artifacts, using clean no-runtime environments for standalone profiles and the declared runtime/SDK for managed tool installation. Verify equivalent IR and generated files, explicit external backend selection and actual provider identities; publish one consolidated support matrix and receipts.
+- [ ] 6.2 Exercise the multi-platform locked CI journey, offline rerun, failed probe/update, rollback, concurrent activation and PATH ownership cases. Verify each observes one complete generation and fixed results. Group qualification in existing appropriate suites or manual/release lanes rather than adding per-profile PR jobs; document the exact reproducible workflow.
+- [ ] 6.3 Validate the public bootstrap/download/tool installation instructions against candidate artifacts on all advertised platforms. Verify uninstall/repair and self-update recovery, full artifact sizes and provenance receipts. Keep unqualified combinations visibly pending; do not count source-build execution as consumer installation evidence.
+
+## 7. Join the separate WASM-host delivery, morphir-dotnet
+
+- [ ] 7.1 After the separately tracked host change supplies runtime support, add offering-specific WASM recipe/readiness checks for each claimed ABI. Verify a real acquired fixture executes through every advertised offering and incompatible ABI/model tuples remain not-ready; document that process F# qualification does not establish WASM capability.
+- [ ] 7.2 Link packaged host/runtime receipts to the bounded-generation work without changing its model-access or memory acceptance contract. Verify each reported capability names its actual ABI and qualified deployment. Record MoonBit manager adoption and Rust runtime adoption as separate follow-ups rather than completing them with .NET evidence.
+
+## Workflow follow-up
+
+- Review the standalone proposal and design before applying implementation tasks. Create the owning Beads epic and per-repository links after tracker recovery; do not silently resolve unrelated database conflicts.
+- Keep implementation in each owning repository and follow its own OpenSpec approval, review and release policy. No implementation or submodule update is part of this planning delivery.
+- Archive only after the implemented scope is qualified. If the independent WASM join remains a later delivery, explicitly split that scope into a follow-up before archive rather than marking its tasks complete.
+- Synchronize tracking only through the permitted workflow. Windows remote Beads synchronization remains deferred because of the observed `bd dolt push` process storm.

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "show",
+  "outcome": "succeeded",
+  "selection": {
+    "source": {
+      "kind": "environment"
+    },
+    "generationId": "gen-0002",
+    "platform": "win-x64",
+    "host": {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "self-contained"
+    }
+  },
+  "diagnostics": []
+}

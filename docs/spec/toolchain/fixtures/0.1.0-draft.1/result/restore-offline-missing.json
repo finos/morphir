@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "restore",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "offline-content-unavailable",
+      "code": "offline_content_unavailable",
+      "severity": "error",
+      "message": "The locked F# frontend archive is not in the verified local store. Run morphirup restore --locked with network access.",
+      "component": {
+        "role": "provider",
+        "operation": "compile",
+        "language": "fsharp"
+      },
+      "target": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300" role="img" aria-labelledby="title desc">
+  <title id="title">A developer chooses a runtime arrangement</title>
+  <desc id="desc">Acquiring Morphir leads to one of three runtime arrangements: Native AOT, managed with a bundled runtime, or managed with an installed runtime. The installed-runtime arrangement is reached either through the direct morphir apphost or through the managed dotnet-morphir tool.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#475569"/></marker></defs>
+  <rect width="760" height="300" rx="16" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#172554" font-size="16">
+    <rect x="20" y="120" width="150" height="60" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="95" y="155" font-weight="700">Acquire Morphir</text>
+    <rect x="220" y="25" width="240" height="60" rx="10" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+    <text x="340" y="50" font-weight="700">native-aot</text><text x="340" y="72">Native AOT</text>
+    <rect x="220" y="120" width="240" height="60" rx="10" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+    <text x="340" y="145" font-weight="700">self-contained</text><text x="340" y="167">Managed, bundled runtime</text>
+    <rect x="220" y="215" width="240" height="60" rx="10" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/>
+    <text x="340" y="240" font-weight="700">Managed, installed runtime</text><text x="340" y="262">Compatible .NET on the machine</text>
+    <rect x="520" y="170" width="225" height="52" rx="10" fill="#fef3c7" stroke="#a16207" stroke-width="2"/>
+    <text x="632" y="192" font-weight="700">framework-dependent</text><text x="632" y="212">Direct morphir apphost</text>
+    <rect x="520" y="236" width="225" height="52" rx="10" fill="#fef3c7" stroke="#a16207" stroke-width="2"/>
+    <text x="632" y="258" font-weight="700">dotnet-tool</text><text x="632" y="278">Managed dotnet-morphir tool</text>
+    <g fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow)">
+      <path d="M170 140 L216 58"/><path d="M170 150 H216"/><path d="M170 160 L216 242"/>
+      <path d="M460 238 L516 200"/><path d="M460 250 L516 260"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "setup",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "trust-failure",
+      "severity": "error",
+      "code": "repository_mismatch",
+      "message": "The recipe's third provider names another repository than the one the recipe was authenticated by.",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "document": "recipe",
+      "path": "providers[2].repositoryId"
+    }
+  ]
+}

@@ -71,6 +71,11 @@ def find_example_files(root: Path) -> list[Path]:
     if static_examples.exists():
         example_files.extend(static_examples.rglob("*.json"))
 
+    # Expected IR of the toolchain readiness workflow cases
+    workflow_cases = root / "spec" / "toolchain" / "workflows"
+    if workflow_cases.exists():
+        example_files.extend(workflow_cases.glob("*/expected/ir-*.json"))
+
     # Exclude manifest files (index.json)
     example_files = [f for f in example_files if f.name != "index.json"]
 

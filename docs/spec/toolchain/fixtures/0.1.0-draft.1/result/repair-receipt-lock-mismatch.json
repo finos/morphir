@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "repair",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "lock-binding",
+      "severity": "error",
+      "code": "receipt_lock_mismatch",
+      "message": "The installed frontend is not the provider the lock records for win-x64.",
+      "document": "receipt",
+      "path": "providers[0].identity"
+    }
+  ]
+}

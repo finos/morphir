@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "preset": "fsharp",
+  "version": "1.0.0",
+  "operations": [
+    {
+      "operation": "compile",
+      "language": "fsharp"
+    },
+    {
+      "operation": "generate",
+      "target": "fsharp"
+    }
+  ],
+  "hosts": [],
+  "providers": [
+    {
+      "operation": "compile",
+      "language": "fsharp",
+      "delivery": "process",
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "version": "0.6.0",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+      "descriptorSha256": "af16efdc13f1abb21af3a23a18ecbdad914a6ee3d325e98bd91a0ed89e530bd2",
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.frontend.compileModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "prerequisites": [
+        {
+          "kind": "native",
+          "name": "glibc",
+          "versions": [
+            ">=2.28.0"
+          ],
+          "platforms": [
+            "linux-x64",
+            "linux-arm64"
+          ]
+        }
+      ],
+      "platforms": {
+        "win-x64": {
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+          "artifactSha256": "614522d4599c3271c92b480ce755fafb0ae2d16445670562ce12a2ebd8d31d9f"
+        },
+        "win-arm64": {
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-arm64.zip",
+          "artifactSha256": "23ddfd979164c541cd1a82f46414c7837af3c2931c2da7f5bc3381a78aef2d86"
+        },
+        "osx-x64": {
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/osx-x64.zip",
+          "artifactSha256": "9af8f3f7f9b04d594653babfb32e0533b6294f271790db3829faa7b9638645a1"
+        },
+        "osx-arm64": {
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/osx-arm64.zip",
+          "artifactSha256": "79e72a7b10b83f038bde7ddce681d0114265f232fbbe736797e1c0688117d8b7"
+        },
+        "linux-x64": {
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/linux-x64.zip",
+          "artifactSha256": "f366b90fd92fc16812eb988cff0035085e9edd6fe5bde6437b14acaff3919518"
+        },
+        "linux-arm64": {
+          "artifactTarget": "extensions/fsharp-frontend/0.6.0/linux-arm64.zip",
+          "artifactSha256": "631ad7bf9a254a0f165e6466520b0839bfc69756fd640c000e5cb05968c81e2c"
+        }
+      }
+    },
+    {
+      "operation": "compile",
+      "language": "fsharp",
+      "delivery": "dotnet-tool",
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "version": "0.6.0",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "packageId": "Morphir.Frontend.FSharp.Extension",
+      "command": "morphir-fsharp-frontend",
+      "packageTarget": "packages/nuget/morphir.frontend.fsharp.extension/0.6.0/morphir.frontend.fsharp.extension.0.6.0.nupkg",
+      "packageSha256": "26a4a6da0d3798e22b0990e998b58c89a04f2c6497da3c37060a1cffc6c8dbbe",
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.frontend.compileModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "prerequisites": [
+        {
+          "kind": "runtime",
+          "name": "Microsoft.NETCore.App",
+          "versions": [
+            ">=10.0.0",
+            "<11.0.0"
+          ]
+        },
+        {
+          "kind": "sdk",
+          "name": "Microsoft.NET.Sdk",
+          "versions": [
+            ">=10.0.100"
+          ],
+          "phase": "install"
+        }
+      ],
+      "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+      "descriptorSha256": "af16efdc13f1abb21af3a23a18ecbdad914a6ee3d325e98bd91a0ed89e530bd2"
+    },
+    {
+      "operation": "generate",
+      "target": "fsharp",
+      "delivery": "process",
+      "extensionId": "morphir-fsharp-backend",
+      "version": "0.1.0",
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "descriptorTarget": "extensions/fsharp-backend/0.1.0/release.json",
+      "descriptorSha256": "932e0641de8f5cf2db33c7c930493063d38f14376dbc6df62ba7745668ae1ed7",
+      "protocolVersion": "0.2.0-draft.1",
+      "modelTuple": {
+        "operation": "morphir.backend.generateModel",
+        "profile": "morphir-ir",
+        "codec": "morphir-json",
+        "envelopeVersion": "0.1.0-draft.1",
+        "irVersion": "4.0.0"
+      },
+      "prerequisites": [
+        {
+          "kind": "native",
+          "name": "glibc",
+          "versions": [
+            ">=2.28.0"
+          ],
+          "platforms": [
+            "linux-x64",
+            "linux-arm64"
+          ]
+        }
+      ],
+      "platforms": {
+        "win-x64": {
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/win-x64.zip",
+          "artifactSha256": "364ce36f8643c57c1d11548997588f56ac43bd57984a72478eaa6f9cb034ec65"
+        },
+        "win-arm64": {
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/win-arm64.zip",
+          "artifactSha256": "193a6860f943c4bd5f3bc15e9b5cb5f071cf8f6d2b8cc3b17b45b2cab0bb0fa8"
+        },
+        "osx-x64": {
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/osx-x64.zip",
+          "artifactSha256": "04b49fd14d42fd0895b77879222adea3c2d3ee7cffb6b2aac7cd28f10015ebb4"
+        },
+        "osx-arm64": {
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/osx-arm64.zip",
+          "artifactSha256": "1c85ef0ede3ab5b99fbb34df61f71f6ada5aa65c5359393fb4a580e03077e1c0"
+        },
+        "linux-x64": {
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/linux-x64.zip",
+          "artifactSha256": "9bc6fc1a2e6a233a09741ff9c120f6ca5b693ebd78e63736629aa43c11c66cb3"
+        },
+        "linux-arm64": {
+          "artifactTarget": "extensions/fsharp-backend/0.1.0/linux-arm64.zip",
+          "artifactSha256": "1db492027928e16689c0c3789ee668f214d3e8e9439ddb1d0e476cbad5f6b06e"
+        }
+      }
+    }
+  ]
+}

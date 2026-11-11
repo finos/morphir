@@ -1,0 +1,3507 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "documents": [
+    {
+      "contract": "request",
+      "document": "request/approved.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/approved-bom.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/choice-for-unrequired-operation.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/team-platforms-external-backend.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/exact-host-version.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/unknown-optional-members.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/critical-understood-member.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/reformatted-approved.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/draft-2.toml",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/released-0.1.0.toml",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/version-not-semver.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/missing-schema-version.toml",
+      "expected": {
+        "code": "invalid_document",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-critical-member.toml",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "host.mirror"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/channel-and-version.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/no-channel-or-version.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/deployment-not-a-token.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.deployment"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-channel.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.channel"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-delivery.toml",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "toolset.providers[0].delivery"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/compile-without-language.toml",
+      "expected": {
+        "code": "invalid_document",
+        "path": "toolset.providers[0].language"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/unknown-platform.toml",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms[0]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/duplicate-platform.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/not-toml.toml",
+      "expected": {
+        "code": "invalid_document",
+        "path": ""
+      },
+      "schema": "unparsable"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/approved-fragment.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/two-platforms-bound.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/unknown-member-fraction.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/protocol-version-later-prerelease.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/protocol-version-final.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/protocol-version-patch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.1.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.1.0.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.3.0-draft.1.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-0.3.0.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/protocol-version-1.0.0.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/external-provider-with-model-input.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[0].modelInput"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/external-provider-without-model-tuple.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].modelTuple"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-protocol-version-before-model-member.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/built-in-with-protocol-version.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[1].protocolVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/duplicate-member.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": ""
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema validates a parsed value, and a parser keeps only one of two members with the same name."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/byte-order-mark.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": ""
+      },
+      "schema": "unparsable"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "attestation"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/absolute-host-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/rooted-artifact-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.providers[0].artifactTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/traversal-descriptor-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.providers[0].descriptorTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/uppercase-digest.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.win-x64.hostSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/short-request-digest.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "requestSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-platform.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.win-x86"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/empty-platforms.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/process-without-artifact-digest.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].artifactSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-delivery.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "platforms.win-x64.providers[1].delivery"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/duplicate-operation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/host-version-not-semver.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.version"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/wasm-without-abi.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/fsharp-synthetic.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/protocol-membership-exact.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/wasm-abi-alternatives.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/wasm-abi-and-protocol-misfit.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "signedBy"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/musl-bound-to-tool-release.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].platforms.linux-musl-x64"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the allowed platform keys depend on the host's source kind."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-offering.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/wasm-without-abi.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/protocol-version-0.1.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "providers[0].protocolVersion"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/external-provider-with-model-input.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].modelInput"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/external-provider-with-model-output.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].modelOutput"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/built-in-with-model-tuple.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].builtIns[0].modelTuple"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/provider-built-in-delivery.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].delivery"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-protocol-version.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].protocolVersions[1]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/precedence-repetition-before-invalid-entry.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].protocolVersions[1]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-wasm-abi.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].wasmAbis[1]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/tuple-operation-mismatch.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].modelTuple.operation"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the tuple's operation depends on the provider's operation."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/operation-without-candidate.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations[2]"
+      },
+      "schema": "accepts",
+      "schemaGap": "Fit compares each operation with every host offering and provider, which JSON Schema cannot express."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/extension-id-not-lowercase.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "providers[0].extensionId"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/process-without-platforms.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].platforms"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/unknown-source-kind.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "hosts[0].source.kind"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/external-impersonates-built-in.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[2].extensionId"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares each provider with every host's built-ins, which JSON Schema cannot express."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/win-x64-qualified.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/workflow-skipped.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negotiation-failed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/developer-artifact-in-generation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.authentication"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/workflow-check-without-workflow.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "checks[0].workflow"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/probed-without-probe-source.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].installation.probeSource"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/component-workflow-qualified.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].readiness"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/component-checks-not-one-of-each.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].checks"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not count a component's checks by kind."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/external-dotnet-tool-host.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/provider-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/host-version-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "leases"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/readiness-exceeds-checks.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].readiness"
+      },
+      "schema": "accepts",
+      "schemaGap": "Readiness is derived from the checks' statuses, which JSON Schema cannot compute."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/qualified-with-failed-workflow.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "readiness"
+      },
+      "schema": "accepts",
+      "schemaGap": "Readiness is derived from the checks' statuses, which JSON Schema cannot compute."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/provider-without-claim-check.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].installation.claimCheck"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/probe-source-without-probe.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.probeSource"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/relative-launch-program.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/posix-launch-on-windows.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the launch path syntax depends on the receipt's platform."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/unknown-ownership.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "host.installation.ownership.kind"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/built-in-with-installation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[1].installation"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/credential-member.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "host.installation.authorization"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/generation-id-not-a-token.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "generationId"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/unknown-readiness.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "readiness"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-integer-at-bound.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-key-order.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-providers-swapped.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/show-project-selection.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/show-environment-selection.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-offline-missing.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/doctor-every-diagnostic.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/draft-2.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "trace"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-diagnostic-kind.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "diagnostics[0].kind"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-with-credentials.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "diagnostics[2].mirror"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-drive-letter.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "diagnostics[2].mirror"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-file-scheme.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "diagnostics[2].mirror"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-bare-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "diagnostics[2].mirror"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/mirror-with-query.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "diagnostics[2].mirror"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/succeeded-with-error.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "outcome"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the outcome depends on every diagnostic's severity."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-trust-code.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "diagnostics[2].code"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/offline-without-digest.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[3].sha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/unknown-command.json",
+      "expected": {
+        "code": "unsupported_case",
+        "path": "command"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/readiness-failed-at-reached-state.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[5].readiness"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the readiness bound depends on the failed check."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-digest-mismatch.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "planSha256"
+      },
+      "schema": "accepts",
+      "schemaGap": "planSha256 is the digest of the plan's canonical bytes, which JSON Schema cannot compute."
+    },
+    {
+      "contract": "request",
+      "document": "request/wasm-example-default.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/wasm-example-bytes-abi.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/two-choices-one-operation.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "toolset.providers[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/choice-without-delivery-or-id.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "toolset.providers[0]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/credential-member.toml",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "host.token"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "request",
+      "document": "request/negative/abi-without-wasm.toml",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "toolset.providers[0].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/critical-nested-platform-member.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/no-operations.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/no-hosts.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-operation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations[1]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/duplicate-provider.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[3]"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/second-built-in.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[0].builtIns[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema cannot require array elements to differ in chosen members."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/credential-member.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "providers[0].apiKey"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/extension-id-token-too-long.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "providers[0].extensionId"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/unknown-nested-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "hosts.platforms.*.signature"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/critical-nested-provider-member.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/dotnet-tool-host.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/empty-providers.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/incomplete-closure.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares closures with each other, which the schema checks one at a time."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/credential-member.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "authorization"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/device-name-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/trailing-dot-component.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-too-long.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/unknown-nested-critical-member.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "platforms.*.providers.signature"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/platform-not-locked.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/native-aot-bundled-runtime.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.execution.runtime"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/deployment-execution-mismatch.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.execution"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the execution depends on the host identity's deployment."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/external-owner-manager-owned.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.installation.authentication"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the authentication kind depends on the ownership kind."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/non-passed-without-reason.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].checks[1].reason"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/workflow-on-component-check.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "host.checks[0].workflow"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/two-workflow-checks.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "checks"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/recipe-digest-other-recipe.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[0].installation.authentication"
+      },
+      "schema": "accepts",
+      "schemaGap": "The recipe-digest members must equal the receipt's own recipe, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/credential-api-key.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "host.installation.apiKey"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/dot-dot-launch-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/drive-root-launch-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "host.installation.launch.program"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/built-in-integrity-differs.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "providers[1].checks"
+      },
+      "schema": "accepts",
+      "schemaGap": "A built-in's integrity status must equal the host's, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-request-changed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-escaping.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/empty-instruction.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[4].instruction"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/code-of-another-kind.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[2].code"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/failed-without-error.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "outcome"
+      },
+      "schema": "accepts",
+      "schemaGap": "Not expressed in the schema: the outcome depends on every diagnostic's severity."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/abi-unavailable-without-abi.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[9].abi"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/relative-project-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "selection.source.path"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/dot-dot-project-path.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "selection.source.path"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/lock-sha-not-digest.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "selection.lockSha256"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/planned-without-plan.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "outcome"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/provider-component-without-delivery.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].delivery"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/process-probe-none.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].probe"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/line-separator-target.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "rejects"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/critical-concrete-platform-key.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "platforms.win-x64.hostTarget"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/critical-duplicate-path.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "critical"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-version-before-credential.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-critical-before-credential.json",
+      "expected": {
+        "code": "unsupported_critical_member",
+        "path": "platforms.*.unknownMember"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-duplicate-before-unknown-critical.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "critical"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-credential-before-body.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "apiKey"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-credential-byte-order.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "Authorization"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-platform-table-order.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.win-x64.hostSha256"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/precedence-platform-keys-first.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "platforms.zz-unknown"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/closure-operations-differ.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares closures with each other, which the schema checks one at a time."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/target-path-512-utf8-bytes.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-path-513-utf8-bytes.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema's maxLength counts code points, and no schema keyword counts UTF-8 bytes or UTF-16 code units."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/target-path-240-utf16-units.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-path-241-utf16-units.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema's maxLength counts code points, and no schema keyword counts UTF-8 bytes or UTF-16 code units."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-component-256-utf8-bytes.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema's maxLength counts code points, and no schema keyword counts UTF-8 bytes or UTF-16 code units."
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/dotnet-tool-without-descriptor.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "platforms.win-x64.providers[0].descriptorTarget"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/precedence-body-before-consistency.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[0].version"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/precedence-consistency-table-order.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "Both rules compare array elements with each other, which the schema checks one at a time."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/credential-apikey-uppercase.json",
+      "expected": {
+        "code": "credential_in_document",
+        "path": "providers[0].APIKEY"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema leaves unknown members open and cannot compare member names case-insensitively."
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/dotnet-tool-without-descriptor.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[1].descriptorTarget"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/provider-misfit.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/operation-without-candidate-no-shared-platform.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "operations[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "Fit compares a provider with each host offering, which the schema checks one at a time."
+    },
+    {
+      "contract": "request",
+      "document": "request/other-preset.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/choice-unknown-provider.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/choice-process-frontend.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/wasm-example-extism-abi.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/recipe-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/recipe-and-host-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/provider-missing.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-platform-not-locked.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/repair-lock-changed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/repair-receipt-lock-mismatch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-lock-recipe-mismatch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/platform-on-other-lock-binding-code.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].platform"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/diagnostic-without-code.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[0].code"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/download-bytes-fraction.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.components[0].downloadBytes"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema's integer type accepts any number whose value is an integer, whatever its spelling."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/download-bytes-exponent.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.components[0].downloadBytes"
+      },
+      "schema": "accepts",
+      "schemaGap": "JSON Schema's integer type accepts any number whose value is an integer, whatever its spelling."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/download-bytes-past-bound.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "plan.components[0].downloadBytes"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/provider-component-without-extension-id.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].extensionId"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/host-component-with-extension-id.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].extensionId"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-component-without-prerequisites.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.components[0].prerequisites"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/provider-component-without-language.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[0].component.language"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/dotnet-tool-ownership-without-scope.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[4].ownership.scope"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/runtime-prerequisite-without-versions.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "diagnostics[1].prerequisite.versions"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/provider-without-installation.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].installation"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/negative/provider-identity-without-model-tuple.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "providers[0].identity.modelTuple"
+      }
+    },
+    {
+      "contract": "receipt",
+      "document": "receipt/binding/host-repository-substituted.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "request",
+      "document": "request/self-contained.toml",
+      "expected": "valid"
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/built-in-compile-with-model-input.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "hosts[1].builtIns[0].modelInput"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/built-in-compile-without-model-output.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "hosts[1].builtIns[0].modelOutput"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/built-in-frontend.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/built-in-compile-with-model-input.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "platforms.win-x64.providers[0].modelInput"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-without-lock.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.lock"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-key-collision.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "plan.keyCollision"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema compares member names as written, not after NFC."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/lock-binding-other-document.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].document"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/platform-not-locked-without-platform.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].platform"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/abi-on-other-code.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].abi"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/document-unavailable-with-path.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].path"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/critical-not-array.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "critical"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-without-plan-sha256.json",
+      "expected": {
+        "code": "invalid_document",
+        "path": "planSha256"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-sha256-without-plan.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "planSha256"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/diagnostic-path-without-document.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].path"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-component-other-deployment.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-component-other-implementation.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-component-other-version.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-provider-repository-target-source.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].source"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not tie a component's source kind to its role and delivery."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-built-in-source.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not tie a component's source kind to its role and delivery."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-recipe-digest-source.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not tie a component's source kind to its role and delivery."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-lock-without-platform.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.lock.platforms"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-lock-other-recipe.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.lock.recipe"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-provider-not-locked.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1]"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-source-other-repository.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.repositoryId"
+      },
+      "schema": "accepts",
+      "schemaGap": "The rule compares the plan with the lock it carries, which JSON Schema cannot compare."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/host-probe-none.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].probe"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/built-in-probe-none.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[2].probe"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-prerequisite-with-platforms.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[1].prerequisites[0].platforms"
+      }
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-plan-changed.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-document-unavailable.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-provider-repository-mismatch.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-choice-unsupported.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/setup-preset-unsupported.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/restore-request-changed-crlf.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/cause-on-other-code.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "diagnostics[0].cause"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/comparator-caret.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[2].prerequisites[0].versions[0]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/comparator-partial-version.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[2].prerequisites[0].versions[0]"
+      }
+    },
+    {
+      "contract": "recipe",
+      "document": "recipe/negative/comparator-wildcard.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "hosts[2].prerequisites[0].versions[0]"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/draft-build-metadata.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/schema-version-at-bound.json",
+      "expected": {
+        "code": "unsupported_contract_version",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/schema-version-past-bound.json",
+      "expected": {
+        "code": "invalid_value",
+        "path": "schemaVersion"
+      }
+    },
+    {
+      "contract": "lock",
+      "document": "lock/target-path-non-ascii-nfc.json",
+      "expected": "valid"
+    },
+    {
+      "contract": "lock",
+      "document": "lock/negative/target-path-nfd.json",
+      "expected": {
+        "code": "non_portable_path",
+        "path": "platforms.win-x64.hostTarget"
+      },
+      "schema": "accepts",
+      "schemaGap": "No schema keyword checks Unicode normalization."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-source-other-digest.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.sha256"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/plan-host-source-other-target.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.target"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock."
+    },
+    {
+      "contract": "result",
+      "document": "result/negative/precedence-plan-rule-before-digest.json",
+      "expected": {
+        "code": "inconsistent_document",
+        "path": "plan.components[0].source.sha256"
+      },
+      "schema": "accepts",
+      "schemaGap": "The schema does not compare a plan's components with its lock, and cannot compute planSha256."
+    }
+  ],
+  "bindings": [
+    {
+      "name": "a lock binds the exact request bytes",
+      "kind": "lock-request",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved.toml",
+      "expected": "valid"
+    },
+    {
+      "name": "a changed request is refused",
+      "rule": "lock-request",
+      "kind": "lock-request",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/exact-host-version.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256"
+      }
+    },
+    {
+      "name": "reformatting the request changes its identity",
+      "kind": "lock-request",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/reformatted-approved.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256"
+      }
+    },
+    {
+      "name": "frozen restore selects a locked platform",
+      "kind": "lock-platform",
+      "lock": "lock/two-platforms-bound.json",
+      "platform": "osx-arm64",
+      "expected": "valid"
+    },
+    {
+      "name": "frozen restore refuses an unlocked platform",
+      "rule": "lock-platform",
+      "kind": "lock-platform",
+      "lock": "lock/two-platforms-bound.json",
+      "platform": "linux-x64",
+      "expected": {
+        "code": "platform_not_locked",
+        "path": "platforms"
+      }
+    },
+    {
+      "name": "a musl machine never takes a glibc closure",
+      "kind": "lock-platform",
+      "lock": "lock/two-platforms-bound.json",
+      "platform": "linux-musl-x64",
+      "expected": {
+        "code": "platform_not_locked",
+        "path": "platforms"
+      }
+    },
+    {
+      "name": "a receipt binds the exact lock bytes and its platform closure",
+      "kind": "receipt-lock",
+      "receipt": "receipt/win-x64-qualified.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a receipt refuses different lock bytes",
+      "rule": "receipt-lock-bytes",
+      "kind": "receipt-lock",
+      "receipt": "receipt/win-x64-qualified.json",
+      "lock": "lock/approved-fragment.json",
+      "expected": {
+        "code": "lock_changed",
+        "path": "lockSha256"
+      }
+    },
+    {
+      "name": "a receipt refuses a substituted provider artifact",
+      "rule": "receipt-lock-provider",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/provider-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "providers[0].identity"
+      }
+    },
+    {
+      "name": "a receipt refuses a substituted host release",
+      "rule": "receipt-lock-host",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/host-version-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "host.identity"
+      }
+    },
+    {
+      "name": "a .NET tool host lock binds its request",
+      "kind": "lock-request",
+      "lock": "lock/dotnet-tool-host.json",
+      "request": "request/critical-understood-member.toml",
+      "expected": "valid"
+    },
+    {
+      "name": "a .NET tool host receipt binds its lock",
+      "kind": "receipt-lock",
+      "receipt": "receipt/external-dotnet-tool-host.json",
+      "lock": "lock/dotnet-tool-host.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a receipt for a platform the lock does not record is refused",
+      "rule": "receipt-lock-platform",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/platform-not-locked.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "platform_not_locked",
+        "path": "platforms"
+      }
+    },
+    {
+      "name": "the F# preset resolves the process frontend and the built-in generator",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/approved.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "compile",
+            "language": "fsharp",
+            "delivery": "process",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0"
+          },
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp",
+            "version": "1.2.3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a missing WASM ABI is reported, not substituted",
+      "rule": "resolve-preferred-abi",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-alternatives.json",
+      "request": "request/wasm-example-default.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "abi_unavailable",
+        "path": "toolset"
+      }
+    },
+    {
+      "name": "an explicit ABI choice selects the alternative",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-alternatives.json",
+      "request": "request/wasm-example-bytes-abi.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "generate",
+            "target": "example",
+            "delivery": "wasm",
+            "extensionId": "morphir-example-backend",
+            "version": "1.9.0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plan digest is the SHA-256 of these canonical bytes",
+      "kind": "plan-canonical",
+      "result": "result/setup-plan-escaping.json",
+      "canonical": "result/setup-plan-escaping.plan.canonical.json",
+      "expected": "valid"
+    },
+    {
+      "name": "a recipe for another preset is refused",
+      "rule": "resolve-preset",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/other-preset.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.preset"
+      }
+    },
+    {
+      "name": "a provider that fits on one platform resolves there",
+      "kind": "resolve",
+      "recipe": "recipe/provider-misfit.json",
+      "request": "request/approved.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "compile",
+            "language": "fsharp",
+            "delivery": "process",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "version": "0.6.0"
+          },
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp",
+            "version": "1.2.3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a preferred provider without an artifact for the platform is refused, not substituted",
+      "rule": "resolve-preferred-misfit",
+      "kind": "resolve",
+      "recipe": "recipe/provider-misfit.json",
+      "request": "request/approved.toml",
+      "platform": "osx-arm64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset"
+      }
+    },
+    {
+      "name": "a choice that no built-in or provider matches is refused",
+      "rule": "resolve-choice-unmatched",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/choice-unknown-provider.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "a chosen provider whose ABI the host lacks is refused",
+      "rule": "resolve-choice-abi",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-alternatives.json",
+      "request": "request/wasm-example-extism-abi.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "abi_unavailable",
+        "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "a chosen provider without an artifact for the platform is refused",
+      "rule": "resolve-choice-misfit",
+      "kind": "resolve",
+      "recipe": "recipe/provider-misfit.json",
+      "request": "request/choice-process-frontend.toml",
+      "platform": "osx-arm64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "a receipt that repeats another recipe is refused",
+      "rule": "receipt-lock-recipe",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/recipe-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "recipe"
+      }
+    },
+    {
+      "name": "the recipe is compared before the host",
+      "rule": "receipt-lock-recipe",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/recipe-and-host-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "recipe"
+      }
+    },
+    {
+      "name": "a receipt missing a locked provider is refused",
+      "rule": "receipt-lock-provider-count",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/provider-missing.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "receipt_lock_mismatch",
+        "path": "providers"
+      }
+    },
+    {
+      "name": "a receipt whose host was authenticated by another repository is refused",
+      "rule": "receipt-lock-repository",
+      "kind": "receipt-lock",
+      "receipt": "receipt/binding/host-repository-substituted.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": {
+        "code": "repository_mismatch",
+        "path": "host.installation.authentication.repositoryId"
+      }
+    },
+    {
+      "name": "a managed offering compiles with its built-in frontend",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/self-contained.toml",
+      "platform": "win-x64",
+      "expected": {
+        "providers": [
+          {
+            "operation": "compile",
+            "language": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir-dotnet.fsharp",
+            "version": "1.2.3"
+          },
+          {
+            "operation": "generate",
+            "target": "fsharp",
+            "delivery": "built-in",
+            "extensionId": "morphir.fsharp",
+            "version": "1.2.3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plan carries the complete lock its command writes",
+      "kind": "plan-lock",
+      "result": "result/setup-plan.json",
+      "lock": "lock/two-platforms-bound.json",
+      "expected": "valid"
+    },
+    {
+      "name": "the exact request bytes bind the lock",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved.toml",
+      "expected": "valid"
+    },
+    {
+      "name": "a CRLF checkout of the request is refused and names line endings",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved-crlf.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256",
+        "cause": "crlf-line-endings"
+      }
+    },
+    {
+      "name": "a request with a byte order mark is refused and names it",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved-bom.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256",
+        "cause": "byte-order-mark"
+      }
+    },
+    {
+      "name": "a request with both is refused and names both",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/approved-bom-crlf.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256",
+        "cause": "crlf-line-endings-and-byte-order-mark"
+      }
+    },
+    {
+      "name": "a changed request names no cause",
+      "rule": "lock-request",
+      "kind": "lock-request-bytes",
+      "lock": "lock/two-platforms-bound.json",
+      "request": "request/exact-host-version.toml",
+      "expected": {
+        "code": "request_changed",
+        "path": "requestSha256"
+      }
+    },
+    {
+      "name": "a member's own request wins over the workspace root's",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml",
+        "workspace/loans/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace/loans/src",
+      "expected": {
+        "request": "workspace/loans/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "a member without a request uses the workspace root's",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml",
+        "workspace/loans/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace/pricing/src",
+      "expected": {
+        "request": "workspace/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "the boundary directory's own request is found",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace",
+      "expected": {
+        "request": "workspace/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "a request above the discovery boundary is never used",
+      "kind": "discover",
+      "files": [
+        ".morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "workspace/loans/src",
+      "expected": {
+        "request": null
+      }
+    },
+    {
+      "name": "a directory outside the discovery boundary has no project request",
+      "kind": "discover",
+      "files": [
+        "workspace/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace/loans",
+      "start": "workspace/pricing",
+      "expected": {
+        "request": null
+      }
+    },
+    {
+      "name": "mep version: the first draft of MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0-draft.1",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a later prerelease of MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0-draft.2",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a release candidate of MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0-rc.1",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: the final MEP 0.2.0",
+      "kind": "mep-version",
+      "version": "0.2.0",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a later patch release on the 0.2 line",
+      "kind": "mep-version",
+      "version": "0.2.3",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: the legacy MEP 0.1 spelling",
+      "kind": "mep-version",
+      "version": "0.1",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: MEP 0.1.0",
+      "kind": "mep-version",
+      "version": "0.1.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a prerelease of a later patch on the 0.2 line",
+      "kind": "mep-version",
+      "version": "0.2.1-rc.1",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a draft of MEP 0.3.0",
+      "kind": "mep-version",
+      "version": "0.3.0-draft.1",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: MEP 0.3.0",
+      "kind": "mep-version",
+      "version": "0.3.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: MEP 1.0.0",
+      "kind": "mep-version",
+      "version": "1.0.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a 0.2 version with build metadata",
+      "kind": "mep-version",
+      "version": "0.2.0+build.1",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a 0.2 version in non-canonical spelling",
+      "kind": "mep-version",
+      "version": "v0.2.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a final patch release on the 0.2 line",
+      "kind": "mep-version",
+      "version": "0.2.7",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a prerelease of 0.2.0 in upper case (SemVer is case-sensitive)",
+      "kind": "mep-version",
+      "version": "0.2.0-DRAFT.1",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a patch of 20 digits, past the 15-digit bound",
+      "kind": "mep-version",
+      "version": "0.2.18446744073709551615",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a prerelease of 1,100 letters, past the 256-character bound",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a partial version",
+      "kind": "mep-version",
+      "version": "0.2",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a leading zero in the major",
+      "kind": "mep-version",
+      "version": "00.2.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: an empty prerelease",
+      "kind": "mep-version",
+      "version": "0.2.0-",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a numeric prerelease identifier with a leading zero",
+      "kind": "mep-version",
+      "version": "0.2.0-01",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: the empty string",
+      "kind": "mep-version",
+      "version": "",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a version followed by a line feed",
+      "kind": "mep-version",
+      "version": "0.2.0\n",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a patch of 20 digits, past 2^64 - 1 as well",
+      "kind": "mep-version",
+      "version": "0.2.18446744073709551616",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a provider at MEP 0.2.0 does not fit a host that lists only 0.2.0-draft.1",
+      "kind": "resolve",
+      "rule": "resolve-preferred-misfit",
+      "recipe": "recipe/protocol-membership-exact.json",
+      "request": "request/approved.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset"
+      }
+    },
+    {
+      "name": "nfc: a Kirat Rai vowel sign pair composes (Unicode 16.0)",
+      "kind": "nfc",
+      "input": "𖵨",
+      "expected": "𖵨"
+    },
+    {
+      "name": "nfc: a Todhri letter and U+0307 compose (Unicode 16.0)",
+      "kind": "nfc",
+      "input": "𐗉",
+      "expected": "𐗉"
+    },
+    {
+      "name": "nfc: a Tai Yo mark of class 230 is reordered after U+0323 (Unicode 17.0)",
+      "kind": "nfc",
+      "input": "x𞛣̣",
+      "expected": "x̣𞛣"
+    },
+    {
+      "name": "nfc: a Garay mark of class 230 is reordered after U+0323 (Unicode 16.0)",
+      "kind": "nfc",
+      "input": "x̣𐵩",
+      "expected": "x̣𐵩"
+    },
+    {
+      "name": "nfc: conjoining Hangul jamo L, V and T compose to one syllable",
+      "kind": "nfc",
+      "input": "각",
+      "expected": "각"
+    },
+    {
+      "name": "nfc: a Hangul LV syllable and a trailing jamo compose",
+      "kind": "nfc",
+      "input": "각",
+      "expected": "각"
+    },
+    {
+      "name": "nfc: a string already in NFC is unchanged",
+      "kind": "nfc",
+      "input": "café-naïve-字",
+      "expected": "café-naïve-字"
+    },
+    {
+      "name": "nfc: a decomposed e and U+0301 compose",
+      "kind": "nfc",
+      "input": "é",
+      "expected": "é"
+    },
+    {
+      "name": "nfc: an unassigned code point is a starter of class 0 and blocks reordering",
+      "kind": "nfc",
+      "input": "x́͸̣",
+      "expected": "x́͸̣"
+    },
+    {
+      "name": "nfc: two marks with no starter between them are reordered",
+      "kind": "nfc",
+      "input": "x̣́",
+      "expected": "x̣́"
+    },
+    {
+      "name": "nfc: U+FFFE passes through unchanged and blocks composition",
+      "kind": "nfc",
+      "input": "a￾́",
+      "expected": "a￾́"
+    },
+    {
+      "name": "setup on linux-x64 locks win-x64, osx-arm64, linux-x64",
+      "kind": "setup-platforms",
+      "request": "request/team-platforms-external-backend.toml",
+      "platform": "linux-x64",
+      "expected": {
+        "platforms": [
+          "win-x64",
+          "osx-arm64",
+          "linux-x64"
+        ]
+      }
+    },
+    {
+      "name": "setup on osx-arm64 locks win-x64, osx-arm64",
+      "kind": "setup-platforms",
+      "request": "request/team-platforms-external-backend.toml",
+      "platform": "osx-arm64",
+      "expected": {
+        "platforms": [
+          "win-x64",
+          "osx-arm64"
+        ]
+      }
+    },
+    {
+      "name": "setup on linux-arm64 locks linux-arm64",
+      "kind": "setup-platforms",
+      "request": "request/approved.toml",
+      "platform": "linux-arm64",
+      "expected": {
+        "platforms": [
+          "linux-arm64"
+        ]
+      }
+    },
+    {
+      "name": "prerequisite versions: a release inside the range",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=10.0.0",
+        "<11.0.0"
+      ],
+      "installed": "10.0.5",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease of the excluded upper bound",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=10.0.0",
+        "<11.0.0"
+      ],
+      "installed": "11.0.0-preview.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease below the bound by precedence, which no comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        "<11.0.0"
+      ],
+      "installed": "11.0.0-preview.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease of the lower bound",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=10.0.0"
+      ],
+      "installed": "10.0.0-rc.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: a later prerelease of a version a comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=11.0.0-preview.1",
+        "<12.0.0"
+      ],
+      "installed": "11.0.0-preview.2",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "prerequisite versions: a release candidate of a version a comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=11.0.0-preview.1",
+        "<12.0.0"
+      ],
+      "installed": "11.0.0-rc.1",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "prerequisite versions: a prerelease of a version no comparator names",
+      "kind": "prerequisite-versions",
+      "versions": [
+        ">=11.0.0-preview.1",
+        "<12.0.0"
+      ],
+      "installed": "11.1.0-preview.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "prerequisite versions: no comparators",
+      "kind": "prerequisite-versions",
+      "versions": [],
+      "installed": "11.0.0-preview.1",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "a provider that misfits by ABI and by protocol is reported by its ABI",
+      "rule": "resolve-preferred-abi",
+      "kind": "resolve",
+      "recipe": "recipe/wasm-abi-and-protocol-misfit.json",
+      "request": "request/wasm-example-default.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "abi_unavailable",
+        "path": "toolset"
+      }
+    },
+    {
+      "name": "a choice for an operation the recipe does not require is refused",
+      "rule": "resolve-choice-unrequired",
+      "kind": "resolve",
+      "recipe": "recipe/fsharp-synthetic.json",
+      "request": "request/choice-for-unrequired-operation.toml",
+      "platform": "win-x64",
+      "expected": {
+        "code": "unsupported_artifact",
+        "path": "toolset.providers[0]"
+      }
+    },
+    {
+      "name": "on Windows a boundary that differs from the start only in case is the same directory",
+      "kind": "discover",
+      "windows": true,
+      "files": [
+        "Workspace/.morphir/toolchain.toml"
+      ],
+      "boundary": "workspace",
+      "start": "Workspace/loans",
+      "expected": {
+        "request": "Workspace/.morphir/toolchain.toml"
+      }
+    },
+    {
+      "name": "mep version: 255 characters",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: 256 characters, the bound",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: 257 characters, one past the bound",
+      "kind": "mep-version",
+      "version": "0.2.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a patch of 15 digits",
+      "kind": "mep-version",
+      "version": "0.2.100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a patch of 16 digits",
+      "kind": "mep-version",
+      "version": "0.2.1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a major of 15 digits, which is SemVer but off the line",
+      "kind": "mep-version",
+      "version": "100000000000000.2.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a major of 16 digits",
+      "kind": "mep-version",
+      "version": "1000000000000000.2.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a minor of 15 digits, which is SemVer but off the line",
+      "kind": "mep-version",
+      "version": "0.100000000000000.0",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a minor of 16 digits",
+      "kind": "mep-version",
+      "version": "0.1000000000000000.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: a numeric prerelease identifier of 15 digits",
+      "kind": "mep-version",
+      "version": "0.2.0-100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "mep version: a numeric prerelease identifier of 16 digits",
+      "kind": "mep-version",
+      "version": "0.2.0-1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: long build metadata within 256 characters, which MEP refuses",
+      "kind": "mep-version",
+      "version": "0.2.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "unsupported_case",
+        "path": ""
+      }
+    },
+    {
+      "name": "mep version: build metadata past 256 characters",
+      "kind": "mep-version",
+      "version": "0.2.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: 255 characters",
+      "kind": "version",
+      "version": "1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: 256 characters, the bound",
+      "kind": "version",
+      "version": "1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: 257 characters, one past the bound",
+      "kind": "version",
+      "version": "1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a major of 15 digits",
+      "kind": "version",
+      "version": "100000000000000.0.0",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a major of 16 digits",
+      "kind": "version",
+      "version": "1000000000000000.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a minor of 15 digits",
+      "kind": "version",
+      "version": "1.100000000000000.0",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a minor of 16 digits",
+      "kind": "version",
+      "version": "1.1000000000000000.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a patch of 15 digits",
+      "kind": "version",
+      "version": "1.0.100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a patch of 16 digits",
+      "kind": "version",
+      "version": "1.0.1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a numeric prerelease identifier of 15 digits",
+      "kind": "version",
+      "version": "1.0.0-rc.100000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a numeric prerelease identifier of 16 digits",
+      "kind": "version",
+      "version": "1.0.0-rc.1000000000000000",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a 16-digit alphanumeric prerelease identifier, which is not numeric",
+      "kind": "version",
+      "version": "1.0.0-1000000000000000a",
+      "expected": "valid"
+    },
+    {
+      "name": "version: build metadata within 256 characters",
+      "kind": "version",
+      "version": "1.0.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a 16-digit build metadata identifier, bounded only by the length",
+      "kind": "version",
+      "version": "1.0.0+1000000000000000",
+      "expected": "valid"
+    },
+    {
+      "name": "version: build metadata past 256 characters",
+      "kind": "version",
+      "version": "1.0.0+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a comparator whose version has 256 characters",
+      "kind": "version",
+      "comparator": true,
+      "version": ">=1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": "valid"
+    },
+    {
+      "name": "version: a comparator whose version has 257 characters",
+      "kind": "version",
+      "comparator": true,
+      "version": ">=1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "version: a comparator with a 16-digit major",
+      "kind": "version",
+      "comparator": true,
+      "version": ">=1000000000000000.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "canonical json: a key that is a prefix of another followed by a space sorts after it",
+      "kind": "canonical-json",
+      "value": {
+        "a b": 2,
+        "a": 1
+      },
+      "expected": "{\"a b\":2,\"a\":1}",
+      "referenceTuf": "{\"a\":1,\"a b\":2}"
+    },
+    {
+      "name": "canonical json: a key that is a prefix of another followed by ! sorts after it",
+      "kind": "canonical-json",
+      "value": {
+        "a!": 2,
+        "a": 1
+      },
+      "expected": "{\"a!\":2,\"a\":1}",
+      "referenceTuf": "{\"a\":1,\"a!\":2}"
+    },
+    {
+      "name": "canonical json: a key holding a quotation mark sorts by its escaped bytes",
+      "kind": "canonical-json",
+      "value": {
+        "a#": 1,
+        "a\"": 2
+      },
+      "expected": "{\"a#\":1,\"a\\\"\":2}",
+      "referenceTuf": "{\"a\\\"\":2,\"a#\":1}"
+    },
+    {
+      "name": "canonical json: a decomposed string is written in NFC",
+      "kind": "canonical-json",
+      "value": {
+        "k": "é"
+      },
+      "expected": "{\"k\":\"é\"}",
+      "referenceTuf": "{\"k\":\"é\"}"
+    },
+    {
+      "name": "a plan digest covers keys that the reference TUF encoder orders differently",
+      "kind": "plan-canonical",
+      "result": "result/setup-plan-key-order.json",
+      "canonical": "result/setup-plan-key-order.plan.canonical.json",
+      "expected": "valid"
+    },
+    {
+      "name": "the profile's example CLI requirement is valid",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "expected": "valid"
+    },
+    {
+      "name": "an offering's CLI requirement is valid",
+      "kind": "cli-requirement",
+      "requirement": "<0.0.0-0",
+      "expected": "valid"
+    },
+    {
+      "name": "one exact comparator is a valid CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "=1.2.3",
+      "expected": "valid"
+    },
+    {
+      "name": "a caret range is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "^0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a tilde range is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "~0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a wildcard is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "*",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a partial version is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a bare version is not a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": "0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "comparators separated by a comma alone are refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0,<0.5.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "comparators separated by a comma and two spaces are refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0,  <0.5.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "comparators separated by a space alone are refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0 <0.5.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "an alternative of ranges is refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0 || >=1.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a space after the operator is refused",
+      "kind": "cli-requirement",
+      "requirement": ">= 0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a leading space is refused",
+      "kind": "cli-requirement",
+      "requirement": " >=0.4.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a trailing separator is refused",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0, ",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "an empty CLI requirement is refused",
+      "kind": "cli-requirement",
+      "requirement": "",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "a 16-digit numeric identifier is refused in a CLI requirement",
+      "kind": "cli-requirement",
+      "requirement": ">=1234567890123456.0.0",
+      "expected": {
+        "code": "invalid_value",
+        "path": ""
+      }
+    },
+    {
+      "name": "the lower bound's own prerelease meets the range",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.0-alpha.5",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "an earlier prerelease of the lower bound's version does not meet it",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.0-alpha.4",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "a final version inside the range meets it",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.12",
+      "expected": {
+        "met": true
+      }
+    },
+    {
+      "name": "a prerelease of another version inside the range does not meet it",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.4.1-beta.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "a prerelease of the upper bound does not meet the range",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.5.0-alpha.1",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "the upper bound does not meet the range",
+      "kind": "cli-requirement",
+      "requirement": ">=0.4.0-alpha.5, <0.5.0",
+      "cliVersion": "0.5.0",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "no prerelease meets an offering's requirement",
+      "kind": "cli-requirement",
+      "requirement": "<0.0.0-0",
+      "cliVersion": "0.0.0-0",
+      "expected": {
+        "met": false
+      }
+    },
+    {
+      "name": "no final version meets an offering's requirement",
+      "kind": "cli-requirement",
+      "requirement": "<0.0.0-0",
+      "cliVersion": "0.0.0",
+      "expected": {
+        "met": false
+      }
+    }
+  ]
+}

@@ -266,7 +266,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("\n  morphir-live:\n", self.ci_workflow)
         # The shared gate also requires the macOS publication qualification.
         self.assertIn(
-            "needs: [changes, lint, morphir-cli-test, library-publish-macos, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck]",
+            "needs: [changes, lint, morphir-cli-test, library-publish-macos, check-cli-docs, docs, rust-conformance, release-workflow, desktop-demo, package-mck, toolchain-contracts]",
             self.ci_workflow,
         )
         self.assertNotIn(

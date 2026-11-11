@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "0.1.0-draft.1",
+  "command": "setup",
+  "outcome": "planned",
+  "plan": {
+    "implementation": "dotnet",
+    "deployment": "native-aot",
+    "platform": "win-x64",
+    "recipe": {
+      "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "metadataRefresh": "required",
+    "components": [
+      {
+        "component": {
+          "role": "host",
+          "implementation": "dotnet",
+          "deployment": "native-aot"
+        },
+        "version": "1.2.3",
+        "source": {
+          "kind": "repository-target",
+          "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        },
+        "downloadBytes": 41943040,
+        "installedBytes": 104857600,
+        "updateOwner": {
+          "kind": "manager-owned"
+        },
+        "prerequisites": [],
+        "probe": "process-with-user-rights"
+      },
+      {
+        "component": {
+          "role": "provider",
+          "operation": "compile",
+          "language": "fsharp"
+        },
+        "version": "0.6.0",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "delivery": "process",
+        "source": {
+          "kind": "recipe-digest",
+          "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "target": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+          "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "downloadBytes": 83886080,
+        "installedBytes": 209715200,
+        "updateOwner": {
+          "kind": "manager-owned"
+        },
+        "prerequisites": [],
+        "probe": "process-with-user-rights"
+      },
+      {
+        "component": {
+          "role": "provider",
+          "operation": "generate",
+          "target": "fsharp"
+        },
+        "version": "1.2.3",
+        "extensionId": "morphir.fsharp",
+        "delivery": "built-in",
+        "source": {
+          "kind": "built-in"
+        },
+        "downloadBytes": 0,
+        "installedBytes": 0,
+        "updateOwner": {
+          "kind": "manager-owned"
+        },
+        "prerequisites": [],
+        "probe": "in-host"
+      }
+    ]
+  },
+  "planSha256": "12ff99fffc05d9c174e72ba309a967ea1a33988290104d086b8b3a2c2d35c8d3",
+  "diagnostics": []
+}

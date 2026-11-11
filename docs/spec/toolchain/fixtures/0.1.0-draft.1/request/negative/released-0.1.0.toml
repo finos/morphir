@@ -1,0 +1,8 @@
+# A draft reader lists exact drafts. It does not read the released 0.1.0 line.
+schemaVersion = "0.1.0"
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+channel = "stable"
+[toolset]
+preset = "fsharp"

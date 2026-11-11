@@ -1,0 +1,14 @@
+# A critical path that names a member this reader understands is accepted.
+schemaVersion = "0.1.0-draft.1"
+critical = ["toolset.providers"]
+[host]
+implementation = "dotnet"
+deployment = "dotnet-tool"
+channel = "stable"
+[toolset]
+preset = "fsharp"
+[[toolset.providers]]
+operation = "compile"
+language = "fsharp"
+delivery = "dotnet-tool"
+extensionId = "org.finos.morphir.fsharp-frontend"
