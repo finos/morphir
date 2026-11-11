@@ -55,6 +55,10 @@ describe("shared extension contract data", () => {
   for (const name of readdirSync(join(root, "fixtures"))) expect(name).not.toMatch(/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i);
  });
 
+ test("gzip fixture headers do not depend on the generator's operating system", () => {
+  for (const name of readdirSync(join(root, "fixtures")).filter(n => n.endsWith(".tgz"))) expect(readFileSync(join(root, "fixtures", name))[9], name).toBe(255);
+ });
+
  test("publication evidence covers every required repository, package and pinned descriptor", () => {
   const audit = load("publication-audit.json");
   expect(audit.outcome).toBe("PKGVER-A");

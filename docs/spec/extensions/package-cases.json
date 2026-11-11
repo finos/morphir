@@ -540,13 +540,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/valid-tar.tgz",
-        "bytesSha256": "b076daced91e91eff209d77c0000b34190e8e1a0ebba2bdb2974be50a023fb44",
+        "bytesSha256": "a9673effe69d593a6321e7091d140b46078acc85e6cd465888f32b51d7b97df6",
         "archiveLength": 187,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "valid-tar.tgz",
-          "sha256": "b076daced91e91eff209d77c0000b34190e8e1a0ebba2bdb2974be50a023fb44",
+          "sha256": "a9673effe69d593a6321e7091d140b46078acc85e6cd465888f32b51d7b97df6",
           "package": {
             "format": "tar.gz",
             "root": "bundle",
@@ -670,13 +670,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/valid-pax-path.tgz",
-        "bytesSha256": "cb66c14d72ea6fa079d45d96d73dba22ac13be47f8a9b3900c054c0bf2ddf6e0",
+        "bytesSha256": "8fec54fc6a7665b5746df2d83401877fefdb3565639beb66119eee17ab2ae790",
         "archiveLength": 122,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "valid-pax-path.tgz",
-          "sha256": "cb66c14d72ea6fa079d45d96d73dba22ac13be47f8a9b3900c054c0bf2ddf6e0",
+          "sha256": "8fec54fc6a7665b5746df2d83401877fefdb3565639beb66119eee17ab2ae790",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -701,13 +701,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/valid-gnu-long-name.tgz",
-        "bytesSha256": "41ee7bf8303b6f0cf1ece221a7a8af1079559ddabae12fac13f73766e825a470",
+        "bytesSha256": "44600f8cbd2ceb91f1f4cdcba623141682d58dc6c003993a6e561ce1481a035f",
         "archiveLength": 142,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "valid-gnu-long-name.tgz",
-          "sha256": "41ee7bf8303b6f0cf1ece221a7a8af1079559ddabae12fac13f73766e825a470",
+          "sha256": "44600f8cbd2ceb91f1f4cdcba623141682d58dc6c003993a6e561ce1481a035f",
           "package": {
             "format": "tar.gz",
             "entryPoint": "lib/a-very-long-name.dll",
@@ -732,13 +732,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/valid-leading-dot.tgz",
-        "bytesSha256": "77c43c3e60a590fc274efa7aef5307c8574909d7ffa96c04b6dc6095b750fb33",
+        "bytesSha256": "f64a9aaace8279a8209af4fa302b7dd5a238b4168beabd35b85da5275d93590c",
         "archiveLength": 125,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "valid-leading-dot.tgz",
-          "sha256": "77c43c3e60a590fc274efa7aef5307c8574909d7ffa96c04b6dc6095b750fb33",
+          "sha256": "f64a9aaace8279a8209af4fa302b7dd5a238b4168beabd35b85da5275d93590c",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -761,13 +761,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/valid-base256.tgz",
-        "bytesSha256": "0704806cb2a2679469d8db8a8b577e337036bcb707324ea1bbfb2c3db66172c2",
+        "bytesSha256": "e9156c3ada12648330a9aaacba8a442b30525bb8a34991d4e3140a0b89b5756c",
         "archiveLength": 81,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "valid-base256.tgz",
-          "sha256": "0704806cb2a2679469d8db8a8b577e337036bcb707324ea1bbfb2c3db66172c2",
+          "sha256": "e9156c3ada12648330a9aaacba8a442b30525bb8a34991d4e3140a0b89b5756c",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -790,13 +790,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/valid-ustar-prefix.tgz",
-        "bytesSha256": "f36af7e9e9da9dc55113ba111b538e237070d432d2aa0c0f01fa24386a710531",
+        "bytesSha256": "5f6dccec6668301f8fe718cc9991df6411135e98c6d8268cf07feb51ff634fc5",
         "archiveLength": 85,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "valid-ustar-prefix.tgz",
-          "sha256": "f36af7e9e9da9dc55113ba111b538e237070d432d2aa0c0f01fa24386a710531",
+          "sha256": "5f6dccec6668301f8fe718cc9991df6411135e98c6d8268cf07feb51ff634fc5",
           "package": {
             "format": "tar.gz",
             "entryPoint": "bin/run",
@@ -1713,13 +1713,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/two-gzip-members.tgz",
-        "bytesSha256": "b1566fc9b53d346fa33fd881e3653c6082836742bd444cfd92d6627056c71de9",
+        "bytesSha256": "0b9b986265336666b2c343fffd9602c9d59b3e39b94402064e10214c142c99ac",
         "archiveLength": 99,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "two-gzip-members.tgz",
-          "sha256": "b1566fc9b53d346fa33fd881e3653c6082836742bd444cfd92d6627056c71de9",
+          "sha256": "0b9b986265336666b2c343fffd9602c9d59b3e39b94402064e10214c142c99ac",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1744,13 +1744,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/missing-tar-end.tgz",
-        "bytesSha256": "864cf4f728729f754fba3e0160ee12240243542d9b0ed1e567ef33177030e6ef",
+        "bytesSha256": "73c8e46813b8b7bbe5bfe4f9bc83a406035c468d6708b572180dd031a358c662",
         "archiveLength": 73,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "missing-tar-end.tgz",
-          "sha256": "864cf4f728729f754fba3e0160ee12240243542d9b0ed1e567ef33177030e6ef",
+          "sha256": "73c8e46813b8b7bbe5bfe4f9bc83a406035c468d6708b572180dd031a358c662",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1775,13 +1775,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/tar-contiguous.tgz",
-        "bytesSha256": "f198ad21050bb1ab3a9f90425788ab0b20232094f1e7dd7e0f7e99800bec038d",
+        "bytesSha256": "84349428efc8a485ec30de92ad018a39eef61a687d20b572c2b5c291c2ad08fd",
         "archiveLength": 65,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "tar-contiguous.tgz",
-          "sha256": "f198ad21050bb1ab3a9f90425788ab0b20232094f1e7dd7e0f7e99800bec038d",
+          "sha256": "84349428efc8a485ec30de92ad018a39eef61a687d20b572c2b5c291c2ad08fd",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1806,13 +1806,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/tar-global.tgz",
-        "bytesSha256": "b3deaa5a351803ea46d644513b5153f32060a9e5ac0734f500294b77f846495d",
+        "bytesSha256": "f161bc70bbfe337e44c20dcb20347b16a0d186dcb164ba69ea6e9e301e933b0d",
         "archiveLength": 68,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "tar-global.tgz",
-          "sha256": "b3deaa5a351803ea46d644513b5153f32060a9e5ac0734f500294b77f846495d",
+          "sha256": "f161bc70bbfe337e44c20dcb20347b16a0d186dcb164ba69ea6e9e301e933b0d",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1837,13 +1837,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/tar-sparse-pax.tgz",
-        "bytesSha256": "9446e59d0e7432ed4b618f6bf50ff833b61388a811f3fd764ce360559f1e1b2e",
+        "bytesSha256": "6091ae7b0dfb9096dc4d7383d625c59bb1816dd94e9df1bc828a965f953ffa10",
         "archiveLength": 126,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "tar-sparse-pax.tgz",
-          "sha256": "9446e59d0e7432ed4b618f6bf50ff833b61388a811f3fd764ce360559f1e1b2e",
+          "sha256": "6091ae7b0dfb9096dc4d7383d625c59bb1816dd94e9df1bc828a965f953ffa10",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1868,13 +1868,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/huge-pax-header.tgz",
-        "bytesSha256": "fc75b1ba6319b36af4ccf19922144f5d066d4477ee8616517520701933fdedf8",
+        "bytesSha256": "38b1fd30a893e293d1143089a99bcc852ce7ce01071d1fe5d2898de0bb70bf58",
         "archiveLength": 68,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "huge-pax-header.tgz",
-          "sha256": "fc75b1ba6319b36af4ccf19922144f5d066d4477ee8616517520701933fdedf8",
+          "sha256": "38b1fd30a893e293d1143089a99bcc852ce7ce01071d1fe5d2898de0bb70bf58",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1899,13 +1899,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/link-before-parent.tgz",
-        "bytesSha256": "3b6c99eb8ce1b7960ddee4e5ab0a39c6b5e9d99943df6a05bfc82b2c9a75f21e",
+        "bytesSha256": "ec08c0989034824f3d1282879d74c19c49f8f6a742ca9e770d04ac8424b5c538",
         "archiveLength": 66,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "link-before-parent.tgz",
-          "sha256": "3b6c99eb8ce1b7960ddee4e5ab0a39c6b5e9d99943df6a05bfc82b2c9a75f21e",
+          "sha256": "ec08c0989034824f3d1282879d74c19c49f8f6a742ca9e770d04ac8424b5c538",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1930,13 +1930,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/entry-before-gzip-trailer.tgz",
-        "bytesSha256": "fcacd4db081aff84ec3f6b2fab75fbbe819c355b3af974e5bfb6f713683fb3e8",
+        "bytesSha256": "0b5937d92411606c4a22017467bb6c4d9d3f442b6ae0f89f595e7afc44d86378",
         "archiveLength": 80,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "entry-before-gzip-trailer.tgz",
-          "sha256": "fcacd4db081aff84ec3f6b2fab75fbbe819c355b3af974e5bfb6f713683fb3e8",
+          "sha256": "0b5937d92411606c4a22017467bb6c4d9d3f442b6ae0f89f595e7afc44d86378",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",
@@ -1959,13 +1959,13 @@
       "input": {
         "operation": "install-package",
         "archive": "fixtures/gzip-trailer.tgz",
-        "bytesSha256": "d6907cfd031783521cf8bf0a0929b07d5024d0ae02687be4965dc31f3bab2ed3",
+        "bytesSha256": "c534dbd467e64ad2b38ee07ba2b6e5064046dd9cfbc745e79799360edf987ce2",
         "archiveLength": 79,
         "artifact": {
           "runtime": "process",
           "platform": "x86_64-unknown-linux-gnu",
           "filename": "gzip-trailer.tgz",
-          "sha256": "d6907cfd031783521cf8bf0a0929b07d5024d0ae02687be4965dc31f3bab2ed3",
+          "sha256": "c534dbd467e64ad2b38ee07ba2b6e5064046dd9cfbc745e79799360edf987ce2",
           "package": {
             "format": "tar.gz",
             "entryPoint": "run",

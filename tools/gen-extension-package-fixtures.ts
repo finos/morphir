@@ -49,7 +49,13 @@ function tarHeader(e: Entry): Buffer {
 function tar(entries: Entry[], end = true): Buffer {
  return Buffer.concat([...entries.flatMap(e => { const data = e.data ?? Buffer.alloc(0); return [tarHeader(e), data, Buffer.alloc((512 - data.length % 512) % 512)]; }), ...(end ? [Buffer.alloc(1024)] : [])]);
 }
-const gz = (data: Buffer) => gzipSync(data, { level: 9 });
+function gz(data: Buffer): Buffer {
+ const bytes = gzipSync(data, { level: 9 });
+ // RFC 1952 OS=255 means unspecified. zlib otherwise writes the build OS here,
+ // making identical tar bytes acquire different archive digests on Windows/Linux.
+ bytes[9] = 255;
+ return bytes;
+}
 function pax(key: string, value: string): Buffer {
  const content = ` ${key}=${value}\n`; let length = content.length + 1;
  while (String(length).length + content.length !== length) length = String(length).length + content.length;
