@@ -193,4 +193,9 @@ integrity. They do not execute selection. The shared .NET runner must execute
 every declared operation and reject unknown or unrun cases. Until it does, the
 new corpus is not behavioral qualification. New-family request/lock/receipt,
 signed recipe and workflow fixtures also remain required; the old corpus is not
-silently relabeled as new evidence.
+silently relabeled as new evidence. The [preview reader inputs](./corpus/README.md)
+now provide 25 fixed document cases across all seven family documents, including
+a version-specific workflow manifest that references the existing frozen
+resources. Their integrity and schema results do not establish .NET reader or
+workflow execution. Signed target binding and the remaining cutover gates are
+still pending.

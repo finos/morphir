@@ -1,0 +1,14 @@
+{
+  "command": "restore",
+  "outcome": "failed",
+  "diagnostics": [
+    {
+      "kind": "lock-binding",
+      "severity": "error",
+      "code": "lock_recipe_mismatch",
+      "message": "The lock does not agree with the authenticated recipe.",
+      "document": "lock",
+      "path": "platforms.win-x64.providers[0]"
+    }
+  ]
+}

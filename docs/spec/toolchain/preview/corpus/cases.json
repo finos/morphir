@@ -1,0 +1,273 @@
+{
+  "family": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/",
+  "description": "Version-specific fixed reader inputs. Synthetic artifact identities do not confer publisher or workflow qualification. The shared .NET runner must execute each row; parent checks only integrity and schema structure.",
+  "documents": [
+    {
+      "id": "request-accepted",
+      "contract": "request",
+      "file": "docs/spec/toolchain/preview/corpus/request/accepted.toml",
+      "sha256": "7bfcfcc52bc92346626057056be7b116fd1f1f0e9c595954f862d6f9821bcfce",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "request-next-prerelease",
+      "contract": "request",
+      "file": "docs/spec/toolchain/preview/corpus/request/next-prerelease.toml",
+      "sha256": "ea1f84054b7d3918a524e0b05054b0a2eb84ce33a9551bfa898d9203c63e8f4b",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-schema"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "request-missing-directive",
+      "contract": "request",
+      "file": "docs/spec/toolchain/preview/corpus/request/missing-directive.toml",
+      "sha256": "2c4a0c4870648711aba3b76860b85ffbc48dabbf261c122aff81e78ca8f54c40",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "missing-schema"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "recipe-accepted",
+      "contract": "recipe",
+      "file": "docs/spec/toolchain/preview/corpus/recipe/accepted.json",
+      "sha256": "3777c8b1dafe747404245cd23ac0bb45d344d38ff2c4cb990ab7aef130421c2c",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "recipe-next-prerelease",
+      "contract": "recipe",
+      "file": "docs/spec/toolchain/preview/corpus/recipe/next-prerelease.json",
+      "sha256": "5b2da8d2fd693db4b4b25b5432cf06bf8921b8d8aea4f0ab871fa712848124ba",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "recipe-missing-schema",
+      "contract": "recipe",
+      "file": "docs/spec/toolchain/preview/corpus/recipe/missing-schema.json",
+      "sha256": "7f0dd6c3515bad96513307383235dae1c58a78fde47de009b31e259320d9a923",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "missing-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "lock-accepted",
+      "contract": "lock",
+      "file": "docs/spec/toolchain/preview/corpus/lock/accepted.json",
+      "sha256": "446ee90004afd6fea4058b35bcd9b2ed0e48acafd5445f46cad06fc51855f5b5",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "lock-next-prerelease",
+      "contract": "lock",
+      "file": "docs/spec/toolchain/preview/corpus/lock/next-prerelease.json",
+      "sha256": "f0e481d0124e1b734c23ec37730e16ca6ef4f9f7ffe156311e6fe0cadebee169",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "lock-missing-schema",
+      "contract": "lock",
+      "file": "docs/spec/toolchain/preview/corpus/lock/missing-schema.json",
+      "sha256": "1e0610f791a7a2e814bb9623b5bceaae04ec5c8d10516654ca48f06c0b1e2a1b",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "missing-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "receipt-accepted",
+      "contract": "receipt",
+      "file": "docs/spec/toolchain/preview/corpus/receipt/accepted.json",
+      "sha256": "7c187a646b68dc8af587be8cf7362b8711679a2bf8bbfd006315ff88611d9c99",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "receipt-next-prerelease",
+      "contract": "receipt",
+      "file": "docs/spec/toolchain/preview/corpus/receipt/next-prerelease.json",
+      "sha256": "7a69c14211481f37bd09a69df1cccf4ab7ad73551148002e657e1044e01b9c53",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "receipt-missing-schema",
+      "contract": "receipt",
+      "file": "docs/spec/toolchain/preview/corpus/receipt/missing-schema.json",
+      "sha256": "f7afb5cbc2bd43a1c41ff95892109940062a6f02eb92cda6ad4d97ef5dc0bf14",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "missing-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "result-accepted",
+      "contract": "result",
+      "file": "docs/spec/toolchain/preview/corpus/result/accepted.json",
+      "sha256": "a9bf1805c839b1f1142f811a8cf79936a80a918b37b55d27accd0580380dabb5",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "result-next-prerelease",
+      "contract": "result",
+      "file": "docs/spec/toolchain/preview/corpus/result/next-prerelease.json",
+      "sha256": "f93eab164204e94ef936fe9a9082c3ce30213c950e64d2aa2abd1d2d05cb64c1",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "result-missing-schema",
+      "contract": "result",
+      "file": "docs/spec/toolchain/preview/corpus/result/missing-schema.json",
+      "sha256": "de46e2f1b5b808e4180e851fa2952147778da02f7b1a6868fa6349677e0b983b",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "missing-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "selection-accepted",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/accepted.json",
+      "sha256": "f35f54f17b990612655b71079ca667a2c0e5df7a8437337124bf479f6ac4e067",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-next-prerelease",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/next-prerelease.json",
+      "sha256": "44d417b3aaca918afdaa188f805c0257008f280762414dcfcd5320455fe4084d",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "selection-missing-schema",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/missing-schema.json",
+      "sha256": "80b2ddc43d33f54a3d934302221ce3ecfe382b5c860f29a89db62c35614dce8e",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "missing-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "workflow-case-accepted",
+      "contract": "workflow-case",
+      "file": "spec/toolchain/workflows/fsharp-compile-generate/case.preview.json",
+      "sha256": "284c0b0f75933c13f3c31a7436bce6f3cc7469fb8dd524e19605e96a87474d85",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "workflow-case-next-prerelease",
+      "contract": "workflow-case",
+      "file": "docs/spec/toolchain/preview/corpus/workflow-case/next-prerelease.json",
+      "sha256": "836a63a988eb18495879b25f453575b0542cd85eb90e51e07e8767be3c70cc5a",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "workflow-case-missing-schema",
+      "contract": "workflow-case",
+      "file": "docs/spec/toolchain/preview/corpus/workflow-case/missing-schema.json",
+      "sha256": "bd1cdab6a669ba05576d3c8002c42524578d1ad2cd282d9d7434bcdc0900a030",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "missing-schema"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "lock-unknown-optional",
+      "contract": "lock",
+      "file": "docs/spec/toolchain/preview/corpus/lock/unknown-optional.json",
+      "sha256": "6c912cfcf163588f91ad9cc4ec353fcf230e8fc32d62b0b585b3df4f405621fa",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "lock-unknown-critical",
+      "contract": "lock",
+      "file": "docs/spec/toolchain/preview/corpus/lock/unknown-critical.json",
+      "sha256": "2108e2c68f02c00152274b07d70f66cd44cae4757ccf1d0258d4ce687f603b2f",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-critical"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "request-channel-and-version",
+      "contract": "request",
+      "file": "docs/spec/toolchain/preview/corpus/request/channel-and-version.toml",
+      "sha256": "0de8b4243def1ff55e3fb171cb02a11a1fdfc430c536064630155e0f2beddbb5",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "conflicting-host-selection"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "selection-missing-platforms",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/missing-platforms.json",
+      "sha256": "83cf0f0702bad4d6b620c85d294fe2a9e67bbe31e92e941972c9bb8a4a5309e2",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "invalid-document"
+      },
+      "schemaValid": false
+    }
+  ]
+}

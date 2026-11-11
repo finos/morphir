@@ -1,0 +1,7 @@
+platforms = ["win-x64", "osx-arm64"]
+[host]
+implementation = "dotnet"
+deployment = "native-aot"
+version = "1.2.3"
+[toolset]
+preset = "fsharp"

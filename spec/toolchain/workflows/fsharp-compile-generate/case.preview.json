@@ -1,0 +1,168 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/workflow-case.schema.json",
+  "workflow": "fsharp-compile-generate",
+  "preset": "fsharp",
+  "basis": {
+    "kind": "corpus-case",
+    "repository": "finos/morphir-dotnet",
+    "commit": "3f226a086220a45a3926a69e2093d53b86730ca5",
+    "case": "frontend-fsharp-0100",
+    "feature": "conformance/suites/frontend-fsharp/records.feature",
+    "featureBlob": "d3e67b692b4d04baba3e76a1bdc5609d1538c626",
+    "vocabulary": "1.1",
+    "variant": {
+      "input": "files",
+      "version": "4"
+    }
+  },
+  "package": {
+    "name": "acme/demo",
+    "exposedModules": [
+      "Pricing"
+    ]
+  },
+  "sources": [
+    {
+      "uri": "Pricing.fs",
+      "file": "source/Pricing.fs",
+      "sha256": "f924e05d37b0517ac8777b495691ad86207f2b1dc7f5b6e038e6f6e370817d6c"
+    }
+  ],
+  "steps": [
+    {
+      "id": "compile",
+      "operation": "compile",
+      "language": "fsharp",
+      "input": "files",
+      "providers": [
+        {
+          "delivery": "built-in",
+          "extensionId": "morphir-dotnet.fsharp",
+          "modelOutput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "delivery": "process",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "delivery": "dotnet-tool",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.frontend.compileModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ],
+      "expected": {
+        "outcome": "success-without-error-diagnostics",
+        "ir": {
+          "file": "expected/ir-4.0.0.json",
+          "sha256": "b1035d065ecfddc557476d7203afe29c83a9340abc27300aaeeb911490c30cb7",
+          "formatVersion": 4,
+          "comparison": "json-member-order-insensitive",
+          "provenance": {
+            "kind": "hand-authored",
+            "repository": "finos/morphir-dotnet",
+            "commit": "3f226a086220a45a3926a69e2093d53b86730ca5",
+            "path": "conformance/suites/frontend-fsharp/expected/0100/ir-4.json",
+            "blob": "2dd743ba9853b65194c071d63ffa966c0f3e2643"
+          }
+        }
+      }
+    },
+    {
+      "id": "generate",
+      "operation": "generate",
+      "target": "fsharp",
+      "input": {
+        "step": "compile",
+        "model": "expected-ir"
+      },
+      "formatting": "off",
+      "providers": [
+        {
+          "delivery": "built-in",
+          "extensionId": "morphir.fsharp",
+          "modelInput": {
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "irVersion": "4.0.0"
+          }
+        },
+        {
+          "delivery": "process",
+          "protocolVersion": "0.2.0-draft.1",
+          "modelTuple": {
+            "operation": "morphir.backend.generateModel",
+            "profile": "morphir-ir",
+            "codec": "morphir-json",
+            "envelopeVersion": "0.1.0-draft.1",
+            "irVersion": "4.0.0"
+          }
+        }
+      ],
+      "expected": {
+        "status": "frozen",
+        "sets": [
+          {
+            "files": [
+              {
+                "path": "Pricing.fs",
+                "file": "expected/generated/Pricing.fs",
+                "bytes": 112,
+                "sha256": "64e08313f3e57be2c18995a2e8b275db9d921341958da2c8cd960c601c066de0"
+              }
+            ],
+            "comparison": "exact-bytes",
+            "provenance": {
+              "kind": "generated",
+              "repository": "finos/morphir-dotnet",
+              "pullRequest": 578,
+              "released": false,
+              "observedOn": [
+                "win-arm64"
+              ],
+              "producers": [
+                {
+                  "delivery": "built-in",
+                  "host": "jit"
+                },
+                {
+                  "delivery": "built-in",
+                  "host": "native-aot"
+                },
+                {
+                  "delivery": "built-in",
+                  "host": "dotnet-tool"
+                },
+                {
+                  "delivery": "process",
+                  "host": "jit"
+                },
+                {
+                  "delivery": "process",
+                  "host": "native-aot"
+                }
+              ],
+              "blob": "97411d61661c88f991413be66da68b2be3261c46"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
