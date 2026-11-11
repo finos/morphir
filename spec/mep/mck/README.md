@@ -430,6 +430,22 @@ bun run tools/check-wasm-host-kit.ts --write  # reassemble the .wasm files and r
 bun test tools/check-wasm-host-kit.test.ts
 ```
 
+### The report of a run
+
+[`wasm-host-report.md`](wasm-host-report.md) fixes the host qualification
+report: its members, the rule that gives its verdict, and the cases in which a
+report check refuses a report. A host is qualified when it enforces the memory
+ceiling and the call deadline, no case that applies to it failed, and it cites
+a generic guest kit run of the same executable for each profile it declares.
+[`wasm-host-report.controls.json`](wasm-host-report.controls.json) holds 22
+fixed controls, one for each reason, refusal and named scenario of the rule. A
+runner's report check must give each control's result.
+
+```bash
+mise run spec:mep-wasm-report-check  # or: bun run tools/check-wasm-host-report.ts
+bun test tools/check-wasm-host-report.test.ts
+```
+
 To add a case, add the module and the case, run `--write`, and write the
 expectation from the contract. The tests require each case to be the only one
 that covers some contract element or uses some module, so add a case only for a
