@@ -1,0 +1,137 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/receipt.schema.json",
+  "generationId": "gen-preview-0001",
+  "platform": "win-x64",
+  "lockSha256": "446ee90004afd6fea4058b35bcd9b2ed0e48acafd5445f46cad06fc51855f5b5",
+  "recipe": {
+    "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "target": "toolchains/recipes/fsharp/1.0.0.json",
+    "sha256": "3777c8b1dafe747404245cd23ac0bb45d344d38ff2c4cb990ab7aef130421c2c"
+  },
+  "host": {
+    "identity": {
+      "implementation": "dotnet",
+      "version": "1.2.3",
+      "deployment": "native-aot",
+      "target": "artifacts/morphir-dotnet-native-aot/1.2.3/win-x64.zip",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "execution": {
+      "mode": "native-aot",
+      "runtime": {
+        "kind": "none"
+      }
+    },
+    "installation": {
+      "ownership": {
+        "kind": "manager-owned"
+      },
+      "authentication": {
+        "kind": "repository-target",
+        "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "targetsVersion": 1
+      },
+      "launch": {
+        "program": "C:\\Users\\fixture\\.morphir\\toolchains\\generations\\gen-preview-0001\\host\\morphir.exe",
+        "args": []
+      }
+    },
+    "readiness": "capability-checked",
+    "checks": [
+      {
+        "check": "integrity",
+        "status": "passed"
+      },
+      {
+        "check": "capability",
+        "status": "passed"
+      }
+    ]
+  },
+  "providers": [
+    {
+      "identity": {
+        "operation": "compile",
+        "language": "fsharp",
+        "delivery": "process",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "version": "0.6.0",
+        "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "descriptorTarget": "extensions/fsharp-frontend/0.6.0/release.json",
+        "descriptorSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "protocolVersion": "0.2.0-draft.1",
+        "modelTuple": {
+          "operation": "morphir.frontend.compileModel",
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "envelopeVersion": "0.1.0-draft.1",
+          "irVersion": "4.0.0"
+        },
+        "artifactTarget": "extensions/fsharp-frontend/0.6.0/win-x64.zip",
+        "artifactSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "installation": {
+        "ownership": {
+          "kind": "manager-owned"
+        },
+        "authentication": {
+          "kind": "recipe-digest",
+          "repositoryId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "recipeTarget": "toolchains/recipes/fsharp/1.0.0.json",
+          "recipeSha256": "3777c8b1dafe747404245cd23ac0bb45d344d38ff2c4cb990ab7aef130421c2c"
+        },
+        "claimCheck": "probed",
+        "probeSource": "describe",
+        "launch": {
+          "program": "C:\\Users\\fixture\\.morphir\\store\\extensions\\sha256\\ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\\frontend.exe",
+          "args": []
+        }
+      },
+      "readiness": "capability-checked",
+      "checks": [
+        {
+          "check": "integrity",
+          "status": "passed"
+        },
+        {
+          "check": "capability",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "operation": "generate",
+        "target": "fsharp",
+        "extensionId": "morphir.fsharp",
+        "version": "1.2.3",
+        "modelInput": {
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "irVersion": "4.0.0"
+        },
+        "delivery": "built-in"
+      },
+      "readiness": "capability-checked",
+      "checks": [
+        {
+          "check": "integrity",
+          "status": "passed"
+        },
+        {
+          "check": "capability",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "readiness": "capability-checked",
+  "checks": [
+    {
+      "check": "workflow",
+      "status": "skipped",
+      "workflow": "fsharp-compile-generate",
+      "reason": "Reader-only fixture: no workflow was run."
+    }
+  ]
+}

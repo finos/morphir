@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+  "title": "Portable extension selection 0.1.0-preview.1",
+  "description": "One portable document used for project/workspace pins and read-only generation overlays. Inventory lookup, ordering, duplicate identities, credential scanning and precedence are host checks.",
+  "type": "object",
+  "required": [
+    "$schema",
+    "extensions"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json"
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "$schema",
+          "critical",
+          "extensions",
+          "extensions.extensionId",
+          "extensions.version",
+          "extensions.runtime",
+          "extensions.platforms",
+          "extensions.platforms.*",
+          "extensions.sha256"
+        ]
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/pin"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "not": {
+    "anyOf": [
+      {
+        "required": [
+          "schemaVersion"
+        ]
+      },
+      {
+        "required": [
+          "path"
+        ]
+      },
+      {
+        "required": [
+          "program"
+        ]
+      },
+      {
+        "required": [
+          "home"
+        ]
+      },
+      {
+        "required": [
+          "token"
+        ]
+      },
+      {
+        "required": [
+          "apiKey"
+        ]
+      },
+      {
+        "required": [
+          "password"
+        ]
+      },
+      {
+        "required": [
+          "authorization"
+        ]
+      }
+    ]
+  },
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "required": [
+        "extensionId",
+        "version",
+        "runtime"
+      ],
+      "properties": {
+        "extensionId": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/id"
+        },
+        "version": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/version"
+        },
+        "runtime": {
+          "enum": [
+            "process",
+            "wasm"
+          ]
+        },
+        "critical": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "extensionId",
+              "version",
+              "runtime",
+              "platforms",
+              "sha256"
+            ]
+          }
+        },
+        "platforms": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "win-x64",
+              "win-arm64",
+              "osx-x64",
+              "osx-arm64",
+              "linux-x64",
+              "linux-arm64",
+              "linux-musl-x64",
+              "linux-musl-arm64"
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/sha256"
+          }
+        },
+        "sha256": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/sha256"
+        }
+      },
+      "additionalProperties": true,
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "schemaVersion"
+            ]
+          },
+          {
+            "required": [
+              "path"
+            ]
+          },
+          {
+            "required": [
+              "program"
+            ]
+          },
+          {
+            "required": [
+              "home"
+            ]
+          },
+          {
+            "required": [
+              "token"
+            ]
+          },
+          {
+            "required": [
+              "apiKey"
+            ]
+          },
+          {
+            "required": [
+              "password"
+            ]
+          },
+          {
+            "required": [
+              "authorization"
+            ]
+          }
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "runtime": {
+                "const": "process"
+              }
+            },
+            "required": [
+              "runtime"
+            ]
+          },
+          "then": {
+            "required": [
+              "platforms"
+            ],
+            "not": {
+              "required": [
+                "sha256"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "runtime": {
+                "const": "wasm"
+              }
+            },
+            "required": [
+              "runtime"
+            ]
+          },
+          "then": {
+            "required": [
+              "sha256"
+            ],
+            "not": {
+              "required": [
+                "platforms"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

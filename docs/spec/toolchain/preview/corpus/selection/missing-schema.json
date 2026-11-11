@@ -1,0 +1,13 @@
+{
+  "extensions": [
+    {
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "version": "0.6.0",
+      "runtime": "process",
+      "platforms": {
+        "win-x64": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "osx-arm64": "2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    }
+  ]
+}

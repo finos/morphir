@@ -16,6 +16,7 @@ spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/v4-bom-crlf.jso
 
 # Toolchain contract fixtures are identified by the SHA-256 of their exact bytes.
 docs/spec/toolchain/fixtures/** -text
+docs/spec/toolchain/preview/corpus/** -text
 # The readiness workflow case lists the SHA-256 of every source and expected file.
 spec/toolchain/workflows/** -text
 

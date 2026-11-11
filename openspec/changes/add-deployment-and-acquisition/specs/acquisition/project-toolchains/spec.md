@@ -31,6 +31,77 @@ The channel is a resolution request. `.morphir/toolchain.lock.json` records its 
 
 ## ADDED Requirements
 
+### Requirement: Portable extension selections owned by the shared contract
+Project and workspace extension pins SHALL bind extension identity, exact version, runtime and per-platform artifact digests, or one portable WASM digest, without absolute paths or credentials. Hosts SHALL resolve those pins from local inventory without acquisition. The parent SHALL publish their schema URLs, member tables, paths and cases before implementation adopts a persisted format.
+
+#### Scenario: Colleague has the selected content locally
+- **WHEN** a colleague opens a project whose portable extension pin names content already in local inventory
+- **THEN** the host selects the matching identity, version, runtime and digest without rewriting the pin with local paths
+- **AND** selection performs no network acquisition
+
+#### Scenario: Missing or corrupt pinned content
+- **WHEN** a project pin names an absent or mismatched inventory object
+- **THEN** the host reports that selection as broken and requests explicit installation or repair
+- **AND** it does not choose the shared catalog or a different installed version instead
+
+### Requirement: Versioned selection documents
+Selection documents SHALL follow the current family-version policy with exact `$schema` matching. Implementations SHALL NOT introduce an unversioned private substitute or implicitly convert prereleases. A family transition SHALL preserve the existing draft.1 corpus as historical evidence.
+
+#### Scenario: Selection document from another prerelease
+- **WHEN** a host reads a selection whose schema URL is not in its supported set
+- **THEN** it refuses that contract before changing state or launching a provider
+- **AND** it does not rewrite the document into another version
+
+### Requirement: Generation overlay precedence
+The manager proxy SHALL supply `MORPHIR_EXTENSION_OVERLAY` as an absolute generation directory containing the shared contract's extension selection document. The host SHALL treat that overlay as read-only. For each extension, precedence SHALL be generation overlay, project pin, workspace pin, shared catalog, then system pin. A selected but broken entry SHALL stop resolution. Isolation SHALL omit the shared catalog and system pin while preserving the higher layers.
+
+#### Scenario: Project and generation select different versions
+- **WHEN** a generation overlay selects extension version A and a project pin selects version B for the same identity
+- **THEN** the command uses A and reports the overlay as its selection source
+- **AND** it changes neither the project pin nor the shared catalog
+
+#### Scenario: Malformed explicit overlay
+- **WHEN** `MORPHIR_EXTENSION_OVERLAY` is relative, missing or contains a document the host cannot read
+- **THEN** the host refuses the explicit overlay before launching a provider
+- **AND** it does not silently use project or global defaults
+
+### Requirement: Explicit installed-extension configuration
+Frontend configuration SHALL use an explicit `extension_id` member to select an installed frontend. An extension configuration table SHALL use an explicit `id` member to select an installed extension. Existing string path values SHALL retain their path meaning. Selection SHALL use the same overlay and inventory pipeline as command dispatch rather than a second registry or installer.
+
+#### Scenario: Existing path configuration
+- **WHEN** a project uses an existing string path for its frontend or extension
+- **THEN** the host continues to interpret it as that path
+- **AND** it does not reinterpret it as an installed identity
+
+### Requirement: Unambiguous installed configuration sources
+An extension table's explicit `id` SHALL equal its identity key. It SHALL NOT coexist with `path`, `url` or `command`. A frontend entry SHALL NOT contain both `extension_id` and `extension`. These conflicts SHALL be refused before selection or launch, including empty or apparently equal source values. A frontend language key need not equal `extension_id`.
+
+#### Scenario: Installed identity and local source conflict
+- **WHEN** an extension table has an explicit `id` together with `path`, `url` or `command`
+- **THEN** the host refuses the entry before resolving inventory, installing content or starting a provider
+- **AND** it does not choose one source by precedence
+
+#### Scenario: Extension table identity differs from its explicit id
+- **WHEN** `[extensions.acme]` specifies `id = "acme.installed"`
+- **THEN** the host refuses the identity mismatch rather than treating `acme` as an alias
+
+#### Scenario: Frontend source is explicit
+- **WHEN** `[frontend.fsharp]` specifies both `extension_id` and `extension`
+- **THEN** the host refuses the conflicting sources rather than overriding one
+- **AND** `extension_id` alone may identify an extension whose id differs from `fsharp`
+
+### Requirement: Explicit unsigned developer consent
+Explicitly naming a local install source or explicitly enabling staged mode SHALL authorize unsigned developer installation with a `local-developer` provenance label. An omitted setting that inherits a default `auto` value SHALL NOT authorize installation. A global staged or file install SHALL record a generated one-release local repository. These facts SHALL NOT be reported as authenticated publisher provenance.
+
+#### Scenario: Default auto without an explicit choice
+- **WHEN** staged discovery inherits `auto` because the user supplied no staged-mode setting or local install command
+- **THEN** discovery may report the candidate but performs no unsigned installation
+
+#### Scenario: Explicit local installation
+- **WHEN** the user explicitly installs a local source
+- **THEN** installation records local-developer provenance and, for a global install, its generated one-release local repository
+- **AND** the report does not claim publisher authentication
+
 ### Requirement: Distinct versioned documents
 Project selection SHALL use `.morphir/toolchain.toml` and an exact `.morphir/toolchain.lock.json`, or explicitly supplied paths. These SHALL be separate SemVer contracts beginning at `0.1.0-draft.1`. Existing `morphir.toml` toolchain adapter settings SHALL retain their meaning. Unknown optional members SHALL be ignored; unknown critical members and unsupported exact drafts SHALL be refused.
 
