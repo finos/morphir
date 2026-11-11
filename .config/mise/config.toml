@@ -829,10 +829,8 @@ description = "Validate signed tool release metadata fixtures"
 run = "python .config/mise/tasks/ci/validate_tool_release_metadata.py"
 
 [tasks."ci:validate-toolchain-contracts"]
-description = "Run the fixed toolchain contract cases through their schemas and reference readers"
-# The cases, schemas and signed fixtures are read by the crate's tests; see
-# docs/spec/toolchain/index.md.
-run = "cargo test --locked --package morphir-toolchain-contract"
+description = "Check the current acquisition corpus using the pinned .NET implementation; pass --source <checkout>"
+run = "bun run tools/check-toolchain-contracts.ts check"
 
 [tasks."openspec:check"]
 description = "Check the shared OpenSpec workflow"

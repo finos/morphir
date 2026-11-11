@@ -38,6 +38,8 @@ None in this planning repository. Existing MEP guest requirements remain unchang
 
 ## Tracking
 
+> **Implementation correction, 10 November 2026.** The maintainer directed removal of the parent Rust reference crate and use of the .NET implementation for acquisition contract checks. Specifications, schemas, case manifests, fixed fixtures and expected results stay in finos/morphir. Parent CI invokes the conformance tests in a pinned finos/morphir-dotnet checkout against the current parent corpus. No second reader or resolver is maintained here, and source-test success is not release or platform qualification. This note does not change the approved task wording or contract versions.
+
 - Approval: the user approved this proposal and its narrative design on 9 November 2026. Implementation tasks remain unstarted.
 - OpenSpec change: `openspec/changes/add-deployment-and-acquisition/`.
 - Origin: this deployment/acquisition discussion, following [discussion #214](https://github.com/finos/morphir/discussions/214). This does not claim #214 is a deployment specification.
