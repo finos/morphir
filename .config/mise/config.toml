@@ -451,6 +451,13 @@ description = "Check the WASM host qualification corpus: fixtures against their 
 run = "bun run tools/check-wasm-host-kit.ts"
 depends = ["tools:install"]
 
+[tasks."spec:mep-wasm-report-check"]
+description = "Check the WASM host qualification report controls: the verdict rule against its fixed controls, the document, and the published schemas"
+# The jsonschema tool above validates the two schemas, the controls and the
+# abridged example report. See spec/mep/mck/wasm-host-report.md.
+run = "bun run tools/check-wasm-host-report.ts"
+depends = ["tools:install"]
+
 [tasks."mck:vocabulary-check"]
 description = "Check vocabulary generation against the pinned TypeScript IR model"
 # Keep the semantic vocabulary authoring check; compatibility validation is native.

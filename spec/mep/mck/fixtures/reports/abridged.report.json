@@ -1,0 +1,85 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/mep-wasm-host-kit/0.1.0-draft.1/report.schema.json",
+  "suite": {
+    "kit": "morphir/mep-wasm-host-kit",
+    "kitVersion": "0.1.0-draft.1",
+    "contract": { "id": "morphir/mep-wasm-execution-profiles", "version": "0.1.0-draft.1" },
+    "corpus": { "sha256": "4444444444444444444444444444444444444444444444444444444444444444" },
+    "deadlineMarginSeconds": 2
+  },
+  "runner": { "name": "example-runner", "version": "0.0.0" },
+  "host": {
+    "executable": "/opt/morphir/morphir",
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "profiles": ["extism-kernel-v1"],
+    "offering": "native-aot",
+    "platform": "linux-x64",
+    "engine": "wasmtime 50.0.1"
+  },
+  "bounds": [
+    { "bound": "memoryCeiling", "declaration": "enforced", "requiredForQualification": true },
+    {
+      "bound": "instructionBudget",
+      "declaration": "not-enforced",
+      "reason": "engine has no metering",
+      "requiredForQualification": false
+    },
+    { "bound": "callDeadline", "declaration": "enforced", "requiredForQualification": true }
+  ],
+  "guestKitCitations": [],
+  "totals": {
+    "cases": 3,
+    "passed": 0,
+    "failed": 1,
+    "error": 0,
+    "refused": 0,
+    "notApplicable": 1,
+    "notEnforced": 1
+  },
+  "verdict": {
+    "qualified": false,
+    "reasons": [
+      { "code": "case_failed", "caseId": "bounds/spin-extism" },
+      { "code": "guest_kit_missing", "profile": "extism-kernel-v1" }
+    ]
+  },
+  "cases": [
+    {
+      "caseId": "bounds/spin-bytes",
+      "appliesTo": "morphir-bytes-v1",
+      "bounds": ["callDeadline"],
+      "module": {
+        "sha256": "69768991322b8dc01561b9d8c7952cf9c8bcfe3e30ca7239513919088e91e5cc",
+        "observedSha256": "69768991322b8dc01561b9d8c7952cf9c8bcfe3e30ca7239513919088e91e5cc"
+      },
+      "outcome": "not_applicable",
+      "runs": []
+    },
+    {
+      "caseId": "bounds/spin-extism",
+      "appliesTo": "extism-kernel-v1",
+      "bounds": ["callDeadline"],
+      "module": {
+        "sha256": "013df84b7cdecce0386f1b20b6395d663df1533c01fcac16141019ce87d3e11e",
+        "observedSha256": "013df84b7cdecce0386f1b20b6395d663df1533c01fcac16141019ce87d3e11e"
+      },
+      "outcome": "failed",
+      "deviation": {
+        "tracking": "https://github.com/finos/morphir/issues/0",
+        "note": "Example only: the call ran past the deadline margin."
+      },
+      "runs": []
+    },
+    {
+      "caseId": "bounds/small-budget",
+      "appliesTo": "extism-kernel-v1",
+      "bounds": ["instructionBudget"],
+      "module": {
+        "sha256": "013df84b7cdecce0386f1b20b6395d663df1533c01fcac16141019ce87d3e11e",
+        "observedSha256": "013df84b7cdecce0386f1b20b6395d663df1533c01fcac16141019ce87d3e11e"
+      },
+      "outcome": "not_enforced",
+      "runs": []
+    }
+  ]
+}
