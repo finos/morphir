@@ -333,7 +333,7 @@ A host SHALL start a package by the absolute path of its entry point under `stor
 - **THEN** it starts `<home>\store\extensions\packages\sha256\<treeSha256>\tree\morphir-fsharp-frontend.exe` with the locked arguments, in the project directory
 
 ### Requirement: Activation checks the published tree
-Provisional on open question `Q-VERIFY`; this is outcome `VERIFY-B`. Before starting a package, a host SHALL check under the state lock that the lock and catalog agree on `package`, that the SHA-256 of `manifest` equals `treeSha256`, and that `tree/` holds exactly the manifest's files as regular files, with the manifest's sizes and, on Unix, the modes of the read-only rule. Under `VERIFY-A` it SHALL also rehash every file.
+Before starting a package, a host SHALL check under the state lock that the lock and catalog agree on `package`, that the SHA-256 of `manifest` equals `treeSha256`, and that `tree/` holds exactly the manifest's files as regular files, with the manifest's sizes and, on Unix, the modes of the read-only rule. This is the decided `VERIFY-B` activation check; full verification of every file is required at install and on request as stated below.
 
 #### Scenario: A file is missing
 - **WHEN** a file listed in the F# frontend's manifest has been deleted from the store

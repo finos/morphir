@@ -39,7 +39,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <body>
 <main>
 <h1>add-extension-packages: design</h1>
-<p class="meta">OpenSpec change | 10 November 2026, revised the same day after review | proposed for maintainer review, nothing implemented</p>
+<p class="meta">OpenSpec change | 10 November 2026, revised 11 November with the maintainer's VERIFY-B and LAUNCH-A decisions | proposed for maintainer review, nothing implemented</p>
 
 <p>The reasons are in <a href="proposal.md">proposal.md</a>; the normative rules are in <a href="specs/extensions/extension-packages/spec.md">the extension packages spec</a>; the work is in <a href="tasks.md">tasks.md</a>.</p>
 <p>Facts marked <span class="tag">observed</span> were read from these sources:</p>
@@ -50,7 +50,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li>the Microsoft and Linux documentation linked where it is cited;</li>
 <li>the morphir-dotnet installer plan <code>openspec/changes/add-extension-installation/</code> (finos/morphir-dotnet#567), in its local checkout.</li>
 </ul>
-<p>Everything else is a proposed interface unless it is marked <span class="tag">assumption</span>, and each assumption has a task that settles it. Requirements marked <span class="tag">provisional</span> depend on an open question.</p>
+<p>Everything else is a proposed interface unless it is marked <span class="tag">assumption</span>, and each assumption has a task that settles it. The maintainer settled Q-VERIFY and Q-LAUNCH on 11 November 2026; their requirements are no longer provisional. This records the choices, not an implementation or qualification.</p>
 
 <p>Maintainer decisions of 9 November 2026 that bind this design:</p>
 <ul>
@@ -96,7 +96,7 @@ svg .edge { stroke: var(--muted); fill: none; }
 <li><a href="#risks">Risks and trade-offs</a></li>
 <li><a href="#migration">Migration plan</a></li>
 <li><a href="#assumed">Assumed</a></li>
-<li><a href="#open-questions">Open questions</a>
+<li><a href="#open-questions">Resolved questions and later work</a>
 <ul>
 <li><a href="#q-verify">Q-VERIFY</a></li>
 <li><a href="#q-launch">Q-LAUNCH</a></li>
@@ -437,7 +437,7 @@ f 4096 c51e…10 zh-Hant/FSharp.Core.resources.dll</code></pre>
 </tbody>
 </table>
 <p>The estimates assume SHA-256 at 0.5 to 2 GB/s and solid-state storage. Task 2.4 measures them on the first-delivery platforms.</p>
-<p><strong>Decision</strong> <span class="tag">provisional</span>. Open question <a href="#q-verify">Q-VERIFY</a>; the spec states outcome <code>VERIFY-B</code>:</p>
+<p><strong>Decision</strong> <span class="tag">decided 11 November 2026</span>. The maintainer chose option B for <a href="#q-verify">Q-VERIFY</a>, <code>VERIFY-B</code>:</p>
 <ul>
 <li><strong>At install, and when the user asks to verify installed extensions:</strong> full verification.</li>
 <li><strong>At each activation, under the state lock:</strong>
@@ -447,13 +447,12 @@ f 4096 c51e…10 zh-Hant/FSharp.Core.resources.dll</code></pre>
 <li><code>tree/</code> holds exactly the manifest's files, as regular files, with the manifest's sizes and, on Unix, the read-only modes of <a href="#mode-1">MODE-1</a>.</li>
 </ul>
 A failure is <code>package.tree_changed</code>, and nothing starts.</li>
-<li><strong>Under <code>VERIFY-A</code>:</strong> activation also rehashes every file.</li>
 </ul>
-<p><strong>Why <code>VERIFY-B</code> is recommended.</strong> It catches what happens in practice for a few milliseconds per compile: deleted, truncated, added or replaced files, changed modes, and a manifest edited out of step with the lock. The read-only modes make accidental writes fail loudly. What it misses is a same-size change to a file's bytes made after its modes were changed back. No outcome stops a process with write access to the home: it can rewrite the tree, the manifest, the lock and the catalog consistently. Under <code>VERIFY-A</code> it could still swap a file after the rehash and before the start. A full rehash at launch therefore adds detection of same-size accidental corruption, not a security boundary. The full check stays one command away.</p>
+<p><strong>Why <code>VERIFY-B</code> was chosen.</strong> It catches structural changes for the estimated few milliseconds per compile: deleted, truncated or added files, changed modes, and a manifest edited out of step with the lock. The read-only modes make accidental writes fail loudly. What it misses is a same-size change to a file's bytes made after its modes were changed back. No outcome stops a process with write access to the home: it can rewrite the tree, the manifest, the lock and the catalog consistently. Under the alternative <code>VERIFY-A</code> it could still swap a file after the rehash and before the start. A full rehash at launch therefore adds detection of same-size accidental corruption, not a security boundary. The full check stays one command away.</p>
 
 <h3 id="run-1">RUN-1. Activation and launch</h3>
 <p>The compile now needs the frontend running.</p>
-<p><strong>Decision</strong> <span class="tag">choice to confirm</span>. The host starts the entry point from the store; it does not copy it. This changes the existing activation rule for single files, which starts a private copy. So it is recorded as a choice for the maintainer to confirm, <a href="#q-launch">Q-LAUNCH</a>, and the design follows it until then.</p>
+<p><strong>Decision</strong> <span class="tag">decided 11 November 2026</span>. The maintainer chose option A for <a href="#q-launch">Q-LAUNCH</a>, <code>LAUNCH-A</code>: the host starts the entry point from the shared store with a lease tied to the guest's process tree, and unused packages are removed only by explicit collection. A package is not copied at launch. This changes the existing activation rule for single files, which still starts a private copy.</p>
 <ul>
 <li><strong>Program.</strong> The absolute path of <code>tree/&lt;entryPoint&gt;</code>, in the platform's native spelling, without a verbatim prefix, as <code>C:\Users\dev\.morphir\store\extensions\packages\sha256\&lt;treeSha256&gt;\tree\morphir-fsharp-frontend.exe</code>.</li>
 <li><strong>Arguments.</strong> The argument vector is that path followed by the locked arguments.</li>
@@ -526,7 +525,7 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 </ul>
 <p>Collection clears the read-only modes, renames the package to <code>.trash-&lt;random&gt;</code>, deletes it, then removes its lease file. A rename that fails, as it can on Windows while a file is open, leaves the package for a later run. Collection also removes <code>.trash-</code> directories and abandoned staging directories (<a href="#store-1">STORE-1</a>).</p>
 <p><strong>After an old home is moved aside.</strong> #1150's Decision 10 moves old extension locks and the catalog to <code>backups/extensions-&lt;time&gt;/</code>, asking first or through <code>morphir doctor --fix</code>, and never moves the store. Published packages therefore stay where they are. Collection reads only <code>locks/extensions/</code>, not the backup, so once no current lock names a package, an explicit collection may delete it. A user who restores a backup by hand may then need to reinstall. That is consistent with the move, which already asks the user to start fresh.</p>
-<p><strong>Why.</strong> <span class="tag">observed</span> Today nothing deletes store bytes; the installer plan keeps that rule ("Removal never deletes store objects"). A package is about 121 MB, so some deletion is needed. Tying it to an explicit command keeps uninstall fast and safe while the extension runs. The lease is what makes deletion safe across hosts and processes: the state lock alone is not held while a guest runs. Whether collection should instead run at uninstall time, with no new command, is part of <a href="#q-launch">Q-LAUNCH</a>.</p>
+<p><strong>Why.</strong> <span class="tag">observed</span> Today nothing deletes store bytes; the installer plan keeps that rule ("Removal never deletes store objects"). A package is about 121 MB, so some deletion is needed. Tying it to an explicit command keeps uninstall fast and safe while the extension runs. The lease is what makes deletion safe across hosts and processes: the state lock alone is not held while a guest runs. The maintainer's <a href="#q-launch">LAUNCH-A decision</a> keeps collection explicit, rather than collecting at uninstall.</p>
 
 <h3 id="trust-1">TRUST-1. A package changes nothing about trust</h3>
 <p><strong>Decision.</strong> A package does not change who is trusted. Claim checks and publisher authentication stay separate facts.</p>
@@ -599,9 +598,9 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <tr><td>Non-ASCII NFC entry names, with Unicode 17.0.0 case-folding and uppercase collision keys</td><td>The first revision's rule. It puts normalization, unassigned code points and two Unicode case mappings into the security core, and requires every host to ship that data, for names no known package needs (<a href="#ext-1">EXT-1</a>). A later version can add it (<a href="#later-names">below</a>).</td></tr>
 <tr><td>Read ZIP entries in local-header order, or streaming</td><td>A crafted file can order its local headers differently from its central directory, and two readers would then report different first faults. The central directory is the only order every reader can find (<a href="#rd-1">RD-1</a>).</td></tr>
 <tr><td>Refuse zip64</td><td>Some writers emit zip64 records below 4 GiB, so validity would depend on the writer.</td></tr>
-<tr><td>Verify every file at every launch (<code>VERIFY-A</code>)</td><td>A fraction of a second to seconds on every compile, against a threat it does not stop (<a href="#vfy-1">VFY-1</a>). Kept as an option in <a href="#q-verify">Q-VERIFY</a>.</td></tr>
+<tr><td>Verify every file at every launch (<code>VERIFY-A</code>)</td><td>A fraction of a second to seconds on every compile, against a threat it does not stop (<a href="#vfy-1">VFY-1</a>). The maintainer chose <a href="#q-verify">VERIFY-B</a>; this remains as decision history.</td></tr>
 <tr><td>Verify only at install (<code>VERIFY-C</code>)</td><td>A deleted or truncated file would surface as a confusing failure inside the guest, not as a clear refusal.</td></tr>
-<tr><td>Start a private copy of the tree at each launch</td><td>Writes about 121 MB per compile and adds scanning delay; the reasons for copies do not apply to read-only trees (<a href="#run-1">RUN-1</a>). Kept as an option in <a href="#q-launch">Q-LAUNCH</a>.</td></tr>
+<tr><td>Start a private copy of the tree at each launch</td><td>Writes about 121 MB per compile and adds scanning delay; the reasons for copies do not apply to read-only trees (<a href="#run-1">RUN-1</a>). The maintainer chose <a href="#q-launch">LAUNCH-A</a>; this remains as decision history.</td></tr>
 <tr><td>Publish outside the state lock, record later</td><td>Collection could remove the tree in between (<a href="#store-1">STORE-1</a>).</td></tr>
 <tr><td>A lease handed over before publication, instead of one state-lock scope</td><td>Works, but adds a second lock order for every install, where the state lock is already held for the record.</td></tr>
 <tr><td>Owner and lease files inside the directories they guard</td><td>An open file can stop the directory's rename on Windows (<a href="#store-1">STORE-1</a>).</td></tr>
@@ -624,13 +623,13 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <tr><td>finos/morphir#1149, as #1150 revises it for Decision 15</td><td><code>openspec/changes/allow-dotted-extension-ids/specs/extensions/extension-identity/spec.md</code>, "Every document of the family carries its current schema URL"</td><td>The extension state family has one version, <code>0.1.0-preview.1</code>, carried by a required <code>$schema</code> URL under <code>https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/</code>; readers match it exactly; #1150's task 1.7 publishes the seven schemas.</td><td>Under <code>PKGVER-A</code>, the definition of <code>0.1.0-preview.1</code> and its release, index-record, catalog and lock schemas include the <code>package</code> member before they are published. Under <code>PKGVER-B</code>, nothing in #1149; this change defines <code>0.1.0-preview.2</code>.</td></tr>
 <tr><td>finos/morphir#1149</td><td>the same spec, "Names derived from an id"</td><td>"The content-addressed artifact store SHALL NOT use the id in its paths."</td><td>The package store follows the same rule; nothing to change.</td></tr>
 <tr><td>finos/morphir#1149</td><td><code>tasks.md</code>, task 1.4</td><td>"Update <code>docs/design/draft/extensions/distribution-and-acquisition.md</code> so it defines, as the authority, the members and values of … the installed catalog …, the extension lock …, the transaction journal, the state lock …"</td><td>The <code>package</code> member is added to the catalog and lock that this task defines (this change's task 1.2). The lock is a closed document, so <code>package</code> must be in its definition.</td></tr>
-<tr><td>Review fixes to #1149 (finos/morphir#1150, <code>7f22dfea2</code>, <code>f7f53f14a</code>, <code>c4a683ce8</code>, <code>bc5a22cc8</code>, <code>e02238125</code>, <code>9e4474d70</code>, <code>6e1565019</code>, not merged)</td><td>spec "The lock primitive is a whole-file exclusive operating-system lock", "A lock file is opened so that a second host waits rather than fails", "Shared files are replaced through temporary files that readers ignore", "Old state is detected before recovery"; design DEF-3 and DEF-4</td><td>The state lock is <code>flock(LOCK_EX)</code> or a full-range <code>LockFileEx</code>, opened so a second host waits. Temporary files start with <code>.stage-</code>, and readers ignore entries starting with <code>.</code>.</td><td>The owner and lease files are opened and locked by the same rules, in shared form for the lease. The <code>.stage-</code> and <code>.trash-</code> names follow the dot rule. If #1150 is not merged, this change's task 1.2 states the calls and the opening rules itself.</td></tr>
+<tr><td>Review fixes to #1149 (finos/morphir#1150, <code>7f22dfea2</code>, <code>f7f53f14a</code>, <code>c4a683ce8</code>, <code>bc5a22cc8</code>, <code>e02238125</code>, <code>9e4474d70</code>, <code>6e1565019</code>, merged as <code>ec363c61dd955d6979e1c9f7cf94592d19f348ad</code>)</td><td>spec "The lock primitive is a whole-file exclusive operating-system lock", "A lock file is opened so that a second host waits rather than fails", "Shared files are replaced through temporary files that readers ignore", "Old state is detected before recovery"; design DEF-3 and DEF-4</td><td>The state lock is <code>flock(LOCK_EX)</code> or a full-range <code>LockFileEx</code>, opened so a second host waits. Temporary files start with <code>.stage-</code>, and readers ignore entries starting with <code>.</code>.</td><td>The owner and lease files are opened and locked by the same rules, in shared form for the lease. The <code>.stage-</code> and <code>.trash-</code> names follow the dot rule. Task 1.2 uses the merged calls and opening rules.</td></tr>
 <tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/toolset-recipe.md</code> at <code>9e1f853b7</code>, the item "A multi-file extension is a package form that a separate change defines"</td><td>"the recipe's binding of the Native AOT offering's process frontend, one archive per platform in <code>artifactTarget</code>, is <strong>provisional</strong> on that change"</td><td>That binding becomes final, with the target being the artifact's file in either shape (<a href="#tc-1">TC-1</a>, task 4.1). The question M2 the first revision quoted was replaced by this item in <code>89f43a057</code>.</td></tr>
 <tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/index.md</code>, "Target paths"</td><td>The component rules and the Windows device names</td><td>The entry rules reuse the device-name rule, in its ASCII form.</td></tr>
 <tr><td>Toolchain contracts</td><td><code>docs/spec/toolchain/installation-receipt.md</code>, members table, <code>launch</code></td><td>"<code>program</code>, an absolute local path in the receipt platform's syntax, and fixed <code>args</code>"</td><td>For a package, <code>program</code> names the entry point in the published tree, and the receipt names the package for collection (task 4.2).</td></tr>
 <tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, ARC-1</td><td>"Entry names: must be ASCII … are compared ignoring ASCII case"; limits "1 GiB, 1024 entries, 256 MiB per entry"</td><td>The ASCII rule stays and agrees with <a href="#ext-1">EXT-1</a>. For packages, the limits and reading rules of <a href="#ext-2">EXT-2</a> and <a href="#rd-1">RD-1</a> apply (task 2.2).</td></tr>
 <tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, Q-ARCHIVE and Q-MULTIFILE; <code>specs/extension-package-archives/spec.md</code>, "A target archive holds exactly one executable"</td><td>Option (a): "Require exactly one regular file, install it, record its digest in the lock"; "This change keeps refusing multi-file artifacts (<code>extension.multi_file_artifact</code>)"</td><td>Replaced: an archive artifact is a package, and the lock records the archive digest and the <code>package</code> member (task 2.2).</td></tr>
-<tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, "The path to installing the F# frontend without .NET", Option B</td><td>"a descriptor member for an entry point and a per-file manifest; a store layout for trees, and activation that verifies every file; a catalog and lock member for trees …; a new draft of the descriptor, catalog and lock"</td><td>Delivered here, with two differences. Activation runs a structure check rather than a full rehash, provisionally (<a href="#q-verify">Q-VERIFY</a>). The per-file manifest is derived and stored locally, not carried in the descriptor.</td></tr>
+<tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, "The path to installing the F# frontend without .NET", Option B</td><td>"a descriptor member for an entry point and a per-file manifest; a store layout for trees, and activation that verifies every file; a catalog and lock member for trees …; a new draft of the descriptor, catalog and lock"</td><td>Delivered here, with two differences. Activation runs a structure check rather than a full rehash under the maintainer's decided <a href="#q-verify">VERIFY-B</a>. The per-file manifest is derived and stored locally, not carried in the descriptor.</td></tr>
 <tr><td>morphir-dotnet installer plan</td><td><code>design.html</code>, SEL-3, and Q-WINLAUNCH</td><td>"runs a private copy written from the verified read"; "refuse non-<code>.exe</code> Windows executables at install, launch from the short private copy"</td><td>For packages, the host starts the entry point from the store (<a href="#q-launch">Q-LAUNCH</a>), and the <code>.exe</code> rule and the path limits are adopted (<a href="#run-1">RUN-1</a>).</td></tr>
 </tbody>
 </table>
@@ -640,7 +639,7 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
 <tbody>
 <tr><td>A host built before this change meets a package.</td><td><code>package</code> is always critical, so it refuses the document (<a href="#pkg-1">PKG-1</a>).</td></tr>
-<tr><td>A same-size change to a stored file goes unnoticed until a full verification.</td><td>Accepted under <code>VERIFY-B</code>. The files are read-only, the full check is one command, and <a href="#q-verify">Q-VERIFY</a> lets the maintainer choose <code>VERIFY-A</code>.</td></tr>
+<tr><td>A same-size change to a stored file goes unnoticed until a full verification.</td><td>Accepted under the maintainer's decided <a href="#q-verify">VERIFY-B</a>. The files are read-only and the full check stays available on request.</td></tr>
 <tr><td>Two hosts read an archive differently.</td><td>The reading rules of <a href="#rd-1">RD-1</a> fix the name, type and order of every entry, and the cases include the crafted forms.</td></tr>
 <tr><td>A user name of 18 or more characters on Windows refuses a package whose tree paths approach the 120-unit bound.</td><td>A refusal before anything is published, naming the path and its length. The F# frontend's shorter paths leave room for long names (task 2.1).</td></tr>
 <tr><td>A guest descendant on Unix closes inherited descriptors, leaves its process group and outlives a killed host. Or, on Windows, a collection runs in the instant after a host crash.</td><td>Stated in <a href="#life-1">LIFE-1</a>. Both need an explicit collection at that moment, against a package no lock names.</td></tr>
@@ -667,26 +666,26 @@ A failure is <code>package.tree_changed</code>, and nothing starts.</li>
 </tbody>
 </table>
 
-<h2 id="open-questions">Open questions</h2>
-<p>Two questions are for the maintainer. The version sharing is settled by the timing rule of <a href="#ver-1">VER-1</a>. The formats, digests, reading, refusals, modes, store, lifetime and removal are settled by this design.</p>
+<h2 id="open-questions">Resolved questions and later work</h2>
+<p>The maintainer answered both questions on 11 November 2026: Q-VERIFY is option B, and Q-LAUNCH is option A. The options below preserve the decision history; neither question remains an approval gate. The version sharing still follows the timing rule of <a href="#ver-1">VER-1</a>, and task 1.1 must establish which outcome applies. Implementation and measured qualification remain tasks.</p>
 
-<h3 id="q-verify">Q-VERIFY. What does a host check each time it starts a package? <span class="tag">provisional requirement</span></h3>
+<h3 id="q-verify">Q-VERIFY. What does a host check each time it starts a package? <span class="tag">decided: VERIFY-B</span></h3>
 <p><strong>Today.</strong> A single-file artifact is rehashed at every activation and run from a private copy. A package is about 239 files and 121 MB, and the F# frontend starts once per compile. No outcome stops a process with write access to the home, which can rewrite the tree, the manifest, the lock and the catalog together.</p>
 <ul>
 <li><strong><code>VERIFY-A</code>.</strong> Rehash every file at every activation, as for single files. Cost: about 0.1 to 2 seconds per compile, more with real-time scanning. It adds detection of same-size accidental corruption.</li>
 <li><strong><code>VERIFY-B</code>.</strong> At every activation, check the manifest's digest and that the files match it in names, sizes and modes; rehash every file at install and on request. Published files are read-only. Cost: a few milliseconds per compile. A same-size change is found only by the full check.</li>
 <li><strong><code>VERIFY-C</code>.</strong> Check only at install. Cost: nothing per compile. Deleted or truncated files surface as failures inside the guest.</li>
 </ul>
-<p><strong>Recommendation:</strong> <code>VERIFY-B</code>, with the read-only modes, so accidental writes fail at once rather than at the next activation. Depends on it: the spec's "Activation checks the published tree", and tasks 2.2 and 2.4.</p>
+<p><strong>Decision, 11 November 2026:</strong> the maintainer chose option B, <code>VERIFY-B</code>, with the read-only modes, so accidental writes fail at once rather than at the next activation. The spec's "Activation checks the published tree" and tasks 2.2 and 2.4 now follow this choice.</p>
 
-<h3 id="q-launch">Q-LAUNCH. Does a host start a package from the shared store, and who deletes packages? <span class="tag">choice to confirm</span></h3>
-<p><strong>Today.</strong> The design page and the installer plan start a private copy of a verified single file, and never delete store bytes. This change starts packages in place from the shared store and adds an explicit collection command, a new command surface in every host. That changes the existing activation rule, so the maintainer confirms it.</p>
+<h3 id="q-launch">Q-LAUNCH. Does a host start a package from the shared store, and who deletes packages? <span class="tag">decided: LAUNCH-A</span></h3>
+<p><strong>Today.</strong> The design page and the installer plan start a private copy of a verified single file, and never delete store bytes. This change starts packages in place from the shared store and adds an explicit collection command, a new command surface in every host. The maintainer confirmed that change to the package activation rule by choosing <code>LAUNCH-A</code>.</p>
 <ul>
 <li><strong><code>LAUNCH-A</code>.</strong> As designed: start from the store, with a lease tied to the guest's process tree, and an explicit collection command. Cost: the lease and process-tree work of <a href="#life-1">LIFE-1</a> in each host, and one command.</li>
 <li><strong><code>LAUNCH-B</code>.</strong> Start from the store, but collect an unreferenced, unleased package at uninstall time, with no new command. Cost: the same lease work. Uninstall becomes slower and can fail to free space while the package runs.</li>
 <li><strong><code>LAUNCH-C</code>.</strong> Start a private copy of the tree, as for single files. Cost: about 121 MB written per compile and scanning delay (<a href="#vfy-1">VFY-1</a>). No lease and no collection race.</li>
 </ul>
-<p><strong>Recommendation:</strong> <code>LAUNCH-A</code>. Depends on it: the spec's "A host starts a package's entry point from the store", the lease and collection requirements, and tasks 2.2, 2.3 and 2.6.</p>
+<p><strong>Decision, 11 November 2026:</strong> the maintainer chose option A, <code>LAUNCH-A</code>. The spec's "A host starts a package's entry point from the store", the lease and collection requirements, and tasks 2.2, 2.3 and 2.6 now follow this choice.</p>
 
 <h3 id="later-names">Later: non-ASCII entry names</h3>
 <p>Not a question to answer now. This version limits entry names to ASCII (<a href="#ext-1">EXT-1</a>). The maintainer may lift that in a later preview. Lifting it would need:</p>

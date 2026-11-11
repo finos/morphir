@@ -1,6 +1,6 @@
 # Tasks
 
-Tracking: [finos/morphir#1146](https://github.com/finos/morphir/issues/1146). Beads tracking is not used for this proposal; no Beads ids are named here, and the issues are created when tracking is available. Groups follow the design's delivery order ([REPO-1](design.html#repo-1)). Each group names its owning repository and what it waits for. A task marked **provisional** depends on the named open question.
+Tracking: [finos/morphir#1146](https://github.com/finos/morphir/issues/1146). Beads tracking is not used for this proposal; no Beads ids are named here, and the issues are created when tracking is available. Groups follow the design's delivery order ([REPO-1](design.html#repo-1)). Each group names its owning repository and what it waits for. The maintainer settled [Q-VERIFY](design.html#q-verify) as `VERIFY-B` and [Q-LAUNCH](design.html#q-launch) as `LAUNCH-A` on 11 November 2026. These choices remove those decision gates; the implementation and qualification tasks stay unchecked.
 
 ## 1. finos/morphir: the rule, its data and the shared files
 
@@ -17,7 +17,7 @@ Depends on: maintainer approval of this change, and the approval of finos/morphi
   - define the `package` member (`format`, `root`, `entryPoint`, `executables`, `treeSha256`) in the release descriptor, the index record, the installed catalog entry and the extension lock at the package version, with the rule that `artifacts.package` or `extensions.package` is listed in `critical`, and with the family's `$schema` URLs in every example;
   - give the package store layout of [STORE-1](design.html#store-1), with the owner and lease files beside their directories;
   - replace the page's `.tgz` process example with a package, and state the refusal of an archive-named single-file artifact;
-  - if #1150 is not merged, state the lock calls and opening rules in full.
+  - use the lock calls and opening rules from #1150, merged as `ec363c61dd955d6979e1c9f7cf94592d19f348ad`.
 
   Verify the page builds in the docs job and its examples validate against the spec's rules.
 - [ ] 1.3 Add a normative package page under `docs/spec/` with:
@@ -48,7 +48,7 @@ Depends on: 1.2, 1.3, 1.4 and 1.5.
   - staging, publication and recording of [STORE-1](design.html#store-1) in one state-lock scope;
   - the lock and catalog `package` member.
 
-  Keep the installer plan's ASCII name rule (ARC-1), and replace its "target archive holds exactly one executable" rule (Q-ARCHIVE). Decode ZIP external attributes and check local headers against the central directory, through `ZipArchive` or by reading those structures directly; read tar entry types and pax records the same way. **Provisional on [Q-VERIFY](design.html#q-verify):** the activation check of the chosen outcome. Verify with every shared case.
+  Keep the installer plan's ASCII name rule (ARC-1), and replace its "target archive holds exactly one executable" rule (Q-ARCHIVE). Decode ZIP external attributes and check local headers against the central directory, through `ZipArchive` or by reading those structures directly; read tar entry types and pax records the same way. Implement the decided [VERIFY-B](design.html#q-verify) activation check: manifest digest, exact file names, sizes and modes, with full per-file verification at install and on request. Verify with every shared case.
 - [ ] 2.3 Prove the operating-system rules with tests on Windows, Linux and macOS:
   - a no-replace rename publishes and fails when the target exists;
   - a rename across volumes fails with `package.store_not_one_volume`;
@@ -61,13 +61,13 @@ Depends on: 1.2, 1.3, 1.4 and 1.5.
   - at the end of a session the host ends a guest's leftover child before it releases the lease.
 
   Check that .NET can start a child in a new process group with one inherited descriptor, and inside a job object, through platform calls. Verify the tests pass on each platform.
-- [ ] 2.4 Measure on the first-delivery platforms, for the F# frontend package: install time, the activation structure check, a full rehash and a private copy. Record the numbers in this change. **Provisional on [Q-VERIFY](design.html#q-verify):** if a full rehash costs less than the design estimates, report that to the maintainer before the question is answered. Verify the numbers come from at least three runs on each platform.
+- [ ] 2.4 Measure on the first-delivery platforms, for the F# frontend package: install time, the decided VERIFY-B activation structure check, a full rehash and a private copy. Record the numbers in this change and report any difference from the design's estimates. The measurements verify the estimates; they do not reopen the maintainer's Q-VERIFY decision. Verify the numbers come from at least three runs on each platform.
 - [ ] 2.5 Check the launch assumptions:
   - on Windows, that `CreateProcessW` and the frontend's runtime accept store paths up to 259 UTF-16 code units, and directories up to 247, without long-path support;
   - on macOS, that an entry point written by the host carries no quarantine attribute and starts without a Gatekeeper prompt.
 
   Verify with a test that installs a package at a path one unit under and one unit over each limit.
-- [ ] 2.6 Publish the F# frontend as a package for each platform, with its `treeSha256` and `artifacts.package` in `critical`, from the installer plan's adoption task 3.3, and install it with the Native AOT host from a TEST-ONLY repository; verify that the readiness workflow passes with the installed frontend. **Depends on [Q-LAUNCH](design.html#q-launch)** for how it is started.
+- [ ] 2.6 Publish the F# frontend as a package for each platform, with its `treeSha256` and `artifacts.package` in `critical`, from the installer plan's adoption task 3.3, and install it with the Native AOT host from a TEST-ONLY repository; verify that the readiness workflow passes with the installed frontend. Start it from the shared store with a process-tree lease under the decided [LAUNCH-A](design.html#q-launch), and keep deletion in the explicit collection command rather than uninstall.
 - [ ] 2.7 Make the publisher of #1150's task 2.7, morphir-dotnet's bundle authoring (Decision 13), write package artifacts. It computes `treeSha256` by [TREE-1](design.html#tree-1) from the archive it publishes, writes the `package` member, lists `artifacts.package` in `critical`, and refuses to publish an archive that a host would refuse under [RD-1](design.html#rd-1) and [EXT-1](design.html#ext-1). It also publishes the existing single-executable `.tgz` extensions, such as morphir-elm, as one-file packages when they are next released. Verify with the valid package cases, whose published descriptors must match the expected `package` members, and with one refusal case per rule group.
 
 ## 3. MoonBit host

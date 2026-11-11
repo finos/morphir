@@ -27,7 +27,7 @@ For example, after this change the frontend's descriptor lists `fsharp-frontend-
 
 **Not breaking** for raw-executable artifacts. Process extensions that ship one executable inside an archive, such as morphir-elm today, must be published with a `package` member to be installed by a current host; #1149 already requires them to be published again.
 
-**For the maintainer to confirm.** Starting packages from the shared store, with an explicit collection command, changes the existing rule of starting a private copy (Q-LAUNCH). What activation checks each time is open (Q-VERIFY).
+**Decided by the maintainer on 11 November 2026.** Q-VERIFY is option B (`VERIFY-B`): at each activation check the manifest's digest and the files' names, sizes and modes; verify every file fully at install and on request. Q-LAUNCH is option A (`LAUNCH-A`): start packages from the shared store with a lease tied to the guest's process tree, and remove unused packages only through explicit collection. Published files stay read-only, and uninstall does not delete them. These choices settle the two questions; they do not claim implementation or qualification.
 
 ## Capabilities
 
@@ -54,4 +54,4 @@ The owning issue is [finos/morphir#1146](https://github.com/finos/morphir/issues
   - the F# frontend is published as a package (its adoption task 3.3).
 - **MoonBit host:** adopts the rules and runs the cases in its own repository.
 - **No Rust work:** the Rust CLI is to be deleted from finos/morphir (Decision 16, 10 November 2026), so this change plans no Rust reader or writer.
-- **Depends on** finos/morphir#1149, whose family version, schemas and shared-file definitions this change extends, and on its review fixes (finos/morphir#1150) for the lock opening rules. The design names each dependency.
+- **Depends on** finos/morphir#1149, whose family version, schemas and shared-file definitions this change extends, and on its review fixes (finos/morphir#1150, merged as `ec363c61dd955d6979e1c9f7cf94592d19f348ad`) for the lock opening rules. The design names each dependency.
