@@ -49,6 +49,13 @@ None. `openspec/specs/` has no capabilities.
 
 ## Tracking
 
+> **Status note added 10 November 2026.** This change was implemented and merged in #1123; every task is done,
+> but it was never archived. On 10 November 2026 the Rust CLI it modifies was deleted
+> (`move-cli-delivery-to-umbrella`, finos/morphir#1153). Its `cli/builtin-providers` capability therefore
+> describes a CLI that no longer exists. It is left unarchived on purpose: archiving it as written would create a
+> main spec for a deleted product. Whether to archive it without syncing its specs or to withdraw it is for its
+> owner to decide. Its requirements are not in force for the .NET Morphir CLI.
+
 - Bead `morphir-ukvn.1.17` owns this change.
 - Bead `morphir-ukvn.1.4` (A3, "built in by pin") is closed as superseded by
   finos/morphir-gleam#23.

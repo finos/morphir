@@ -5,21 +5,22 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 ## What lives here
 
 - **morphir-elm** – Reference Elm implementation (tracking `vnext`). Contains IR definition, Elm compiler, visualization components, and backend processors.
-- **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). The **morphir** CLI binary lives in this repo under `crates/morphir`, not in the submodule; it depends on morphir-rust crates via path.
+- **morphir-dotnet** – The Morphir CLI source. finos/morphir pins it and builds, qualifies and releases its four offerings with that source's own build (`.github/workflows/release.yml`, `.config/cli-release.json`). Change the CLI in finos/morphir-dotnet; move the pin here only as a reviewed delivery update, checked by `bun run tools/cli-release.ts verify-source`.
+- **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). This repository no longer has a Rust product CLI. Its development tools, `morphir-mck` (`crates/morphir-mck-cli`) and `morphir-dev` (`crates/morphir-dev-tools`), depend on morphir-rust crates via path, so the submodule stays while they need it.
 - **morphir-examples** – Example Morphir projects.
 - **morphir-moonbit** – MoonBit implementation of Morphir tooling.
 - **morphir-python** – Python implementation of Morphir tooling. Owns the Python compiler and the `morphir-python` WASM extension.
 - **morphir-scala** – Scala implementation of Morphir tooling. Mill build, cross-compiled to JVM, JS, and Scala Native.
 - **morphir-ui** – Morphir's UI monorepo: the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application (moonrepo + mise + bun toolchain).
-- **morphir-typescript** – TypeScript binding for the Morphir IR: the reference semantic model, the version and profile codecs, and its MCK adapter. Shared IR and package runners live in the parent Rust CLI, `morphir mck`. TypeScript retains independent adapters/implementations. PKG-2 moves draft.3 corpus/fixture support to parent Rust MCK and bounded runtime helpers to `morphir-package` in [#852](https://github.com/finos/morphir/issues/852). See [spec/mck/migration.md](../spec/mck/migration.md). Bun workspace; runtime-neutral (Node, Bun, Deno, browser).
-- **morphir-gleam** – Gleam models and tooling for the BEAM ecosystem. `packages/morphir_models` is the Gleam mirror of the IR model. It has no MCK adapter or CI integration yet; a future integration should use `morphir mck`.
+- **morphir-typescript** – TypeScript binding for the Morphir IR: the reference semantic model, the version and profile codecs, and its MCK adapter. Shared IR and package runners live in the parent's standalone runner, `morphir-mck` (reached from the Morphir CLI as `morphir mck`). TypeScript retains independent adapters/implementations. PKG-2 moves draft.3 corpus/fixture support to parent Rust MCK and bounded runtime helpers to `morphir-package` in [#852](https://github.com/finos/morphir/issues/852). See [spec/mck/migration.md](../spec/mck/migration.md). Bun workspace; runtime-neutral (Node, Bun, Deno, browser).
+- **morphir-gleam** – Gleam models and tooling for the BEAM ecosystem. `packages/morphir_models` is the Gleam mirror of the IR model. It has no MCK adapter or CI integration yet; a future integration should use `morphir-mck`.
 
 Do not edit submodule content in-place for long-term changes. Prefer contributing in the submodule's own repo and then updating the submodule ref in finos/morphir when intentional.
 
 ## Path dependencies
 
-- The **morphir** CLI (`crates/morphir`) depends on crates under `ecosystem/morphir-rust/crates/`.
-- Use paths relative to the consuming crate. Example from `crates/morphir`:
+- The development tools (`crates/morphir-mck-cli`, `crates/morphir-dev-tools`) and `crates/morphir-mck` depend on crates under `ecosystem/morphir-rust/crates/`.
+- Use paths relative to the consuming crate. Example from `crates/morphir-dev-tools`:
   `morphir_core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }`
 - Do **not** add `ecosystem/morphir-rust` as a workspace member in the root `Cargo.toml`; only use path dependencies to specific crates.
 
@@ -90,6 +91,6 @@ Changes inside submodules are committed in the submodule repo. The morphir repo 
 
 ## Future submodules
 
-Additional sibling repositories (for example `morphir-dotnet`) may be added under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
+Additional sibling repositories may be added under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
 
 **Note:** [finos/morphir-go](https://github.com/finos/morphir-go) already exists as a sibling repository but is not currently vendored here. Go tooling development happens in that repo unless and until it is added as a submodule.

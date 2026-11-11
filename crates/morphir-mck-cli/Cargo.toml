@@ -1,0 +1,51 @@
+[package]
+name = "morphir-mck-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+# A development tool of this repository, not the Morphir CLI. The Morphir CLI
+# comes from finos/morphir-dotnet; see spec/mck/cli-contract.md for how its
+# `morphir mck` delegates to this program.
+publish = false
+description = "morphir-mck: the standalone command line of the shared Morphir Compatibility Kit runner (development only)"
+
+[[bin]]
+name = "morphir-mck"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+miette.workspace = true
+morphir-mck = { path = "../morphir-mck" }
+# `run` executes the kit's `.feature` files through a `morphir_bdd::Suite`.
+morphir-bdd = { path = "../../ecosystem/morphir-rust/crates/morphir-bdd" }
+# `kit vendor --source github:finos/morphir` downloads one commit archive over HTTPS.
+reqwest.workspace = true
+# `run --filter` takes a Rust regular expression (spec/mck/cli-contract.md).
+regex.workspace = true
+# Refuses to overwrite a report with itself.
+same-file.workspace = true
+serde.workspace = true
+# Machine output keeps the member order the commands write. The deleted CLI got
+# this order through Cargo feature unification; the runner states it itself.
+serde_json = { workspace = true, features = ["preserve_order"] }
+tempfile.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "sync"] }
+
+[dev-dependencies]
+sha2.workspace = true
+
+# `run` end to end; the test binary doubles as a transcript-replay adapter.
+[[test]]
+name = "mck_run"
+path = "tests/mck_run.rs"
+harness = false
+
+[[test]]
+name = "mck_package"
+path = "tests/mck_package.rs"
+harness = false

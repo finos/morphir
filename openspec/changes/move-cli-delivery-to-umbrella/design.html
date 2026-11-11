@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>move-cli-delivery-to-umbrella: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+svg text { fill: var(--fg); font: 13px system-ui, sans-serif; }
+svg rect { fill: var(--panel); stroke: var(--line); }
+svg path { stroke: var(--muted); fill: none; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>move-cli-delivery-to-umbrella: design</h1>
+<p class="meta">OpenSpec change | 10 November 2026 | implemented, pending review | <a href="proposal.md">proposal</a> | <a href="tasks.md">tasks</a></p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#gates">Gate accounting</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See <a href="proposal.md">proposal.md</a> for why. What the design starts from, as observed in this checkout on 10 November 2026:</p>
+<ul>
+<li><code>crates/morphir</code> was the Rust CLI: about 100,000 lines with 43 integration test files, released by <code>release.yml</code> on <code>v*</code> tags for six Rust targets. Its last release is <code>v0.4.0-beta.12</code>.</li>
+<li>The MCK commands lived in that crate as a thin layer (<code>commands/mck*.rs</code>) over the <code>morphir-mck</code> engine. They depended only on the engine, <code>morphir-bdd</code>, clap, reqwest and tokio, so they could move without the product. <code>kb</code> was equally self-contained over <code>morphir-kb</code> and <code>morphir-okf</code>.</li>
+<li>finos/morphir-dotnet <code>main</code> (<code>7c26348</code>, with #574) defines the four offerings in <code>build/Helpers/ReleaseProfiles.cs</code> and builds each with <code>--target PackRelease --deployment &lt;id&gt; [--rid &lt;rid&gt;]</code>, writing the artifact, <code>&lt;artifact&gt;.build-launch.json</code> and <code>&lt;artifact&gt;.build-contents.json</code>. Its own <code>deployment.yml</code> still ships the legacy single-file asset.</li>
+<li>The release version of that source is the latest released heading of its <code>CHANGELOG.md</code>: <code>0.4.0-alpha.4</code>. finos/morphir already has a Rust tag <code>v0.4.0-alpha.4</code>.</li>
+<li>Evidence from finos/morphir-dotnet#570 (workflow <code>wasm-offerings.yml</code>, run 42851276092): win-x64 behaviour differed when the produced executable was launched itself rather than through <code>dotnet exec</code> (CET), and a macOS packaged input scenario fails where <code>/var</code> resolves to <code>/private/var</code>. This change consumes that evidence; it does not change CET flags or implement WASM engine work.</li>
+</ul>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> one place that builds and releases the Morphir CLI from a pinned .NET source; no Rust product in this repository; one MCK runner reachable as <code>morphir-mck</code> and through <code>morphir mck</code>; every former gate kept or retired by name.</p>
+<p><strong>Non-goals:</strong> publishing a release; changing the .NET source (other workers own it, including the delegating <code>morphir mck</code>); the .NET MCK runner that is the destination of the shared runner; removing <code>ecosystem/morphir-rust</code>; rewriting the user guides that still describe Rust CLI commands; the Contract Versioning text of <code>AGENTS.md</code> (#1152).</p>
+
+<svg viewBox="0 0 880 170" role="img" aria-labelledby="flow-title">
+<title id="flow-title">Release flow: tag, pin check, per-platform build and launch, manifest, one release</title>
+<rect x="10" y="20" width="150" height="56" rx="6"/><text x="22" y="44">v&lt;version&gt;</text><text x="22" y="64">tag pushed</text>
+<rect x="190" y="20" width="160" height="56" rx="6"/><text x="202" y="44">release-info</text><text x="202" y="64">pin + CHANGELOG</text>
+<rect x="380" y="10" width="200" height="76" rx="6"/><text x="392" y="34">build-platform x 6</text><text x="392" y="54">source's PackRelease</text><text x="392" y="74">launch what it produced</text>
+<rect x="380" y="100" width="200" height="56" rx="6"/><text x="392" y="124">pack-tool</text><text x="392" y="144">Morphir.Tool .nupkg</text>
+<rect x="610" y="20" width="250" height="56" rx="6"/><text x="622" y="44">publish-release</text><text x="622" y="64">manifest, create once</text>
+<path d="M160 48 H190 M350 48 H380 M580 48 H610 M480 100 V86"/>
+</svg>
+
+<h2 id="decisions">Decisions</h2>
+<p>The journey follows the maintainer who pushes a tag <code>v&lt;version&gt;</code>, then the contributor who runs a compatibility gate after the Rust CLI is gone.</p>
+
+<h3 id="src-1">SRC-1. The source is a submodule pin with a recorded commit</h3>
+<p>The workflow first establishes what it is building. <code>ecosystem/morphir-dotnet</code> is a submodule (first at <code>7c26348</code>, then <code>8c15df5</code>, now at merged #590 commit <code>0885f172</code>, still a marked delivery candidate, see <a href="#src-2">SRC-2</a>), and <code>.config/cli-release.json</code> records the same commit and repository. <code>tools/cli-release.ts verify-source</code> reads the gitlink from the index and <code>.gitmodules</code>, and every release job runs it. The recorded copy turns an accidental submodule bump into a failing check instead of a silent change of product. Alternatives: the gitlink alone (a bump would change the release without a reviewed expectation), or a branch reference (not reproducible).</p>
+
+<h3 id="bld-1">BLD-1. Build with the source's own release profiles</h3>
+<p>Each offering is built by the source's <code>PackRelease</code> profiles, through its <code>cli-offering.yml</code> (<a href="#src-2">SRC-2</a>). The source's build checks each publish folder against its launch metadata. Native AOT compiles only on its own operating system, so every RID has its own runner. This repository keeps only independent expectations (the deployment ids and RIDs) and a test that they equal what the pinned <code>ReleaseProfiles.cs</code> defines. Alternatives: calling morphir-dotnet's <code>deployment.yml</code> (it ships the legacy asset and publishes to NuGet from that repository) or porting its packaging (a second implementation the maintainer ruled out).</p>
+
+<h3 id="src-2">SRC-2. Build through the source's reusable offering workflow, from a marked candidate pin</h3>
+<p>finos/morphir-dotnet PR #590 merged on 11 November 2026 at <code>0885f17264856521f0218151693c2b08810790ec</code>. The delivery tuple now names that verified commit on source <code>main</code>, which contains the earlier <code>51be09f</code> helper/routing work. Its earlier CI run 42898613660 was build evidence, not qualification. The source provides <code>.github/workflows/cli-offering.yml</code>: inputs <code>repository</code>, <code>ref</code> (the same pinned commit), <code>deployment</code>, <code>rid</code>, <code>os</code> and <code>configuration</code>; outputs <code>artifact-name</code> (<code>morphir-dotnet-&lt;deployment&gt;-&lt;rid|any&gt;</code>), <code>artifact</code>, <code>sha256</code> and <code>release</code>. It runs <code>PackRelease</code>, compares the SHA-256 with the launch metadata, starts the produced file from a path with spaces (comparing <code>--version</code> before <code>+</code>), uploads one flat artifact and publishes nothing. Its own start check is not this repository's qualification.</p>
+<p>The <code>offering</code> job calls it for 19 matrix entries (three deployments on six platforms, and the portable tool once). A <code>uses:</code> reference cannot be an expression, so the commit appears literally in <code>uses</code> and in <code>ref</code>, and the release tests check both against <code>.config/cli-release.json</code> and the gitlink. Although #590 is merged, the config retains <code>source.candidate</code> because a commit on main does not establish a source release or acquired-artifact qualification. The release then builds and qualifies, which exercises the interface, but the manifest step refuses and nothing can be published. Remove the marker only after the source version/tag, forward-only parent version and actual qualification gates pass. No version, tag, release or dispatch is authorized by this pin. The external acquisition contract tests keep their separate <code>f89dda45</code> pin in <code>.config/toolchain-contract-tests.json</code>. Alternative: calling <code>PackRelease</code> directly at <code>7c26348</code>, the first version of this change, which duplicated the source's build steps here.</p>
+<h3 id="qual-1">QUAL-1. Qualify by launching what ships</h3>
+<p>The produced artifact is what users run, so qualification starts it. An archive is extracted with <code>tar</code> and its launch path from the launch metadata is executed directly; the framework-dependent apphost is started itself, never <code>dotnet exec morphir.dll</code>, because the #570 evidence showed the launched file behaves differently on win-x64. Native AOT and self-contained run with no <code>dotnet</code> directory on <code>PATH</code> and no <code>DOTNET_ROOT</code>. The tool package is installed from the produced <code>.nupkg</code> into a tool path and a local manifest and run as <code>dotnet-morphir</code> and <code>dotnet morphir</code>. Every path is resolved against the directory the tool was started from before any subprocess runs elsewhere, and a zip is read with Windows' own <code>tar.exe</code> (Git's GNU tar reads no zip) or <code>unzip</code>. Each invocation runs three scenarios: <code>--version</code> must print the launch metadata's release, alone or with build metadata of at least 7 hex digits that prefix the pinned commit (<code>0.4.0-alpha.4+&lt;sha&gt;</code>). This is stricter than the source's own start check, which compares only the part before <code>+</code>, because this repository owns the provenance. Metadata naming any other commit fails, and so does an artifact whose build contents do not name the pinned commit and a clean tree (<a href="#bind-1">BIND-1</a>), <code>--help</code> must exit 0, and <code>ir verify</code> on a copied <code>greeting-example.json</code> is the packaged input. The artifact's SHA-256 must equal its launch metadata. Alternative: the source's own E2E tests (they build from source and do not prove the acquired bytes).</p>
+
+<h3 id="qual-2">QUAL-2. Pending triage is recorded, not hidden and not passed</h3>
+<p>The macOS packaged-input failure is recorded in <code>pendingTriage</code> with its evidence. On <code>osx-x64</code> and <code>osx-arm64</code> that scenario still runs and keeps its exit code, but its status is <code>pending-triage</code>, the offering's <code>qualified</code> flag is false there, and the release notes print the triage. Launch and help failures still fail the release. Alternatives: skipping the scenario on macOS (silent) or failing every release until triage (blocks unrelated platforms).</p>
+
+<h3 id="tool-1">TOOL-1. The tool package installs only its own bytes, through one source-owned helper</h3>
+<p><code>dotnet tool install</code> queries every configured source in parallel and takes the fastest one that has the version. <code>--add-source</code> only adds a feed, and the global packages folder is reused. So a feed in the working directory's or the user's NuGet configuration, or a warm cache, holding another <code>Morphir.Tool</code> of the same version (nuget.org has <code>0.4.0-alpha.4</code>) can be installed instead of the produced package. The installs therefore use a generated configuration with <code>&lt;clear /&gt;</code> and one feed holding the produced package (<code>--configfile</code>), and fresh packages, HTTP and plugin caches. Every <code>&lt;id&gt;.&lt;version&gt;.nupkg</code> copy NuGet keeps must have the artifact's SHA-256: in the tool store (<code>.store/&lt;id&gt;/&lt;version&gt;/&lt;id&gt;/&lt;version&gt;/</code>) and in the packages folder (<code>&lt;id&gt;/&lt;version&gt;/</code>). That layout was observed on Windows with SDK 10.0.403, not assumed. NuGet's <code>contentHash</code> is not a plain file hash, so the comparison uses the copy's own SHA-256.</p>
+<p>The source owns the one isolation implementation: <code>.github/scripts/install-tool-package.ps1</code>, which <code>cli-offering.yml</code> uses, present at the pin. Qualification runs it twice per platform, each time in new folders: <code>-ToolPath</code>, <code>-WorkDir</code> and <code>-ResultFile</code> for the tool path, and the same with <code>-Local</code>. The helper copies the package into its own feed and installs through its own <code>nuget.config</code> (clear sources, no fallback folders, its own packages folder). It isolates the caches, checks the store or packages folder, and writes the result file only after every check has passed, with absolute paths.</p>
+<p>The parent reads each result and keeps its own check (<code>helperResultProblems</code>). The mode and package SHA-256 must be the produced ones. Every reported copy, and every <code>&lt;id&gt;.&lt;version&gt;.nupkg</code> the parent finds itself in the tool store or packages folder, must have the artifact's SHA-256 by the parent's own hashing. Paths must be absolute. The invocation must be the installed command with no arguments, or <code>dotnet morphir</code> from the manifest folder, never an entry assembly. Each invocation is started exactly as reported: file, argument array, working directory and environment, where null removes a variable. The interim parent install is gone. A real-install test runs the helper against a conflicting feed and a warm cache in both modes, and the parent's own hashing refuses a copy changed afterwards.</p>
+<h3 id="pub-1">PUB-1. Publish only the source's own release, and never decide its version</h3>
+<p>The release version is the CHANGELOG's latest dated release, which says nothing about whether the pinned commit <em>is</em> that release. At the merged candidate pin <code>0885f172</code>, <code>v0.4.0-alpha.4</code> in finos/morphir-dotnet is <code>bec7df3</code>, and <code>Unreleased</code> has entries. Removing the candidate marker alone would publish other bytes under an identity the source already released. Publication is refused unless three conditions hold: no candidate marker, nothing under <code>Unreleased</code>, and the source's tag <code>v&lt;version&gt;</code> (read with <code>git ls-remote</code>, peeled) naming exactly the pin. Neither the version nor the tag is chosen here. When the gate blocks, the remedy is a source release, not a parent override.</p>
+
+<h3 id="bind-1">BIND-1. Bind the run to its tag, its commit, the pin and each artifact's origin</h3>
+<p>A dispatch can name one tag while running the workflow definition of another ref, whose literal <code>uses</code> commit then differs from the tag's. <code>release-info</code> therefore refuses three things. It refuses a run whose <code>GITHUB_REF</code> is not <code>refs/tags/&lt;tag&gt;</code>. It refuses a checkout that is not the tag's commit, read with <code>git rev-parse</code>, never from <code>GITHUB_SHA</code>. And it refuses a <code>release.yml</code> whose literal <code>uses</code> commit and <code>ref</code> are not the pin. Every later job checks out the commit it outputs, and the manifest step refuses a checkout that differs from it. The manifest records that commit; there is no <code>unknown</code> fallback. Each artifact is tied to the source by its <code>.build-contents.json</code>. Its pack origin must be the pinned commit with a clean working tree, and its artifact, release, deployment, platform and SHA-256 must match the launch metadata.</p>
+
+<h3 id="dry-1">DRY-1. A dry run validates everything and creates nothing</h3>
+<p>A dispatch defaults to <code>dry-run: true</code>; a tag push is a publication. A dry run builds, qualifies and runs every validation of the manifest step: artifacts, origins, qualification records, kit, legacy names and asset names. It records the publication blockers in the manifest (<code>publication: {dryRun, publishable, blockers}</code>) and writes <code>dry-run-assets.txt</code>, and the evidence is uploaded. It never writes <code>release-assets.txt</code>, and the create step runs only when the run is not dry and release-info found the pin publishable. A publication with blockers fails after writing its evidence. Neither a dry run nor its evidence is production qualification. No fork, dispatch or tag has been made.</p>
+
+<h3 id="rel-1">REL-1. Official CLI tags are <code>v&lt;version&gt;</code>, and only ever move forward</h3>
+<p>Decided by the maintainer on 10 November 2026: official CLI releases use <code>v&lt;version&gt;</code>, the namespace the deleted Rust CLI's releases used. The first version of this change proposed <code>cli/v&lt;version&gt;</code>; that was not taken. The Rust tags and releases (<code>v0.4.0-alpha.1</code> to <code>v0.4.0-beta.12</code>) stay as they are. Because the namespace is shared, a release must be newer than every other <code>v*</code> tag in finos/morphir and never reuse one. <code>versionCollisionBlockers</code> compares the version with every other <code>v&lt;semver&gt;</code> tag (read with <code>git ls-remote --tags</code>; the release's own tag is left out), and the publication gate refuses a version that is not newer. Reusing an existing tag itself is refused twice: by the existing-release step, and by the binding check, since that tag's commit is the old release and never the new checkout. The version is still the pinned CHANGELOG's, and nothing here chooses or bumps it. Today the source releases <code>0.4.0-alpha.4</code>, below <code>v0.4.0-beta.12</code> and already published, so publication is blocked until the source releases a version that passes. <code>release-info</code> still requires exact canonical SemVer without build metadata that equals the pinned CHANGELOG's latest release.</p>
+<h3 id="rel-2">REL-2. Publish once, with a manifest, never replace</h3>
+<p><code>publish-release</code> needs every qualification job, refuses a tag whose release exists and a candidate pin, writes <code>release-manifest.json</code> and release notes, and creates the release with every asset in one <code>gh release create --verify-tag</code>. The manifest step collects artifacts recursively from the downloaded folders and requires exactly one artifact for each deployment and platform: a missing, repeated or unexpected artifact, or a repeated asset name, is an error. It requires exactly one qualification for each deployment and platform, matching its artifact's release, file name and SHA-256: a missing, repeated, unexpected or mismatched record is an error. It writes <code>release-assets.txt</code>, the exact absolute paths to attach, and the create step reads that list instead of globbing. Qualification reports are uploaded from the hidden <code>.dev</code> folder with <code>include-hidden-files</code> and a glob that names only the reports. The workflow never uploads into or edits a release and never creates a tag. The manifest names the tag, the finos/morphir commit, the source repository and commit, the kit's <code>corpusHash</code>, algorithm and revision from <code>morphir-mck kit status</code> (the runner's own identity, not a second hash scheme), every artifact's SHA-256 and each qualification. The old incremental <code>--clobber</code> upload and <code>select_release_assets.py</code> go.</p>
+
+<h3 id="leg-1">LEG-1. Legacy names alias the Native AOT executable</h3>
+<p>This follows the maintainer decision of 9 November 2026 (finos/morphir#1146, REL-1 of the morphir-dotnet adoption; reconciled in #584 <code>e8f4a00b</code>): future legacy assets <code>morphir-&lt;rid&gt;[.exe]</code> and <code>morphir-&lt;rid&gt;-v&lt;version&gt;.tar.gz</code> carry the same bytes as the native-aot offering, assets already published stay as they are, and the trimmed managed single-file build is retired. There are four offerings, not five. <code>publish-release</code> runs <code>cli-release.ts legacy-aliases</code>. It takes the platforms from the pinned <code>LegacyAsset.TrimmedSingleFile</code> (win-x64, osx-arm64, linux-x64, linux-arm64), extracts each packed and qualified native-aot archive after checking its SHA-256, copies the executable under the bare name, and writes the tarball with the executable under <code>&lt;rid&gt;/</code>, which the proto plugin strips. It refuses an alias whose bytes differ from the executable. The manifest lists each alias with the artifact it aliases. Nothing calls <code>PublishSingleFile</code>.</p>
+
+<h3 id="mck-1">MCK-1. One runner, standalone, with the old command tree</h3>
+<p>The contributor's gate becomes <code>cargo run -p morphir-mck-cli -- check spec/ir/mck</code> instead of <code>cargo run -p morphir -- mck check spec/ir/mck</code>. <code>crates/morphir-mck-cli</code> builds the binary <code>morphir-mck</code> from the moved command modules and a clap tree copied from the old <code>MckAction</code>; the moved tests drop the leading <code>mck</code> argument and nothing else. Two behaviours had come from the product and are now stated in the runner: <code>serde_json</code>'s <code>preserve_order</code> (JSON member order, which the frozen package reports depend on; without it 6 acceptance tests and 1 JSON test failed) and the multi-threaded runtime. The .NET CLI's <code>morphir mck ARGS</code> starts <code>morphir-mck ARGS</code>, which merged source PR #590 implements; <code>spec/mck/cli-contract.md</code> states the rule. The copied-binary acceptance still runs with an empty <code>PATH</code>; its product checks (the <code>metadata</code> preview and the two <code>itest</code> package examples) left with the product. The runner is development-only and stays in Rust only until the .NET runner replaces it.</p>
+
+<h3 id="dev-1">DEV-1. A narrow internal development tool</h3>
+<p><code>crates/morphir-dev-tools</code> builds <code>morphir-dev</code> with the <code>kb</code> tree unchanged. The library-level gates that lived in the CLI crate's tests (<code>mep_contract</code>, <code>tool_release_metadata_conformance</code>, <code>package_runtime</code>) are this crate's tests, because they never started the CLI. The tool has no product commands and is never released. Parent acquisition behavior is checked separately by the .NET implementation against this checkout's fixed corpus, using main's <code>toolchain-contracts</code> job and independent test pin. Its metadata-only TypeScript checks retain the contract-files, coverage and narrative gates. The Rust acquisition checker deleted by #1147 stays deleted. Alternative: putting <code>kb</code> into <code>morphir-mck</code> (mixes kit and knowledge base) or porting it to TypeScript now (scope; the kb skill and the morphir-scala port depend on this behaviour).</p>
+
+<h3 id="doc-1">DOC-1. Remove what can no longer be regenerated</h3>
+<p><code>docs/cli</code>, <code>docs/man</code> and <code>completions</code> were generated from the Rust binary and checked for freshness against it. With the binary gone they would describe a product that does not exist and could not be refreshed, so they are deleted with their generator, their sidebar entry and the <code>usage</code> tool pin. User guides that describe Rust CLI commands are not rewritten here.</p>
+
+<h2 id="gates">Gate accounting</h2>
+<table>
+<thead><tr><th>Former gate</th><th>Now</th></tr></thead>
+<tbody>
+<tr><td><code>mck:check</code>, <code>mck:schema-check</code>, <code>mck:run</code>, <code>mck:run-rust</code> (incl. node-address, coverage), <code>package:definitions-check</code>, <code>package:mvp-check</code>, <code>package:check[:rust]</code>, <code>package:resolution-check[:rust]</code></td><td>Kept: <code>morphir-mck</code>, same arguments after the program name.</td></tr>
+<tr><td>CLI crate tests <code>mck_*</code> (incl. copied-binary acceptance)</td><td>Kept: <code>cargo test -p morphir-mck-cli</code> in <code>rust-dev-tools</code>.</td></tr>
+<tr><td><code>kb_acceptance</code>, <code>spec:mep-check</code>, <code>package:assurance-check</code>, <code>package:publisher-check</code>, tool release metadata conformance</td><td>Kept: <code>cargo test -p morphir-dev-tools</code>.</td></tr>
+<tr><td><code>ci:validate-tool-release-metadata</code></td><td>Kept: the script is unchanged; its application check, the <code>validate-tool-release-metadata</code> example, moved unchanged from <code>crates/morphir</code> to <code>crates/morphir-dev-tools</code>.</td></tr>
+<tr><td>Acquisition contract checks formerly in <code>crates/morphir-toolchain-contract</code></td><td>Preserved from merged #1147: <code>toolchain-contracts</code> .NET corpus job, its path filter and required aggregate gate, plus metadata-only <code>check-toolchain-corpus.ts</code>. The .NET tests read this parent corpus; no Rust reader or resolver remains.</td></tr>
+<tr><td><code>mck-release-acceptance.yml</code></td><td>Unchanged: re-qualifies published Rust tags from their own tagged source.</td></tr>
+<tr><td><code>cargo test -p morphir</code> product tests, <code>integration-tests</code>, <code>host_compatibility</code>, published-bundle tests (Elm, Scala, Avro, OpenAPI, Python, Rust), <code>library-publish-macos</code></td><td>Retired with the product. The Morphir CLI's behaviour and extension compatibility are qualified in finos/morphir-dotnet and, for acquired artifacts, by <code>release.yml</code>.</td></tr>
+<tr><td><code>test:examples</code>, <code>test:itest</code>, the <code>suite:elm-reference</code> and <code>suite:wasm-backends</code> runs</td><td>Retired: <code>test:examples</code> stops with a pointer; the scenarios under <code>examples/</code> are pending qualification against the .NET CLI.</td></tr>
+<tr><td><code>migrate:validate</code>, <code>fixtures:yaml-acceptance</code>, <code>fixtures:tree-acceptance</code></td><td>Retired: they ran the Rust <code>migrate</code>. <code>migrate:validate</code> stops with a pointer; the validator script stays.</td></tr>
+<tr><td><code>check-cli-docs</code>/<code>docs:cli</code>, <code>vendor:morphir-web</code></td><td>Retired with the generated reference (<a href="#doc-1">DOC-1</a>) and the Rust UI server.</td></tr>
+</tbody>
+</table>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>The new <code>release.yml</code> has not run; a first real tag could fail late.</td><td>Its routing, matrix, refusal rules and manifest are unit-tested in <code>tools/cli-release.test.ts</code>; any failure happens before <code>gh release create</code>, which runs once at the end. A dry-run dispatch from a tag (<a href="#dry-1">DRY-1</a>) exercises it without creating a release; none has been made.</td></tr>
+<tr><td>The <code>ir verify</code> input may fail on a platform for a reason unrelated to packaging.</td><td>The qualification JSON keeps each exit code and output; the release stops rather than claiming qualification.</td></tr>
+<tr><td>Examples and user guides still describe Rust CLI commands.</td><td>Explicitly listed as pending; <code>test:examples</code> says so instead of passing.</td></tr>
+<tr><td>The source dispatch has landed, but the same gate through both invocations has not run at the refreshed delivery pin.</td><td>Task 2.4 stays unchecked. Local cargo/dotnet builds, tests and restores wait for the root CPU2 slot; source inspection and lightweight checks do not establish runtime qualification.</td></tr>
+<tr><td>Contributors with scripts calling <code>cargo run -p morphir</code>.</td><td>The mise tasks and tools are updated; <code>mise run mck</code> and <code>mise run kb</code> are the new entry points.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<ol>
+<li>Parent #1147 merged as <code>836deccc</code>. Normally merge current parent <code>main</code>, preserving the three held commits through <code>a6a75bb5</code>, its .NET acquisition corpus job/filter/gates and the deletion of the Rust acquisition checker. Retained Cargo dependency versions stay unchanged.</li>
+<li>The gitlink, config, <code>uses</code> and <code>ref</code> now name merged #590 commit <code>0885f172</code>. Keep <code>source.candidate</code> pending the source release and qualification gates (<a href="#src-2">SRC-2</a>).</li>
+<li>Accept a final release pin only after the source version/tag and qualification gates pass, updating the whole delivery tuple together. No source version is chosen or bumped here.</li>
+<li>Tag <code>v&lt;version&gt;</code> from <code>main</code> only when the maintainer decides to release, with a version newer than every existing <code>v*</code> tag. Rollback is deleting the new tag before any release exists; an existing release is never replaced.</li>
+</ol>
+
+<p>The merged #1152 family-version policy is retained unchanged, including any valid SemVer prerelease label. The chosen extension state version remains <code>0.1.0-preview.1</code>; existing acquisition fixture versions are not renumbered by this migration. The merged #1151 extension package decisions also remain controlling: <a href="../add-extension-packages/design.html#q-verify">VERIFY-B</a> checks structure at launch and hashes fully at install/on request; <a href="../add-extension-packages/design.html#q-launch">LAUNCH-A</a> starts from the shared store under a process-tree lease and collects explicitly. Those host behaviors are outside this delivery change.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>The first official version is not decided. It must be newer than <code>v0.4.0-beta.12</code> (<a href="#rel-1">REL-1</a>), and it is the source's release: morphir-dotnet chooses it, and this repository's gate only refuses a version that does not move forward.</li>
+</ul>
+
+</main>
+</body>
+</html>

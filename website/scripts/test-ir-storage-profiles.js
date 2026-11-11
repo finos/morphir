@@ -18,7 +18,7 @@ const schemaRoot = path.join(websiteRoot, "static/schemas");
 const v4SpecRoot = path.join(repositoryRoot, "docs/spec/ir/schemas/v4");
 const fixtureRoot = path.join(
 	repositoryRoot,
-	"crates/morphir/tests/fixtures/migrate/yaml",
+	"tests/fixtures/ir-yaml-profile",
 );
 
 const requiredSections = new Map([

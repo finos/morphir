@@ -6,6 +6,10 @@ sidebar_position: 6
 
 # Install and use Libraries
 
+:::warning Rust CLI only
+The `morphir package` commands used here exist only in the deleted Rust CLI (releases up to `v0.4.0-beta.12`). The Morphir CLI from finos/morphir-dotnet does not have them yet; see [command availability](/docs/getting-started/morphir-cli#command-availability-after-the-move).
+:::
+
 This walkthrough installs the published `loan-rules@1.0.0` graph from a prepared
 local registry. Morphir selects its `eligibility@1.2.0` dependency, restores both
 Libraries, and shows how a consumer project uses the restored eligibility

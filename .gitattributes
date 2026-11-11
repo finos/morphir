@@ -6,9 +6,6 @@
 # Golden expectations preserve intentional blank lines at the end of generated files.
 examples/**/golden/** whitespace=-blank-at-eof
 
-# Vendored web bundles are byte-for-byte build artifacts with provenance hashes.
-crates/morphir/src/commands/ui/assets/assets/* binary
-
 # Frozen managed MCK kit bytes must match their manifest on every platform.
 spec/mck/baseline/kit-2026-09-26/** -text
 spec/mck/baseline-ion-2026-09-26/** -text
@@ -16,7 +13,6 @@ spec/mck/baseline-ion-2026-09-26/** -text
 # Model originals include intentional BOM and CRLF bytes with fixed digests.
 spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/** -text
 spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/v4-bom-crlf.json whitespace=-blank-at-eol,cr-at-eol
-crates/morphir/tests/support/model_originals_host/model-primary.ionb -text
 
 # Toolchain contract fixtures are identified by the SHA-256 of their exact bytes.
 docs/spec/toolchain/fixtures/** -text

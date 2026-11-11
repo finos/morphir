@@ -7,57 +7,49 @@ sidebar_position: 5
 
 # Morphir CLI
 
-The **Morphir CLI** shipped from this repository is a Rust command-line tool for working with Morphir IR, configuration, distributions, and language bindings.
+The **Morphir CLI** is the .NET `morphir` from [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet).
+finos/morphir builds, qualifies and releases it from a pinned commit of that source; see
+[Installing Morphir](https://github.com/finos/morphir/blob/main/INSTALLING.md) for the four offerings (Native AOT,
+self-contained and framework-dependent `morphir`, and the `Morphir.Tool` package with `dotnet-morphir`).
 
-:::info Repository ownership
-This CLI is built from [`crates/morphir`](https://github.com/finos/morphir/tree/main/crates/morphir) in **finos/morphir**.
+:::warning The Rust CLI was deleted
+Until 10 November 2026 this page described a Rust `morphir` built from `crates/morphir` in finos/morphir. That
+CLI was deleted. Its releases up to `v0.4.0-beta.12` stay downloadable but are not updated. Everything below the
+command table describes the Rust CLI and is kept for readers of those releases. It is not the behavior of the
+current Morphir CLI.
 
 For the Go-based Morphir CLI (including WIT pipeline commands), see **[Morphir Go](morphir-go-preview.md)** in [finos/morphir-go](https://github.com/finos/morphir-go).
 :::
 
 ## Installation
 
-Prebuilt binaries are published from [finos/morphir releases](https://github.com/finos/morphir/releases).
-
-### Install with mise
-
-```shell
-mise use -g github:finos/morphir@0.4.0-beta.12
-```
-
-To pin Morphir in a project's `mise.toml`:
-
-```toml
-[tools]
-"github:finos/morphir" = "0.4.0-beta.12"
-```
-
-Run `mise install` after changing the configuration. Prereleases must be selected explicitly.
-
-### Install a release archive manually
-
-Download the archive for your system from [GitHub Releases](https://github.com/finos/morphir/releases).
-
-| System | Processor | Asset suffix |
-| --- | --- | --- |
-| Linux | x86-64 | `x86_64-unknown-linux-gnu.tgz` |
-| Linux | ARM64 | `aarch64-unknown-linux-gnu.tgz` |
-| macOS | Intel | `x86_64-apple-darwin.tgz` |
-| macOS | Apple silicon | `aarch64-apple-darwin.tgz` |
-| Windows | x86-64 | `x86_64-pc-windows-msvc.zip` |
-| Windows | ARM64 | `aarch64-pc-windows-msvc.zip` |
-
-Extract the `morphir` executable (or `morphir.exe` on Windows) and add it to your `PATH`.
-
-See [INSTALLING.md](https://github.com/finos/morphir/blob/main/INSTALLING.md) in the repository for checksum verification and build-from-source instructions.
+See [Installing Morphir](https://github.com/finos/morphir/blob/main/INSTALLING.md). Official releases from this
+repository use tags `v<version>`, after the Rust CLI's `v*` releases; the first one has not been published yet.
 
 ## Verify installation
 
 ```shell
-morphir version
+morphir --version
 ```
 
-### Suppress the banner
+## Command availability after the move
+
+The table compares the top-level commands of the deleted Rust CLI with the .NET CLI at the commit finos/morphir
+pins today (`ecosystem/morphir-dotnet`, recorded in `.config/cli-release.json`). "Not in the .NET CLI" means the
+command does not exist there yet; nothing here implements it.
+
+| Rust CLI command | .NET CLI at the pinned source |
+| --- | --- |
+| `compile`, `generate`, `config`, `validate`, `tool`, `dist`, `extension` | Present. Options and behavior differ; see `morphir <command> --help`. |
+| `migrate` (IR v3 to v4) | Not in the .NET CLI. `morphir project migrate` and `morphir workspace migrate` there convert project configuration (`morphir.json` to TOML), not IR. |
+| `ir` | Present as `morphir ir verify`. The Rust `ir migrate` and its storage options are not there. |
+| `mck` | Delegated: `morphir mck ARGS` runs `morphir-mck ARGS` (found through `MORPHIR_MCK` or `PATH`). `morphir-mck` is a development tool of finos/morphir and is not released. |
+| `version` | Use `morphir --version` or `morphir info`. |
+| `kb` | Not in the .NET CLI. Repository contributors use `morphir-dev kb` in finos/morphir. |
+| `package`, `metadata`, `decoration`, `eval`, `itest`, `ui`, `desktop`, `playground`, `diagnostics`, `cache`, `schema`, `transform` | Not in the .NET CLI. |
+
+Workflows on this site that use a command from the last row need the Rust CLI release they were written for.
+### Suppress the banner (Rust CLI)
 
 Help, `--version`, and running `morphir` without a command show a banner by
 default. Use the global `--no-banner` flag to hide it, including with nested
@@ -140,9 +132,9 @@ and report a mismatch up front rather than failing file by file. That check is p
 not in the CLI yet; until then, a tree written with the default budget may fail to check out on a machine without
 long paths enabled.
 
-## Command overview
+## Command overview (Rust CLI)
 
-The Rust CLI includes:
+The deleted Rust CLI included:
 
 | Command | Purpose |
 | --- | --- |
@@ -155,7 +147,7 @@ The Rust CLI includes:
 | `morphir schema` | Generate JSON Schema for Morphir IR |
 | `morphir version` | Print version information |
 
-Run `morphir --help` for the current command list. Some commands are experimental and hidden unless you pass `--help-all`.
+In the Rust CLI, `morphir --help` listed the commands and `--help-all` showed the experimental ones.
 
 ## Native Elm provider (`morphir-elm-native`)
 
@@ -379,14 +371,9 @@ extensions ignore `--no-cache` and always compile fully.
 
 ## Build from source
 
-```shell
-git clone --recurse-submodules https://github.com/finos/morphir.git
-cd morphir
-mise install
-cargo build --locked --release --package morphir
-```
-
-The executable is written to `target/release/morphir` (or `target\release\morphir.exe` on Windows).
+Build the Morphir CLI in [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet). The Rust CLI's source
+is no longer in finos/morphir; it is in the repository history before 10 November 2026 and in the
+`v0.4.0-beta.12` tag.
 
 ## Install an unsigned developer Desktop
 

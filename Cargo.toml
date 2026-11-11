@@ -6,13 +6,13 @@ members = ["crates/*"]
 # workspace and subject to its lints. `ecosystem/morphir-rust` already excludes
 # `morphir-package-tough` from its own workspace for that reason; the exclusion
 # has to be repeated here because a workspace does not inherit another's.
-# Without it, `cargo clippy -p morphir -- -D warnings` fails on upstream lints
+# Without it, `cargo clippy -p morphir-mck-cli -- -D warnings` fails on upstream lints
 # in vendored TUF code this repository does not own.
 exclude = [
     "third_party/rust-tuf",
     "ecosystem/morphir-rust/third_party/morphir-package-tough",
 ]
-default-members = ["crates/morphir"]
+default-members = ["crates/morphir-mck-cli", "crates/morphir-dev-tools"]
 resolver = "3"
 
 # Test-only fixture verification needs the already-adopted TUF 1.0.36 wire profile.
@@ -36,8 +36,7 @@ keywords = ["morphir", "functional", "domain-modeling", "ir"]
 categories = ["development-tools", "parsers"]
 
 [workspace.dependencies]
-# CLI framework
-starbase = { version = "0.13", features = ["miette"] }
+# Command-line framework of the development tools
 clap = { version = "4.5.57", features = ["derive", "color"] }
 anyhow = "1.0"
 base64 = "0.23"
@@ -48,30 +47,18 @@ thiserror = "2.0.18"
 miette = { version = "7", features = ["fancy"] }
 cucumber = "0.23"
 vfs = "0.13"
-shell-words = "1"
-pulldown-cmark = { version = "0.13", default-features = false }
-regorus = { version = "=0.12.0", default-features = false, features = ["std"] }
 sha2 = "0.11"
-# `morphir mck run --filter` uses Rust regex syntax (spec/mck/cli-contract.md)
+# `morphir-mck run --filter` uses Rust regex syntax (spec/mck/cli-contract.md)
 regex = "1"
 similar = "3.2"
 # Kit archives from github:finos/morphir (morphir-mck)
 flate2 = "1"
 tar = { version = "0.4", default-features = false }
-# `mck kit vendor --source github:finos/morphir` (crates/morphir)
+# `morphir-mck kit vendor --source github:finos/morphir` (crates/morphir-mck-cli)
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
-
-# TUI
-ratatui = "0.30"
-crossterm = "0.29"
-tuirealm = "4"
-tui-realm-stdlib = "4"
-tui-realm-textarea = "4"
 
 # Structured logging
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = "0.2"
 fs2 = "0.4"
 rustix = { version = "1.1", features = ["fs"] }
 windows-sys = { version = "0.61", features = [
@@ -88,14 +75,12 @@ serde-saphyr = { version = "1", default-features = false, features = ["deseriali
 # The IR YAML profile reader in `morphir-core` walks this parser's event stream. `morphir-core`
 # takes it from the workspace, and a path dependency on it inherits from this root, so the pin
 # lives here as well as in `ecosystem/morphir-rust/Cargo.toml` and is exact: the version the
-# submodule's tests are written against is the version the CLI ships.
+# submodule's tests are written against is the version the development tools build with.
 granit-parser = { version = "=1.2.0", default-features = false, features = ["std", "error_messages"] }
 stacker = "0.1"
 toml = "1.0.0"
 tempfile = "3"
 semver = "1"
-uuid = { version = "1", features = ["v4"] }
-zip = { version = "9.2.1", default-features = false, features = ["deflate"] }
 ed25519-dalek = "3"
 unicode-casefold = "=0.2.0"
 unicode-normalization = "=0.1.25"

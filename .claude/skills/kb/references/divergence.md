@@ -1,6 +1,6 @@
 # Detecting Content Divergence
 
-`morphir kb check` finds mechanical inconsistency — broken links, missing fields, index drift, stale pins. It cannot
+`morphir-dev kb check` finds mechanical inconsistency — broken links, missing fields, index drift, stale pins. It cannot
 find the kind of divergence that actually degrades a knowledge base: two concepts that assert incompatible things, or
 a concept that no longer matches the source it claims to summarize.
 
@@ -11,7 +11,7 @@ That needs reading. This is the procedure.
 `check` narrows where to look even though it cannot judge content.
 
 ```bash
-morphir kb check --verbose --json
+morphir-dev kb check --verbose --json
 ```
 
 | Finding | What it suggests reading |
@@ -26,7 +26,7 @@ morphir kb check --verbose --json
 For each concept with drift, compare the pinned commit to the checkout's HEAD:
 
 ```bash
-morphir kb show --path /naming.md --bundle morphir-ir-v3 --json | jq -r '.sources[]'
+morphir-dev kb show --path /naming.md --bundle morphir-ir-v3 --json | jq -r '.sources[]'
 ```
 
 ```bash
@@ -44,14 +44,14 @@ There is no command for this; it is a reading task, and these are the shapes wor
 describing the same construct are the most likely pair to drift apart.
 
 ```bash
-morphir kb search --query "format version"
+morphir-dev kb search --query "format version"
 ```
 
 **The same `type` across bundles.** Concepts sharing a type usually make the same *kind* of claim, which makes
 conflicting claims easier to spot.
 
 ```bash
-morphir kb search --type "Specification Section" --json | jq -r '.results[] | "\(.bundle)\(.path)  \(.description)"'
+morphir-dev kb search --type "Specification Section" --json | jq -r '.results[] | "\(.bundle)\(.path)  \(.description)"'
 ```
 
 **Version-pair claims.** Anywhere one concept says "unchanged in vN" and another documents a change.
@@ -60,7 +60,7 @@ morphir kb search --type "Specification Section" --json | jq -r '.results[] | "\
 reconciled it since.
 
 ```bash
-morphir kb search --query divergence --body
+morphir-dev kb search --query divergence --body
 ```
 
 ## What to do with what you find
@@ -81,7 +81,7 @@ that is a finding about the project, not an error in the knowledge base.
 ## After reconciling
 
 ```bash
-morphir kb check
+morphir-dev kb check
 ```
 
 Re-pin any sources you re-read, so the next drift report starts from where you actually looked.

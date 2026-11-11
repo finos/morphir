@@ -14,7 +14,7 @@ const workflow = Bun.YAML.parse(readFileSync(new URL("../.github/workflows/ci.ym
 
 test("draft.3 inspection and fixture gates use native test support", () => {
 	expect(tasks.tasks["package:definitions-check"]?.run).toEqual([
-		"cargo run --locked -p morphir -- mck package inspect --source . --contract 0.1.0-draft.3",
+		"cargo run --locked -p morphir-mck-cli -- package inspect --source . --contract 0.1.0-draft.3",
 	]);
 	expect(tasks.tasks["package:fixture-check"]?.run).toEqual([
 		"cargo test --locked -p morphir-mck --test package_fixture",
@@ -70,14 +70,14 @@ test("package schema validation covers every indexed resolution fixture", () => 
 
 test("assurance task executes parent vectors through native runtime support", () => {
 	expect(tasks.tasks["package:assurance-check"]?.run).toEqual([
-		"cargo test --locked -p morphir --test package_runtime assurance_",
+		"cargo test --locked -p morphir-dev-tools --test package_runtime assurance_",
 	]);
 });
 
 test("publisher task checks fixed parent statements through native runtime support", () => {
 	expect(tasks.tasks["package:publisher-check"]?.run).toEqual([
-		"cargo test --locked -p morphir --test package_runtime publisher_",
-		"cargo test --locked -p morphir --test package_runtime decode_",
+		"cargo test --locked -p morphir-dev-tools --test package_runtime publisher_",
+		"cargo test --locked -p morphir-dev-tools --test package_runtime decode_",
 	]);
 });
 
@@ -149,7 +149,7 @@ test("aggregate gate requires successful package CI when selected", () => {
 test("native package changes select authoritative gates after legacy cutover", () => {
 	const filters = workflow.jobs.changes?.steps.find(step => step.with?.filters)?.with?.filters ?? "";
 	const paths = (Bun.YAML.parse(filters) as Record<string, string[]>)["package-mck"] ?? [];
-	for (const input of ["crates/morphir-mck/**", "crates/morphir/**", "Cargo.toml", "Cargo.lock", "spec/mck/baseline/package-cases.json", "tools/package-mck-command*", "tools/run-package-mck.ts"]) expect(paths).toContain(input);
+	for (const input of ["crates/morphir-mck/**", "crates/morphir-mck-cli/**", "crates/morphir-dev-tools/**", "Cargo.toml", "Cargo.lock", "spec/mck/baseline/package-cases.json", "tools/package-mck-command*", "tools/run-package-mck.ts"]) expect(paths).toContain(input);
 	expect(tasks.tasks["package:native-parity"]).toBeUndefined();
 	const steps = workflow.jobs["package-mck"]?.steps ?? [];
 	expect(steps.some(step => step.run?.includes("package:native-parity"))).toBe(false);

@@ -40,6 +40,8 @@ None in this planning repository. Existing MEP guest requirements remain unchang
 
 > **Implementation correction, 10 November 2026.** The maintainer directed removal of the parent Rust reference crate and use of the .NET implementation for acquisition contract checks. Specifications, schemas, case manifests, fixed fixtures and expected results stay in finos/morphir. Parent CI invokes the conformance tests in a pinned finos/morphir-dotnet checkout against the current parent corpus. No second reader or resolver is maintained here, and source-test success is not release or platform qualification. This note does not change the approved task wording or contract versions.
 
+> **Integration note, 11 November 2026.** Merged #1147 supplies that .NET corpus job and its metadata-only gates. Its contract-test pin, `f89dda45` in `.config/toolchain-contract-tests.json`, is separate from the CLI delivery tuple, now the merged #590 commit `0885f172` and still a marked release candidate. Merged #1152's family-version policy permits any valid SemVer prerelease label; it does not renumber these fixed acquisition fixtures. Merged #1151's extension package decisions remain controlling: VERIFY-B checks structure at launch and hashes fully at install/on request; LAUNCH-A launches from the shared store under a process-tree lease and collects explicitly. This note changes neither the approved narrative and decision identifiers nor qualification status.
+
 - Approval: the user approved this proposal and its narrative design on 9 November 2026. Implementation tasks remain unstarted.
 - OpenSpec change: `openspec/changes/add-deployment-and-acquisition/`.
 - Origin: this deployment/acquisition discussion, following [discussion #214](https://github.com/finos/morphir/discussions/214). This does not claim #214 is a deployment specification.
@@ -50,6 +52,8 @@ None in this planning repository. Existing MEP guest requirements remain unchang
 ## Impact
 
 The parent repository owns shared acquisition contracts, fixed examples and qualification expectations. morphir-dotnet owns its publish profiles, `morphirup` executable, managed entry points and F# packages. MoonBit adoption is a follow-up using the same contracts. No submodule pin or implementation changes are part of this proposal.
+
+> **Note added 10 November 2026, after approval.** The maintainer authorized moving official CLI delivery to finos/morphir (finos/morphir#1153, following Decisions 15 and modified 16A on #1146). morphir-dotnet still owns the CLI source, its publish profiles, `morphirup`, the managed entry points and the F# packages. finos/morphir now also owns the official CLI builds and their orchestration, acquired-artifact qualification, releases, installation docs and FINOS registry and channel governance, and pins the source as `ecosystem/morphir-dotnet`; the Rust CLI is deleted. That change is `openspec/changes/move-cli-delivery-to-umbrella/`. The approved text above is left as approved.
 
 New toolset recipe, toolchain request, lock, installation receipt and manager result contracts start at `0.1.0-draft.1`, with exact draft support. Reuse existing tool/extension document contracts at their actual versions; do not rename their numeric or draft versions in place. Any extension to a released descriptor uses a separately reviewed compatible addition or next-major draft. MEP and IR versions are independent.
 

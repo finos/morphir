@@ -5,7 +5,7 @@ sidebar_position: 8
 ---
 # Morphir Command Line Tools
 
-The canonical Morphir CLI is the `morphir` executable released from the [finos/morphir](https://github.com/finos/morphir) repository. See the [CLI Reference](../../cli/index.md) for the generated command documentation, and [Installing Morphir](https://github.com/finos/morphir/blob/main/INSTALLING.md) for installation instructions.
+The canonical Morphir CLI is the .NET `morphir` from [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet), built and released from the [finos/morphir](https://github.com/finos/morphir) repository. See [Installing Morphir](https://github.com/finos/morphir/blob/main/INSTALLING.md) for installation, and [Morphir CLI](../../getting-started/morphir-cli.md#command-availability-after-the-move) for which commands of the deleted Rust CLI it has. The generated reference of the Rust CLI was removed with it.
 
 In addition, the [morphir-elm](https://github.com/finos/morphir-elm) project ships npm-based tooling for Elm workflows: the `morphir-elm` command and an npm-distributed `morphir` command. The commands documented below come from those npm packages. `morphir-elm` is the first program created and may be deprecated in the future, so prefer the npm `morphir` command for these Elm workflows, and only use `morphir-elm` if the feature you intend to use is not available elsewhere.
 

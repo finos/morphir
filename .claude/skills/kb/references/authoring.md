@@ -29,7 +29,7 @@ sources:
 ```
 
 A `main` URL tells a future reader nothing about what you actually read. A pinned URL lets them check, and lets
-`morphir kb check` detect that upstream has moved. For a source in this repository, the SHA is the current commit:
+`morphir-dev kb check` detect that upstream has moved. For a source in this repository, the SHA is the current commit:
 
 ```bash
 git rev-parse HEAD
@@ -85,7 +85,7 @@ The morphir-scala knowledge base carries the worked example, in its `morphir-ir-
 ## After writing
 
 ```bash
-morphir kb check
+morphir-dev kb check
 ```
 
 Then confirm the index bullet still matches your `description` — if you edited the description after scaffolding,

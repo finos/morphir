@@ -7,6 +7,15 @@ sidebar_position: 6
 
 # Prebuilt MCK backend
 
+:::warning Rust CLI releases only
+This page describes the MCK inside the deleted Rust CLI, which was published up to
+[`v0.4.0-beta.12`](https://github.com/finos/morphir/releases/tag/v0.4.0-beta.12). Those archives stay downloadable
+and still work as a pinned backend as described here, but they receive no updates. The shared runner is now the
+development tool `morphir-mck` in finos/morphir, which is not released as a prebuilt download; the Morphir CLI
+(finos/morphir-dotnet) delegates `morphir mck` to it. A released, prebuilt runner after `v0.4.0-beta.12` does not
+exist yet.
+:::
+
 Use the `finos/morphir` CLI as a pinned MCK backend for another CLI or binding.
 The executable contains the shared runner and independent report checkers.
 Running them requires no Rust compiler, Cargo, or Morphir source build. An

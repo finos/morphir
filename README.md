@@ -59,7 +59,7 @@ Morphir consists of a few projects based on the features they provide.
 
 ### Core Morphir Projects
 - **[morphir (this project)](https://github.com/finos/morphir/)** - The umbrella project
-  - **Morphir CLI** - The canonical `morphir` command-line tool for working with Morphir IR (in `crates/morphir`); see the [CLI Reference](docs/cli/index.md)
+  - **Morphir CLI delivery** - Official builds, qualification and releases of the `morphir` CLI, whose source is [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet) (pinned in `ecosystem/morphir-dotnet`); see [Installing Morphir](INSTALLING.md)
   - **Documentation** - Docusaurus-based documentation site (in `website/`)
   - **Ecosystem Integration** - Git submodules for ecosystem repos (in `ecosystem/`); see [ecosystem/README.md](ecosystem/README.md) for details
 - **[morphir-elm](https://github.com/finos/morphir-elm)** - The Elm implementation of Morphir, including:
@@ -67,7 +67,7 @@ Morphir consists of a few projects based on the features they provide.
   - The Elm compiler for authoring morphir applications in Elm
   - The morphir visualization components and developer tools
   - The Scala, JSON Schema, TypeScript, TypeSpec (Cadl), cypher, semantic, and more backend processors.
-  - Note: the `morphir-elm` npm package also installs an npm-distributed `morphir` command for Elm workflows. The canonical Morphir CLI is the Rust `morphir` executable released from this repository.
+  - Note: the `morphir-elm` npm package also installs an npm-distributed `morphir` command for Elm workflows. The canonical Morphir CLI is the .NET `morphir` from finos/morphir-dotnet, released from this repository.
 - **[morphir-jvm](https://github.com/finos/morphir-jvm)** - Supporting SDK and packaging for running morphir on the JVM.
 - **[morphir-examples](https://github.com/finos/morphir-examples)** - A whole lot of examples.
 
