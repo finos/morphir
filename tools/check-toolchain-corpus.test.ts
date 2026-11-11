@@ -13,6 +13,33 @@ test("all retained contract metadata gates pass against the current parent", () 
 	expect(metadataFindings(root)).toEqual([]);
 });
 
+test("the separate local family does not join the frozen draft family inventory", () => {
+	const local = "docs/spec/toolchain/local-developer-candidate.md";
+	expect(read(local)).toContain("local-toolchains/0.1.0-preview.1");
+	expect(JSON.parse(read(`${fixture}/contract-files.json`)).files).not.toContain(local);
+	expect(metadataFindings(root)).toEqual([]);
+});
+
+test("a required frozen-family page cannot disappear from the pin inventory", () => {
+	const result = metadataFindings(root, (path) => {
+		if (path !== `${fixture}/contract-files.json`) return read(path);
+		const manifest = JSON.parse(read(path));
+		manifest.files = manifest.files.filter((file: string) => file !== "docs/spec/toolchain/toolchain-lock.md");
+		return JSON.stringify(manifest);
+	});
+	expect(result.some((finding) => finding.includes("toolchain-lock.md") && finding.includes("not pinned"))).toBe(true);
+});
+
+test("the legacy pin inventory cannot adopt the separate local-family page", () => {
+	const result = metadataFindings(root, (path) => {
+		if (path !== `${fixture}/contract-files.json`) return read(path);
+		const manifest = JSON.parse(read(path));
+		manifest.files.push("docs/spec/toolchain/local-developer-candidate.md");
+		return JSON.stringify(manifest);
+	});
+	expect(result.some((finding) => finding.includes("Expected seven contract pages and six schemas"))).toBe(true);
+});
+
 test("an unpinned repository file linked by a contract is refused", () => {
 	const result = metadataFindings(root, (path) => read(path) + (path === "docs/spec/toolchain/index.md" ? "\n[code](../../../Cargo.toml)\n" : ""));
 	expect(result.some((finding) => finding.includes("Cargo.toml") && finding.includes("not pinned"))).toBe(true);

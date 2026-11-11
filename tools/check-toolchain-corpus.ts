@@ -83,11 +83,16 @@ export function metadataFindings(root: string, readText = (path: string) => read
 		if (!exists(reference.path, false)) failures.push(`Missing manifest reference: ${reference.path}`);
 		if (typeof reference.reason !== "string" || !reference.reason.trim()) failures.push(`${reference.path}: reference needs a reason`);
 	}
-	const pages = readdirSync(resolve(root, "docs/spec/toolchain")).filter((file) => file.endsWith(".md")).map((file) => `docs/spec/toolchain/${file}`);
+	// This inventory belongs to the frozen draft.1 family, not every family that
+	// shares its documentation directory. New families retain their own validators.
+	const pages = ["index", "toolset-recipe", "toolchain-request", "toolchain-lock",
+		"installation-receipt", "manager-result", "readiness-workflow"]
+		.map((name) => `docs/spec/toolchain/${name}.md`);
+	const pinnedPages = [...files].filter((path) => /^docs\/spec\/toolchain\/[^/]+\.md$/.test(path));
 	const schemas = readdirSync(resolve(root, "website/static/schemas"))
 		.filter((file) => file.endsWith("-0.1.0-draft.1.schema.json") && ["toolset-recipe-", "toolchain-", "morphirup-"].some((prefix) => file.startsWith(prefix)))
 		.map((file) => `website/static/schemas/${file}`);
-	if (pages.length + schemas.length !== 13) failures.push("Expected seven contract pages and six schemas");
+	if (pinnedPages.length !== pages.length || schemas.length !== 6) failures.push("Expected seven contract pages and six schemas");
 	for (const path of [...pages, ...schemas]) if (!files.has(path)) failures.push(`${path}: not pinned in contract-files.json`);
 	for (const page of [...files].filter((path) => path.endsWith(".md"))) {
 		for (const { target } of links(readText(page))) {
