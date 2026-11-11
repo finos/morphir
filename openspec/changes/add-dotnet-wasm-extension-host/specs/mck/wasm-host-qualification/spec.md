@@ -37,7 +37,9 @@ The corpus stores the text and the digest of the binary built from it. Expectati
 
 ### What a report says
 
-Illustrative record. Field names are fixed with the report contract.
+The [published report contract](../../../../../../docs/spec/extensions/wasm-host-reports.md)
+fixes the `wasm-host-reports` family at `0.1.0-preview.1`. The snippet below
+illustrates an observation, not a complete report of that family.
 
 ```json
 {
@@ -133,6 +135,36 @@ A host qualification report SHALL identify the runner, the corpus digest, the pr
 #### Scenario: Edited verdict
 - **WHEN** a report's verdict is changed to qualified while a recorded observation fails
 - **THEN** `report-check` rejects the report
+
+### Requirement: Published report schema
+Reports SHALL use the exact published `wasm-host-reports/0.1.0-preview.1/report.schema.json` URL in their required first `$schema` member. Readers SHALL NOT convert old experimental observation reports implicitly.
+
+#### Scenario: Historical report with a verdict added
+- **WHEN** a historical experimental report is given a qualified verdict
+- **THEN** report-check refuses it instead of converting its format
+
+### Requirement: Verified report evidence
+The checker SHALL bind its selected corpus, contract, acquired artifact, executable and guest reports to their recorded bytes. It SHALL use the same crafted and generic comparison paths as execution. A citation digest alone SHALL NOT prove a passing guest run.
+
+#### Scenario: Published guest citation is not proof
+- **WHEN** the citation digest matches a generic report whose required compile case failed
+- **THEN** the host report is not qualified
+- **AND** editing its verdict to qualified makes the report invalid
+
+### Requirement: Complete report corpus
+The report SHALL retain every authored corpus case exactly once. A missing, duplicate or unknown case SHALL make the report invalid, not reduce the qualification requirements.
+
+#### Scenario: A skipped case is removed
+- **WHEN** a report omits one authored corpus case instead of retaining its recorded outcome
+- **THEN** report-check refuses the report as invalid
+
+### Requirement: Checked qualification verdict
+The checker SHALL recompute the verdict. An honest failing report SHALL be `not_qualified`; an edited outcome or verdict SHALL be invalid. Only a fully checked `qualified` report SHALL pass a release gate.
+
+#### Scenario: Honest unsuccessful run
+- **WHEN** the observations fail a required case and the report records not_qualified
+- **THEN** report-check distinguishes that honest failure from invalid evidence
+- **AND** the release qualification gate does not pass
 
 ### Requirement: One executable per report
 A report SHALL qualify exactly one host executable on one platform. A release SHALL NOT cite a report for an offering or platform other than the one recorded in it.

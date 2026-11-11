@@ -1,0 +1,1 @@
+Synthetic inert artifact bytes for report-check fixtures. Never execute.

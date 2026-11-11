@@ -1,0 +1,1 @@
+Synthetic inert runner bytes for report-check fixtures. Never execute.

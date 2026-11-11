@@ -1,0 +1,1 @@
+Synthetic inert host bytes for report-check fixtures. Never execute.

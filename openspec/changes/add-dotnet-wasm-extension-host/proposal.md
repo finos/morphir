@@ -55,6 +55,13 @@ Adoption changes two morphir-dotnet specs in that repository's own change: `exte
 
 This repository owns the profile contract, the crafted qualification modules and their fixed expectations. These are data and do not depend on where the conformance runner lives; it is moving from the Rust CLI to the .NET host in morphir-dotnet. morphir-dotnet owns the runtime, the worker mode and the packaging. No submodule pin or implementation changes are part of this proposal.
 
+The published profile guide and report member tables are under
+`docs/spec/extensions/wasm-hosts.md` and `wasm-host-reports.md`. The report family
+uses the exact published `wasm-host-reports/0.1.0-preview.1/report.schema.json`
+URL, with structural/fixture integrity checks here and all behavioral report
+checking in the one shared .NET runner. Report adoption, successful guest proof
+and released-artifact qualification remain separate unfinished gates.
+
 morphir-dotnet gains its first native dependency. The Wasmtime engine adds about 10.6 MB to the Native AOT executable, measured on macOS arm64 only, and `dotnet-morphir` changes from one platform-neutral tool package to a set of platform-specific packages. Both are user-visible and need release notes and updated installation guidance.
 
 The profile contract starts at `0.1.0-draft.1`. It describes existing guest behavior and mints no new MEP or IR version. Published bundles need no change to run.

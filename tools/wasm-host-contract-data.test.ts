@@ -1,6 +1,63 @@
 // Parent-owned documentation/data integrity only; host behavior is checked by the .NET runner.
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+
+test("host report contract publishes one exact schema and fixed checker inputs", () => {
+	const schemaUrl = "https://morphir.finos.org/schemas/wasm-host-reports/0.1.0-preview.1/report.schema.json";
+	const schema = JSON.parse(readFileSync("website/static/schemas/wasm-host-reports/0.1.0-preview.1/report.schema.json", "utf8"));
+	const cases = JSON.parse(readFileSync("spec/mep/mck/wasm-host-report.cases.json", "utf8"));
+	const page = readFileSync("docs/spec/extensions/wasm-host-reports.md", "utf8");
+	expect(schema.$id).toBe(schemaUrl);
+	expect(schema.required).toContain("$schema");
+	expect(schema.properties.$schema.const).toBe(schemaUrl);
+	expect(schema.additionalProperties).toBe(false);
+	expect(cases.reportSchema).toBe(schemaUrl);
+	const ids = cases.cases.map((c: any) => c.id);
+	for (const id of ["honest-failed-observations", "edited-verdict", "required-memory-not-enforced", "optional-budget-not-enforced", "wrong-offering-citation", "missing-published-guest", "duplicate-case", "missing-case", "unknown-schema"]) expect(ids).toContain(id);
+	expect(new Set(ids).size).toBe(ids.length);
+	expect(page).toContain(schemaUrl);
+	expect(page).toContain("same shared runner");
+	expect(page).toContain("not qualification evidence");
+	expect(page).toContain("same host executable digest");
+});
+
+test("fixed host reports retain their schema-expressible results only", () => {
+	const schemaPath = "website/static/schemas/wasm-host-reports/0.1.0-preview.1/report.schema.json";
+	const cases = JSON.parse(readFileSync("spec/mep/mck/wasm-host-report.cases.json", "utf8"));
+	const temp = mkdtempSync(join(tmpdir(), "morphir-host-report-schema-"));
+	try {
+		const meta = spawnSync("jsonschema", ["metaschema", schemaPath], { encoding: "utf8", windowsHide: true, timeout: 10_000 });
+		expect(meta.status, meta.stderr).toBe(0);
+		for (const entry of cases.cases) {
+			const input = join(temp, entry.id + ".json");
+			writeFileSync(input, JSON.stringify(entry.report));
+			const run = spawnSync("jsonschema", ["validate", schemaPath, input], { encoding: "utf8", windowsHide: true, timeout: 10_000 });
+			expect(run.error, entry.id).toBeUndefined();
+			expect(run.signal, entry.id).toBeNull();
+			expect(run.status === 0, `${entry.id}: ${run.stderr}`).toBe(entry.schemaValid);
+		}
+	} finally {
+		rmSync(temp, { recursive: true, force: true });
+	}
+}, 30_000);
+
+test("synthetic host report inputs pin the unchanged corpus and local inert identities", () => {
+	const data = JSON.parse(readFileSync("spec/mep/mck/wasm-host-report.cases.json", "utf8"));
+	const corpus = JSON.parse(readFileSync("spec/mep/mck/wasm-host.cases.json", "utf8"));
+	const hash = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex");
+	const base = data.cases.find((c: any) => c.id === "honest-failed-observations").report;
+	expect(base.cases.map((c: any) => c.caseId)).toEqual(corpus.cases.map((c: any) => c.caseId));
+	for (const file of [base.runner, base.host, base.artifact, base.suite.corpus, base.suite.contract]) {
+		expect(hash(join("spec/mep/mck", file.path ?? file.executable))).toBe(file.sha256);
+	}
+	expect(base.artifact.origin).toBe("synthetic");
+	expect(base.verdict).toBe("not_qualified");
+	for (const c of base.cases) expect(hash(join("spec/mep/mck", c.module.path))).toBe(c.module.sha256);
+});
 
 const contract = JSON.parse(readFileSync("spec/mep/wasm-execution-profiles.json", "utf8"));
 const pagePath = "docs/spec/extensions/wasm-hosts.md";

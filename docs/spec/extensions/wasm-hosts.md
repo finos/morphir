@@ -241,12 +241,14 @@ refusal case. An Extism-only host needs published Extism guest proof; a host
 declaring the byte profile also needs a published guest of that profile.
 Crafted cases alone cannot qualify a host.
 
-The [qualification requirements](https://github.com/finos/morphir/blob/main/openspec/changes/add-dotnet-wasm-extension-host/specs/mck/wasm-host-qualification/spec.md)
+The [report contract](./wasm-host-reports.md) and
+[qualification requirements](https://github.com/finos/morphir/blob/main/openspec/changes/add-dotnet-wasm-extension-host/specs/mck/wasm-host-qualification/spec.md)
 require the shared runner's report checker to recompute case outcomes and the
 verdict from recorded observations. An edited verdict, missing identity or
-report cited for another offering/platform is refused. Task 1.4's published
-report format and fixed report-check cases are still being completed; existing
-experimental reports that explicitly contain no verdict remain observations.
+report cited for another offering/platform is refused. Task 1.4 remains open
+until the shared .NET runner adopts the report format and executes its fixed
+semantic cases, including a qualified positive control. Existing experimental
+reports that explicitly contain no verdict remain observations.
 
 The generic guest kit adoption and exact released-artifact runs remain distinct
 gates. The support table and prerequisite declarations stay pending until the
