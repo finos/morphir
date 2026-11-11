@@ -145,6 +145,28 @@ extension table with `id`. Existing string path configuration keeps its path
 meaning. Both configured identities and command selection use this same
 pipeline.
 
+An extension table key remains its extension identity, including the existing
+quoted-key rule for dotted ids. Its explicit `id` must match that key exactly;
+the table key is not an alias. For example:
+
+```toml
+[extensions."acme.installed"]
+id = "acme.installed"
+```
+
+In that table, `id` cannot occur with `path`, `url` or `command`, even when a
+value is empty or appears to name the same artifact. Refuse conflicting sources
+before inventory resolution, installation or launch. A table without `id`
+retains its existing launch-source semantics. This adds `id` as a recognized
+string setting; it does not reinterpret an existing path or command as an id.
+
+Similarly, `[frontend.<language>]` may use either `extension_id` for an installed
+identity or the existing `extension` string for a command/path, never both.
+The language key is a language id, so it need not match the selected extension
+id. An explicit identity must pass the extension id grammar in either setting.
+The fixed configuration cases specify these refusals independently of TOML
+whitespace or JSON member order.
+
 ## Unsigned local content
 
 Explicit local-source installation or an explicit staged-mode choice supplies
@@ -162,6 +184,9 @@ reading, `select` exercises precedence and local binding, and `overlay-root`
 exercises explicit overlay validation. Expected refusals without a diagnostic
 code are structural-contract expectations; command diagnostic mapping must
 retain the approved `extension.*` vocabulary when adoption lands.
+`read-provider-configuration` reads the supplied TOML and exercises the explicit
+identity, legacy source and conflicting-source rules above. Those inputs are
+project configuration, not selection JSON documents.
 
 Parent tests validate schema structure, schema-expressible examples and manifest
 integrity. They do not execute selection. The shared .NET runner must execute

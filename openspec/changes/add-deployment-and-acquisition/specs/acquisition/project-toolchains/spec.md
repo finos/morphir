@@ -73,6 +73,23 @@ Frontend configuration SHALL use an explicit `extension_id` member to select an 
 - **THEN** the host continues to interpret it as that path
 - **AND** it does not reinterpret it as an installed identity
 
+### Requirement: Unambiguous installed configuration sources
+An extension table's explicit `id` SHALL equal its identity key. It SHALL NOT coexist with `path`, `url` or `command`. A frontend entry SHALL NOT contain both `extension_id` and `extension`. These conflicts SHALL be refused before selection or launch, including empty or apparently equal source values. A frontend language key need not equal `extension_id`.
+
+#### Scenario: Installed identity and local source conflict
+- **WHEN** an extension table has an explicit `id` together with `path`, `url` or `command`
+- **THEN** the host refuses the entry before resolving inventory, installing content or starting a provider
+- **AND** it does not choose one source by precedence
+
+#### Scenario: Extension table identity differs from its explicit id
+- **WHEN** `[extensions.acme]` specifies `id = "acme.installed"`
+- **THEN** the host refuses the identity mismatch rather than treating `acme` as an alias
+
+#### Scenario: Frontend source is explicit
+- **WHEN** `[frontend.fsharp]` specifies both `extension_id` and `extension`
+- **THEN** the host refuses the conflicting sources rather than overriding one
+- **AND** `extension_id` alone may identify an extension whose id differs from `fsharp`
+
 ### Requirement: Explicit unsigned developer consent
 Explicitly naming a local install source or explicitly enabling staged mode SHALL authorize unsigned developer installation with a `local-developer` provenance label. An omitted setting that inherits a default `auto` value SHALL NOT authorize installation. A global staged or file install SHALL record a generated one-release local repository. These facts SHALL NOT be reported as authenticated publisher provenance.
 

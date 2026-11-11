@@ -717,6 +717,89 @@
           "valid": true
         }
       ]
+    },
+    {
+      "id": "configured-installed-id",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[extensions.\"acme.installed\"]\nid = \"acme.installed\"\n"
+      },
+      "expected": {
+        "outcome": "accept",
+        "extensionId": "acme.installed"
+      }
+    },
+    {
+      "id": "configured-id-path-conflict",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[extensions.\"acme.installed\"]\nid = \"acme.installed\"\npath = \"./local.wasm\"\n"
+      },
+      "expected": {
+        "outcome": "refuse"
+      }
+    },
+    {
+      "id": "configured-id-command-conflict",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[extensions.\"acme.installed\"]\nid = \"acme.installed\"\ncommand = \"acme.installed\"\n"
+      },
+      "expected": {
+        "outcome": "refuse"
+      }
+    },
+    {
+      "id": "configured-id-url-conflict",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[extensions.\"acme.installed\"]\nid = \"acme.installed\"\nurl = \"\"\n"
+      },
+      "expected": {
+        "outcome": "refuse"
+      }
+    },
+    {
+      "id": "configured-id-key-mismatch",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[extensions.acme]\nid = \"acme.installed\"\n"
+      },
+      "expected": {
+        "outcome": "refuse"
+      }
+    },
+    {
+      "id": "configured-legacy-path",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[extensions.acme]\npath = \"./local.wasm\"\n"
+      },
+      "expected": {
+        "outcome": "accept",
+        "path": "./local.wasm"
+      }
+    },
+    {
+      "id": "configured-frontend-id",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[frontend.fsharp]\nextension_id = \"acme.installed\"\n"
+      },
+      "expected": {
+        "outcome": "accept",
+        "extensionId": "acme.installed"
+      }
+    },
+    {
+      "id": "configured-frontend-source-conflict",
+      "operation": "read-provider-configuration",
+      "input": {
+        "text": "[frontend.fsharp]\nextension_id = \"acme.installed\"\nextension = \"acme.installed\"\n"
+      },
+      "expected": {
+        "outcome": "refuse"
+      }
     }
   ]
 }

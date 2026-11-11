@@ -69,4 +69,27 @@ describe("toolchain selection contract data", () => {
       rmSync(scratch, { recursive: true, force: true });
     }
   }, 30_000);
+
+  test("configuration vectors distinguish installed identities from existing launch sources", () => {
+    const cases = new Map<string, any>(load(corpus).cases.map((c: any) => [c.id, c]));
+    for (const [id, outcome] of [
+      ["configured-installed-id", "accept"],
+      ["configured-id-path-conflict", "refuse"],
+      ["configured-id-command-conflict", "refuse"],
+      ["configured-id-url-conflict", "refuse"],
+      ["configured-id-key-mismatch", "refuse"],
+      ["configured-legacy-path", "accept"],
+      ["configured-frontend-id", "accept"],
+      ["configured-frontend-source-conflict", "refuse"],
+    ] as const) {
+      const entry = cases.get(id);
+      expect(entry, id).toBeDefined();
+      expect(entry.operation, id).toBe("read-provider-configuration");
+      expect(entry.expected.outcome, id).toBe(outcome);
+      expect(typeof entry.input.text, id).toBe("string");
+    }
+    expect(cases.get("configured-installed-id").expected.extensionId).toBe("acme.installed");
+    expect(cases.get("configured-legacy-path").expected.path).toBe("./local.wasm");
+    expect(cases.get("configured-frontend-id").expected.extensionId).toBe("acme.installed");
+  });
 });
