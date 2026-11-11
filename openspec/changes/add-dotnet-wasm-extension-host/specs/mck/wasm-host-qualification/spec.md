@@ -37,16 +37,23 @@ The corpus stores the text and the digest of the binary built from it. Expectati
 
 ### What a report says
 
-Illustrative record. Field names are fixed with the report contract.
+The report contract is `spec/mep/mck/wasm-host-report.md`. It fixes the members of a report, the rule that gives the verdict and the cases in which a report check refuses a report. One case entry, with its observed runs left out:
 
 ```json
 {
   "caseId": "bounds/spin-extism",
-  "module": {"sha256": "9c1e...", "declaredAbi": "extism-kernel-v1"},
-  "expected": {"fault": "call-deadline", "withinSeconds": [30, 32]},
-  "observed": {"fault": "call-deadline", "elapsedSeconds": 30.04},
-  "result": "pass"
+  "appliesTo": "extism-kernel-v1",
+  "bounds": ["callDeadline"],
+  "module": {"sha256": "013d...", "observedSha256": "013d..."},
+  "outcome": "passed",
+  "runs": []
 }
+```
+
+The verdict of a host that ran past the deadline on that case names the case:
+
+```json
+{"qualified": false, "reasons": [{"code": "case_failed", "caseId": "bounds/spin-extism"}]}
 ```
 
 A report covers one host executable on one platform. It makes no claim about another offering of the same release.

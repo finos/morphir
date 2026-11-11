@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/mep-wasm-host-kit/0.1.0-draft.1/report.schema.json",
+  "title": "WASM host qualification report 0.1.0-draft.1",
+  "description": "One run of the crafted WASM host corpus against one host executable on one platform. The verdict rule, the case inventory and the consistency of outcomes with declarations are checks of the report check, stated in spec/mep/mck/wasm-host-report.md. A runner may record members this schema does not name.",
+  "type": "object",
+  "required": [
+    "$schema",
+    "suite",
+    "runner",
+    "host",
+    "bounds",
+    "guestKitCitations",
+    "totals",
+    "verdict",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/mep-wasm-host-kit/0.1.0-draft.1/report.schema.json"
+    },
+    "suite": {
+      "type": "object",
+      "required": ["kit", "kitVersion", "contract", "corpus", "deadlineMarginSeconds"],
+      "properties": {
+        "kit": { "const": "morphir/mep-wasm-host-kit" },
+        "kitVersion": { "const": "0.1.0-draft.1" },
+        "contract": {
+          "type": "object",
+          "required": ["id", "version"],
+          "properties": {
+            "id": { "const": "morphir/mep-wasm-execution-profiles" },
+            "version": { "type": "string", "minLength": 1 }
+          }
+        },
+        "corpus": {
+          "type": "object",
+          "required": ["sha256"],
+          "properties": {
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+          }
+        },
+        "deadlineMarginSeconds": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "host": {
+      "type": "object",
+      "required": ["executable", "sha256", "profiles", "offering", "platform", "engine"],
+      "properties": {
+        "executable": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "buildIdentity": { "type": "string", "minLength": 1 },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/profile" }
+        },
+        "offering": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "engine": { "type": "string", "minLength": 1 }
+      }
+    },
+    "bounds": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["bound", "declaration", "requiredForQualification"],
+        "properties": {
+          "bound": { "$ref": "#/$defs/bound" },
+          "declaration": { "enum": ["enforced", "not-enforced", "inconsistent", "undeclared"] },
+          "reason": { "type": "string", "minLength": 1 },
+          "requiredForQualification": { "type": "boolean" }
+        }
+      }
+    },
+    "guestKitCitations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["profile", "report", "reportSha256", "hostSha256", "guestModuleSha256"],
+        "properties": {
+          "profile": { "$ref": "#/$defs/profile" },
+          "report": { "type": "string", "minLength": 1 },
+          "reportSha256": { "$ref": "#/$defs/sha256" },
+          "hostSha256": { "$ref": "#/$defs/sha256" },
+          "guestModuleSha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "required": ["cases", "passed", "failed", "error", "refused", "notApplicable", "notEnforced"],
+      "properties": {
+        "cases": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "error": { "$ref": "#/$defs/count" },
+        "refused": { "$ref": "#/$defs/count" },
+        "notApplicable": { "$ref": "#/$defs/count" },
+        "notEnforced": { "$ref": "#/$defs/count" }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "required": ["qualified", "reasons"],
+      "additionalProperties": false,
+      "properties": {
+        "qualified": { "type": "boolean" },
+        "reasons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reason" }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["caseId", "appliesTo", "bounds", "module", "outcome", "runs"],
+        "properties": {
+          "caseId": { "type": "string", "minLength": 1 },
+          "appliesTo": { "$ref": "#/$defs/profile" },
+          "bounds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/bound" }
+          },
+          "module": {
+            "type": "object",
+            "required": ["sha256"],
+            "properties": {
+              "sha256": { "$ref": "#/$defs/sha256" },
+              "observedSha256": {
+                "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+              }
+            }
+          },
+          "outcome": {
+            "enum": ["passed", "failed", "error", "refused", "not_applicable", "not_enforced"]
+          },
+          "deviation": {
+            "type": "object",
+            "required": ["tracking", "note"],
+            "properties": {
+              "tracking": { "type": "string", "minLength": 1 },
+              "note": { "type": "string", "minLength": 1 }
+            }
+          },
+          "runs": { "type": "array" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "profile": { "enum": ["extism-kernel-v1", "morphir-bytes-v1"] },
+    "bound": { "enum": ["memoryCeiling", "instructionBudget", "callDeadline"] },
+    "reason": {
+      "type": "object",
+      "required": ["code"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "bound_undeclared",
+            "bound_inconsistent",
+            "required_bound_not_enforced",
+            "case_failed",
+            "case_error",
+            "case_refused",
+            "guest_kit_missing",
+            "guest_kit_host_mismatch"
+          ]
+        },
+        "bound": { "$ref": "#/$defs/bound" },
+        "caseId": { "type": "string", "minLength": 1 },
+        "profile": { "$ref": "#/$defs/profile" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "code": { "enum": ["bound_undeclared", "bound_inconsistent", "required_bound_not_enforced"] }
+          },
+          "required": ["bound"],
+          "not": { "anyOf": [{ "required": ["caseId"] }, { "required": ["profile"] }] }
+        },
+        {
+          "properties": { "code": { "enum": ["case_failed", "case_error", "case_refused"] } },
+          "required": ["caseId"],
+          "not": { "anyOf": [{ "required": ["bound"] }, { "required": ["profile"] }] }
+        },
+        {
+          "properties": { "code": { "enum": ["guest_kit_missing", "guest_kit_host_mismatch"] } },
+          "required": ["profile"],
+          "not": { "anyOf": [{ "required": ["bound"] }, { "required": ["caseId"] }] }
+        }
+      ]
+    }
+  }
+}

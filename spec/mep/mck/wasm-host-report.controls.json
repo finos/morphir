@@ -1,0 +1,310 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/mep-wasm-host-kit/0.1.0-draft.1/report-controls.schema.json",
+  "corpus": "wasm-host.cases.json",
+  "contract": "../wasm-execution-profiles.json",
+  "rule": {
+    "boundOrder": ["memoryCeiling", "instructionBudget", "callDeadline"],
+    "profileOrder": ["extism-kernel-v1", "morphir-bytes-v1"],
+    "reasons": [
+      "bound_undeclared",
+      "bound_inconsistent",
+      "required_bound_not_enforced",
+      "case_failed",
+      "case_error",
+      "case_refused",
+      "guest_kit_missing",
+      "guest_kit_host_mismatch"
+    ],
+    "rejections": [
+      "identity_missing",
+      "host_profiles",
+      "corpus_mismatch",
+      "case_inventory",
+      "outcome_inconsistent",
+      "totals_mismatch",
+      "citation_invalid",
+      "verdict_mismatch"
+    ],
+    "scenarios": [
+      "qualified",
+      "qualified-budget-not-enforced",
+      "qualified-bytes-host",
+      "bytes-host-needs-a-bytes-guest",
+      "deviation-has-no-effect",
+      "reasons-in-fixed-order"
+    ]
+  },
+  "base": {
+    "runner": { "name": "example-runner", "version": "0.0.0" },
+    "host": {
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "profiles": ["extism-kernel-v1"],
+      "offering": "native-aot",
+      "platform": "linux-x64",
+      "engine": "wasmtime 50.0.1"
+    },
+    "bounds": {
+      "memoryCeiling": "enforced",
+      "instructionBudget": "enforced",
+      "callDeadline": "enforced"
+    },
+    "guestKitCitations": [
+      {
+        "profile": "extism-kernel-v1",
+        "hostSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "controls": [
+    {
+      "id": "qualified",
+      "covers": "qualified",
+      "says": "Every bound is enforced, every Extism case passes, every byte-profile case is not applicable, and one guest kit run of the same executable is cited.",
+      "change": {},
+      "expect": { "qualified": true, "reasons": [] }
+    },
+    {
+      "id": "budget-not-enforced",
+      "covers": "qualified-budget-not-enforced",
+      "says": "An engine without metering declares the instruction budget not enforced. The budget case is recorded as not_enforced and the host still qualifies.",
+      "change": { "bounds": { "instructionBudget": "not-enforced" } },
+      "expect": { "qualified": true, "reasons": [] }
+    },
+    {
+      "id": "bytes-host",
+      "covers": "qualified-bytes-host",
+      "says": "A host that also declares the byte profile runs all 59 cases and cites a guest kit run for each profile.",
+      "change": {
+        "host": { "profiles": ["extism-kernel-v1", "morphir-bytes-v1"] },
+        "guestKitCitations": [
+          {
+            "profile": "extism-kernel-v1",
+            "hostSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          {
+            "profile": "morphir-bytes-v1",
+            "hostSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+          }
+        ]
+      },
+      "expect": { "qualified": true, "reasons": [] }
+    },
+    {
+      "id": "bytes-host-without-bytes-guest",
+      "covers": "bytes-host-needs-a-bytes-guest",
+      "says": "A host that declares the byte profile and cites only an Extism guest is not qualified.",
+      "change": { "host": { "profiles": ["extism-kernel-v1", "morphir-bytes-v1"] } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "guest_kit_missing", "profile": "morphir-bytes-v1" }]
+      }
+    },
+    {
+      "id": "deviation-does-not-pass",
+      "covers": "deviation-has-no-effect",
+      "says": "A recorded deviation explains a failure. It does not remove the reason.",
+      "change": {
+        "outcomes": { "sandbox/workspace-info": "failed" },
+        "deviations": ["sandbox/workspace-info"]
+      },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_failed", "caseId": "sandbox/workspace-info" }]
+      }
+    },
+    {
+      "id": "reasons-in-order",
+      "covers": "reasons-in-fixed-order",
+      "says": "Reasons come in a fixed order: bounds in the rule's bound order, cases in the corpus order, citations in the rule's profile order.",
+      "change": {
+        "bounds": { "callDeadline": "not-enforced" },
+        "outcomes": {
+          "sandbox/workspace-info": "failed",
+          "classification/unknown-namespace": "refused"
+        },
+        "guestKitCitations": []
+      },
+      "expect": {
+        "qualified": false,
+        "reasons": [
+          { "code": "required_bound_not_enforced", "bound": "callDeadline" },
+          { "code": "case_refused", "caseId": "classification/unknown-namespace" },
+          { "code": "case_failed", "caseId": "sandbox/workspace-info" },
+          { "code": "guest_kit_missing", "profile": "extism-kernel-v1" }
+        ]
+      }
+    },
+    {
+      "id": "bound-undeclared",
+      "covers": "bound_undeclared",
+      "says": "No started event declares the instruction budget. The case that needs it cannot be judged.",
+      "change": { "bounds": { "instructionBudget": "undeclared" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [
+          { "code": "bound_undeclared", "bound": "instructionBudget" },
+          { "code": "case_error", "caseId": "bounds/small-budget" }
+        ]
+      }
+    },
+    {
+      "id": "bound-inconsistent",
+      "covers": "bound_inconsistent",
+      "says": "The host's started events disagree about the memory ceiling. Every Extism case that needs it cannot be judged.",
+      "change": { "bounds": { "memoryCeiling": "inconsistent" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [
+          { "code": "bound_inconsistent", "bound": "memoryCeiling" },
+          { "code": "case_error", "caseId": "bounds/grow-to-ceiling-then-trap" },
+          { "code": "case_error", "caseId": "bounds/error-at-ceiling" },
+          { "code": "case_error", "caseId": "bounds/grow-refused-then-respond" },
+          { "code": "case_error", "caseId": "bounds/grow-refused-below-ceiling" },
+          { "code": "case_error", "caseId": "bounds/initial-memory-over-ceiling" }
+        ]
+      }
+    },
+    {
+      "id": "deadline-not-enforced",
+      "covers": "required_bound_not_enforced",
+      "says": "The call deadline is required. A host that declares it not enforced is not qualified, although its deadline case is recorded as not_enforced and not as failed.",
+      "change": { "bounds": { "callDeadline": "not-enforced" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "required_bound_not_enforced", "bound": "callDeadline" }]
+      }
+    },
+    {
+      "id": "one-case-failed",
+      "covers": "case_failed",
+      "says": "One failed case is enough.",
+      "change": { "outcomes": { "bounds/spin-extism": "failed" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_failed", "caseId": "bounds/spin-extism" }]
+      }
+    },
+    {
+      "id": "one-case-error",
+      "covers": "case_error",
+      "says": "A case the runner could not judge is not a pass.",
+      "change": { "outcomes": { "classification/unknown-namespace": "error" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_error", "caseId": "classification/unknown-namespace" }]
+      }
+    },
+    {
+      "id": "one-case-refused",
+      "covers": "case_refused",
+      "says": "A module whose bytes differ from the recorded digest is not run, and the host is not qualified without it.",
+      "change": { "outcomes": { "bounds/small-budget": "refused" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_refused", "caseId": "bounds/small-budget" }]
+      }
+    },
+    {
+      "id": "no-guest-kit-run",
+      "covers": "guest_kit_missing",
+      "says": "A host does not qualify on crafted cases alone.",
+      "change": { "guestKitCitations": [] },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "guest_kit_missing", "profile": "extism-kernel-v1" }]
+      }
+    },
+    {
+      "id": "guest-kit-run-of-another-executable",
+      "covers": "guest_kit_host_mismatch",
+      "says": "The cited guest kit run used another executable.",
+      "change": {
+        "guestKitCitations": [
+          {
+            "profile": "extism-kernel-v1",
+            "hostSha256": "2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        ]
+      },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "guest_kit_host_mismatch", "profile": "extism-kernel-v1" }]
+      }
+    },
+    {
+      "id": "no-offering",
+      "covers": "identity_missing",
+      "says": "A worker reports no offering, platform or engine. A report that lacks one of them is refused.",
+      "change": { "host": { "offering": null } },
+      "expect": { "rejected": ["identity_missing"] }
+    },
+    {
+      "id": "required-profile-not-declared",
+      "covers": "host_profiles",
+      "says": "extism-kernel-v1 is the required profile. A report of a host that does not declare it is refused.",
+      "change": { "host": { "profiles": ["morphir-bytes-v1"] }, "guestKitCitations": [] },
+      "expect": { "rejected": ["host_profiles"] }
+    },
+    {
+      "id": "another-corpus",
+      "covers": "corpus_mismatch",
+      "says": "The report records the digest of another corpus than the one it is checked against.",
+      "change": {
+        "corpusSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "expect": { "rejected": ["corpus_mismatch"] }
+    },
+    {
+      "id": "case-removed",
+      "covers": "case_inventory",
+      "says": "A report that leaves out a case is refused, even when every remaining case passes.",
+      "change": { "removeCases": ["bounds/spin-extism"] },
+      "expect": { "rejected": ["case_inventory"] }
+    },
+    {
+      "id": "unenforced-bound-recorded-as-passed",
+      "covers": "outcome_inconsistent",
+      "says": "A case for a bound the host does not enforce is recorded as not_enforced. A report that records it as passed is refused.",
+      "change": {
+        "bounds": { "instructionBudget": "not-enforced" },
+        "outcomes": { "bounds/small-budget": "passed" }
+      },
+      "expect": { "rejected": ["outcome_inconsistent"] }
+    },
+    {
+      "id": "totals-edited",
+      "covers": "totals_mismatch",
+      "says": "The totals are counts of the recorded outcomes.",
+      "change": { "storedTotals": { "passed": 48, "failed": 1 } },
+      "expect": { "rejected": ["totals_mismatch"] }
+    },
+    {
+      "id": "citation-for-undeclared-profile",
+      "covers": "citation_invalid",
+      "says": "A citation names a profile the host declares, once.",
+      "change": {
+        "guestKitCitations": [
+          {
+            "profile": "extism-kernel-v1",
+            "hostSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          {
+            "profile": "morphir-bytes-v1",
+            "hostSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+          }
+        ]
+      },
+      "expect": { "rejected": ["citation_invalid"] }
+    },
+    {
+      "id": "verdict-edited",
+      "covers": "verdict_mismatch",
+      "says": "The verdict is recomputed. A report that says qualified while a recorded case fails is refused.",
+      "change": {
+        "outcomes": { "bounds/spin-extism": "failed" },
+        "storedVerdict": { "qualified": true, "reasons": [] }
+      },
+      "expect": { "rejected": ["verdict_mismatch"] }
+    }
+  ]
+}
