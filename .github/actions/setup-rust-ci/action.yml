@@ -4,9 +4,11 @@ description: >-
   Rust jobs.
 inputs:
   install-mold:
-    description: Install the mold linker (Linux only).
+    description: Opt in to installing the mold linker (Linux only).
     required: false
-    default: "true"
+    # Default Rust linking needs no apt bootstrap. Keep the optional optimization
+    # explicit so archive DNS outages cannot prevent every contract gate.
+    default: "false"
   enable-sccache:
     description: Enable sccache compiler caching.
     required: false
