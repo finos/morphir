@@ -66,6 +66,13 @@ NOT be converted implicitly.
 - **AND** the installed selection repeats with the source archive withdrawn and no network acquisition
 - **AND** this usable milestone does not claim production release or full platform qualification
 
+#### Scenario: Shared host state remains usable between commands
+- **GIVEN** a local candidate was admitted and selected in an isolated Home
+- **WHEN** its host compiles the fixed package and retains its normal task-publication locks or other host-owned state
+- **THEN** the next manager run, show or select validates the manager-owned partitions without refusing unrelated Home entries
+- **AND** foreign or corrupt entries inside the manager-owned partitions are still refused
+- **AND** initial setup admission retains its foreign-state check before any mutation, without cleanup or migration
+
 
 ### Requirement: Explicit extension trust policy
 Public toolset recipes SHALL bind extension artifacts and descriptors to authenticated recipe metadata and exact digests, preserving the extension format. An independently supplied unsigned developer extension SHALL require explicit developer policy and SHALL remain labeled unchecked or developer-supplied. Setup SHALL NOT imply that legacy extension repositories already provide publisher authentication.

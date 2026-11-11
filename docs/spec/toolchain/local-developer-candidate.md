@@ -98,6 +98,21 @@ qualification compares the entire installed folder against the retained
 candidate before and after execution; an unchanged executable alone does not
 establish unchanged runtime or compiler dependencies.
 
+The explicit Home is shared with the selected Morphir host. Setup admission
+retains this slice's empty-or-recognized-local-state check before mutation; it
+does not migrate, clean or overwrite foreign state. Later `run`, `show` and
+`select` validate the manager-owned partitions: `store/tools`, `toolchains`,
+`tmp/local-toolchain-*` and the manager's mutation lock. They do not refuse,
+traverse or treat unrelated Home entries as manager authority. This includes
+unrelated siblings under `store` and `tmp`.
+
+The host may retain its existing task-publication locks under `locks/install`,
+global configuration or a shared extension catalog. Those files must not make
+the next manager command fail merely because they exist. Unexpected, linked,
+corrupt or identity-mismatched state inside a manager-owned partition remains a
+refusal. This ownership distinction adds no lock implementation, state cleanup
+or authenticated-release claim.
+
 ## Selection and commands
 
 `toolchains/default.json` is the user-default pointer in this explicit Home.

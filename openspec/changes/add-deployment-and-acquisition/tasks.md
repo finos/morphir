@@ -23,6 +23,13 @@ win-x64 managed candidate compiles to the fixed IR and generates the frozen
 112-byte Pricing.fs using its bundled runtime. This does not yet establish U3,
 which requires the actual manager installation and offline selected run.
 
+The first native-manager journey has now installed and selected the candidate,
+verified the full folder and compiled the fixed source through the installed
+host. The IR comparison passed, but generation was refused because the manager
+treated the host's retained task locks as foreign Home state. The ownership
+correction is in progress; generation and the installed offline repeat remain
+unproven. U3 and U4 remain unchecked.
+
 Resource policy: up to four agents per change, subject to the actual provider
 hard limit. Two independent focused build/test batches may use separate
 checkouts/output trees, initially two processors each and single-node MSBuild,
