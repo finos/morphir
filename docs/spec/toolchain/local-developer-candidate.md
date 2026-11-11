@@ -123,7 +123,8 @@ the immutable receipt and installed identity under the existing cooperating
 lease and atomically publishes the pointer last. Run retains its selected
 generation through actual child/capture settlement. It uses an absolute owned
 executable path and argument vector, not shell evaluation. No project extension
-selection, global catalog, shell profile or system installation is changed.
+selection, global catalog, shell profile or system installation is changed by
+manager selection. Explicit host commands keep their own effects and authority.
 
 The local milestone's command surface is:
 
