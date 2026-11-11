@@ -1,0 +1,93 @@
+{
+  "recipeSchema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/recipe.schema.json",
+  "repositories": "binding-repositories.json",
+  "repositoriesSha256": "bc12ae28dc04b21e6dab549edb420cf19483c04372763a4eacbcb6315a4e4527",
+  "cases": [
+    {
+      "id": "complete-bindings-accepted",
+      "operation": "check-recipe-bindings",
+      "repository": "complete-bindings-accepted",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "accept"
+      }
+    },
+    {
+      "id": "host-descriptor-identity-refused",
+      "operation": "check-recipe-bindings",
+      "repository": "host-descriptor-identity-refused",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "refuse",
+        "code": "release_descriptor_mismatch",
+        "path": "hosts[0].source"
+      }
+    },
+    {
+      "id": "host-platform-substitution-refused",
+      "operation": "check-recipe-bindings",
+      "repository": "host-platform-substitution-refused",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "refuse",
+        "code": "artifact_platform_mismatch",
+        "path": "hosts[0].platforms.win-x64.target"
+      }
+    },
+    {
+      "id": "provider-repository-substitution-refused",
+      "operation": "check-recipe-bindings",
+      "repository": "provider-repository-substitution-refused",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "refuse",
+        "code": "repository_mismatch",
+        "path": "providers[0].repositoryId"
+      }
+    },
+    {
+      "id": "provider-descriptor-digest-refused",
+      "operation": "check-recipe-bindings",
+      "repository": "provider-descriptor-digest-refused",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "refuse",
+        "code": "target_digest_mismatch",
+        "path": "providers[0].descriptorSha256"
+      }
+    },
+    {
+      "id": "provider-protocol-disagreement-refused",
+      "operation": "check-recipe-bindings",
+      "repository": "provider-protocol-disagreement-refused",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "refuse",
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].protocolVersion"
+      }
+    },
+    {
+      "id": "provider-model-disagreement-refused",
+      "operation": "check-recipe-bindings",
+      "repository": "provider-model-disagreement-refused",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "refuse",
+        "code": "release_descriptor_mismatch",
+        "path": "providers[0].modelTuple"
+      }
+    },
+    {
+      "id": "provider-artifact-digest-refused",
+      "operation": "check-recipe-bindings",
+      "repository": "provider-artifact-digest-refused",
+      "target": "toolchains/recipes/fsharp/1.0.0.json",
+      "expected": {
+        "outcome": "refuse",
+        "code": "target_digest_mismatch",
+        "path": "providers[0].platforms.win-x64.artifactSha256"
+      }
+    }
+  ]
+}

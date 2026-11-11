@@ -72,7 +72,57 @@ are deliberately inert TEST-ONLY text, despite archive, executable and package
 filenames. They must never be extracted, installed, launched or used to claim
 packaging, readiness, prerequisites or F# qualification.
 
-These six cases cover authentication basics. Descriptor/recipe disagreement,
-incomplete platform closures, repository substitution, critical-member rules,
-generation/offline restore and acquired-artifact workflows still need their
-own cases and execution. Task 1.6 and the family cutover remain open.
+These six cases cover authentication basics. The following binding cases add
+some descriptor/recipe disagreement controls. Incomplete platform closures,
+critical-member rules, generation/offline restore and acquired-artifact
+workflows still need their own cases and execution. Task 1.6 and the family
+cutover remain open.
+
+## Authenticated binding cases
+
+`binding-cases.json` adds eight fixed expectations for
+`check-recipe-bindings`. It binds the exact bytes of
+`binding-repositories.json` by SHA-256. The latter retains the original root,
+repository identity and reference time, records the original repository file's
+SHA-256, and supplies a complete metadata/target-file set for each named variant.
+The original repository and its six authentication cases are unchanged.
+
+Every case starts independently from that root. Refresh its selected metadata,
+authenticate and read the recipe, then apply the host and provider binding
+checks before resolution or acquisition. The immutable identity, repository,
+target digest, platform, protocol and model comparisons retain the rules in the
+[recipe binding tables](../../../toolset-recipe.md#authenticated-recipe-targets).
+Read preview recipes and extension descriptors at their own exact schema URLs;
+do not invoke the historical recipe or extension codecs as a fallback.
+
+| Case | Expected outcome and first path |
+| --- | --- |
+| `complete-bindings-accepted` | Accept all four host offerings and both process providers |
+| `host-descriptor-identity-refused` | `release_descriptor_mismatch` at `hosts[0].source` |
+| `host-platform-substitution-refused` | `artifact_platform_mismatch` at `hosts[0].platforms.win-x64.target` |
+| `provider-repository-substitution-refused` | `repository_mismatch` at `providers[0].repositoryId` |
+| `provider-descriptor-digest-refused` | `target_digest_mismatch` at `providers[0].descriptorSha256` |
+| `provider-protocol-disagreement-refused` | `release_descriptor_mismatch` at `providers[0].protocolVersion` |
+| `provider-model-disagreement-refused` | `release_descriptor_mismatch` at `providers[0].modelTuple` |
+| `provider-artifact-digest-refused` | `target_digest_mismatch` at `providers[0].platforms.win-x64.artifactSha256` |
+
+Each variant's changed target bytes have new authenticated lengths/digests and
+newly signed targets, snapshot and timestamp envelopes. This deliberately avoids
+an earlier stale-link or target-corruption failure masking the intended binding
+comparison. For example, the host-platform case binds the authenticated Linux
+artifact to the Windows slot; it does not corrupt the artifact's bytes. The
+host-identity case changes the authenticated descriptor's own tool id while
+retaining its original authenticated release state. Expected paths use the
+existing binding order, not a new diagnostic vocabulary.
+
+All 48 JSON payloads across these variants pass their own schemas. Parent tests
+also check byte links, manifest inventory and fixed expectations. They execute
+no signature verifier or binding checker. No case has yet established its
+intended outcome through the shared .NET runner. Unknown operations or variant
+names must be refused, and no row may be silently skipped. Artifact bodies
+remain inert text and must never be installed or launched.
+
+These cases do not cover every binding or cutover rule. Missing platform
+closures, critical paths, generation state, frozen/offline restore, developer
+consent and acquired-artifact workflows still require their own cases and
+behavioral evidence. Tasks 1.6 through 1.8 remain open.

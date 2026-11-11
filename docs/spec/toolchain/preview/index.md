@@ -239,3 +239,10 @@ workflow execution. A separate signed TEST-ONLY recipe fixture supplies six
 authentication expectations and complete inert target records. Its actual
 signature verification, semantic target binding and the remaining cutover gates
 are still pending.
+
+Eight additional [authenticated binding inputs](./corpus/signed/README.md#authenticated-binding-cases)
+retain that repository's original authority and supply separately signed,
+schema-valid variants. They pin a full positive closure and first refusals for
+host identity/platform and provider repository/digest/protocol/model
+disagreement. Their byte/schema integrity is checked here; actual authentication
+and binding outcomes remain unrun through the shared .NET checker.
