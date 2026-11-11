@@ -4,7 +4,7 @@ These fixed inputs extend the [candidate family](../index.md). They are not a
 supported manager input until the shared .NET runner adopts and executes them.
 The historical `0.1.0-draft.1` corpus and its signatures remain unchanged.
 
-`cases.json` records 25 document-reading expectations. Each row names a unique
+`cases.json` records 37 document-reading expectations. Each row names a unique
 `id`, a `contract`, a repository-relative `file`, the SHA-256 of its exact bytes,
 an `expected` reader outcome and a separate `schemaValid` result. The runner must
 read the named bytes through the corresponding current-family reader, execute
@@ -18,13 +18,27 @@ it does not introduce a command diagnostic code.
 | `missing-schema` | JSON requires `$schema`; TOML requires its first-line directive |
 | `unsupported-critical` | An unknown member named by `critical` is refused |
 | `conflicting-host-selection` | A host request cannot select both version and channel |
-| `invalid-document` | Required delivery-specific members are missing |
+| `invalid-document` | Delivery-specific shape, identity uniqueness/order, duplicate JSON members or recursive credential rules are violated |
 
 JSON Schema checks the parsed TOML body, so a missing or unsupported TOML
 directive can be schema-valid while its reader outcome is refusal. The parent
 TypeScript tests check file identities, document structure and these schema
 expectations. They do not implement readers, selection, acquisition or report
 checking. Schema success is not behavioral adoption.
+
+Twelve selection inputs extend the original 25 without changing their bytes.
+Unknown root and pin members each have an accepted optional control and a
+refused critical variant differing only by that critical declaration. Known
+critical paths remain accepted. A portable WASM digest and an empty selection
+are positive controls; a WASM pin carrying both digest and process platforms is
+refused. Duplicate identities with different versions, unsorted identities,
+duplicate JSON members and an uppercase credential member under an otherwise
+unknown object are schema-valid reader refusals. The credential text is a
+literal TEST-ONLY placeholder. Recursive scanning cannot be bypassed by placing
+a credential under an ignored optional member. The duplicate-member input must
+be read as raw bytes; parsing and reserializing it first would erase its defect.
+Parent tests check those fixed input relationships and schema expectations,
+without implementing any of the reader rules.
 
 The positive request selects two platforms. The recipe, portable lock and local
 receipt bind the actual request, recipe and lock bytes by digest. Artifact
@@ -47,5 +61,5 @@ verification and behavioral execution of those inputs remain unrun.
 
 Still required before cutover: target/closure binding cases, complete semantic reader coverage, generation and
 offline-restore cases, execution of these rows and the selection corpus in the
-one .NET runner, independent review, and final site verification. These 25 rows
+one .NET runner, independent review, and final site verification. These 37 rows
 do not discharge those gates or task 1.6.

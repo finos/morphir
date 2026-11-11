@@ -1,0 +1,15 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+  "extensions": [
+    {
+      "extensionId": "org.finos.morphir.fsharp-backend",
+      "version": "0.6.0",
+      "runtime": "wasm",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "platforms": {
+        "win-x64": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "osx-arm64": "2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    }
+  ]
+}

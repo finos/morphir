@@ -268,6 +268,133 @@
         "reason": "invalid-document"
       },
       "schemaValid": false
+    },
+    {
+      "id": "selection-root-unknown-optional",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/root-unknown-optional.json",
+      "sha256": "53193a633a249191547da9888ec712d874288ac1dde908b713b2ce766225b82f",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-root-unknown-critical",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/root-unknown-critical.json",
+      "sha256": "ce54803473a72758bbeddd9a283a4adca85ec6da3278546461d29b35583fdd41",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-critical"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "selection-pin-unknown-optional",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/pin-unknown-optional.json",
+      "sha256": "870a266cf3a588dd5ee6fd836ddeec3e80f8022fee203a791d613319ec7d8629",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-pin-unknown-critical",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/pin-unknown-critical.json",
+      "sha256": "ab795200dec1ed0f6f3122cb0f6bfcb7358e7449724144c1ff79c509a34e8f99",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "unsupported-critical"
+      },
+      "schemaValid": false
+    },
+    {
+      "id": "selection-duplicate-identities",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/duplicate-identities.json",
+      "sha256": "4f68f0a448fd93db4478534e7f02c5aa8ea8d2dd1ff4f5842c7404abc345d972",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "invalid-document"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-unsorted-identities",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/unsorted-identities.json",
+      "sha256": "018f5b3c6e228d6090b55a16dc3a099601d1e094ad3821fad2fa07ae6a800d80",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "invalid-document"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-nested-credential",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/nested-credential.json",
+      "sha256": "16fa445bb424ef22076447fb21a0dc27fc7adf958206943cb1283aaa0f8128fd",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "invalid-document"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-empty",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/empty.json",
+      "sha256": "a2fbd6870da289b0eb5649df754d0cbe8b0fab4d919dc874cff65e71003434c7",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-duplicate-members",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/duplicate-members.json",
+      "sha256": "935ad8a937e5dfa9354c6c5fc4256479b92b09ef3b4afd631b6afd0660688a09",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "invalid-document"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-portable-wasm",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/portable-wasm.json",
+      "sha256": "0bc3255e3a931450bbe9641d78962bdf86c24b37a366d3c0170ff01b9d3f649d",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-known-critical",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/known-critical.json",
+      "sha256": "12329c9ced3b14ba4e9ac4ad346554a6e9dd910b7fca738be1a3c8746401775f",
+      "expected": {
+        "outcome": "accept"
+      },
+      "schemaValid": true
+    },
+    {
+      "id": "selection-mixed-runtime-shape",
+      "contract": "selection",
+      "file": "docs/spec/toolchain/preview/corpus/selection/mixed-runtime-shape.json",
+      "sha256": "f32317cc36c37fc255b2301127599506749bd6655370c97bfe5149d5425a2d33",
+      "expected": {
+        "outcome": "refuse",
+        "reason": "invalid-document"
+      },
+      "schemaValid": false
     }
   ]
 }

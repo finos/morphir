@@ -102,4 +102,64 @@ describe("current toolchain family fixed document corpus", () => {
 		expect(createHash("sha256").update(generated).digest("hex"))
 			.toBe("64e08313f3e57be2c18995a2e8b275db9d921341958da2c8cd960c601c066de0");
 	});
+
+	const selectionInput = (name: string) => {
+		const row = manifest().documents.find(row => row.id === `selection-${name}`);
+		expect(row, name).toBeDefined();
+		expect(row!.contract).toBe("selection");
+		return { row: row!, text: readFileSync(row!.file, "utf8"), value: JSON.parse(readFileSync(row!.file, "utf8")) };
+	};
+
+	test("selection critical variants isolate the unknown member from its critical declaration", () => {
+		for (const prefix of ["root", "pin"]) {
+			const optional = selectionInput(`${prefix}-unknown-optional`);
+			const critical = selectionInput(`${prefix}-unknown-critical`);
+			expect(optional.row.expected).toEqual({ outcome: "accept" });
+			expect(critical.row.expected).toEqual({ outcome: "refuse", reason: "unsupported-critical" });
+			const target = prefix === "root" ? critical.value : critical.value.extensions[0];
+			expect(target.critical).toEqual(["annotation"]);
+			delete target.critical;
+			expect(critical.value).toEqual(optional.value);
+			expect(optional.row.schemaValid).toBe(true);
+			expect(critical.row.schemaValid).toBe(false);
+		}
+	});
+
+	test("selection reader-only refusals remain schema-valid fixed counterexamples", () => {
+		for (const name of ["duplicate-identities", "unsorted-identities", "nested-credential", "duplicate-members"]) {
+			const { row } = selectionInput(name);
+			expect(row.expected).toEqual({ outcome: "refuse", reason: "invalid-document" });
+			expect(row.schemaValid).toBe(true);
+		}
+		const duplicate = selectionInput("duplicate-identities").value.extensions;
+		expect(duplicate.map((pin: { extensionId: string }) => pin.extensionId))
+			.toEqual(["org.finos.morphir.fsharp-frontend", "org.finos.morphir.fsharp-frontend"]);
+		expect(duplicate.map((pin: { version: string }) => pin.version)).toEqual(["0.6.0", "0.6.1"]);
+		expect(selectionInput("unsorted-identities").value.extensions.map((pin: { extensionId: string }) => pin.extensionId))
+			.toEqual(["org.finos.morphir.fsharp-frontend", "org.finos.morphir.fsharp-backend"]);
+		expect(selectionInput("nested-credential").value.annotation.APIKEY).toBe("TEST-ONLY-NO-SECRET");
+		expect(selectionInput("duplicate-members").text.match(/"extensions"\s*:/g)?.length).toBe(2);
+		expect(selectionInput("empty").row.expected).toEqual({ outcome: "accept" });
+		expect(selectionInput("duplicate-members").value).toEqual(selectionInput("empty").value);
+	});
+
+	test("portable WASM and understood critical controls do not weaken delivery-specific shapes", () => {
+		const portable = selectionInput("portable-wasm");
+		expect(portable.row.expected).toEqual({ outcome: "accept" });
+		expect(portable.row.schemaValid).toBe(true);
+		expect(portable.value.extensions[0].runtime).toBe("wasm");
+		expect(portable.value.extensions[0].platforms).toBeUndefined();
+		expect(portable.value.extensions[0].sha256).toBe("a".repeat(64));
+		const known = selectionInput("known-critical");
+		expect(known.row.expected).toEqual({ outcome: "accept" });
+		expect(known.row.schemaValid).toBe(true);
+		expect(known.value.critical).toEqual(["extensions", "extensions.extensionId", "extensions.platforms.*"]);
+		expect(known.value.extensions[0].critical).toEqual(["platforms"]);
+		const mixed = selectionInput("mixed-runtime-shape");
+		expect(mixed.row.expected).toEqual({ outcome: "refuse", reason: "invalid-document" });
+		expect(mixed.row.schemaValid).toBe(false);
+		expect(mixed.value.extensions[0].runtime).toBe("wasm");
+		expect(mixed.value.extensions[0].platforms).toBeDefined();
+		expect(mixed.value.extensions[0].sha256).toBeDefined();
+	});
 });
