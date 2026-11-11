@@ -2,9 +2,62 @@
   "$comment": "JSON values that are not JSON-RPC messages, with the shape that each must satisfy. expect lists the finding codes of smithy validate value; an empty list means valid. A value with a pointer is read from its source file. Every non-JSON-RPC JSON example of protocol.md must be here.",
   "values": [
     {
-      "name": "protocol.md: the capability claim set example",
+      "name": "protocol.md: current preview capability claim set",
       "shape": "morphir.mep#CapabilityClaimSet",
       "source": "docs/design/draft/extensions/protocol.md",
+      "memberNames": "json",
+      "value": {
+        "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json",
+        "protocolVersions": [
+          "0.2.0-draft.1"
+        ],
+        "extension": {
+          "id": "morphir-elm",
+          "name": "Morphir Elm frontend",
+          "version": "0.3.0",
+          "types": [
+            "frontend",
+            "workspace"
+          ]
+        },
+        "capabilities": {
+          "frontend": {
+            "languages": [
+              {
+                "id": "elm",
+                "fileExtensions": [
+                  ".elm"
+                ]
+              }
+            ],
+            "irVersions": [
+              "3"
+            ],
+            "compile": true,
+            "incremental": false
+          },
+          "workspace": {
+            "protocolVersions": [
+              "0.1.0-draft.1"
+            ],
+            "discover": true
+          }
+        },
+        "requires": {
+          "host": [
+            ">=0.4.0-alpha.7"
+          ]
+        },
+        "critical": [
+          "requires.host"
+        ]
+      },
+      "expect": []
+    },
+    {
+      "name": "historical claims draft.2: legacy 0.1 session",
+      "shape": "morphir.mep#CapabilityClaimSet",
+      "source": "spec/mep/smithy/transcripts/session-legacy.md",
       "value": {
         "claimsVersion": "0.1.0-draft.2",
         "protocolVersions": [

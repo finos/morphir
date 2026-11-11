@@ -35,6 +35,14 @@ These files, with the capability claim set, form one contract family, the extens
 A document's current schema URL is the URL of its file at `0.1.0-preview.1`. A JSONL history has no header, so each line carries its own `$schema`.
 Paths in the home are relative to the home root, and paths in a repository are relative to the repository root.
 
+The approval-time publication audit for `add-extension-packages`, recorded in
+`docs/spec/extensions/publication-audit.md`, selects PKGVER-A. The first
+`0.1.0-preview.1` definitions therefore include the `package` member in release
+artifacts, index artifacts, installed catalog entries and extension locks. The
+member tables in `docs/design/draft/extensions/distribution-and-acquisition.md`
+define it; the package capability specifies its behavior. This resolves the
+approved version condition without changing any published earlier asset.
+
 This capability fixes each file's path, schema URL, encoding, unknown-member rule, locking and recovery. It does not list the members of a catalog entry, an extension lock or the repositories configuration. Those member tables are written by task 1.4 on `docs/design/draft/extensions/distribution-and-acquisition.md`. Until that page lands, an installer cannot be built from this change alone, and the Rust source is the only statement of those members.
 
 A host can find a home in a state it cannot use: files without the current schema URL, such as those an older host wrote with a `schemaVersion` member, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. The maintainer decided what a host does with it on 10 November 2026 (Decision 10, recorded on finos/morphir#1146): it moves the old state to a marked backup, asking first; `--yes` skips the question; `morphir doctor --fix` makes the same move by hand. The maintainer confirmed four readings of it the same day (Decision 11): the refusal without a terminal or on a decline, `morphir doctor` reporting only, and `morphir doctor --fix` asking first.
@@ -190,14 +198,13 @@ A member that is absent SHALL differ from a member whose value is `null`. A read
 - **THEN** each host reads the other's catalog as the same catalog
 
 ### Requirement: Documents that carry a claim set ignore unknown members unless critical
-A reader of a release descriptor, an index record or an installed catalog SHALL ignore a member it does not understand unless the document's top-level `critical` list names its path, and SHALL refuse a document whose `critical` list names a path it does not understand. A path names an array element's member through the array's name, as in `extensions.note` for a catalog entry's `note`.
-
+A reader of a release descriptor, index record or installed catalog SHALL ignore unknown members recursively, including package metadata and embedded claims, unless the top-level `critical` list names their path. It SHALL refuse an unknown critical path. Paths pass through array names, for example `extensions.note`.
 #### Scenario: An unknown member in an open document
 - **WHEN** a host reads a current catalog whose entry holds an optional member `note` that it does not understand, and another catalog whose top-level `critical` list names `extensions.note`
 - **THEN** it reads the first catalog and ignores `note`, and refuses the second
 
 ### Requirement: Locks, journals and the repositories configuration refuse unknown members
-A reader of an extension lock, a transaction journal or the repositories configuration SHALL refuse a document that holds a member the contract does not define for it, and SHALL name the file and the member.
+A reader of an extension lock, a transaction journal or the repositories configuration SHALL refuse a document that holds a member the contract does not define for it, and SHALL name the file and the member. This rule applies recursively to every nested object, including claims stored in a lock. Saved journal byte arrays retain exact bytes; each decoded saved document is validated under its own schema and member policy.
 
 #### Scenario: An unknown member in a closed document
 - **WHEN** a host reads a current extension lock that holds a member `installedBy`

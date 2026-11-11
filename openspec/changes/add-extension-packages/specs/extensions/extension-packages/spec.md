@@ -11,6 +11,8 @@ Defines how a Morphir extension can be a package: a tree of files with one entry
 
 A single-file artifact that is the executable itself keeps its meaning.
 
+This corrects the inherited STORE-1 procedure, which incorrectly used the activation check for reuse and omitted the repair lease. Full hashing at install and on request, cheap `VERIFY-B` only at activation, and `LAUNCH-A` are unchanged. Reuse hashing under the state lock costs time proportional to the existing tree's bytes; the lock is not promised to last milliseconds.
+
 Terms used on this page:
 
 | Term | Meaning |
@@ -30,7 +32,7 @@ Terms used on this page:
 
 Entry names are ASCII in this version. That removes Unicode normalization, unassigned code points and Unicode case mapping from the unpacking rules. The maintainer may lift the limit in a later version.
 
-The descriptor, index record, catalog and extension lock belong to the extension state family, which has one version carried by a `$schema` URL (maintainer, Decision 15, 10 November 2026). The package version depends on the order in which this change and finos/morphir#1149 are delivered. Task 1.1 fixes it by this rule:
+The descriptor, index record, catalog and extension lock belong to the extension state family, which has one version carried by a `$schema` URL (maintainer, Decision 15, 10 November 2026). The package version depends on the order in which this change and finos/morphir#1149 are delivered. The approval-time audit in `docs/spec/extensions/publication-audit.md` establishes PKGVER-A and selects `0.1.0-preview.1`. The approved rule is:
 
 | Outcome | When | Package version | Its schema URLs |
 | --- | --- | --- | --- |
@@ -44,7 +46,7 @@ A worked example: morphir-dotnet's F# frontend `org.finos.morphir.fsharp-fronten
 ## ADDED Requirements
 
 ### Requirement: A package is declared by its descriptor artifact
-A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of the package version SHALL refuse a `package` member on any other runtime with `package.runtime`.
+A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of `0.1.0-preview.1` SHALL refuse a `package` member on any other runtime with `package.runtime`.
 
 #### Scenario: A process package
 - **WHEN** a descriptor artifact has `runtime` `process`, `filename` `fsharp-frontend-0.6.0-win-x64.zip` and a `package` member with `format` `zip`, `entryPoint` `morphir-fsharp-frontend.exe` and a `treeSha256`
@@ -55,25 +57,25 @@ A release descriptor artifact SHALL be a package when it has a `package` member,
 - **THEN** the reader refuses the descriptor with `package.runtime`
 
 ### Requirement: The family's published schemas carry the package member
-The published schemas of the release descriptor, index record, catalog and extension lock at the package version SHALL define the `package` member, its members and their types. A document that carries `package` SHALL be valid against them.
+The published schemas of the release descriptor, index record, catalog and extension lock at `0.1.0-preview.1` SHALL define the `package` member, its members and their types. A document that carries `package` SHALL be valid against them.
 
 #### Scenario: A package descriptor validates
 - **WHEN** an editor validates the F# frontend's `release.json` against the schema its `$schema` names
 - **THEN** the schema accepts its `package` member with `format`, `root`, `entryPoint` and `treeSha256`
 
 ### Requirement: A document that carries a package lists it as critical
-A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of the package version SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
+A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of `0.1.0-preview.1` SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
 
 #### Scenario: A host built without this change meets a package
 - **WHEN** a host that implements the family version without this change reads a descriptor at that version whose artifact has `package` and whose `critical` lists `artifacts.package`
 - **THEN** it refuses the descriptor as naming a critical member it does not understand, and stores and starts nothing
 
 #### Scenario: A package that is not marked critical
-- **WHEN** a reader of the package version reads a descriptor with a `package` member and no `artifacts.package` in `critical`
+- **WHEN** a reader of `0.1.0-preview.1` reads a descriptor with a `package` member and no `artifacts.package` in `critical`
 - **THEN** it refuses the descriptor with `package.not_critical`
 
 ### Requirement: A single-file artifact is the executable itself
-An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of the package version SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
+An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of `0.1.0-preview.1` SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
 
 #### Scenario: A raw executable is unchanged
 - **WHEN** a descriptor lists the process artifact `morphir-scala-elm-linux-amd64-0.5.0-M13`, a raw executable, with no `package` member
@@ -270,7 +272,7 @@ The artifact's `sha256` SHALL be the SHA-256 of the archive's bytes. `package.tr
 - **THEN** its extension lock records the archive's SHA-256 as the artifact digest and the descriptor's `package` member, including `treeSha256`
 
 ### Requirement: The tree manifest is canonical text
-The tree manifest SHALL be ASCII text without a byte order mark: the line `morphir-package-tree <package version>`, then one line per file in ascending byte order of its tree path. Each file line SHALL be its kind (`x` for executable, `f` otherwise), its size in decimal without leading zeros (`0` for an empty file), its SHA-256 in lowercase hexadecimal and its tree path, separated by one space. Every line SHALL end with one LF. A reader SHALL split a line at its first three spaces only.
+The tree manifest SHALL be ASCII text without a byte order mark: the line `morphir-package-tree 0.1.0-preview.1`, then one line per file in ascending byte order of its tree path. Each file line SHALL be its kind (`x` for executable, `f` otherwise), its size in decimal without leading zeros (`0` for an empty file), its SHA-256 in lowercase hexadecimal and its tree path, separated by one space. Every line SHALL end with one LF. A reader SHALL split a line at its first three spaces only.
 
 #### Scenario: A tree with an empty file and a space in a name
 - **WHEN** a tree holds `run` (5 bytes, executable), `lib/a.dll` (3 bytes) and `docs/read me.txt` (0 bytes)
@@ -291,7 +293,7 @@ A host SHALL treat a package as verified when the archive's SHA-256 equals the a
 - **THEN** the host refuses it with `package.tree_digest_mismatch` and publishes nothing
 
 ### Requirement: A published package is stored by its tree digest
-A host SHALL publish a verified package at `store/extensions/packages/sha256/<treeSha256>/`, holding the tree manifest as `manifest` and the files under `tree/`, with its lease file `store/extensions/packages/sha256/<treeSha256>.lease` beside it. A host SHALL NOT change a published package's files, other than the collection of `Collection removes only unused packages`.
+A host SHALL publish a verified package at `store/extensions/packages/sha256/<treeSha256>/`, holding the tree manifest as `manifest` and the files under `tree/`, with its lease file `store/extensions/packages/sha256/<treeSha256>.lease` beside it. A host SHALL NOT change a published package's files, except for exclusive-lease repair under `A package is published and recorded in one state-lock scope` or collection under `Collection removes only unused packages`.
 
 #### Scenario: The F# frontend in the store
 - **WHEN** a host publishes the F# frontend package
@@ -312,11 +314,32 @@ A host SHALL create and exclusively lock `store/extensions/packages/.stage-<rand
 - **THEN** only a `.stage-` directory and its owner file exist, no lock or catalog entry names the package, and the next cleanup removes both once the owner lock is free
 
 ### Requirement: A package is published and recorded in one state-lock scope
-Under one hold of the state lock, a host SHALL do these in turn. If the published path holds a tree that passes the activation check, it uses that tree and removes its staging directory. Otherwise it moves any such tree to `.trash-<random>` and renames its staging directory to the published path. It then sets the directory modes, and writes the extension lock and catalog entry through the journal.
+Under one hold of the state lock, a host SHALL fully verify an existing tree before reuse, or publish verified staging if none exists. A bad tree SHALL be replaced only under the repair requirements below. The host SHALL set directory modes and write the lock and catalog through the journal before releasing the state lock.
 
 #### Scenario: Collection cannot run between publication and recording
 - **WHEN** a host publishes the F# frontend while another process runs collection in the same home
 - **THEN** collection runs wholly before the publication or wholly after the recording, and never removes a tree that the new lock names
+
+### Requirement: Install fully verifies an existing tree before reuse
+Before reusing an existing published tree, a host SHALL check the manifest digest against `treeSha256`, exact regular-file names, sizes and read-only modes, and rehash every file against the manifest. Only a tree passing this full check SHALL be reused. The activation-only `VERIFY-B` check SHALL NOT substitute for install verification.
+
+#### Scenario: A same-size changed tree is not reused at install
+- **WHEN** install finds an existing tree whose manifest, names, sizes and modes match, but one file has a changed byte, and its lease is free
+- **THEN** full per-file hashing detects the change, the host takes the exclusive nonwaiting lease, replaces the corrupt tree with verified staging while retaining the same lease file identity, and records only the verified replacement
+
+### Requirement: Repair holds an exclusive nonwaiting lease
+Before changing modes, moving or replacing a bad existing tree, a host SHALL take its lease exclusively without waiting under the state lock. A live shared lease SHALL cause `package.publish_busy`, leaving tree, manifest, modes, lease file, lock and catalog unchanged, with staging left for cleanup. The host SHALL NOT wait for a guest under the state lock, and SHALL retain an acquired exclusive lease through repair and journal recording.
+
+#### Scenario: A corrupt tree with a live lease is left unchanged
+- **WHEN** install finds that same corruption while a running guest holds a shared lease on the existing tree
+- **THEN** exclusive lease acquisition fails without waiting, install refuses with `package.publish_busy`, and tree bytes, manifest, modes, lease identity, lock and catalog remain unchanged; staging is left for cleanup
+
+### Requirement: Repair preserves the lease file identity
+When repairing a bad existing tree, a host SHALL retain the existing lease file's identity. It SHALL NOT unlink, recreate or replace that lease file. With its exclusive lease held, it SHALL move the bad tree to `.trash-<random>` and publish verified staging, then set directory modes and journal the lock and catalog.
+
+#### Scenario: Repair retains the existing lease file
+- **WHEN** the corrupt tree's last shared lease has ended and install can acquire its exclusive lease
+- **THEN** it replaces the bad tree from verified staging while holding that same lease file, and another activation subsequently acquires a shared lease on the same file identity
 
 ### Requirement: A rename never replaces and never copies
 A host SHALL publish with a rename that fails when the target exists: `renameat2` with `RENAME_NOREPLACE` on Linux, `renamex_np` with `RENAME_EXCL` on macOS, `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING` on Windows. It SHALL retry a sharing or access error for up to 10 seconds, then fail with `package.publish_busy`. A cross-volume error SHALL fail with `package.store_not_one_volume`, without copying.
@@ -400,7 +423,7 @@ A package SHALL NOT change who is trusted. A host MAY conclude from a verified p
 - **THEN** the host treats the release as unauthenticated developer content, and the signature grants nothing
 
 ### Requirement: A host that cannot install packages refuses them
-A host that reads the package version but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
+A host that reads `0.1.0-preview.1` but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
 
 #### Scenario: A host without package support
 - **WHEN** a host without package support selects the F# frontend's package artifact

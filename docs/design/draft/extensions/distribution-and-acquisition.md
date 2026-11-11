@@ -166,9 +166,10 @@ the CLI's own build target. A legacy session fallback is insufficient to author
 the guest's complete claim set.
 
 The new output directory contains `release.json`, the executable with its input
-filename, and `<filename>.sha256`. The descriptor uses the existing
-`2.0.0-draft.2` per-artifact JSON contract, retains optional claim members and
-records runtime `process`. No Cargo manifest, source layout, current Git revision
+filename, and `<filename>.sha256`. The descriptor uses the extension state family
+`$schema` URL at `0.1.0-preview.1`, retains optional claim members and records
+runtime `process`. Current authoring belongs to morphir-dotnet, including publication
+for extensions owned by other repositories, as decided in Decision 13. No Cargo manifest, source layout, current Git revision
 or package-version inference is required. Build provenance remains the producer's
 responsibility.
 
@@ -211,17 +212,14 @@ An extension manifest needs:
 
 The runtime kind is independent from the acquisition source. A GitHub Release may contain a portable WASM module, a native process, or a JVM process. A daemon entry may require no artifact at all when policy permits connecting to an existing endpoint.
 
-The `schemaVersion` field is a quoted `"major.minor"` JSON string. This is the
-form records had before SemVer became the default contract versioning scheme;
-readers keep accepting it as version 1, and the next record version uses a
-SemVer string. Schema `"1.0"`
-extension records require matching metadata for every declared frontend or
-backend capability and use these rules for runnable artifacts:
+The installed catalog and lock carry the exact schema URLs and members in
+[Shared extension state contract](#shared-extension-state-contract). There is no
+per-file version or conversion. Runtime rules are:
 
 | Runtime | Platform | Arguments and executable bit | Rights |
-|---|---|---|---|
-| `wasm` | Must be absent. The artifact is portable. | Arguments must be empty and `executable` must be `false`. | The guest has no direct filesystem or network access. |
-| `process` | Required and matched to the host OS and architecture. | The locked arguments and executable mode are used exactly. | The process retains the ambient rights of the user who launches Morphir. |
+| --- | --- | --- | --- |
+| `wasm` | Absent, portable artifact | Empty arguments and `executable: false` | No ambient filesystem or network access |
+| `process` | Required, matched to the host | Locked arguments and executable mode | Ambient rights of the user |
 
 `wasm` is the public runtime name. Extism is the current engine behind that
 adapter and does not appear as a runtime value. A future WASM engine can replace
@@ -233,8 +231,10 @@ inventory and lock. Frontend records lock language IDs, file extensions,
 supported Morphir IR versions, and compile support. Backend records lock target
 IDs, supported Morphir IR versions, and generate support. Normal activation is
 offline. It loads one inventory and lock snapshot, checks that they agree,
-canonicalizes the stored artifact under Morphir home, rehashes it, and verifies
-its runtime-specific mode before starting a session.
+canonicalizes the stored artifact under Morphir home and checks its runtime-specific
+mode before starting a session. A single file is rehashed. A package uses VERIFY-B:
+manifest digest, exact file names, sizes and modes at activation, with every file
+digest verified at install and on an explicit verification request.
 
 The MEP handshake is a second check, not a replacement for the lock:
 
@@ -277,7 +277,7 @@ change and a host release. `extension repository publish` also accepts only a
 single-artifact WASM bundle, so a multi-platform process extension such as the
 Elm MEP extension has no supported path to an installed record.
 
-### Release descriptor, version 2
+### Release descriptor
 
 A release has one descriptor with one entry per artifact. Each entry carries the
 claim set that the artifact returned from `describe` on its own platform:
@@ -289,20 +289,59 @@ The new `morphir-elm` is a MoonBit Wasm extension.
 
 ```json
 {
-  "schemaVersion": "2.0.0-draft.2",
+  "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json",
   "extensionId": "morphir-elm",
   "shortId": "elm",
   "version": "0.3.0",
-  "gitCommit": "<40 hexadecimal characters>",
   "platformDifferences": "none",
   "artifacts": [
     {
-      "platform": "aarch64-apple-darwin",
       "runtime": "process",
-      "filename": "morphir-elm-extension-0.3.0-aarch64-apple-darwin.tgz",
-      "sha256": "<64 hexadecimal characters>",
-      "claims": { "extension": { "types": ["frontend", "workspace"] } }
+      "filename": "morphir-elm-extension-0.3.0-x86_64-unknown-linux-gnu.zip",
+      "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+      "package": {
+        "format": "zip",
+        "root": "bundle",
+        "entryPoint": "run",
+        "executables": [
+          "tools/helper"
+        ],
+        "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+      },
+      "claims": {
+        "protocolVersions": [
+          "0.2.0-draft.1"
+        ],
+        "extension": {
+          "id": "morphir-elm",
+          "name": "Morphir Elm frontend",
+          "version": "0.3.0",
+          "types": [
+            "frontend"
+          ]
+        },
+        "capabilities": {
+          "frontend": {
+            "languages": [
+              {
+                "id": "elm",
+                "fileExtensions": [
+                  ".elm"
+                ]
+              }
+            ],
+            "irVersions": [
+              "4"
+            ],
+            "compile": true
+          }
+        }
+      },
+      "platform": "x86_64-unknown-linux-gnu"
     }
+  ],
+  "critical": [
+    "artifacts.package"
   ]
 }
 ```
@@ -328,7 +367,7 @@ sequenceDiagram
     Guest-->>CI: claims
     CI->>Asm: artifact, sha256, claims
     Asm->>Asm: compare claim sets across artifacts
-    Asm-->>User: descriptor (version 2), artifacts, checksums
+    Asm-->>User: descriptor ($schema), artifacts, checksums
     User->>Repo: publish --bundle (process or wasm)
     Repo->>Repo: verify every digest and checksum
     opt an artifact runs on this host
@@ -400,48 +439,529 @@ Artifacts of one release may report different claim sets. Two guards apply:
 The index record never merges claim sets. A merged claim set would claim a
 capability that some installed artifact does not have.
 
+## Shared extension state contract
+
+This section is the authority for shared member names and values. It replaces
+the legacy Rust structs as the definition. [Extension identity](../../../spec/extensions/identity.md)
+and [extension packages](../../../spec/extensions/packages.md) define semantic
+validation and refusals. The [approval-time audit](../../../spec/extensions/publication-audit.md)
+establishes PKGVER-A: package members are part of the first `0.1.0-preview.1`
+schemas, not an in-place revision of a published contract.
+
+The home root is nonempty `MORPHIR_HOME`, otherwise `.morphir` in the user's
+home directory. Paths below are relative to that root, or to a repository root
+when stated. Every shared JSON file is UTF-8 without a BOM and I-JSON. Duplicate
+member names are refused. Numbers are integers written without fraction or
+exponent and within I-JSON's exact interoperable integer range. Strings compare
+by code point without normalization; array order matters. Absence differs from
+null; only the two saved journal members permit null. Equality between hosts is
+by parsed value, not spacing, member order or line endings.
+
+| Document | Path | Exact schema URL | Unknown members |
+| --- | --- | --- | --- |
+| release | `release.json in a release` | [`release.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json) | ignored unless named by an unknown critical path |
+| index-record | `each extensions/<id>.jsonl history line` | [`index-record.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json) | ignored unless named by an unknown critical path |
+| catalog | `catalog/extensions.json` | [`catalog.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json) | ignored unless named by an unknown critical path |
+| lock | `locks/extensions/<id>.json` | [`lock.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json) | refused |
+| journal | `locks/extensions/<id>.json.transaction` | [`journal.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/journal.schema.json) | refused |
+| repositories | `config/extensions/repositories.json` | [`repositories.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/repositories.schema.json) | refused |
+| claims | `standalone morphir.extension.describe result` | [`claims.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json) | ignored unless named by an unknown critical path |
+
+The URL is required and written first. No document has `schemaVersion`.
+Embedded claims have neither URL nor version; the enclosing schema covers them.
+Unknown members follow the enclosing document's rule recursively at every object,
+including package metadata, platform/source/provenance, capability summaries,
+languages and embedded claims. The release, index, catalog and standalone claims
+contexts are open unless critical; lock, journal and repositories contexts are
+closed, including claims embedded in a lock. The journal's byte arrays are checked
+as bytes here; decoded saved documents retain their own schema's member policy.
+Known protocol fields of workspace, validator and model transport follow the
+[MEP Smithy model](https://github.com/finos/morphir/blob/main/spec/mep/smithy/model/handshake.smithy) and
+[model transport](https://github.com/finos/morphir/blob/main/spec/mep/smithy/model/model-transport.smithy).
+A transform capability has no named fields in this version.
+JSON Schemas express shape;
+the host still checks critical paths, sorted ids, binding equality, SemVer ranges,
+runtime constraints, safe paths, recovery and archive contents.
+
+The catalog's `extensions` array holds each id once in ascending byte order.
+The reader refuses the second of duplicate ids or the first entry out of order,
+naming its one-based position. There is one catalog and one lock directory for
+single-segment and dotted ids. Full ids acquire only fixed suffixes.
+
+### Release descriptor members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json` | required | no | Exact URL for this document, written first. |
+| `extensionId` | string | required | no | Whole extension id, following the normative identity rule. |
+| `shortId` | string | required | no | Lowercase portable release/tag token. It does not replace extensionId. |
+| `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
+| `gitCommit` | string | optional | no | Optional lowercase 40-digit source commit; no inference from the checkout. |
+| `platformDifferences` | `none`, `declared` | required | no | none requires equal artifact claims; declared permits intentional differences reported to users. |
+| `artifacts` | array of `bundleArtifact` | required | no | Nonempty array in descriptor/index order. |
+| `critical` | array of string | optional | no | Paths understood by the reader, including artifacts.package or extensions.package whenever present. |
+| `requires` | object | optional | no | Host requirements object. |
+
+### Index record members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/index-record.schema.json` | required | no | Exact URL for this document, written first. |
+| `id` | string | required | no | Whole extension id in an index record, or the protocol-defined capability identifier. |
+| `name` | string | required | no | Nonempty display name. |
+| `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
+| `channels` | array of string | required | no | Moving channel names. Exact selection never follows them. |
+| `mepVersions` | array of string | optional | no | Protocol versions projected unchanged from claims.protocolVersions. |
+| `capabilities` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | optional | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
+| `frontend` | object | optional | no | Required when frontend is a declared kind; exactly the corresponding claims metadata. |
+| `backend` | object | optional | no | Required when backend is a declared kind; exactly the corresponding claims metadata. |
+| `artifacts` | array of `indexArtifact` | required | no | Nonempty array in descriptor/index order. |
+| `critical` | array of string | optional | no | Paths understood by the reader, including artifacts.package or extensions.package whenever present. |
+| `requires` | object | optional | no | Host requirements object. |
+
+### Catalog members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json` | required | no | Exact URL for this document, written first. |
+| `extensions` | array of `catalogEntry` | required | no | Unique entries in ascending byte order of extensionId. Readers refuse duplicates and the first entry out of order. |
+| `critical` | array of string | optional | no | Paths understood by the reader, including artifacts.package or extensions.package whenever present. |
+
+### Extension lock members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/lock.schema.json` | required | no | Exact URL for this document, written first. |
+| `selection` | object | required | no | Requested channel or exact release. |
+| `extensionId` | string | required | no | Whole extension id, following the normative identity rule. |
+| `name` | string | required | no | Nonempty display name. |
+| `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
+| `index` | object | required | no | Exact repository provenance. The lock also pins embedded claims inside this object. |
+| `source` | object | required | no | Controlled local-file artifact source. |
+| `runtime` | `process`, `wasm` | required | no | process or wasm. |
+| `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
+| `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
+| `digest` | string | required | no | Lowercase SHA-256 of delivered bytes; the archive digest for a package. |
+| `capabilities` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
+| `mepVersions` | array of string | required | no | Protocol versions projected unchanged from claims.protocolVersions. |
+| `frontend` | object | optional | no | Required when frontend is a declared kind; exactly the corresponding claims metadata. |
+| `backend` | object | optional | no | Required when backend is a declared kind; exactly the corresponding claims metadata. |
+| `executable` | boolean | required | no | Runtime execution mode; false for wasm. Package file modes come from the tree manifest. |
+| `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
+
+### Transaction journal members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/journal.schema.json` | required | no | Exact URL for this document, written first. |
+| `nextLock` | null or array of integer | required | yes | Required byte array or null. Exact UTF-8 lock bytes; null means remove the lock. |
+| `nextCatalog` | null or array of integer | required | yes | Required byte array or null. Exact UTF-8 catalog bytes; null means remove the catalog. |
+
+### Repositories configuration members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/repositories.schema.json` | required | no | Exact URL for this document, written first. |
+| `repositories` | array of object | required | no | Unique repository names, in ascending byte order by name when written. |
+
+### Standalone capability claim set members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json` | required | no | Exact URL for this document, written first. |
+| `protocolVersions` | array of string | required | no | Nonempty canonical MEP SemVer strings. Current hosts negotiate the 0.2 line. |
+| `extension` | object | required | no | Protocol extension identity, name, version and declared capability kinds. |
+| `capabilities` | object | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
+| `critical` | array of string | optional | no | Paths understood by the reader, including artifacts.package or extensions.package whenever present. |
+| `requires` | object | optional | no | Host requirements object. |
+
+### Release artifact members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `runtime` | `process`, `wasm` | required | no | process or wasm. |
+| `sha256` | string | required | no | Lowercase SHA-256 of delivered bytes, the archive for packages. |
+| `filename` | string | required | no | Portable single filename of the delivered artifact. A process archive without package is refused. |
+| `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
+| `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
+| `platform` | string | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
+
+### Index artifact members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `runtime` | `process`, `wasm` | required | no | process or wasm. |
+| `sha256` | string | required | no | Lowercase SHA-256 of delivered bytes, the archive for packages. |
+| `filename` | string | required | no | Portable single filename of the delivered artifact. A process archive without package is refused. |
+| `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
+| `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
+| `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
+| `source` | object | required | no | Controlled local-file artifact source. |
+| `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
+| `executable` | boolean | required | no | Runtime execution mode; false for wasm. Package file modes come from the tree manifest. |
+| `claimCheck` | `probed`, `unchecked` | required | no | probed or unchecked, records this writer's check, never inferred from another phase. |
+| `probeSource` | `describe`, `session-fallback` | optional | no | describe or session-fallback; present only when a probe supplied claims. |
+
+### Installed catalog entry members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `extensionId` | string | required | no | Whole extension id, following the normative identity rule. |
+| `name` | string | required | no | Nonempty display name. |
+| `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
+| `runtime` | `process`, `wasm` | required | no | process or wasm. |
+| `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
+| `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
+| `digest` | string | required | no | Lowercase SHA-256 of delivered bytes; the archive digest for a package. |
+| `storePath` | string | required | no | Home-relative forward-slash artifact path. A package records `store/extensions/packages/sha256/<treeSha256>/tree/<entryPoint>`. |
+| `capabilities` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
+| `mepVersions` | array of string | required | no | Protocol versions projected unchanged from claims.protocolVersions. |
+| `index` | object | required | no | Exact repository provenance. The lock also pins embedded claims inside this object. |
+| `frontend` | object | optional | no | Required when frontend is a declared kind; exactly the corresponding claims metadata. |
+| `backend` | object | optional | no | Required when backend is a declared kind; exactly the corresponding claims metadata. |
+| `executable` | boolean | required | no | Runtime execution mode; false for wasm. Package file modes come from the tree manifest. |
+| `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
+| `claimCheck` | `probed`, `unchecked` | required | no | probed or unchecked, records this writer's check, never inferred from another phase. |
+| `probeSource` | `describe`, `session-fallback` | optional | no | describe or session-fallback; present only when a probe supplied claims. |
+| `critical` | array of string | optional | no | Paths understood by the reader, including artifacts.package or extensions.package whenever present. |
+| `requires` | object | optional | no | Host requirements object. |
+| `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
+
+### Package members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `format` | `zip`, `tar.gz` | required | no | zip or tar.gz, with a matching .zip, .tar.gz or .tgz filename ignoring ASCII case. |
+| `root` | string | optional | no | Optional archive prefix stripped before tree paths; no leading or trailing slash. |
+| `entryPoint` | string | required | no | Tree path of the file to start, executable by definition. |
+| `executables` | array of string | optional | no | Additional executable tree paths. Each must name a file. |
+| `treeSha256` | string | required | no | Lowercase SHA-256 of the canonical tree manifest. |
+
+### Platform members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `os` | string | required | no | Lowercase portable operating-system token. |
+| `arch` | string | required | no | Lowercase architecture token; underscores allowed. |
+
+### Local source members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `kind` | `local-file` | required | no | Tagged source, endpoint or selection case. |
+| `path` | string | required | no | Ordinary absolute canonical path for endpoints; safe repository-relative path for local-file sources. |
+
+### Repository provenance members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `kind` | `local-directory` | required | no | Tagged source, endpoint or selection case. |
+| `identity` | string | required | no | Ordinary absolute canonical repository root, compared by bytes. |
+| `revision` | string | required | no | Lowercase SHA-256 of the exact history file bytes. |
+
+### Lock provenance members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `kind` | `local-directory` | required | no | Tagged source, endpoint or selection case. |
+| `identity` | string | required | no | Ordinary absolute canonical repository root, compared by bytes. |
+| `revision` | string | required | no | Lowercase SHA-256 of the exact history file bytes. |
+| `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
+
+### Frontend metadata members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `languages` | array of object | required | no | Nonempty supported language declarations. |
+| `irVersions` | array of string | required | no | Nonempty supported Morphir IR format strings, under their own IR authority. |
+| `compile` | boolean | required | no | Whether frontend compilation is supported. |
+| `incremental` | boolean | optional | no | Optional protocol capability flag. |
+| `fragments` | boolean | optional | no | Optional protocol capability flag. |
+| `multiDocument` | boolean | optional | no | Optional protocol capability flag. |
+
+### Backend metadata members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `targets` | array of string | required | no | Nonempty supported backend target ids. |
+| `irVersions` | array of string | required | no | Nonempty supported Morphir IR format strings, under their own IR authority. |
+| `generate` | boolean | required | no | Whether backend generation is supported. |
+
+### Selection members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `kind` | `channel`, `exact` | required | no | Tagged source, endpoint or selection case. |
+| `value` | string | required | no | Canonical SemVer for exact; channel token for channel. |
+
+### Repository entry members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `name` | string | required | no | Nonempty display name. |
+| `endpoint` | object | required | no | Local repository endpoint. |
+| `state` | `enabled`, `disabled` | required | no | enabled or disabled. |
+
+### Repository endpoint members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `kind` | `local-directory` | required | no | Tagged source, endpoint or selection case. |
+| `path` | string | required | no | Ordinary absolute canonical path for endpoints; safe repository-relative path for local-file sources. |
+
+### Claim extension members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | string | required | no | Whole extension id in an index record, or the protocol-defined capability identifier. |
+| `name` | string | required | no | Nonempty display name. |
+| `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
+| `types` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Known kinds: frontend, backend, transform, validator, workspace. |
+| `description` | string | optional | no | Optional publisher description. |
+| `license` | string | optional | no | Optional license identifier. |
+| `author` | string | optional | no | Protocol-defined publisher display text; grants no trust. |
+| `homepage` | string | optional | no | Protocol-defined homepage text. |
+| `min_sdk_version` | string | optional | no | Protocol-defined minimum SDK version, retaining its wire spelling. |
+
+### Claim capability members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `frontend` | object | optional | no | Required when frontend is a declared kind; exactly the corresponding claims metadata. |
+| `backend` | object | optional | no | Required when backend is a declared kind; exactly the corresponding claims metadata. |
+| `workspace` | object | optional | no | Protocol-defined value; see the capability claims section. |
+| `validator` | object | optional | no | Protocol-defined value; see the capability claims section. |
+| `transform` | object | optional | no | Protocol-defined value; see the capability claims section. |
+| `modelTransport` | object | optional | no | Protocol-defined value; see the capability claims section. |
+| `streaming` | boolean | optional | no | Protocol-defined value; see the capability claims section. |
+| `incremental` | boolean | optional | no | Optional protocol capability flag. |
+| `cancellation` | boolean | optional | no | Protocol-defined value; see the capability claims section. |
+| `progress` | boolean | optional | no | Protocol-defined value; see the capability claims section. |
+
+The following nested protocol members are named in both open and closed claims
+contexts. Their presence and types follow the existing MEP model, with the
+enclosing document's recursive member policy. They do not add protocol versions.
+
+| Object | Members and types | Required members |
+| --- | --- | --- |
+| `workspace` | `protocolVersions`: array of string; `discover`: boolean | both |
+| `validator` | `irVersions`: array of string; `rules`: array of rule objects | `irVersions`; absent `rules` means empty |
+| validator rule | `id`: string; `code`: string | both |
+| `modelTransport` | `tuples`: array of tuple objects; `limits`: limits object; `guarantees`: array of string | `tuples`, `limits`; absent `guarantees` means empty |
+| model transport tuple | `operation`, `profile`, `codec`, `envelopeVersion`, `irVersion`: string | all five |
+| model transport limits | `maxEncodedBytes`, `maxDecodedBytes`, `maxDepth`, `maxNodes`: positive integer | all four |
+| `transform` | no named members in this version | none |
+
+None of these named members permits null. A closed lock refuses extra members at
+each of these levels. An open document ignores them unless critical.
+
+### Host requirement members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `host` | array of string | required | no | Nonempty list of single SemVer comparators; every comparator must hold. |
+
+### Language metadata members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | string | required | no | Whole extension id in an index record, or the protocol-defined capability identifier. |
+| `fileExtensions` | array of string | required | no | Nonempty unique, trimmed, dot-prefixed suffixes. |
+
+### Values and binding
+
+The release descriptor uses `extensionId`; the index record keeps its existing
+`id` spelling. Both equal every artifact's `claims.extension.id` and the
+session's `extension.id` byte for byte. Name, version, capability kinds and
+frontend/backend metadata in an installed entry and its lock agree with their
+claim set. The lock pins the full supplied claims at `index.claims`, including
+optional members. A `requires.host` range must be understood and satisfied.
+WASM has no platform, empty arguments and executable false. Process artifacts
+have a platform. A bundle contains its descriptor, every named artifact and the
+checksum file `<filename>.sha256` beside each artifact, with no extra files.
+
+Index sources are `{kind: "local-file", path: "artifacts/run"}`. The source
+path is relative to the controlled repository and cannot escape it. Provenance
+is `{kind: "local-directory", identity: "/repo", revision: "<sha256>"}`.
+A selection is `{kind: "exact", value: "0.6.0"}` or
+`{kind: "channel", value: "stable"}`. Repositories have portable names of at
+most 64 characters; state is `enabled` or `disabled`. Hosts validate those
+values at the boundary. A process filename ending in .zip, .tar.gz, .tgz or .tar
+without `package`, ignoring ASCII case, is refused as
+`package.archive_without_package`. No archive is launched as a single file.
+
+Package metadata is copied unchanged into all four package-bearing documents.
+Descriptor/index `critical` includes `artifacts.package`; catalog critical
+includes `extensions.package`. The closed lock needs no critical marker.
+Both archive digest and tree digest remain locked. Executable flags in the
+canonical manifest come from entryPoint and executables, never archive modes.
+
+### History, locks and path spelling
+
+Read a history whole. Each record has its own index-record `$schema`; there is
+no header line. Split on LF, count from one, skip JSON-whitespace-only lines
+including CR, and count skipped lines. Refuse an empty history or the first
+noncurrent line, naming the file and line, and select no release. A publisher
+refuses to append to such a file and leaves it unchanged.
+
+| Lock file | Scope | Content |
+| --- | --- | --- |
+| `locks/extensions.state.lock` | Before old-state detection, recovery and every catalog/lock/journal read through the last write/removal | Empty, never removed |
+| `locks/extensions.repositories.lock` | Every repositories configuration read-modify-write | Empty, never removed |
+| Repository `.publish.lock` | Before reading history through publication's last write | Empty, never removed |
+
+Never hold the state and repositories locks together. Read repositories under
+their lock, release it, then take the state lock. On Unix open locks directly
+with `O_RDWR | O_CREAT | O_CLOEXEC`, mode 0644, then blocking
+`flock(LOCK_EX)`. Do not substitute fcntl record locks. A .NET reader must
+avoid the implicit flock taken by its normal file open, through direct open or
+`System.IO.DisableFileLocking`. On Windows open with read/write access and
+`FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`, then
+`LockFileEx(LOCKFILE_EXCLUSIVE_LOCK)`, without FAIL_IMMEDIATELY, from offset
+zero across low/high lengths 0xFFFFFFFF/0xFFFFFFFF. A second open succeeds and
+waits. A host may report a timeout and stop, never continue unlocked.
+
+Network-file-system homes are unsupported. A host able to detect one refuses
+state commands and names the home; detection is not required. Local-repository
+publishers use the same lock primitive and opening rules.
+
+Write `endpoint.path` and `index.identity` from realpath on Unix or
+GetFinalPathNameByHandleW with FILE_NAME_NORMALIZED and VOLUME_NAME_DOS on
+Windows. Drop the verbatim prefix, translate its UNC form to ordinary UNC,
+uppercase the drive letter and omit a trailing separator except at a volume
+root. Readers refuse a verbatim prefix and compare paths by bytes. Write each
+shared-file replacement to a sibling `.stage-<random>`, flush and rename.
+Listing readers ignore dot-prefixed entries and nonregular files.
+
+### Transactions and recovery
+
+Only one journal exists at a time. Its two saved members hold exact bytes as
+decimal integers 0 through 255, or null for absence. The journal cases supply
+explicit UTF-8 writer output strings; their saved arrays equal those bytes.
+Parsed expected documents constrain content without mandating a serializer.
+Under the state lock first
+detect old state, before replaying anything. A catalog, extension lock, journal
+or repositories file with missing/other schema URL is old state. More than one
+journal or a journal failing full saved-document validation is old state too.
+Detection reads only those schema members and the journals in full.
+
+If no old state exists, validate each non-null saved lock/catalog as its reader
+would, including ids, order, critical paths and current URLs. Recover the lock,
+then catalog, then remove the journal. Null removes the corresponding file.
+A failure to remove a committed journal fails the command. The next operation
+must finish that recovery before writing its own journal. Whole-document and
+byte-array examples are in [the shared cases](../../../spec/extensions/identity-cases.json).
+
+### Old homes and morphir doctor
+
+Decisions 10 and 11 define one repair operation, called by both automatic
+commands and `morphir doctor --fix`. It reads, replays and converts no old
+state. Any old file makes every extension's state old. A state command shows
+what would move, asks on stderr, releases the state lock while asking, then
+reacquires it and detects again. If the old state differs, show it and ask again.
+`--yes` skips the question and moves what is found. A declined prompt or no
+terminal without `--yes` refuses without changing anything; name the first
+old file, `morphir doctor --fix` and `--yes`.
+
+Under the state lock move every journal and lock in `locks/extensions/`, then
+`catalog/extensions.json`, into `backups/extensions-YYYYMMDDTHHMMSSZ/` in
+UTC, preserving home-relative paths. Also move repositories.json when it is
+old state. Do not move the store, current repositories configuration, state
+lock or repositories lock. Write an empty `.complete` last and report the
+backup on stderr. Continue the original command against empty extension state
+in the same state-lock hold. Uninstall then reports not installed.
+
+If exactly one backup lacks .complete, complete that backup rather than start
+another. With no old state left, any state command except report-only doctor
+only writes the marker without asking. More than one unmarked backup, a target
+file collision or a new backup name collision is refused and named. Completed
+backups are never reused. A later old CLI write requires a new backup.
+
+`morphir doctor` reports findings and the files repair would move, changes
+nothing, writes results to stdout and messages to stderr. Exit 0 means nothing
+to fix; 1 means findings remain; 2 means it did not run, such as unknown options.
+`morphir doctor --fix` shows the move and prompts unless --yes. It completes
+the same operation above and exits 0 when nothing remains, 1 otherwise. A
+second run changes nothing and exits 0. This contract adds no other doctor work.
+
+### Package store and lifetime
+
+`store/extensions/packages/.stage-<random>.owner` sits beside the matching
+staging directory. Exclusively lock the owner before creating that directory,
+unpack and fully verify outside the state lock, and retain the owner until
+publication or removal. Clean another stage only with a nonwaiting owner lock,
+or when its owner file is absent.
+
+Publish at `store/extensions/packages/sha256/<treeSha256>/`, containing
+`manifest` and `tree/`; its `<treeSha256>.lease` is beside the directory.
+Under one state-lock hold fully verify an existing tree before reuse, including
+manifest digest, exact regular-file names, sizes, modes and every file's hash.
+VERIFY-B is only the activation check. If full verification fails, first take the
+existing tree's exclusive nonwaiting lease before changing modes, moving it to
+trash or replacing it. A live shared lease causes `package.publish_busy` with no
+change to the published tree, manifest, modes, lease, lock or catalog; leave
+staging for cleanup. Never unlink or replace the lease file during repair, and
+retain its identity and exclusive lease through the journal commit. Publish
+verified staging by a no-replace rename, set read-only modes and journal the
+lock/catalog. This corrects the inherited STORE-1 reuse and repair procedure;
+VERIFY-B at activation and LAUNCH-A remain approved. Hashing an existing tree
+under the state lock takes time proportional to its bytes, so install lock holds
+are not promised to last milliseconds. Use Linux renameat2 RENAME_NOREPLACE, macOS
+renamex_np RENAME_EXCL, Windows MoveFileExW without REPLACE_EXISTING. Retry
+sharing/access errors for up to ten seconds; refuse cross-volume errors without
+copying. Modes are 0555 for executable files/directories and 0444 otherwise on
+Unix; Windows sets each file read-only and writes no alternate data streams.
+
+LAUNCH-A starts the absolute entry point from this store with locked arguments,
+in the project directory or a new private directory outside the store. Under
+the state lock take a shared lease and keep it for the whole process tree.
+Unix passes an inherited lease descriptor into a new process group; Windows
+uses a no-breakaway job with KILL_ON_JOB_CLOSE. End remaining descendants before
+releasing the lease. Uninstall/update changes records and never deletes trees.
+Explicit collection holds the state lock, checks every live extension lock and
+takes an exclusive nonwaiting lease before clearing modes, renaming to .trash
+and removing. Keep a package on failed rename or live lease. Until toolchain
+receipt binding is separately defined, any toolchains/generations receipt
+prevents all package collection. See the normative package page for all bounds,
+archive rules, refusal order and trust rules.
+
 ## Compatibility and release paths
 
-Every document that carries a claim set follows the same rules:
+These rules apply to the release descriptor, each index record and the installed catalog.
 
-1. **Must-ignore unless critical.** A reader ignores an optional member it does
-   not understand, and refuses a member named in `critical` that it does not
-   understand.
-2. **Schema ranges.** A host reads the current released major and the previous released
-   major of the descriptor and of each record, plus the exact drafts it lists.
-   A publisher writes the highest version that the oldest host it targets
-   reads. Versions follow the default
-   [SemVer contract versioning](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md)
-   rule: a draft such as `2.0.0-draft.2` matches only exactly.
-3. **Minimum host.** An extension that needs a newer host states `requires.host`
-   and lists it in `critical`.
-4. **`describe` is optional.** A host falls back to a session when an extension
-   does not implement it.
-5. **Old records are converted.** A record without a claim set gets one
-   built from its capability keys, with `claimCheck` `unchecked` rather than
-   `probed`. Installation and the first session verify it as usual.
-6. **Draft.1 records are converted.** The version-2 formats are at
-   `2.0.0-draft.2`, with the claim set at `claimsVersion` `0.1.0-draft.2`.
-   Their first draft, `2.0.0-draft.1`, named the member `statement`, the
-   provenance member `statementSource` (`declared` or `probed`) and the
-   critical-path prefix `statement.`. A reader still accepts a draft.1
-   descriptor, index record or installed record and converts it: `declared`
-   becomes `unchecked`, and a `statement.` path becomes `claims.`. A writer
-   emits only draft.2. A record that mixes draft.1 and draft.2 names or
-   versions is refused. Hosts `0.4.0-beta.6` and earlier cannot read draft.2.
+1. **Must-ignore unless critical.** Ignore unknown members unless the top-level
+   `critical` array names their path. Refuse every unknown critical path. An array
+   element is named through its array, for example `artifacts.package` or
+   `extensions.note`. This applies within embedded claims too.
+2. **Exact schema URLs.** Read only the seven file URLs under
+   `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/`, listed below.
+   Match as exact text. A reader SHALL NOT read earlier versions, any other
+   prerelease, or a document with `schemaVersion` in place of `$schema`.
+   No conversion between versions is defined. Decision 15A gives this family
+   one version, carried by the published schema URL.
+3. **Minimum host.** An extension needing a newer host states `requires.host`
+   and names it in `critical`. It is a nonempty array of single SemVer
+   comparators, all of which must hold. Use the language's established SemVer library.
+4. **Describe is optional.** Session fallback remains subject to the protocol's
+   agreement rule. A standalone describe result has the claims schema URL;
+   embedded claims carry no URL or version of their own.
 
-These rules let a host and an extension release independently:
+The previous host compatibility suite belonged to the Rust CLI, which Decision 16
+deletes. It is not the gate for a current host, and passing its earlier bundles
+does not establish current-host compatibility.
 
 | Release path | What must hold | Gate |
-|---|---|---|
-| Host only | The new host reads every supported older descriptor, record and extension (rules 2, 4 and 5). | The host compatibility suite: CI runs the released bundles pinned in `.config/published-extension-bundles.toml` through the new host. |
-| Extension only | The extension works with the host release it targets, or states `requires.host` (rules 1 and 3). | The extension's release check runs its bundle through the pinned host release. |
-| Both | The host releases first, then the extension. They never have to release at the same time. | The host suite passes and the host releases; the extension pin moves and its release check passes. |
+| --- | --- | --- |
+| Host only | Current exact schema URLs and every identity/package rule | Shared case data through the .NET runner, plus dotted F# installation, recipe resolution and readiness of identity task 5.1 |
+| Extension only | A current descriptor and history; declared minimum host if needed | Its release check through the host it targets |
+| Both | Publish the host that implements these contracts, then a new extension release | Both gates above |
 
-A host released before these rules existed follows none of them. The first host
-release that implements them is therefore a host-only release that still reads
-version-1 descriptors and records. Extensions keep writing version 1 until that
-release is pinned, and adopt claim sets and version 2 afterward.
+Existing extension releases and their assets stay unchanged. Current hosts refuse
+their earlier descriptors. Decision 13 assigns new releases to morphir-dotnet's
+publisher. Each first current release starts its history again with only current
+lines. Until such releases exist, the unchanged old releases remain uninstallable
+by current hosts. The pending publisher-reading confirmation in the approved
+change remains recorded; it is not a decision needed for these shared files.
 
 ## Morphir Scala example
 
@@ -486,9 +1006,9 @@ independently built artifact through the production host boundary.
 9. Formally postponed on 2026-10-21: qualify an operating-system sandbox in a separate platform-specific design. Current process probes retain the user's rights and existing launch controls.
 
 The [beta.10 claims decision](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0008-beta10-claims-gate-dispositions.md)
-records these dispositions and the corresponding #921 Q1-Q4 gates. Claims stay at
-`0.1.0-draft.2` and descriptor, index and catalog formats at `2.0.0-draft.2` until
-an explicit adoption and stability review.
+records these dispositions and the corresponding #921 Q1-Q4 gates. Those are the historical beta.10 dispositions. Decisions 15/15A and the approved
+identity and package changes now define the extension state family at
+`0.1.0-preview.1`; the historical releases are not converted.
 
 ## Non-goals
 

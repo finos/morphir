@@ -261,11 +261,11 @@ reported; no manifest declares a capability by hand. The working specification i
 
 The 2026-10-21 [beta.10 claims decision](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0008-beta10-claims-gate-dispositions.md)
 records parsed-value comparison for complete claim sets. Object key order and
-whitespace do not matter; array order does. Numbers use the Rust host's parsed
-JSON value equality, without an additional numeric normalization rule. Consumers
-must not assume that `1` and `1.0` compare equal. No canonical byte encoding for
-signatures is defined. The claim and record formats remain exact draft.2
-contracts pending adoption and stability review. WASM publish/install probes,
+whitespace do not matter; array order does. Numbers in shared claim documents are integers without fractions or exponents;
+`1.0` is refused. No canonical byte encoding for
+signatures is defined. The current claim and record formats use the extension state family
+`0.1.0-preview.1` schema URLs. Shared-document I-JSON equality follows the
+[distribution contract](./distribution-and-acquisition.md#shared-extension-state-contract). WASM publish/install probes,
 claim signatures and process sandboxing retain the boundaries recorded there.
 
 The 0.3.0 example below uses the JavaScript extension's historical `morphir-elm`
@@ -274,8 +274,8 @@ MoonBit Wasm extension using MEP `0.2.0-draft.1` and the `morphir-bytes-v1` ABI.
 
 ```json
 {
-  "claimsVersion": "0.1.0-draft.2",
-  "protocolVersions": ["0.1"],
+  "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json",
+  "protocolVersions": ["0.2.0-draft.1"],
   "extension": {
     "id": "morphir-elm",
     "name": "Morphir Elm frontend",
@@ -305,6 +305,12 @@ such as `[">=0.4.0-alpha.7", "<0.5.0"]`, all of which must hold. Single
 comparators parse the same way in the Rust `semver` crate and in `@std/semver`;
 combined range strings do not, because the two libraries separate comparators
 differently. A host outside the range refuses and names the range.
+
+When bound to a release, MEP `extension.id` follows the [normative extension
+identity grammar](../../../spec/extensions/identity.md) and equals the descriptor
+id byte for byte. The claims schema change does not change MEP protocol versions;
+current negotiation remains the 0.2 line. Historical 0.1 examples below describe
+prior sessions, not an additional current protocol.
 
 ### `morphir.extension.describe`
 
@@ -898,11 +904,13 @@ compatibility with each other. A new contract starts at `0.1.0-draft.1` and move
 to the `1.0.0-draft` line once its shape is settled. The workspace discovery
 protocol moves from the integer `1` to `0.1.0-draft.1`.
 
-The capability claim set is at `claimsVersion` `0.1.0-draft.2`. Its first draft,
-`0.1.0-draft.1`, called the document a capability statement and its version
-member `statementVersion`. A host still reads a draft.1 document from an older
-extension and converts it to draft.2; the extension SDK writes only draft.2. Hosts
-`0.4.0-beta.6` and earlier read only draft.1. The knowledge-base decision
+The capability claim set belongs to the extension state family at
+`0.1.0-preview.1`. A standalone `describe` result carries the exact `$schema`
+`https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/claims.schema.json`
+in place of `claimsVersion`; embedded claims carry no URL or version. A current
+reader SHALL NOT read or convert earlier claim formats. Historical draft.1
+called the document a capability statement and used `statementVersion`; draft.2
+renamed it. These historical documents are not current inputs. The knowledge-base decision
 [Extensions make capability claims](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0007-extensions-make-capability-claims.md)
 records the rename.
 
