@@ -162,6 +162,22 @@ _Avoid_: Extension catalog, extension repository, loaded-extension registry
 
 ## Tools
 
+**Local developer candidate**:
+An explicitly supplied toolchain input whose provenance identifies developer-provided bytes without authenticating a production publisher.
+_Avoid_: Authenticated release, installed generation
+
+**Toolchain generation**:
+One immutable installed host-and-provider selection, including the launch metadata and readiness observations bound to its identity.
+_Avoid_: Candidate archive, mutable global default
+
+**Activation record**:
+The installer-validated identity and launch facts for one installed provider, retained independently of later inventory replacement.
+_Avoid_: Extension id alone, unchecked catalog JSON
+
+**Readiness expectations**:
+Captured provider facts that an unpublished setup compares with current installed inventory before acquiring activation ownership.
+_Avoid_: Preparation authority, provisional receipt
+
 **Tool**:
 An independently packaged Morphir executable or application launched by a person.
 _Avoid_: Extension, component

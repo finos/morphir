@@ -39,6 +39,17 @@ bootstrap morphirup -> select host + deployment + toolset
 
 ## Capabilities
 
+> **Composed local generation contract, 12 November 2026 UTC.** The next
+> installed-process-provider slice uses the separately exact
+> [local-toolchains preview.2 family](../../../docs/spec/toolchain/local-composed-generation.md).
+> Generation identity binds installer-validated launch records and actual
+> workflow tuples, completed checks and outputs. Unpublished readiness compares
+> captured expectations with current validated inventory under the state lock;
+> only supported published generations have retained-record authority. Replacing
+> global records cannot invalidate a published generation. Preview.1 bytes stay
+> unchanged. This reviewed contract delta is not runtime adoption, acquired
+> qualification or completion of the full acceptance tasks.
+
 ### New Capabilities
 
 - `deployment/dotnet-profiles`: the supported .NET deployment offerings, capabilities, prerequisite reporting and release identity.

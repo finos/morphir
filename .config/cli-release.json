@@ -3,10 +3,10 @@
 	"source": {
 		"repository": "https://github.com/finos/morphir-dotnet",
 		"submodule": "ecosystem/morphir-dotnet",
-		"commit": "0885f17264856521f0218151693c2b08810790ec",
+		"commit": "3da850d7b518d6cb9590d5cdb71f1a9c2f2b1a92",
 		"candidate": {
-			"pullRequest": "https://github.com/finos/morphir-dotnet/pull/590",
-			"reason": "Merged finos/morphir-dotnet#590 at 0885f17264856521f0218151693c2b08810790ec contains the MCK dispatch, reusable cli-offering.yml and shared install-tool-package.ps1. It is a delivery candidate on source main, not an accepted source release or acquired-artifact qualification. Keep this marker until the source version/tag, forward-only parent version and release qualification gates pass. No version, tag, release or dispatch is authorized by this pin."
+			"pullRequest": "https://github.com/finos/morphir-dotnet/pull/594",
+			"reason": "Merged finos/morphir-dotnet#594 at 3da850d7b518d6cb9590d5cdb71f1a9c2f2b1a92 preserves #590 dispatch and delivery helpers and adds the local managed F# milestone. Its actual first parent includes concurrent #599 dependency patches, so the merged dependency closure still needs qualification beyond the successful #594 head checks. The demonstrated local manager artifact remains producer ad24ce68, not this merge. This is a source delivery candidate, not an accepted release or acquired-artifact qualification. Keep the marker until source version/tag, forward-only parent version and release qualification gates pass. No version, tag, release or dispatch is authorized by this pin."
 		}
 	},
 	"tagPrefix": "v",
@@ -33,7 +33,7 @@
 		{
 			"scenario": "packaged-input",
 			"platforms": ["osx-x64", "osx-arm64"],
-			"reason": "A packaged input scenario fails on macOS where /var resolves to /private/var. Its result is recorded but never counted as qualified until the failure is triaged.",
+			"reason": "Historical packaged input failure on macOS where /var resolves to /private/var remains unqualified. The source fix from #584 is now included in the delivery pin, but new exact acquired-artifact macOS evidence is still required before this pending marker can be removed.",
 			"evidence": ["https://github.com/finos/morphir-dotnet/pull/570", "finos/morphir-dotnet workflow wasm-offerings.yml, run 42851276092"]
 		}
 	]
