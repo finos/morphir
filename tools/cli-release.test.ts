@@ -208,7 +208,7 @@ describe("release workflow routing", () => {
 	});
 
 	test("a candidate pin builds and qualifies but cannot publish", () => {
-		expect(config.source.candidate?.pullRequest).toBe("https://github.com/finos/morphir-dotnet/pull/590");
+		expect(config.source.candidate?.pullRequest).toBe("https://github.com/finos/morphir-dotnet/pull/594");
 		expect(releaseBlocker(config)).toContain("marked candidate");
 		expect(releaseBlocker({ ...config, source: { ...config.source, candidate: undefined } })).toBeUndefined();
 	});

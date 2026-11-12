@@ -268,6 +268,10 @@ morphirup run --offline -- compile</code></pre>
 <p>Rollback selects a verified prior complete generation, subject to known revocations. Active run leases protect in-use files. Cleanup removes only unreferenced manager-owned generations and disposable caches; trusted roots, known revocations and locks survive. Interrupted self-update stages a new manager executable and replaces it only through a platform-qualified helper after the old executable exits.</p>
 <p>No unresolved product decision is hidden in the implementation tasks. Signing-key custody, exact installer endpoint names and binary-size targets can be established during release preparation without changing the contracts. Before implementation, attach this proposal to its owning Beads epic and cross-repository tasks after tracker recovery.</p>
 
+<h2 id="local-composed-generations">Local composed-generation contract</h2>
+<p>The next local process-provider journey uses <a href="../../../docs/spec/toolchain/local-composed-generation.md">local-toolchains/0.1.0-preview.2</a>, preserving the exact preview.1 host-only branch. Candidate input identity and installed generation identity are separate. The generation binds installer-validated immutable launch records and actual workflow tuples, completed checks and outputs.</p>
+<p>Before publication, snapshots are expectations checked against current validated inventory under the state lock, with package lifetimes acquired there. They grant no provisional or retained-record authority. Only a complete supported published generation may activate its retained records after global inventory replacement. Failed readiness preserves the prior selected generation. These parent contract decisions do not claim runtime adoption, authenticated acquisition, or full qualification.</p>
+
 <h2 id="references">References</h2>
 <ul>
 <li><a href="https://github.com/finos/morphir-dotnet/tree/4e3321f3c13821105115b4f4f7857a611c5a3c21">Inspected morphir-dotnet revision</a>, especially src/Morphir, src/Morphir.Tool, src/Morphir.Frontend.FSharp.Extension, build/Build.Packaging.cs and scripts/publish-single-file.cs.</li>

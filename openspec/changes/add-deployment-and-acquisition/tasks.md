@@ -80,6 +80,19 @@ The following extends group 1 without changing its approved task numbers or mark
 
 ## 2. Four .NET offerings and managed composition, morphir-dotnet
 
+> **Composed local contract progress, 12 November 2026 UTC.** The separately
+> versioned local preview.2 candidate/generation/receipt/selection/result schemas
+> and member tables bind immutable selected launch records and actual workflow
+> observations. Independent design review resolved metadata/update/readiness
+> evidence findings, including the pre-receipt rule: unpublished expectations
+> must match current installer-validated inventory; they grant no retained-record
+> authority. Published generations retain their bound records across global
+> provider replacement. Preview.1 schemas and example bytes are unchanged.
+> Parent schema/data tests are authoring checks only. Runtime adoption, behavioral
+> replacement/interruption controls, site publication and the real installed
+> process-provider journey remain pending. No numbered checkbox is completed
+> by this contract increment.
+
 - [ ] 2.1 Extract the current tool's F#-enabled managed composition so self-contained, framework-dependent and tool entry points share it while the AOT entry point excludes FCS. Start with command/capability parity cases, verify AOT dependency and warning checks, and document the composition boundary beside the existing entry-point guidance.
 - [ ] 2.2 Consolidate `build/Build.Packaging.cs` and the existing publish scripts into maintained named release profiles for AOT, self-contained, framework-dependent and `Morphir.Tool`. Verify packaged artifact names and launch metadata are unique across release/profile/platform, and that existing tool invocation and package identity remain valid; document the exact publish commands.
 - [ ] 2.3 Add offering identity and prerequisite/capability reporting without reinterpreting existing host strings. Update the .NET `extension-registry` requirements in that repository. Verify registry/command agreement, unavailable delivery reasons and equivalent shared commands across profiles; document runtime versus SDK requirements.

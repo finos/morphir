@@ -53,11 +53,19 @@ Host acquisition SHALL follow the existing authenticated tool release metadata p
 
 ### Requirement: Explicit local developer candidates
 
-Explicit local imports SHALL use `local-toolchains/0.1.0-preview.1`, developer
+Host-only local imports SHALL use `local-toolchains/0.1.0-preview.1`, developer
 consent, exact candidate/archive and whole-folder identities, and the existing
 manager, validators and store publication. They SHALL remain `local-developer`,
 not fabricated repository or publisher authentication. Existing families SHALL
 NOT be converted implicitly.
+
+#### Scenario: Independently installed process providers form a local generation
+- **WHEN** an explicit local setup composes a host candidate with independently installed process providers
+- **THEN** it uses the exact five-document `local-toolchains/0.1.0-preview.2` family and the [composed-generation contract](../../../../../../docs/spec/toolchain/local-composed-generation.md)
+- **AND** generation identity binds installer-validated retained launch records and actual fixed-workflow tuples, completed checks and outputs
+- **AND** unpublished readiness compares expected records with current validated inventory and acquires package lifetimes under the same state lock, without provisional receipt authority
+- **AND** replacing global records cannot invalidate an already published generation, and failed readiness leaves its selection unchanged
+- **AND** preview.1 bytes and reader behavior remain unchanged, with no implicit conversion or authenticated-release claim
 
 #### Scenario: Install and repeat a local managed F# candidate offline
 - **WHEN** a developer explicitly installs a digest-pinned local Windows x64 self-contained candidate in an empty isolated Home and selects it

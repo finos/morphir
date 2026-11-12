@@ -4,12 +4,15 @@ schema: html-design
 githubCopilot:
   cloudAgent: false
 context: |
-  finos/morphir is the ecosystem umbrella repository, owning the Rust CLI,
-  documentation website, shared specifications and ecosystem integration.
+  finos/morphir is the ecosystem umbrella repository, owning official .NET CLI
+  delivery, the documentation website, shared specifications and ecosystem
+  integration. Product CLI source lives in finos/morphir-dotnet, pinned at
+  ecosystem/morphir-dotnet. Parent Rust crates are development tools only.
   Follow AGENTS.md and CONTRIBUTING.md. Keep domain logic pure and immutable,
   preserve versioned contracts and keep one Morphir MCK runner. Keep its cases
-  and expected results runner-neutral: the runner is moving off the Rust CLI to
-  the .NET host in morphir-dotnet, so add new runner code there.
+  and expected results runner-neutral. The standalone morphir-mck retains the
+  delegated IR and package gates; add new shared runner code in the .NET host
+  in morphir-dotnet, without introducing a second checker for a kit.
   Use Beads for task tracking and link the GitHub issue and OpenSpec change.
   Keep language implementation work in its owning repository. Do not move
   pinned ecosystem submodules unless a proposal explicitly covers that update.

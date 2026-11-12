@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.2/result.schema.json",
+  "title": "Local developer composed toolchain result",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.2/result.schema.json"
+    },
+    "command": {
+      "enum": [
+        "setup",
+        "select",
+        "show"
+      ]
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "installed",
+        "selected",
+        "shown",
+        "refused"
+      ]
+    },
+    "origin": {
+      "const": "local-developer"
+    },
+    "candidateSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "generationSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "receiptPath": {
+      "type": "string",
+      "pattern": "^toolchains/generations/[0-9a-f]{64}/receipt\\.json$"
+    },
+    "selectionPath": {
+      "const": "toolchains/default.json"
+    },
+    "diagnostic": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "$schema",
+    "command",
+    "status",
+    "origin"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "refused"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "diagnostic"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "installed",
+              "selected",
+              "shown"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "candidateSha256",
+          "generationSha256",
+          "receiptPath"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "setup"
+          },
+          "status": {
+            "const": "planned"
+          }
+        },
+        "required": [
+          "command",
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "candidateSha256"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "generationSha256"
+              ]
+            },
+            {
+              "required": [
+                "receiptPath"
+              ]
+            },
+            {
+              "required": [
+                "selectionPath"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "select"
+          },
+          "status": {
+            "const": "planned"
+          }
+        },
+        "required": [
+          "command",
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "generationSha256"
+        ]
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "command": {
+          "const": "setup"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "installed",
+            "refused"
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "command": {
+          "const": "select"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "selected",
+            "refused"
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "command": {
+          "const": "show"
+        },
+        "status": {
+          "enum": [
+            "shown",
+            "refused"
+          ]
+        }
+      }
+    }
+  ]
+}
