@@ -266,3 +266,7 @@ These parent schemas, examples and authoring tests do not execute that workflow.
 Runtime adoption, security/interop review, exact portable-lock CI restore,
 authenticated acquisition and the remaining platforms/offerings still require
 their own evidence. This contract is not production-release qualification.
+
+[`local-toolchains/0.1.0-preview.3`](./local-platforms-and-release-bundle.md)
+adds `win-arm64`, the `release-checksum` origin and the release bundle.
+Preview.2 is unchanged.
