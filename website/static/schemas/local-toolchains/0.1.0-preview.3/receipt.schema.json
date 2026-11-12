@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/receipt.schema.json",
+  "title": "Local composed toolchain receipt",
+  "description": "The manager's record of one installed, workflow-verified generation. Its origin and platform repeat the bound candidate's.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/receipt.schema.json"
+    },
+    "origin": {
+      "enum": [
+        "local-developer",
+        "release-checksum"
+      ]
+    },
+    "implementation": {
+      "const": "dotnet"
+    },
+    "deployment": {
+      "const": "self-contained"
+    },
+    "platform": {
+      "enum": [
+        "win-x64",
+        "win-arm64"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "buildIdentity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidateSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "archiveSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "installationPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "entryPoint": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "owner": {
+      "const": "manager-owned"
+    },
+    "readiness": {
+      "const": "workflow-verified"
+    },
+    "generationSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "$schema",
+    "origin",
+    "implementation",
+    "deployment",
+    "platform",
+    "version",
+    "sourceCommit",
+    "buildIdentity",
+    "candidateSha256",
+    "archiveSha256",
+    "installationPath",
+    "entryPoint",
+    "owner",
+    "readiness",
+    "generationSha256"
+  ],
+  "additionalProperties": false
+}
