@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/mep-guest-kit/0.1.0-draft.1/report-controls.schema.json",
+  "title": "MEP guest kit report controls 0.1.0-draft.1",
+  "description": "Fixed controls for the plan and verdict rules of the MEP guest kit report. Each control describes a report by its difference from one base run and gives the verdict, or the refusals, a report check must produce. The meaning of each member is stated in spec/mep/mck/guest-report.md.",
+  "type": "object",
+  "required": ["$schema", "kit", "rule", "base", "controls"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/mep-guest-kit/0.1.0-draft.1/report-controls.schema.json"
+    },
+    "kit": { "type": "string", "minLength": 1 },
+    "rule": {
+      "type": "object",
+      "required": [
+        "protocol",
+        "irVersions",
+        "fixedBefore",
+        "perVersion",
+        "versionSuffixes",
+        "fixedAfter",
+        "reasons",
+        "rejections",
+        "runnerRejections",
+        "scenarios"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "protocol": { "type": "string", "minLength": 1 },
+        "irVersions": { "$ref": "#/$defs/names" },
+        "fixedBefore": { "$ref": "#/$defs/names" },
+        "perVersion": { "$ref": "#/$defs/names" },
+        "versionSuffixes": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "^[a-z]+$" }
+        },
+        "fixedAfter": { "$ref": "#/$defs/names" },
+        "reasons": { "$ref": "#/$defs/names" },
+        "rejections": { "$ref": "#/$defs/names" },
+        "runnerRejections": { "$ref": "#/$defs/names" },
+        "scenarios": { "$ref": "#/$defs/names" }
+      }
+    },
+    "base": {
+      "type": "object",
+      "required": ["runner", "host", "artifacts", "claim"],
+      "additionalProperties": false,
+      "properties": {
+        "runner": { "type": "object" },
+        "host": { "type": "object" },
+        "artifacts": { "type": "array", "minItems": 1 },
+        "claim": { "type": "object" }
+      }
+    },
+    "controls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "covers", "says", "change", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "covers": { "type": "string", "minLength": 1 },
+          "says": { "type": "string", "minLength": 1 },
+          "change": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "claimPatch": { "type": "object" },
+              "editRecordedClaim": { "type": "object" },
+              "recordedPlan": {
+                "anyOf": [
+                  { "type": "null" },
+                  {
+                    "type": "object",
+                    "required": ["language", "irVersions"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "language": { "type": "string" },
+                      "irVersions": { "type": "array", "items": { "type": "string" } }
+                    }
+                  }
+                ]
+              },
+              "runner": { "type": "object" },
+              "host": { "type": "object" },
+              "suiteSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "outcomes": {
+                "type": "object",
+                "additionalProperties": { "enum": ["passed", "failed", "not_run"] }
+              },
+              "stopAfter": { "type": "string", "minLength": 1 },
+              "removeCases": { "$ref": "#/$defs/names" },
+              "addCases": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["after", "caseId"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "after": { "type": "string", "minLength": 1 },
+                    "caseId": { "type": "string", "minLength": 1 }
+                  }
+                }
+              },
+              "swapCases": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string" } },
+              "storedTotals": {
+                "type": "object",
+                "additionalProperties": { "type": "integer", "minimum": 0 }
+              },
+              "storedVerdict": { "$ref": "#/$defs/verdict" },
+              "advertisesCall": { "type": "boolean" },
+              "deliveries": {
+                "type": "object",
+                "additionalProperties": { "enum": ["delivered", "withheld", "unknown"] }
+              },
+              "unmatched": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["duringCase"],
+                  "additionalProperties": false,
+                  "properties": { "duringCase": { "type": "string", "minLength": 1 } }
+                }
+              }
+            }
+          },
+          "expect": {
+            "oneOf": [
+              {
+                "allOf": [{ "$ref": "#/$defs/verdict" }],
+                "required": ["cases"],
+                "properties": { "cases": { "type": "integer", "minimum": 1 } }
+              },
+              {
+                "type": "object",
+                "required": ["rejected"],
+                "additionalProperties": false,
+                "properties": { "rejected": { "$ref": "#/$defs/names" } }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "names": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "verdict": {
+      "type": "object",
+      "required": ["qualified", "reasons"],
+      "properties": {
+        "qualified": { "type": "boolean" },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "caseId"],
+            "additionalProperties": false,
+            "properties": {
+              "code": { "type": "string", "minLength": 1 },
+              "caseId": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "cases": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

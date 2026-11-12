@@ -1,0 +1,320 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/mep-guest-kit/0.1.0-draft.1/report-controls.schema.json",
+  "kit": "guest-generic-json.json",
+  "rule": {
+    "protocol": "0.2.0-draft.1",
+    "irVersions": ["3.0.0", "4.0.0"],
+    "fixedBefore": ["describe", "model-initialize", "model-initialized-silent", "unknown-notification-silent"],
+    "perVersion": [
+      "compile-model",
+      "generate-model",
+      "roundtrip-model",
+      "generate-model-independent",
+      "roundtrip-model-independent"
+    ],
+    "versionSuffixes": { "3.0.0": "vthree", "4.0.0": "vfour" },
+    "fixedAfter": [
+      "bad-digest",
+      "malformed-source",
+      "unknown-method",
+      "describe-immutable",
+      "model-shutdown",
+      "after-shutdown",
+      "model-exit"
+    ],
+    "reasons": ["case_failed", "case_not_run"],
+    "rejections": [
+      "identity_missing",
+      "kit_mismatch",
+      "plan_mismatch",
+      "case_inventory",
+      "outcome_inconsistent",
+      "totals_mismatch",
+      "verdict_mismatch"
+    ],
+    "runnerRejections": ["artifact_changed", "request_mismatch", "comparison_mismatch"],
+    "scenarios": [
+      "qualified-two-versions",
+      "qualified-one-version",
+      "qualified-also-claims-0-1",
+      "version-without-tuple-pair",
+      "legacy-only-guest",
+      "no-tuple-pair",
+      "continue-after-failure",
+      "legacy-tier-cases",
+      "claim-edited",
+      "case-reordered",
+      "delivered-on-request",
+      "withheld-while-asked",
+      "delivery-unknown",
+      "unmatched-message",
+      "unmatched-message-failed"
+    ]
+  },
+  "base": {
+    "runner": { "name": "example-runner", "version": "0.0.0" },
+    "host": {
+      "executable": "/opt/morphir/morphir",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "arguments": ["extension", "worker", "--abi", "extism-kernel-v1", "--module", "/opt/guests/python.wasm"]
+    },
+    "artifacts": [
+      { "path": "/opt/guests/python.wasm", "sha256": "2222222222222222222222222222222222222222222222222222222222222222" }
+    ],
+    "claim": {
+      "claimsVersion": "0.1.0-draft.2",
+      "extension": { "id": "example-python", "name": "Example Python", "version": "0.6.0" },
+      "protocolVersions": ["0.2.0-draft.1"],
+      "capabilities": {
+        "frontend": {
+          "compile": true,
+          "languages": [{ "id": "python", "fileExtensions": [".py"] }],
+          "irVersions": ["3", "4"]
+        },
+        "backend": { "generate": true, "targets": ["python"], "irVersions": ["3", "4"] },
+        "modelTransport": {
+          "tuples": [
+            { "operation": "morphir.frontend.compileModel", "profile": "morphir-ir", "codec": "morphir-json", "envelopeVersion": "0.1.0-draft.1", "irVersion": "3.0.0" },
+            { "operation": "morphir.backend.generateModel", "profile": "morphir-ir", "codec": "morphir-json", "envelopeVersion": "0.1.0-draft.1", "irVersion": "3.0.0" },
+            { "operation": "morphir.frontend.compileModel", "profile": "morphir-ir", "codec": "morphir-json", "envelopeVersion": "0.1.0-draft.1", "irVersion": "4.0.0" },
+            { "operation": "morphir.backend.generateModel", "profile": "morphir-ir", "codec": "morphir-json", "envelopeVersion": "0.1.0-draft.1", "irVersion": "4.0.0" }
+          ],
+          "limits": { "maxEncodedBytes": 1000000, "maxDecodedBytes": 750000, "maxDepth": 128, "maxNodes": 100000 }
+        }
+      }
+    }
+  },
+  "controls": [
+    {
+      "id": "two-versions",
+      "covers": "qualified-two-versions",
+      "says": "A guest that claims the JSON tuple pair at both IR versions runs 21 cases, and every one passes.",
+      "change": {},
+      "expect": { "qualified": true, "reasons": [], "cases": 21 }
+    },
+    {
+      "id": "one-version",
+      "covers": "qualified-one-version",
+      "says": "A guest that claims only IR 4 runs 16 cases.",
+      "change": {
+        "claimPatch": {
+          "capabilities": {
+            "frontend": { "irVersions": ["4"] },
+            "backend": { "irVersions": ["4"] }
+          }
+        }
+      },
+      "expect": { "qualified": true, "reasons": [], "cases": 16 }
+    },
+    {
+      "id": "also-claims-0-1",
+      "covers": "qualified-also-claims-0-1",
+      "says": "A guest that also claims MEP 0.1 is planned and qualified the same way; the 0.1 claim is not read.",
+      "change": { "claimPatch": { "protocolVersions": ["0.1", "0.2.0-draft.1"] } },
+      "expect": { "qualified": true, "reasons": [], "cases": 21 }
+    },
+    {
+      "id": "version-without-tuple-pair",
+      "covers": "version-without-tuple-pair",
+      "says": "The frontend and backend claim IR 3 and 4, but the JSON tuple pair is claimed only at 4.0.0, so only IR 4 is tested.",
+      "change": {
+        "claimPatch": {
+          "capabilities": {
+            "modelTransport": {
+              "tuples": [
+                { "operation": "morphir.frontend.compileModel", "profile": "morphir-ir", "codec": "morphir-json", "envelopeVersion": "0.1.0-draft.1", "irVersion": "4.0.0" },
+                { "operation": "morphir.backend.generateModel", "profile": "morphir-ir", "codec": "morphir-json", "envelopeVersion": "0.1.0-draft.1", "irVersion": "4.0.0" }
+              ]
+            }
+          }
+        }
+      },
+      "expect": { "qualified": true, "reasons": [], "cases": 16 }
+    },
+    {
+      "id": "legacy-only-guest",
+      "covers": "legacy-only-guest",
+      "says": "A guest that claims only MEP 0.1 selects nothing. The plan is the describe case alone, and it fails.",
+      "change": { "claimPatch": { "protocolVersions": ["0.1"] } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_failed", "caseId": "describe" }],
+        "cases": 1
+      }
+    },
+    {
+      "id": "no-tuple-pair",
+      "covers": "no-tuple-pair",
+      "says": "A guest that claims MEP 0.2.0-draft.1 but no JSON tuple pair selects nothing.",
+      "change": { "claimPatch": { "capabilities": { "modelTransport": { "tuples": [] } } } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_failed", "caseId": "describe" }],
+        "cases": 1
+      }
+    },
+    {
+      "id": "one-case-failed",
+      "covers": "case_failed",
+      "says": "One failed case is enough.",
+      "change": { "outcomes": { "roundtrip-model-vfour": "failed" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_failed", "caseId": "roundtrip-model-vfour" }],
+        "cases": 21
+      }
+    },
+    {
+      "id": "stopped-after-failure",
+      "covers": "case_not_run",
+      "says": "A runner that stops after a failed case records every later planned case as not run, and each is a reason.",
+      "change": { "stopAfter": "after-shutdown" },
+      "expect": {
+        "qualified": false,
+        "reasons": [
+          { "code": "case_failed", "caseId": "after-shutdown" },
+          { "code": "case_not_run", "caseId": "model-exit" }
+        ],
+        "cases": 21
+      }
+    },
+    {
+      "id": "continued-after-failure",
+      "covers": "continue-after-failure",
+      "says": "A runner may also continue after a failed case. The later cases keep their own outcomes.",
+      "change": { "outcomes": { "bad-digest": "failed", "unknown-method": "failed" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [
+          { "code": "case_failed", "caseId": "bad-digest" },
+          { "code": "case_failed", "caseId": "unknown-method" }
+        ],
+        "cases": 21
+      }
+    },
+    {
+      "id": "delivered-on-request",
+      "covers": "delivered-on-request",
+      "says": "A guest that asks for notifications with call, and receives both notification cases, qualifies.",
+      "change": { "advertisesCall": true },
+      "expect": { "qualified": true, "reasons": [], "cases": 21 }
+    },
+    {
+      "id": "withheld-while-asked",
+      "covers": "withheld-while-asked",
+      "says": "The guest asked for notifications with call, but a notification case records it as withheld and passed. A notification that was not delivered shows nothing about the guest.",
+      "change": { "advertisesCall": true, "deliveries": { "unknown-notification-silent": "withheld" } },
+      "expect": { "rejected": ["outcome_inconsistent"] }
+    },
+    {
+      "id": "delivery-unknown",
+      "covers": "delivery-unknown",
+      "says": "A notification case passed although the runner cannot tell whether the host delivered it.",
+      "change": { "deliveries": { "model-initialized-silent": "unknown" } },
+      "expect": { "rejected": ["outcome_inconsistent"] }
+    },
+    {
+      "id": "unmatched-message-passed",
+      "covers": "unmatched-message",
+      "says": "The runner read a message that answers no request during a case, and the case still passed.",
+      "change": { "unmatched": [{ "duringCase": "compile-model-vfour" }] },
+      "expect": { "rejected": ["outcome_inconsistent"] }
+    },
+    {
+      "id": "unmatched-message-failed",
+      "covers": "unmatched-message-failed",
+      "says": "The same unmatched message with the case recorded as failed is an accepted report of a guest that does not qualify.",
+      "change": { "unmatched": [{ "duringCase": "compile-model-vfour" }], "outcomes": { "compile-model-vfour": "failed" } },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_failed", "caseId": "compile-model-vfour" }],
+        "cases": 21
+      }
+    },
+    {
+      "id": "no-host-digest",
+      "covers": "identity_missing",
+      "says": "A report without the host executable's digest is refused.",
+      "change": { "host": { "sha256": null } },
+      "expect": { "rejected": ["identity_missing"] }
+    },
+    {
+      "id": "another-kit",
+      "covers": "kit_mismatch",
+      "says": "The report records the digest of another kit file than the one it is checked against.",
+      "change": { "suiteSha256": "3333333333333333333333333333333333333333333333333333333333333333" },
+      "expect": { "rejected": ["kit_mismatch"] }
+    },
+    {
+      "id": "plan-edited",
+      "covers": "plan_mismatch",
+      "says": "The recorded plan says only IR 4, but the recorded describe observation selects both versions.",
+      "change": { "recordedPlan": { "language": "python", "irVersions": ["4.0.0"] } },
+      "expect": { "rejected": ["plan_mismatch"] }
+    },
+    {
+      "id": "case-removed",
+      "covers": "case_inventory",
+      "says": "A report that leaves out a planned case is refused, even when every remaining case passes.",
+      "change": { "removeCases": ["roundtrip-model-independent-vthree"] },
+      "expect": { "rejected": ["case_inventory"] }
+    },
+    {
+      "id": "legacy-cases-added",
+      "covers": "legacy-tier-cases",
+      "says": "A report that still holds cases of the removed legacy tier is refused.",
+      "change": {
+        "addCases": [
+          { "after": "describe", "caseId": "initialize" },
+          { "after": "initialize", "caseId": "compile-vthree" }
+        ]
+      },
+      "expect": { "rejected": ["case_inventory"] }
+    },
+    {
+      "id": "claim-edited",
+      "covers": "claim-edited",
+      "says": "The stored describe observation was edited to claim only IR 4 after a 21-case run. The plan it now selects disagrees with the recorded plan and cases.",
+      "change": {
+        "editRecordedClaim": {
+          "capabilities": {
+            "frontend": { "irVersions": ["4"] },
+            "backend": { "irVersions": ["4"] }
+          }
+        }
+      },
+      "expect": { "rejected": ["plan_mismatch", "case_inventory"] }
+    },
+    {
+      "id": "cases-swapped",
+      "covers": "case-reordered",
+      "says": "The planned cases are all present, but two are out of plan order.",
+      "change": { "swapCases": ["malformed-source", "unknown-method"] },
+      "expect": { "rejected": ["case_inventory"] }
+    },
+    {
+      "id": "run-after-not-run",
+      "covers": "outcome_inconsistent",
+      "says": "A case recorded as not run is followed by a case that ran, and no case before it failed.",
+      "change": { "outcomes": { "bad-digest": "not_run" } },
+      "expect": { "rejected": ["outcome_inconsistent"] }
+    },
+    {
+      "id": "totals-edited",
+      "covers": "totals_mismatch",
+      "says": "The totals are counts of the recorded outcomes.",
+      "change": { "storedTotals": { "passed": 20, "failed": 1 } },
+      "expect": { "rejected": ["totals_mismatch"] }
+    },
+    {
+      "id": "verdict-edited",
+      "covers": "verdict_mismatch",
+      "says": "The verdict is recomputed. A report that says qualified while a recorded case failed is refused.",
+      "change": {
+        "outcomes": { "generate-model-vthree": "failed" },
+        "storedVerdict": { "qualified": true, "reasons": [] }
+      },
+      "expect": { "rejected": ["verdict_mismatch"] }
+    }
+  ]
+}

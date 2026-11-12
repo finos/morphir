@@ -157,6 +157,12 @@ When the claim selects no language or no IR version, the run fails. Every
 selected case is required. `report-check` rebuilds the plan from the recorded
 `describe` observation.
 
+The single-session plan of the change `drop-generic-guest-legacy-tier` writes
+the report defined in [`guest-report.md`](guest-report.md), with a published
+schema and fixed controls (`mise run spec:mep-guest-report-check`). The rest of
+this section still describes the earlier two-tier plan of the Rust runner until
+that change's task 1.1 rewrites it.
+
 The legacy tier runs in one process with MEP `0.1`. For each IR version it
 compiles the fixed source (`morphir.frontend.compile`), generates from the
 result (`morphir.backend.generate`) and generates from the kit's expected IR.
