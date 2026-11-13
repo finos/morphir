@@ -3,10 +3,10 @@
 	"source": {
 		"repository": "https://github.com/finos/morphir-dotnet",
 		"submodule": "ecosystem/morphir-dotnet",
-		"commit": "318b1bfd1722d36f6c51a6c95d85b4d84f6623e7",
+		"commit": "dc5b9015a84c66595f5c06c3b64237e019ed510a",
 		"candidate": {
 			"pullRequest": "https://github.com/finos/morphir/pull/1172",
-			"reason": "release.yml now builds morphirup with the pinned source's morphirup-build.yml, but the pin 318b1bfd (0.5.0-alpha.1) declares none of the inputs it passes (repository, ref, upload-host-offering) and uploads no host offering, so a run is refused at startup; and its toolchain bundles are of local-toolchains 0.1.0-preview.4, which names finos/morphir-dotnet. Move the pin to the morphir-dotnet 0.5.0-alpha.2 release commit (with finos/morphir-dotnet#648 and #649) and remove this marker once tools/cli-release.test.ts's source-interface tests pass and a branch dry run of that pin succeeds."
+			"reason": "The pin dc5b9015a84c66595f5c06c3b64237e019ed510a is the finos/morphir-dotnet 0.5.0-alpha.2 release commit (#651, with #648: morphirup sets up from finos/morphir with local-toolchains 0.1.0-preview.5 bundles, and #649: morphirup-build.yml takes repository, ref and upload-host-offering). The source tag v0.5.0-alpha.2 is not pushed yet. Remove this marker once that tag names this commit and a branch dry run of this pin passes."
 		}
 	},
 	"tagPrefix": "v",

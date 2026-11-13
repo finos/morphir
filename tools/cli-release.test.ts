@@ -298,9 +298,10 @@ describe("release workflow routing", () => {
 		expect(steps).toMatch(/gh release create "\$TAG"[^\n]*--verify-tag[^\n]*"\$\{ASSETS\[@\]\}"/);
 	});
 
-	test("the pin is marked a candidate exactly while release.yml cannot run at it; a candidate pin cannot publish", () => {
+	test("a pin that release.yml cannot run at is marked a candidate; a candidate pin cannot publish", () => {
+		// The marker may stay on a compatible pin, until its source tag exists and a dry run of it passes.
 		const incompatible = sourceInterfaceProblems(root, config, read(".github/workflows/release.yml")).length > 0;
-		expect(config.source.candidate !== undefined).toBe(incompatible);
+		if (incompatible) expect(config.source.candidate).toBeDefined();
 		expect(releaseBlocker(asCandidate(config))).toContain("marked candidate");
 		expect(releaseBlocker({ ...config, source: { ...config.source, candidate: undefined } })).toBeUndefined();
 	});
@@ -459,7 +460,7 @@ describe("publication gate", () => {
 	test("the pinned source is its own release: newer than every v* tag, nothing unreleased", () => {
 		const changelog = read(`${config.source.submodule}/CHANGELOG.md`);
 		const version = changelogReleaseVersion(changelog);
-		expect(version).toBe("0.5.0-alpha.1");
+		expect(version).toBe("0.5.0-alpha.2");
 		const tags = ["v0.4.0-alpha.4", "v0.4.0-alpha.7", "v0.4.0-beta.12"];
 		const released = { ...config, source: { ...config.source, candidate: undefined } };
 		// With the source's tag v<version> on the pinned commit, nothing blocks publication.
@@ -784,6 +785,10 @@ describe("morphirup and the setup toolchain", () => {
 		writeFileSync(path.join(workflows, "cli-offering.yml"), offering);
 		const releaseText = read(".github/workflows/release.yml");
 		writeFileSync(path.join(workflows, "morphirup-build.yml"), upload("inputs.upload-host-offering && (inputs.rid == 'win-x64' || inputs.rid == 'win-arm64' || (inputs.rid == 'osx-arm64' && inputs.toolchain))"));
+		expect(sourceInterfaceProblems(fake, config, releaseText)).toEqual([]);
+		// As the pinned source writes it: the condition on a describing step, the upload on that step's outcome.
+		const referenced = upload("steps.host-offering.outcome == 'success'").replace("    steps:\n", "    steps:\n      - id: host-offering\n        if: inputs.upload-host-offering && (inputs.rid == 'win-x64' || inputs.rid == 'win-arm64' || (inputs.rid == 'osx-arm64' && inputs.toolchain))\n        run: echo\n");
+		writeFileSync(path.join(workflows, "morphirup-build.yml"), referenced);
 		expect(sourceInterfaceProblems(fake, config, releaseText)).toEqual([]);
 		writeFileSync(path.join(workflows, "morphirup-build.yml"), upload("inputs.upload-host-offering && (inputs.rid == 'win-x64' || inputs.rid == 'osx-arm64')"));
 		expect(sourceInterfaceProblems(fake, config, releaseText).join()).toContain("not exactly win-x64, win-arm64, osx-arm64");

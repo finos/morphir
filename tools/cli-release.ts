@@ -846,7 +846,7 @@ export function sourceTagCommit(repository: string, tag: string): string | undef
 	return refs.get(`refs/tags/${tag}^{}`) ?? refs.get(`refs/tags/${tag}`);
 }
 
-type WorkflowStep = { name?: string; if?: string; uses?: string; with?: Record<string, unknown> };
+type WorkflowStep = { id?: string; name?: string; if?: string; uses?: string; with?: Record<string, unknown> };
 type WorkflowFile = { on?: { workflow_call?: { inputs?: Record<string, unknown> } }; jobs?: Record<string, { uses?: string; with?: Record<string, unknown>; steps?: WorkflowStep[] }> };
 
 /**
@@ -872,7 +872,19 @@ export function sourceInterfaceProblems(root: string, config: CliReleaseConfig, 
 	const upload = steps.filter(step => step.uses?.startsWith("actions/upload-artifact@") && step.with?.name === "morphir-dotnet-self-contained-${{ inputs.rid }}");
 	if (upload.length !== 1) problems.push(`the pinned morphirup-build.yml uploads morphir-dotnet-self-contained-<rid> ${upload.length} times, not once`);
 	else {
-		const condition = upload[0]!.if ?? "";
+		// The upload may run on the outcome of an earlier step (`steps.<id>.outcome == 'success'`); that step's own
+		// condition then decides it as well, so both are read, following such references to the steps they name.
+		const conditions: string[] = [];
+		const pending = [upload[0]!];
+		const seen = new Set<WorkflowStep>();
+		while (pending.length > 0) {
+			const step = pending.pop()!;
+			if (seen.has(step)) continue;
+			seen.add(step);
+			conditions.push(step.if ?? "");
+			for (const ref of (step.if ?? "").matchAll(/steps\.([A-Za-z_][\w-]*)\./g)) pending.push(...steps.filter(s => s.id === ref[1]));
+		}
+		const condition = conditions.join(" && ");
 		const named = [...new Set([...condition.matchAll(/'([a-z]+-[a-z0-9]+)'/g)].map(m => m[1]!))].sort();
 		if (!condition.includes("inputs.upload-host-offering")) problems.push("the pinned morphirup-build.yml uploads the host offering without depending on upload-host-offering");
 		if (named.join(",") !== [...config.morphirup.toolchainPlatforms].sort().join(",")) problems.push(`the pinned morphirup-build.yml uploads the host offering for ${named.join(", ") || "no named platform"}, not exactly ${config.morphirup.toolchainPlatforms.join(", ")}`);

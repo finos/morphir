@@ -7,7 +7,7 @@ Tracking: follows `move-cli-delivery-to-umbrella` (finos/morphir#1153). No Beads
 - [x] 1.1 Call the pinned source's `morphirup-build.yml` for each morphirup platform, with `toolchain: true`, `repository`, `ref` and `upload-host-offering`. Bind both source workflows to the pin and its literal `ref`. Verified by the routing and binding tests in `tools/cli-release.test.ts`.
 - [x] 1.2 Take the self-contained offering of each toolchain platform from the toolchain job, and stop building it with `cli-offering.yml` there (HOST-1). Verified by the offering matrix test and `prepareRelease`'s host-name check.
 - [x] 1.3 Assemble the assets with the source's `FlattenReleaseAssets`, `MorphirupChecksums` and `WindowsToolchainChecksums` from the pinned checkout, and read both checksum files back. Verified by the publish-job test, and locally on the published `v0.5.0-alpha.1` files, where both checksum files came out byte-identical to that release's.
-- [ ] 1.4 Land the source's `morphirup-build.yml` inputs (`repository`, `ref`, `upload-host-offering`) in finos/morphir-dotnet and move the pin to a commit that has them.
+- [x] 1.4 Land the source's `morphirup-build.yml` inputs (`repository`, `ref`, `upload-host-offering`) in finos/morphir-dotnet and move the pin to a commit that has them. The pin is `dc5b9015`, the 0.5.0-alpha.2 release commit, which has #649 and #648. Both source-interface tests pass at it.
 
 ## 2. Qualify and record
 
