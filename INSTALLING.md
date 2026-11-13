@@ -98,11 +98,14 @@ instead of a feed, download `Morphir.Tool.<version>.nupkg` into a folder and add
 and SHA-256 against that release's `SHA256SUMS`, and installs them under your Morphir Home (`MORPHIR_HOME`, or
 `~/.morphir`). `morphirup run` then runs them with no network access.
 
-Release setup works on Windows x64, Windows ARM64 and macOS ARM64 (Apple silicon). Intel macOS is not supported.
+Release setup works on Windows x64, Windows ARM64 and macOS ARM64 (Apple silicon). Older releases attach no macOS
+toolchain, so on a Mac use a current release. Intel macOS is not supported. On Linux, `morphirup` installs and runs,
+but `setup` is not supported yet: install the CLI itself from a [release archive](#install-a-release-archive) or as
+the [.NET tool](#install-the-net-tool).
 
 `morphirup` and its toolchains are published on the
 [finos/morphir-dotnet releases](https://github.com/finos/morphir-dotnet/releases), not on this repository's
-releases. Install it with the script for your system. On Linux or macOS:
+releases. Install it with the script for your system. On macOS, or on Linux (install only, as above):
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/finos/morphir-dotnet/main/scripts/install-morphirup.sh | sh

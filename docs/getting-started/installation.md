@@ -17,7 +17,7 @@ Morphir has two sets of command-line tools:
 The quickest way to start is `morphirup`, the Morphir toolchain manager. It installs the CLI and its F# frontend and
 backend for a project, and needs no .NET installation. Install it with the script for your system.
 
-On Linux or macOS:
+On macOS, or on Linux (install only; see below):
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/finos/morphir-dotnet/main/scripts/install-morphirup.sh | sh
@@ -37,8 +37,9 @@ morphirup setup --yes
 morphirup run -- compile
 ```
 
-`morphirup setup` works on Windows x64, Windows ARM64 and macOS on Apple silicon, and is experimental. On other
-systems, or to install `morphir` on its own, download a release archive or install the `Morphir.Tool` .NET tool.
+`morphirup setup` works on Windows x64, Windows ARM64 and macOS on Apple silicon, and is experimental. On Linux the
+script installs `morphirup`, but `setup` is not supported yet. On Linux, on Intel macOS, or to install `morphir` on
+its own, download a release archive or install the `Morphir.Tool` .NET tool.
 [Installing Morphir](https://github.com/finos/morphir/blob/main/INSTALLING.md) covers every option, the platforms
 and the system requirements.
 
