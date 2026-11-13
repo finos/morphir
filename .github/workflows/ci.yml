@@ -50,10 +50,12 @@ jobs:
         with:
           filters: |
             rust:
-              - 'third_party/rust-tuf/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - 'crates/**'
+              # The Rust development tools are not in this repository. They are
+              # the umbrella-tools workspace of this submodule, which also holds
+              # the crates that workspace depends on, so a ref bump changes
+              # compiled source.
+              - 'ecosystem/morphir-rust'
+              - '.gitmodules'
               # mck_run in morphir-mck-cli replays and compares these frozen inputs.
               - 'spec/mck/baseline/package/**'
               # mep_contract in morphir-dev-tools checks the committed MEP contract IR
@@ -62,10 +64,6 @@ jobs:
               - 'spec/package/mck/fixtures/**'
               # kb_acceptance drives morphir-dev kb over these OKF rules
               - 'kb/**'
-              # the development tools path-depend on crates inside this
-              # submodule, so a ref bump changes compiled source
-              - 'ecosystem/morphir-rust'
-              - '.gitmodules'
               # pins the Rust toolchain these jobs build with
               - '.config/mise/**'
               # signed fixtures and schemas are executable acquisition contracts
@@ -144,12 +142,6 @@ jobs:
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
-              - 'third_party/rust-tuf/**'
-              # The native runner, report reader and renderer now drive this job.
-              - 'crates/morphir-mck/**'
-              - 'crates/morphir-mck-cli/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
               - '.github/actions/setup-rust-ci/**'
               - 'spec/ir/mck/**'
               # parent-owned kit data and contracts mck:check validates
@@ -164,8 +156,10 @@ jobs:
               - 'tools/record-mck-transcript*'
               - 'tools/mck-ci-summary*'
               - 'ecosystem/morphir-typescript'
-              # the Rust binding is driven through its adapter by mck:run-rust,
-              # so a pointer bump has to re-run the kit validations too
+              # The native runner, report reader and renderer that drive this
+              # job are built from this submodule (umbrella-tools), and the Rust
+              # binding is driven through its adapter by mck:run-rust, so a
+              # pointer bump has to re-run the kit validations too.
               - 'ecosystem/morphir-rust'
               # the Gleam mirror is checked by the mck driver once its adapter
               # lands; routing its pointer bumps here keeps them from skipping
@@ -174,16 +168,12 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             package-mck:
-              - 'third_party/rust-tuf/**'
               - 'spec/mck/baseline/package-cases.json'
-              - 'crates/morphir-mck/**'
-              - 'crates/morphir-mck-cli/**'
-              - 'crates/morphir-dev-tools/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
               - '.github/actions/setup-rust-ci/**'
               - 'tools/record-mck-transcript*'
               - 'spec/package/**'
+              # the runner, the package fixture tools, the vendored rust-tuf
+              # they verify with, and the Rust adapter
               - 'ecosystem/morphir-rust'
               - 'ecosystem/morphir-typescript'
               - 'tools/run-package-mck.ts'
@@ -202,6 +192,8 @@ jobs:
               - 'tools/cli-release*'
               - 'ecosystem/morphir-dotnet'
               - '.gitmodules'
+              # tests/ci reads the MCK runner's manifest, lock file and tests there
+              - 'ecosystem/morphir-rust'
               # historical acceptance of released Rust CLI tags
               - '.github/workflows/mck-release-acceptance.yml'
               - 'tools/mck-release-acceptance.mjs'
@@ -270,15 +262,18 @@ jobs:
         uses: ./.github/actions/setup-rust-ci
 
       - name: Check formatting
-        run: cargo fmt --package morphir-mck-cli --package morphir-dev-tools --check
+        run: cargo fmt --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck-cli --package morphir-dev-tools --check
 
       - name: Run clippy
-        run: cargo clippy --locked --package morphir-mck-cli --package morphir-dev-tools --all-targets -- -D warnings
+        run: cargo clippy --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck-cli --package morphir-dev-tools --all-targets -- -D warnings
 
   # The Rust development tools: the standalone MCK runner (morphir-mck), the
   # internal development tool (morphir-dev) and the reference contract
-  # checkers. The Rust product CLI and its integration jobs were deleted; the
-  # Morphir CLI is built and qualified from finos/morphir-dotnet by release.yml.
+  # checkers. Their source is the umbrella-tools workspace of the
+  # ecosystem/morphir-rust submodule; they are tested here because they read
+  # this repository's specifications and fixtures. The Rust product CLI and its
+  # integration jobs were deleted; the Morphir CLI is built and qualified from
+  # finos/morphir-dotnet by release.yml.
   rust-dev-tools:
     name: Rust development tools (test)
     runs-on: ubuntu-latest
@@ -306,16 +301,16 @@ jobs:
       # morphir-mck: the shared runner's command line, end to end, including
       # the copied-binary acceptance with an empty tool path.
       - name: Test the standalone MCK runner
-        run: cargo test --locked --package morphir-mck-cli
+        run: cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck-cli
 
       # The MCK engine is a library crate of its own.
       - name: Run MCK engine tests
-        run: cargo test --locked --package morphir-mck
+        run: cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck
 
       # morphir-dev: the kb commands and the repository contract gates
       # (MEP contract IR, tool release metadata, package runtime vectors).
       - name: Test the internal development tool and repository gates
-        run: cargo test --locked --package morphir-dev-tools
+        run: cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-dev-tools
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
@@ -391,7 +386,7 @@ jobs:
 
       - name: Test the native MCK engine for kit and schema changes
         if: ${{ needs.changes.outputs.mck == 'true' && needs.changes.outputs.rust != 'true' }}
-        run: cargo test --locked --package morphir-mck
+        run: cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck
 
       - name: Run the kit against the TypeScript binding
         run: |
@@ -533,9 +528,11 @@ jobs:
         uses: actions/checkout@v7
 
       # The release tests read the pinned CLI source's build profiles and
-      # CHANGELOG, so the submodule must be at its recorded commit.
-      - name: Check out the pinned CLI source
-        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet
+      # CHANGELOG, so the submodule must be at its recorded commit. The
+      # acceptance tests in tests/ci read the MCK runner's sources, which are in
+      # the morphir-rust submodule (umbrella-tools).
+      - name: Check out the pinned CLI source and the development tools
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet ecosystem/morphir-rust
 
       - uses: oven-sh/setup-bun@v2
         with:

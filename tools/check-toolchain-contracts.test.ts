@@ -9,8 +9,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file: string) => readFileSync(resolve(root, file), "utf8");
 
 test("acquisition behavior has no second Rust reference implementation", () => {
-	expect(existsSync(resolve(root, "crates/morphir-toolchain-contract"))).toBe(false);
-	expect(read("Cargo.lock")).not.toContain('name = "morphir-toolchain-contract"');
+	// This repository holds no Rust workspace; the development tools are in
+	// the ecosystem/morphir-rust submodule (umbrella-tools).
+	expect(existsSync(resolve(root, "crates"))).toBe(false);
+	expect(existsSync(resolve(root, "Cargo.lock"))).toBe(false);
 	expect(read(".config/mise/config.toml")).not.toContain("--package morphir-toolchain-contract");
 });
 

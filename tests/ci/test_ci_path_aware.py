@@ -63,8 +63,7 @@ class PathAwareCiTests(unittest.TestCase):
     def test_rust_filter_keeps_inputs_the_crate_tests_read(self) -> None:
         rust_filter = filter_body(self.ci, "rust")
         for entry in [
-            "- 'crates/**'",
-            "- 'Cargo.lock'",
+            # the crates are in this submodule (umbrella-tools)
             "- 'ecosystem/morphir-rust'",
             "- '.github/actions/setup-rust-ci/**'",
             # mep_contract reads spec/mep/contract and the committed IR
@@ -88,7 +87,7 @@ class PathAwareCiTests(unittest.TestCase):
     def test_dev_tools_job_does_not_run_conformance_steps(self) -> None:
         job = job_body(self.ci, "rust-dev-tools")
         self.assertNotIn("mise run mck:run-rust", job)
-        self.assertIn("cargo test --locked --package morphir-mck-cli", job)
+        self.assertIn("cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck-cli", job)
 
     def test_docs_job_does_not_repeat_the_package_suite(self) -> None:
         self.assertNotIn("mise run package:check", job_body(self.ci, "docs"))
@@ -114,10 +113,8 @@ class PathAwareCiTests(unittest.TestCase):
     def test_native_mck_changes_run_the_typescript_binding_gate(self) -> None:
         mck_filter = filter_body(self.ci, "mck")
         for entry in [
-            "- 'crates/morphir-mck/**'",
-            "- 'crates/morphir-mck-cli/**'",
-            "- 'Cargo.toml'",
-            "- 'Cargo.lock'",
+            # the native runner is built from this submodule (umbrella-tools)
+            "- 'ecosystem/morphir-rust'",
             "- '.github/actions/setup-rust-ci/**'",
         ]:
             self.assertIn(entry, mck_filter)
@@ -136,21 +133,21 @@ class PathAwareCiTests(unittest.TestCase):
                 self.assertIn(entry, paths)
         self.assertIn("- 'tools/gen-mck-vocabulary*'", filter_body(self.ci, "mck"))
         docs = job_body(self.ci, "docs")
-        self.assertIn("cargo test --locked --package morphir-mck", docs)
+        self.assertIn("cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck", docs)
         self.assertIn("needs.changes.outputs.mck == 'true' && needs.changes.outputs.rust != 'true'", docs)
         self.assertEqual(docs.count("mise run mck:check"), 1)
         self.assertNotIn("mise run mck:schema-check", docs)
 
     def test_production_mck_tasks_use_native_authoring_and_coverage_gates(self) -> None:
         check = self.tasks["mck:check"]["run"]
-        self.assertIn("cargo run --locked -p morphir-mck-cli -- check spec/ir/mck", check)
-        schema = "cargo run --locked -p morphir-mck-cli -- schema check --kit spec/ir/mck"
+        self.assertIn("cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- check spec/ir/mck", check)
+        schema = "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- schema check --kit spec/ir/mck"
         self.assertIn(schema, check)
         self.assertEqual(self.tasks["mck:schema-check"]["run"], schema)
         self.assertNotIn("mck:schema-check", self.tasks["check"]["depends"])
         for name in ("mck:run", "mck:run-rust"):
             commands = self.tasks[name]["run"]
-            self.assertIn("cargo run --locked -p morphir-mck-cli -- coverage --kit spec/ir/mck", commands)
+            self.assertIn("cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- coverage --kit spec/ir/mck", commands)
         for name in ("mck:check", "mck:schema-check", "mck:run", "mck:run-rust"):
             commands = str(self.tasks[name]["run"])
             for legacy in ("src/cli.ts", "validate-mck-", "jsonschema "):

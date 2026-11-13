@@ -39,7 +39,7 @@ Current `mise` releases auto-trust project configuration in normal mode; the exp
 
 1. **Morphir Documentation Website** — Docusaurus-based documentation site (`website/`, `docs/`)
 2. **Morphir CLI delivery** — official builds, qualification and releases of the Morphir CLI, whose source is [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet) pinned at `ecosystem/morphir-dotnet` (`.github/workflows/release.yml`, `.config/cli-release.json`). This repository also owns the installation docs, specifications, schemas, fixed compatibility expectations and the FINOS registry and channel governance. It has no Rust product CLI: `crates/morphir` was deleted on 10 November 2026 (Decision 16A on [#1146](https://github.com/finos/morphir/issues/1146)).
-3. **Development tools** — `morphir-mck` (`crates/morphir-mck-cli`), the standalone shared compatibility kit runner, and `morphir-dev` (`crates/morphir-dev-tools`), the internal tool for `kb` and repository gates. Neither is released or is the Morphir CLI.
+3. **Development tool tasks** — `morphir-mck`, the standalone shared compatibility kit runner, and `morphir-dev`, the internal tool for `kb` and repository gates. Their Rust source is not in this repository: it is the `umbrella-tools` workspace of [finos/morphir-rust](https://github.com/finos/morphir-rust), pinned at `ecosystem/morphir-rust` (`ecosystem/morphir-rust/umbrella-tools/crates/`). This repository has no `Cargo.toml` and no `crates/`; its mise tasks and CI build the tools from the submodule and run them on the specifications and fixtures here. Neither tool is released or is the Morphir CLI.
 4. **Ecosystem Integration** — Git submodules for ecosystem repos under `ecosystem/`
 
 ### Ecosystem submodules (vendored under `ecosystem/`)
@@ -114,7 +114,7 @@ See the decision [One version per contract family, carried by a published schema
 - Prefer TypeScript for new repository tooling. JavaScript scripts use `.mjs`.
 - Do not introduce Python or another tooling language without an explicit, justified exception agreed with maintainers. Existing scripts and language-specific Morphir implementations are not a blanket exception for new repository tooling.
 - The shared MCK runner is the named exception. Its home is the .NET host in finos/morphir-dotnet, decided 2026-11-09: put new runner code there. Keep specifications, schemas, cases, and fixed expected results here, written so that they name no runner.
-- The standalone, development-only `morphir-mck` (engine in `crates/morphir-mck`, command layer in `crates/morphir-mck-cli`) is the previous runner, extracted from the deleted Rust CLI. The .NET CLI delegates its `morphir mck ARGS` to `morphir-mck ARGS` for these gates. It keeps the gates below until a replacement is decided, and takes fixes for them only. Do not add runner features to it.
+- The standalone, development-only `morphir-mck` (engine in `ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck`, command layer in `ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck-cli`, both in the finos/morphir-rust submodule) is the previous runner, extracted from the deleted Rust CLI. The .NET CLI delegates its `morphir mck ARGS` to `morphir-mck ARGS` for these gates. It keeps the gates below until a replacement is decided, and takes fixes for them only. Do not add runner features to it.
 - **IR cutover:** parent and audited binding IR gates use the standalone `morphir-mck` commands: `check`, `coverage`, `schema check`, `run`, `report check`, `report render`, and `kit status/vendor/update`. Reports remain `2.0.0-draft.1`. The TypeScript IR runner, kit embedding and temporary parity gates are retired; the TypeScript adapter, codec tests and vocabulary authoring remain. Preserve frozen historical evidence. The standalone runner also owns draft.1 package integrity and draft.2 resolution gates under [#852](https://github.com/finos/morphir/issues/852). The TypeScript package runner is retired; independent adapters and package operations remain. Draft.3 definition/admission and fixture support live in parent Rust MCK; bounded runtime helpers live in `morphir-package`. Inspection still reports 54 definitions, six bound assets and 121 pending bindings; full restore remains PKG-3. See [the cutover record](spec/mck/migration.md) and [#851](https://github.com/finos/morphir/issues/851).
 - A kit has one shared runner: standalone Rust `morphir-mck` for the gates above, the .NET runner for kits added since. Other implementations take part through an adapter, and `morphir-mck run` (or delegated `morphir mck run`) always requires an explicit `--adapter`. Independent implementations under test do not require independent compatibility runners. Do not create a second checker for a kit, in any language.
 - The IR kit runs from `.feature` files. The Markdown case grammar, `--engine` selection and `mck:parity` task retired after the Gherkin parity window ([#946](https://github.com/finos/morphir/issues/946)). Frozen baseline evidence remains under `spec/mck/baseline/`.
@@ -201,20 +201,16 @@ fn process_ir(path: &str) -> Result<()> {
 
 ```
 morphir/
-├── crates/
-│   ├── morphir-mck/      # MCK engine
-│   ├── morphir-mck-cli/  # morphir-mck, the standalone runner (development only)
-│   └── morphir-dev-tools/ # morphir-dev: kb and repository gates (internal)
 ├── ecosystem/            # Git submodules for ecosystem repos
 │   ├── morphir-dotnet/   # The Morphir CLI source (built by release.yml)
 │   ├── morphir-rust/     # Rust libraries (morphir-core, morphir-common, etc.)
+│   │   └── umbrella-tools/ # morphir-mck (MCK engine and runner) and morphir-dev (kb, repository gates)
 │   ├── morphir-examples/ # Example Morphir projects
 │   ├── README.md         # User guide for ecosystem submodules
 │   └── AGENTS.md         # Agent guidelines for ecosystem directory
 ├── website/              # Docusaurus documentation site
 ├── docs/                 # Documentation content
 ├── examples/             # Example projects
-├── Cargo.toml            # Rust workspace configuration
 └── .config/mise/         # Development task configuration
 ```
 
@@ -225,10 +221,10 @@ See [ecosystem/AGENTS.md](ecosystem/AGENTS.md) for guidelines on working with su
 Use `mise` task runner (`mise run <task>`) for build orchestration:
 
 - `mise run init` - Initialize development environment (submodules, etc.)
-- `mise run build` - Build the project
-- `mise run test` - Run all tests
+- `mise run build` - Build the Rust development tools from `ecosystem/morphir-rust/umbrella-tools`
+- `mise run test` - Run the tests of the Rust development tools
 - `mise run fmt` - Format code
-- `mise run lint` - Run linters (clippy)
+- `mise run lint` - Run linters (clippy on the Rust development tools, and the JSON Schema linter)
 - `mise run submodules:init` - Initialize git submodules (first-time setup)
 - `mise run submodules:update` - Update submodules to recorded commits
 - `mise run submodules:status` - Show submodule status
@@ -264,7 +260,8 @@ is not; check that the `.husky` hook actually calls bd.
 identity trailers, which is the very thing the `commit-msg` guard exists to strip.
 
 `pre-push` does not run lint or tests on purpose. CI gates both on every pull request, and locally they mean
-`cargo clippy --all-targets` plus `cargo test --workspace`, which take minutes and do not link on some machines. A
+`cargo clippy --all-targets` plus `cargo test --workspace` on the Rust development tools in the morphir-rust
+submodule, which take minutes and do not link on some machines. A
 hook that slow gets bypassed with `--no-verify`, and a bypassed hook protects nothing. Set `MORPHIR_SKIP_HOOKS=1`
 to skip the checks that honour it.
 

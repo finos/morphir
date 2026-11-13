@@ -17,7 +17,8 @@ and connected-host protocol remain unchanged. Workbench adoption is pending revi
 
 ## Invocation
 
-The runner's program is `morphir-mck`, built from `crates/morphir-mck-cli`. It is a development tool of this
+The runner's program is `morphir-mck`, built from `ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck-cli` (the `umbrella-tools` workspace of
+finos/morphir-rust, pinned here as a submodule). It is a development tool of this
 repository and is not released. The commands below are written as `morphir mck <command>`, the spelling they had
 in the deleted Rust CLI; the standalone spelling drops the space and nothing else:
 
@@ -25,7 +26,7 @@ in the deleted Rust CLI; the standalone spelling drops the space and nothing els
 | --- | --- |
 | `morphir-mck <command> ARGS` | The runner itself. |
 | `morphir mck <command> ARGS` | The Morphir CLI (finos/morphir-dotnet) finds `morphir-mck` (the absolute path in `MORPHIR_MCK`, otherwise `PATH`) and starts `morphir-mck <command> ARGS` with the same arguments, standard streams, working directory and exit status. It carries no second implementation; a command it cannot delegate fails with a message that names `morphir-mck`. |
-| `cargo run --locked -p morphir-mck-cli -- <command> ARGS` | How this repository's tasks run it from source (`mise run mck -- <command>`). |
+| `cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- <command> ARGS` | How this repository's tasks run it from source (`mise run mck -- <command>`). |
 
 The commands, options, adapters, exit codes, output routing and report formats below are unchanged by the move
 ([`move-cli-delivery-to-umbrella`](../../openspec/changes/move-cli-delivery-to-umbrella/proposal.md)). The
@@ -39,8 +40,8 @@ Each behaviour below is marked **kept** (same as the TypeScript driver at the
 
 | Component | Responsibility |
 | --- | --- |
-| `crates/morphir-mck` library | `kit` (parse, load, hash, manifest, acquisition), `transport` (adapter sessions), `ir` (execution, comparison, capabilities, vocabulary coverage), `schema` (offline authoring validation), `report` (draft schema reader, records, summary, baseline gate, HTML rendering). |
-| `crates/morphir-mck-cli` (`morphir-mck`) | Argument validation, help, terminal output, exit status. No compatibility logic. |
+| `ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck` library | `kit` (parse, load, hash, manifest, acquisition), `transport` (adapter sessions), `ir` (execution, comparison, capabilities, vocabulary coverage), `schema` (offline authoring validation), `report` (draft schema reader, records, summary, baseline gate, HTML rendering). |
+| `ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck-cli` (`morphir-mck`) | Argument validation, help, terminal output, exit status. No compatibility logic. |
 | Adapter | Owned by each implementation. Decodes, encodes and handles document trees. |
 
 Case interpretation and comparison are pure functions, callable without a subprocess or global

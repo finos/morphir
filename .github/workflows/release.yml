@@ -231,7 +231,7 @@ jobs:
         run: |
           rustup toolchain install 1.98.1 --profile minimal
           mkdir -p .dev/out/cli-release
-          cargo +1.98.1 run --locked -q -p morphir-mck-cli -- kit status --kit spec/ir/mck --json > .dev/out/cli-release/kit-status.json
+          cargo +1.98.1 run --locked -q --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- kit status --kit spec/ir/mck --json > .dev/out/cli-release/kit-status.json
 
       # Every artifact of this run, each in a folder of its own name: the
       # offerings (morphir-dotnet-*) and the qualification (cli-qualification-*).

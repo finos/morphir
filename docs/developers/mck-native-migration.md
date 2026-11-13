@@ -5,7 +5,7 @@ sidebar_label: MCK native migration
 
 :::note Where the runner is now
 This guide was written when the runner was part of the Rust `morphir` CLI. That CLI was deleted on 10 November
-2026. The runner is now `morphir-mck` (`crates/morphir-mck-cli`, a development tool that is not released), and the
+2026. The runner is now `morphir-mck` (`ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck-cli`, a development tool that is not released), and the
 Morphir CLI from finos/morphir-dotnet delegates `morphir mck ARGS` to it. The `morphir mck ...` commands below keep
 working through that delegation, or as `morphir-mck ...` with the same arguments. Version numbers below are the
 Rust CLI releases they shipped in.
@@ -156,7 +156,7 @@ library. Update integration boundaries explicitly:
 | Draft.3 definition/admission helpers | Use the parent Rust MCK inspection API or explicit source command above. Admission still rejects pending bindings. |
 | Draft.3 decoder, policy, publisher or assurance helpers | Use the Rust `morphir-package::local_registry` APIs. These bounded helpers do not establish authenticated restore. |
 
-The parent repository's `crates/morphir-mck` contains the Rust engine for
+The `ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck` crate, in the finos/morphir-rust submodule, contains the Rust engine for
 workspace integrations. This guide does not promise a separately published Rust
 crate or a stable library API. The released CLI and its explicitly versioned
 report are the cross-language integration boundary.
@@ -203,7 +203,7 @@ Use the same explicit adapter with the native runner. For example, after buildin
 `mck-adapter-rust`, a source checkout can run:
 
 ```sh
-cargo run --locked --package morphir-mck-cli -- package run \
+cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck-cli -- package run \
   --kit spec/package/mck --contract 0.1.0-draft.2 \
   --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust \
   --adapter-arg --suite --adapter-arg package \
@@ -222,7 +222,7 @@ HTML renderer currently accepts the consolidated IR report only.
 The runner can inspect the draft.3 corpus and its pending assets:
 
 ```sh
-cargo run --locked -p morphir-mck-cli -- package inspect \
+cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- package inspect \
   --source . --contract 0.1.0-draft.3
 ```
 

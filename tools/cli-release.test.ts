@@ -265,8 +265,8 @@ describe("CI after the Rust CLI", () => {
 		const commands = Object.values(tasks.tasks).flatMap(task => (Array.isArray(task.run) ? task.run : [task.run ?? ""]));
 		for (const command of commands) expect(command).not.toMatch(/-p morphir\b(?!-)|--package morphir\b(?!-)/);
 		expect(tasks.tasks["mck:check"]?.run).toEqual([
-			"cargo run --locked -p morphir-mck-cli -- check spec/ir/mck",
-			"cargo run --locked -p morphir-mck-cli -- schema check --kit spec/ir/mck",
+			"cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- check spec/ir/mck",
+			"cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- schema check --kit spec/ir/mck",
 		]);
 		expect(ci.jobs["release-workflow"]?.steps.some(step => step.run === "bun test tools/cli-release.test.ts")).toBe(true);
 	});
