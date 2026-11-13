@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing official CLI tag to release, v<version>. Dispatch from that tag.'
+        description: 'Official CLI tag to release, v<version>. Dispatch from that tag; a dry run may be dispatched from a branch before the tag exists.'
         required: true
         type: string
       dry-run:
@@ -63,10 +63,11 @@ jobs:
       publishable: ${{ steps.release.outputs.publishable }}
       commit: ${{ steps.release.outputs.commit }}
     steps:
+      # A dry run dispatched from a branch rehearses the release before its tag exists, at the branch's commit.
       - name: Check out the tag
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ startsWith(github.ref, 'refs/tags/') && env.RELEASE_TAG || github.sha }}
           persist-credentials: false
 
       - name: Check out the pinned CLI source
@@ -80,8 +81,9 @@ jobs:
         run: bun install --frozen-lockfile
         working-directory: tools
 
-      # Refuses a run whose workflow ref is not refs/tags/<tag>, whose checkout is not the tag's commit, or whose
-      # literal cli-offering.yml commit differs from the pin. Later jobs check out the commit it outputs.
+      # Refuses a run whose workflow ref is not refs/tags/<tag> (or, for a dry run only, a branch), whose checkout is
+      # not the tag's (or the branch's triggering) commit, or whose literal cli-offering.yml commit differs from the
+      # pin. Later jobs check out the commit it outputs.
       - name: Validate the tag, the run's ref and the pinned source
         id: release
         run: bun run tools/cli-release.ts release-info --tag "$RELEASE_TAG"
@@ -96,10 +98,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-info.outputs.offerings) }}
-    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@3da850d7b518d6cb9590d5cdb71f1a9c2f2b1a92
+    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@bddc8e0537dd227e1d6510fe5054d7083639f941
     with:
       repository: finos/morphir-dotnet
-      ref: 3da850d7b518d6cb9590d5cdb71f1a9c2f2b1a92
+      ref: bddc8e0537dd227e1d6510fe5054d7083639f941
       deployment: ${{ matrix.deployment }}
       rid: ${{ matrix.rid }}
       os: ${{ matrix.runner }}

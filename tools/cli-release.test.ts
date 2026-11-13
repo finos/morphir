@@ -49,6 +49,8 @@ import {
 const root = path.resolve(import.meta.dir, "..");
 const config = readConfig(root);
 const read = (file: string) => readFileSync(path.join(root, file), "utf8");
+/** The platforms the pinned source publishes legacy names for; the fixtures pack one Native AOT archive for each. */
+const legacyRids = legacyPlatforms(read(`${config.source.submodule}/build/Helpers/ReleaseProfiles.cs`));
 
 type Step = { name?: string; run?: string; uses?: string; if?: string; with?: Record<string, unknown>; shell?: string };
 type Job = { needs?: string | string[]; if?: string; uses?: string; with?: Record<string, unknown>; "runs-on"?: string; strategy?: { matrix?: unknown }; steps: Step[]; permissions?: Record<string, string> };
@@ -208,7 +210,7 @@ describe("release workflow routing", () => {
 	});
 
 	test("a candidate pin builds and qualifies but cannot publish", () => {
-		expect(config.source.candidate?.pullRequest).toBe("https://github.com/finos/morphir-dotnet/pull/594");
+		expect(config.source.candidate?.pullRequest).toBe("https://github.com/finos/morphir-dotnet/pull/637");
 		expect(releaseBlocker(config)).toContain("marked candidate");
 		expect(releaseBlocker({ ...config, source: { ...config.source, candidate: undefined } })).toBeUndefined();
 	});
@@ -403,6 +405,29 @@ describe("the run is bound to the tag, its commit and the pin", () => {
 		expect(workflowBindingProblems(config, { ...good, workflow: other }).join()).toContain("not the pinned");
 	});
 
+	test("a dry run may rehearse a release from a branch, bound to the branch's commit; a publication may not", () => {
+		const branch = { ...good, githubRef: "refs/heads/feat/dotnet-cli-release-pin", tagCommit: undefined, dryRun: true };
+		expect(workflowBindingProblems(config, branch)).toEqual([]);
+		// A tag that already exists elsewhere does not matter to a rehearsal from a branch.
+		expect(workflowBindingProblems(config, { ...branch, tagCommit: "f".repeat(40) })).toEqual([]);
+		expect(workflowBindingProblems(config, { ...branch, dryRun: false }).join()).toContain("dispatch it from the tag");
+		expect(workflowBindingProblems(config, { ...branch, githubSha: "f".repeat(40) }).join()).toContain("triggering commit");
+		expect(workflowBindingProblems(config, { ...branch, githubRef: "refs/pull/1/merge" }).join()).toContain("dispatch it from the tag");
+		const other = workflow.replaceAll(config.source.commit, "0".repeat(40));
+		expect(workflowBindingProblems(config, { ...branch, workflow: other }).join()).toContain("not the pinned");
+		// From a tag, a dry run is bound to the tag exactly as a publication is.
+		expect(workflowBindingProblems(config, { ...good, dryRun: true, tagCommit: "f".repeat(40) }).join()).toContain("but the checkout is");
+	});
+
+	test("release-info checks out the tag, or the triggering commit of a branch dry run, and knows whether the run is dry", () => {
+		const info = release.jobs["release-info"]!;
+		const checkout = info.steps.find(step => step.uses?.startsWith("actions/checkout@"));
+		expect(checkout?.with?.ref).toBe("${{ startsWith(github.ref, 'refs/tags/') && env.RELEASE_TAG || github.sha }}");
+		const step = info.steps.find(s => s.id === "release");
+		expect(step?.run).toContain("tools/cli-release.ts release-info");
+		expect(read(".github/workflows/release.yml")).toContain("DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run && 'true' || 'false' }}");
+	});
+
 	test("an artifact is bound to the pin by the pack origin its build recorded", () => {
 		const launch: LaunchMetadata = { release: "0.4.0-alpha.4", deployment: "native-aot", platform: "linux-x64", artifact: "a.tar.gz", sha256: "1".repeat(64), launchPath: "morphir", layout: "single-file" };
 		expect(buildOriginProblems(config, launch, contentsOf(launch))).toEqual([]);
@@ -433,7 +458,7 @@ describe("legacy release names", () => {
 	test("future legacy names alias the Native AOT executable on the platforms that shipped them", () => {
 		expect(config.legacyAliases.of).toBe("native-aot");
 		const pinned = legacyPlatforms(read(`${config.source.submodule}/build/Helpers/ReleaseProfiles.cs`));
-		expect(pinned).toEqual(["win-x64", "osx-arm64", "linux-x64", "linux-arm64"]);
+		expect(pinned).toEqual(["win-x64", "win-arm64", "osx-arm64", "linux-x64", "linux-arm64"]);
 		expect(legacyAliasNames("win-x64", "0.4.0-alpha.4")).toEqual({ executable: "morphir-win-x64.exe", tarball: "morphir-win-x64-v0.4.0-alpha.4.tar.gz", entry: "win-x64/morphir.exe" });
 		expect(legacyAliasNames("linux-arm64", "1.0.0")).toEqual({ executable: "morphir-linux-arm64", tarball: "morphir-linux-arm64-v1.0.0.tar.gz", entry: "linux-arm64/morphir" });
 	});
@@ -454,7 +479,7 @@ test("legacy-aliases copies each packed Native AOT executable byte for byte", ()
 	const out = path.join(work, "legacy");
 	mkdirSync(assets);
 	const sha = (file: string) => new Bun.CryptoHasher("sha256").update(readFileSync(file)).digest("hex");
-	for (const rid of ["win-x64", "osx-arm64", "linux-x64", "linux-arm64"]) {
+	for (const rid of legacyRids) {
 		const exe = rid.startsWith("win-") ? "morphir.exe" : "morphir";
 		const folder = path.join(work, `publish-${rid}`);
 		mkdirSync(folder);
@@ -471,7 +496,7 @@ test("legacy-aliases copies each packed Native AOT executable byte for byte", ()
 	const listing = Bun.spawnSync(["tar", "-tzf", path.join(out, "morphir-osx-arm64-v1.0.0.tar.gz")], { stdout: "pipe", windowsHide: true });
 	expect(listing.stdout.toString().trim().split(/\r?\n/)).toContain("osx-arm64/morphir");
 	const recorded = JSON.parse(readFileSync(path.join(out, "legacy-aliases.json"), "utf8")) as { asset: string; aliasOf: string }[];
-	expect(recorded).toHaveLength(8);
+	expect(recorded).toHaveLength(legacyRids.length * 2);
 	expect(recorded.find(a => a.asset === "morphir-win-x64.exe")?.aliasOf).toBe("morphir-dotnet-1.0.0-native-aot-win-x64.tar.gz");
 });
 describe("reported version", () => {
@@ -564,7 +589,7 @@ describe("archives are read wherever the command runs", () => {
 		const listed = prepareRelease(publishable, work, { ...inputs, out: "publish", dryRun: false });
 		expect(readFileSync(path.join(work, "publish/release-assets.txt"), "utf8").trim().split("\n")).toEqual(listed);
 		const names = listed.map(file => path.basename(file)).sort();
-		expect(names).toHaveLength(launches.length + 8 + 1);
+		expect(names).toHaveLength(launches.length + legacyRids.length * 2 + 1);
 		for (const launch of launches) expect(names).toContain(launch.artifact);
 		expect(names).toContain("morphir-linux-arm64-v1.0.0.tar.gz");
 		expect(names).toContain("release-manifest.json");		for (const file of listed) expect(path.isAbsolute(file)).toBe(true);
@@ -818,7 +843,7 @@ describe("real zip archives", () => {
 		const work = mkdtempSync(path.join(os.tmpdir(), "cli-legacy-zip-"));
 		const assets = path.join(work, "assets");
 		mkdirSync(assets);
-		for (const rid of ["win-x64", "osx-arm64", "linux-x64", "linux-arm64"]) {
+		for (const rid of legacyRids) {
 			const exe = rid.startsWith("win-") ? "morphir.exe" : "morphir";
 			const artifact = `morphir-dotnet-1.0.0-native-aot-${rid}.${rid.startsWith("win-") ? "zip" : "tar.gz"}`;
 			if (rid.startsWith("win-")) writeFileSync(path.join(assets, artifact), storedZip([[exe, Buffer.from(`native ${rid}`)]]));
