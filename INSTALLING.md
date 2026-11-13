@@ -104,7 +104,9 @@ but `setup` is not supported yet: install the CLI itself from a [release archive
 the [.NET tool](#install-the-net-tool).
 
 `morphirup` and its setup toolchains are published on the [finos/morphir releases](https://github.com/finos/morphir/releases),
-beside the CLI. Install it with the script for your system. On macOS, or on Linux (install only, as above):
+beside the CLI, from `v0.5.0-alpha.2` on. `v0.5.0-alpha.1` has the CLI only; its `morphirup` is on the
+[finos/morphir-dotnet `v0.5.0-alpha.1` release](https://github.com/finos/morphir-dotnet/releases/tag/v0.5.0-alpha.1).
+Install it with the script for your system. On macOS, or on Linux (install only, as above):
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/finos/morphir-dotnet/main/scripts/install-morphirup.sh | sh

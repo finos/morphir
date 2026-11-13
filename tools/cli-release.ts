@@ -212,6 +212,57 @@ export function parseChecksums(text: string): Map<string, string> {
 
 export type MorphirupAsset = { asset: string; role: MorphirupAssetRole; platform?: string; sha256: string };
 
+/** The earliest local-toolchains family whose bundles name finos/morphir as the release source. */
+export const MIN_TOOLCHAIN_FAMILY = "0.1.0-preview.5";
+
+/** The family a local-toolchains bundle declares through its `$schema`, or undefined. */
+export function toolchainFamily(schemaUrl: unknown): string | undefined {
+	const match = typeof schemaUrl === "string" ? /^https:\/\/morphir\.finos\.org\/schemas\/local-toolchains\/([^/]+)\/bundle\.schema\.json$/.exec(schemaUrl) : null;
+	return match?.[1];
+}
+
+/**
+ * Why the setup toolchains would not read this release's files: each `morphir-toolchain-<rid>.json` must be of family
+ * 0.1.0-preview.5 or later, name the release version, the pinned commit and its platform, and give every asset the URL
+ * `https://github.com/finos/morphir/releases/download/<tag>/<name>`, with `<name>` one of the release's assets and its
+ * SHA-256. A bundle of an earlier family still names finos/morphir-dotnet, so setup would never read these files.
+ * These are publication blockers: a dry run records them, and a publication is refused.
+ */
+export function toolchainBundleBlockers(config: CliReleaseConfig, tag: string, version: string, dir: string, releaseAssets: Map<string, string>): string[] {
+	const blockers: string[] = [];
+	for (const rid of config.morphirup.toolchainPlatforms) {
+		const name = `morphir-toolchain-${rid}.json`;
+		let bundle: { $schema?: unknown; version?: unknown; sourceCommit?: unknown; platform?: unknown; assets?: unknown };
+		try {
+			bundle = JSON.parse(readFileSync(path.join(dir, name), "utf8"));
+		} catch (error) {
+			blockers.push(`${name} cannot be read: ${error instanceof Error ? error.message : String(error)}`);
+			continue;
+		}
+		const family = toolchainFamily(bundle.$schema);
+		let current = false;
+		try {
+			current = family !== undefined && greaterOrEqual(parse(family), parse(MIN_TOOLCHAIN_FAMILY));
+		} catch {
+			current = false;
+		}
+		if (!current) blockers.push(`${name} is of local-toolchains family ${family ?? "unknown"}, not ${MIN_TOOLCHAIN_FAMILY} or later, so it does not name finos/morphir as its release source`);
+		if (bundle.version !== version) blockers.push(`${name} names version ${String(bundle.version)}, not ${version}`);
+		if (bundle.sourceCommit !== config.source.commit) blockers.push(`${name} names source commit ${String(bundle.sourceCommit)}, not the pinned ${config.source.commit}`);
+		if (bundle.platform !== rid) blockers.push(`${name} names platform ${String(bundle.platform)}, not ${rid}`);
+		const assets = Array.isArray(bundle.assets) ? (bundle.assets as { name?: unknown; url?: unknown; sha256?: unknown }[]) : [];
+		if (assets.length === 0) blockers.push(`${name} names no assets`);
+		for (const asset of assets) {
+			const assetName = typeof asset.name === "string" ? asset.name : "";
+			const expected = `https://github.com/finos/morphir/releases/download/${tag}/${assetName}`;
+			if (!releaseAssets.has(assetName)) blockers.push(`${name} names ${assetName || "an unnamed asset"}, which is not an asset of ${tag}`);
+			else if (asset.sha256 !== releaseAssets.get(assetName)) blockers.push(`${name} gives ${assetName} SHA-256 ${String(asset.sha256)}, but the release attaches ${releaseAssets.get(assetName)}`);
+			if (asset.url !== expected) blockers.push(`${name} downloads ${assetName || "an asset"} from ${String(asset.url)}, not ${expected}`);
+		}
+	}
+	return blockers;
+}
+
 /**
  * Checks the flattened morphirup release assets (FlattenReleaseAssets, MorphirupChecksums and WindowsToolchainChecksums
  * of the pinned source) and returns each one with its SHA-256. The folder must hold exactly the contract's names. Both
@@ -624,6 +675,14 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 	};
 }
 
+/**
+ * Whether `--version` output is exactly `<release>+<commit>` with the full pinned commit. morphirup prints both, and
+ * a manager is the release's only if it names the commit it was built from, so a bare version fails here.
+ */
+export function versionNamesPin(output: string, release: string, commit: string): boolean {
+	return output.trim() === `${release}+${commit}`;
+}
+
 export type MorphirupQualification = {
 	kind: "morphirup";
 	release: string;
@@ -637,7 +696,7 @@ export type MorphirupQualification = {
 
 /**
  * Launches the morphirup manager of `rid` on this machine as a user does: the downloaded executable itself, with no
- * .NET on the search path. `--version` must name the release built from the pinned commit, and the executable in
+ * .NET on the search path. `--version` must be `<release>+<pinned commit>` (`versionNamesPin`), and the executable in
  * `morphirup-<rid>-v<version>.tar.gz` must be the same bytes. `dir` holds the `morphirup-<rid>` workflow artifact.
  */
 export function qualifyMorphirup(config: CliReleaseConfig, dir: string, rid: string, version: string): MorphirupQualification {
@@ -652,7 +711,7 @@ export function qualifyMorphirup(config: CliReleaseConfig, dir: string, rid: str
 	const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), `morphirup-${rid}-`));
 	const version_ = run([executable, "--version"], { cwd: work, env: withoutDotnet() });
 	console.error(`${names.executable} --version: exit ${version_.exitCode}\n${version_.stdout}${version_.stderr}`);
-	const launch = version_.exitCode === 0 && versionReported(version_.stdout, version, config.source.commit) ? 0 : 1;
+	const launch = version_.exitCode === 0 && versionNamesPin(version_.stdout, version, config.source.commit) ? 0 : 1;
 	const extracted = path.join(work, "extracted");
 	mkdirSync(extracted);
 	const untar = run(extractCommand(tarball, extracted), { cwd: work });
@@ -785,6 +844,42 @@ export function sourceTagCommit(repository: string, tag: string): string | undef
 	if (result.exitCode !== 0) throw new Error(`git ls-remote ${repository} failed: ${result.stderr.toString()}`);
 	const refs = new Map(result.stdout.toString().trim().split(/\r?\n/).filter(Boolean).map(line => { const [sha, ref] = line.split("\t"); return [ref!, sha!] as const; }));
 	return refs.get(`refs/tags/${tag}^{}`) ?? refs.get(`refs/tags/${tag}`);
+}
+
+type WorkflowStep = { name?: string; if?: string; uses?: string; with?: Record<string, unknown> };
+type WorkflowFile = { on?: { workflow_call?: { inputs?: Record<string, unknown> } }; jobs?: Record<string, { uses?: string; with?: Record<string, unknown>; steps?: WorkflowStep[] }> };
+
+/**
+ * Why `release.yml` cannot run at the pin: a `with:` key that the pinned reusable workflow does not declare under
+ * `on.workflow_call.inputs` (GitHub refuses the whole run at startup), or a pinned `morphirup-build.yml` that does not
+ * upload `morphir-dotnet-self-contained-<rid>`, with its launch metadata and build contents, for exactly the toolchain
+ * platforms when `upload-host-offering` is true. Reads the workflows from the checked-out submodule.
+ */
+export function sourceInterfaceProblems(root: string, config: CliReleaseConfig, releaseWorkflow: string): string[] {
+	const problems: string[] = [];
+	const release = Bun.YAML.parse(releaseWorkflow) as WorkflowFile;
+	const pinned = (workflow: string) => Bun.YAML.parse(readFileSync(path.join(root, config.source.submodule, ".github/workflows", workflow), "utf8")) as WorkflowFile;
+	for (const [job, definition] of Object.entries(release.jobs ?? {})) {
+		const call = /^finos\/morphir-dotnet\/\.github\/workflows\/([a-z-]+\.yml)@/.exec(definition.uses ?? "");
+		if (!call) continue;
+		const declared = Object.keys(pinned(call[1]!).on?.workflow_call?.inputs ?? {});
+		for (const key of Object.keys(definition.with ?? {})) {
+			if (!declared.includes(key)) problems.push(`release.yml job ${job} passes '${key}' to ${call[1]}, which the pinned ${config.source.commit.slice(0, 8)} does not declare (it declares ${declared.join(", ")})`);
+		}
+	}
+	const build = pinned("morphirup-build.yml");
+	const steps = Object.values(build.jobs ?? {}).flatMap(job => job.steps ?? []);
+	const upload = steps.filter(step => step.uses?.startsWith("actions/upload-artifact@") && step.with?.name === "morphir-dotnet-self-contained-${{ inputs.rid }}");
+	if (upload.length !== 1) problems.push(`the pinned morphirup-build.yml uploads morphir-dotnet-self-contained-<rid> ${upload.length} times, not once`);
+	else {
+		const condition = upload[0]!.if ?? "";
+		const named = [...new Set([...condition.matchAll(/'([a-z]+-[a-z0-9]+)'/g)].map(m => m[1]!))].sort();
+		if (!condition.includes("inputs.upload-host-offering")) problems.push("the pinned morphirup-build.yml uploads the host offering without depending on upload-host-offering");
+		if (named.join(",") !== [...config.morphirup.toolchainPlatforms].sort().join(",")) problems.push(`the pinned morphirup-build.yml uploads the host offering for ${named.join(", ") || "no named platform"}, not exactly ${config.morphirup.toolchainPlatforms.join(", ")}`);
+		const files = String(upload[0]!.with?.path ?? "");
+		for (const suffix of [".build-launch.json", ".build-contents.json"]) if (!files.includes(suffix)) problems.push(`the pinned morphirup-build.yml host offering carries no ${suffix}`);
+	}
+	return problems;
 }
 
 /** The pinned source's reusable workflows that release.yml calls: the offerings, and morphirup with its setup toolchain. */
@@ -999,6 +1094,7 @@ export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: Re
 		releaseFiles.push(file);
 	}
 	let morphirup: MorphirupEvidence | undefined;
+	const toolchainBlockers: string[] = [];
 	if (config.morphirup.platforms.length > 0) {
 		if (inputs.morphirup === undefined) throw new Error("the release has no morphirup assets (--morphirup)");
 		const dir = path.resolve(cwd, inputs.morphirup);
@@ -1011,8 +1107,11 @@ export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: Re
 		// A host archive is already attached as its platform's self-contained offering: one file, one name.
 		for (const asset of assetList.filter(a => a.role !== "host-archive")) releaseFiles.push(path.join(dir, asset.asset));
 		morphirup = { assets: assetList, qualifications: files(assets, ".morphirup-qualification.json").map(file => JSON.parse(readFileSync(file, "utf8")) as MorphirupQualification) };
+		// Every file the release attaches, by name, with its bytes: what a toolchain bundle may name.
+		const attached = new Map<string, string>([...expected.map(l => [l.artifact, l.sha256] as const), ...assetList.map(a => [a.asset, a.sha256] as const)]);
+		toolchainBlockers.push(...toolchainBundleBlockers(config, inputs.tag, inputs.version, dir, attached));
 	}
-	const blockers = publicationBlockers(config, inputs.version, inputs.changelog, inputs.sourceTagCommit, inputs.existingTags);
+	const blockers = [...publicationBlockers(config, inputs.version, inputs.changelog, inputs.sourceTagCommit, inputs.existingTags), ...toolchainBlockers];
 	const manifest = releaseManifest(config, inputs.tag, inputs.version, inputs.commit, kit, expected, qualifications, legacy, { dryRun: inputs.dryRun, blockers }, morphirup);
 	const out = path.resolve(cwd, inputs.out);
 	mkdirSync(out, { recursive: true });
@@ -1077,7 +1176,7 @@ function main(args: string[]): number {
 			return problems.length === 0 ? 0 : 1;
 		}
 		case "release-info": {
-			const problems = verifySource(root, config);
+			const problems = [...verifySource(root, config), ...sourceInterfaceProblems(root, config, readFileSync(path.join(root, ".github/workflows/release.yml"), "utf8"))];
 			if (problems.length > 0) throw new Error(problems.join("\n"));
 			const tag = required(rest, "--tag");
 			const version = parseReleaseTag(config, tag);

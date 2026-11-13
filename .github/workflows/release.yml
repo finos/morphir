@@ -241,15 +241,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  publish-release:
-    name: Publish the GitHub release
-    needs: [release-info, offering, morphirup, qualify-platform]
+  # The source's own release assembly, in a job of its own: read-only
+  # permissions and no token, because it runs the source's build (a NuGet
+  # restore and the build's code). It hands the flattened assets to
+  # publish-release as an artifact.
+  assemble-morphirup:
+    name: Assemble the morphirup and toolchain assets
+    needs: [release-info, morphirup]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     env:
-      GH_TOKEN: ${{ github.token }}
-      TAG: ${{ needs.release-info.outputs.tag }}
       VERSION: ${{ needs.release-info.outputs.version }}
     steps:
       - name: Check out the bound commit
@@ -259,47 +261,7 @@ jobs:
           persist-credentials: false
 
       - name: Check out the pinned CLI source
-        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet ecosystem/morphir-rust
-
-      - name: Refuse a release that already exists
-        if: env.DRY_RUN != 'true'
-        run: |
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::error::Release $TAG already exists. A published release is never replaced; tag a new version."
-            exit 1
-          fi
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-
-      - name: Install tooling dependencies
-        run: bun install --frozen-lockfile
-        working-directory: tools
-
-      # The kit digest the manifest records is the shared runner's own kit
-      # identity (`morphir-mck kit status`), not a second hashing scheme.
-      - name: Identify the compatibility kit
-        run: |
-          rustup toolchain install 1.98.1 --profile minimal
-          mkdir -p .dev/out/cli-release
-          cargo +1.98.1 run --locked -q -p morphir-mck-cli -- kit status --kit spec/ir/mck --json > .dev/out/cli-release/kit-status.json
-
-      # The offerings (morphir-dotnet-*) and the qualification (cli-qualification-*),
-      # each in a folder of its own name. The morphirup outputs stay apart: a
-      # toolchain holds a copy of its host archive, which is already an offering.
-      - name: Download the offerings
-        uses: actions/download-artifact@v8
-        with:
-          pattern: morphir-dotnet-*
-          path: .dev/out/cli-release/assets
-
-      - name: Download the qualification
-        uses: actions/download-artifact@v8
-        with:
-          pattern: cli-qualification-*
-          path: .dev/out/cli-release/assets
-
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet
       # morphirup-<rid>: the manager, its archive and the notices.
       # windows-release-toolchain-<rid>: a toolchain platform's complete setup
       # toolchain with its producer's SHA256SUMS.
@@ -340,6 +302,83 @@ jobs:
           cd "$OUT"
           sha256sum -c "morphirup-v${VERSION}.sha256"
           sha256sum -c SHA256SUMS
+
+      - name: Upload the assembled assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-morphirup-release-assets
+          path: .dev/out/cli-release/morphirup-assets/*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+  publish-release:
+    name: Publish the GitHub release
+    needs: [release-info, offering, morphirup, qualify-platform, assemble-morphirup]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # The token is given only to the two steps that call gh; no other step,
+    # and nothing it runs (bun install, cargo), has it in its environment.
+    env:
+      TAG: ${{ needs.release-info.outputs.tag }}
+      VERSION: ${{ needs.release-info.outputs.version }}
+    steps:
+      - name: Check out the bound commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-info.outputs.commit }}
+          persist-credentials: false
+
+      - name: Check out the pinned CLI source
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet ecosystem/morphir-rust
+
+      - name: Refuse a release that already exists
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. A published release is never replaced; tag a new version."
+            exit 1
+          fi
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install tooling dependencies
+        run: bun install --frozen-lockfile
+        working-directory: tools
+
+      # The kit digest the manifest records is the shared runner's own kit
+      # identity (`morphir-mck kit status`), not a second hashing scheme.
+      - name: Identify the compatibility kit
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          mkdir -p .dev/out/cli-release
+          cargo +1.98.1 run --locked -q -p morphir-mck-cli -- kit status --kit spec/ir/mck --json > .dev/out/cli-release/kit-status.json
+
+      # The offerings (morphir-dotnet-*) and the qualification (cli-qualification-*),
+      # each in a folder of its own name. The morphirup outputs stay apart: a
+      # toolchain holds a copy of its host archive, which is already an offering.
+      - name: Download the offerings
+        uses: actions/download-artifact@v8
+        with:
+          pattern: morphir-dotnet-*
+          path: .dev/out/cli-release/assets
+
+      - name: Download the qualification
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-qualification-*
+          path: .dev/out/cli-release/assets
+
+      # Assembled by assemble-morphirup, flat: every morphirup and toolchain asset and both checksum files.
+      - name: Download the morphirup and toolchain assets
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-morphirup-release-assets
+          path: .dev/out/cli-release/morphirup-assets
 
       # Maintainer decision of 9 November 2026: future legacy names
       # (morphir-<rid>[.exe], morphir-<rid>-v<version>.tar.gz) carry the same
@@ -386,6 +425,8 @@ jobs:
       # is never created here), and nothing is uploaded into a release afterwards.
       - name: Create the release
         if: env.DRY_RUN != 'true' && needs.release-info.outputs.publishable == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mapfile -t ASSETS < .dev/out/cli-release/publish/release-assets.txt

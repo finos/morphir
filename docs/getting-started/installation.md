@@ -29,8 +29,9 @@ On Windows:
 irm https://raw.githubusercontent.com/finos/morphir-dotnet/main/scripts/install-morphirup.ps1 | iex
 ```
 
-The script downloads `morphirup` from the newest [Morphir release](https://github.com/finos/morphir/releases) and installs
-it only if its SHA-256 matches the release's checksum file. Then, in your project:
+The script downloads `morphirup` from the newest [Morphir release](https://github.com/finos/morphir/releases) that has one
+(`v0.5.0-alpha.2` and later) and installs it only if its SHA-256 matches the release's checksum file. Then, in your
+project:
 
 ```shell
 morphirup setup --yes
