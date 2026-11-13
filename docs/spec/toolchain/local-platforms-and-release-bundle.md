@@ -6,7 +6,7 @@ status: draft
 
 # Local toolchain platforms and release bundles
 
-`local-toolchains/0.1.0-preview.3` extends the
+`local-toolchains/0.1.0-preview.4` extends the
 [composed generation contract](./local-composed-generation.md) in three ways:
 
 - `win-arm64` and `osx-arm64` join `win-x64` as supported platforms for
@@ -19,23 +19,26 @@ status: draft
   release-checksum generation keeps the exact bundle and checksum bodies it
   was installed from.
 
+`local-toolchains/0.1.0-preview.3` is the earlier, Windows-only version of this
+family, and its schemas and examples stay published unchanged. Nothing converts
+between preview.3 and preview.4.
+
 A release checksum establishes byte identity against the release's own
 `SHA256SUMS`. It is not publisher authentication.
 
 ## The six documents
 
 Every document writes `$schema` first, and a reader matches its full URL
-exactly. No preview.2 document is read as preview.3, and nothing converts
-between the two.
+exactly. No preview.2 or preview.3 document is read as preview.4.
 
 | Document | Published schema | Location |
 | --- | --- | --- |
-| Candidate | [candidate](/schemas/local-toolchains/0.1.0-preview.3/candidate.schema.json) | Setup input, then the generation's exact `candidate.json`. A release publishes it as `morphir-host-candidate-<platform>.json`. |
-| Bundle | [bundle](/schemas/local-toolchains/0.1.0-preview.3/bundle.schema.json) | Release asset `morphir-toolchain-<platform>.json`, then the generation's exact `acquisition/bundle.json`. |
-| Generation | [generation](/schemas/local-toolchains/0.1.0-preview.3/generation.schema.json) | `toolchains/generations/<generationSha256>/generation.json`. |
-| Receipt | [receipt](/schemas/local-toolchains/0.1.0-preview.3/receipt.schema.json) | The same generation's `receipt.json`. |
-| Selection | [selection](/schemas/local-toolchains/0.1.0-preview.3/selection.schema.json) | Home-relative `toolchains/default.json`. |
-| Result | [result](/schemas/local-toolchains/0.1.0-preview.3/result.schema.json) | Manager command stdout. |
+| Candidate | [candidate](/schemas/local-toolchains/0.1.0-preview.4/candidate.schema.json) | Setup input, then the generation's exact `candidate.json`. A release publishes it as `morphir-host-candidate-<platform>.json`. |
+| Bundle | [bundle](/schemas/local-toolchains/0.1.0-preview.4/bundle.schema.json) | Release asset `morphir-toolchain-<platform>.json`, then the generation's exact `acquisition/bundle.json`. |
+| Generation | [generation](/schemas/local-toolchains/0.1.0-preview.4/generation.schema.json) | `toolchains/generations/<generationSha256>/generation.json`. |
+| Receipt | [receipt](/schemas/local-toolchains/0.1.0-preview.4/receipt.schema.json) | The same generation's `receipt.json`. |
+| Selection | [selection](/schemas/local-toolchains/0.1.0-preview.4/selection.schema.json) | Home-relative `toolchains/default.json`. |
+| Result | [result](/schemas/local-toolchains/0.1.0-preview.4/result.schema.json) | Manager command stdout. |
 
 The portable extension selection inside a candidate's installation keeps its
 own `toolchains/0.1.0-preview.1/selection.schema.json` format, and a release
@@ -45,7 +48,7 @@ publishes it as `morphir-extensions-<platform>.json`.
 
 | Schema | Change |
 | --- | --- |
-| All five preview.2 schemas | `$id` and `$schema` name `0.1.0-preview.3`. |
+| All five preview.2 schemas | `$id` and `$schema` name `0.1.0-preview.4`. |
 | `candidate` | `origin` is `local-developer` or `release-checksum`; `platform` is `win-x64`, `win-arm64` or `osx-arm64`; `archive.format` is `zip` or `tar-gzip`, as the platform requires; the entry point's file name is the platform's. |
 | `receipt` | `origin` is `local-developer` or `release-checksum`; `platform` is `win-x64`, `win-arm64` or `osx-arm64`; the entry point's file name is the platform's. |
 | `selection` | `origin` is `local-developer` or `release-checksum`. |
@@ -59,6 +62,16 @@ entries), the archive and file byte bounds, the selected frontend and backend,
 the workflow observations, the launch records and the selection pointer.
 `selection`, `result` and `generation` have no `platform` member. `generation`
 and `bundle` have no `origin` member.
+
+## What changed from preview.3
+
+| Schema or rule | Change |
+| --- | --- |
+| All six schemas | `$id` and `$schema` name `0.1.0-preview.4`. |
+| `candidate`, `receipt`, `bundle` | `platform` also accepts `osx-arm64`. |
+| `candidate` | `archive.format` is `zip` or `tar-gzip`, as the platform requires, and the entry point's file name is the platform's. Preview.3 accepted only `zip` and did not constrain the entry point's name. |
+| `receipt` | The entry point's file name is the platform's. |
+| Rule `asset-platform` | The host and provider archive names also end with the platform's archive file extension. |
 
 ## Platforms
 
@@ -104,7 +117,7 @@ A bundle has exactly these members:
 
 | Member | Meaning |
 | --- | --- |
-| `$schema` | Exact preview.3 bundle schema URL. |
+| `$schema` | Exact preview.4 bundle schema URL. |
 | `version` | The release's SemVer version, without build metadata. The release tag is `v<version>`. |
 | `sourceCommit` | Lowercase 40-character source commit of the release. |
 | `platform` | `win-x64`, `win-arm64` or `osx-arm64`. |
@@ -172,12 +185,15 @@ never share a store folder.
 
 ## Fixed examples
 
-The [preview.3 examples](https://github.com/finos/morphir/tree/main/docs/spec/toolchain/local/0.1.0-preview.3)
+The [preview.4 examples](https://github.com/finos/morphir/tree/main/docs/spec/toolchain/local/0.1.0-preview.4)
 are test-only document sets with synthetic digests. Each set holds one
 installation's candidate, portable selection, generation, receipt, selection
 pointer and result, and the release-checksum sets also hold
 `acquisition/bundle.json` and `acquisition/SHA256SUMS`. Every digest one
-document holds of another is the digest of the written bytes.
+document holds of another is the digest of the written bytes. Every
+[preview.3 example](https://github.com/finos/morphir/tree/main/docs/spec/toolchain/local/0.1.0-preview.3)
+is carried forward under the same name, with its `$schema` URLs at preview.4
+and its digests recomputed.
 
 | Valid set | Platform | Origin |
 | --- | --- | --- |
@@ -208,13 +224,13 @@ setup that installed it would print:
 
 ```json
 {
-  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/result.schema.json",
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.4/result.schema.json",
   "command": "setup",
   "status": "installed",
   "origin": "release-checksum",
-  "candidateSha256": "37146dab49c337e5d2e6b0507ccf42861492b6ce4d8fe351555bed2d5507372b",
-  "generationSha256": "72d2549008f2c7a2602cd6f0b3b843223d50ae2fc1977d48d3ce23030c8c7d2c",
-  "receiptPath": "toolchains/generations/72d2549008f2c7a2602cd6f0b3b843223d50ae2fc1977d48d3ce23030c8c7d2c/receipt.json",
+  "candidateSha256": "28f5d218ba1ed2aa0349ee3e74a3ef1150b035716c9346fa03b243151dd192de",
+  "generationSha256": "4c2b4ef0d879a48f16b65e88f4f57f3a6ed5a0da2c87735098fdb9a84a6ae2af",
+  "receiptPath": "toolchains/generations/4c2b4ef0d879a48f16b65e88f4f57f3a6ed5a0da2c87735098fdb9a84a6ae2af/receipt.json",
   "selectionPath": "toolchains/default.json"
 }
 ```
@@ -233,4 +249,4 @@ the candidate, selection and provider envelopes against the bundle before it
 downloads an archive. The dry run plans without creating Home or running code.
 Stderr states that the delivery is release-checksum and not
 publisher-authenticated. Selection, show and run work as in preview.2, and read
-the preview.2 or preview.3 selection pointer by its exact `$schema`.
+the preview.2, preview.3 or preview.4 selection pointer by its exact `$schema`.

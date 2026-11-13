@@ -267,7 +267,8 @@ Runtime adoption, security/interop review, exact portable-lock CI restore,
 authenticated acquisition and the remaining platforms/offerings still require
 their own evidence. This contract is not production-release qualification.
 
-[`local-toolchains/0.1.0-preview.3`](./local-platforms-and-release-bundle.md)
-adds `win-arm64` and `osx-arm64`, the `tar-gzip` archive format for
-`osx-arm64`, the `release-checksum` origin and the release bundle.
-Preview.2 is unchanged.
+[`local-toolchains/0.1.0-preview.4`](./local-platforms-and-release-bundle.md),
+the current version of the family, adds `win-arm64` and `osx-arm64`, the
+`tar-gzip` archive format for `osx-arm64`, the `release-checksum` origin and
+the release bundle. It follows the Windows-only preview.3. Preview.2 and
+preview.3 are unchanged.
