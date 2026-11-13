@@ -52,7 +52,7 @@ const read = (file: string) => readFileSync(path.join(root, file), "utf8");
 /** The platforms the pinned source publishes legacy names for; the fixtures pack one Native AOT archive for each. */
 const legacyRids = legacyPlatforms(read(`${config.source.submodule}/build/Helpers/ReleaseProfiles.cs`));
 
-type Step = { name?: string; run?: string; uses?: string; if?: string; with?: Record<string, unknown>; shell?: string };
+type Step = { id?: string; name?: string; run?: string; uses?: string; if?: string; with?: Record<string, unknown>; shell?: string };
 type Job = { needs?: string | string[]; if?: string; uses?: string; with?: Record<string, unknown>; "runs-on"?: string; strategy?: { matrix?: unknown }; steps: Step[]; permissions?: Record<string, string> };
 type Workflow = { on: Record<string, unknown>; jobs: Record<string, Job>; permissions?: Record<string, string> };
 const release = Bun.YAML.parse(read(".github/workflows/release.yml")) as Workflow;
