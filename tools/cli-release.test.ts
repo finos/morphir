@@ -371,11 +371,18 @@ describe("publication gate", () => {
 		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, "bec7df31eb813396e0e119c557e0a319adbe1ebb", []).join()).toContain("is not the source's release 0.4.0-alpha.4");
 	});
 
-	test("the pinned source today is blocked on every count", () => {
-		const blockers = publicationBlockers(config, changelogReleaseVersion(read(`${config.source.submodule}/CHANGELOG.md`)), read(`${config.source.submodule}/CHANGELOG.md`), "bec7df31eb813396e0e119c557e0a319adbe1ebb", ["v0.4.0-alpha.4", "v0.4.0-beta.12"]);
-		expect(blockers.join()).toContain("is not newer than");
-		expect(blockers.length).toBeGreaterThanOrEqual(2);
-		expect(blockers.join()).toContain("marked candidate");
+	test("the pinned source is its own release: newer than every v* tag, nothing unreleased", () => {
+		const changelog = read(`${config.source.submodule}/CHANGELOG.md`);
+		const version = changelogReleaseVersion(changelog);
+		expect(version).toBe("0.5.0-alpha.1");
+		const tags = ["v0.4.0-alpha.4", "v0.4.0-alpha.7", "v0.4.0-beta.12"];
+		const released = { ...config, source: { ...config.source, candidate: undefined } };
+		// With the source's tag v<version> on the pinned commit, nothing blocks publication.
+		expect(publicationBlockers(released, version, changelog, config.source.commit, tags)).toEqual([]);
+		// A source tag on another commit still blocks, and so does a marked candidate.
+		expect(publicationBlockers(released, version, changelog, "bec7df31eb813396e0e119c557e0a319adbe1ebb", tags).join()).toContain("not the pinned");
+		const marked = { ...config, source: { ...config.source, candidate: { pullRequest: "https://github.com/finos/morphir-dotnet/pull/637", reason: "test" } } };
+		expect(publicationBlockers(marked, version, changelog, config.source.commit, tags).join()).toContain("marked candidate");
 	});
 });
 
