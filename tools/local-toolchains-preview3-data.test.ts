@@ -47,6 +47,9 @@ function validates(name: string, value: unknown): boolean {
 	}
 }
 
+/** The archive file extension each platform's release assets use. */
+const archiveExtension: Record<string, string> = { "win-x64": ".zip", "win-arm64": ".zip", "osx-arm64": ".tar.gz" };
+
 const ruleNames = ["schema-first", "origin-agreement", "platform-agreement", "acquisition-by-origin", "asset-platform", "provider-platform", "bindings", "release-bindings"];
 const sets = (kind: "valid" | "invalid") => readdirSync(join(examples, kind)).sort().map((name) => join(examples, kind, name));
 
@@ -109,9 +112,11 @@ function ruleFailures(set: string): string[] {
 
 	if (bundle) {
 		const platform = bundle.platform;
+		const extension = archiveExtension[platform];
 		rule("asset-platform", asset("host-candidate")?.name === `morphir-host-candidate-${platform}.json`
 			&& asset("selection")?.name === `morphir-extensions-${platform}.json`
-			&& bundle.assets.every((entry: { name: string }) => entry.name.includes(`-${platform}.`)));
+			&& bundle.assets.every((entry: { name: string }) => entry.name.includes(`-${platform}.`))
+			&& ["host-archive", "frontend-archive", "backend-archive"].every((role) => extension !== undefined && asset(role)?.name.endsWith(extension)));
 
 		const sums = new Map<string, string>();
 		let sumsWellFormed = true;
@@ -177,7 +182,7 @@ test("preview.3 publishes six closed schemas carrying their own URL", () => {
 test("platform and origin members exist only where the family places them", () => {
 	const schema = (name: string) => JSON.parse(readFileSync(join(folder, `${name}.schema.json`), "utf8"));
 	for (const name of ["candidate", "receipt", "bundle"]) {
-		expect(schema(name).properties.platform, name).toEqual({ enum: ["win-x64", "win-arm64"] });
+		expect(schema(name).properties.platform, name).toEqual({ enum: ["win-x64", "win-arm64", "osx-arm64"] });
 		expect(schema(name).required, name).toContain("platform");
 	}
 	for (const name of ["selection", "result", "generation"]) expect(schema(name).properties.platform, name).toBeUndefined();
@@ -196,7 +201,11 @@ test("valid example sets satisfy every schema and every stated rule", () => {
 		const candidate = JSON.parse(readFileSync(join(set, "candidate.json"), "utf8"));
 		return `${candidate.platform} ${candidate.origin}`;
 	});
-	expect(covered.sort()).toEqual(["win-arm64 local-developer", "win-arm64 release-checksum", "win-x64 local-developer", "win-x64 release-checksum"]);
+	expect(covered.sort()).toEqual([
+		"osx-arm64 local-developer", "osx-arm64 release-checksum",
+		"win-arm64 local-developer", "win-arm64 release-checksum",
+		"win-x64 local-developer", "win-x64 release-checksum",
+	]);
 	for (const set of valid) {
 		expect(schemaFailures(set), set).toEqual([]);
 		expect(ruleFailures(set), set).toEqual([]);
@@ -205,7 +214,7 @@ test("valid example sets satisfy every schema and every stated rule", () => {
 
 test("each invalid example set fails exactly the check it names", () => {
 	const invalid = sets("invalid");
-	expect(invalid.length).toBeGreaterThanOrEqual(7);
+	expect(invalid.length).toBeGreaterThanOrEqual(9);
 	for (const set of invalid) {
 		const expected = JSON.parse(readFileSync(join(set, "expected.json"), "utf8"));
 		expect(schemaFailures(set), set).toEqual(expected.schemaFailures ?? []);
@@ -242,6 +251,34 @@ test("a bundle names each of its nine roles exactly once and only official relea
 	expect(validates("bundle", { ...bundle, platform: "linux-arm64" })).toBe(false);
 	expect(validates("bundle", { ...bundle, version: "v0.4.0" })).toBe(false);
 }, 60_000);
+
+test("each platform pairs with exactly one archive format and one entry point name", () => {
+	const read = (set: string, name: string) => JSON.parse(readFileSync(join(examples, set, `${name}.json`), "utf8"));
+	const sets: Record<string, string> = {
+		"win-x64": "valid/win-x64-local-developer",
+		"win-arm64": "valid/win-arm64-local-developer",
+		"osx-arm64": "valid/osx-arm64-local-developer",
+	};
+	const pairs: Record<string, [string, string]> = { "win-x64": ["zip", "morphir.exe"], "win-arm64": ["zip", "morphir.exe"], "osx-arm64": ["tar-gzip", "morphir"] };
+	for (const [platform, set] of Object.entries(sets)) {
+		const candidate = read(set, "candidate");
+		const receipt = read(set, "receipt");
+		const [format, entry] = pairs[platform]!;
+		expect([candidate.platform, candidate.archive.format, candidate.entryPoint.path], set).toEqual([platform, format, entry]);
+		expect(validates("candidate", candidate), set).toBe(true);
+		expect(validates("candidate", { ...candidate, entryPoint: { ...candidate.entryPoint, path: `bin/${entry}` } }), set).toBe(true);
+		for (const [otherFormat, otherEntry] of [["zip", "morphir"], ["tar-gzip", "morphir.exe"]]) {
+			if (otherFormat !== format) expect(validates("candidate", { ...candidate, archive: { ...candidate.archive, format: otherFormat } }), `${set} ${otherFormat}`).toBe(false);
+			if (otherEntry !== entry) {
+				const moved = { ...candidate.entryPoint, path: otherEntry };
+				expect(validates("candidate", { ...candidate, entryPoint: moved }), `${set} ${otherEntry}`).toBe(false);
+				expect(validates("receipt", { ...receipt, entryPoint: moved }), `${set} receipt ${otherEntry}`).toBe(false);
+			}
+		}
+		expect(validates("receipt", receipt), set).toBe(true);
+	}
+	for (const platform of ["osx-x64", "linux-x64"]) expect(validates("candidate", { ...read(sets["osx-arm64"]!, "candidate"), platform })).toBe(false);
+}, 120_000);
 
 test("a generation's acquisition proof binds the two fixed retained files", () => {
 	const generation = JSON.parse(readFileSync(join(examples, "valid/win-arm64-release-checksum/generation.json"), "utf8"));

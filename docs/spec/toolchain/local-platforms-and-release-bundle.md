@@ -9,7 +9,9 @@ status: draft
 `local-toolchains/0.1.0-preview.3` extends the
 [composed generation contract](./local-composed-generation.md) in three ways:
 
-- `win-arm64` joins `win-x64` as a supported platform for `morphir` and `morphirup`.
+- `win-arm64` and `osx-arm64` join `win-x64` as supported platforms for
+  `morphir` and `morphirup`. An `osx-arm64` host comes in a `tar-gzip` archive,
+  and its entry point is `morphir`.
 - An installation's origin is either `local-developer`, as in preview.2, or
   `release-checksum`, for a toolchain that `morphirup setup` acquires from an
   official finos/morphir-dotnet release.
@@ -44,8 +46,8 @@ publishes it as `morphir-extensions-<platform>.json`.
 | Schema | Change |
 | --- | --- |
 | All five preview.2 schemas | `$id` and `$schema` name `0.1.0-preview.3`. |
-| `candidate` | `origin` is `local-developer` or `release-checksum`; `platform` is `win-x64` or `win-arm64`. |
-| `receipt` | `origin` is `local-developer` or `release-checksum`; `platform` is `win-x64` or `win-arm64`. |
+| `candidate` | `origin` is `local-developer` or `release-checksum`; `platform` is `win-x64`, `win-arm64` or `osx-arm64`; `archive.format` is `zip` or `tar-gzip`, as the platform requires; the entry point's file name is the platform's. |
+| `receipt` | `origin` is `local-developer` or `release-checksum`; `platform` is `win-x64`, `win-arm64` or `osx-arm64`; the entry point's file name is the platform's. |
 | `selection` | `origin` is `local-developer` or `release-checksum`. |
 | `result` | `origin` is `local-developer` or `release-checksum`. |
 | `generation` | New optional `acquisition` member. |
@@ -60,10 +62,25 @@ and `bundle` have no `origin` member.
 
 ## Platforms
 
-`platform` in the candidate, receipt and bundle is `win-x64` or `win-arm64`.
-Any other value is invalid. The platform reaches the selection only through the
-receipt it is bound to by hash, and reaches the generation only through the
-candidate it is bound to.
+`platform` in the candidate, receipt and bundle is one of the platforms below.
+Any other value is invalid. Each platform has exactly one archive format and one
+entry point file name:
+
+| Platform | `archive.format` | Archive file extension | Entry point file name |
+| --- | --- | --- | --- |
+| `win-x64` | `zip` | `.zip` | `morphir.exe` |
+| `win-arm64` | `zip` | `.zip` | `morphir.exe` |
+| `osx-arm64` | `tar-gzip` | `.tar.gz` | `morphir` |
+
+A candidate whose `archive.format` is not its platform's is invalid: a Windows
+candidate with `tar-gzip` and an `osx-arm64` candidate with `zip` both fail the
+candidate schema. The candidate and receipt schemas also refuse an
+`entryPoint.path` whose last segment is not the platform's entry point file
+name. The archive file extension applies to the host and provider archives a
+release publishes.
+
+The platform reaches the selection only through the receipt it is bound to by
+hash, and reaches the generation only through the candidate it is bound to.
 
 The manager refuses a candidate whose platform differs from the platform of its
 own running process.
@@ -90,20 +107,20 @@ A bundle has exactly these members:
 | `$schema` | Exact preview.3 bundle schema URL. |
 | `version` | The release's SemVer version, without build metadata. The release tag is `v<version>`. |
 | `sourceCommit` | Lowercase 40-character source commit of the release. |
-| `platform` | `win-x64` or `win-arm64`. |
+| `platform` | `win-x64`, `win-arm64` or `osx-arm64`. |
 | `assets` | Exactly nine closed `{ name, url, bytes, sha256, role }` entries, one for each role below. |
 
 | Role | Asset |
 | --- | --- |
 | `host-candidate` | The candidate document, `morphir-host-candidate-<platform>.json`. |
-| `host-archive` | The self-contained host archive, `morphir-dotnet-<version>-self-contained-<platform>.zip`. |
+| `host-archive` | The self-contained host archive, `morphir-dotnet-<version>-self-contained-<platform><extension>`, where `<extension>` is the platform's archive file extension. |
 | `selection` | The portable extension selection, `morphir-extensions-<platform>.json`. |
 | `frontend-release` | The frontend's extension release envelope. |
 | `frontend-manifest` | The frontend's canonical package manifest. |
-| `frontend-archive` | The frontend's process archive. |
+| `frontend-archive` | The frontend's process archive, with the platform's archive file extension. |
 | `backend-release` | The backend's extension release envelope. |
 | `backend-manifest` | The backend's canonical package manifest. |
-| `backend-archive` | The backend's process archive. |
+| `backend-archive` | The backend's process archive, with the platform's archive file extension. |
 
 There is no sample role. Each asset's `name` is a single path segment, unique
 without regard to case. Its `url` is exactly
@@ -144,14 +161,14 @@ repository's fixed examples are tested against them by name.
 | `origin-agreement` | The candidate, receipt, selection and result of one installation have the same `origin`. |
 | `platform-agreement` | The candidate, receipt and bundle have the same `platform`, and it is the platform of the manager process and of the host archive. |
 | `acquisition-by-origin` | When the candidate's origin is `release-checksum`, the generation has `acquisition` and keeps both acquisition files. When it is `local-developer`, the generation has no `acquisition` member and no acquisition files: the developer gave the archive explicitly, so nothing claims it was acquired from a release. |
-| `asset-platform` | Release asset names carry the bundle's platform: `morphir-host-candidate-<platform>.json`, `morphir-extensions-<platform>.json`, `morphir-toolchain-<platform>.json`, and `-<platform>.` in every other asset name. For example, an ARM64 release publishes `morphir-host-candidate-win-arm64.json`, `morphir-extensions-win-arm64.json` and `morphir-toolchain-win-arm64.json`. |
-| `provider-platform` | Each selected provider's pin in the portable selection has an entry in `platforms` for the candidate's platform, and the manager uses that entry: `platforms["win-arm64"]` for an ARM64 candidate, `platforms["win-x64"]` for an x64 one. With a bundle, that digest equals the role's archive asset digest. |
+| `asset-platform` | Release asset names carry the bundle's platform: `morphir-host-candidate-<platform>.json`, `morphir-extensions-<platform>.json`, `morphir-toolchain-<platform>.json`, and `-<platform>.` in every other asset name. The `host-archive`, `frontend-archive` and `backend-archive` names end with the platform's archive file extension. For example, a Windows ARM64 release publishes `morphir-host-candidate-win-arm64.json`, `morphir-extensions-win-arm64.json`, `morphir-toolchain-win-arm64.json` and `morphir-dotnet-<version>-self-contained-win-arm64.zip`, and a macOS ARM64 release publishes `morphir-dotnet-<version>-self-contained-osx-arm64.tar.gz`. |
+| `provider-platform` | Each selected provider's pin in the portable selection has an entry in `platforms` for the candidate's platform, and the manager uses that entry: `platforms["win-arm64"]` for a Windows ARM64 candidate, `platforms["win-x64"]` for an x64 one, `platforms["osx-arm64"]` for a macOS ARM64 one. With a bundle, that digest equals the role's archive asset digest. |
 | `bindings` | The receipt, generation and result name the digest of the exact candidate bytes. The candidate and generation name the digest of the exact portable selection bytes. The receipt, selection and result name the digest of the exact generation bytes, and `receiptPath` is `toolchains/generations/<generationSha256>/receipt.json`. The selection names the digest of the exact receipt bytes. The receipt repeats the candidate's implementation, deployment, version, source commit, build identity, entry point and archive digest, and its `installationPath` is `store/tools/sha256/<archive.sha256>`. The generation locks both selected providers. |
 | `release-bindings` | The bundle's `sourceCommit` is the candidate's. Its `version` is the candidate's version without build metadata, and the generation's `tag` is `v<version>`. The `host-candidate` asset has the candidate's exact digest and length. The `host-archive` asset has the candidate's archive digest and length. The `selection` asset has the candidate's selection digest. Each `<role>-release` asset has the digest of that provider's `metadata` entry in the generation. `acquisition.bundle.sha256` and `acquisition.checksums.sha256` are the digests of the retained files, and `SHA256SUMS` lists the bundle and every asset with matching digests. |
 
 The installation path is derived from the archive digest, not from the
-platform name. An x64 and an ARM64 host have different archives, so they never
-share a store folder.
+platform name. Hosts for different platforms have different archives, so they
+never share a store folder.
 
 ## Fixed examples
 
@@ -164,6 +181,8 @@ document holds of another is the digest of the written bytes.
 
 | Valid set | Platform | Origin |
 | --- | --- | --- |
+| `valid/osx-arm64-release-checksum` | `osx-arm64` | `release-checksum` |
+| `valid/osx-arm64-local-developer` | `osx-arm64` | `local-developer` |
 | `valid/win-arm64-release-checksum` | `win-arm64` | `release-checksum` |
 | `valid/win-arm64-local-developer` | `win-arm64` | `local-developer` |
 | `valid/win-x64-release-checksum` | `win-x64` | `release-checksum` |
@@ -175,6 +194,8 @@ schema or the rule that fails:
 | Invalid set | Fails |
 | --- | --- |
 | `invalid/unknown-platform` | The candidate, receipt and bundle schemas (`win-x86`). |
+| `invalid/osx-arm64-archive-is-zip` | The candidate schema (an `osx-arm64` candidate with `zip`). |
+| `invalid/win-x64-archive-is-tar-gzip` | The candidate schema (a `win-x64` candidate with `tar-gzip`). |
 | `invalid/candidate-receipt-platforms-differ` | `platform-agreement`. |
 | `invalid/candidate-receipt-origins-differ` | `origin-agreement`. |
 | `invalid/local-developer-with-acquisition` | `acquisition-by-origin`. |

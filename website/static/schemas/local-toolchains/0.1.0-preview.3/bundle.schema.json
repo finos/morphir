@@ -18,7 +18,8 @@
     "platform": {
       "enum": [
         "win-x64",
-        "win-arm64"
+        "win-arm64",
+        "osx-arm64"
       ]
     },
     "assets": {

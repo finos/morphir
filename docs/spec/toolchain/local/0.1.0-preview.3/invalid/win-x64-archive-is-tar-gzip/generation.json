@@ -1,0 +1,88 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/generation.schema.json",
+  "candidateSha256": "e3a2e6659c406b9f08dbb9120197b1a79cbdd2de7441e8c13af065b612ca5183",
+  "selectionSha256": "95821fd79221418f2962a6a3de0daf91142a9b9561f115f0343f51ed812a29f1",
+  "catalogSha256": "f7627314ccc4759db6d295c81532ebe298024a1810767b77fae851a6f7bae27b",
+  "locks": [
+    {
+      "extensionId": "org.finos.morphir.fsharp-backend",
+      "sha256": "c13f98707bc4b897759c1f72b0eaeebb375a039e7b830cae2097453979c17ebe"
+    },
+    {
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "sha256": "d50bb9eb9f650697461869b50cf16cbd5945d274d4e5cb6c3915326504729d57"
+    }
+  ],
+  "metadata": [],
+  "workflow": {
+    "case": "fsharp-compile-generate",
+    "caseSha256": "98bc857c1ab63bd5aae8bbe6a1851b30c86913bc33efd980d5cc4bf5cbb41df0",
+    "sourceSha256": "f924e05d37b0517ac8777b495691ad86207f2b1dc7f5b6e038e6f6e370817d6c",
+    "ir": {
+      "sha256": "8b5cd2bbe2d33df341f10e6f0be6f5f4165b39833b94b5c3956507667aff4efc",
+      "semanticMatch": true
+    },
+    "generatedFiles": [
+      {
+        "path": "Pricing.fs",
+        "bytes": 112,
+        "sha256": "64e08313f3e57be2c18995a2e8b275db9d921341958da2c8cd960c601c066de0"
+      }
+    ],
+    "providers": [
+      {
+        "role": "frontend",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "version": "0.4.0-alpha.5",
+        "mepVersion": "0.2.0-draft.1",
+        "modelTuple": {
+          "operation": "morphir.frontend.compileModel",
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "envelopeVersion": "0.1.0-draft.1",
+          "irVersion": "4.0.0"
+        },
+        "checks": [
+          {
+            "check": "integrity",
+            "status": "passed"
+          },
+          {
+            "check": "capability",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "role": "backend",
+        "extensionId": "org.finos.morphir.fsharp-backend",
+        "version": "0.4.0-alpha.5",
+        "mepVersion": "0.2.0-draft.1",
+        "modelTuple": {
+          "operation": "morphir.backend.generateModel",
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "envelopeVersion": "0.1.0-draft.1",
+          "irVersion": "4.0.0"
+        },
+        "checks": [
+          {
+            "check": "integrity",
+            "status": "passed"
+          },
+          {
+            "check": "capability",
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "check": "workflow",
+        "status": "passed",
+        "workflow": "fsharp-compile-generate"
+      }
+    ]
+  }
+}

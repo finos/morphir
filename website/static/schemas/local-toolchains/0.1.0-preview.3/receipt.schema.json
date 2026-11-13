@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/receipt.schema.json",
   "title": "Local composed toolchain receipt",
-  "description": "The manager's record of one installed, workflow-verified generation. Its origin and platform repeat the bound candidate's.",
+  "description": "The manager's record of one installed, workflow-verified generation. Its origin and platform repeat the bound candidate's, and its entry point is morphir.exe on a Windows platform and morphir on osx-arm64.",
   "type": "object",
   "properties": {
     "$schema": {
@@ -23,7 +23,8 @@
     "platform": {
       "enum": [
         "win-x64",
-        "win-arm64"
+        "win-arm64",
+        "osx-arm64"
       ]
     },
     "version": {
@@ -97,6 +98,57 @@
     "owner",
     "readiness",
     "generationSha256"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "platform": {
+            "enum": [
+              "win-x64",
+              "win-arm64"
+            ]
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entryPoint": {
+            "properties": {
+              "path": {
+                "pattern": "(^|/)morphir\\.exe$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "platform": {
+            "const": "osx-arm64"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      },
+      "then": {
+        "properties": {
+          "entryPoint": {
+            "properties": {
+              "path": {
+                "pattern": "(^|/)morphir$"
+              }
+            }
+          }
+        }
+      }
+    }
   ],
   "additionalProperties": false
 }
