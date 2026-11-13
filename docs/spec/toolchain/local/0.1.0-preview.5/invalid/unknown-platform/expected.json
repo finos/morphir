@@ -1,0 +1,7 @@
+{
+  "schemaFailures": [
+    "acquisition/bundle.json",
+    "candidate.json",
+    "receipt.json"
+  ]
+}

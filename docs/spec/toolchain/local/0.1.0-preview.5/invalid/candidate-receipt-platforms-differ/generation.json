@@ -1,0 +1,111 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.5/generation.schema.json",
+  "candidateSha256": "5309eb838c6ef493c164e54235b1f1a54532b63e2f0de711ef1b35e12a816f54",
+  "selectionSha256": "b682aa7c275424ef50c29f2ac6b4ac9733ffb6272e19bf89b6d53a56d21f7c59",
+  "catalogSha256": "e78e6e28d96461e8099b5f1626f5e406960b644786dbdec62768869e89fddf83",
+  "locks": [
+    {
+      "extensionId": "org.finos.morphir.fsharp-backend",
+      "sha256": "e91b46c65eae278a761956edc605f5629385c1fb806f29718b07f7fc23bfb547"
+    },
+    {
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "sha256": "6346525316d201245e682297a352cdfeb6de4276f084c7020f40c2ff0e64eb9a"
+    }
+  ],
+  "metadata": [
+    {
+      "extensionId": "org.finos.morphir.fsharp-backend",
+      "path": "extensions/metadata/org.finos.morphir.fsharp-backend/release.json",
+      "sha256": "bf28ada239d8dc6a49fa263cf180bf38d905556aee0ec5535ba6f5d9f1f322c3"
+    },
+    {
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "path": "extensions/metadata/org.finos.morphir.fsharp-frontend/release.json",
+      "sha256": "6f070107d19fae26dc252498d42db14a93a6fa12addf0a10ab271059cd41124e"
+    }
+  ],
+  "workflow": {
+    "case": "fsharp-compile-generate",
+    "caseSha256": "98bc857c1ab63bd5aae8bbe6a1851b30c86913bc33efd980d5cc4bf5cbb41df0",
+    "sourceSha256": "f924e05d37b0517ac8777b495691ad86207f2b1dc7f5b6e038e6f6e370817d6c",
+    "ir": {
+      "sha256": "54f7b663d1f08a3cf984ceaa6d1615fafa49aaa3dd7da672140e11284abc9d57",
+      "semanticMatch": true
+    },
+    "generatedFiles": [
+      {
+        "path": "Pricing.fs",
+        "bytes": 112,
+        "sha256": "64e08313f3e57be2c18995a2e8b275db9d921341958da2c8cd960c601c066de0"
+      }
+    ],
+    "providers": [
+      {
+        "role": "frontend",
+        "extensionId": "org.finos.morphir.fsharp-frontend",
+        "version": "0.4.0-alpha.5",
+        "mepVersion": "0.2.0-draft.1",
+        "modelTuple": {
+          "operation": "morphir.frontend.compileModel",
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "envelopeVersion": "0.1.0-draft.1",
+          "irVersion": "4.0.0"
+        },
+        "checks": [
+          {
+            "check": "integrity",
+            "status": "passed"
+          },
+          {
+            "check": "capability",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "role": "backend",
+        "extensionId": "org.finos.morphir.fsharp-backend",
+        "version": "0.4.0-alpha.5",
+        "mepVersion": "0.2.0-draft.1",
+        "modelTuple": {
+          "operation": "morphir.backend.generateModel",
+          "profile": "morphir-ir",
+          "codec": "morphir-json",
+          "envelopeVersion": "0.1.0-draft.1",
+          "irVersion": "4.0.0"
+        },
+        "checks": [
+          {
+            "check": "integrity",
+            "status": "passed"
+          },
+          {
+            "check": "capability",
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "check": "workflow",
+        "status": "passed",
+        "workflow": "fsharp-compile-generate"
+      }
+    ]
+  },
+  "acquisition": {
+    "repository": "https://github.com/finos/morphir",
+    "tag": "v0.4.0-alpha.5",
+    "bundle": {
+      "path": "acquisition/bundle.json",
+      "sha256": "9e8488e60dc4c00e34c3bfccdcabb9d131bfe8089b0d8866c0345f104347980c"
+    },
+    "checksums": {
+      "path": "acquisition/SHA256SUMS",
+      "sha256": "bf4cc51feeaa6a57c45575b9ff7b95f197c344e25605518e4e2dc445517ad981"
+    }
+  }
+}
