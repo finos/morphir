@@ -442,6 +442,15 @@ describe("the run is bound to the tag, its commit and the pin", () => {
 		expect(workflowBindingProblems(config, { ...good, dryRun: true, tagCommit: "f".repeat(40) }).join()).toContain("but the checkout is");
 	});
 
+	test("a branch rehearsal never shares a concurrency group with the tag's release, and nothing is cancelled", () => {
+		const concurrency = (release as Workflow & { concurrency?: { group?: string; "cancel-in-progress"?: boolean } }).concurrency;
+		// The ref is part of the group: a tag push and a dispatch from the tag share refs/tags/<tag>, so real releases of
+		// one tag still queue one at a time, while a rehearsal from a branch queues in a group of its own and cannot
+		// replace a pending release of that tag.
+		expect(concurrency?.group).toBe("${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}");
+		expect(concurrency?.["cancel-in-progress"]).toBe(false);
+	});
+
 	test("release-info checks out the tag, or the triggering commit of a branch dry run, and knows whether the run is dry", () => {
 		const info = release.jobs["release-info"]!;
 		const checkout = info.steps.find(step => step.uses?.startsWith("actions/checkout@"));

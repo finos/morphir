@@ -37,10 +37,12 @@ on:
 permissions:
   contents: read
 
-# One release run per tag at a time. A second run for the same tag waits; a
-# release that is building or publishing is never cancelled.
+# One release run per ref and tag at a time. A second run for the same tag waits;
+# a release that is building or publishing is never cancelled. The ref keeps a
+# dry run dispatched from a branch out of the tag's group, so a queued rehearsal
+# can never replace a pending release of that tag.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 env:
