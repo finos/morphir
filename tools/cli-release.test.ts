@@ -61,6 +61,11 @@ const runs = (job: Job | undefined) => (job?.steps ?? []).map(step => step.run ?
 /** The build contents the source writes beside an artifact, packed from the pinned commit. */
 const contentsOf = (launch: LaunchMetadata, origin: { commit: string; workingTreeClean: boolean } = { commit: config.source.commit, workingTreeClean: true }): BuildContents => ({ artifact: launch.artifact, release: launch.release, deployment: launch.deployment, platform: launch.platform, sha256: launch.sha256, origin: { ...origin, packedAt: "2026-11-10T00:00:00Z" } });
 const passingQualification = (launch: LaunchMetadata, runnerPlatform: string): Qualification => ({ release: launch.release, deployment: launch.deployment, platform: launch.platform, runnerPlatform, artifact: launch.artifact, sha256: launch.sha256, invocations: [{ invocation: "morphir", reportedVersion: `${launch.release}+${config.source.commit.slice(0, 7)}`, scenarios: [{ scenario: "launch", status: "passed", exitCode: 0 }] }], qualified: true, pending: [] });
+/** `base` marked as a delivery candidate, for the tests of the candidate gate; the real pin is a source release. */
+const asCandidate = (base: CliReleaseConfig): CliReleaseConfig => ({
+	...base,
+	source: { ...base.source, candidate: { pullRequest: "https://github.com/finos/morphir-dotnet/pull/637", reason: "Test fixture." } },
+});
 /** `base` with the macOS packaged input recorded as pending triage, for the tests of that mechanism. */
 const withPendingTriage = (base: CliReleaseConfig): CliReleaseConfig => ({
 	...base,
@@ -214,10 +219,10 @@ describe("release workflow routing", () => {
 		expect(steps).toMatch(/gh release create "\$TAG"[^\n]*--verify-tag[^\n]*"\$\{ASSETS\[@\]\}"/);
 	});
 
-	test("a candidate pin builds and qualifies but cannot publish", () => {
-		expect(config.source.candidate?.pullRequest).toBe("https://github.com/finos/morphir-dotnet/pull/637");
-		expect(releaseBlocker(config)).toContain("marked candidate");
-		expect(releaseBlocker({ ...config, source: { ...config.source, candidate: undefined } })).toBeUndefined();
+	test("the pin is the source's release, not a candidate; a candidate pin builds and qualifies but cannot publish", () => {
+		expect(config.source.candidate).toBeUndefined();
+		expect(releaseBlocker(config)).toBeUndefined();
+		expect(releaseBlocker(asCandidate(config))).toContain("marked candidate");
 	});
 });
 describe("qualification launches what ships", () => {
@@ -364,7 +369,7 @@ describe("publication gate", () => {
 	});
 
 	test("the candidate marker, unreleased source changes, or a source tag elsewhere each block publication", () => {
-		expect(publicationBlockers(config, "0.4.0-alpha.4", released, config.source.commit, []).join()).toContain("marked candidate");
+		expect(publicationBlockers(asCandidate(config), "0.4.0-alpha.4", released, config.source.commit, []).join()).toContain("marked candidate");
 		expect(publicationBlockers(publishable, "0.4.0-alpha.4", unreleased, config.source.commit, []).join()).toContain("1 unreleased entry");
 		expect(publicationBlockers(publishable, "0.4.0-alpha.4", released, undefined, []).join()).toContain("has no tag v0.4.0-alpha.4");
 		// The source's v0.4.0-alpha.4 is bec7df3; publishing the pinned 8c15df5 under that version would ship other bytes.
@@ -381,8 +386,7 @@ describe("publication gate", () => {
 		expect(publicationBlockers(released, version, changelog, config.source.commit, tags)).toEqual([]);
 		// A source tag on another commit still blocks, and so does a marked candidate.
 		expect(publicationBlockers(released, version, changelog, "bec7df31eb813396e0e119c557e0a319adbe1ebb", tags).join()).toContain("not the pinned");
-		const marked = { ...config, source: { ...config.source, candidate: { pullRequest: "https://github.com/finos/morphir-dotnet/pull/637", reason: "test" } } };
-		expect(publicationBlockers(marked, version, changelog, config.source.commit, tags).join()).toContain("marked candidate");
+		expect(publicationBlockers(asCandidate(config), version, changelog, config.source.commit, tags).join()).toContain("marked candidate");
 	});
 });
 
@@ -611,17 +615,18 @@ describe("archives are read wherever the command runs", () => {
 		expect(readFileSync(path.join(work, "legacy/morphir-win-x64.exe"), "utf8")).toContain("echo 1.0.0+abc1234");
 
 		const inputs = { tag: "v1.0.0", version: "1.0.0", assets: "assets", kitStatus: "kit.json", legacy: "legacy/legacy-aliases.json", commit: head, changelog: "## [Unreleased]\n\n## [1.0.0] - 2026-11-10\n", sourceTagCommit: config.source.commit, existingTags: ["v0.4.0-beta.12", "v0.4.0-alpha.4", "extension/python/v0.4.0"] };
-		// The candidate pin: a dry run validates everything and writes the evidence and the list it would attach...
-		const dry = prepareRelease(config, work, { ...inputs, out: "dry", dryRun: true });
+		// A candidate pin: a dry run validates everything and writes the evidence and the list it would attach...
+		const candidate = asCandidate(config);
+		const dry = prepareRelease(candidate, work, { ...inputs, out: "dry", dryRun: true });
 		const dryManifest = JSON.parse(readFileSync(path.join(work, "dry/release-manifest.json"), "utf8"));
 		expect(dryManifest.publication).toEqual({ dryRun: true, publishable: false, blockers: [expect.stringContaining("marked candidate")] });
 		expect(readFileSync(path.join(work, "dry/dry-run-assets.txt"), "utf8").trim().split("\n")).toEqual(dry);
 		expect(existsSync(path.join(work, "dry/release-assets.txt"))).toBe(false);
 		// ...and a publication refuses it, leaving no release asset list.
-		expect(() => prepareRelease(config, work, { ...inputs, out: "refused", dryRun: false })).toThrow("publication refused");
+		expect(() => prepareRelease(candidate, work, { ...inputs, out: "refused", dryRun: false })).toThrow("publication refused");
 		expect(existsSync(path.join(work, "refused/release-assets.txt"))).toBe(false);
 		// A run bound to another commit than the checkout validates nothing.
-		expect(() => prepareRelease(config, work, { ...inputs, out: "other", dryRun: true, commit: "d".repeat(40) })).toThrow("not the bound commit");
+		expect(() => prepareRelease(candidate, work, { ...inputs, out: "other", dryRun: true, commit: "d".repeat(40) })).toThrow("not the bound commit");
 
 		// The same inputs publish once the pin is the source's released, non-candidate commit.
 		const publishable = { ...config, source: { ...config.source, candidate: undefined } };
