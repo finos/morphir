@@ -505,7 +505,7 @@ description = "Unavailable: it ran the deleted Rust product CLI's migrate comman
 # result against the v4 schema. That checked the Rust CLI's `migrate`, which
 # was deleted with the CLI; migration is the .NET Morphir CLI's to qualify.
 # Bun, not shell, so the message also prints on Windows.
-run = "bun -e \"console.error('migrate:validate is unavailable: it ran the migrate command of the deleted Rust CLI. Migrate with the Morphir CLI (finos/morphir-dotnet) and validate the result with: node website/scripts/validate-migrated-ir.js <file>. See openspec/changes/move-cli-delivery-to-umbrella.'); process.exit(1)\""
+run = "bun -e \"console.error('migrate:validate is unavailable: it ran the migrate command of the deleted Rust CLI. Migrate with the Morphir CLI (finos/morphir-dotnet) and validate the result with: node website/scripts/validate-migrated-ir.js <file>. See openspec/changes/archive/2026-11-13-move-cli-delivery-to-umbrella.'); process.exit(1)\""
 
 [tasks."package:schema-check"]
 description = "Validate draft package schemas and example structures (not MCK package compatibility)"
@@ -666,7 +666,7 @@ description = "Unavailable: the Desktop demo built and ran the deleted Rust prod
 # It built crates/morphir, installed Desktop with `morphir tool install desktop` and opened it with
 # `morphir desktop`. Both commands were Rust CLI commands with no .NET equivalent at the pinned source;
 # Desktop itself is developed in ecosystem/morphir-ui. Bun, so the message also prints on Windows.
-run = "bun -e \"console.error('demo:desktop is unavailable: it built and ran the deleted Rust CLI (morphir tool install desktop, morphir desktop), which the Morphir CLI (finos/morphir-dotnet) does not have. Run Desktop from ecosystem/morphir-ui. See openspec/changes/move-cli-delivery-to-umbrella.'); process.exit(1)\""
+run = "bun -e \"console.error('demo:desktop is unavailable: it built and ran the deleted Rust CLI (morphir tool install desktop, morphir desktop), which the Morphir CLI (finos/morphir-dotnet) does not have. Run Desktop from ecosystem/morphir-ui. See openspec/changes/archive/2026-11-13-move-cli-delivery-to-umbrella.'); process.exit(1)\""
 
 [tasks.check]
 description = "Run all checks"
@@ -697,7 +697,7 @@ description = "Unavailable: the example scenarios ran through the deleted Rust p
 # The scenarios under examples/ exercise CLI workflows. They ran through the
 # Rust CLI, which was deleted; they are pending qualification against the .NET
 # Morphir CLI and are not run in the meantime. Bun, so it prints on Windows.
-run = "bun -e \"console.error('test:examples is unavailable: the example scenarios ran through the itest driver of the deleted Rust CLI and are pending qualification against the Morphir CLI (finos/morphir-dotnet). See openspec/changes/move-cli-delivery-to-umbrella.'); process.exit(1)\""
+run = "bun -e \"console.error('test:examples is unavailable: the example scenarios ran through the itest driver of the deleted Rust CLI and are pending qualification against the Morphir CLI (finos/morphir-dotnet). See openspec/changes/archive/2026-11-13-move-cli-delivery-to-umbrella.'); process.exit(1)\""
 
 [tasks."examples:prepare-elm"]
 description = "Stage a downloaded reference Elm extension for the CLI examples"
