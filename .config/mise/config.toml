@@ -18,7 +18,11 @@ python = "3.14.7"
 # JavaScript runtimes for website and tooling
 node = "24.21.0"
 bun = "1.4.2"
-"npm:morphir-elm" = { version = "2.100.0", allow_low_downloads = true }
+# mise 2026.11.7 installs npm tools with aube, whose no-downgrade trust policy refuses encodeurl@2.0.2 (express's
+# dependency): it has no provenance, while the earlier-published 3.0.0 has. Reviewed 13 November 2026: 2.0.2 is a
+# 2.x backport published by maintainer blakeembrey, its gitHead f805c3e is the v2.0.2 tag of pillarjs/encodeurl, and
+# the published index.js equals that tag's. Only that version is excluded; every other package keeps the check.
+"npm:morphir-elm" = { version = "2.100.0", allow_low_downloads = true, trust_policy_excludes = ["encodeurl@2.0.2"] }
 
 # Rust tools
 "cargo:cargo-binstall" = "latest"
