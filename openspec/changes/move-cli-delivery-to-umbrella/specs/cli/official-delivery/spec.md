@@ -94,12 +94,11 @@ A release SHALL be created only when the pin is not a marked candidate, the pinn
 - **THEN** publication is refused and the reasons are recorded
 
 ### Requirement: A run is bound to its tag, its commit and the pin
-The release SHALL run only from `refs/tags/<tag>` with the checkout at the tag's commit, and the workflow's literal source commit in `uses` and `ref` SHALL equal the pin. Every later job SHALL check out that commit, and the manifest SHALL record it as read from the checkout. Every artifact's build contents SHALL name the pinned commit and a clean working tree, and SHALL match its launch metadata.
+A publication SHALL run only from `refs/tags/<tag>` with the checkout at the tag's commit (a dry run MAY instead run from a branch, as the next requirement states), and the workflow's literal source commit in `uses` and `ref` SHALL equal the pin. Every later job SHALL check out that commit, and the manifest SHALL record it as read from the checkout. Every artifact's build contents SHALL name the pinned commit and a clean working tree, and SHALL match its launch metadata.
 
 #### Scenario: A publication dispatched from a branch
 - **WHEN** the workflow is dispatched from `main` with the input `v0.4.0-beta.13` and `dry-run: false`
 - **THEN** release-info refuses before any build
-
 
 #### Scenario: An artifact packed from another commit
 - **WHEN** an artifact's build contents record a commit other than the pin
@@ -109,8 +108,9 @@ The release SHALL run only from `refs/tags/<tag>` with the checkout at the tag's
 A dry run MAY run from a branch (`refs/heads/...`), so a release can be rehearsed before its tag exists. Release-info SHALL then bind the run to the branch's triggering commit in place of the tag's commit, and every other binding SHALL hold. A run that is not a dry run SHALL NOT run from a branch.
 
 #### Scenario: A rehearsal dispatched from a branch
-- **WHEN** a dry run is dispatched from a branch with the input `v0.5.0-alpha.1` before that tag exists
+- **WHEN** a dry run is dispatched from a branch with the input `v<version>`, where `<version>` is the latest release in the pinned CHANGELOG, before that tag exists in finos/morphir
 - **THEN** release-info binds the run to the branch's triggering commit, the run builds and qualifies, and no release is created
+
 ### Requirement: A dry run validates everything and creates nothing
 A dispatched run SHALL default to a dry run. A dry run SHALL perform every validation a publication performs, record the publication blockers, and write the manifest, the notes and the list of files it would attach as evidence, but SHALL NOT create a release. A validation failure SHALL fail a dry run as well.
 

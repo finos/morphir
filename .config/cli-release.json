@@ -6,7 +6,7 @@
 		"commit": "bddc8e0537dd227e1d6510fe5054d7083639f941",
 		"candidate": {
 			"pullRequest": "https://github.com/finos/morphir-dotnet/pull/637",
-			"reason": "finos/morphir-dotnet main at bddc8e0537dd227e1d6510fe5054d7083639f941, which finos/morphir-dotnet#637 releases as 0.5.0-alpha.1 with only the CHANGELOG cut added. The source tag v0.5.0-alpha.1 does not exist yet, so this is a delivery candidate, not a source release. Move the pin to the tagged release commit and remove this marker once that tag exists and the release qualification gates pass."
+			"reason": "finos/morphir-dotnet main at bddc8e0537dd227e1d6510fe5054d7083639f941, an unreleased commit. finos/morphir-dotnet#637 cuts 0.5.0-alpha.1; its tagged commit will also contain #640 (host-independent smoke lock files) and #641 (the ir verify fix), which bddc8e05 does not, and both fix defects that block qualification at this pin. The source tag v0.5.0-alpha.1 does not exist yet, so this is a delivery candidate, not a source release. Move the pin to the tagged release commit and remove this marker once that tag exists and the release qualification gates pass."
 		}
 	},
 	"tagPrefix": "v",
