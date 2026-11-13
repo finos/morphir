@@ -100,10 +100,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-info.outputs.offerings) }}
-    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@bddc8e0537dd227e1d6510fe5054d7083639f941
+    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@318b1bfd1722d36f6c51a6c95d85b4d84f6623e7
     with:
       repository: finos/morphir-dotnet
-      ref: bddc8e0537dd227e1d6510fe5054d7083639f941
+      ref: 318b1bfd1722d36f6c51a6c95d85b4d84f6623e7
       deployment: ${{ matrix.deployment }}
       rid: ${{ matrix.rid }}
       os: ${{ matrix.runner }}

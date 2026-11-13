@@ -3,11 +3,7 @@
 	"source": {
 		"repository": "https://github.com/finos/morphir-dotnet",
 		"submodule": "ecosystem/morphir-dotnet",
-		"commit": "bddc8e0537dd227e1d6510fe5054d7083639f941",
-		"candidate": {
-			"pullRequest": "https://github.com/finos/morphir-dotnet/pull/637",
-			"reason": "finos/morphir-dotnet main at bddc8e0537dd227e1d6510fe5054d7083639f941, an unreleased commit. finos/morphir-dotnet#637 cuts 0.5.0-alpha.1; its tagged commit will also contain #640 (host-independent smoke lock files) and #641 (the ir verify fix), which bddc8e05 does not, and both fix defects that block qualification at this pin. The source tag v0.5.0-alpha.1 does not exist yet, so this is a delivery candidate, not a source release. Move the pin to the tagged release commit and remove this marker once that tag exists and the release qualification gates pass."
-		}
+		"commit": "318b1bfd1722d36f6c51a6c95d85b4d84f6623e7"
 	},
 	"tagPrefix": "v",
 	"kit": "spec/ir/mck",
