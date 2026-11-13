@@ -714,11 +714,11 @@ description = "Run the knowledge base commands of the internal development tool 
 run = "cargo run --locked -q -p morphir-dev-tools -- kb"
 
 [tasks.test]
-description = "Run tests"
+description = "Run the tests of the Rust development tools (morphir-mck, morphir-dev)"
 run = "cargo test --all-features --workspace"
 
 [tasks.build]
-description = "Build release"
+description = "Build the Rust development tools (morphir-mck, morphir-dev) in release mode"
 run = "cargo build --release --workspace"
 
 [tasks.clean]

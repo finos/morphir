@@ -102,9 +102,28 @@ Release setup works on Windows x64, Windows ARM64 and macOS ARM64 (Apple silicon
 
 `morphirup` and its toolchains are published on the
 [finos/morphir-dotnet releases](https://github.com/finos/morphir-dotnet/releases), not on this repository's
-releases. From the release of the version you want, download the manager for your platform
-(`morphirup-win-x64.exe`, `morphirup-win-arm64.exe` or `morphirup-osx-arm64`) and `morphirup-v<version>.sha256`.
-Check the manager's SHA-256 against its line in that file, rename it to `morphirup` (`morphirup.exe` on Windows) and put it on `PATH`.
+releases. Install it with the script for your system. On Linux or macOS:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/finos/morphir-dotnet/main/scripts/install-morphirup.sh | sh
+```
+
+On Windows:
+
+```powershell
+irm https://raw.githubusercontent.com/finos/morphir-dotnet/main/scripts/install-morphirup.ps1 | iex
+```
+
+The script installs `morphirup` from the newest release that has one for your platform, and only if its SHA-256
+matches the release's `morphirup-v<version>.sha256`. It installs into `~/.local/bin` (on Windows,
+`%LOCALAPPDATA%\Programs\morphirup`, which it adds to your `PATH`). To choose a release, pass `--version <version>`
+to the shell script or set `MORPHIRUP_VERSION`; run the script with `--help` for its other options.
+
+To install by hand instead, download the manager for your platform (`morphirup-win-x64.exe`,
+`morphirup-win-arm64.exe` or `morphirup-osx-arm64`) and `morphirup-v<version>.sha256` from the release you want,
+check the manager's SHA-256 against its line in that file, rename it to `morphirup` (`morphirup.exe` on Windows)
+and put it on `PATH`.
+
 Then, in your project:
 
 ```shell
