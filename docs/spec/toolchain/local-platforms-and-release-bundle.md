@@ -249,4 +249,5 @@ the candidate, selection and provider envelopes against the bundle before it
 downloads an archive. The dry run plans without creating Home or running code.
 Stderr states that the delivery is release-checksum and not
 publisher-authenticated. Selection, show and run work as in preview.2, and read
-the preview.2, preview.3 or preview.4 selection pointer by its exact `$schema`.
+only the preview.4 selection pointer, by its exact `$schema`. A Home set up with
+an earlier preview is not read; run setup again.
