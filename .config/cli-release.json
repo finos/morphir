@@ -3,10 +3,10 @@
 	"source": {
 		"repository": "https://github.com/finos/morphir-dotnet",
 		"submodule": "ecosystem/morphir-dotnet",
-		"commit": "dc5b9015a84c66595f5c06c3b64237e019ed510a",
+		"commit": "2076811e598f9d4a0b359bd866da9e92dace3986",
 		"candidate": {
 			"pullRequest": "https://github.com/finos/morphir/pull/1172",
-			"reason": "The pin dc5b9015a84c66595f5c06c3b64237e019ed510a is the finos/morphir-dotnet 0.5.0-alpha.2 release commit (#651, with #648: morphirup sets up from finos/morphir with local-toolchains 0.1.0-preview.5 bundles, and #649: morphirup-build.yml takes repository, ref and upload-host-offering). The source tag v0.5.0-alpha.2 is not pushed yet. Remove this marker once that tag names this commit and a branch dry run of this pin passes."
+			"reason": "The pin 2076811e598f9d4a0b359bd866da9e92dace3986 is the finos/morphir-dotnet 0.5.0-alpha.2 release commit (#653, with #652: the macOS 15 setup fix, #648: morphirup sets up from finos/morphir with local-toolchains 0.1.0-preview.5 bundles, and #649: morphirup-build.yml takes repository, ref and upload-host-offering). The source tag v0.5.0-alpha.2 is not pushed yet. Remove this marker once that tag names this commit and a branch dry run of this pin passes."
 		}
 	},
 	"tagPrefix": "v",
