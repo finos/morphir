@@ -1,0 +1,33 @@
+# Tasks
+
+Tracking: follows `move-cli-delivery-to-umbrella` (finos/morphir#1153). No Beads issue on this machine.
+
+## 1. Build and assemble from the source
+
+- [x] 1.1 Call the pinned source's `morphirup-build.yml` for each morphirup platform, with `toolchain: true`, `repository`, `ref` and `upload-host-offering`. Bind both source workflows to the pin and its literal `ref`. Verified by the routing and binding tests in `tools/cli-release.test.ts`.
+- [x] 1.2 Take the self-contained offering of each toolchain platform from the toolchain job, and stop building it with `cli-offering.yml` there (HOST-1). Verified by the offering matrix test and `prepareRelease`'s host-name check.
+- [x] 1.3 Assemble the assets with the source's `FlattenReleaseAssets`, `MorphirupChecksums` and `WindowsToolchainChecksums` from the pinned checkout, and read both checksum files back. Verified by the publish-job test, and locally on the published `v0.5.0-alpha.1` files, where both checksum files came out byte-identical to that release's.
+- [x] 1.4 Land the source's `morphirup-build.yml` inputs (`repository`, `ref`, `upload-host-offering`) in finos/morphir-dotnet and move the pin to a commit that has them. The pin is `dc5b9015`, the 0.5.0-alpha.2 release commit, which has #649 and #648. Both source-interface tests pass at it.
+
+## 2. Qualify and record
+
+- [x] 2.1 Qualify each manager on its own platform: `--version` with no .NET on the path, and the archive's executable. Verified by `qualifyMorphirup` tests against a real executable, and locally on the published `morphirup-win-arm64.exe`.
+- [x] 2.2 Require the exact contract names, every checksum entry and each host archive's offering bytes in the manifest step, and record the assets, the qualifications and the setup journey. Verified by the asset, evidence and end-to-end tests.
+- [x] 2.3 Dry-run the release from a branch at a pin that has the source inputs, and record the run and its `publishable` result. First run at the pin `dc5b9015` with tag `v0.5.0-alpha.2`: [43484112976](https://github.com/finos/morphir/actions/runs/43484112976). Release-info recorded two blockers: the candidate marker, and the missing source tag. The 16 offering builds passed. The morphirup jobs of linux-x64, linux-arm64, win-x64 and win-arm64 passed, the last two including the setup journey. Their bundles are `0.1.0-preview.5`, naming `v0.5.0-alpha.2` and `dc5b9015`, with every URL under `https://github.com/finos/morphir/releases/download/v0.5.0-alpha.2/`. The win-arm64 host archive is byte-identical to its `morphir-dotnet-self-contained-win-arm64` offering. The osx-arm64 job failed in the source's `WindowsReleaseSetup` group on `macos-15-arm64`: 14 tests passed and 4 errored with `extension.io_error: Cannot access '…/home/store/extensions/packages/sha256': native error 13` (EACCES). The source's own dry run of the same commit passed that group on `macos-26-arm64`. Qualification, assembly and publication were skipped. Repeat once the macOS 15 failure is fixed in the source or the osx-arm64 runner is decided. Passing run at the pin `2076811e` (the 0.5.0-alpha.2 release commit with the macOS 15 fix, #652), tag `v0.5.0-alpha.2`, osx-arm64 still on `macos-15`: [43504290175](https://github.com/finos/morphir/actions/runs/43504290175). All 30 jobs passed. The five morphirup jobs passed, and the osx-arm64 setup journey on `macos-15-arm64` ran 18 of 18. All 24 offering qualifications passed with nothing pending. The five managers reported `0.5.0-alpha.2+2076811e…`, and their archives hold the same bytes. The three host archives (win-x64, win-arm64, osx-arm64) are their platforms' self-contained offerings, byte for byte. The evidence lists 70 assets: 19 offerings, 10 legacy names, 40 morphirup and toolchain assets (the 43 of the contract, less the 3 host archives) and the manifest. No toolchain-bundle blocker was recorded: every bundle is `0.1.0-preview.5` and downloads from `https://github.com/finos/morphir/releases/download/v0.5.0-alpha.2/`. `publishable: false`, with only two blockers: the candidate marker and the missing source tag `v0.5.0-alpha.2`.
+
+- [x] 2.4 Remove `source.candidate` once the source tag `v0.5.0-alpha.2` names the pin `2076811e` (it does) and a branch dry run of the pin has passed (run 43504290175). Verified by `verify-source`, `bun test tools/cli-release.test.ts` and a branch release-info for `v0.5.0-alpha.2` that reports no blocker.
+
+## 3. Review of #1172
+
+- [x] 3.1 Refuse publication unless every `morphir-toolchain-<rid>.json` is of local-toolchains `0.1.0-preview.5` or later and downloads each asset from `https://github.com/finos/morphir/releases/download/<tag>/<name>`, with `<name>` attached and its SHA-256. Verified by the bundle tests, including the 0.1.0-preview.4 bundles the pin `318b1bfd` writes.
+- [x] 3.2 Check the pinned source's interface: every `with:` key `release.yml` passes is declared by that workflow, and `morphirup-build.yml` uploads `morphir-dotnet-self-contained-<rid>` for exactly the toolchain platforms. Release-info refuses to run otherwise. At the pin `318b1bfd`, both tests fail (the three new inputs are undeclared, and the host offering is never uploaded), and `source.candidate` marks the pin until it moves to the 0.5.0-alpha.2 release commit.
+- [x] 3.3 Run the source's assembly in a read-only job (`assemble-morphirup`) with no token, and give `GH_TOKEN` only to the two `gh` steps of the publish job.
+- [x] 3.4 Require `<release>+<full pinned commit>` from `morphirup --version`; a bare version fails.
+
+## 4. Documentation
+
+- [x] 4.1 Point `INSTALLING.md` and the website's Installation page at finos/morphir releases for morphirup, keeping the install scripts at finos/morphir-dotnet `main`. They say that `v0.5.0-alpha.2` is the first finos/morphir release with morphirup, and that `v0.5.0-alpha.1` has the CLI only.
+
+## Workflow follow-up
+
+- Release `v0.5.0-alpha.2` once the source cuts it with local-toolchains `0.1.0-preview.5`; then archive this change.
