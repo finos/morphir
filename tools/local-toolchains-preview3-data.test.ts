@@ -2,7 +2,8 @@
 // The example sets are TEST-ONLY data with synthetic digests, not execution
 // evidence. The .NET manager owns behavior; the cross-document rules below are
 // the stated rules of docs/spec/toolchain/local-platforms-and-release-bundle.md,
-// checked here against fixed data only.
+// checked here against fixed data only. That page now documents preview.4, so
+// local-toolchains-preview4-data.test.ts checks the page against its examples.
 import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -212,16 +213,6 @@ test("each invalid example set fails exactly the check it names", () => {
 		if (expected.ruleFailures) expect(ruleFailures(set), set).toEqual(expected.ruleFailures);
 	}
 }, 120_000);
-
-test("the contract page states every tested rule and shows a fixed example verbatim", () => {
-	const page = readFileSync("docs/spec/toolchain/local-platforms-and-release-bundle.md", "utf8");
-	const stated = [...page.matchAll(/^\| `([a-z-]+)` \| /gm)].map((match) => match[1]!)
-		.filter((name) => ruleNames.includes(name));
-	expect(stated.sort()).toEqual([...ruleNames].sort());
-	const fence = /```json\n([\s\S]*?)```/.exec(page)?.[1];
-	expect(fence).toBe(readFileSync(join(examples, "valid/win-arm64-release-checksum/result.json"), "utf8"));
-	for (const set of sets("invalid")) expect(page, set).toContain(`\`invalid/${set.split(/[\\/]/).pop()}\``);
-});
 
 test("a bundle names each of its nine roles exactly once and only official release URLs", () => {
 	const bundle = JSON.parse(readFileSync(join(examples, "valid/win-arm64-release-checksum/acquisition/bundle.json"), "utf8"));

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.4/receipt.schema.json",
+  "origin": "release-checksum",
+  "implementation": "dotnet",
+  "deployment": "self-contained",
+  "platform": "win-arm64",
+  "version": "0.4.0-alpha.5+ffa31bd0423c9da857004a50adef917617b260c1",
+  "sourceCommit": "ffa31bd0423c9da857004a50adef917617b260c1",
+  "buildIdentity": "Source ffa31bd0423c9da857004a50adef917617b260c1; working tree clean: True; packed at 2026-11-12T09:30:00.0000000+00:00",
+  "candidateSha256": "28f5d218ba1ed2aa0349ee3e74a3ef1150b035716c9346fa03b243151dd192de",
+  "archiveSha256": "9d99f1f63960b66abfe7552b39d15764e2cefa35387e4b4bb9e544400b77bfa5",
+  "installationPath": "store/tools/sha256/9d99f1f63960b66abfe7552b39d15764e2cefa35387e4b4bb9e544400b77bfa5",
+  "entryPoint": {
+    "path": "morphir.exe",
+    "sha256": "c11238ee0f38a9cc3c819ab391fc5da21ebec6202906f6d70478665a92df70e3"
+  },
+  "owner": "manager-owned",
+  "readiness": "workflow-verified",
+  "generationSha256": "4dbf53e7cf5b8bc26b54ab7f98f5386ca26cb9d1290758ac7deb378ac364d96b"
+}
