@@ -721,11 +721,11 @@ description = "Run the knowledge base commands of the internal development tool 
 run = "cargo run --locked -q --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools -- kb"
 
 [tasks.test]
-description = "Run the tests of the Rust development tools in ecosystem/morphir-rust/umbrella-tools"
+description = "Run the tests of the Rust development tools (morphir-mck, morphir-dev) in ecosystem/morphir-rust/umbrella-tools"
 run = "cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --all-features --workspace"
 
 [tasks.build]
-description = "Build the Rust development tools in ecosystem/morphir-rust/umbrella-tools (release profile)"
+description = "Build the Rust development tools (morphir-mck, morphir-dev) in ecosystem/morphir-rust/umbrella-tools in release mode"
 run = "cargo build --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --release --workspace"
 
 [tasks.clean]

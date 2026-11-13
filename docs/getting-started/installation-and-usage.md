@@ -3,10 +3,10 @@ id: installation-and-usage
 sidebar_position: 3
 ---
 
-#Morphir Tools 
+# The Elm tooling: morphir-elm
 
-Morphir is provided as a set of command-line tools that are distribution through the NPM packaging system.
-The current version is:
+The Elm tooling of Morphir, `morphir-elm`, is distributed through npm. For the Morphir CLI itself, see
+[Installation](installation.md). The current version of `morphir-elm` is:
 
 [![npm version](https://badge.fury.io/js/morphir-elm.svg)](https://badge.fury.io/js/morphir-elm)
 

@@ -40,11 +40,15 @@ Each archive SHALL be qualified by extracting it and starting its executable or 
 - **THEN** both `dotnet-morphir --version` and `dotnet morphir --version` report the release version by the same rule
 
 ### Requirement: A recorded pending triage is never counted as qualified
-A scenario result on a platform under a recorded pending triage SHALL be kept with its exit code and reported as `pending-triage`, and the offering SHALL NOT be reported as qualified on that platform. The macOS packaged-input scenario is under such a triage (the `/var` to `/private/var` failure seen in finos/morphir-dotnet#570, workflow run 42851276092).
+A scenario result on a platform under a recorded pending triage SHALL be kept with its exit code and reported as `pending-triage`, and the offering SHALL NOT be reported as qualified on that platform. No scenario is under triage now: macOS qualifies the packaged input like every other platform.
 
-#### Scenario: macOS packaged input passes
-- **WHEN** the packaged-input scenario exits 0 on `osx-arm64`
+#### Scenario: A scenario under triage passes
+- **WHEN** a scenario recorded as pending triage on `osx-arm64` exits 0 there
 - **THEN** its status is `pending-triage` and the offering's `qualified` flag is false on that platform
+
+#### Scenario: macOS packaged input hangs
+- **WHEN** the packaged-input scenario does not finish on `osx-arm64`
+- **THEN** the scenario fails and the release is not published
 
 ### Requirement: Official CLI releases use v<version> and only ever move forward
 An official CLI release SHALL be started only by a tag `v<version>`, or an explicit existing tag of that form. `<version>` SHALL be exact canonical SemVer without build metadata and equal the latest released version in the pinned CHANGELOG. The namespace is shared with the deleted Rust CLI's `v*` releases, which SHALL stay unchanged; publication SHALL be refused unless `<version>` is newer than every other `v*` tag in finos/morphir.
@@ -90,15 +94,22 @@ A release SHALL be created only when the pin is not a marked candidate, the pinn
 - **THEN** publication is refused and the reasons are recorded
 
 ### Requirement: A run is bound to its tag, its commit and the pin
-The release SHALL run only from `refs/tags/<tag>` with the checkout at the tag's commit, and the workflow's literal source commit in `uses` and `ref` SHALL equal the pin. Every later job SHALL check out that commit, and the manifest SHALL record it as read from the checkout. Every artifact's build contents SHALL name the pinned commit and a clean working tree, and SHALL match its launch metadata.
+A publication SHALL run only from `refs/tags/<tag>` with the checkout at the tag's commit (a dry run MAY instead run from a branch, as the next requirement states), and the workflow's literal source commit in `uses` and `ref` SHALL equal the pin. Every later job SHALL check out that commit, and the manifest SHALL record it as read from the checkout. Every artifact's build contents SHALL name the pinned commit and a clean working tree, and SHALL match its launch metadata.
 
-#### Scenario: A dispatch from a branch
-- **WHEN** the workflow is dispatched from `main` with the input `v0.4.0-beta.13`
+#### Scenario: A publication dispatched from a branch
+- **WHEN** the workflow is dispatched from `main` with the input `v0.4.0-beta.13` and `dry-run: false`
 - **THEN** release-info refuses before any build
 
 #### Scenario: An artifact packed from another commit
 - **WHEN** an artifact's build contents record a commit other than the pin
 - **THEN** qualification and the manifest refuse it
+
+### Requirement: A dry run may rehearse a release from a branch
+A dry run MAY run from a branch (`refs/heads/...`), so a release can be rehearsed before its tag exists. Release-info SHALL then bind the run to the branch's triggering commit in place of the tag's commit, and every other binding SHALL hold. A run that is not a dry run SHALL NOT run from a branch.
+
+#### Scenario: A rehearsal dispatched from a branch
+- **WHEN** a dry run is dispatched from a branch with the input `v<version>`, where `<version>` is the latest release in the pinned CHANGELOG, before that tag exists in finos/morphir
+- **THEN** release-info binds the run to the branch's triggering commit, the run builds and qualifies, and no release is created
 
 ### Requirement: A dry run validates everything and creates nothing
 A dispatched run SHALL default to a dry run. A dry run SHALL perform every validation a publication performs, record the publication blockers, and write the manifest, the notes and the list of files it would attach as evidence, but SHALL NOT create a release. A validation failure SHALL fail a dry run as well.
