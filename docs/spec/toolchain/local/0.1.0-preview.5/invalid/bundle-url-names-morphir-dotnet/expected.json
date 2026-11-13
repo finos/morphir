@@ -1,0 +1,8 @@
+{
+  "schemaFailures": [
+    "acquisition/bundle.json"
+  ],
+  "ruleFailures": [
+    "release-bindings"
+  ]
+}

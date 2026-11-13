@@ -1,0 +1,10 @@
+9d99f1f63960b66abfe7552b39d15764e2cefa35387e4b4bb9e544400b77bfa5  morphir-dotnet-0.4.0-alpha.5-self-contained-win-arm64.zip
+b682aa7c275424ef50c29f2ac6b4ac9733ffb6272e19bf89b6d53a56d21f7c59  morphir-extensions-win-arm64.json
+7f57e4a94485b9890b08e02bbd52aed875d3ed484ff250e88ff72aa33df30478  morphir-fsharp-backend-0.4.0-alpha.5-win-arm64.manifest
+bf28ada239d8dc6a49fa263cf180bf38d905556aee0ec5535ba6f5d9f1f322c3  morphir-fsharp-backend-0.4.0-alpha.5-win-arm64.release.json
+41d256aaecbc654eae1f327f3747745d871f24b79aac9a73b7e63c0ee0c8a346  morphir-fsharp-backend-0.4.0-alpha.5-win-arm64.zip
+3fbe97b209f150b3d3dda24e65b404a3f630d109ac838864f136995698bcc185  morphir-fsharp-frontend-0.4.0-alpha.5-win-arm64.manifest
+6f070107d19fae26dc252498d42db14a93a6fa12addf0a10ab271059cd41124e  morphir-fsharp-frontend-0.4.0-alpha.5-win-arm64.release.json
+2be06cb89b7d61dd54b9744518b63376107210033ed671789ea60d67ccc253d7  morphir-fsharp-frontend-0.4.0-alpha.5-win-arm64.zip
+5309eb838c6ef493c164e54235b1f1a54532b63e2f0de711ef1b35e12a816f54  morphir-host-candidate-win-arm64.json
+72b1c3e2805591f86224e9d865c6da1062b42232c438cb0a9eef6cdff6c037f4  morphir-toolchain-win-arm64.json
