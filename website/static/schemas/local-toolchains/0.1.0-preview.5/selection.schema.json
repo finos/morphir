@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.5/selection.schema.json",
+  "title": "Local composed toolchain selection",
+  "description": "The Home's default pointer to one installed generation's receipt. It carries the same origin as that receipt; the platform reaches it only through the receipt bound by hash.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.5/selection.schema.json"
+    },
+    "origin": {
+      "enum": [
+        "local-developer",
+        "release-checksum"
+      ]
+    },
+    "generationSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "receiptSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "receiptPath": {
+      "type": "string",
+      "pattern": "^toolchains/generations/[0-9a-f]{64}/receipt\\.json$"
+    }
+  },
+  "required": [
+    "$schema",
+    "origin",
+    "generationSha256",
+    "receiptSha256",
+    "receiptPath"
+  ],
+  "additionalProperties": false
+}
