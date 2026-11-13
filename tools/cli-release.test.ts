@@ -1,7 +1,7 @@
 // The official CLI delivery: the source pin, the release workflow's routing and
 // what qualification launches. See tools/cli-release.ts.
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { crc32 } from "node:zlib";
 import path from "node:path";
@@ -44,6 +44,20 @@ import {
 	versionCollisionBlockers,
 	versionReported,
 	workflowBindingProblems,
+	hostArchiveName,
+	type MorphirupAsset,
+	type MorphirupEvidence,
+	type MorphirupQualification,
+	morphirupAssetNames,
+	morphirupAssets,
+	morphirupEvidenceProblems,
+	morphirupManagerNames,
+	morphirupMatrix,
+	parseChecksums,
+	pinnedMorphirupPlatforms,
+	pinnedToolchainPlatforms,
+	qualifyMorphirup,
+	SOURCE_WORKFLOWS,
 } from "./cli-release";
 
 const root = path.resolve(import.meta.dir, "..");
@@ -61,6 +75,36 @@ const runs = (job: Job | undefined) => (job?.steps ?? []).map(step => step.run ?
 /** The build contents the source writes beside an artifact, packed from the pinned commit. */
 const contentsOf = (launch: LaunchMetadata, origin: { commit: string; workingTreeClean: boolean } = { commit: config.source.commit, workingTreeClean: true }): BuildContents => ({ artifact: launch.artifact, release: launch.release, deployment: launch.deployment, platform: launch.platform, sha256: launch.sha256, origin: { ...origin, packedAt: "2026-11-10T00:00:00Z" } });
 const passingQualification = (launch: LaunchMetadata, runnerPlatform: string): Qualification => ({ release: launch.release, deployment: launch.deployment, platform: launch.platform, runnerPlatform, artifact: launch.artifact, sha256: launch.sha256, invocations: [{ invocation: "morphir", reportedVersion: `${launch.release}+${config.source.commit.slice(0, 7)}`, scenarios: [{ scenario: "launch", status: "passed", exitCode: 0 }] }], qualified: true, pending: [] });
+/** The SHA-256 of a file, as lowercase hex. */
+const fileSha = (file: string) => new Bun.CryptoHasher("sha256").update(readFileSync(file)).digest("hex");
+/**
+ * Writes the flattened morphirup assets of `version` into `dir`, as FlattenReleaseAssets and the two checksum targets
+ * leave them: each host archive is a copy of its platform's self-contained offering (`hosts`), every other file holds
+ * placeholder bytes, `morphirup-v<version>.sha256` lists the morphirup files and SHA256SUMS the toolchain files.
+ * Returns the SHA-256 of each manager by platform.
+ */
+function writeMorphirupAssets(dir: string, version: string, hosts: Map<string, string>): Map<string, string> {
+	mkdirSync(dir, { recursive: true });
+	const names = morphirupAssetNames(config.morphirup, version).filter(n => n.role !== "checksums" && n.role !== "toolchain-checksums");
+	for (const n of names) {
+		if (n.role === "host-archive") copyFileSync(hosts.get(n.platform!)!, path.join(dir, n.asset));
+		else writeFileSync(path.join(dir, n.asset), `placeholder ${n.asset}`);
+	}
+	const line = (asset: string) => `${fileSha(path.join(dir, asset))}  ${asset}`;
+	writeFileSync(path.join(dir, `morphirup-v${version}.sha256`), `${names.filter(n => ["manager", "manager-archive", "notices"].includes(n.role)).map(n => line(n.asset)).join("\n")}\n`);
+	writeFileSync(path.join(dir, "SHA256SUMS"), `${names.filter(n => n.role === "host-archive" || n.role === "toolchain").map(n => line(n.asset)).join("\n")}\n`);
+	return new Map(names.filter(n => n.role === "manager").map(n => [n.platform!, fileSha(path.join(dir, n.asset))]));
+}
+/** A passing morphirup qualification of `rid`'s manager with the bytes `sha256`. */
+const passingMorphirup = (rid: string, version: string, sha256: string): MorphirupQualification => ({
+	kind: "morphirup", release: version, platform: rid, asset: morphirupManagerNames(rid, version).executable, sha256, reportedVersion: `${version}+${config.source.commit.slice(0, 7)}`,
+	scenarios: [{ scenario: "launch", status: "passed", exitCode: 0 }, { scenario: "archive", status: "passed", exitCode: 0 }], qualified: true,
+});
+/** Morphirup evidence of `version` in which every manager passed, for manifests built in memory. */
+function morphirupEvidence(version: string): MorphirupEvidence {
+	const assets: MorphirupAsset[] = morphirupAssetNames(config.morphirup, version).map((n, i) => ({ ...n, sha256: i.toString(16).padStart(64, "0") }));
+	return { assets, qualifications: config.morphirup.platforms.map(rid => passingMorphirup(rid, version, assets.find(a => a.role === "manager" && a.platform === rid)!.sha256)) };
+}
 /** `base` marked as a delivery candidate, for the tests of the candidate gate; the real pin is a source release. */
 const asCandidate = (base: CliReleaseConfig): CliReleaseConfig => ({
 	...base,
@@ -175,15 +219,18 @@ describe("release workflow routing", () => {
 		});
 		expect(offering.strategy?.matrix).toBe("${{ fromJSON(needs.release-info.outputs.offerings) }}");
 		const matrix = offeringMatrix(config).include;
-		expect(matrix).toHaveLength(3 * config.platforms.length + 1);
+		// The self-contained offering of a toolchain platform is the toolchain job's host archive, not built here.
+		expect(matrix).toHaveLength(3 * config.platforms.length + 1 - config.morphirup.toolchainPlatforms.length);
 		expect(matrix).toContainEqual({ deployment: "dotnet-tool", rid: "", runner: "ubuntu-24.04" });
 		expect(matrix).toContainEqual({ deployment: "native-aot", rid: "win-arm64", runner: "windows-11-arm" });
+		expect(matrix).toContainEqual({ deployment: "self-contained", rid: "osx-x64", runner: "macos-15-intel" });
+		for (const rid of config.morphirup.toolchainPlatforms) expect(matrix).not.toContainEqual(expect.objectContaining({ deployment: "self-contained", rid }));
 		expect(read(".github/workflows/release.yml")).not.toContain("PackRelease");
 	});
 
 	test("each platform qualifies its own and the tool's artifacts, and uploads only the reports", () => {
 		const qualifyJob = release.jobs["qualify-platform"];
-		expect(qualifyJob?.needs).toEqual(["release-info", "offering"]);
+		expect(qualifyJob?.needs).toEqual(["release-info", "offering", "morphirup"]);
 		expect(qualifyJob?.["runs-on"]).toBe("${{ matrix.runner }}");
 		expect(qualifyJob?.strategy?.matrix).toBe("${{ fromJSON(needs.release-info.outputs.matrix) }}");
 		const steps = runs(qualifyJob);
@@ -194,18 +241,25 @@ describe("release workflow routing", () => {
 		expect(downloads.map(step => step.with)).toEqual([
 			{ pattern: "morphir-dotnet-*-${{ matrix.rid }}", path: ".dev/out/cli-release/offerings", "merge-multiple": true },
 			{ name: "morphir-dotnet-dotnet-tool-any", path: ".dev/out/cli-release/tool" },
+			{ name: "morphirup-${{ matrix.rid }}", path: ".dev/out/cli-release/morphirup" },
 		]);
+		const morphirupDownload = qualifyJob!.steps.find(step => step.with?.name === "morphirup-${{ matrix.rid }}");
+		expect(morphirupDownload?.if).toBe("matrix.morphirup");
+		const morphirupQualify = qualifyJob!.steps.find(step => step.name === "Qualify morphirup");
+		expect(morphirupQualify?.if).toBe("matrix.morphirup");
+		expect(morphirupQualify?.run).toContain("bun run tools/cli-release.ts qualify-morphirup --dir .dev/out/cli-release/morphirup");
+		expect(morphirupQualify?.run).toContain('".dev/out/cli-release/qualification/$RID.morphirup-qualification.json"');
 		// upload-artifact leaves out hidden folders such as .dev unless told; the glob names only the reports.
 		const upload = qualifyJob!.steps.find(step => step.uses?.startsWith("actions/upload-artifact@"));
-		expect(upload?.with).toMatchObject({ path: ".dev/out/cli-release/qualification/*.qualification.json", "include-hidden-files": true, "if-no-files-found": "error" });
+		expect(upload?.with).toMatchObject({ path: ".dev/out/cli-release/qualification/*qualification.json", "include-hidden-files": true, "if-no-files-found": "error" });
 		const setup = qualifyJob!.steps.find(step => step.uses?.startsWith("actions/setup-dotnet@"));
 		expect(setup?.with?.["global-json-file"]).toBe("ecosystem/morphir-dotnet/global.json");
-		expect(releaseMatrix(config)).toEqual({ include: config.platforms.map(p => ({ rid: p.rid, runner: p.runner })) });
+		expect(releaseMatrix(config)).toEqual({ include: config.platforms.map(p => ({ rid: p.rid, runner: p.runner, morphirup: config.morphirup.platforms.includes(p.rid) })) });
 	});
 
 	test("publishing needs every qualification, attaches the listed assets and never replaces a release", () => {
 		const publish = release.jobs["publish-release"];
-		expect(publish?.needs).toEqual(["release-info", "offering", "qualify-platform"]);
+		expect(publish?.needs).toEqual(["release-info", "offering", "morphirup", "qualify-platform"]);
 		expect(publish?.permissions).toEqual({ contents: "write" });
 		const steps = runs(publish);
 		expect(steps).not.toContain("--clobber");
@@ -324,7 +378,7 @@ describe("release manifest", () => {
 	});
 
 	test("it names the source, kit and every artifact digest, and keeps pending triage visible", () => {
-		const manifest = releaseManifest(publishable, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all());
+		const manifest = releaseManifest(publishable, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all(), [], undefined, morphirupEvidence("0.4.0-alpha.4"));
 		expect(manifest.source).toEqual(publishable.source);
 		expect(manifest.kit).toEqual(kit);
 		expect(manifest.publication).toEqual({ dryRun: false, publishable: true, blockers: [] });
@@ -333,16 +387,16 @@ describe("release manifest", () => {
 		expect(manifest.pendingTriage).toEqual([]);
 		// A recorded pending triage stays visible in the manifest and its notes, and is never counted as qualified.
 		const triaged = withPendingTriage(publishable);
-		const visible = releaseManifest(triaged, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, allTriaged());
+		const visible = releaseManifest(triaged, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, allTriaged(), [], undefined, morphirupEvidence("0.4.0-alpha.4"));
 		expect(visible.qualification.find(q => q.deployment === "native-aot" && q.platform === "osx-arm64")).toMatchObject({ qualified: false, pending: ["packaged-input"] });
 		expect(visible.pendingTriage).toEqual(triaged.pendingTriage);
-		const blocked = releaseManifest(config, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all(), [], { dryRun: true, blockers: ["candidate"] });
+		const blocked = releaseManifest(config, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all(), [], { dryRun: true, blockers: ["candidate"] }, morphirupEvidence("0.4.0-alpha.4"));
 		expect(blocked.publication).toEqual({ dryRun: true, publishable: false, blockers: ["candidate"] });
 	});
 
 	test("a missing, failed, repeated, extra or mismatched qualification, or a mismatched tag or commit, is refused", () => {
 		const refuse = (qualifications: Qualification[], expected: string, tag = "v0.4.0-alpha.4", at = commit) =>
-			expect(() => releaseManifest(publishable, tag, "0.4.0-alpha.4", at, kit, launches, qualifications)).toThrow(expected);
+			expect(() => releaseManifest(publishable, tag, "0.4.0-alpha.4", at, kit, launches, qualifications, [], undefined, morphirupEvidence("0.4.0-alpha.4"))).toThrow(expected);
 		refuse(all().slice(1), "no qualification of native-aot on win-x64");
 		const failed = all();
 		failed[0] = { ...failed[0]!, invocations: [{ invocation: "morphir", reportedVersion: "0.4.0-alpha.3", scenarios: [{ scenario: "launch", status: "failed", exitCode: 1 }] }], qualified: false };
@@ -497,6 +551,170 @@ describe("the run is bound to the tag, its commit and the pin", () => {
 		}
 	});
 });
+describe("morphirup and the setup toolchain", () => {
+	const morphirupJob = release.jobs.morphirup as Job & { uses?: string; with?: Record<string, unknown> };
+
+	test("are built by the source's own morphirup-build.yml at the pin, with the toolchain and its host offering", () => {
+		expect(morphirupJob.uses).toBe(`finos/morphir-dotnet/.github/workflows/morphirup-build.yml@${config.source.commit}`);
+		expect(morphirupJob.with).toEqual({
+			repository: "finos/morphir-dotnet",
+			ref: config.source.commit,
+			rid: "${{ matrix.rid }}",
+			os: "${{ matrix.runner }}",
+			configuration: "Release",
+			toolchain: true,
+			"upload-host-offering": true,
+			"retention-days": 7,
+		});
+		expect(morphirupJob.needs).toBe("release-info");
+		expect(morphirupJob.strategy?.matrix).toBe("${{ fromJSON(needs.release-info.outputs.morphirup) }}");
+		expect(morphirupMatrix(config).include).toEqual([
+			{ rid: "linux-x64", runner: "ubuntu-24.04" },
+			{ rid: "linux-arm64", runner: "ubuntu-24.04-arm" },
+			{ rid: "win-x64", runner: "windows-2025" },
+			{ rid: "win-arm64", runner: "windows-11-arm" },
+			{ rid: "osx-arm64", runner: "macos-15" },
+		]);
+		expect(SOURCE_WORKFLOWS).toEqual(["cli-offering.yml", "morphirup-build.yml"]);
+	});
+
+	test("the platforms, the toolchain platforms and the setup journey are the pinned source's", () => {
+		expect(config.morphirup.platforms).toEqual(pinnedMorphirupPlatforms(read(`${config.source.submodule}/build/Helpers/MorphirupRelease.cs`)));
+		expect(config.morphirup.toolchainPlatforms).toEqual(pinnedToolchainPlatforms(read(`${config.source.submodule}/build/Helpers/ReleaseAssets.cs`)));
+		const build = read(`${config.source.submodule}/.github/workflows/morphirup-build.yml`);
+		expect(build).toContain(`--filter-test-list ${config.morphirup.setupJourney}`);
+		// The source's own release passes toolchain: true; so does release.yml.
+		expect(read(`${config.source.submodule}/.github/workflows/deployment.yml`)).toMatch(/uses: \.\/\.github\/workflows\/morphirup-build\.yml[\s\S]*?toolchain: true/);
+		for (const rid of config.morphirup.platforms) expect(config.platforms.map(p => p.rid)).toContain(rid);
+	});
+
+	test("the asset names are exactly the finos/morphir-dotnet v0.5.0-alpha.1 release's, without its legacy CLI names", () => {
+		// Read from the published finos/morphir-dotnet v0.5.0-alpha.1 release: every asset but morphir-<rid>[-v<v>.tar.gz].
+		const published = [
+			"SHA256SUMS",
+			"morphir-dotnet-0.5.0-alpha.1-self-contained-osx-arm64.tar.gz", "morphir-dotnet-0.5.0-alpha.1-self-contained-win-arm64.zip", "morphir-dotnet-0.5.0-alpha.1-self-contained-win-x64.zip",
+			"morphir-extensions-osx-arm64.json", "morphir-extensions-win-arm64.json", "morphir-extensions-win-x64.json",
+			...["osx-arm64", "win-arm64", "win-x64"].flatMap(rid => ["backend", "frontend"].flatMap(role => [`morphir-fsharp-${role}-0.5.0-alpha.1-${rid}.manifest`, `morphir-fsharp-${role}-0.5.0-alpha.1-${rid}.release.json`, `morphir-fsharp-${role}-0.5.0-alpha.1-${rid}.${rid === "osx-arm64" ? "tar.gz" : "zip"}`])),
+			"morphir-host-candidate-osx-arm64.json", "morphir-host-candidate-win-arm64.json", "morphir-host-candidate-win-x64.json",
+			"morphir-toolchain-osx-arm64.json", "morphir-toolchain-win-arm64.json", "morphir-toolchain-win-x64.json",
+			"morphirup-linux-arm64", "morphirup-linux-arm64-v0.5.0-alpha.1.tar.gz", "morphirup-linux-x64", "morphirup-linux-x64-v0.5.0-alpha.1.tar.gz",
+			"morphirup-osx-arm64", "morphirup-osx-arm64-v0.5.0-alpha.1.tar.gz", "morphirup-v0.5.0-alpha.1-THIRD-PARTY-NOTICES.txt", "morphirup-v0.5.0-alpha.1.sha256",
+			"morphirup-win-arm64-v0.5.0-alpha.1.tar.gz", "morphirup-win-arm64.exe", "morphirup-win-x64-v0.5.0-alpha.1.tar.gz", "morphirup-win-x64.exe",
+		];
+		expect(published).toHaveLength(43);
+		expect(morphirupAssetNames(config.morphirup, "0.5.0-alpha.1").map(n => n.asset).sort()).toEqual([...published].sort());
+		// A host archive is the self-contained offering's name on its platform, so the release attaches it once.
+		for (const rid of config.morphirup.toolchainPlatforms) expect(published).toContain(hostArchiveName(rid, "0.5.0-alpha.1"));
+		expect(morphirupManagerNames("win-arm64", "0.5.0-alpha.1")).toEqual({ executable: "morphirup-win-arm64.exe", tarball: "morphirup-win-arm64-v0.5.0-alpha.1.tar.gz", entry: "win-arm64/morphirup.exe" });
+	});
+
+	test("the flattened assets must be exactly the contract's, listed with their bytes, with host archives that are the offerings", () => {
+		const work = mkdtempSync(path.join(os.tmpdir(), "cli-morphirup-assets-"));
+		const hosts = new Map<string, string>();
+		for (const rid of config.morphirup.toolchainPlatforms) {
+			const file = path.join(work, `host-${rid}`);
+			writeFileSync(file, `host ${rid}`);
+			hosts.set(rid, file);
+		}
+		const offerings = new Map([...hosts].map(([rid, file]) => [rid, fileSha(file)]));
+		const fresh = (name: string) => {
+			const dir = path.join(work, name);
+			writeMorphirupAssets(dir, "1.0.0", hosts);
+			return dir;
+		};
+		const ok = morphirupAssets(config.morphirup, "1.0.0", fresh("ok"), offerings);
+		expect(ok).toHaveLength(43);
+		expect(ok.find(a => a.asset === "morphirup-win-x64.exe")).toMatchObject({ role: "manager", platform: "win-x64" });
+
+		const extra = fresh("extra");
+		writeFileSync(path.join(extra, "morphir-extensions-linux-x64.json"), "{}");
+		expect(() => morphirupAssets(config.morphirup, "1.0.0", extra, offerings)).toThrow("unexpected morphirup asset morphir-extensions-linux-x64.json");
+		const missing = fresh("missing");
+		rmSync(path.join(missing, "morphir-toolchain-win-arm64.json"));
+		expect(() => morphirupAssets(config.morphirup, "1.0.0", missing, offerings)).toThrow("missing morphirup asset morphir-toolchain-win-arm64.json");
+		const changed = fresh("changed");
+		writeFileSync(path.join(changed, "morphir-host-candidate-win-x64.json"), "other bytes");
+		expect(() => morphirupAssets(config.morphirup, "1.0.0", changed, offerings)).toThrow("SHA256SUMS lists morphir-host-candidate-win-x64.json with SHA-256");
+		const unlisted = fresh("unlisted");
+		writeFileSync(path.join(unlisted, "morphirup-v1.0.0.sha256"), readFileSync(path.join(unlisted, "morphirup-v1.0.0.sha256"), "utf8").split("\n").filter(l => !l.endsWith("morphirup-linux-x64")).join("\n"));
+		expect(() => morphirupAssets(config.morphirup, "1.0.0", unlisted, offerings)).toThrow("morphirup-v1.0.0.sha256 does not list morphirup-linux-x64");
+		const otherHost = new Map(offerings);
+		otherHost.set("win-x64", "f".repeat(64));
+		expect(() => morphirupAssets(config.morphirup, "1.0.0", fresh("other-host"), otherHost)).toThrow("one name, two builds");
+		expect(() => parseChecksums(`${"a".repeat(64)}  x\n${"b".repeat(64)}  x\n`)).toThrow("x is listed twice");
+		expect(() => parseChecksums("not a checksum line\n")).toThrow("is not a sha256sum line");
+	});
+
+	test("a manager qualifies when it reports the release and its archive holds the same bytes", () => {
+		// The launched program is this test's own Bun executable under the manager's name: a real binary that prints a
+		// bare version, which is the release here.
+		const rid = process.platform === "win32" ? "win-x64" : process.platform === "darwin" ? "osx-arm64" : "linux-x64";
+		const names = morphirupManagerNames(rid, Bun.version);
+		const make = (name: string, tamper: boolean) => {
+			const dir = mkdtempSync(path.join(os.tmpdir(), `cli-morphirup-${name}-`));
+			copyFileSync(process.execPath, path.join(dir, names.executable));
+			const tree = path.join(dir, "tree");
+			mkdirSync(path.join(tree, rid), { recursive: true });
+			if (tamper) writeFileSync(path.join(tree, names.entry), "other bytes");
+			else copyFileSync(process.execPath, path.join(tree, names.entry));
+			expect(Bun.spawnSync(["tar", "-czf", path.join(dir, names.tarball), "-C", tree, rid], { windowsHide: true }).exitCode).toBe(0);
+			return dir;
+		};
+		const passed = qualifyMorphirup(config, make("ok", false), rid, Bun.version);
+		expect(passed).toMatchObject({ kind: "morphirup", platform: rid, asset: names.executable, reportedVersion: Bun.version, qualified: true });
+		expect(passed.scenarios.map(s => `${s.scenario}=${s.status}`)).toEqual(["launch=passed", "archive=passed"]);
+		const tampered = qualifyMorphirup(config, make("tampered", true), rid, Bun.version);
+		expect(tampered.qualified).toBe(false);
+		expect(tampered.scenarios.find(s => s.scenario === "archive")?.status).toBe("failed");
+		expect(() => qualifyMorphirup(config, make("osx-x64", false), "osx-x64", Bun.version)).toThrow("morphirup is not released for osx-x64");
+	}, 120_000);
+
+	test("a release needs one passing qualification of every manager, of the bytes it attaches", () => {
+		const evidence = morphirupEvidence("1.0.0");
+		expect(morphirupEvidenceProblems(config, "1.0.0", evidence)).toEqual([]);
+		expect(morphirupEvidenceProblems(config, "1.0.0", undefined)).toEqual(["no morphirup assets or qualification"]);
+		const without = { ...evidence, qualifications: evidence.qualifications.filter(q => q.platform !== "linux-arm64") };
+		expect(morphirupEvidenceProblems(config, "1.0.0", without).join()).toContain("no qualification of morphirup on linux-arm64");
+		const failed = { ...evidence, qualifications: evidence.qualifications.map(q => (q.platform === "win-x64" ? { ...q, qualified: false } : q)) };
+		expect(morphirupEvidenceProblems(config, "1.0.0", failed).join()).toContain("morphirup qualification failed: win-x64");
+		const other = { ...evidence, qualifications: evidence.qualifications.map(q => (q.platform === "osx-arm64" ? { ...q, sha256: "e".repeat(64) } : q)) };
+		expect(morphirupEvidenceProblems(config, "1.0.0", other).join()).toContain("morphirup qualification on osx-arm64 launched bytes");
+		const repeated = { ...evidence, qualifications: [...evidence.qualifications, evidence.qualifications[0]!] };
+		expect(morphirupEvidenceProblems(config, "1.0.0", repeated).join()).toContain("repeated morphirup qualification");
+		const stray = { ...evidence, qualifications: [...evidence.qualifications, { ...evidence.qualifications[0]!, platform: "osx-x64" }] };
+		expect(morphirupEvidenceProblems(config, "1.0.0", stray).join()).toContain("unexpected morphirup qualification on osx-x64");
+		expect(morphirupEvidenceProblems(config, "2.0.0", evidence).join()).toContain("is of release 1.0.0");
+	});
+
+	test("the publish job assembles the assets with the source's own targets from the pinned checkout", () => {
+		const publish = release.jobs["publish-release"]!;
+		const steps = runs(publish);
+		expect(steps).toContain("cd ecosystem/morphir-dotnet");
+		expect(steps).toMatch(/\.\/build\.sh --target FlattenReleaseAssets MorphirupChecksums WindowsToolchainChecksums/);
+		expect(steps).toContain("(cd \"$dir\" && sha256sum -c SHA256SUMS)");
+		expect(steps).toContain('sha256sum -c "morphirup-v${VERSION}.sha256"');
+		expect(steps).toContain("--morphirup .dev/out/cli-release/morphirup-assets");
+		const downloads = publish.steps.filter(step => step.uses?.startsWith("actions/download-artifact@")).map(step => step.with?.pattern);
+		expect(downloads).toEqual(["morphir-dotnet-*", "cli-qualification-*", "morphirup-*", "windows-release-toolchain-*"]);
+		const setup = publish.steps.find(step => step.uses?.startsWith("actions/setup-dotnet@"));
+		expect(setup?.with?.["global-json-file"]).toBe("ecosystem/morphir-dotnet/global.json");
+		// The assembly reuses the source's targets; nothing here writes a checksum file of its own.
+		expect(steps).not.toMatch(/sha256sum [^-]/);
+	});
+
+	test("a workflow that calls a source workflow at another commit, or another source workflow, is refused", () => {
+		const workflow = read(".github/workflows/release.yml");
+		const good = { tag: "v0.4.0-alpha.4", githubRef: "refs/tags/v0.4.0-alpha.4", githubSha: "e".repeat(40), head: "e".repeat(40), tagCommit: "e".repeat(40), workflow };
+		expect(workflowBindingProblems(config, good)).toEqual([]);
+		const moved = workflow.replace(`morphirup-build.yml@${config.source.commit}`, `morphirup-build.yml@${"0".repeat(40)}`);
+		expect(workflowBindingProblems(config, { ...good, workflow: moved }).join()).toContain("morphirup-build.yml@");
+		const extra = `${workflow}\n  other:\n    uses: finos/morphir-dotnet/.github/workflows/deployment.yml@${config.source.commit}\n`;
+		expect(workflowBindingProblems(config, { ...good, workflow: extra }).join()).toContain("deployment.yml of the source, which is not a delivery workflow");
+		const oneRef = workflow.replace(`      ref: ${config.source.commit}\n      rid: \${{ matrix.rid }}\n      os: \${{ matrix.runner }}\n      configuration: Release\n      toolchain`, "      rid: ${{ matrix.rid }}\n      os: ${{ matrix.runner }}\n      configuration: Release\n      toolchain");
+		expect(oneRef).not.toBe(workflow);
+		expect(workflowBindingProblems(config, { ...good, workflow: oneRef }).join()).toContain("once to each source workflow");
+	});
+});
 describe("legacy release names", () => {
 	test("future legacy names alias the Native AOT executable on the platforms that shipped them", () => {
 		expect(config.legacyAliases.of).toBe("native-aot");
@@ -587,7 +805,8 @@ describe("archives are read wherever the command runs", () => {
 				mkdirSync(folder);
 				const exe = rid.startsWith("win-") ? "morphir.exe" : "morphir";
 				writeFileSync(path.join(folder, exe), "#!/bin/sh\necho 1.0.0+abc1234\n", { mode: 0o755 });
-				const artifact = d.portable ? "Morphir.Tool.1.0.0.nupkg" : `morphir-dotnet-1.0.0-${d.id}-${rid}.tar.gz`;
+				// A toolchain platform's self-contained offering carries the host archive's name (zip on Windows); the bytes are a tar.gz either way.
+				const artifact = d.portable ? "Morphir.Tool.1.0.0.nupkg" : d.id === "self-contained" && config.morphirup.toolchainPlatforms.includes(rid) ? hostArchiveName(rid, "1.0.0") : `morphir-dotnet-1.0.0-${d.id}-${rid}.tar.gz`;
 				const dir = path.join(assets, `morphir-dotnet-${d.id}-${rid}`);
 				mkdirSync(dir);
 				expect(Bun.spawnSync(["tar", "-czf", path.join(dir, artifact), "-C", folder, exe], { windowsHide: true }).exitCode).toBe(0);
@@ -603,6 +822,9 @@ describe("archives are read wherever the command runs", () => {
 			const launch = launches.find(l => l.deployment === d.id && l.platform === (d.portable ? "any" : p.rid))!;
 			writeFileSync(path.join(qualificationDir, `${d.id}-${p.rid}.qualification.json`), JSON.stringify(passingQualification(launch, p.rid)));
 		}
+		const hostFiles = new Map(config.morphirup.toolchainPlatforms.map(rid => [rid, path.join(assets, `morphir-dotnet-self-contained-${rid}`, hostArchiveName(rid, "1.0.0"))]));
+		const managers = writeMorphirupAssets(path.join(work, "morphirup-assets"), "1.0.0", hostFiles);
+		for (const [rid, digest] of managers) writeFileSync(path.join(qualificationDir, `${rid}.morphirup-qualification.json`), JSON.stringify(passingMorphirup(rid, "1.0.0", digest)));
 		const kit = path.join(work, "kit.json");
 		writeFileSync(kit, JSON.stringify({ revision: "a".repeat(40), modified: false, algorithm: "mck-file-map-sha256/1", corpusHash: `sha256-${"b".repeat(64)}`, errors: 0 }));
 		const tool = path.join(root, "tools/cli-release.ts");
@@ -614,7 +836,7 @@ describe("archives are read wherever the command runs", () => {
 		expect(legacy.exitCode, legacy.stderr.toString()).toBe(0);
 		expect(readFileSync(path.join(work, "legacy/morphir-win-x64.exe"), "utf8")).toContain("echo 1.0.0+abc1234");
 
-		const inputs = { tag: "v1.0.0", version: "1.0.0", assets: "assets", kitStatus: "kit.json", legacy: "legacy/legacy-aliases.json", commit: head, changelog: "## [Unreleased]\n\n## [1.0.0] - 2026-11-10\n", sourceTagCommit: config.source.commit, existingTags: ["v0.4.0-beta.12", "v0.4.0-alpha.4", "extension/python/v0.4.0"] };
+		const inputs = { tag: "v1.0.0", version: "1.0.0", assets: "assets", kitStatus: "kit.json", legacy: "legacy/legacy-aliases.json", morphirup: "morphirup-assets", commit: head, changelog: "## [Unreleased]\n\n## [1.0.0] - 2026-11-10\n", sourceTagCommit: config.source.commit, existingTags: ["v0.4.0-beta.12", "v0.4.0-alpha.4", "extension/python/v0.4.0"] };
 		// A candidate pin: a dry run validates everything and writes the evidence and the list it would attach...
 		const candidate = asCandidate(config);
 		const dry = prepareRelease(candidate, work, { ...inputs, out: "dry", dryRun: true });
@@ -633,7 +855,10 @@ describe("archives are read wherever the command runs", () => {
 		const listed = prepareRelease(publishable, work, { ...inputs, out: "publish", dryRun: false });
 		expect(readFileSync(path.join(work, "publish/release-assets.txt"), "utf8").trim().split("\n")).toEqual(listed);
 		const names = listed.map(file => path.basename(file)).sort();
-		expect(names).toHaveLength(launches.length + legacyRids.length * 2 + 1);
+		// The morphirup and toolchain assets join the offerings; each host archive is attached once, as its offering.
+		expect(names).toHaveLength(launches.length + legacyRids.length * 2 + 1 + morphirupAssetNames(config.morphirup, "1.0.0").length - config.morphirup.toolchainPlatforms.length);
+		for (const name of ["SHA256SUMS", "morphirup-v1.0.0.sha256", "morphirup-win-arm64.exe", "morphirup-linux-x64-v1.0.0.tar.gz", "morphir-toolchain-osx-arm64.json"]) expect(names).toContain(name);
+		expect(names.filter(name => name === hostArchiveName("win-x64", "1.0.0"))).toHaveLength(1);
 		for (const launch of launches) expect(names).toContain(launch.artifact);
 		expect(names).toContain("morphir-linux-arm64-v1.0.0.tar.gz");
 		expect(names).toContain("release-manifest.json");		for (const file of listed) expect(path.isAbsolute(file)).toBe(true);

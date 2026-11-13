@@ -10,13 +10,14 @@
 //   bun run tools/cli-release.ts verify-source
 //   bun run tools/cli-release.ts release-info --tag v<version>
 //   bun run tools/cli-release.ts qualify --release-dir <dir> --deployment <id> [--rid <rid>] --version <v> --out <file>
+//   bun run tools/cli-release.ts qualify-morphirup --dir <dir> --rid <rid> --version <v> --out <file>
 //   bun run tools/cli-release.ts legacy-aliases --assets <dir> --version <v> --out <dir>
-//   bun run tools/cli-release.ts manifest --tag <tag> --version <v> --commit <sha> --assets <dir> --kit-status <file> [--legacy <file>] --out <dir> [--dry-run]
+//   bun run tools/cli-release.ts manifest --tag <tag> --version <v> --commit <sha> --assets <dir> --kit-status <file> [--legacy <file>] --morphirup <dir> --out <dir> [--dry-run]
 //
 // The expectations live in .config/cli-release.json.
 import { format, greaterOrEqual, parse } from "@std/semver";
 import { createHash } from "node:crypto";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -31,7 +32,11 @@ export type CliReleaseConfig = {
 	platforms: Platform[];
 	legacyAliases: { of: string; decision: string };
 	pendingTriage: PendingTriage[];
+	/** The toolchain manager and the setup toolchain, built by the pinned source's `morphirup-build.yml`. */
+	morphirup: MorphirupConfig;
 };
+
+export type MorphirupConfig = { platforms: string[]; toolchainPlatforms: string[]; setupJourney: string };
 
 /** The build-side launch metadata the .NET build writes beside each artifact (`<artifact>.build-launch.json`). */
 export type LaunchMetadata = {
@@ -132,6 +137,116 @@ export function legacyAliasNames(rid: string, version: string): { executable: st
 
 export type LegacyAlias = { asset: string; sha256: string; aliasOf: string; executableSha256: string };
 
+// ---- morphirup and the setup toolchain -----------------------------------
+
+/** One RID list of the pinned source: `<name> { get; } = ["a", "b"];`. */
+function pinnedRidList(source: string, name: string): string[] {
+	const match = new RegExp(`${name}\\s*\\{\\s*get;\\s*\\}\\s*=\\s*\\[([^\\]]*)\\]`).exec(source);
+	if (!match) throw new Error(`the pinned source defines no ${name}`);
+	return [...match[1]!.matchAll(/"([a-z0-9-]+)"/g)].map(m => m[1]!);
+}
+
+/** The platforms the pinned source releases morphirup for (`MorphirupRelease.Platforms`). */
+export function pinnedMorphirupPlatforms(morphirupRelease: string): string[] {
+	return pinnedRidList(morphirupRelease, "Platforms");
+}
+
+/** The platforms the pinned source packs a setup toolchain for (`ReleaseAssets.WindowsToolchainPlatforms`). */
+export function pinnedToolchainPlatforms(releaseAssets: string): string[] {
+	return pinnedRidList(releaseAssets, "WindowsToolchainPlatforms");
+}
+
+/** The self-contained host archive of a toolchain platform, the same name the self-contained offering has there. */
+export function hostArchiveName(rid: string, version: string): string {
+	return `morphir-dotnet-${exactRelease(version)}-self-contained-${rid}.${rid.startsWith("win-") ? "zip" : "tar.gz"}`;
+}
+
+/** The asset names of one morphirup manager: the bare executable and its archive, which holds `<rid>/<executable>`. */
+export function morphirupManagerNames(rid: string, version: string): { executable: string; tarball: string; entry: string } {
+	const executable = rid.startsWith("win-") ? "morphirup.exe" : "morphirup";
+	return {
+		executable: rid.startsWith("win-") ? `morphirup-${rid}.exe` : `morphirup-${rid}`,
+		tarball: `morphirup-${rid}-v${exactRelease(version)}.tar.gz`,
+		entry: `${rid}/${executable}`,
+	};
+}
+
+export type MorphirupAssetRole = "manager" | "manager-archive" | "checksums" | "notices" | "host-archive" | "toolchain" | "toolchain-checksums";
+
+/**
+ * Every morphirup and setup-toolchain asset a release of `version` attaches, by the names a finos/morphir-dotnet
+ * release of that version gives them (the contract morphirup's release source reads). The host archives are also the
+ * self-contained offerings on those platforms and are attached once.
+ */
+export function morphirupAssetNames(morphirup: MorphirupConfig, version: string): { asset: string; role: MorphirupAssetRole; platform?: string }[] {
+	const v = exactRelease(version);
+	const names: { asset: string; role: MorphirupAssetRole; platform?: string }[] = [];
+	for (const rid of morphirup.platforms) {
+		const manager = morphirupManagerNames(rid, v);
+		names.push({ asset: manager.executable, role: "manager", platform: rid }, { asset: manager.tarball, role: "manager-archive", platform: rid });
+	}
+	names.push({ asset: `morphirup-v${v}.sha256`, role: "checksums" }, { asset: `morphirup-v${v}-THIRD-PARTY-NOTICES.txt`, role: "notices" });
+	for (const rid of morphirup.toolchainPlatforms) {
+		const archive = rid.startsWith("win-") ? "zip" : "tar.gz";
+		names.push({ asset: hostArchiveName(rid, v), role: "host-archive", platform: rid });
+		for (const stem of ["morphir-fsharp-frontend", "morphir-fsharp-backend"]) {
+			for (const suffix of [archive, "release.json", "manifest"]) names.push({ asset: `${stem}-${v}-${rid}.${suffix}`, role: "toolchain", platform: rid });
+		}
+		for (const name of [`morphir-host-candidate-${rid}.json`, `morphir-extensions-${rid}.json`, `morphir-toolchain-${rid}.json`]) names.push({ asset: name, role: "toolchain", platform: rid });
+	}
+	names.push({ asset: "SHA256SUMS", role: "toolchain-checksums" });
+	return names.sort((a, b) => a.asset.localeCompare(b.asset));
+}
+
+/** The `<sha256>  <name>` lines of a checksum file, as sha256sum writes and reads them. */
+export function parseChecksums(text: string): Map<string, string> {
+	const entries = new Map<string, string>();
+	for (const line of text.split(/\r?\n/).filter(l => l.trim().length > 0)) {
+		const match = /^([0-9a-f]{64}) [ *](.+)$/.exec(line.trim());
+		if (!match) throw new Error(`'${line}' is not a sha256sum line`);
+		if (entries.has(match[2]!)) throw new Error(`${match[2]} is listed twice`);
+		entries.set(match[2]!, match[1]!);
+	}
+	return entries;
+}
+
+export type MorphirupAsset = { asset: string; role: MorphirupAssetRole; platform?: string; sha256: string };
+
+/**
+ * Checks the flattened morphirup release assets (FlattenReleaseAssets, MorphirupChecksums and WindowsToolchainChecksums
+ * of the pinned source) and returns each one with its SHA-256. The folder must hold exactly the contract's names. Both
+ * checksum files must list only files that are there, with their bytes: `morphirup-v<version>.sha256` every morphirup
+ * asset, and SHA256SUMS every toolchain file. A host archive must be the self-contained offering of its platform, the
+ * bytes `hostSha256` gives, so the release attaches one file under that name.
+ */
+export function morphirupAssets(morphirup: MorphirupConfig, version: string, dir: string, hostSha256: Map<string, string>): MorphirupAsset[] {
+	const expected = morphirupAssetNames(morphirup, version);
+	const present = readdirSync(dir).filter(name => statSync(path.join(dir, name)).isFile());
+	const problems: string[] = [];
+	for (const name of present) if (!expected.some(e => e.asset === name)) problems.push(`unexpected morphirup asset ${name}`);
+	for (const e of expected) if (!present.includes(e.asset)) problems.push(`missing morphirup asset ${e.asset}`);
+	if (problems.length > 0) throw new Error(problems.join("; "));
+	const assets = expected.map(e => ({ ...e, sha256: sha256(path.join(dir, e.asset)) }));
+	const digest = new Map(assets.map(a => [a.asset, a.sha256]));
+	const checksums = (file: string, listed: (a: MorphirupAsset) => boolean) => {
+		const entries = parseChecksums(readFileSync(path.join(dir, file), "utf8"));
+		for (const [name, sum] of entries) {
+			if (!digest.has(name)) problems.push(`${file} lists ${name}, which is not a release asset`);
+			else if (digest.get(name) !== sum) problems.push(`${file} lists ${name} with SHA-256 ${sum}, but the file is ${digest.get(name)}`);
+		}
+		for (const a of assets.filter(listed)) if (!entries.has(a.asset)) problems.push(`${file} does not list ${a.asset}`);
+	};
+	checksums(`morphirup-v${exactRelease(version)}.sha256`, a => a.role === "manager" || a.role === "manager-archive" || a.role === "notices");
+	checksums("SHA256SUMS", a => a.role === "host-archive" || a.role === "toolchain");
+	for (const a of assets.filter(a => a.role === "host-archive")) {
+		const offering = hostSha256.get(a.platform!);
+		if (offering === undefined) problems.push(`no self-contained offering of ${a.platform} to compare ${a.asset} with`);
+		else if (offering !== a.sha256) problems.push(`${a.asset} of the toolchain is ${a.sha256}, but the self-contained offering of ${a.platform} is ${offering}: one name, two builds`);
+	}
+	if (problems.length > 0) throw new Error(problems.join("; "));
+	return assets;
+}
+
 // ---- Release identity ----------------------------------------------------
 
 /** Parses an exact SemVer release in canonical spelling, without build metadata. */
@@ -171,9 +286,9 @@ export function changelogReleaseVersion(changelog: string): string {
 	throw new Error("the CHANGELOG has no released version");
 }
 
-/** The GitHub Actions matrix of platform jobs: one runner of the platform's own operating system each. */
-export function releaseMatrix(config: CliReleaseConfig): { include: Platform[] } {
-	return { include: config.platforms.map(({ rid, runner }) => ({ rid, runner })) };
+/** The GitHub Actions matrix of platform jobs: one runner of the platform's own operating system each, and whether morphirup ships there. */
+export function releaseMatrix(config: CliReleaseConfig): { include: (Platform & { morphirup: boolean })[] } {
+	return { include: config.platforms.map(({ rid, runner }) => ({ rid, runner, morphirup: config.morphirup.platforms.includes(rid) })) };
 }
 
 // ---- Qualification -------------------------------------------------------
@@ -225,14 +340,33 @@ export function extractCommand(archive: string, destination: string, platform: N
 	return ["tar", "-xzf", source, "-C", target];
 }
 
-/** The reusable-workflow matrix: every deployment on every platform, and the portable tool once. */
+/** The deployment whose artifact a setup toolchain carries as its host, and so is built by the toolchain job there. */
+export const TOOLCHAIN_HOST_DEPLOYMENT = "self-contained";
+
+/**
+ * The `cli-offering.yml` matrix: every deployment on every platform, and the portable tool once, except the
+ * self-contained offering of a toolchain platform. That one is the toolchain job's host archive (`morphirupMatrix`).
+ */
 export function offeringMatrix(config: CliReleaseConfig): { include: { deployment: string; rid: string; runner: string }[] } {
 	const include = config.deployments.flatMap(deployment =>
 		deployment.portable
 			? [{ deployment: deployment.id, rid: "", runner: "ubuntu-24.04" }]
-			: config.platforms.map(platform => ({ deployment: deployment.id, rid: platform.rid, runner: platform.runner })),
+			: config.platforms
+					.filter(platform => !(deployment.id === TOOLCHAIN_HOST_DEPLOYMENT && config.morphirup.toolchainPlatforms.includes(platform.rid)))
+					.map(platform => ({ deployment: deployment.id, rid: platform.rid, runner: platform.runner })),
 	);
 	return { include };
+}
+
+/** The `morphirup-build.yml` matrix: each morphirup platform on its own platform's runner. */
+export function morphirupMatrix(config: CliReleaseConfig): { include: Platform[] } {
+	return {
+		include: config.morphirup.platforms.map(rid => {
+			const platform = config.platforms.find(p => p.rid === rid);
+			if (platform === undefined) throw new Error(`morphirup platform ${rid} is not a release platform`);
+			return { rid, runner: platform.runner };
+		}),
+	};
 }
 
 /** Why a release cannot run from this pin, or undefined when it can. */
@@ -490,6 +624,47 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 	};
 }
 
+export type MorphirupQualification = {
+	kind: "morphirup";
+	release: string;
+	platform: string;
+	asset: string;
+	sha256: string;
+	reportedVersion: string;
+	scenarios: { scenario: string; status: ScenarioStatus; exitCode: number }[];
+	qualified: boolean;
+};
+
+/**
+ * Launches the morphirup manager of `rid` on this machine as a user does: the downloaded executable itself, with no
+ * .NET on the search path. `--version` must name the release built from the pinned commit, and the executable in
+ * `morphirup-<rid>-v<version>.tar.gz` must be the same bytes. `dir` holds the `morphirup-<rid>` workflow artifact.
+ */
+export function qualifyMorphirup(config: CliReleaseConfig, dir: string, rid: string, version: string): MorphirupQualification {
+	if (!config.morphirup.platforms.includes(rid)) throw new Error(`morphirup is not released for ${rid}`);
+	const names = morphirupManagerNames(rid, version);
+	const executable = path.join(dir, names.executable);
+	const tarball = path.join(dir, names.tarball);
+	for (const file of [executable, tarball]) if (!existsSync(file)) throw new Error(`${path.basename(file)} is missing from ${dir}`);
+	// upload-artifact keeps no file modes.
+	if (process.platform !== "win32") chmodSync(executable, 0o755);
+	const digest = sha256(executable);
+	const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), `morphirup-${rid}-`));
+	const version_ = run([executable, "--version"], { cwd: work, env: withoutDotnet() });
+	console.error(`${names.executable} --version: exit ${version_.exitCode}\n${version_.stdout}${version_.stderr}`);
+	const launch = version_.exitCode === 0 && versionReported(version_.stdout, version, config.source.commit) ? 0 : 1;
+	const extracted = path.join(work, "extracted");
+	mkdirSync(extracted);
+	const untar = run(extractCommand(tarball, extracted), { cwd: work });
+	const entry = path.join(extracted, names.entry);
+	const same = untar.exitCode === 0 && existsSync(entry) && sha256(entry) === digest ? 0 : 1;
+	const scenarios = [
+		{ scenario: "launch", status: scenarioStatus(config, rid, "morphirup-launch", launch), exitCode: version_.exitCode },
+		{ scenario: "archive", status: (same === 0 ? "passed" : "failed") as ScenarioStatus, exitCode: same },
+	];
+	return { kind: "morphirup", release: version, platform: rid, asset: names.executable, sha256: digest, reportedVersion: version_.stdout.trim(), scenarios, qualified: scenarios.every(s => s.status === "passed") };
+}
+
 // ---- Release manifest ----------------------------------------------------
 
 /**
@@ -612,6 +787,9 @@ export function sourceTagCommit(repository: string, tag: string): string | undef
 	return refs.get(`refs/tags/${tag}^{}`) ?? refs.get(`refs/tags/${tag}`);
 }
 
+/** The pinned source's reusable workflows that release.yml calls: the offerings, and morphirup with its setup toolchain. */
+export const SOURCE_WORKFLOWS = ["cli-offering.yml", "morphirup-build.yml"];
+
 /**
  * Binds the run to what it releases: the workflow must run from the tag's own ref (so its definition, and the literal
  * `uses`/`ref` commit, are the tag's), the checkout must match both the triggering commit and the tag, and the workflow's literal
@@ -629,10 +807,15 @@ export function workflowBindingProblems(config: CliReleaseConfig, run: { tag: st
 	if (run.githubSha === undefined || !/^[0-9a-f]{40}$/.test(run.githubSha)) problems.push(`the triggering commit is unknown (${run.githubSha ?? "missing GITHUB_SHA"})`);
 	else if (run.githubSha !== run.head) problems.push(`the triggering commit is ${run.githubSha}, but the checkout is ${run.head}; the tag may have moved after this run started`);
 	if (!rehearsal && run.tagCommit !== run.head) problems.push(`${run.tag} is ${run.tagCommit ?? "missing"}, but the checkout is ${run.head}`);
-	const uses = [...run.workflow.matchAll(/uses:\s*finos\/morphir-dotnet\/\.github\/workflows\/cli-offering\.yml@([0-9a-f]+)/g)].map(m => m[1]);
+	// Each of the source's reusable workflows is called once, at the pin, and passes the pin as its literal `ref`.
+	const calls = [...run.workflow.matchAll(/uses:\s*finos\/morphir-dotnet\/\.github\/workflows\/([a-z-]+\.yml)@([0-9a-f]+)/g)].map(m => ({ workflow: m[1]!, commit: m[2]! }));
+	for (const workflow of SOURCE_WORKFLOWS) {
+		const found = calls.filter(call => call.workflow === workflow);
+		if (found.length !== 1 || found[0]!.commit !== config.source.commit) problems.push(`release.yml builds with ${workflow}@${found.map(call => call.commit).join(",") || "nothing"}, not the pinned ${config.source.commit}`);
+	}
+	for (const call of calls.filter(call => !SOURCE_WORKFLOWS.includes(call.workflow))) problems.push(`release.yml calls ${call.workflow} of the source, which is not a delivery workflow`);
 	const refs = [...run.workflow.matchAll(/^\s+ref:\s*([0-9a-f]{40})\s*$/gm)].map(m => m[1]);
-	if (uses.length !== 1 || uses[0] !== config.source.commit) problems.push(`release.yml builds with cli-offering.yml@${uses.join(",") || "nothing"}, not the pinned ${config.source.commit}`);
-	if (refs.length !== 1 || refs[0] !== config.source.commit) problems.push(`release.yml passes ref ${refs.join(",") || "nothing"}, not the pinned ${config.source.commit}`);
+	if (refs.length !== SOURCE_WORKFLOWS.length || refs.some(ref => ref !== config.source.commit)) problems.push(`release.yml passes ref ${refs.join(",") || "nothing"}, not the pinned ${config.source.commit} once to each source workflow`);
 	return problems;
 }
 
@@ -642,7 +825,7 @@ export function workflowBindingProblems(config: CliReleaseConfig, run: { tag: st
  * record, an artifact of another release, or a tag that does not name the release, is an error in a dry run too.
  * Publication readiness is recorded separately (`publication`) and decided by the caller.
  */
-export function releaseManifest(config: CliReleaseConfig, tag: string, version: string, commit: string, kit: KitStatus, launches: LaunchMetadata[], qualifications: Qualification[], legacy: LegacyAlias[] = [], publication: { dryRun: boolean; blockers: string[] } = { dryRun: false, blockers: [] }) {
+export function releaseManifest(config: CliReleaseConfig, tag: string, version: string, commit: string, kit: KitStatus, launches: LaunchMetadata[], qualifications: Qualification[], legacy: LegacyAlias[] = [], publication: { dryRun: boolean; blockers: string[] } = { dryRun: false, blockers: [] }, morphirup?: MorphirupEvidence) {
 	if (parseReleaseTag(config, tag) !== version) throw new Error(`${tag} does not name release ${version}`);
 	if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error(`the finos/morphir commit is unknown (${commit})`);
 	const stray = launches.filter(launch => launch.release !== version);
@@ -672,6 +855,7 @@ export function releaseManifest(config: CliReleaseConfig, tag: string, version: 
 			if (!seen.has(`${deployment.id} ${platform.rid}`)) problems.push(`no qualification of ${deployment.id} on ${platform.rid}`);
 		}
 	}
+	problems.push(...morphirupEvidenceProblems(config, version, morphirup));
 	if (problems.length > 0) throw new Error(problems.join("; "));
 	return {
 		note: "Release evidence of finos/morphir, not a contract.",
@@ -689,7 +873,46 @@ export function releaseManifest(config: CliReleaseConfig, tag: string, version: 
 			.map(q => ({ deployment: q.deployment, platform: q.runnerPlatform, artifact: q.artifact, qualified: q.qualified, pending: q.pending }))
 			.sort((a, b) => `${a.deployment} ${a.platform}`.localeCompare(`${b.deployment} ${b.platform}`)),
 		pendingTriage: config.pendingTriage,
+		morphirup: {
+			platforms: config.morphirup.platforms,
+			toolchainPlatforms: config.morphirup.toolchainPlatforms,
+			// The source's morphirup-build.yml runs this group on each toolchain platform's runner, on the archives it
+			// produced, and fails its job otherwise; release.yml publishes only when every one of those jobs passed.
+			setupJourney: { test: config.morphirup.setupJourney, workflow: "morphirup-build.yml", platforms: config.morphirup.toolchainPlatforms },
+			assets: [...(morphirup?.assets ?? [])].sort((a, b) => a.asset.localeCompare(b.asset)),
+			qualification: [...(morphirup?.qualifications ?? [])]
+				.map(q => ({ platform: q.platform, asset: q.asset, sha256: q.sha256, reportedVersion: q.reportedVersion, qualified: q.qualified }))
+				.sort((a, b) => a.platform.localeCompare(b.platform)),
+		},
 	};
+}
+
+/** The morphirup assets a release attaches and the qualification of each manager. */
+export type MorphirupEvidence = { assets: MorphirupAsset[]; qualifications: MorphirupQualification[] };
+
+/**
+ * Why the morphirup evidence cannot be released: missing, or a manager qualification that is absent, repeated, failed,
+ * of another release, or of other bytes than the manager asset of its platform.
+ */
+export function morphirupEvidenceProblems(config: CliReleaseConfig, version: string, morphirup: MorphirupEvidence | undefined): string[] {
+	if (config.morphirup.platforms.length === 0) return [];
+	if (morphirup === undefined) return ["no morphirup assets or qualification"];
+	const problems: string[] = [];
+	for (const q of morphirup.qualifications) if (!config.morphirup.platforms.includes(q.platform)) problems.push(`unexpected morphirup qualification on ${q.platform}`);
+	for (const rid of config.morphirup.platforms) {
+		const found = morphirup.qualifications.filter(q => q.platform === rid);
+		const manager = morphirup.assets.find(a => a.role === "manager" && a.platform === rid);
+		if (found.length === 0) problems.push(`no qualification of morphirup on ${rid}`);
+		else if (found.length > 1) problems.push(`repeated morphirup qualification on ${rid}`);
+		else {
+			const q = found[0]!;
+			if (q.release !== version) problems.push(`morphirup qualification on ${rid} is of release ${q.release}`);
+			if (!q.qualified) problems.push(`morphirup qualification failed: ${rid}`);
+			if (manager === undefined) problems.push(`no morphirup manager asset for ${rid}`);
+			else if (q.sha256 !== manager.sha256) problems.push(`morphirup qualification on ${rid} launched bytes ${q.sha256}, not ${manager.asset}'s ${manager.sha256}`);
+		}
+	}
+	return problems;
 }
 function releaseNotes(manifest: ReturnType<typeof releaseManifest>): string {
 	const lines = [
@@ -709,6 +932,12 @@ function releaseNotes(manifest: ReturnType<typeof releaseManifest>): string {
 		"| Deployment | Platform | Qualified | Pending triage |",
 		"| --- | --- | --- | --- |",
 		...manifest.qualification.map(q => `| ${q.deployment} | ${q.platform} | ${q.qualified ? "yes" : "no"} | ${q.pending.join(", ") || "none"} |`),
+		"",
+		`morphirup, the toolchain manager, and the setup toolchain of ${manifest.morphirup.toolchainPlatforms.join(", ")}. The source's \`${manifest.morphirup.setupJourney.test}\` setup journey ran on each toolchain platform's runner. Check a download with \`morphirup-v${manifest.release}.sha256\` (managers) or \`SHA256SUMS\` (toolchains).`,
+		"",
+		"| morphirup | Platform | Reported version | Qualified |",
+		"| --- | --- | --- | --- |",
+		...manifest.morphirup.qualification.map(q => `| \`${q.asset}\` | ${q.platform} | \`${q.reportedVersion}\` | ${q.qualified ? "yes" : "no"} |`),
 	];
 	for (const entry of manifest.pendingTriage) lines.push("", `Pending triage, ${entry.scenario} on ${entry.platforms.join(", ")}: ${entry.reason} Evidence: ${entry.evidence.join("; ")}.`);
 	return `${lines.join("\n")}\n`;
@@ -720,6 +949,8 @@ export type ReleaseInputs = {
 	assets: string;
 	kitStatus: string;
 	legacy?: string;
+	/** The flattened morphirup and setup-toolchain release assets, with both checksum files. */
+	morphirup?: string;
 	out: string;
 	/** The finos/morphir commit release-info bound the run to; the checkout in `cwd` must be it. */
 	commit: string;
@@ -767,8 +998,22 @@ export function prepareRelease(config: CliReleaseConfig, cwd: string, inputs: Re
 		if (!existsSync(file) || sha256(file) !== alias.sha256) throw new Error(`${alias.asset} is missing or does not match its recorded SHA-256`);
 		releaseFiles.push(file);
 	}
+	let morphirup: MorphirupEvidence | undefined;
+	if (config.morphirup.platforms.length > 0) {
+		if (inputs.morphirup === undefined) throw new Error("the release has no morphirup assets (--morphirup)");
+		const dir = path.resolve(cwd, inputs.morphirup);
+		const hostLaunches = expected.filter(l => l.deployment === TOOLCHAIN_HOST_DEPLOYMENT && config.morphirup.toolchainPlatforms.includes(l.platform));
+		for (const l of hostLaunches) {
+			if (l.artifact !== hostArchiveName(l.platform, inputs.version)) throw new Error(`the ${TOOLCHAIN_HOST_DEPLOYMENT} offering of ${l.platform} is ${l.artifact}, not the toolchain's host archive ${hostArchiveName(l.platform, inputs.version)}`);
+		}
+		const hosts = new Map(hostLaunches.map(l => [l.platform, l.sha256]));
+		const assetList = morphirupAssets(config.morphirup, inputs.version, dir, hosts);
+		// A host archive is already attached as its platform's self-contained offering: one file, one name.
+		for (const asset of assetList.filter(a => a.role !== "host-archive")) releaseFiles.push(path.join(dir, asset.asset));
+		morphirup = { assets: assetList, qualifications: files(assets, ".morphirup-qualification.json").map(file => JSON.parse(readFileSync(file, "utf8")) as MorphirupQualification) };
+	}
 	const blockers = publicationBlockers(config, inputs.version, inputs.changelog, inputs.sourceTagCommit, inputs.existingTags);
-	const manifest = releaseManifest(config, inputs.tag, inputs.version, inputs.commit, kit, expected, qualifications, legacy, { dryRun: inputs.dryRun, blockers });
+	const manifest = releaseManifest(config, inputs.tag, inputs.version, inputs.commit, kit, expected, qualifications, legacy, { dryRun: inputs.dryRun, blockers }, morphirup);
 	const out = path.resolve(cwd, inputs.out);
 	mkdirSync(out, { recursive: true });
 	writeFileSync(path.join(out, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -859,6 +1104,7 @@ function main(args: string[]): number {
 			output("prerelease", (parse(version).prerelease ?? []).length > 0 ? "true" : "false");
 			output("matrix", JSON.stringify(releaseMatrix(config)));
 			output("offerings", JSON.stringify(offeringMatrix(config)));
+			output("morphirup", JSON.stringify(morphirupMatrix(config)));
 			// Building and qualifying may run while publication is blocked, so the interface can be exercised in a
 			// dry run; the manifest step refuses a blocked publication on its own as well.
 			const blockers = publicationBlockers(config, version, readFileSync(path.join(root, config.source.submodule, "CHANGELOG.md"), "utf8"), sourceTagCommit(config.source.repository, `v${version}`), remoteTags(root));
@@ -876,6 +1122,15 @@ function main(args: string[]): number {
 			const failed = result.invocations.flatMap(i => i.scenarios.filter(s => s.status === "failed").map(s => `${i.invocation} ${s.scenario}`));
 			for (const failure of failed) console.error(`error: ${result.artifact} on ${platform}: ${failure} failed`);
 			return failed.length === 0 ? 0 : 1;
+		}
+		case "qualify-morphirup": {
+			const rid = required(rest, "--rid");
+			const result = qualifyMorphirup(config, path.resolve(required(rest, "--dir")), rid, required(rest, "--version"));
+			const out = path.resolve(required(rest, "--out"));
+			mkdirSync(path.dirname(out), { recursive: true });
+			writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);
+			for (const failure of result.scenarios.filter(s => s.status === "failed")) console.error(`error: ${result.asset} on ${rid}: ${failure.scenario} failed`);
+			return result.qualified ? 0 : 1;
 		}
 		case "legacy-aliases": {
 			const assets = path.resolve(required(rest, "--assets"));
@@ -916,6 +1171,7 @@ function main(args: string[]): number {
 				assets: required(rest, "--assets"),
 				kitStatus: required(rest, "--kit-status"),
 				legacy: option(rest, "--legacy"),
+				morphirup: option(rest, "--morphirup"),
 				out: required(rest, "--out"),
 				commit: required(rest, "--commit"),
 				dryRun: rest.includes("--dry-run"),
@@ -925,7 +1181,7 @@ function main(args: string[]): number {
 			});
 			return 0;
 		}		default:
-			console.error("usage: cli-release.ts verify-source | release-info | qualify | manifest (see the header of tools/cli-release.ts)");
+			console.error("usage: cli-release.ts verify-source | release-info | qualify | qualify-morphirup | legacy-aliases | manifest (see the header of tools/cli-release.ts)");
 			return 2;
 	}
 }
