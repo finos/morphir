@@ -29,12 +29,5 @@
 		"of": "native-aot",
 		"decision": "Maintainer decision of 9 November 2026 (finos/morphir#1146, REL-1 of the morphir-dotnet adoption): future legacy morphir-<rid>[.exe] and morphir-<rid>-v<version>.tar.gz names carry the same Native AOT bytes as the native-aot offering. Published assets stay as they are; the trimmed managed single-file build is retired. The aliases are names, not a fifth offering."
 	},
-	"pendingTriage": [
-		{
-			"scenario": "packaged-input",
-			"platforms": ["osx-x64", "osx-arm64"],
-			"reason": "Historical packaged input failure on macOS where /var resolves to /private/var remains unqualified. The source fix from #584 is now included in the delivery pin, but new exact acquired-artifact macOS evidence is still required before this pending marker can be removed.",
-			"evidence": ["https://github.com/finos/morphir-dotnet/pull/570", "finos/morphir-dotnet workflow wasm-offerings.yml, run 42851276092"]
-		}
-	]
+	"pendingTriage": []
 }

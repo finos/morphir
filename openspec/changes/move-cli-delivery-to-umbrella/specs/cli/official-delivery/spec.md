@@ -40,11 +40,15 @@ Each archive SHALL be qualified by extracting it and starting its executable or 
 - **THEN** both `dotnet-morphir --version` and `dotnet morphir --version` report the release version by the same rule
 
 ### Requirement: A recorded pending triage is never counted as qualified
-A scenario result on a platform under a recorded pending triage SHALL be kept with its exit code and reported as `pending-triage`, and the offering SHALL NOT be reported as qualified on that platform. The macOS packaged-input scenario is under such a triage (the `/var` to `/private/var` failure seen in finos/morphir-dotnet#570, workflow run 42851276092).
+A scenario result on a platform under a recorded pending triage SHALL be kept with its exit code and reported as `pending-triage`, and the offering SHALL NOT be reported as qualified on that platform. No scenario is under triage now: macOS qualifies the packaged input like every other platform.
 
-#### Scenario: macOS packaged input passes
-- **WHEN** the packaged-input scenario exits 0 on `osx-arm64`
+#### Scenario: A scenario under triage passes
+- **WHEN** a scenario recorded as pending triage on `osx-arm64` exits 0 there
 - **THEN** its status is `pending-triage` and the offering's `qualified` flag is false on that platform
+
+#### Scenario: macOS packaged input hangs
+- **WHEN** the packaged-input scenario does not finish on `osx-arm64`
+- **THEN** the scenario fails and the release is not published
 
 ### Requirement: Official CLI releases use v<version> and only ever move forward
 An official CLI release SHALL be started only by a tag `v<version>`, or an explicit existing tag of that form. `<version>` SHALL be exact canonical SemVer without build metadata and equal the latest released version in the pinned CHANGELOG. The namespace is shared with the deleted Rust CLI's `v*` releases, which SHALL stay unchanged; publication SHALL be refused unless `<version>` is newer than every other `v*` tag in finos/morphir.

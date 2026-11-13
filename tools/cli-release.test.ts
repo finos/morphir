@@ -61,6 +61,11 @@ const runs = (job: Job | undefined) => (job?.steps ?? []).map(step => step.run ?
 /** The build contents the source writes beside an artifact, packed from the pinned commit. */
 const contentsOf = (launch: LaunchMetadata, origin: { commit: string; workingTreeClean: boolean } = { commit: config.source.commit, workingTreeClean: true }): BuildContents => ({ artifact: launch.artifact, release: launch.release, deployment: launch.deployment, platform: launch.platform, sha256: launch.sha256, origin: { ...origin, packedAt: "2026-11-10T00:00:00Z" } });
 const passingQualification = (launch: LaunchMetadata, runnerPlatform: string): Qualification => ({ release: launch.release, deployment: launch.deployment, platform: launch.platform, runnerPlatform, artifact: launch.artifact, sha256: launch.sha256, invocations: [{ invocation: "morphir", reportedVersion: `${launch.release}+${config.source.commit.slice(0, 7)}`, scenarios: [{ scenario: "launch", status: "passed", exitCode: 0 }] }], qualified: true, pending: [] });
+/** `base` with the macOS packaged input recorded as pending triage, for the tests of that mechanism. */
+const withPendingTriage = (base: CliReleaseConfig): CliReleaseConfig => ({
+	...base,
+	pendingTriage: [{ scenario: "packaged-input", platforms: ["osx-x64", "osx-arm64"], reason: "Test fixture.", evidence: ["https://example.invalid/evidence"] }],
+});
 /** A throwaway git repository in `dir` with one commit; returns that commit. */
 function gitCommit(dir: string): string {
 	const git = (args: string[]) => Bun.spawnSync(["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", ...args], { cwd: dir, stdout: "pipe", stderr: "pipe", windowsHide: true });
@@ -249,12 +254,23 @@ describe("qualification launches what ships", () => {
 		const applied = applyEnvironment({ PATH: "p", NUGET_FALLBACK_PACKAGES: "ambient", NUGET_PACKAGES: "ambient" }, { NUGET_PACKAGES: "isolated", NUGET_FALLBACK_PACKAGES: null });
 		expect(applied).toEqual({ PATH: "p", NUGET_PACKAGES: "isolated" });
 	});
-	test("a macOS packaged input result is never counted as qualified until triaged", () => {
-		expect(scenarioStatus(config, "osx-arm64", "packaged-input", 0)).toBe("pending-triage");
-		expect(scenarioStatus(config, "osx-x64", "packaged-input", 1)).toBe("pending-triage");
-		expect(scenarioStatus(config, "linux-x64", "packaged-input", 0)).toBe("passed");
-		expect(scenarioStatus(config, "osx-arm64", "launch", 0)).toBe("passed");
-		expect(scenarioStatus(config, "win-x64", "launch", 1)).toBe("failed");
+	test("every platform qualifies every scenario: nothing is pending triage", () => {
+		expect(config.pendingTriage).toEqual([]);
+		for (const { rid } of config.platforms) {
+			for (const scenario of ["launch", "help", "packaged-input"]) {
+				expect(scenarioStatus(config, rid, scenario, 0)).toBe("passed");
+				expect(scenarioStatus(config, rid, scenario, 1)).toBe("failed");
+			}
+		}
+	});
+
+	test("a result under a recorded pending triage is kept but never counted as qualified", () => {
+		const triaged = withPendingTriage(config);
+		expect(scenarioStatus(triaged, "osx-arm64", "packaged-input", 0)).toBe("pending-triage");
+		expect(scenarioStatus(triaged, "osx-x64", "packaged-input", 1)).toBe("pending-triage");
+		expect(scenarioStatus(triaged, "linux-x64", "packaged-input", 0)).toBe("passed");
+		expect(scenarioStatus(triaged, "osx-arm64", "launch", 0)).toBe("passed");
+		expect(scenarioStatus(triaged, "win-x64", "launch", 1)).toBe("failed");
 	});
 });
 
@@ -290,7 +306,9 @@ describe("release manifest", () => {
 			pending,
 		};
 	};
-	const all = () => config.deployments.flatMap(d => config.platforms.map(p => passing(d.id, p.rid, p.rid.startsWith("osx") ? ["packaged-input"] : [])));
+	const all = () => config.deployments.flatMap(d => config.platforms.map(p => passing(d.id, p.rid)));
+	/** The qualifications of a configuration that records the macOS packaged input as pending triage. */
+	const allTriaged = () => config.deployments.flatMap(d => config.platforms.map(p => passing(d.id, p.rid, p.rid.startsWith("osx") ? ["packaged-input"] : [])));
 	const commit = "d".repeat(40);
 
 	test("the kit identity is the runner's own, from a clean kit", () => {
@@ -306,8 +324,13 @@ describe("release manifest", () => {
 		expect(manifest.kit).toEqual(kit);
 		expect(manifest.publication).toEqual({ dryRun: false, publishable: true, blockers: [] });
 		const mac = manifest.qualification.find(q => q.deployment === "native-aot" && q.platform === "osx-arm64");
-		expect(mac).toMatchObject({ qualified: false, pending: ["packaged-input"] });
-		expect(manifest.pendingTriage).toEqual(config.pendingTriage);
+		expect(mac).toMatchObject({ qualified: true, pending: [] });
+		expect(manifest.pendingTriage).toEqual([]);
+		// A recorded pending triage stays visible in the manifest and its notes, and is never counted as qualified.
+		const triaged = withPendingTriage(publishable);
+		const visible = releaseManifest(triaged, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, allTriaged());
+		expect(visible.qualification.find(q => q.deployment === "native-aot" && q.platform === "osx-arm64")).toMatchObject({ qualified: false, pending: ["packaged-input"] });
+		expect(visible.pendingTriage).toEqual(triaged.pendingTriage);
 		const blocked = releaseManifest(config, "v0.4.0-alpha.4", "0.4.0-alpha.4", commit, kit, launches, all(), [], { dryRun: true, blockers: ["candidate"] });
 		expect(blocked.publication).toEqual({ dryRun: true, publishable: false, blockers: ["candidate"] });
 	});
