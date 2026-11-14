@@ -25,6 +25,29 @@ describe("shared extension contract data", () => {
    if (c.input.file) expect(c.input.file).toBe(`locks/extensions/${c.input.document.extensionId}.json`);
   }
  });
+ test("every lock document with a path is named for its whole extension id", () => {
+  // The file of a lock is locks/extensions/<extensionId>.json; a case must not refuse a lock for its name by accident.
+  const isLock = (doc: any) => typeof doc?.$schema === "string" && doc.$schema.endsWith("/lock.schema.json");
+  let checked = 0;
+  for (const file of ["identity-cases.json", "package-cases.json"]) {
+   for (const c of load(file).cases) {
+    const found: [string, any][] = [];
+    if (isLock(c.input.document)) {
+     const path = c.input.file ?? c.expected.file;
+     if (typeof path === "string") found.push([path, c.input.document]);
+    }
+    for (const [key, map] of Object.entries(c.input)) {
+     if (!key.toLowerCase().endsWith("files") || !map || typeof map !== "object" || Array.isArray(map)) continue;
+     for (const [path, doc] of Object.entries(map as Record<string, any>)) if (isLock(doc)) found.push([path, doc]);
+    }
+    for (const [path, doc] of found) {
+     expect(path, `${file} ${c.id}`).toBe(`locks/extensions/${doc.extensionId}.json`);
+     checked++;
+    }
+   }
+  }
+  expect(checked).toBeGreaterThan(10);
+ });
  test("published requirements match the approved OpenSpec deltas", () => {
   for (const [page, change, capability] of [["identity", "allow-dotted-extension-ids", "extension-identity"], ["packages", "add-extension-packages", "extension-packages"]]) {
    const body = (s: string) => s.slice(s.indexOf("### Requirement:"));

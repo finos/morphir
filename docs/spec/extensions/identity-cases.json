@@ -10523,8 +10523,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -10537,8 +10537,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -10548,9 +10548,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -10581,9 +10581,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -10613,8 +10613,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -10627,8 +10627,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -10638,9 +10638,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -10674,9 +10674,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -10802,8 +10802,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -10816,8 +10816,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -10827,9 +10827,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -10863,9 +10863,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -11019,8 +11019,8 @@
           "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
           "extensions": [
             {
-              "extensionId": "morphir-elm",
-              "name": "morphir-elm",
+              "extensionId": "org.finos.morphir.fsharp-frontend",
+              "name": "F# frontend",
               "version": "0.6.0",
               "runtime": "process",
               "platform": {
@@ -11046,9 +11046,9 @@
               "frontend": {
                 "languages": [
                   {
-                    "id": "elm",
+                    "id": "fsharp",
                     "fileExtensions": [
-                      ".elm"
+                      ".fs"
                     ]
                   }
                 ],
@@ -11063,8 +11063,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -11074,9 +11074,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -11102,8 +11102,8 @@
             "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
-                "extensionId": "morphir-elm",
-                "name": "morphir-elm",
+                "extensionId": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "runtime": "process",
                 "platform": {
@@ -11129,9 +11129,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -11146,8 +11146,8 @@
                     "0.2.0-draft.1"
                   ],
                   "extension": {
-                    "id": "morphir-elm",
-                    "name": "morphir-elm",
+                    "id": "org.finos.morphir.fsharp-frontend",
+                    "name": "F# frontend",
                     "version": "0.6.0",
                     "types": [
                       "frontend"
@@ -11157,9 +11157,9 @@
                     "frontend": {
                       "languages": [
                         {
-                          "id": "elm",
+                          "id": "fsharp",
                           "fileExtensions": [
-                            ".elm"
+                            ".fs"
                           ]
                         }
                       ],
@@ -11192,8 +11192,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -11206,8 +11206,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -11217,9 +11217,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -11253,9 +11253,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -11285,8 +11285,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -11299,8 +11299,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -11310,9 +11310,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -11346,9 +11346,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -12125,8 +12125,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -12139,8 +12139,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -12150,9 +12150,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -12186,9 +12186,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -12220,8 +12220,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -12234,8 +12234,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -12245,9 +12245,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -12281,9 +12281,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -12318,8 +12318,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -12332,8 +12332,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -12343,9 +12343,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -12379,9 +12379,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -12413,8 +12413,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -12427,8 +12427,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -12438,9 +12438,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -12474,9 +12474,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -12511,8 +12511,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -12525,8 +12525,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -12536,9 +12536,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -12572,9 +12572,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -12606,8 +12606,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -12620,8 +12620,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -12631,9 +12631,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -12667,9 +12667,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -12704,8 +12704,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -12718,8 +12718,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -12729,9 +12729,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -12765,9 +12765,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -12799,8 +12799,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -12813,8 +12813,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -12824,9 +12824,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -12860,9 +12860,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -12897,8 +12897,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -12911,8 +12911,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -12922,9 +12922,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -12958,9 +12958,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -12992,8 +12992,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -13006,8 +13006,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -13017,9 +13017,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -13053,9 +13053,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -13090,8 +13090,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -13104,8 +13104,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -13115,9 +13115,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -13151,9 +13151,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -13185,8 +13185,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -13199,8 +13199,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -13210,9 +13210,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -13246,9 +13246,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -13283,8 +13283,8 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "nuget-package",
@@ -13297,8 +13297,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -13308,9 +13308,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -13344,9 +13344,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -13378,8 +13378,8 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "nuget-package",
@@ -13392,8 +13392,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -13403,9 +13403,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -13439,9 +13439,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
@@ -13476,12 +13476,12 @@
             "kind": "exact",
             "value": "0.6.0"
           },
-          "extensionId": "morphir-elm",
-          "name": "morphir-elm",
+          "extensionId": "org.finos.morphir.fsharp-frontend",
+          "name": "F# frontend",
           "version": "0.6.0",
           "index": {
             "kind": "github-release",
-            "repository": "finos/morphir-elm",
+            "repository": "finos/morphir-dotnet",
             "tag": "v0.6.0",
             "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "claims": {
@@ -13489,8 +13489,8 @@
                 "0.2.0-draft.1"
               ],
               "extension": {
-                "id": "morphir-elm",
-                "name": "morphir-elm",
+                "id": "org.finos.morphir.fsharp-frontend",
+                "name": "F# frontend",
                 "version": "0.6.0",
                 "types": [
                   "frontend"
@@ -13500,9 +13500,9 @@
                 "frontend": {
                   "languages": [
                     {
-                      "id": "elm",
+                      "id": "fsharp",
                       "fileExtensions": [
-                        ".elm"
+                        ".fs"
                       ]
                     }
                   ],
@@ -13537,9 +13537,9 @@
           "frontend": {
             "languages": [
               {
-                "id": "elm",
+                "id": "fsharp",
                 "fileExtensions": [
-                  ".elm"
+                  ".fs"
                 ]
               }
             ],
@@ -13565,12 +13565,12 @@
               "kind": "exact",
               "value": "0.6.0"
             },
-            "extensionId": "morphir-elm",
-            "name": "morphir-elm",
+            "extensionId": "org.finos.morphir.fsharp-frontend",
+            "name": "F# frontend",
             "version": "0.6.0",
             "index": {
               "kind": "github-release",
-              "repository": "finos/morphir-elm",
+              "repository": "finos/morphir-dotnet",
               "tag": "v0.6.0",
               "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
               "claims": {
@@ -13578,8 +13578,8 @@
                   "0.2.0-draft.1"
                 ],
                 "extension": {
-                  "id": "morphir-elm",
-                  "name": "morphir-elm",
+                  "id": "org.finos.morphir.fsharp-frontend",
+                  "name": "F# frontend",
                   "version": "0.6.0",
                   "types": [
                     "frontend"
@@ -13589,9 +13589,9 @@
                   "frontend": {
                     "languages": [
                       {
-                        "id": "elm",
+                        "id": "fsharp",
                         "fileExtensions": [
-                          ".elm"
+                          ".fs"
                         ]
                       }
                     ],
@@ -13626,9 +13626,9 @@
             "frontend": {
               "languages": [
                 {
-                  "id": "elm",
+                  "id": "fsharp",
                   "fileExtensions": [
-                    ".elm"
+                    ".fs"
                   ]
                 }
               ],
