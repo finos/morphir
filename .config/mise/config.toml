@@ -1,9 +1,12 @@
 # Morphir Development Tools Configuration
 # This project contains:
-# - Rust development tools: the standalone MCK runner (crates/morphir-mck-cli,
-#   `morphir-mck`) and the internal development tool (crates/morphir-dev-tools,
-#   `morphir-dev`). The Morphir CLI itself is finos/morphir-dotnet, pinned at
-#   ecosystem/morphir-dotnet and released by .github/workflows/release.yml.
+# - Tasks that run the Rust development tools: the standalone MCK runner
+#   (`morphir-mck`) and the internal development tool (`morphir-dev`). Their
+#   source is not in this repository. It is the `umbrella-tools` workspace of
+#   finos/morphir-rust, pinned at ecosystem/morphir-rust, and every cargo
+#   command below names its manifest. The Morphir CLI itself is
+#   finos/morphir-dotnet, pinned at ecosystem/morphir-dotnet and released by
+#   .github/workflows/release.yml.
 # - Docusaurus website (website/)
 
 [settings]
@@ -125,8 +128,8 @@ description = "Format all code"
 depends = ["fmt:rust", "fmt:schema"]
 
 [tasks."fmt:rust"]
-description = "Format Rust code"
-run = "cargo fmt --all"
+description = "Format the Rust development tools in ecosystem/morphir-rust/umbrella-tools"
+run = "cargo fmt --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --all"
 
 [tasks."fmt:schema"]
 description = "Format JSON Schema files"
@@ -141,8 +144,8 @@ description = "Check all formatting"
 depends = ["fmt-check:rust", "fmt-check:schema"]
 
 [tasks."fmt-check:rust"]
-description = "Check Rust code formatting"
-run = "cargo fmt --all --check"
+description = "Check the formatting of the Rust development tools in ecosystem/morphir-rust/umbrella-tools"
+run = "cargo fmt --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --all --check"
 
 [tasks."fmt-check:schema"]
 description = "Check JSON Schema formatting"
@@ -157,8 +160,8 @@ description = "Run all linters"
 depends = ["lint:rust", "lint:schema"]
 
 [tasks."lint:rust"]
-description = "Run Clippy linter"
-run = "cargo clippy --all-targets --all-features -- -D warnings"
+description = "Run Clippy on the Rust development tools in ecosystem/morphir-rust/umbrella-tools"
+run = "cargo clippy --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --all-targets --all-features -- -D warnings"
 
 [tasks."lint:schema"]
 description = "Lint JSON Schema files"
@@ -427,8 +430,8 @@ run = "node website/scripts/check-config-schema-sync.js"
 description = "Check Gherkin MCK cases, schemas, protocol examples and IR fences with the native engine"
 depends = ["mck:vocabulary-check"]
 run = [
-    "cargo run --locked -p morphir-mck-cli -- check spec/ir/mck",
-    "cargo run --locked -p morphir-mck-cli -- schema check --kit spec/ir/mck",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- check spec/ir/mck",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- schema check --kit spec/ir/mck",
 ]
 
 [tasks."spec:mep"]
@@ -440,7 +443,7 @@ run = "bun -e \"console.error('spec:mep is unavailable: the Rust CLI no longer c
 
 [tasks."spec:mep-check"]
 description = "Check the MEP contract: coverage and documented wire rules in spec/mep/generated/mep.ir.json"
-run = "cargo test --locked -p morphir-dev-tools --test mep_contract"
+run = "cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools --test mep_contract"
 
 [tasks."spec:mep-smithy-check"]
 description = "Check the MEP Smithy model with the moonrockz/smithy CLI: model, transcripts, protocol draft examples and MCK cases"
@@ -479,14 +482,14 @@ run = [
 
 [tasks."mck:schema-check"]
 description = "Validate MCK schemas, JSON and protocol examples, and accepted or rejected IR fences"
-run = "cargo run --locked -p morphir-mck-cli -- schema check --kit spec/ir/mck"
+run = "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- schema check --kit spec/ir/mck"
 
 [tasks."mck:run"]
 description = "Run the native MCK against the TypeScript adapter and check its report and kit coverage"
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "bun run tools/run-mck-gate.ts .dev/out/mck/morphir-typescript-adapter.json spec/ir/mck/allowed-failing.json spec/ir/mck bun ecosystem/morphir-typescript/packages/mck/src/adapter.ts",
-    "cargo run --locked -p morphir-mck-cli -- coverage --kit spec/ir/mck",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- coverage --kit spec/ir/mck",
 ]
 
 [tasks."mck:run-rust"]
@@ -495,8 +498,8 @@ description = "Run the native MCK against the pinned Rust adapter and check its 
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
     "bun run tools/run-mck-gate.ts .dev/out/mck/morphir-rust.json ecosystem/morphir-rust/crates/morphir-mck-adapter/allowed-failing.json spec/ir/mck ecosystem/morphir-rust/target/debug/mck-adapter-rust",
-    "cargo run --locked -p morphir-mck-cli -- node-address run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address --report .dev/out/mck/node-address-rust.json",
-    "cargo run --locked -p morphir-mck-cli -- coverage --kit spec/ir/mck",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- node-address run --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg=--suite --adapter-arg=node-address --report .dev/out/mck/node-address-rust.json",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- coverage --kit spec/ir/mck",
 ]
 
 [tasks."migrate:validate"]
@@ -525,27 +528,27 @@ run = [
 [tasks."package:definitions-check"]
 description = "Inspect draft.3 candidate definitions and pending assets without executing restore"
 run = [
-    "cargo run --locked -p morphir-mck-cli -- package inspect --source . --contract 0.1.0-draft.3",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- package inspect --source . --contract 0.1.0-draft.3",
 ]
 
 [tasks."package:fixture-check"]
 description = "Reproduce frozen signed fixture bytes and verify them independently offline"
 run = [
-    "cargo test --locked -p morphir-mck --test package_fixture",
-    "cargo run --locked -p morphir-mck --example package_fixture -- --source . --check spec/package/mck/fixtures/local-registry/assets/signed",
+    "cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck --test package_fixture",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck --example package_fixture -- --source . --check spec/package/mck/fixtures/local-registry/assets/signed",
 ]
 
 [tasks."package:assurance-check"]
 description = "Check fixed synthetic restore assurance preflight vectors through native runtime support (not restore compatibility)"
 run = [
-    "cargo test --locked -p morphir-dev-tools --test package_runtime assurance_",
+    "cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools --test package_runtime assurance_",
 ]
 
 [tasks."package:publisher-check"]
 description = "Check publisher-signature evidence and fixed decoder probes through native runtime support (not restore compatibility)"
 run = [
-    "cargo test --locked -p morphir-dev-tools --test package_runtime publisher_",
-    "cargo test --locked -p morphir-dev-tools --test package_runtime decode_",
+    "cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools --test package_runtime publisher_",
+    "cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools --test package_runtime decode_",
 ]
 
 [tasks."package:check"]
@@ -580,7 +583,7 @@ run = [
 description = "Run the signed local Library MVP restore, resolve, refresh and update inventory through native MCK and the Rust adapter"
 run = [
     "cargo build --locked -p morphir-mck-adapter --manifest-path ecosystem/morphir-rust/Cargo.toml --target-dir ecosystem/morphir-rust/target",
-    "cargo run --locked -p morphir-mck-cli -- package mvp-run --source . --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg package-mvp",
+    "cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- package mvp-run --source . --adapter ecosystem/morphir-rust/target/debug/mck-adapter-rust --adapter-arg package-mvp",
 ]
 
 [tasks."hooks:install"]
@@ -711,23 +714,23 @@ run = "bun run tools/prepare-backend-examples.ts"
 # and `mise run kb -- <command>`.
 [tasks.mck]
 description = "Run the standalone MCK runner (morphir-mck)"
-run = "cargo run --locked -q -p morphir-mck-cli --"
+run = "cargo run --locked -q --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli --"
 
 [tasks.kb]
 description = "Run the knowledge base commands of the internal development tool (morphir-dev kb)"
-run = "cargo run --locked -q -p morphir-dev-tools -- kb"
+run = "cargo run --locked -q --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools -- kb"
 
 [tasks.test]
-description = "Run the tests of the Rust development tools (morphir-mck, morphir-dev)"
-run = "cargo test --all-features --workspace"
+description = "Run the tests of the Rust development tools (morphir-mck, morphir-dev) in ecosystem/morphir-rust/umbrella-tools"
+run = "cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --all-features --workspace"
 
 [tasks.build]
-description = "Build the Rust development tools (morphir-mck, morphir-dev) in release mode"
-run = "cargo build --release --workspace"
+description = "Build the Rust development tools (morphir-mck, morphir-dev) in ecosystem/morphir-rust/umbrella-tools in release mode"
+run = "cargo build --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --release --workspace"
 
 [tasks.clean]
-description = "Clean build artifacts"
-run = "cargo clean"
+description = "Clean the build artifacts of the Rust development tools"
+run = "cargo clean --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml"
 
 # ===== Website Tasks =====
 [tasks."website:install"]

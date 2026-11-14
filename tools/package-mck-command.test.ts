@@ -7,7 +7,10 @@ for (const contract of ["0.1.0-draft.1", "0.1.0-draft.2"]) {
 	for (const binding of ["typescript", "rust"]) {
 		test(`${binding} ${contract} uses native MCK with separate adapter arguments`, () => {
 			const { command, report } = packageMckInvocation(root, "linux", [binding, contract]);
-			expect(command.slice(0, 8)).toEqual(["cargo", "run", "--locked", "--package", "morphir-mck-cli", "--", "package", "run"]);
+			expect(command.slice(0, 10)).toEqual([
+				"cargo", "run", "--locked", "--manifest-path", path.join(root, "ecosystem/morphir-rust/umbrella-tools/Cargo.toml"),
+				"--package", "morphir-mck-cli", "--", "package", "run",
+			]);
 			const adapter = binding === "typescript" ? "bun" : path.join(root, "ecosystem/morphir-rust/target/debug/mck-adapter-rust");
 			expect(command[command.indexOf("--adapter") + 1]).toBe(adapter);
 			expect(command[command.indexOf("--kit") + 1]).toBe(path.join(root, "spec/package/mck"));

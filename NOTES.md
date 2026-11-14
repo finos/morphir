@@ -7,7 +7,7 @@ This file is a quick orientation for contributors and AI assistants.
 **finos/morphir** is the Morphir ecosystem **umbrella** repository. It hosts:
 
 - Published documentation (`docs/`, `website/`)
-- The Rust **Morphir CLI** (`crates/morphir`)
+- Specifications, compatibility kits and the delivery of the **Morphir CLI**, whose source is [finos/morphir-dotnet](https://github.com/finos/morphir-dotnet)
 - **Ecosystem submodules** (`ecosystem/`)
 
 ## What this repo is not
@@ -21,6 +21,6 @@ This is **not** the Morphir Go project. Go-based Morphir tooling — including t
 | Project overview | [README.md](README.md) |
 | Agent and contributor guidance | [AGENTS.md](AGENTS.md) |
 | Local development setup | [DEVELOPING.md](DEVELOPING.md) |
-| Installing the Rust CLI from releases | [INSTALLING.md](INSTALLING.md) |
+| Installing the Morphir CLI from releases | [INSTALLING.md](INSTALLING.md) |
 | Ecosystem submodules | [ecosystem/README.md](ecosystem/README.md) |
 | Morphir Go tooling | [finos/morphir-go](https://github.com/finos/morphir-go) |

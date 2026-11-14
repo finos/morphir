@@ -36,6 +36,9 @@ def validate_application(root: Path, *descriptors: Path) -> subprocess.Completed
             "run",
             "--quiet",
             "--locked",
+            # morphir-dev is built from the morphir-rust submodule.
+            "--manifest-path",
+            str(root / "ecosystem/morphir-rust/umbrella-tools/Cargo.toml"),
             "--package",
             "morphir-dev-tools",
             "--example",

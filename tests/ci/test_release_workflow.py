@@ -5,9 +5,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
-WORKSPACE_TOML_PATH = REPO_ROOT / "Cargo.toml"
-CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
-MCK_RUN_PATH = REPO_ROOT / "crates" / "morphir-mck-cli" / "tests" / "mck_run.rs"
+# The Rust development tools are the umbrella-tools workspace of the
+# ecosystem/morphir-rust submodule, so that submodule must be checked out.
+UMBRELLA_TOOLS = REPO_ROOT / "ecosystem" / "morphir-rust" / "umbrella-tools"
+WORKSPACE_TOML_PATH = UMBRELLA_TOOLS / "Cargo.toml"
+CARGO_LOCK_PATH = UMBRELLA_TOOLS / "Cargo.lock"
+MCK_RUN_PATH = UMBRELLA_TOOLS / "crates" / "morphir-mck-cli" / "tests" / "mck_run.rs"
 
 
 # The official CLI release (.github/workflows/release.yml) is tested in
@@ -23,8 +26,8 @@ class ReleaseWorkflowTests(unittest.TestCase):
             "\n  docs:", 1
         )[0]
         self.assertIn("needs.changes.outputs.rust == 'true'", job)
-        self.assertIn("cargo test --locked --package morphir-mck-cli", job)
-        self.assertIn("cargo test --locked --package morphir-dev-tools", job)
+        self.assertIn("cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-mck-cli", job)
+        self.assertIn("cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --package morphir-dev-tools", job)
     def test_linux_offline_evidence_is_readable_by_the_artifact_uploader(self) -> None:
         workflow = (REPO_ROOT / ".github/workflows/mck-release-acceptance.yml").read_text()
         self.assertIn("name: Restore Linux evidence ownership", workflow)
