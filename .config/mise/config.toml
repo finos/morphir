@@ -455,6 +455,12 @@ description = "Check the WASM host qualification corpus: fixtures against their 
 run = "bun run tools/check-wasm-host-kit.ts"
 depends = ["tools:install"]
 
+[tasks."spec:mep-guest-report-check"]
+description = "Check the MEP guest kit report controls: the plan, outcome and verdict rules against their fixed controls, the document, and the published schemas"
+# See spec/mep/mck/guest-report.md.
+run = "bun run tools/check-guest-report.ts"
+depends = ["tools:install"]
+
 [tasks."spec:mep-wasm-report-check"]
 description = "Check the WASM host qualification report controls: the verdict rule against its fixed controls, the document, and the published schemas"
 # The jsonschema tool above validates the two schemas, the controls and the
