@@ -30,4 +30,4 @@ Tracking: follows `move-cli-delivery-to-umbrella` (finos/morphir#1153). No Beads
 
 ## Workflow follow-up
 
-- Release `v0.5.0-alpha.2` once the source cuts it with local-toolchains `0.1.0-preview.5`; then archive this change.
+- Released on 13 November 2026. The source's `v0.5.0-alpha.2` names `2076811e`, and its bundles are local-toolchains `0.1.0-preview.5` with every URL under finos/morphir. The finos/morphir tag `v0.5.0-alpha.2` names `650e83b1` (the merge of #1172). Release run [43518040407](https://github.com/finos/morphir/actions/runs/43518040407) passed and published 70 assets. Every asset that the osx-arm64, win-arm64 and win-x64 toolchain bundles download is attached. On Windows ARM64, the install script of finos/morphir-dotnet#650 installed `morphirup` 0.5.0-alpha.2 from this release, and `morphirup setup` installed a generation whose acquisition repository is `https://github.com/finos/morphir`. The install scripts switch to finos/morphir releases in finos/morphir-dotnet#650.
