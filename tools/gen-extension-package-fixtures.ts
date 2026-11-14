@@ -4,8 +4,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { crc32, deflateRawSync, gzipSync } from "node:zlib";
 
-const VERSION = "0.1.0-preview.2";
-// The package tree manifest format did not change in preview.2, so its header keeps the version it was defined at.
+const VERSION = "0.1.0-preview.3";
+// The package tree manifest format did not change in preview.2 or preview.3, so its header keeps the version it was defined at.
 const TREE_VERSION = "0.1.0-preview.1";
 const schemaBase = `https://morphir.finos.org/schemas/extensions/${VERSION}/`;
 const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");

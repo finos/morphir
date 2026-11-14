@@ -7,7 +7,7 @@
       "source": "docs/design/draft/extensions/protocol.md",
       "memberNames": "json",
       "value": {
-        "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/claims.schema.json",
+        "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/claims.schema.json",
         "protocolVersions": [
           "0.2.0-draft.1"
         ],

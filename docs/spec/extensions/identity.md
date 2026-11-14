@@ -22,7 +22,7 @@ An id is one or more segments joined by `.`. `morphir-elm` has one segment. `org
 
 Two installers share a home when they read and write the same `MORPHIR_HOME`. They agree only if they read and write the same shared files the same way. The shared files are:
 
-These files, with the capability claim set, form one contract family, the extension state family, at one version: `0.1.0-preview.2`. The family started at `0.1.0-preview.1` (maintainer, Decision 15, 10 November 2026); `0.1.0-preview.2` adds provider-tagged artifact sources and index provenance. Each JSON document carries the version in a required `$schema` member whose value is that file's schema URL, `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/<file>.schema.json`. No document has a `schemaVersion` member.
+These files, with the capability claim set, form one contract family, the extension state family, at one version: `0.1.0-preview.3`. The family started at `0.1.0-preview.1` (maintainer, Decision 15, 10 November 2026); `0.1.0-preview.2` added provider-tagged artifact sources and index provenance, and `0.1.0-preview.3` adds NuGet packages as a source and the `nupkg` package format. Each JSON document carries the version in a required `$schema` member whose value is that file's schema URL, `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/<file>.schema.json`. No document has a `schemaVersion` member.
 
 | File | Path | Schema file (`<file>.schema.json`) | Unknown members |
 | --- | --- | --- | --- |
@@ -37,10 +37,10 @@ These files, with the capability claim set, form one contract family, the extens
 | Repositories lock | `locks/extensions.repositories.lock` | none, no content | not applicable |
 | Publish lock | `.publish.lock` in a local repository | none, no content | not applicable |
 
-A document's current schema URL is the URL of its file at `0.1.0-preview.2`. A JSONL history has no header, so each line carries its own `$schema`.
+A document's current schema URL is the URL of its file at `0.1.0-preview.3`. A JSONL history has no header, so each line carries its own `$schema`.
 Paths in the home are relative to the home root, and paths in a repository are relative to the repository root.
 
-The [distribution contract](../../design/draft/extensions/distribution-and-acquisition.md#shared-extension-state-contract) is the authority for the member tables of these shared files. The [published schemas](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json) encode their structural constraints. Packages are part of this first family version, as established by the [approval-time audit](./publication-audit.md).
+The [distribution contract](../../design/draft/extensions/distribution-and-acquisition.md#shared-extension-state-contract) is the authority for the member tables of these shared files. The [published schemas](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json) encode their structural constraints. Packages are part of this first family version, as established by the [approval-time audit](./publication-audit.md).
 
 A host can find a home in a state it cannot use: files without the current schema URL, such as those an older host wrote with a `schemaVersion` member, more than one journal, or a journal whose saved documents fail their checks. This page calls all of these old state. The maintainer decided what a host does with it on 10 November 2026 (Decision 10, recorded on finos/morphir#1146): it moves the old state to a marked backup, asking first; `--yes` skips the question; `morphir doctor --fix` makes the same move by hand. The maintainer confirmed four readings of it the same day (Decision 11): the refusal without a terminal or on a decline, `morphir doctor` reporting only, and `morphir doctor --fix` asking first.
 
@@ -234,14 +234,14 @@ A reader SHALL refuse a repositories configuration or lock whose repository path
 - **THEN** a host treats both as the same repository
 
 ### Requirement: Each document of the family has a published schema
-Each file of the extension state family SHALL have a JSON Schema published at its schema URL, from `website/static/schemas/extensions/0.1.0-preview.2/<file>.schema.json`. A document SHALL be valid against that schema. A reader MAY validate against the schema; the requirements of this capability decide every outcome.
+Each file of the extension state family SHALL have a JSON Schema published at its schema URL, from `website/static/schemas/extensions/0.1.0-preview.3/<file>.schema.json`. A document SHALL be valid against that schema. A reader MAY validate against the schema; the requirements of this capability decide every outcome.
 
 #### Scenario: A descriptor validates against its schema
 - **WHEN** an editor opens a current `release.json`
-- **THEN** it can fetch `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json` from the document's `$schema` and validate the document against it
+- **THEN** it can fetch `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json` from the document's `$schema` and validate the document against it
 
 ### Requirement: A capability claim set carries a schema URL only when it stands alone
-A claim set inside a descriptor, record or catalog entry SHALL carry no version or `$schema` of its own; its enclosing document's schema covers it. A claim set that stands alone, as `morphir.extension.describe` returns it, SHALL carry the `$schema` `…/0.1.0-preview.2/claims.schema.json` in place of `claimsVersion`.
+A claim set inside a descriptor, record or catalog entry SHALL carry no version or `$schema` of its own; its enclosing document's schema covers it. A claim set that stands alone, as `morphir.extension.describe` returns it, SHALL carry the `$schema` `…/0.1.0-preview.3/claims.schema.json` in place of `claimsVersion`.
 
 #### Scenario: Embedded and standalone claims
 - **WHEN** a host reads a current descriptor whose artifact holds claims, and a guest's `describe` result
@@ -259,7 +259,7 @@ A host SHALL journal each change to an extension's lock and the catalog in `lock
 
 #### Scenario: A journal of an install
 - **WHEN** a host installs `morphir-elm` and has written its journal but not yet the lock
-- **THEN** `locks/extensions/morphir-elm.json.transaction` has the `$schema` `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/journal.schema.json` and holds the new lock's and the new catalog's bytes as arrays of integers
+- **THEN** `locks/extensions/morphir-elm.json.transaction` has the `$schema` `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/journal.schema.json` and holds the new lock's and the new catalog's bytes as arrays of integers
 
 ### Requirement: One journal exists at a time
 A host SHALL NOT write a journal while another journal exists in `locks/extensions/`. When a host cannot remove a journal after its change is committed, the command SHALL fail and report the journal, and the next state command SHALL recover it before anything else.
@@ -295,15 +295,15 @@ A journal passes its checks when its `$schema` is the journal's current schema U
 - **THEN** it writes neither the lock nor the catalog and reports the journal as old state
 
 ### Requirement: Every document of the family carries its current schema URL
-A writer SHALL write every document of the extension state family with a `$schema` member, written first, whose value is that file's schema URL at `0.1.0-preview.2`, whatever the form of the ids it names, and SHALL write no `schemaVersion` member. Each JSONL history line SHALL carry its own `$schema`. The family version differs from the earlier per-file versions in the id grammar and in carrying the version by URL.
+A writer SHALL write every document of the extension state family with a `$schema` member, written first, whose value is that file's schema URL at `0.1.0-preview.3`, whatever the form of the ids it names, and SHALL write no `schemaVersion` member. Each JSONL history line SHALL carry its own `$schema`. The family version differs from the earlier per-file versions in the id grammar and in carrying the version by URL.
 
 #### Scenario: A single-segment release is written at the family version
 - **WHEN** a publisher authors a release with the id `morphir-elm`
-- **THEN** its descriptor's `$schema` is `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json`, and it has no `schemaVersion`
+- **THEN** its descriptor's `$schema` is `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json`, and it has no `schemaVersion`
 
 #### Scenario: A single-segment index record and lock are written at the family version
 - **WHEN** a publisher adds a `morphir-elm` release to a repository, and a host installs it
-- **THEN** the new line of `extensions/morphir-elm.jsonl` has the `$schema` `…/0.1.0-preview.2/index-record.schema.json`, and `locks/extensions/morphir-elm.json` has the `$schema` `…/0.1.0-preview.2/lock.schema.json`
+- **THEN** the new line of `extensions/morphir-elm.jsonl` has the `$schema` `…/0.1.0-preview.3/index-record.schema.json`, and `locks/extensions/morphir-elm.json` has the `$schema` `…/0.1.0-preview.3/lock.schema.json`
 
 #### Scenario: An earlier document is refused before any id is read
 - **WHEN** a reader reads a descriptor with `schemaVersion` `2.0.0-draft.2` or a lock with `schemaVersion` `"1.0"`, either naming `org.finos.morphir.fsharp-frontend`
@@ -316,23 +316,59 @@ An artifact `source` and an `index` provenance SHALL each be an object whose `ki
 - **WHEN** a current host reads a lock whose `source` has the `kind` `oci-image`
 - **THEN** it refuses the lock and names `source.kind`
 
-### Requirement: The preview.2 provider variants
-At `0.1.0-preview.2` a source SHALL be `local-file` or `github-release-asset`, and a provenance SHALL be `local-directory` or `github-release`. A `github-release` `revision` SHALL be the SHA-256 of the exact `release.json` asset bytes. A lock's `index` SHALL add the pinned `claims` to its provenance. The distribution contract lists the members of each variant.
+### Requirement: The preview.3 provider variants
+At `0.1.0-preview.3` a source SHALL be `local-file`, `github-release-asset` or `nuget-package-entry`, and a provenance SHALL be `local-directory`, `github-release` or `nuget-package`. A `github-release` or `nuget-package` `revision` SHALL be the SHA-256 of the exact `release.json` bytes. A lock's `index` SHALL add the pinned `claims` to its provenance. The distribution contract lists the members of each variant.
 
 #### Scenario: Artifact sources and provenance from a GitHub release
 - **WHEN** a current host reads a lock whose `index` is `{kind: "github-release", repository: "finos/morphir-elm", tag: "v0.6.0", revision, claims}` and whose `source` is `{kind: "github-release-asset", repository: "finos/morphir-elm", tag: "v0.6.0", asset}`
 - **THEN** it accepts the lock
 
+#### Scenario: A lock from a NuGet feed
+- **WHEN** a current host reads a lock whose `index` is `{kind: "nuget-package", feed: "https://api.nuget.org/v3/index.json", id, version, revision, claims}` and whose `source` is a `nuget-package-entry` of the same feed and version
+- **THEN** it accepts the lock, as it accepts a catalog entry with that provenance
+
+### Requirement: A lock's source and provenance name the same provider
+A lock whose `index` kind is `local-directory`, `github-release` or `nuget-package` SHALL have a `source` of kind `local-file`, `github-release-asset` or `nuget-package-entry`, in that order. A reader SHALL refuse any other pair, naming `source.kind`.
+
+#### Scenario: A lock's source and provenance name the same provider
+- **WHEN** a current host reads a lock whose `index` is a `github-release` and whose `source` is a `nuget-package-entry`
+- **THEN** it refuses the lock and names `source.kind`
+
+### Requirement: NuGet sources name a feed, a package and a version
+A `nuget-package-entry` and a `nuget-package` SHALL have `feed`, `id` and `version`. `feed` SHALL be an `https` URL whose path ends in `/index.json`, with no userinfo, query or fragment, or an absolute folder path; `http` SHALL be refused. `id` SHALL be lower case. `version` SHALL be a normalized NuGet version without build metadata. No member SHALL carry a credential.
+
+#### Scenario: A NuGet source names an HTTPS feed, a lower-case id and a normalized version
+- **WHEN** a current host reads a lock whose feed has userinfo or a query or uses `http`, whose `id` has upper-case letters, or whose `version` is `1.0` or `1.0.0+abc`
+- **THEN** it refuses the lock and names the member; a lock whose feed is the folder `/srv/nuget` is accepted
+
+### Requirement: A nupkg package is bound by its tree
+A `package` with `format` `nupkg` SHALL have `root` and `treeSha256`, and its artifact SHALL have no `sha256`, nor its catalog entry and lock a `digest`: a feed may sign the package after it is packed, so the package bytes change. `root` SHALL be a nonempty relative POSIX path with no `.` or `..` segment and no leading `/`. The `filename` SHALL be `<id>.<version>.nupkg` in lower case.
+
+#### Scenario: A nupkg package has a tree digest and no archive digest
+- **WHEN** a current host reads a release whose `nupkg` artifact has a `sha256`, has no `root` or no `treeSha256`, or has the `root` `.`, `../x` or `/abs`
+- **THEN** it refuses the release and names the member; a .NET tool package with the `root` `tools/net11.0/osx-arm64` is accepted
+
+#### Scenario: A NuGet release in one package or in one package per platform
+- **WHEN** a current host reads a release whose process `nupkg` artifact and WASM artifact are in one package, or whose two process artifacts are each in a package of their own platform
+- **THEN** it accepts the release
+
+### Requirement: An artifact package id extends the main package id
+A host SHALL accept a `nuget-package-entry` only when its `id` equals the `id` of the `nuget-package` provenance, or starts with that `id` and a `.`. JSON Schema cannot compare two members, so this is a host rule.
+
+#### Scenario: An artifact package id extends the main package id
+- **WHEN** a current host reads a lock whose provenance `id` is `foo` and whose source `id` is `foobar`
+- **THEN** it refuses the lock and names `source.id`, although the lock is valid against its schema
+
 ### Requirement: A reader reads only the current schema URLs
 A reader SHALL accept a document of the family only when its `$schema` is that file's current schema URL, compared as exact text. It SHALL NOT read any other document, including one with a `schemaVersion` member and no `$schema`, as earlier hosts wrote. No conversion between versions is part of this contract. A reader that meets another document SHALL refuse it, naming the file and the URL it reads.
 
 #### Scenario: Another preview is refused
-- **WHEN** a current host reads a catalog whose `$schema` is `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/catalog.schema.json`
-- **THEN** it refuses the catalog and names the URL it reads, `…/0.1.0-preview.2/catalog.schema.json`
+- **WHEN** a current host reads a catalog whose `$schema` is `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json`
+- **THEN** it refuses the catalog and names the URL it reads, `…/0.1.0-preview.3/catalog.schema.json`
 
 #### Scenario: A current host meets an earlier descriptor
 - **WHEN** a current host reads a release whose descriptor has `schemaVersion` `2.0.0-draft.2` and no `$schema`
-- **THEN** it refuses the release as an unsupported extension schema, names `release.json` and the URL `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json`, and installs nothing
+- **THEN** it refuses the release as an unsupported extension schema, names `release.json` and the URL `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json`, and installs nothing
 
 ### Requirement: A repository history is read whole and holds one version
 A reader SHALL read a history `extensions/<id>.jsonl` whole. Lines are separated by LF and numbered from 1; a line that holds only JSON whitespace, a CR included, is skipped but still counted. Each line SHALL carry its own `$schema`. When any line is not an index record whose `$schema` is the index record's current schema URL, the reader SHALL refuse the whole file, name the file and the number of the first such line, and select no release from it. A history with no record SHALL be refused.
