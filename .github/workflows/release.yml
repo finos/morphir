@@ -1,12 +1,16 @@
 name: Release
 
 # The official Morphir CLI release. The CLI source is finos/morphir-dotnet,
-# pinned as ecosystem/morphir-dotnet. That source's own reusable workflow
-# (cli-offering.yml, at the pinned commit) builds each offering with its
-# maintained release profiles and starts the produced executable. This
-# workflow then launches every artifact again on each platform as users do,
-# and publishes one release whose manifest names the exact source commit, kit
-# digest and artifact digests. .config/cli-release.json holds the
+# pinned as ecosystem/morphir-dotnet. That source's own reusable workflows, at
+# the pinned commit, build every artifact: cli-offering.yml each offering with
+# its maintained release profiles, and morphirup-build.yml the morphirup
+# toolchain manager and, on each toolchain platform, the setup toolchain, whose
+# acquired setup journey it runs on the produced archives. This workflow then
+# launches every artifact again on each platform as users do, assembles the
+# morphirup checksum files with the source's own build targets, and publishes
+# one release whose manifest names the exact source commit, kit digest and
+# artifact digests. The morphirup and toolchain assets keep the names a
+# finos/morphir-dotnet release of the same version gives them. .config/cli-release.json holds the
 # expectations; tools/cli-release.ts does the checks; tools/cli-release.test.ts
 # tests both and this workflow.
 #
@@ -62,6 +66,7 @@ jobs:
       prerelease: ${{ steps.release.outputs.prerelease }}
       matrix: ${{ steps.release.outputs.matrix }}
       offerings: ${{ steps.release.outputs.offerings }}
+      morphirup: ${{ steps.release.outputs.morphirup }}
       publishable: ${{ steps.release.outputs.publishable }}
       commit: ${{ steps.release.outputs.commit }}
     steps:
@@ -100,14 +105,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-info.outputs.offerings) }}
-    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@bddc8e0537dd227e1d6510fe5054d7083639f941
+    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@2076811e598f9d4a0b359bd866da9e92dace3986
     with:
       repository: finos/morphir-dotnet
-      ref: bddc8e0537dd227e1d6510fe5054d7083639f941
+      ref: 2076811e598f9d4a0b359bd866da9e92dace3986
       deployment: ${{ matrix.deployment }}
       rid: ${{ matrix.rid }}
       os: ${{ matrix.runner }}
       configuration: Release
+
+  # morphirup, the toolchain manager, built by the source's own workflow at the
+  # pinned commit on each morphirup platform's runner. On a toolchain platform
+  # (.config/cli-release.json morphirup.toolchainPlatforms) the same job packs the
+  # setup toolchain, runs the source's acquired setup journey on the archives it
+  # produced, and uploads its self-contained host as that platform's
+  # self-contained offering (morphir-dotnet-self-contained-<rid>). The candidate,
+  # the bundle and SHA256SUMS name those bytes, so offering above does not build
+  # self-contained there. `uses` and `ref` name the pin, as for cli-offering.yml.
+  morphirup:
+    name: Build morphirup ${{ matrix.rid }}
+    needs: release-info
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.release-info.outputs.morphirup) }}
+    uses: finos/morphir-dotnet/.github/workflows/morphirup-build.yml@2076811e598f9d4a0b359bd866da9e92dace3986
+    with:
+      repository: finos/morphir-dotnet
+      ref: 2076811e598f9d4a0b359bd866da9e92dace3986
+      rid: ${{ matrix.rid }}
+      os: ${{ matrix.runner }}
+      configuration: Release
+      toolchain: true
+      upload-host-offering: true
+      retention-days: 7
 
   # Each artifact is launched as users launch it, on its platform: the
   # extracted executable or apphost itself (never `dotnet exec`), and the tool
@@ -116,7 +146,7 @@ jobs:
   # workflow's start check is not.
   qualify-platform:
     name: Qualify (${{ matrix.rid }})
-    needs: [release-info, offering]
+    needs: [release-info, offering, morphirup]
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-info.outputs.matrix) }}
@@ -182,25 +212,114 @@ jobs:
           bun run tools/cli-release.ts qualify --release-dir .dev/out/cli-release/tool --deployment dotnet-tool \
             --platform "$RID" --version "$VERSION" --out "$OUT/dotnet-tool-$RID.qualification.json"
 
+      # The manager as users run it: the downloaded executable itself, with no
+      # .NET on the search path, and the same bytes inside its archive.
+      - name: Download this platform's morphirup
+        if: matrix.morphirup
+        uses: actions/download-artifact@v8
+        with:
+          name: morphirup-${{ matrix.rid }}
+          path: .dev/out/cli-release/morphirup
+
+      - name: Qualify morphirup
+        if: matrix.morphirup
+        env:
+          VERSION: ${{ needs.release-info.outputs.version }}
+          RID: ${{ matrix.rid }}
+        run: |
+          bun run tools/cli-release.ts qualify-morphirup --dir .dev/out/cli-release/morphirup --rid "$RID" \
+            --version "$VERSION" --out ".dev/out/cli-release/qualification/$RID.morphirup-qualification.json"
+
       # .dev is a hidden folder, which upload-artifact leaves out unless told.
       - name: Upload the qualification
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: cli-qualification-${{ matrix.rid }}
-          path: .dev/out/cli-release/qualification/*.qualification.json
+          path: .dev/out/cli-release/qualification/*qualification.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
+  # The source's own release assembly, in a job of its own: read-only
+  # permissions and no token, because it runs the source's build (a NuGet
+  # restore and the build's code). It hands the flattened assets to
+  # publish-release as an artifact.
+  assemble-morphirup:
+    name: Assemble the morphirup and toolchain assets
+    needs: [release-info, morphirup]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.release-info.outputs.version }}
+    steps:
+      - name: Check out the bound commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-info.outputs.commit }}
+          persist-credentials: false
+
+      - name: Check out the pinned CLI source
+        run: git submodule update --init --depth 1 ecosystem/morphir-dotnet
+      # morphirup-<rid>: the manager, its archive and the notices.
+      # windows-release-toolchain-<rid>: a toolchain platform's complete setup
+      # toolchain with its producer's SHA256SUMS.
+      - name: Download the morphirup outputs
+        uses: actions/download-artifact@v8
+        with:
+          pattern: morphirup-*
+          path: .dev/out/cli-release/morphirup-downloads/morphirup
+
+      - name: Download the setup toolchains
+        uses: actions/download-artifact@v8
+        with:
+          pattern: windows-release-toolchain-*
+          path: .dev/out/cli-release/morphirup-downloads/windows-toolchain
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: ecosystem/morphir-dotnet/global.json
+
+      # The source's own release assembly, run from the pinned checkout: each
+      # toolchain is checked against its producer's SHA256SUMS, every output is
+      # flattened once (FlattenReleaseAssets refuses two different files under
+      # one name), and morphirup-v<version>.sha256 and the one SHA256SUMS over
+      # the toolchains are written. sha256sum then reads both back as a user does.
+      - name: Assemble the morphirup and toolchain assets
+        run: |
+          set -euo pipefail
+          DOWNLOADS="$PWD/.dev/out/cli-release/morphirup-downloads"
+          OUT="$PWD/.dev/out/cli-release/morphirup-assets"
+          for dir in "$DOWNLOADS"/windows-toolchain/windows-release-toolchain-*; do
+            (cd "$dir" && sha256sum -c SHA256SUMS)
+          done
+          cd ecosystem/morphir-dotnet
+          ./build.sh --target FlattenReleaseAssets MorphirupChecksums WindowsToolchainChecksums \
+            --release-asset-sources "$DOWNLOADS"/morphirup/* "$DOWNLOADS"/windows-toolchain/* \
+            --windows-toolchain-sources "$DOWNLOADS"/windows-toolchain/* \
+            --release-assets-dir "$OUT"
+          cd "$OUT"
+          sha256sum -c "morphirup-v${VERSION}.sha256"
+          sha256sum -c SHA256SUMS
+
+      - name: Upload the assembled assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-morphirup-release-assets
+          path: .dev/out/cli-release/morphirup-assets/*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
   publish-release:
     name: Publish the GitHub release
-    needs: [release-info, offering, qualify-platform]
+    needs: [release-info, offering, morphirup, qualify-platform, assemble-morphirup]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # The token is given only to the two steps that call gh; no other step,
+    # and nothing it runs (bun install, cargo), has it in its environment.
     env:
-      GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-info.outputs.tag }}
       VERSION: ${{ needs.release-info.outputs.version }}
     steps:
@@ -215,6 +334,8 @@ jobs:
 
       - name: Refuse a release that already exists
         if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Release $TAG already exists. A published release is never replaced; tag a new version."
@@ -237,12 +358,27 @@ jobs:
           mkdir -p .dev/out/cli-release
           cargo +1.98.1 run --locked -q --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- kit status --kit spec/ir/mck --json > .dev/out/cli-release/kit-status.json
 
-      # Every artifact of this run, each in a folder of its own name: the
-      # offerings (morphir-dotnet-*) and the qualification (cli-qualification-*).
-      - name: Download the offerings and their qualification
+      # The offerings (morphir-dotnet-*) and the qualification (cli-qualification-*),
+      # each in a folder of its own name. The morphirup outputs stay apart: a
+      # toolchain holds a copy of its host archive, which is already an offering.
+      - name: Download the offerings
         uses: actions/download-artifact@v8
         with:
+          pattern: morphir-dotnet-*
           path: .dev/out/cli-release/assets
+
+      - name: Download the qualification
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-qualification-*
+          path: .dev/out/cli-release/assets
+
+      # Assembled by assemble-morphirup, flat: every morphirup and toolchain asset and both checksum files.
+      - name: Download the morphirup and toolchain assets
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-morphirup-release-assets
+          path: .dev/out/cli-release/morphirup-assets
 
       # Maintainer decision of 9 November 2026: future legacy names
       # (morphir-<rid>[.exe], morphir-<rid>-v<version>.tar.gz) carry the same
@@ -264,10 +400,11 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then DRY=(--dry-run); fi
           bun run tools/cli-release.ts manifest --tag "$TAG" --version "$VERSION" --commit "$COMMIT" \
             --assets .dev/out/cli-release/assets --kit-status .dev/out/cli-release/kit-status.json \
-            --legacy .dev/out/cli-release/legacy/legacy-aliases.json --out .dev/out/cli-release/publish "${DRY[@]}"
+            --legacy .dev/out/cli-release/legacy/legacy-aliases.json --morphirup .dev/out/cli-release/morphirup-assets \
+            --out .dev/out/cli-release/publish "${DRY[@]}"
 
-      # The evidence of every run, dry or not: the manifest (with its publication record), the notes, the asset list
-      # and the legacy names. Only these files, named explicitly.
+      # The evidence of every run, dry or not: the manifest (with its publication record), the notes, the asset list,
+      # the legacy names and the two checksum files. Only these files, named explicitly.
       - name: Upload the release evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -278,6 +415,8 @@ jobs:
             .dev/out/cli-release/publish/release-notes.md
             .dev/out/cli-release/publish/*-assets.txt
             .dev/out/cli-release/legacy/legacy-aliases.json
+            .dev/out/cli-release/morphirup-assets/morphirup-v*.sha256
+            .dev/out/cli-release/morphirup-assets/SHA256SUMS
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
@@ -286,6 +425,8 @@ jobs:
       # is never created here), and nothing is uploaded into a release afterwards.
       - name: Create the release
         if: env.DRY_RUN != 'true' && needs.release-info.outputs.publishable == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mapfile -t ASSETS < .dev/out/cli-release/publish/release-assets.txt

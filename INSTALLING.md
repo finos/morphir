@@ -103,9 +103,10 @@ toolchain, so on a Mac use a current release. Intel macOS is not supported. On L
 but `setup` is not supported yet: install the CLI itself from a [release archive](#install-a-release-archive) or as
 the [.NET tool](#install-the-net-tool).
 
-`morphirup` and its toolchains are published on the
-[finos/morphir-dotnet releases](https://github.com/finos/morphir-dotnet/releases), not on this repository's
-releases. Install it with the script for your system. On macOS, or on Linux (install only, as above):
+`morphirup` and its setup toolchains are published on the [finos/morphir releases](https://github.com/finos/morphir/releases),
+beside the CLI, from `v0.5.0-alpha.2` on. `v0.5.0-alpha.1` has the CLI only; its `morphirup` is on the
+[finos/morphir-dotnet `v0.5.0-alpha.1` release](https://github.com/finos/morphir-dotnet/releases/tag/v0.5.0-alpha.1).
+Install it with the script for your system. On macOS, or on Linux (install only, as above):
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/finos/morphir-dotnet/main/scripts/install-morphirup.sh | sh
@@ -123,9 +124,9 @@ matches the release's `morphirup-v<version>.sha256`. It installs into `~/.local/
 to the shell script or set `MORPHIRUP_VERSION`; run the script with `--help` for its other options.
 
 To install by hand instead, download the manager for your platform (`morphirup-win-x64.exe`,
-`morphirup-win-arm64.exe` or `morphirup-osx-arm64`) and `morphirup-v<version>.sha256` from the release you want,
-check the manager's SHA-256 against its line in that file, rename it to `morphirup` (`morphirup.exe` on Windows)
-and put it on `PATH`.
+`morphirup-win-arm64.exe` or `morphirup-osx-arm64`) and `morphirup-v<version>.sha256` from the
+[release](https://github.com/finos/morphir/releases) you want, check the manager's SHA-256 against its line in that
+file, rename it to `morphirup` (`morphirup.exe` on Windows) and put it on `PATH`.
 
 Then, in your project:
 
@@ -140,7 +141,8 @@ morphirup run -- generate --target fsharp --output generated
 version. `--dry-run` shows the plan and changes nothing.
 
 The checksums show that each download is the file the release lists. They do not authenticate the publisher: setup
-trusts the finos/morphir-dotnet release it downloads from. The
+trusts the release it downloads from. Before a release is published, each manager is started on its own platform,
+and the setup journey is run on each toolchain; the release's `release-manifest.json` records both. The
 [morphirup guide](https://github.com/finos/morphir-dotnet/blob/main/docs/content/docs/cli/morphirup.md) covers every
 option, the local-developer route and what is not implemented yet.
 

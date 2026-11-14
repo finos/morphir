@@ -1,0 +1,71 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.5/bundle.schema.json",
+  "version": "0.4.0-alpha.5",
+  "sourceCommit": "10ac818d40aa3f7900fcfdb08ba25a70dc0462b2",
+  "platform": "win-x64",
+  "assets": [
+    {
+      "name": "morphir-host-candidate-win-x64.json",
+      "role": "host-candidate",
+      "bytes": 1536,
+      "sha256": "fba07ac701de63ec696ad80ba882fe62c0fff3d47f26627a4fbd951ba7818da0",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-host-candidate-win-x64.json"
+    },
+    {
+      "name": "morphir-dotnet-0.4.0-alpha.5-self-contained-win-x64.zip",
+      "role": "host-archive",
+      "bytes": 61234567,
+      "sha256": "1704e5d138087335aab4b4172b46b6125829b27626461b2fc221fd20b8274a14",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-dotnet-0.4.0-alpha.5-self-contained-win-x64.zip"
+    },
+    {
+      "name": "morphir-extensions-win-x64.json",
+      "role": "selection",
+      "bytes": 619,
+      "sha256": "95821fd79221418f2962a6a3de0daf91142a9b9561f115f0343f51ed812a29f1",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-extensions-win-x64.json"
+    },
+    {
+      "name": "morphir-fsharp-frontend-0.4.0-alpha.5-win-x64.release.json",
+      "role": "frontend-release",
+      "bytes": 2048,
+      "sha256": "85d0117b06caed02809ded0ce5712b37fafbc22143e6fcadf14793f448bbeaee",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-fsharp-frontend-0.4.0-alpha.5-win-x64.release.json"
+    },
+    {
+      "name": "morphir-fsharp-frontend-0.4.0-alpha.5-win-x64.manifest",
+      "role": "frontend-manifest",
+      "bytes": 4096,
+      "sha256": "2ab14629da2ea2c3bc65e4314b9cab722e576f4455e673fbdd78edd0918a8cc4",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-fsharp-frontend-0.4.0-alpha.5-win-x64.manifest"
+    },
+    {
+      "name": "morphir-fsharp-frontend-0.4.0-alpha.5-win-x64.zip",
+      "role": "frontend-archive",
+      "bytes": 30000000,
+      "sha256": "627dd0ac9910bde822106045198a3b21cd0888d4437d4722c7485996161f12d4",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-fsharp-frontend-0.4.0-alpha.5-win-x64.zip"
+    },
+    {
+      "name": "morphir-fsharp-backend-0.4.0-alpha.5-win-x64.release.json",
+      "role": "backend-release",
+      "bytes": 2048,
+      "sha256": "dbe71c31b101daa0de95869c9e3508418f9d77c658c962187d58185eb7c00e48",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-fsharp-backend-0.4.0-alpha.5-win-x64.release.json"
+    },
+    {
+      "name": "morphir-fsharp-backend-0.4.0-alpha.5-win-x64.manifest",
+      "role": "backend-manifest",
+      "bytes": 4096,
+      "sha256": "7f01db375592c7e8de5b61b0e99c1a36d5eec8f87bc85c4df64cbd8fc90269b1",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-fsharp-backend-0.4.0-alpha.5-win-x64.manifest"
+    },
+    {
+      "name": "morphir-fsharp-backend-0.4.0-alpha.5-win-x64.zip",
+      "role": "backend-archive",
+      "bytes": 30000000,
+      "sha256": "9d35a25cad8c76f13e8a073f05e9bdd7171691b5db767e6cd7dad521e16f2d49",
+      "url": "https://github.com/finos/morphir/releases/download/v0.4.0-alpha.5/morphir-fsharp-backend-0.4.0-alpha.5-win-x64.zip"
+    }
+  ]
+}

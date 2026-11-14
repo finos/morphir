@@ -4,7 +4,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { crc32, deflateRawSync, gzipSync } from "node:zlib";
 
-const VERSION = "0.1.0-preview.1";
+const VERSION = "0.1.0-preview.2";
+// The package tree manifest format did not change in preview.2, so its header keeps the version it was defined at.
+const TREE_VERSION = "0.1.0-preview.1";
 const schemaBase = `https://morphir.finos.org/schemas/extensions/${VERSION}/`;
 const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
 const u16 = (n: number) => { const b = Buffer.alloc(2); b.writeUInt16LE(n); return b; };
@@ -63,7 +65,7 @@ function pax(key: string, value: string): Buffer {
 }
 type TreeFile = { path: string; data: Buffer };
 function treeManifest(files: TreeFile[], entryPoint: string, executables: string[] = []): string {
- return `morphir-package-tree ${VERSION}\n` + [...files].sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).map(f => `${f.path === entryPoint || executables.includes(f.path) ? "x" : "f"} ${f.data.length} ${sha(f.data)} ${f.path}\n`).join("");
+ return `morphir-package-tree ${TREE_VERSION}\n` + [...files].sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))).map(f => `${f.path === entryPoint || executables.includes(f.path) ? "x" : "f"} ${f.data.length} ${sha(f.data)} ${f.path}\n`).join("");
 }
 
 type Package = { format: string; entryPoint: string; treeSha256: string; root?: string; executables?: string[] };

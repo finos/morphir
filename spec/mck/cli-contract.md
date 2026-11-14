@@ -29,7 +29,7 @@ in the deleted Rust CLI; the standalone spelling drops the space and nothing els
 | `cargo run --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-mck-cli -- <command> ARGS` | How this repository's tasks run it from source (`mise run mck -- <command>`). |
 
 The commands, options, adapters, exit codes, output routing and report formats below are unchanged by the move
-([`move-cli-delivery-to-umbrella`](../../openspec/changes/move-cli-delivery-to-umbrella/proposal.md)). The
+([`move-cli-delivery-to-umbrella`](../../openspec/changes/archive/2026-11-13-move-cli-delivery-to-umbrella/proposal.md)). The
 runner's destination is the .NET host, as recorded in decision 0004. Until that runner replaces this one, its gaps are stated, not
 hidden.
 
