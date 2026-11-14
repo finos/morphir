@@ -24,7 +24,7 @@ Terms used on this page:
 | --- | --- |
 | single-file artifact | A descriptor artifact with no `package` member. The delivered file is the executable or module that runs, as before this change. |
 | package | A descriptor artifact with a `package` member. Its delivered file is an archive that is unpacked before anything runs. |
-| archive | The delivered file of a package: a ZIP file or a gzip-compressed tar file. |
+| archive | The delivered file of a package: a ZIP file, a gzip-compressed tar file, or a NuGet package, which is a ZIP file. |
 | entry | One member of an archive, in the order this page defines for its format. |
 | entry name | An entry's path in the archive, read as this page defines for its format. |
 | tree | The regular files a package installs, each with a path, its bytes and an executable flag. |
@@ -112,12 +112,23 @@ The recommended selection SHALL be a `process` artifact whose platform matches t
 - **WHEN** a host on `aarch64-apple-darwin` installs the same descriptor
 - **THEN** it installs the `wasm` artifact, and its lock records `runtime` `wasm`
 
-### Requirement: A package archive is ZIP or gzip-compressed tar
-`package.format` SHALL be `zip` or `tar.gz`. The artifact's `filename` SHALL end in `.zip` for `zip`, and in `.tar.gz` or `.tgz` for `tar.gz`, compared ignoring ASCII case. A reader SHALL refuse any other value, or a file name that does not match the format, with `package.archive_format`.
+### Requirement: A package archive is ZIP, gzip-compressed tar or a NuGet package
+`package.format` SHALL be `zip`, `tar.gz` or `nupkg`. The artifact's `filename` SHALL end in `.zip` for `zip`, and in `.tar.gz` or `.tgz` for `tar.gz`, compared ignoring ASCII case. For `nupkg` it SHALL be `<id>.<version>.nupkg` in lower case. A reader SHALL refuse any other value, or a file name that does not match the format, with `package.archive_format`.
 
 #### Scenario: A format that does not match the file name
 - **WHEN** a package has `format` `zip` and `filename` `frontend.tgz`
 - **THEN** the reader refuses the descriptor with `package.archive_format`
+
+#### Scenario: A NuGet package file name in upper case
+- **WHEN** a package has `format` `nupkg` and `filename` `Finos.Morphir.Example.0.6.0.nupkg`
+- **THEN** the reader refuses the descriptor with `package.archive_format`
+
+### Requirement: A NuGet package is read as ZIP, and only its root is the tree
+A host SHALL read a `nupkg` archive as a ZIP archive, and the ZIP layout, header and feature rules SHALL apply to the whole archive, as for `zip`. Only the entries under `root` SHALL be entries of the package: the entry rules, the tree and `treeSha256` cover them alone. Entries outside `root`, such as `.nuspec`, `_rels/`, `[Content_Types].xml`, `package/` and `.signature.p7s`, SHALL be neither refused nor extracted nor hashed.
+
+#### Scenario: A repository signature does not change the tree
+- **WHEN** a feed signs a `nupkg` archive after it is packed, so the two archives differ only in `.signature.p7s`
+- **THEN** both give the same tree and `treeSha256`, and a host installs either one
 
 ### Requirement: A ZIP archive's entries come from its central directory
 A host SHALL read a ZIP archive's entries, in order, from its central directory, found through the end-of-central-directory record and, when present, its zip64 record. Zip64 records and extra fields SHALL be accepted. An entry's name is its central-directory file name. An entry is a directory exactly when its name ends in `/`.
@@ -232,7 +243,7 @@ An entry name SHALL have at most 240 bytes, and each component at most 255. A tr
 - **THEN** the host refuses them with `package.path_length` and `package.nesting_depth`
 
 ### Requirement: A declared root strips one directory prefix
-`package.root`, when present, SHALL be one or more components joined by `/`, with no leading or trailing `/`, each following the component rules. Every file entry SHALL lie under it, and its tree path is its entry name without the root and the following `/`. A directory entry for the root or one of its ancestors is allowed. Any other entry outside the root SHALL be refused with `package.outside_root`.
+`package.root`, when present, SHALL be one or more components joined by `/`, with no leading or trailing `/`, each following the component rules. Every file entry SHALL lie under it, and its tree path is its entry name without the root and the following `/`. A directory entry for the root or one of its ancestors is allowed. Any other entry outside the root SHALL be refused with `package.outside_root`, except in a `nupkg` archive, which ignores it.
 
 #### Scenario: A file outside the declared root
 - **WHEN** a package with `root` `fsharp-frontend` holds `fsharp-frontend/morphir-fsharp-frontend.exe` and `README.txt`
@@ -260,7 +271,7 @@ A host SHALL refuse a package whose `entryPoint` is not the tree path of a file 
 - **THEN** the host refuses it with `package.entry_point_not_exe`
 
 ### Requirement: Refusals follow a fixed order
-A host SHALL report only the first refusal (codes here omit `package.`): `archive_too_large`, `archive_digest_mismatch`, `archive_format`. A ZIP archive then gets `zip_layout` and `zip_header_mismatch` over the whole archive, then its entries. A tar.gz archive gets the gzip header's `gzip_layout`, its entries, the tar end's `tar_layout`, then the gzip trailer's `gzip_layout`. The tree rules come last.
+A host SHALL report only the first refusal (codes here omit `package.`): `archive_too_large`, `archive_digest_mismatch` (never for `nupkg`, which has no archive digest), `archive_format`. A ZIP or `nupkg` archive then gets `zip_layout` and `zip_header_mismatch` over the whole archive, then its entries. A tar.gz archive gets the gzip header's `gzip_layout`, its entries, the tar end's `tar_layout`, then the gzip trailer's `gzip_layout`. The tree rules come last.
 
 #### Scenario: A bad archive is refused before its entries
 - **WHEN** a package's archive does not match its `sha256` and also holds the entry `../x`
@@ -292,7 +303,7 @@ After the format rules, a host SHALL apply, in this order: `non_ascii_name`, `ba
 - **THEN** the host refuses it with `package.parent_component`, not `package.device_name`
 
 ### Requirement: The descriptor, record and lock carry the archive digest and the tree digest
-The artifact's `sha256` SHALL be the SHA-256 of the archive's bytes. `package.treeSha256` SHALL be the tree digest. The index record and the catalog entry of a package SHALL carry the artifact's `package` member unchanged, and the extension lock SHALL record the artifact digest and the `package` member unchanged.
+The artifact's `sha256` SHALL be the SHA-256 of the archive's bytes; a `nupkg` artifact has none, and its tree digest is its only digest. `package.treeSha256` SHALL be the tree digest. The index record and the catalog entry of a package SHALL carry the artifact's `package` member unchanged, and the extension lock SHALL record the artifact digest, if any, and the `package` member unchanged.
 
 #### Scenario: A lock records both digests
 - **WHEN** a host installs the F# frontend package
@@ -313,7 +324,7 @@ A file's kind SHALL be `x` when its tree path is the entry point or is listed in
 - **THEN** both give the same tree digest for the same `entryPoint` and `executables`
 
 ### Requirement: A package is verified before it is published
-A host SHALL treat a package as verified when the archive's SHA-256 equals the artifact's `sha256`, no rule refuses it, and the tree digest it computes from the bytes it writes equals `package.treeSha256`. It SHALL refuse a different archive digest with `package.archive_digest_mismatch` and a different tree digest with `package.tree_digest_mismatch`. A package that is not verified SHALL NOT be published, recorded or started.
+A host SHALL treat a package as verified when the archive's SHA-256 equals the artifact's `sha256` (a `nupkg` artifact has none), no rule refuses it, and the tree digest it computes from the bytes it writes equals `package.treeSha256`. It SHALL refuse a different archive digest with `package.archive_digest_mismatch` and a different tree digest with `package.tree_digest_mismatch`. A package that is not verified SHALL NOT be published, recorded or started.
 
 #### Scenario: A wrong tree digest
 - **WHEN** a package's archive matches its `sha256` but its files give another tree digest than `package.treeSha256`

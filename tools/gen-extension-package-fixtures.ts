@@ -175,6 +175,30 @@ function build(output: string): void {
  cases.push({ id: "select-matching-process", scenarios: ["A host that runs both selects the matching process artifact and the lock records it"], input: { operation: "select-artifact", hostPlatform: "x86_64-unknown-linux-gnu", hostRuntimes: ["process", "wasm"], artifacts: mixed, critical: ["artifacts.package"] }, expected: { outcome: "accept", selected: { runtime: "process", filename: (processArtifact as { filename: string }).filename }, lock: { runtime: "process", platform: { os: "linux", arch: "x86_64" } } } });
  cases.push({ id: "select-wasm-fallback", scenarios: ["A host with no matching process artifact selects the WASM artifact"], input: { operation: "select-artifact", hostPlatform: "aarch64-apple-darwin", hostRuntimes: ["process", "wasm"], artifacts: mixed, critical: ["artifacts.package"] }, expected: { outcome: "accept", selected: { runtime: "wasm", filename: "extension.wasm" }, lock: { runtime: "wasm" } } });
 }
+{
+ // A NuGet package is a ZIP file. A feed signs it after packing, so only .signature.p7s differs between the copies;
+ // the tree is the entries under root, so treeSha256 is the same for both.
+ const nugetRoot = "morphir/linux-x64";
+ const nugetFiles = [{ path: "run", data: run }, { path: "lib/a.dll", data: dll }];
+ const nugetManifest = treeManifest(nugetFiles, "run");
+ const nugetPackage: Package = { format: "nupkg", root: nugetRoot, entryPoint: "run", treeSha256: sha(nugetManifest) };
+ const nugetFilename = "finos.morphir.example.0.6.0.nupkg";
+ const nupkg = (signature: string) => zip([
+  { name: "_rels/.rels", data: Buffer.from("<Relationships/>") },
+  { name: "finos.morphir.example.nuspec", data: Buffer.from("<package/>") },
+  { name: `${nugetRoot}/run`, data: run, method: 8 },
+  { name: `${nugetRoot}/lib/a.dll`, data: dll, method: 8 },
+  { name: "package/services/metadata/core-properties/1.psmdcp", data: Buffer.from("<coreProperties/>") },
+  { name: "[Content_Types].xml", data: Buffer.from("<Types/>") },
+  { name: ".signature.p7s", data: Buffer.from(signature) },
+ ]);
+ for (const [id, signature] of [["nupkg-packed", "author signature"], ["nupkg-repository-signed", "repository countersignature"]] as const) {
+  const bytes = nupkg(signature);
+  writeFileSync(join(output, "fixtures", `${id}.nupkg`), bytes);
+  cases.push({ id, scenarios: ["A repository signature does not change the tree"], input: { operation: "install-package", archive: `fixtures/${id}.nupkg`, bytesSha256: sha(bytes), archiveLength: bytes.length, artifact: { runtime: "process", platform: "x86_64-unknown-linux-gnu", filename: nugetFilename, package: nugetPackage }, critical: ["artifacts.package"] }, expected: { outcome: "accept", manifest: nugetManifest, treeSha256: nugetPackage.treeSha256 } });
+ }
+ cases.push({ id: "nupkg-upper-case-filename", scenarios: ["A NuGet package file name in upper case"], input: { operation: "read-descriptor", artifact: { runtime: "process", platform: "x86_64-unknown-linux-gnu", filename: "Finos.Morphir.Example.0.6.0.nupkg", package: nugetPackage }, critical: ["artifacts.package"] }, expected: { outcome: "refuse", code: "package.archive_format", entry: null } });
+}
 cases.push({ id: "raw-executable", scenarios: ["A raw executable is unchanged"], input: { operation: "read-descriptor", artifact: { runtime: "process", filename: "morphir-scala-elm-linux-amd64-0.5.0-M13", sha256: sha(run), platform: "x86_64-unknown-linux-gnu" } }, expected: { outcome: "accept", shape: "single-file" } });
  cases.push({ id: "archive-without-package", scenarios: ["An executable shipped inside an archive"], input: { operation: "read-descriptor", artifact: { runtime: "process", filename: "morphir-elm-extension-0.4.1-x86_64-unknown-linux-gnu.tgz", sha256: sha(run), platform: "x86_64-unknown-linux-gnu" } }, expected: { outcome: "refuse", code: "package.archive_without_package", entry: null } });
  cases.push({ id: "tree-changed", scenarios: ["A file is missing"], input: { operation: "activate-package", package: packageFor("zip"), manifest, tree: files.filter(f => f.path !== "lib/a.dll").map(f => ({ path: f.path, size: f.data.length, mode: f.path === "run" || f.path === "tools/helper" ? "0555" : "0444" })) }, expected: { outcome: "refuse", code: "package.tree_changed", entry: "lib/a.dll" } });

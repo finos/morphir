@@ -6081,6 +6081,96 @@
       }
     },
     {
+      "id": "nupkg-packed",
+      "scenarios": [
+        "A repository signature does not change the tree"
+      ],
+      "input": {
+        "operation": "install-package",
+        "archive": "fixtures/nupkg-packed.nupkg",
+        "bytesSha256": "ea0499d6575dd5cc6284555cad60e7cb910d6d3cf49b0d3741ff0140260fadce",
+        "archiveLength": 973,
+        "artifact": {
+          "runtime": "process",
+          "platform": "x86_64-unknown-linux-gnu",
+          "filename": "finos.morphir.example.0.6.0.nupkg",
+          "package": {
+            "format": "nupkg",
+            "root": "morphir/linux-x64",
+            "entryPoint": "run",
+            "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+          }
+        },
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "manifest": "morphir-package-tree 0.1.0-preview.1\nf 3 0343b13708cd52d33ecbb1043b5ae145e73a532bdccf7de6925db5cce6054fd3 lib/a.dll\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 run\n",
+        "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+      }
+    },
+    {
+      "id": "nupkg-repository-signed",
+      "scenarios": [
+        "A repository signature does not change the tree"
+      ],
+      "input": {
+        "operation": "install-package",
+        "archive": "fixtures/nupkg-repository-signed.nupkg",
+        "bytesSha256": "4eaf211c64a4a8806e030ab1b78d9458abe01adf9af8d2d7e443e10692c613d8",
+        "archiveLength": 984,
+        "artifact": {
+          "runtime": "process",
+          "platform": "x86_64-unknown-linux-gnu",
+          "filename": "finos.morphir.example.0.6.0.nupkg",
+          "package": {
+            "format": "nupkg",
+            "root": "morphir/linux-x64",
+            "entryPoint": "run",
+            "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+          }
+        },
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "manifest": "morphir-package-tree 0.1.0-preview.1\nf 3 0343b13708cd52d33ecbb1043b5ae145e73a532bdccf7de6925db5cce6054fd3 lib/a.dll\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 run\n",
+        "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+      }
+    },
+    {
+      "id": "nupkg-upper-case-filename",
+      "scenarios": [
+        "A NuGet package file name in upper case"
+      ],
+      "input": {
+        "operation": "read-descriptor",
+        "artifact": {
+          "runtime": "process",
+          "platform": "x86_64-unknown-linux-gnu",
+          "filename": "Finos.Morphir.Example.0.6.0.nupkg",
+          "package": {
+            "format": "nupkg",
+            "root": "morphir/linux-x64",
+            "entryPoint": "run",
+            "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+          }
+        },
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "refuse",
+        "code": "package.archive_format",
+        "entry": null
+      }
+    },
+    {
       "id": "raw-executable",
       "scenarios": [
         "A raw executable is unchanged"
