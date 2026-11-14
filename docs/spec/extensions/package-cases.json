@@ -5941,6 +5941,146 @@
       }
     },
     {
+      "id": "mixed-runtimes",
+      "scenarios": [
+        "A mixed descriptor is accepted"
+      ],
+      "input": {
+        "operation": "read-descriptor",
+        "artifacts": [
+          {
+            "runtime": "process",
+            "platform": "x86_64-unknown-linux-gnu",
+            "filename": "valid-zip.zip",
+            "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          },
+          {
+            "runtime": "wasm",
+            "filename": "extension.wasm",
+            "sha256": "bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050"
+          }
+        ],
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "shape": "mixed"
+      }
+    },
+    {
+      "id": "select-matching-process",
+      "scenarios": [
+        "A host that runs both selects the matching process artifact and the lock records it"
+      ],
+      "input": {
+        "operation": "select-artifact",
+        "hostPlatform": "x86_64-unknown-linux-gnu",
+        "hostRuntimes": [
+          "process",
+          "wasm"
+        ],
+        "artifacts": [
+          {
+            "runtime": "process",
+            "platform": "x86_64-unknown-linux-gnu",
+            "filename": "valid-zip.zip",
+            "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          },
+          {
+            "runtime": "wasm",
+            "filename": "extension.wasm",
+            "sha256": "bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050"
+          }
+        ],
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "selected": {
+          "runtime": "process",
+          "filename": "valid-zip.zip"
+        },
+        "lock": {
+          "runtime": "process",
+          "platform": {
+            "os": "linux",
+            "arch": "x86_64"
+          }
+        }
+      }
+    },
+    {
+      "id": "select-wasm-fallback",
+      "scenarios": [
+        "A host with no matching process artifact selects the WASM artifact"
+      ],
+      "input": {
+        "operation": "select-artifact",
+        "hostPlatform": "aarch64-apple-darwin",
+        "hostRuntimes": [
+          "process",
+          "wasm"
+        ],
+        "artifacts": [
+          {
+            "runtime": "process",
+            "platform": "x86_64-unknown-linux-gnu",
+            "filename": "valid-zip.zip",
+            "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          },
+          {
+            "runtime": "wasm",
+            "filename": "extension.wasm",
+            "sha256": "bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050"
+          }
+        ],
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "selected": {
+          "runtime": "wasm",
+          "filename": "extension.wasm"
+        },
+        "lock": {
+          "runtime": "wasm"
+        }
+      }
+    },
+    {
       "id": "raw-executable",
       "scenarios": [
         "A raw executable is unchanged"

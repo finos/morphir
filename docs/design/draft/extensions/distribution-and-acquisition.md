@@ -895,6 +895,11 @@ A host resolves the release from the request:
 - `github:<owner>/<repo>`: the latest release, as the GitHub API reports it; that
   is never a draft or a prerelease.
 
+A release may offer artifacts of both runtimes, `process` and `wasm`;
+installation selects one, by the rule
+[a descriptor may offer more than one runtime](../../../spec/extensions/packages.md#requirement-a-descriptor-may-offer-more-than-one-runtime),
+and the lock records it.
+
 The host then selects the artifact for its own platform. A release with no
 `release.json`, with no artifact for the host platform, or with an artifact
 whose asset is missing, is refused, and nothing is installed. The installed
@@ -932,6 +937,11 @@ bytes of a `.nupkg` file change. Digests therefore cover the package contents:
    `[Content_Types].xml`, `package/` and `.signature.p7s` never enter the tree.
 7. Publish the RID packages first, and compute the `treeSha256` of each from its
    contents. Then write the finished `release.json` and pack the main package with it.
+
+A release may offer artifacts of both runtimes, `process` and `wasm`;
+installation selects one, by the rule
+[a descriptor may offer more than one runtime](../../../spec/extensions/packages.md#requirement-a-descriptor-may-offer-more-than-one-runtime),
+and the lock records it.
 
 The installed entry and lock record the `nuget-package` provenance, whose `revision`
 is the SHA-256 of `morphir/release.json`, and the `nuget-package-entry` source of the

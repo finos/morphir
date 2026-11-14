@@ -85,6 +85,24 @@ An artifact without a `package` member SHALL be read, stored, recorded and start
 - **WHEN** a descriptor lists the process artifact `morphir-elm-extension-0.4.1-x86_64-unknown-linux-gnu.tgz`, which holds one executable, with no `package` member
 - **THEN** the reader refuses it with `package.archive_without_package`, and the release is installable only once it is published with a `package` member naming that executable
 
+### Requirement: A descriptor may offer more than one runtime
+A reader SHALL NOT refuse a descriptor because its artifacts have different runtimes. Which artifact is installed is the host's choice, and it SHALL be the same every time for the same descriptor, host platform and options. The lock SHALL record the one selected artifact, including its `runtime`. Activation SHALL follow the lock and SHALL NOT select again.
+
+#### Scenario: A mixed descriptor is accepted
+- **WHEN** a descriptor lists a `process` package artifact for `x86_64-unknown-linux-gnu` and a `wasm` artifact
+- **THEN** a reader accepts the descriptor; neither artifact is refused for the other's runtime
+
+### Requirement: A host selects a matching process artifact before a WASM artifact
+The recommended selection SHALL be a `process` artifact whose platform matches the host, else a `wasm` artifact, else the existing refusal that no artifact matches the host platform, which installs nothing. A host MAY let the user choose the runtime explicitly; that choice is one of the options the selection depends on.
+
+#### Scenario: A host that runs both selects the matching process artifact and the lock records it
+- **WHEN** a host on `x86_64-unknown-linux-gnu` that runs both `process` and `wasm` artifacts installs a descriptor that offers both
+- **THEN** it installs the `process` artifact, its lock records `runtime` `process` and the platform `{os: "linux", arch: "x86_64"}`, and activation starts that artifact without selecting again
+
+#### Scenario: A host with no matching process artifact selects the WASM artifact
+- **WHEN** a host on `aarch64-apple-darwin` installs the same descriptor
+- **THEN** it installs the `wasm` artifact, and its lock records `runtime` `wasm`
+
 ### Requirement: A package archive is ZIP or gzip-compressed tar
 `package.format` SHALL be `zip` or `tar.gz`. The artifact's `filename` SHALL end in `.zip` for `zip`, and in `.tar.gz` or `.tgz` for `tar.gz`, compared ignoring ASCII case. A reader SHALL refuse any other value, or a file name that does not match the format, with `package.archive_format`.
 
