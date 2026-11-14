@@ -19,7 +19,7 @@ Terms used on this page:
 | --- | --- |
 | single-file artifact | A descriptor artifact with no `package` member. The delivered file is the executable or module that runs, as before this change. |
 | package | A descriptor artifact with a `package` member. Its delivered file is an archive that is unpacked before anything runs. |
-| archive | The delivered file of a package: a ZIP file or a gzip-compressed tar file. |
+| archive | The delivered file of a package: a ZIP file, a gzip-compressed tar file, or a NuGet package, which is a ZIP file. |
 | entry | One member of an archive, in the order this page defines for its format. |
 | entry name | An entry's path in the archive, read as this page defines for its format. |
 | tree | The regular files a package installs, each with a path, its bytes and an executable flag. |
@@ -36,7 +36,7 @@ The descriptor, index record, catalog and extension lock belong to the extension
 
 | Outcome | When | Package version | Its schema URLs |
 | --- | --- | --- | --- |
-| `PKGVER-A` | The family's `0.1.0-preview.1` schemas are not yet published, and no released host, publisher or tool reads or writes `0.1.0-preview.1`, when this change is approved | `0.1.0-preview.1`, defined together with #1149 | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/<file>.schema.json` |
+| `PKGVER-A` | The family's `0.1.0-preview.1` schemas are not yet published, and no released host, publisher or tool reads or writes `0.1.0-preview.1`, when this change is approved | `0.1.0-preview.1`, defined together with #1149 | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/<file>.schema.json` |
 | `PKGVER-B` | Otherwise | `0.1.0-preview.2` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/<file>.schema.json` |
 
 A host built against #1149 without this change refuses a package under either outcome, because `package` is always listed in `critical`.
@@ -46,7 +46,7 @@ A worked example: morphir-dotnet's F# frontend `org.finos.morphir.fsharp-fronten
 ## ADDED Requirements
 
 ### Requirement: A package is declared by its descriptor artifact
-A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of `0.1.0-preview.2` SHALL refuse a `package` member on any other runtime with `package.runtime`.
+A release descriptor artifact SHALL be a package when it has a `package` member, and a single-file artifact otherwise. `package` SHALL have the members `format`, `entryPoint` and `treeSha256`, and MAY have `root` and `executables`. A package SHALL have `runtime` `process`. A reader of `0.1.0-preview.3` SHALL refuse a `package` member on any other runtime with `package.runtime`.
 
 #### Scenario: A process package
 - **WHEN** a descriptor artifact has `runtime` `process`, `filename` `fsharp-frontend-0.6.0-win-x64.zip` and a `package` member with `format` `zip`, `entryPoint` `morphir-fsharp-frontend.exe` and a `treeSha256`
@@ -57,25 +57,25 @@ A release descriptor artifact SHALL be a package when it has a `package` member,
 - **THEN** the reader refuses the descriptor with `package.runtime`
 
 ### Requirement: The family's published schemas carry the package member
-The published schemas of the release descriptor, index record, catalog and extension lock at `0.1.0-preview.2` SHALL define the `package` member, its members and their types. A document that carries `package` SHALL be valid against them.
+The published schemas of the release descriptor, index record, catalog and extension lock at `0.1.0-preview.3` SHALL define the `package` member, its members and their types. A document that carries `package` SHALL be valid against them.
 
 #### Scenario: A package descriptor validates
 - **WHEN** an editor validates the F# frontend's `release.json` against the schema its `$schema` names
 - **THEN** the schema accepts its `package` member with `format`, `root`, `entryPoint` and `treeSha256`
 
 ### Requirement: A document that carries a package lists it as critical
-A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of `0.1.0-preview.2` SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
+A descriptor or index record with a package artifact SHALL list `artifacts.package` in its top-level `critical` list, and a catalog with a package entry SHALL list `extensions.package`. A reader of `0.1.0-preview.3` SHALL refuse such a document without that path with `package.not_critical`. A reader that does not understand `package` therefore refuses the document by the must-ignore-unless-critical rule.
 
 #### Scenario: A host built without this change meets a package
 - **WHEN** a host that implements the family version without this change reads a descriptor at that version whose artifact has `package` and whose `critical` lists `artifacts.package`
 - **THEN** it refuses the descriptor as naming a critical member it does not understand, and stores and starts nothing
 
 #### Scenario: A package that is not marked critical
-- **WHEN** a reader of `0.1.0-preview.2` reads a descriptor with a `package` member and no `artifacts.package` in `critical`
+- **WHEN** a reader of `0.1.0-preview.3` reads a descriptor with a `package` member and no `artifacts.package` in `critical`
 - **THEN** it refuses the descriptor with `package.not_critical`
 
 ### Requirement: A single-file artifact is the executable itself
-An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of `0.1.0-preview.2` SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
+An artifact without a `package` member SHALL be read, stored, recorded and started exactly as a single-file artifact was before this change. A reader of `0.1.0-preview.3` SHALL refuse a `process` artifact without `package` whose `filename` ends in `.zip`, `.tar.gz`, `.tgz` or `.tar`, ignoring ASCII case, with `package.archive_without_package`, and SHALL NOT store or start it.
 
 #### Scenario: A raw executable is unchanged
 - **WHEN** a descriptor lists the process artifact `morphir-scala-elm-linux-amd64-0.5.0-M13`, a raw executable, with no `package` member
@@ -85,12 +85,41 @@ An artifact without a `package` member SHALL be read, stored, recorded and start
 - **WHEN** a descriptor lists the process artifact `morphir-elm-extension-0.4.1-x86_64-unknown-linux-gnu.tgz`, which holds one executable, with no `package` member
 - **THEN** the reader refuses it with `package.archive_without_package`, and the release is installable only once it is published with a `package` member naming that executable
 
-### Requirement: A package archive is ZIP or gzip-compressed tar
-`package.format` SHALL be `zip` or `tar.gz`. The artifact's `filename` SHALL end in `.zip` for `zip`, and in `.tar.gz` or `.tgz` for `tar.gz`, compared ignoring ASCII case. A reader SHALL refuse any other value, or a file name that does not match the format, with `package.archive_format`.
+### Requirement: A descriptor may offer more than one runtime
+A reader SHALL NOT refuse a descriptor because its artifacts have different runtimes. Which artifact is installed is the host's choice, and it SHALL be the same every time for the same descriptor, host platform and options. The lock SHALL record the one selected artifact, including its `runtime`. Activation SHALL follow the lock and SHALL NOT select again.
+
+#### Scenario: A mixed descriptor is accepted
+- **WHEN** a descriptor lists a `process` package artifact for `x86_64-unknown-linux-gnu` and a `wasm` artifact
+- **THEN** a reader accepts the descriptor; neither artifact is refused for the other's runtime
+
+### Requirement: A host selects a matching process artifact before a WASM artifact
+The recommended selection SHALL be a `process` artifact whose platform matches the host, else a `wasm` artifact, else the existing refusal that no artifact matches the host platform, which installs nothing. A host MAY let the user choose the runtime explicitly; that choice is one of the options the selection depends on.
+
+#### Scenario: A host that runs both selects the matching process artifact and the lock records it
+- **WHEN** a host on `x86_64-unknown-linux-gnu` that runs both `process` and `wasm` artifacts installs a descriptor that offers both
+- **THEN** it installs the `process` artifact, its lock records `runtime` `process` and the platform `{os: "linux", arch: "x86_64"}`, and activation starts that artifact without selecting again
+
+#### Scenario: A host with no matching process artifact selects the WASM artifact
+- **WHEN** a host on `aarch64-apple-darwin` installs the same descriptor
+- **THEN** it installs the `wasm` artifact, and its lock records `runtime` `wasm`
+
+### Requirement: A package archive is ZIP, gzip-compressed tar or a NuGet package
+`package.format` SHALL be `zip`, `tar.gz` or `nupkg`. The artifact's `filename` SHALL end in `.zip` for `zip`, and in `.tar.gz` or `.tgz` for `tar.gz`, compared ignoring ASCII case. For `nupkg` it SHALL be `<id>.<version>.nupkg` in lower case. A reader SHALL refuse any other value, or a file name that does not match the format, with `package.archive_format`.
 
 #### Scenario: A format that does not match the file name
 - **WHEN** a package has `format` `zip` and `filename` `frontend.tgz`
 - **THEN** the reader refuses the descriptor with `package.archive_format`
+
+#### Scenario: A NuGet package file name in upper case
+- **WHEN** a package has `format` `nupkg` and `filename` `Finos.Morphir.Example.0.6.0.nupkg`
+- **THEN** the reader refuses the descriptor with `package.archive_format`
+
+### Requirement: A NuGet package is read as ZIP, and only its root is the tree
+A host SHALL read a `nupkg` archive as a ZIP archive, and the ZIP layout, header and feature rules SHALL apply to the whole archive, as for `zip`. Only the entries under `root` SHALL be entries of the package: the entry rules, the tree and `treeSha256` cover them alone. Entries outside `root`, such as `.nuspec`, `_rels/`, `[Content_Types].xml`, `package/` and `.signature.p7s`, SHALL be neither refused nor extracted nor hashed.
+
+#### Scenario: A repository signature does not change the tree
+- **WHEN** a feed signs a `nupkg` archive after it is packed, so the two archives differ only in `.signature.p7s`
+- **THEN** both give the same tree and `treeSha256`, and a host installs either one
 
 ### Requirement: A ZIP archive's entries come from its central directory
 A host SHALL read a ZIP archive's entries, in order, from its central directory, found through the end-of-central-directory record and, when present, its zip64 record. Zip64 records and extra fields SHALL be accepted. An entry's name is its central-directory file name. An entry is a directory exactly when its name ends in `/`.
@@ -205,7 +234,7 @@ An entry name SHALL have at most 240 bytes, and each component at most 255. A tr
 - **THEN** the host refuses them with `package.path_length` and `package.nesting_depth`
 
 ### Requirement: A declared root strips one directory prefix
-`package.root`, when present, SHALL be one or more components joined by `/`, with no leading or trailing `/`, each following the component rules. Every file entry SHALL lie under it, and its tree path is its entry name without the root and the following `/`. A directory entry for the root or one of its ancestors is allowed. Any other entry outside the root SHALL be refused with `package.outside_root`.
+`package.root`, when present, SHALL be one or more components joined by `/`, with no leading or trailing `/`, each following the component rules. Every file entry SHALL lie under it, and its tree path is its entry name without the root and the following `/`. A directory entry for the root or one of its ancestors is allowed. Any other entry outside the root SHALL be refused with `package.outside_root`, except in a `nupkg` archive, which ignores it.
 
 #### Scenario: A file outside the declared root
 - **WHEN** a package with `root` `fsharp-frontend` holds `fsharp-frontend/morphir-fsharp-frontend.exe` and `README.txt`
@@ -233,7 +262,7 @@ A host SHALL refuse a package whose `entryPoint` is not the tree path of a file 
 - **THEN** the host refuses it with `package.entry_point_not_exe`
 
 ### Requirement: Refusals follow a fixed order
-A host SHALL report only the first refusal (codes here omit `package.`): `archive_too_large`, `archive_digest_mismatch`, `archive_format`. A ZIP archive then gets `zip_layout` and `zip_header_mismatch` over the whole archive, then its entries. A tar.gz archive gets the gzip header's `gzip_layout`, its entries, the tar end's `tar_layout`, then the gzip trailer's `gzip_layout`. The tree rules come last.
+A host SHALL report only the first refusal (codes here omit `package.`): `archive_too_large`, `archive_digest_mismatch` (never for `nupkg`, which has no archive digest), `archive_format`. A ZIP or `nupkg` archive then gets `zip_layout` and `zip_header_mismatch` over the whole archive, then its entries. A tar.gz archive gets the gzip header's `gzip_layout`, its entries, the tar end's `tar_layout`, then the gzip trailer's `gzip_layout`. The tree rules come last.
 
 #### Scenario: A bad archive is refused before its entries
 - **WHEN** a package's archive does not match its `sha256` and also holds the entry `../x`
@@ -265,7 +294,7 @@ After the format rules, a host SHALL apply, in this order: `non_ascii_name`, `ba
 - **THEN** the host refuses it with `package.parent_component`, not `package.device_name`
 
 ### Requirement: The descriptor, record and lock carry the archive digest and the tree digest
-The artifact's `sha256` SHALL be the SHA-256 of the archive's bytes. `package.treeSha256` SHALL be the tree digest. The index record and the catalog entry of a package SHALL carry the artifact's `package` member unchanged, and the extension lock SHALL record the artifact digest and the `package` member unchanged.
+The artifact's `sha256` SHALL be the SHA-256 of the archive's bytes; a `nupkg` artifact has none, and its tree digest is its only digest. `package.treeSha256` SHALL be the tree digest. The index record and the catalog entry of a package SHALL carry the artifact's `package` member unchanged, and the extension lock SHALL record the artifact digest, if any, and the `package` member unchanged.
 
 #### Scenario: A lock records both digests
 - **WHEN** a host installs the F# frontend package
@@ -286,7 +315,7 @@ A file's kind SHALL be `x` when its tree path is the entry point or is listed in
 - **THEN** both give the same tree digest for the same `entryPoint` and `executables`
 
 ### Requirement: A package is verified before it is published
-A host SHALL treat a package as verified when the archive's SHA-256 equals the artifact's `sha256`, no rule refuses it, and the tree digest it computes from the bytes it writes equals `package.treeSha256`. It SHALL refuse a different archive digest with `package.archive_digest_mismatch` and a different tree digest with `package.tree_digest_mismatch`. A package that is not verified SHALL NOT be published, recorded or started.
+A host SHALL treat a package as verified when the archive's SHA-256 equals the artifact's `sha256` (a `nupkg` artifact has none), no rule refuses it, and the tree digest it computes from the bytes it writes equals `package.treeSha256`. It SHALL refuse a different archive digest with `package.archive_digest_mismatch` and a different tree digest with `package.tree_digest_mismatch`. A package that is not verified SHALL NOT be published, recorded or started.
 
 #### Scenario: A wrong tree digest
 - **WHEN** a package's archive matches its `sha256` but its files give another tree digest than `package.treeSha256`
@@ -423,7 +452,7 @@ A package SHALL NOT change who is trusted. A host MAY conclude from a verified p
 - **THEN** the host treats the release as unauthenticated developer content, and the signature grants nothing
 
 ### Requirement: A host that cannot install packages refuses them
-A host that reads `0.1.0-preview.2` but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
+A host that reads `0.1.0-preview.3` but does not install packages SHALL refuse a package artifact with `package.unsupported`, naming the artifact, and SHALL NOT store or start its archive as a single file.
 
 #### Scenario: A host without package support
 - **WHEN** a host without package support selects the F# frontend's package artifact

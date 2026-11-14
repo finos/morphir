@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL("../docs/spec/extensions/", import.meta.url))
 const load = (name: string) => JSON.parse(readFileSync(join(root, name), "utf8"));
 const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const scenarios = (change: string) => [...readFileSync(`openspec/changes/${change}/specs/extensions/${change === "allow-dotted-extension-ids" ? "extension-identity" : "extension-packages"}/spec.md`, "utf8").matchAll(/^#### Scenario: (.+)$/gm)].map(m => m[1]!);
-const schemaRoot = "website/static/schemas/extensions/0.1.0-preview.2";
+const schemaRoot = "website/static/schemas/extensions/0.1.0-preview.3";
 
 describe("shared extension contract data", () => {
  test("nested lock examples bind the same identity in the lock, claims and filename", () => {
@@ -24,6 +24,29 @@ describe("shared extension contract data", () => {
    }
    if (c.input.file) expect(c.input.file).toBe(`locks/extensions/${c.input.document.extensionId}.json`);
   }
+ });
+ test("every lock document with a path is named for its whole extension id", () => {
+  // The file of a lock is locks/extensions/<extensionId>.json; a case must not refuse a lock for its name by accident.
+  const isLock = (doc: any) => typeof doc?.$schema === "string" && doc.$schema.endsWith("/lock.schema.json");
+  let checked = 0;
+  for (const file of ["identity-cases.json", "package-cases.json"]) {
+   for (const c of load(file).cases) {
+    const found: [string, any][] = [];
+    if (isLock(c.input.document)) {
+     const path = c.input.file ?? c.expected.file;
+     if (typeof path === "string") found.push([path, c.input.document]);
+    }
+    for (const [key, map] of Object.entries(c.input)) {
+     if (!key.toLowerCase().endsWith("files") || !map || typeof map !== "object" || Array.isArray(map)) continue;
+     for (const [path, doc] of Object.entries(map as Record<string, any>)) if (isLock(doc)) found.push([path, doc]);
+    }
+    for (const [path, doc] of found) {
+     expect(path, `${file} ${c.id}`).toBe(`locks/extensions/${doc.extensionId}.json`);
+     checked++;
+    }
+   }
+  }
+  expect(checked).toBeGreaterThan(10);
  });
  test("published requirements match the approved OpenSpec deltas", () => {
   for (const [page, change, capability] of [["identity", "allow-dotted-extension-ids", "extension-identity"], ["packages", "add-extension-packages", "extension-packages"]]) {
@@ -161,7 +184,7 @@ describe("shared extension contract data", () => {
   const page = readFileSync("docs/design/draft/extensions/distribution-and-acquisition.md", "utf8");
   for (const file of readdirSync(schemaRoot).filter(n => n.endsWith(".schema.json"))) {
    const schema = JSON.parse(readFileSync(join(schemaRoot, file), "utf8"));
-   expect(schema.$id).toBe(`https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/${file}`);
+   expect(schema.$id).toBe(`https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/${file}`);
    for (const name of Object.keys(schema.properties)) expect(page, `${file}: ${name}`).toContain(`| \`${name}\` |`);
   }
  });
@@ -176,7 +199,7 @@ describe("shared extension contract data", () => {
   const temp = mkdtempSync(join(tmpdir(), "morphir-extension-ids-"));
   try {
    const schema = join(temp, "id.schema.json");
-   writeFileSync(schema, JSON.stringify({$schema: "https://json-schema.org/draft/2020-12/schema", $ref: "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json#/$defs/id"}));
+   writeFileSync(schema, JSON.stringify({$schema: "https://json-schema.org/draft/2020-12/schema", $ref: "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json#/$defs/id"}));
    for (const c of load("identity-cases.json").cases.filter((c: any) => c.input.operation === "parse-id")) {
     const input = join(temp, "input.json"); writeFileSync(input, JSON.stringify(c.input.value));
     const result = spawnSync("jsonschema", ["validate", schema, input, "-r", schemaRoot], {encoding:"utf8", windowsHide:true});
@@ -202,7 +225,7 @@ describe("shared extension contract data", () => {
    expect(schemas.length).toBe(7);
    for (const name of schemas) {
     const schema = JSON.parse(readFileSync(join(schemaRoot, name), "utf8"));
-    expect(schema.$id).toBe(`https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/${name}`);
+    expect(schema.$id).toBe(`https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/${name}`);
     const result = spawnSync("jsonschema", ["metaschema", join(schemaRoot, name)], {encoding:"utf8", windowsHide:true});
     expect(result.status, result.stderr).toBe(0);
    }

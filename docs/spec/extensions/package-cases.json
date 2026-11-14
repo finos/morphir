@@ -1,5 +1,5 @@
 {
-  "familyVersion": "0.1.0-preview.2",
+  "familyVersion": "0.1.0-preview.3",
   "description": "Archive inputs and fixed expectations. No code in this corpus is executed. Case entry names are effective names after archive decoding, before one leading ./ is removed; null means no entry is implicated. Schema examples cover structure only.",
   "cases": [
     {
@@ -45,7 +45,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -105,7 +105,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -177,7 +177,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -267,7 +267,7 @@
           "schema": "lock.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -356,7 +356,7 @@
           "schema": "release.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -416,7 +416,7 @@
           "schema": "release.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -476,7 +476,7 @@
           "schema": "release.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -536,7 +536,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -599,7 +599,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -662,7 +662,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -725,7 +725,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -788,7 +788,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -851,7 +851,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -914,7 +914,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -977,7 +977,7 @@
           "schema": "release.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
             "extensionId": "org.finos.morphir.fsharp-frontend",
             "shortId": "fsharp-frontend",
             "version": "0.6.0",
@@ -1040,7 +1040,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1115,7 +1115,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1190,7 +1190,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1265,7 +1265,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1340,7 +1340,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1415,7 +1415,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1490,7 +1490,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1565,7 +1565,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1640,7 +1640,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1715,7 +1715,7 @@
           "schema": "index-record.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json",
             "id": "org.finos.morphir.fsharp-frontend",
             "name": "F# frontend",
             "version": "0.6.0",
@@ -1790,7 +1790,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -1883,7 +1883,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -1976,7 +1976,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2069,7 +2069,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2162,7 +2162,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2258,7 +2258,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2354,7 +2354,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2447,7 +2447,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2540,7 +2540,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2633,7 +2633,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2729,7 +2729,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2825,7 +2825,7 @@
           "schema": "catalog.schema.json",
           "valid": true,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json",
             "extensions": [
               {
                 "extensionId": "org.finos.morphir.fsharp-frontend",
@@ -2918,7 +2918,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3010,7 +3010,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0",
@@ -3102,7 +3102,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3194,7 +3194,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3286,7 +3286,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3378,7 +3378,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3470,7 +3470,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3565,7 +3565,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3660,7 +3660,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3752,7 +3752,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3844,7 +3844,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -3939,7 +3939,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -4034,7 +4034,7 @@
           "schema": "lock.schema.json",
           "valid": false,
           "document": {
-            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json",
+            "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json",
             "selection": {
               "kind": "exact",
               "value": "0.6.0"
@@ -5937,6 +5937,236 @@
       "expected": {
         "outcome": "refuse",
         "code": "package.unsupported",
+        "entry": null
+      }
+    },
+    {
+      "id": "mixed-runtimes",
+      "scenarios": [
+        "A mixed descriptor is accepted"
+      ],
+      "input": {
+        "operation": "read-descriptor",
+        "artifacts": [
+          {
+            "runtime": "process",
+            "platform": "x86_64-unknown-linux-gnu",
+            "filename": "valid-zip.zip",
+            "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          },
+          {
+            "runtime": "wasm",
+            "filename": "extension.wasm",
+            "sha256": "bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050"
+          }
+        ],
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "shape": "mixed"
+      }
+    },
+    {
+      "id": "select-matching-process",
+      "scenarios": [
+        "A host that runs both selects the matching process artifact and the lock records it"
+      ],
+      "input": {
+        "operation": "select-artifact",
+        "hostPlatform": "x86_64-unknown-linux-gnu",
+        "hostRuntimes": [
+          "process",
+          "wasm"
+        ],
+        "artifacts": [
+          {
+            "runtime": "process",
+            "platform": "x86_64-unknown-linux-gnu",
+            "filename": "valid-zip.zip",
+            "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          },
+          {
+            "runtime": "wasm",
+            "filename": "extension.wasm",
+            "sha256": "bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050"
+          }
+        ],
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "selected": {
+          "runtime": "process",
+          "filename": "valid-zip.zip"
+        },
+        "lock": {
+          "runtime": "process",
+          "platform": {
+            "os": "linux",
+            "arch": "x86_64"
+          }
+        }
+      }
+    },
+    {
+      "id": "select-wasm-fallback",
+      "scenarios": [
+        "A host with no matching process artifact selects the WASM artifact"
+      ],
+      "input": {
+        "operation": "select-artifact",
+        "hostPlatform": "aarch64-apple-darwin",
+        "hostRuntimes": [
+          "process",
+          "wasm"
+        ],
+        "artifacts": [
+          {
+            "runtime": "process",
+            "platform": "x86_64-unknown-linux-gnu",
+            "filename": "valid-zip.zip",
+            "sha256": "e7843fe0cb40b99db07130143467fa7a36c00bfef5d680ed0b42cf0e2d1fd042",
+            "package": {
+              "format": "zip",
+              "root": "bundle",
+              "entryPoint": "run",
+              "executables": [
+                "tools/helper"
+              ],
+              "treeSha256": "b4b57fdb392b9a799f373d1cba33a6ccd8facdbf17e6a48afad9949bb352bf98"
+            }
+          },
+          {
+            "runtime": "wasm",
+            "filename": "extension.wasm",
+            "sha256": "bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050"
+          }
+        ],
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "selected": {
+          "runtime": "wasm",
+          "filename": "extension.wasm"
+        },
+        "lock": {
+          "runtime": "wasm"
+        }
+      }
+    },
+    {
+      "id": "nupkg-packed",
+      "scenarios": [
+        "A repository signature does not change the tree"
+      ],
+      "input": {
+        "operation": "install-package",
+        "archive": "fixtures/nupkg-packed.nupkg",
+        "bytesSha256": "ea0499d6575dd5cc6284555cad60e7cb910d6d3cf49b0d3741ff0140260fadce",
+        "archiveLength": 973,
+        "artifact": {
+          "runtime": "process",
+          "platform": "x86_64-unknown-linux-gnu",
+          "filename": "finos.morphir.example.0.6.0.nupkg",
+          "package": {
+            "format": "nupkg",
+            "root": "morphir/linux-x64",
+            "entryPoint": "run",
+            "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+          }
+        },
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "manifest": "morphir-package-tree 0.1.0-preview.1\nf 3 0343b13708cd52d33ecbb1043b5ae145e73a532bdccf7de6925db5cce6054fd3 lib/a.dll\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 run\n",
+        "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+      }
+    },
+    {
+      "id": "nupkg-repository-signed",
+      "scenarios": [
+        "A repository signature does not change the tree"
+      ],
+      "input": {
+        "operation": "install-package",
+        "archive": "fixtures/nupkg-repository-signed.nupkg",
+        "bytesSha256": "4eaf211c64a4a8806e030ab1b78d9458abe01adf9af8d2d7e443e10692c613d8",
+        "archiveLength": 984,
+        "artifact": {
+          "runtime": "process",
+          "platform": "x86_64-unknown-linux-gnu",
+          "filename": "finos.morphir.example.0.6.0.nupkg",
+          "package": {
+            "format": "nupkg",
+            "root": "morphir/linux-x64",
+            "entryPoint": "run",
+            "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+          }
+        },
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "accept",
+        "manifest": "morphir-package-tree 0.1.0-preview.1\nf 3 0343b13708cd52d33ecbb1043b5ae145e73a532bdccf7de6925db5cce6054fd3 lib/a.dll\nx 5 bc61f7ba88d440dd187004fdb8d0434f1a11de93a315b93faed3b64c40bac050 run\n",
+        "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+      }
+    },
+    {
+      "id": "nupkg-upper-case-filename",
+      "scenarios": [
+        "A NuGet package file name in upper case"
+      ],
+      "input": {
+        "operation": "read-descriptor",
+        "artifact": {
+          "runtime": "process",
+          "platform": "x86_64-unknown-linux-gnu",
+          "filename": "Finos.Morphir.Example.0.6.0.nupkg",
+          "package": {
+            "format": "nupkg",
+            "root": "morphir/linux-x64",
+            "entryPoint": "run",
+            "treeSha256": "244884f61f2bb1f36eb3c35b0c82eb3927fc17a6c1dcf2ff6f9f715d5bcafc57"
+          }
+        },
+        "critical": [
+          "artifacts.package"
+        ]
+      },
+      "expected": {
+        "outcome": "refuse",
+        "code": "package.archive_format",
         "entry": null
       }
     },

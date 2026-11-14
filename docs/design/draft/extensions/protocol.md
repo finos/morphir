@@ -264,7 +264,7 @@ records parsed-value comparison for complete claim sets. Object key order and
 whitespace do not matter; array order does. Numbers in shared claim documents are integers without fractions or exponents;
 `1.0` is refused. No canonical byte encoding for
 signatures is defined. The current claim and record formats use the extension state family
-`0.1.0-preview.2` schema URLs. Shared-document I-JSON equality follows the
+`0.1.0-preview.3` schema URLs. Shared-document I-JSON equality follows the
 [distribution contract](./distribution-and-acquisition.md#shared-extension-state-contract). WASM publish/install probes,
 claim signatures and process sandboxing retain the boundaries recorded there.
 
@@ -274,7 +274,7 @@ MoonBit Wasm extension using MEP `0.2.0-draft.1` and the `morphir-bytes-v1` ABI.
 
 ```json
 {
-  "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/claims.schema.json",
+  "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/claims.schema.json",
   "protocolVersions": ["0.2.0-draft.1"],
   "extension": {
     "id": "morphir-elm",
@@ -905,8 +905,8 @@ to the `1.0.0-draft` line once its shape is settled. The workspace discovery
 protocol moves from the integer `1` to `0.1.0-draft.1`.
 
 The capability claim set belongs to the extension state family at
-`0.1.0-preview.2`. A standalone `describe` result carries the exact `$schema`
-`https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/claims.schema.json`
+`0.1.0-preview.3`. A standalone `describe` result carries the exact `$schema`
+`https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/claims.schema.json`
 in place of `claimsVersion`; embedded claims carry no URL or version. A current
 reader SHALL NOT read or convert earlier claim formats. Historical draft.1
 called the document a capability statement and used `statementVersion`; draft.2

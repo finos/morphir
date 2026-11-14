@@ -167,7 +167,7 @@ the guest's complete claim set.
 
 The new output directory contains `release.json`, the executable with its input
 filename, and `<filename>.sha256`. The descriptor uses the extension state family
-`$schema` URL at `0.1.0-preview.2`, retains optional claim members and records
+`$schema` URL at `0.1.0-preview.3`, retains optional claim members and records
 runtime `process`. Current authoring belongs to morphir-dotnet, including publication
 for extensions owned by other repositories, as decided in Decision 13. No Cargo manifest, source layout, current Git revision
 or package-version inference is required. Build provenance remains the producer's
@@ -289,7 +289,7 @@ The new `morphir-elm` is a MoonBit Wasm extension.
 
 ```json
 {
-  "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json",
+  "$schema": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json",
   "extensionId": "morphir-elm",
   "shortId": "elm",
   "version": "0.3.0",
@@ -459,13 +459,13 @@ by parsed value, not spacing, member order or line endings.
 
 | Document | Path | Exact schema URL | Unknown members |
 | --- | --- | --- | --- |
-| release | `release.json in a release` | [`release.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json) | ignored unless named by an unknown critical path |
-| index-record | `each extensions/<id>.jsonl history line` | [`index-record.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json) | ignored unless named by an unknown critical path |
-| catalog | `catalog/extensions.json` | [`catalog.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json) | ignored unless named by an unknown critical path |
-| lock | `locks/extensions/<id>.json` | [`lock.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json) | refused |
-| journal | `locks/extensions/<id>.json.transaction` | [`journal.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/journal.schema.json) | refused |
-| repositories | `config/extensions/repositories.json` | [`repositories.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/repositories.schema.json) | refused |
-| claims | `standalone morphir.extension.describe result` | [`claims.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/claims.schema.json) | ignored unless named by an unknown critical path |
+| release | `release.json in a release` | [`release.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json) | ignored unless named by an unknown critical path |
+| index-record | `each extensions/<id>.jsonl history line` | [`index-record.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json) | ignored unless named by an unknown critical path |
+| catalog | `catalog/extensions.json` | [`catalog.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json) | ignored unless named by an unknown critical path |
+| lock | `locks/extensions/<id>.json` | [`lock.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json) | refused |
+| journal | `locks/extensions/<id>.json.transaction` | [`journal.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/journal.schema.json) | refused |
+| repositories | `config/extensions/repositories.json` | [`repositories.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/repositories.schema.json) | refused |
+| claims | `standalone morphir.extension.describe result` | [`claims.schema.json`](https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/claims.schema.json) | ignored unless named by an unknown critical path |
 
 The URL is required and written first. No document has `schemaVersion`.
 Embedded claims have neither URL nor version; the enclosing schema covers them.
@@ -492,7 +492,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json` | required | no | Exact URL for this document, written first. |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json` | required | no | Exact URL for this document, written first. |
 | `extensionId` | string | required | no | Whole extension id, following the normative identity rule. |
 | `shortId` | string | required | no | Lowercase portable release/tag token. It does not replace extensionId. |
 | `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
@@ -506,7 +506,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/index-record.schema.json` | required | no | Exact URL for this document, written first. |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/index-record.schema.json` | required | no | Exact URL for this document, written first. |
 | `id` | string | required | no | Whole extension id in an index record, or the protocol-defined capability identifier. |
 | `name` | string | required | no | Nonempty display name. |
 | `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
@@ -523,7 +523,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json` | required | no | Exact URL for this document, written first. |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/catalog.schema.json` | required | no | Exact URL for this document, written first. |
 | `extensions` | array of `catalogEntry` | required | no | Unique entries in ascending byte order of extensionId. Readers refuse duplicates and the first entry out of order. |
 | `critical` | array of string | optional | no | Paths understood by the reader, including artifacts.package or extensions.package whenever present. |
 
@@ -531,17 +531,17 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/lock.schema.json` | required | no | Exact URL for this document, written first. |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/lock.schema.json` | required | no | Exact URL for this document, written first. |
 | `selection` | object | required | no | Requested channel or exact release. |
 | `extensionId` | string | required | no | Whole extension id, following the normative identity rule. |
 | `name` | string | required | no | Nonempty display name. |
 | `version` | string | required | no | Exact canonical SemVer 2.0 extension version. |
-| `index` | object | required | no | Exact provider-tagged provenance: a `local-directory` or `github-release` variant. The lock also pins embedded claims inside this object. |
-| `source` | object | required | no | Provider-tagged artifact source: a `local-file` or `github-release-asset` variant. |
+| `index` | object | required | no | Exact provider-tagged provenance: a `local-directory`, `github-release` or `nuget-package` variant. The lock also pins embedded claims inside this object. |
+| `source` | object | required | no | Provider-tagged artifact source: a `local-file`, `github-release-asset` or `nuget-package-entry` variant. |
 | `runtime` | `process`, `wasm` | required | no | process or wasm. |
 | `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
 | `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
-| `digest` | string | required | no | Lowercase SHA-256 of delivered bytes; the archive digest for a package. |
+| `digest` | string | optional | no | Required, except for a `nupkg` package, where it is forbidden: lowercase SHA-256 of delivered bytes; the archive digest for a zip or tar.gz package. |
 | `capabilities` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
 | `mepVersions` | array of string | required | no | Protocol versions projected unchanged from claims.protocolVersions. |
 | `frontend` | object | optional | no | Required when frontend is a declared kind; exactly the corresponding claims metadata. |
@@ -553,7 +553,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/journal.schema.json` | required | no | Exact URL for this document, written first. |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/journal.schema.json` | required | no | Exact URL for this document, written first. |
 | `nextLock` | null or array of integer | required | yes | Required byte array or null. Exact UTF-8 lock bytes; null means remove the lock. |
 | `nextCatalog` | null or array of integer | required | yes | Required byte array or null. Exact UTF-8 catalog bytes; null means remove the catalog. |
 
@@ -561,14 +561,14 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/repositories.schema.json` | required | no | Exact URL for this document, written first. |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/repositories.schema.json` | required | no | Exact URL for this document, written first. |
 | `repositories` | array of object | required | no | Unique repository names, in ascending byte order by name when written. |
 
 ### Standalone capability claim set members
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/claims.schema.json` | required | no | Exact URL for this document, written first. |
+| `$schema` | `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/claims.schema.json` | required | no | Exact URL for this document, written first. |
 | `protocolVersions` | array of string | required | no | Nonempty canonical MEP SemVer strings. Current hosts negotiate the 0.2 line. |
 | `extension` | object | required | no | Protocol extension identity, name, version and declared capability kinds. |
 | `capabilities` | object | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
@@ -580,7 +580,7 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
 | `runtime` | `process`, `wasm` | required | no | process or wasm. |
-| `sha256` | string | required | no | Lowercase SHA-256 of delivered bytes, the archive for packages. |
+| `sha256` | string | optional | no | Required, except for a `nupkg` package, where it is forbidden: lowercase SHA-256 of delivered bytes, the archive for zip and tar.gz packages. |
 | `filename` | string | required | no | Portable single filename of the delivered artifact. A process archive without package is refused. |
 | `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
 | `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
@@ -591,12 +591,12 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
 | `runtime` | `process`, `wasm` | required | no | process or wasm. |
-| `sha256` | string | required | no | Lowercase SHA-256 of delivered bytes, the archive for packages. |
+| `sha256` | string | optional | no | Required, except for a `nupkg` package, where it is forbidden: lowercase SHA-256 of delivered bytes, the archive for zip and tar.gz packages. |
 | `filename` | string | required | no | Portable single filename of the delivered artifact. A process archive without package is refused. |
 | `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
 | `package` | `package` | optional | no | Package metadata copied unchanged into the index, installed entry and lock. |
 | `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
-| `source` | object | required | no | Provider-tagged artifact source: a `local-file` or `github-release-asset` variant. |
+| `source` | object | required | no | Provider-tagged artifact source: a `local-file`, `github-release-asset` or `nuget-package-entry` variant. |
 | `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
 | `executable` | boolean | required | no | Runtime execution mode; false for wasm. Package file modes come from the tree manifest. |
 | `claimCheck` | `probed`, `unchecked` | required | no | probed or unchecked, records this writer's check, never inferred from another phase. |
@@ -612,11 +612,11 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 | `runtime` | `process`, `wasm` | required | no | process or wasm. |
 | `platform` | object | optional | no | Target triple string in a release descriptor; `{os, arch}` in index, catalog and lock. Required for process and absent for wasm. |
 | `args` | array of string | required | no | Exact locked process argument vector; empty for wasm. |
-| `digest` | string | required | no | Lowercase SHA-256 of delivered bytes; the archive digest for a package. |
+| `digest` | string | optional | no | Required, except for a `nupkg` package, where it is forbidden: lowercase SHA-256 of delivered bytes; the archive digest for a zip or tar.gz package. |
 | `storePath` | string | required | no | Home-relative forward-slash artifact path. A package records `store/extensions/packages/sha256/<treeSha256>/tree/<entryPoint>`. |
 | `capabilities` | array of `frontend`, `backend`, `transform`, `validator`, `workspace` | required | no | Capability kinds projected from claims.extension.types, or the protocol capability object inside a claim set. |
 | `mepVersions` | array of string | required | no | Protocol versions projected unchanged from claims.protocolVersions. |
-| `index` | object | required | no | Exact provider-tagged provenance: a `local-directory` or `github-release` variant. The lock also pins embedded claims inside this object. |
+| `index` | object | required | no | Exact provider-tagged provenance: a `local-directory`, `github-release` or `nuget-package` variant. The lock also pins embedded claims inside this object. |
 | `frontend` | object | optional | no | Required when frontend is a declared kind; exactly the corresponding claims metadata. |
 | `backend` | object | optional | no | Required when backend is a declared kind; exactly the corresponding claims metadata. |
 | `executable` | boolean | required | no | Runtime execution mode; false for wasm. Package file modes come from the tree manifest. |
@@ -631,8 +631,8 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `format` | `zip`, `tar.gz` | required | no | zip or tar.gz, with a matching .zip, .tar.gz or .tgz filename ignoring ASCII case. |
-| `root` | string | optional | no | Optional archive prefix stripped before tree paths; no leading or trailing slash. |
+| `format` | `zip`, `tar.gz`, `nupkg` | required | no | zip or tar.gz, with a matching .zip, .tar.gz or .tgz filename ignoring ASCII case; or nupkg, with the lower-case filename `<id>.<version>.nupkg`. |
+| `root` | string | optional | no | Archive prefix stripped before tree paths; no leading or trailing slash, and no `.` or `..` segment. Required for nupkg, so the package metadata never enters the tree. |
 | `entryPoint` | string | required | no | Tree path of the file to start, executable by definition. |
 | `executables` | array of string | optional | no | Additional executable tree paths. Each must name a file. |
 | `treeSha256` | string | required | no | Lowercase SHA-256 of the canonical tree manifest. |
@@ -649,12 +649,17 @@ single-segment and dotted ids. Full ids acquire only fixed suffixes.
 An artifact `source` and an `index` provenance are tagged unions. The `kind`
 member names the provider, and each variant has its own members. A new provider
 adds a variant; the other members of the family do not change. A reader refuses
-a `kind` that it does not list. `0.1.0-preview.2` lists these variants:
+a `kind` that it does not list. `0.1.0-preview.3` lists these variants:
 
 | Provider | Artifact `source` kind | `index` provenance kind |
 | --- | --- | --- |
 | Local developer repository | `local-file` | `local-directory` |
 | GitHub release | `github-release-asset` | `github-release` |
+| NuGet feed | `nuget-package-entry` | `nuget-package` |
+
+A lock pairs a source with the provenance of the same provider. A `nuget-package-entry`
+`id` equals the `nuget-package` `id` or starts with that `id` and a `.`; `foobar` does
+not extend `foo`. This compares two members, so it is a host rule, not a schema rule.
 
 ### Local source members
 
@@ -671,6 +676,16 @@ a `kind` that it does not list. `0.1.0-preview.2` lists these variants:
 | `repository` | string | required | no | GitHub `owner/repo`, as the release API spells it. |
 | `tag` | string | required | no | Exact Git tag of the release. |
 | `asset` | string | required | no | Exact release asset name; the artifact `filename`. |
+
+### NuGet package entry source members
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `kind` | `nuget-package-entry` | required | no | Tagged source, endpoint or selection case. |
+| `feed` | string | required | no | An `https` service index URL whose path ends in `/index.json`, with no userinfo, query or fragment, or an ordinary absolute folder path. `http` is refused, and no credential is ever recorded. |
+| `id` | string | required | no | Lower-case NuGet package id: the main package, or a package whose id extends it with a `.`. |
+| `version` | string | required | no | Normalized NuGet version, without build metadata. |
+| `path` | string | required | no | The package entry `morphir/<filename>` for WASM, or the `root` folder for a nupkg package. |
 
 ### Repository provenance members
 
@@ -689,18 +704,31 @@ a `kind` that it does not list. `0.1.0-preview.2` lists these variants:
 | `tag` | string | required | no | Exact Git tag of the release. |
 | `revision` | string | required | no | Lowercase SHA-256 of the exact `release.json` asset bytes. |
 
-### Lock provenance members
-
-The lock `index` is the provenance variant of the installed entry, with the
-pinned `claims` added. Both variants are closed.
+### NuGet package provenance members
 
 | Member | Type or values | Presence | Null | Meaning |
 | --- | --- | --- | --- | --- |
-| `kind` | `local-directory`, `github-release` | required | no | Tagged source, endpoint or selection case. |
+| `kind` | `nuget-package` | required | no | Tagged source, endpoint or selection case. |
+| `feed` | string | required | no | The feed, as in the source. |
+| `id` | string | required | no | Lower-case id of the main package, which holds `morphir/release.json`. |
+| `version` | string | required | no | Normalized NuGet version, without build metadata. |
+| `revision` | string | required | no | Lowercase SHA-256 of the exact `morphir/release.json` bytes. |
+
+### Lock provenance members
+
+The lock `index` is the provenance variant of the installed entry, with the
+pinned `claims` added. Every variant is closed.
+
+| Member | Type or values | Presence | Null | Meaning |
+| --- | --- | --- | --- | --- |
+| `kind` | `local-directory`, `github-release`, `nuget-package` | required | no | Tagged source, endpoint or selection case. |
 | `identity` | string | optional | no | Required for `local-directory`: the ordinary absolute canonical repository root, compared by bytes. |
 | `repository` | string | optional | no | Required for `github-release`: GitHub `owner/repo`. |
 | `tag` | string | optional | no | Required for `github-release`: the exact Git tag of the release. |
-| `revision` | string | required | no | Lowercase SHA-256 of the exact history file bytes, or of the `release.json` asset bytes for `github-release`. |
+| `feed` | string | optional | no | Required for `nuget-package`: the feed. |
+| `id` | string | optional | no | Required for `nuget-package`: the lower-case main package id. |
+| `version` | string | optional | no | Required for `nuget-package`: the normalized NuGet version. |
+| `revision` | string | required | no | Lowercase SHA-256 of the exact history file bytes, or of the `release.json` bytes for `github-release` and `nuget-package`. |
 | `claims` | `embedded` | required | no | Exact embedded claim set, with no $schema or version of its own. |
 
 ### Frontend metadata members
@@ -844,7 +872,7 @@ every provider.
 
 1. The release has one asset named exactly `release.json`. It is a release
    descriptor of this family, with the `$schema`
-   `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json`.
+   `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json`.
    A release holds one extension.
 2. Each artifact of the descriptor names a release asset by its `filename`.
    The asset name and `filename` are equal, byte for byte. Give each platform
@@ -867,12 +895,58 @@ A host resolves the release from the request:
 - `github:<owner>/<repo>`: the latest release, as the GitHub API reports it; that
   is never a draft or a prerelease.
 
+A release may offer artifacts of both runtimes, `process` and `wasm`;
+installation selects one, by the rule
+[a descriptor may offer more than one runtime](../../../spec/extensions/packages.md#requirement-a-descriptor-may-offer-more-than-one-runtime),
+and the lock records it.
+
 The host then selects the artifact for its own platform. A release with no
 `release.json`, with no artifact for the host platform, or with an artifact
 whose asset is missing, is refused, and nothing is installed. The installed
 entry and lock record the `github-release` provenance and the
 `github-release-asset` source. Downloading happens only during installation;
 running an installed extension never needs the network.
+
+### NuGet package convention
+
+A publisher makes an extension installable from a NuGet feed with these rules.
+The installer that validates and activates the package is the same for every
+provider. A feed such as nuget.org signs every package after it is packed, so the
+bytes of a `.nupkg` file change. Digests therefore cover the package contents:
+`treeSha256` for a process package and `sha256` for a WASM entry, never the
+`.nupkg` file.
+
+1. The main package holds `morphir/release.json`, a release descriptor of this
+   family with the `$schema`
+   `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/release.schema.json`.
+2. Give the main package the package type `MorphirExtension`. A package that is
+   also a .NET tool has the types `DotnetTool;MorphirExtension`, and
+   `dotnet tool install` still installs it.
+3. Layout A is one package. A process artifact is a `nupkg` package whose `root`
+   is a folder of the main package, such as `morphir/linux-x64`. A WASM artifact is
+   the entry `morphir/<filename>`.
+4. Layout B is the main package and one package for each RID. Each process artifact
+   names its RID package by its `filename`, `<id>.<version>.nupkg` in lower case.
+   A RID-specific .NET tool is layout B, with the `root` `tools/<tfm>/<rid>`, such
+   as `tools/net11.0/osx-arm64`.
+5. The id of each RID package is the main id, a `.`, and more: for example
+   `finos.morphir.fsharp-frontend.linux-x64` under
+   `finos.morphir.fsharp-frontend`. `finos.morphir.fsharp-frontendx` does not
+   extend it.
+6. The `root` never names the package metadata: `.nuspec`, `_rels/`,
+   `[Content_Types].xml`, `package/` and `.signature.p7s` never enter the tree.
+7. Publish the RID packages first, and compute the `treeSha256` of each from its
+   contents. Then write the finished `release.json` and pack the main package with it.
+
+A release may offer artifacts of both runtimes, `process` and `wasm`;
+installation selects one, by the rule
+[a descriptor may offer more than one runtime](../../../spec/extensions/packages.md#requirement-a-descriptor-may-offer-more-than-one-runtime),
+and the lock records it.
+
+The installed entry and lock record the `nuget-package` provenance, whose `revision`
+is the SHA-256 of `morphir/release.json`, and the `nuget-package-entry` source of the
+selected artifact. A feed credential comes from the host's NuGet configuration or
+credential provider, and is never written into a Morphir document.
 
 ### History, locks and path spelling
 
@@ -1012,7 +1086,7 @@ These rules apply to the release descriptor, each index record and the installed
    element is named through its array, for example `artifacts.package` or
    `extensions.note`. This applies within embedded claims too.
 2. **Exact schema URLs.** Read only the seven file URLs under
-   `https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/`, listed below.
+   `https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/`, listed below.
    Match as exact text. A reader SHALL NOT read earlier versions, any other
    prerelease, or a document with `schemaVersion` in place of `$schema`.
    No conversion between versions is defined. Decision 15A gives this family
@@ -1086,7 +1160,7 @@ independently built artifact through the production host boundary.
 The [beta.10 claims decision](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0008-beta10-claims-gate-dispositions.md)
 records these dispositions and the corresponding #921 Q1-Q4 gates. Those are the historical beta.10 dispositions. Decisions 15/15A and the approved
 identity and package changes defined the extension state family at
-`0.1.0-preview.1`, and provider-tagged sources moved it to `0.1.0-preview.2`; the historical releases are not converted.
+`0.1.0-preview.1`, and provider-tagged sources moved it to `0.1.0-preview.2`, and NuGet sources to `0.1.0-preview.3`; the historical releases are not converted.
 
 ## Non-goals
 
