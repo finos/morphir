@@ -50,6 +50,26 @@ Check the installation:
 morphir --version
 ```
 
+### Extensions
+
+The CLI installs extensions, such as a frontend for another language, from a GitHub release or from a NuGet feed
+(`v0.5.0-alpha.3` and later for NuGet). Give it a Morphir home, and the extension's source:
+
+```shell
+# From a GitHub release that carries a release.json asset
+morphir extension install github:finos/morphir-python@0.6.2 --home "$HOME/.morphir" --no-probe
+
+# From a NuGet package: the sources of your nuget.config (nuget.org, a private V3 feed or a folder), or one --source
+morphir extension install nuget:Acme.Morphir.Python@1.2.3 --home "$HOME/.morphir" --no-probe
+```
+
+Then `morphir compile` and `morphir generate` run it by its id with `--extension-id`. Only `extension install` uses
+the network. A NuGet install reads credentials from `nuget.config` and NuGet credential providers, writes none of them
+to the Morphir home, and checks package signatures as the dotnet CLI does. The
+[extension install reference](https://finos.github.io/morphir-dotnet/docs/cli/management/#extension-install) covers
+version selection, sources, signatures and every refusal. Extension authors publish to NuGet with the
+[NuGet publishing guide](https://finos.github.io/morphir-dotnet/docs/guides/publish-extension-nuget/).
+
 ## The Elm tooling
 
 `morphir-elm` is delivered through `npm`, so it needs [Node.js and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).

@@ -460,7 +460,7 @@ describe("publication gate", () => {
 	test("the pinned source is its own release: newer than every v* tag, nothing unreleased", () => {
 		const changelog = read(`${config.source.submodule}/CHANGELOG.md`);
 		const version = changelogReleaseVersion(changelog);
-		expect(version).toBe("0.5.0-alpha.2");
+		expect(version).toBe("0.5.0-alpha.3");
 		const tags = ["v0.4.0-alpha.4", "v0.4.0-alpha.7", "v0.4.0-beta.12"];
 		const released = { ...config, source: { ...config.source, candidate: undefined } };
 		// With the source's tag v<version> on the pinned commit, nothing blocks publication.

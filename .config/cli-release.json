@@ -3,7 +3,7 @@
 	"source": {
 		"repository": "https://github.com/finos/morphir-dotnet",
 		"submodule": "ecosystem/morphir-dotnet",
-		"commit": "2076811e598f9d4a0b359bd866da9e92dace3986"
+		"commit": "deed400101373443e9a9ee9530aa10d283a14154"
 	},
 	"tagPrefix": "v",
 	"kit": "spec/ir/mck",
