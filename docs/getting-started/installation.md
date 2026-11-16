@@ -50,6 +50,26 @@ Check the installation:
 morphir --version
 ```
 
+### C#
+
+From `v0.5.0-alpha.4`, every offering of the CLI compiles C# and generates C# itself, with nothing to install. The
+Native AOT `morphir` is included:
+
+- `morphir compile` reads `.cs` documents with the built-in frontend `morphir-dotnet.csharp`. It accepts a subset of
+  C# 15 (records, closed record hierarchies, unions, enums and static classes with pure methods) and refuses
+  everything else with a located diagnostic.
+- `morphir generate --target csharp` writes C# 15 from a model. It reads the current IR, and upgrades an older model
+  first.
+
+The morphir-dotnet documentation covers the
+[C# frontend](https://finos.github.io/morphir-dotnet/docs/frontends/csharp/) and
+[what it accepts](https://finos.github.io/morphir-dotnet/docs/frontends/csharp/coverage/), as well as
+[C# generation](https://finos.github.io/morphir-dotnet/docs/backends/csharp/), its
+[options](https://finos.github.io/morphir-dotnet/docs/backends/csharp/options/), the
+[build integration](https://finos.github.io/morphir-dotnet/docs/backends/csharp/build-integration/) (which needs the
+.NET SDK 11.0.100 or later) and its
+[diagnostics](https://finos.github.io/morphir-dotnet/docs/backends/csharp/diagnostics/).
+
 ### Extensions
 
 The CLI installs extensions, such as a frontend for another language, from a GitHub release or from a NuGet feed
