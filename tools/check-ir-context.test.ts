@@ -72,11 +72,12 @@ describe("morphir.compact/0.1.0-draft.1 fixed cases", () => {
 	test("the cases cover each file kind at v3 and v4 and each policy rule", () => {
 		const ids = policy.cases.map(c => c.id).sort();
 		expect(ids).toEqual([
-			"alias-allocation-order", "look-alike-literal", "loss", "name-used-once", "non-ascii-content", "table-order", "tie",
+			"alias-allocation-order", "look-alike-literal", "loss", "loss-boundary-accepted", "loss-boundary-declined",
+			"name-used-once", "non-ascii-content", "table-order", "tie",
 			"v3-manifest", "v3-module", "v3-single-file", "v3-type", "v3-value",
 			"v4-manifest", "v4-module", "v4-single-file", "v4-type", "v4-value",
 		]);
-		expect(policy.cases.filter(c => !c.compacted).map(c => c.id).sort()).toEqual(["loss", "v3-manifest", "v4-manifest"]);
+		expect(policy.cases.filter(c => !c.compacted).map(c => c.id).sort()).toEqual(["loss", "loss-boundary-declined", "v3-manifest", "v4-manifest"]);
 	});
 
 	test("non-ASCII content is written raw, as two UTF-8 bytes per letter", () => {

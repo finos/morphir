@@ -38,26 +38,32 @@ stays spelled out consumes nothing.
 
 ## Costs and the two decisions
 
-For a candidate with spelling `s` and tentative id `id`:
+Every cost is the exact number of UTF-8 bytes in a piece of JCS text. `len(x)` is the byte length of the bare text of
+`x` (an id, a spelling `s` or a table name), **without** quotes. Ids and spellings are ASCII under the envelope
+schema's patterns, so JCS writes them unescaped and `len(x)` is their character count: `len(fqNames)` is 7, and
+`len(a)` is 1. Each term below is the JCS text in its second column; the third column says which quotes, colons,
+commas and braces that text holds, and only those are counted.
 
-| Quantity | Bytes |
-| --- | --- |
-| A reference `{"$name":"<id>"}` | `R = 12 + len(id)` (13 for a one-letter id) |
-| Saved by aliasing | `S = Σ (O − R)` over its occurrences |
-| Its table entry, `"<id>":"<s>"` with one separator | `E = len(id) + len(s) + 6` |
+| Term | JCS text counted | Quotes, colon, comma, braces | Bytes |
+| --- | --- | --- | --- |
+| `R`, a reference | `{"$name":"<id>"}` | 4 quotes, 1 colon, no comma, 2 braces | `12 + len(id)` (13 for a one-letter id) |
+| `O`, an occurrence | the value as the plain document writes it: `"<s>"`, or the classic word arrays | 2 quotes for a string; for classic arrays, every bracket, quote and comma inside them | `len(s) + 2` for a string |
+| `S`, the saving | `Σ (O − R)` over the candidate's occurrences | — | — |
+| `E`, an entry with its separator | `"<id>":"<s>",` | 4 quotes, 1 colon, 1 comma, no braces | `len(id) + len(s) + 6` |
+| `T`, a table header | `"<table>":{}` | 2 quotes, 1 colon, no comma, 2 braces | `len(table) + 5`: `fqNames` 12, `modulePaths` 16, `names` 10, `packagePaths` 17 |
+| An entry in the envelope | `"<id>":"<s>"` | 4 quotes, 1 colon, no comma, no braces | `len(id) + len(s) + 5` |
+| The separators | `,` between two entries of a table and between two tables | 1 comma each | `k − 1` for `k` entries |
+| The fixed envelope | `{"$schema":"` (12), the URL (79), `","context":{` (13), `},"document":` (13), `}` (1) | 8 quotes, 3 colons, 2 commas, 4 braces | 118 |
 
 1. **Alias decision.** In order, each candidate is aliased if and only if `S > E`. When `S = E` it stays spelled out.
    A table that already holds 16,384 entries takes no more; later candidates of that table stay spelled out.
-2. **Loss decision.** Let `Σ S` be the savings of the aliased candidates. The envelope adds
-   `118 + Σ_tables (len("<table>") + 3) + Σ_entries (len(id) + len(s) + 5) + (k − 1)` bytes, where 118 is the envelope without
-   its tables and document, the table headers cost 12 (`fqNames`), 16 (`modulePaths`), 10 (`names`) and 17
-   (`packagePaths`), and `k` is the number of entries (the `k − 1` commas between entries and tables). The writer
-   writes the envelope only when `Σ S` is greater than that overhead, so the compacted file is smaller than the plain
-   one. Otherwise, or when no candidate is aliased, it writes the plain document as JCS, and its result says that no
-   alias was worth its cost.
-
-The envelope's fixed 118 bytes are `{"$schema":"` (12), the 79-byte URL, `","context":{` (13), `},"document":` (13)
-and the final `}` (1).
+2. **Loss decision.** Let `Σ S` be the savings of the aliased candidates, and let the overhead be
+   `H = 118 + Σ_tables T + Σ_entries (len(id) + len(s) + 5) + (k − 1)`, summed over the tables that hold an entry and
+   over the `k` entries. The compacted file is `plain − Σ S + H` bytes. The writer writes the envelope only when
+   `Σ S > H`, so the compacted file is smaller than the plain one. When `Σ S = H` the two are the same size and the
+   writer declines. Otherwise, or when no candidate is aliased, it writes the plain document as JCS, and its result
+   says that no alias was worth its cost. `loss-boundary-declined` (`Σ S = H`) and `loss-boundary-accepted`
+   (`Σ S = H + 1`) pin the boundary.
 
 ## Spellings used by the cases
 
@@ -68,6 +74,8 @@ and the final `}` (1).
 | P | `acme/orders:pricing#net-price` | 29 | 31 | — |
 | N | `discounted-amount-before-regional-sales-tax-adjustment` (a name) | 54 | 56 | 70 |
 | M | `morphir/SDK:basics#multiply` | 27 | 29 | 55 |
+| X | `acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment-for-orders-shipped-to-customers-outside-the-primary-region` | 158 | 160 | — |
+| Y | X with `domestic` for `primary` | 159 | 161 | — |
 
 The classic form of F is
 `[[["acme"],["order","management"]],[["pricing"],["discount","rules"]],["discounted","amount","before","regional","sales","tax","adjustment"]]`:
@@ -93,6 +101,8 @@ computed by hand and then compared with the byte length of the written files.
 | `table-order` | Ids run across tables in first-use order; JCS writes `fqNames` before `names`; a classic FQName used once is worth an alias |
 | `look-alike-literal` | A string literal holding `{"$name":"a"}` stays a literal beside a real alias `a` |
 | `loss` | An alias worth its entry, but not the envelope: the output is the plain file |
+| `loss-boundary-declined` | Savings exactly equal to the overhead (294): the output is the plain file |
+| `loss-boundary-accepted` | Savings one byte above the overhead (296 > 295): the envelope is written, one byte smaller |
 
 `bun test tools/check-ir-context.test.ts` checks only that each `expected.json` is JCS, that a compacted one
 satisfies the envelope schema and a plain one has no envelope, and that each input is a valid plain document where a

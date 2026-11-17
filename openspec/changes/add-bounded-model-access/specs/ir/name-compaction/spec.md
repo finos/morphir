@@ -63,7 +63,7 @@ A whole-file reader reads the entire file, checks its context and expands every 
 | Admit unknown optional context members safely | Ignoring unknown members; refusing unknown critical paths | Retaining the original bytes for pass-through |
 | Make expansion lossless | All | — |
 | Make compaction deterministic and cost-aware | All | — |
-| Name the writer policy, and the five policy requirements after it | All | — |
+| Name the writer policy, and the seven policy requirements after it | All | — |
 | Support bounded alias resolution | — | All |
 | Order the context before the document | Refusing a context after the document | Accepting it through bounded spill or a further pass |
 | Advertise the streaming order only when declared | All | All |
@@ -219,8 +219,22 @@ Candidates SHALL be taken in the order of the byte offset of their first occurre
 - **WHEN** the input lists a field of type F before a field of type G, but JCS sorts the G field first
 - **THEN** G is aliased as `a` and F as `b`
 
+### Requirement: Measure each cost as the bytes of its JCS text
+`len(x)` SHALL be the UTF-8 byte length of an id, a spelling or a table name as JCS writes it inside a string, without its quotes; ids and spellings are ASCII, so it is their character count. Every other cost SHALL be the whole byte length of the JCS text it names, counting each quote, colon, comma, bracket and brace in that text and nothing else.
+
+#### Scenario: A table name is measured without its quotes
+- **WHEN** the policy measures the `fqNames` table
+- **THEN** `len(fqNames)` is 7, and its header `"fqNames":{}` costs 12 bytes
+
+### Requirement: Count the envelope's fixed bytes, table headers and entries
+The envelope without its tables and document SHALL cost 118 bytes: `{"$schema":"` (12), the 79-byte URL, `","context":{` (13), `},"document":` (13) and `}` (1). Each table holding an entry SHALL cost its header `"<table>":{}`, `len(table) + 5` bytes: 12 for `fqNames`, 16 for `modulePaths`, 10 for `names`, 17 for `packagePaths`. Each entry `"<id>":"<spelling>"` SHALL cost `len(id) + len(spelling) + 5`, and `k` entries SHALL add `k − 1` commas.
+
+#### Scenario: One entry in one table
+- **WHEN** the context holds only the `fqNames` entry `a` with a 158-byte spelling
+- **THEN** the envelope adds 118 + 12 + (1 + 158 + 5) + 0 = 294 bytes besides the document
+
 ### Requirement: Alias a name only when it saves more than its entry
-With `R = 12 + len(id)` for a reference and `E = len(id) + len(spelling) + 6` for its table entry, a candidate SHALL be aliased only when the sum over its occurrences of `size − R` is greater than `E`. A candidate whose saving equals `E` SHALL stay spelled out. A table that holds 16,384 entries SHALL take no more.
+With `R = 12 + len(id)`, the bytes of the reference `{"$name":"<id>"}`, and `E = len(id) + len(spelling) + 6`, the bytes of the entry `"<id>":"<spelling>"` with one comma, a candidate SHALL be aliased only when the sum over its occurrences of `size − R` is greater than `E`. A candidate whose saving equals `E` SHALL stay spelled out. A table that holds 16,384 entries SHALL take no more.
 
 #### Scenario: A name used once stays spelled out
 - **WHEN** a v4 file uses a fully qualified name once and the policy is applied
@@ -231,11 +245,19 @@ With `R = 12 + len(id)` for a reference and `E = len(id) + len(spelling) + 6` fo
 - **THEN** the candidate stays spelled out and consumes no id
 
 ### Requirement: Decline compaction that would be a loss
-The writer SHALL write the envelope only when it is smaller than the plain document: when the aliased candidates' savings exceed `118 + Σ (len("<table>") + 3) + Σ (len(id) + len(spelling) + 5) + (entries − 1)` bytes. Otherwise, and when no candidate is aliased, it SHALL write the plain document as JCS and its result SHALL say that no alias was worth its cost.
+Let `H` be the bytes the envelope adds: 118, plus each table header, plus each entry, plus `k − 1` commas. The writer SHALL write the envelope only when the aliased candidates' savings are greater than `H`, so that the file is smaller than the plain document. Savings equal to `H` give a file of the same size, and the writer SHALL decline. When it declines, or when no candidate is aliased, it SHALL write the plain document as JCS and its result SHALL say that no alias was worth its cost.
 
 #### Scenario: Compaction that would be a loss is not applied
 - **WHEN** an alias saves more than its entry costs but less than the envelope adds
 - **THEN** the written file is the plain document in JCS, with no envelope
+
+#### Scenario: Savings equal to the overhead
+- **WHEN** the aliased candidates save exactly `H` bytes (case `loss-boundary-declined`: 294 = 294)
+- **THEN** the written file is the plain document in JCS, with no envelope
+
+#### Scenario: Savings one byte above the overhead
+- **WHEN** the aliased candidates save `H + 1` bytes (case `loss-boundary-accepted`: 296 against 295)
+- **THEN** the envelope is written, one byte smaller than the plain document
 
 ### Requirement: Support bounded alias resolution
 Bounded readers SHALL support resolving individual names without constructing the complete expanded document. Context bytes, entry counts and expanded spelling lengths SHALL count toward admission limits. Expansion exports SHALL support bounded writing. A valid context SHALL NOT bypass document, batch or resident-memory bounds.
