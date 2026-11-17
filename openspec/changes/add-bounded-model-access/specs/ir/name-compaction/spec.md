@@ -52,8 +52,10 @@ A whole-file reader reads the entire file, checks its context and expands every 
 | --- | --- | --- |
 | Identify the envelope by its schema URL | All | — |
 | Refuse an undeclared envelope | All | — |
+| Refuse a malformed envelope | All | — |
 | Preserve the document's semantic version | All | — |
 | Use typed file-local tables | All | — |
+| Refuse a malformed table entry | All | — |
 | Reference aliases only at typed name positions | All | — |
 | Resolve each position through its own table and encoding | All | — |
 | Leave arbitrary content uninterpreted | All | — |
@@ -90,6 +92,18 @@ A top-level `$schema` member SHALL mark a file as an envelope, because no plain 
 - **WHEN** a file's `$schema` is `https://morphir.finos.org/schemas/ir-context/0.2.0/document.schema.json` and the reader declares only `0.1.0-draft.1`
 - **THEN** reading is refused with `context.undeclared_schema`, naming the file and the URL
 
+### Requirement: Refuse a malformed envelope
+A reader SHALL refuse a declared envelope with `context.invalid_envelope`, naming the file and the member, when it has no `context` member or no `document` member, when either is not a JSON object, or when `critical` is present and is not an array of strings. Member order SHALL stay `context.after_document`, unknown optional members SHALL stay ignored, and a `$schema` that is not a string SHALL be an undeclared URL.
+
+#### Scenario: A critical member of the wrong JSON type
+- **WHEN** a declared envelope's `critical` member is the string `"context.names"` rather than an array
+- **THEN** reading is refused with `context.invalid_envelope`, naming the file and `critical`
+- **AND** the reader does not report `context.unknown_critical` for it
+
+#### Scenario: A missing document or a context that is not an object
+- **WHEN** a declared envelope has no `document` member, or its `context` is an array
+- **THEN** reading is refused with `context.invalid_envelope`, naming the file and the member
+
 ### Requirement: Preserve the document's semantic version
 The enclosed document SHALL retain the exact semantic IR contract it represents, including its own `formatVersion`. Expansion SHALL produce a valid ordinary document of that version and kind before semantic use. Contextual encoding SHALL NOT relabel a v3 payload as v4 or add accepted members to an existing plain profile.
 
@@ -105,6 +119,22 @@ The context SHALL support optional `names`, `packagePaths`, `modulePaths` and `f
 - **WHEN** `names` and `fqNames` both define `a0`
 - **THEN** a Name position resolves through `names` and an FQName position resolves through `fqNames`
 - **AND** an FQName position cannot resolve through the Name table
+
+### Requirement: Refuse a malformed table entry
+A reader SHALL refuse with `context.invalid_entry`, naming the file and the entry, a known table that is not a JSON object, an alias id that is not ASCII letters and digits starting with a letter, and a spelling that is not a string, is not a spelling of its table's type, or does not print back identically when read as that type and written in canonical form. The limits SHALL be checked first.
+
+#### Scenario: A spelling that is not canonical
+- **WHEN** `fqNames` maps `i` to `morphir/S-D-K:basics#int`, which reads as the FQName whose canonical spelling is `morphir/SDK:basics#int`
+- **THEN** reading is refused with `context.invalid_entry`, naming the file and `context.fqNames.i`
+- **AND** the envelope schema alone accepts the file
+
+#### Scenario: A spelling that is not a name
+- **WHEN** `names` maps `t` to `invoice_line`
+- **THEN** reading is refused with `context.invalid_entry`, naming the file and `context.names.t`
+
+#### Scenario: A limit is reported before the entry's form
+- **WHEN** a table holds 16,385 entries, or one spelling is 1,025 bytes and not a name
+- **THEN** reading is refused with `context.too_many_entries` or `context.name_too_long`, not `context.invalid_entry`
 
 ### Requirement: Reference aliases only at typed name positions
 A reference SHALL be exactly the object `{"$name":"<id>"}` at a typed name position: a value the enclosed document's IR JSON Schema types as `Name`, `PackageName`, `ModuleName`, `Path` or `FQName`, a canonical-string envelope member of a v3 tree file, or a v4 type written as a bare FQName string. A reference SHALL NOT appear inside another typed position in this draft. Name-keyed maps SHALL remain expanded.

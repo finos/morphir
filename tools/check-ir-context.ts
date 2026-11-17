@@ -8,8 +8,9 @@
 // each example is what docs/spec/ir/context/examples/cases.json says it is:
 //
 // - the envelope JSON Schema accepts exactly the cases marked `schemaValid`;
-// - the reader rules a schema cannot state (duplicate table members, member order, unresolved references) and the
-//   ones it can (declared URL, critical paths, limits) give exactly the case's expected diagnostic, or none;
+// - the reader rules a schema cannot state (duplicate table members, member order, unresolved references, spellings
+//   that do not print back identically) and the ones it can (declared URL, envelope shape, critical paths, limits)
+//   give exactly the case's expected diagnostic, or none;
 // - each valid example's expanded twin is the example with every reference replaced by its spelling, and the twin
 //   is a valid plain document of its IR version and file kind.
 //
@@ -144,36 +145,96 @@ function references(v: Ordered, out: string[] = []): string[] {
 }
 
 /**
- * The reader diagnostics a file gives, in the order a whole-file reader checks them. A file without `$schema` is a
- * plain document and gives none here.
+ * The words of a canonical name, read as a reader reads one (each `-` segment is all lowercase and digits, one word,
+ * or all uppercase and digits, an initialism of one word per letter and per digit run), or undefined when the text
+ * is not a name.
+ */
+export function canonicalNameWords(text: string): string[] | undefined {
+	const words: string[] = [];
+	for (const segment of text.split("-")) {
+		if (/^[a-z0-9]+$/.test(segment)) words.push(segment);
+		else if (/^[A-Z0-9]+$/.test(segment)) words.push(...(segment.match(/[0-9]+|[A-Z]/g) ?? []).map(w => w.toLowerCase()));
+		else return undefined;
+	}
+	return words;
+}
+
+/** The canonical spelling of a name's words: each run of two or more one-letter words is written as one initialism. */
+export function printName(words: string[]): string {
+	const out: string[] = [];
+	for (let i = 0; i < words.length; ) {
+		let j = i;
+		while (j < words.length && /^[a-z]$/.test(words[j]!)) j++;
+		if (j - i >= 2) {
+			out.push(words.slice(i, j).join("").toUpperCase());
+			i = j;
+		} else out.push(words[i++]!);
+	}
+	return out.join("-");
+}
+
+/**
+ * The canonical spelling that a table's spelling reads as and prints back to, or undefined when it is not a
+ * spelling of the table's type at all. An entry is canonical when this gives the spelling itself.
+ */
+export function canonicalSpelling(table: Table, spelling: string): string | undefined {
+	const name = (text: string) => {
+		const words = canonicalNameWords(text);
+		return words === undefined ? undefined : printName(words);
+	};
+	const pathOf = (text: string) => {
+		const names = text.split("/").map(name);
+		return names.some(n => n === undefined) ? undefined : names.join("/");
+	};
+	if (table === "names") return name(spelling);
+	if (table !== "fqNames") return pathOf(spelling);
+	const match = /^([^:#]+):([^:#]+)#([^:#]+)$/.exec(spelling);
+	if (match === null) return undefined;
+	const [pkg, mod, local] = [pathOf(match[1]!), pathOf(match[2]!), name(match[3]!)];
+	return pkg === undefined || mod === undefined || local === undefined ? undefined : `${pkg}:${mod}#${local}`;
+}
+
+/**
+ * The reader diagnostics a file gives, in the order a whole-file reader checks them. A file whose top level is not an
+ * object with `$schema` is a plain document and gives none here.
  */
 export function contextDiagnostics(text: string, limits: Limits): string[] {
 	const root = parseOrdered(text);
-	if (!isObject(root)) return ["context.invalid"];
+	if (!isObject(root)) return [];
 	const schema = member(root, "$schema");
 	if (schema === undefined) return [];
 	if (schema !== CONTEXT_SCHEMA_URL) return ["context.undeclared_schema"];
 	const keys = root.members.map(([k]) => k);
 	if (keys.indexOf("document") >= 0 && keys.indexOf("context") > keys.indexOf("document")) return ["context.after_document"];
 	const found: string[] = [];
+	const report = (code: string) => {
+		if (!found.includes(code)) found.push(code);
+	};
 	const context = member(root, "context");
-	if (!isObject(context) || !isObject(member(root, "document"))) return ["context.invalid"];
-	const duplicated = (o: { members: [string, Ordered][] }) => new Set(o.members.map(([k]) => k)).size !== o.members.length;
-	if (duplicated(root) || duplicated(context) || TABLES.some(t => isObject(member(context, t)) && duplicated(member(context, t) as { members: [string, Ordered][] }))) found.push("context.duplicate_entry");
 	const critical = member(root, "critical");
-	if (Array.isArray(critical) && critical.some(p => typeof p !== "string" || !CRITICAL_PATHS.includes(p))) found.push("context.unknown_critical");
+	const criticalIsList = critical === undefined || (Array.isArray(critical) && critical.every(p => typeof p === "string"));
+	if (!isObject(context) || !isObject(member(root, "document")) || !criticalIsList) return ["context.invalid_envelope"];
+	const duplicated = (o: { members: [string, Ordered][] }) => new Set(o.members.map(([k]) => k)).size !== o.members.length;
+	if (duplicated(root) || duplicated(context) || TABLES.some(t => isObject(member(context, t)) && duplicated(member(context, t) as { members: [string, Ordered][] }))) report("context.duplicate_entry");
+	if (Array.isArray(critical) && critical.some(p => !CRITICAL_PATHS.includes(p as string))) report("context.unknown_critical");
 	const defined = new Set<string>();
 	for (const t of TABLES) {
 		const table = member(context, t);
 		if (table === undefined) continue;
 		if (!isObject(table)) {
-			found.push("context.invalid");
+			report("context.invalid_entry");
 			continue;
 		}
-		if (table.members.length > limits.maxTableEntries && !found.includes("context.too_many_entries")) found.push("context.too_many_entries");
+		// The count comes first: an oversized table is refused without reading its entries.
+		if (table.members.length > limits.maxTableEntries) {
+			report("context.too_many_entries");
+			continue;
+		}
 		for (const [id, spelling] of table.members) {
 			defined.add(id);
-			if (typeof spelling === "string" && Buffer.byteLength(spelling, "utf8") > limits.maxSpellingBytes && !found.includes("context.name_too_long")) found.push("context.name_too_long");
+			if (!/^[A-Za-z][A-Za-z0-9]*$/.test(id) || typeof spelling !== "string") report("context.invalid_entry");
+			else if (Buffer.byteLength(spelling, "utf8") > limits.maxSpellingBytes) report("context.name_too_long");
+			else if (canonicalSpelling(t, spelling) !== spelling) report("context.invalid_entry");
 		}
 	}
 	if (found.length > 0) return found;

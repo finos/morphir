@@ -7,6 +7,7 @@ import {
 	CONTEXT_SCHEMA_URL,
 	EXAMPLES_DIR,
 	type ExampleIndex,
+	canonicalSpelling,
 	classicFqName,
 	classicName,
 	contextDiagnostics,
@@ -36,7 +37,10 @@ describe("ir-context examples", () => {
 		const valid = index.cases.filter(c => c.expected === "valid").map(c => `v${c.ir}-${c.kind}`).sort();
 		expect(valid).toEqual(["v3-manifest", "v3-module", "v3-single-file", "v3-type", "v3-value", "v4-manifest", "v4-module", "v4-single-file", "v4-type", "v4-value"]);
 		const refusals = index.cases.filter(c => c.expected !== "valid").map(c => c.expected).sort();
-		expect(refusals).toEqual(["context.after_document", "context.duplicate_entry", "context.name_too_long", "context.too_many_entries", "context.undeclared_schema", "context.unknown_alias", "context.unknown_critical"]);
+		expect(refusals).toEqual([
+			"context.after_document", "context.duplicate_entry", "context.invalid_entry", "context.invalid_envelope", "context.name_too_long",
+			"context.too_many_entries", "context.undeclared_schema", "context.unknown_alias", "context.unknown_critical",
+		]);
 		expect(index.limits).toEqual({ maxTableEntries: 16384, maxSpellingBytes: 1024 });
 	});
 
@@ -100,6 +104,61 @@ describe("morphir.compact/0.1.0-draft.1 fixed cases", () => {
 describe("the checker can fail", () => {
 	test("a plain document has no context diagnostics", () => {
 		expect(contextDiagnostics(read("expanded/v4-type.json"), index.limits)).toEqual([]);
+		expect(contextDiagnostics("[1]", index.limits)).toEqual([]);
+	});
+
+	test("a malformed envelope is context.invalid_envelope, and the order and the schema URL are checked before it", () => {
+		const valid = JSON.parse(read("valid/v4-type.json")) as Record<string, unknown>;
+		const envelope = (change: (e: Record<string, unknown>) => void) => {
+			const e = structuredClone(valid);
+			change(e);
+			return contextDiagnostics(JSON.stringify(e), index.limits);
+		};
+		expect(envelope(() => {})).toEqual([]);
+		for (const change of [
+			(e: Record<string, unknown>) => delete e.context,
+			(e: Record<string, unknown>) => delete e.document,
+			(e: Record<string, unknown>) => (e.context = []),
+			(e: Record<string, unknown>) => (e.document = "x"),
+			(e: Record<string, unknown>) => (e.critical = "context.names"),
+			(e: Record<string, unknown>) => (e.critical = ["context.names", 1]),
+		]) {
+			expect(envelope(change), change.toString()).toEqual(["context.invalid_envelope"]);
+		}
+		expect(envelope(e => (e.critical = ["context.names"]))).toEqual([]);
+		expect(envelope(e => (e.prefixes = 1))).toEqual([]);
+		expect(envelope(e => ((e.$schema = 1), delete e.context))).toEqual(["context.undeclared_schema"]);
+	});
+
+	test("an entry that is not a canonical spelling of its table's type is context.invalid_entry", () => {
+		const valid = JSON.parse(read("valid/v4-type.json")) as { context: Record<string, unknown> };
+		const tables = (context: Record<string, unknown>) => {
+			const e = structuredClone(valid);
+			e.context = { ...e.context, ...context };
+			return contextDiagnostics(JSON.stringify(e), index.limits);
+		};
+		for (const context of [
+			{ names: [] },
+			{ names: { t: "invoice-line", "1t": "x" } },
+			{ names: { t: 1 } },
+			{ names: { t: "invoice-Line" } },
+			{ names: { t: "invoice_line" } },
+			{ names: { t: "a-b" } },
+			{ names: { t: "USD1" } },
+			{ packagePaths: { p: "my-org//billing" } },
+			{ modulePaths: { m: "S-D-K" } },
+			{ fqNames: { i: "morphir/S-D-K:basics#int" } },
+			{ fqNames: { i: "morphir/SDK.basics#int" } },
+			{ fqNames: { i: "morphir/SDK:basics#int#x" } },
+		]) {
+			expect(tables(context), JSON.stringify(context)).toEqual(["context.invalid_entry"]);
+		}
+		for (const context of [{ names: { t: "value-in-USD" } }, { names: { t: "a" } }, { names: { t: "USD-1" } }, { packagePaths: { p: "morphir/SDK" } }, { fqNames: { i: "my-org/billing:invoicing#line-total" } }]) {
+			expect(tables(context), JSON.stringify(context)).toEqual([]);
+		}
+		expect(canonicalSpelling("fqNames", "morphir/S-D-K:basics#int")).toBe("morphir/SDK:basics#int");
+		expect(canonicalSpelling("names", "USD1")).toBe("USD-1");
+		expect(tables({ names: { t: `${"x".repeat(1025)}_` } })).toEqual(["context.name_too_long"]);
 	});
 
 	test("member order and duplicate members survive parsing", () => {
