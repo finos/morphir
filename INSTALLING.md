@@ -23,7 +23,8 @@ To set up a project's whole toolchain (the CLI and its F# frontend and backend) 
 
 Platforms: Windows x64 and ARM64, macOS x64 and ARM64, and Linux (glibc) x64 and ARM64. Before a release is
 published, each offering is started on each platform the way you start it, with `--version`, `--help` and
-`morphir ir verify` on a packaged example. The release manifest records the result for every offering and platform.
+`morphir model verify --json` on a packaged example; the check reads the report from the final `completed` line of the
+JSON Lines output. The release manifest records the result for every offering and platform.
 
 ### Operating system prerequisites
 

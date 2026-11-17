@@ -557,6 +557,41 @@ function sha256(file: string): string {
 
 type Run = { exitCode: number; stdout: string; stderr: string };
 
+/**
+ * The packaged-input check: `morphir model verify --json <example>`. The source's CLI renamed `ir verify` to
+ * `model verify` with no alias, and a bare `--json` streams JSON Lines that end with one `completed` record.
+ */
+export function packagedInputCommand(command: string[], example: string): string[] {
+	return [...command, "model", "verify", "--json", example];
+}
+
+/**
+ * The exit code the packaged-input scenario is judged by: the process's own code when it failed, otherwise 0 only
+ * when stdout is JSON Lines, every line an object with an `event` member, the last line the only `completed` record,
+ * and that record's `report` says `IsValid: true`. Event types the check does not know are accepted.
+ */
+export function packagedInputExitCode(result: Run): number {
+	if (result.exitCode !== 0) return result.exitCode;
+	const lines = result.stdout.split(/\r?\n/).filter(line => line.length > 0);
+	const records: Record<string, unknown>[] = [];
+	for (const line of lines) {
+		let value: unknown;
+		try {
+			value = JSON.parse(line);
+		} catch {
+			return 1;
+		}
+		if (typeof value !== "object" || value === null || Array.isArray(value) || typeof (value as Record<string, unknown>).event !== "string") return 1;
+		records.push(value as Record<string, unknown>);
+	}
+	const completed = records.filter(record => record.event === "completed");
+	const last = records.at(-1);
+	if (completed.length !== 1 || last?.event !== "completed") return 1;
+	const report = last.report;
+	if (typeof report !== "object" || report === null || Array.isArray(report)) return 1;
+	return (report as Record<string, unknown>).IsValid === true ? 0 : 1;
+}
+
 function run(command: string[], options: { cwd: string; env?: Record<string, string | undefined> }): Run {
 	const result = Bun.spawnSync(command, {
 		cwd: options.cwd,
@@ -653,9 +688,10 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		scenarios.push({ scenario: "launch", status: scenarioStatus(config, launch.platform === "any" ? platform : launch.platform, "launch", versionMatches ? 0 : 1), exitCode: version_.exitCode });
 		const help = run([...step.command, "--help"], { cwd, env: stepEnv });
 		scenarios.push({ scenario: "help", status: help.exitCode === 0 ? "passed" : "failed", exitCode: help.exitCode });
-		const verify = run([...step.command, "ir", "verify", example], { cwd, env: stepEnv });
-		scenarios.push({ scenario: "packaged-input", status: scenarioStatus(config, platform, "packaged-input", verify.exitCode), exitCode: verify.exitCode });
-		for (const [name, result] of [["--version", version_], ["--help", help], ["ir verify", verify]] as const) {
+		const verify = run(packagedInputCommand(step.command, example), { cwd, env: stepEnv });
+		// The status comes from the report; the recorded exit code stays the process's own.
+		scenarios.push({ scenario: "packaged-input", status: scenarioStatus(config, platform, "packaged-input", packagedInputExitCode(verify)), exitCode: verify.exitCode });
+		for (const [name, result] of [["--version", version_], ["--help", help], ["model verify --json", verify]] as const) {
 			console.error(`${step.invocation} ${name}: exit ${result.exitCode}\n${result.stdout}${result.stderr}`);
 		}
 		return { invocation: step.invocation, reportedVersion: version_.stdout.trim(), scenarios };

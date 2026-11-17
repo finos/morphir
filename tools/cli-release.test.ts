@@ -27,6 +27,8 @@ import {
 	legacyAliasNames,
 	legacyPlatforms,
 	offeringMatrix,
+	packagedInputCommand,
+	packagedInputExitCode,
 	type Qualification,
 	parseReleaseTag,
 	prepareRelease,
@@ -347,6 +349,39 @@ describe("qualification launches what ships", () => {
 				expect(scenarioStatus(config, rid, scenario, 0)).toBe("passed");
 				expect(scenarioStatus(config, rid, scenario, 1)).toBe("failed");
 			}
+		}
+	});
+
+	test("the packaged input is verified with model verify, streaming its report as JSON Lines", () => {
+		expect(packagedInputCommand(["/x/morphir"], "/w/greeting-example.json")).toEqual(["/x/morphir", "model", "verify", "--json", "/w/greeting-example.json"]);
+		expect(packagedInputCommand(["dotnet", "morphir"], "e.json")).toEqual(["dotnet", "morphir", "model", "verify", "--json", "e.json"]);
+		expect(packagedInputCommand(["/x/morphir"], "e.json")).not.toContain("ir");
+	});
+
+	test("the packaged input passes only when the stream ends with one completed record whose report is valid", () => {
+		const completed = (report: unknown) => JSON.stringify({ event: "completed", report });
+		const valid = { IsValid: true, SchemaVersion: "3", DetectionMethod: "Automatic", FilePath: "e.json", Errors: [] };
+		const run = (stdout: string, exitCode = 0) => ({ exitCode, stdout, stderr: "" });
+		expect(packagedInputExitCode(run(`${completed(valid)}\n`))).toBe(0);
+		// Events before the report, CRLF line ends and unknown event types are all accepted.
+		expect(packagedInputExitCode(run(`{"event":"stageStarted","stage":"read"}\r\n{"event":"somethingNew"}\r\n${completed(valid)}\r\n`))).toBe(0);
+		// The process exit code still decides first.
+		expect(packagedInputExitCode(run(`${completed(valid)}\n`, 1))).toBe(1);
+		expect(packagedInputExitCode(run(`${completed({ ...valid, IsValid: false })}\n`, 0))).toBe(1);
+		// The former single-document output, nothing, a stream without completed, completed not last, two completed records,
+		// a line that is not JSON, a line without an event and a report without IsValid all fail.
+		for (const stdout of [
+			`${JSON.stringify(valid)}\n`,
+			"",
+			`{"event":"stageStarted","stage":"read"}\n`,
+			`${completed(valid)}\n{"event":"stageStarted","stage":"read"}\n`,
+			`${completed(valid)}\n${completed(valid)}\n`,
+			`verified\n${completed(valid)}\n`,
+			`{"stage":"read"}\n${completed(valid)}\n`,
+			`${completed({ SchemaVersion: "3" })}\n`,
+			`{"event":"completed"}\n`,
+		]) {
+			expect(packagedInputExitCode(run(stdout)), stdout).toBe(1);
 		}
 	});
 

@@ -34,6 +34,19 @@ See [Installing Morphir](https://github.com/finos/morphir/blob/main/INSTALLING.m
 morphir --version
 ```
 
+To check that it reads a model, verify an IR file:
+
+```shell
+morphir model verify morphir-ir.json
+morphir model verify --json morphir-ir.json
+morphir model verify --json=document morphir-ir.json
+```
+
+The .NET CLI groups model commands under `morphir model`; `morphir ir verify` is gone, with no alias. A bare
+`--json` writes JSON Lines: one object per line with an `event` member, ending with one
+`{"event":"completed","report":{…}}` line that holds the report. `--json=document` writes only the report, as one
+JSON document. A mode is given only with `=`: in `--json document`, the word `document` is not read as a mode.
+
 ## Command availability after the move
 
 The table compares the top-level commands of the deleted Rust CLI with the .NET CLI at the commit finos/morphir
@@ -44,7 +57,7 @@ command does not exist there yet; nothing here implements it.
 | --- | --- |
 | `compile`, `generate`, `config`, `validate`, `tool`, `dist`, `extension` | Present. Options and behavior differ; see `morphir <command> --help`. |
 | `migrate` (IR v3 to v4) | Not in the .NET CLI. `morphir project migrate` and `morphir workspace migrate` there convert project configuration (`morphir.json` to TOML), not IR. |
-| `ir` | Present as `morphir ir verify`. The Rust `ir migrate` and its storage options are not there. |
+| `ir` | Present as `morphir model verify`: the .NET CLI renamed `ir verify` and keeps no `ir` alias. The Rust `ir migrate` and its storage options are not there. |
 | `mck` | Delegated: `morphir mck ARGS` runs `morphir-mck ARGS` (found through `MORPHIR_MCK` or `PATH`). `morphir-mck` is a development tool of finos/morphir and is not released. |
 | `version` | Use `morphir --version` or `morphir info`. |
 | `kb` | Not in the .NET CLI. Repository contributors use `morphir-dev kb` in finos/morphir. |
