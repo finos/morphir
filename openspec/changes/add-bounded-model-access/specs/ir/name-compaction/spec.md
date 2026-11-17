@@ -63,6 +63,7 @@ A whole-file reader reads the entire file, checks its context and expands every 
 | Admit unknown optional context members safely | Ignoring unknown members; refusing unknown critical paths | Retaining the original bytes for pass-through |
 | Make expansion lossless | All | — |
 | Make compaction deterministic and cost-aware | All | — |
+| Name the writer policy, and the five policy requirements after it | All | — |
 | Support bounded alias resolution | — | All |
 | Order the context before the document | Refusing a context after the document | Accepting it through bounded spill or a further pass |
 | Advertise the streaming order only when declared | All | All |
@@ -189,6 +190,52 @@ A compactor SHALL identify its fixed writer policy and produce deterministic out
 - **WHEN** aliasing a single occurrence of `x` would increase encoded size
 - **THEN** the compactor leaves that occurrence expanded
 - **AND** repeating compaction with the same policy yields identical bytes
+
+### Requirement: Name the writer policy
+The first published writer policy SHALL be `morphir.compact/0.1.0-draft.1`, defined by the requirements below and the fixed cases in `docs/spec/ir/context/policy/morphir.compact-0.1.0-draft.1/`, whose expected bytes are worked out by hand from this text. A writer using it SHALL name it in its result. Its expected bytes SHALL NOT be produced by an implementation.
+
+#### Scenario: The fixed cases match byte for byte
+- **WHEN** a writer applies the policy to each case's `input.json`
+- **THEN** its output bytes equal the case's `expected.json`
+
+### Requirement: Write compacted output as RFC 8785 canonical JSON
+A file written under the policy SHALL be the RFC 8785 (JCS) serialization of the envelope with exactly `$schema`, `context` and `document`, or of the plain document when the policy declines. JCS sorts members, so the context comes before the document and the tables appear as `fqNames`, `modulePaths`, `names`, `packagePaths`; a table with no entry is left out. Every size the policy compares SHALL be the UTF-8 byte length of JCS text.
+
+#### Scenario: Non-ASCII content is measured as UTF-8
+- **WHEN** a file to compact holds a doc string with `é`
+- **THEN** the policy counts `é` as two bytes, and the written file holds `é` unescaped
+
+### Requirement: Take candidates at outermost typed positions
+A candidate SHALL be a pair of a table and an expanded spelling. Its occurrences SHALL be the typed name positions of the plain document holding it that are not inside another typed position. An occurrence's size SHALL be the JCS size of its value as the plain document writes it: the canonical string with its quotes, or the classic word arrays of a classic v3 slot.
+
+#### Scenario: A classic slot weighs its arrays
+- **WHEN** an FQName occupies a classic v3 slot
+- **THEN** its occurrence size is that of its classic package, module and name arrays, not of its canonical spelling
+
+### Requirement: Allocate alias ids in first-use order
+Candidates SHALL be taken in the order of the byte offset of their first occurrence in the JCS text of the plain document, then by the ordinal order of the spelling, then by table in the order `names`, `packagePaths`, `modulePaths`, `fqNames`. Ids SHALL be `a` to `z`, then `aa`, `ab` and on (bijective base 26), one sequence for all tables. Only an aliased candidate SHALL consume an id.
+
+#### Scenario: Ids follow first use, not input order
+- **WHEN** the input lists a field of type F before a field of type G, but JCS sorts the G field first
+- **THEN** G is aliased as `a` and F as `b`
+
+### Requirement: Alias a name only when it saves more than its entry
+With `R = 12 + len(id)` for a reference and `E = len(id) + len(spelling) + 6` for its table entry, a candidate SHALL be aliased only when the sum over its occurrences of `size − R` is greater than `E`. A candidate whose saving equals `E` SHALL stay spelled out. A table that holds 16,384 entries SHALL take no more.
+
+#### Scenario: A name used once stays spelled out
+- **WHEN** a v4 file uses a fully qualified name once and the policy is applied
+- **THEN** the written file spells that name in place and its table has no entry for it
+
+#### Scenario: A saving equal to the cost
+- **WHEN** aliasing a candidate saves exactly the bytes of its table entry
+- **THEN** the candidate stays spelled out and consumes no id
+
+### Requirement: Decline compaction that would be a loss
+The writer SHALL write the envelope only when it is smaller than the plain document: when the aliased candidates' savings exceed `118 + Σ (len("<table>") + 3) + Σ (len(id) + len(spelling) + 5) + (entries − 1)` bytes. Otherwise, and when no candidate is aliased, it SHALL write the plain document as JCS and its result SHALL say that no alias was worth its cost.
+
+#### Scenario: Compaction that would be a loss is not applied
+- **WHEN** an alias saves more than its entry costs but less than the envelope adds
+- **THEN** the written file is the plain document in JCS, with no envelope
 
 ### Requirement: Support bounded alias resolution
 Bounded readers SHALL support resolving individual names without constructing the complete expanded document. Context bytes, entry counts and expanded spelling lengths SHALL count toward admission limits. Expansion exports SHALL support bounded writing. A valid context SHALL NOT bypass document, batch or resident-memory bounds.

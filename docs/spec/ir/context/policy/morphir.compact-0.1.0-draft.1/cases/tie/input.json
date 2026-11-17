@@ -1,0 +1,11 @@
+{
+  "formatVersion": 4,
+  "name": "order-total",
+  "def": {
+    "access": "Public",
+    "TypeAliasDefinition": {
+      "typeParams": [],
+      "typeExp": { "Record": { "fields": { "base": "acme/orders:pricing#net-price", "bonus": "acme/orders:pricing#net-price", "rebate": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment", "refund": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment", "surcharge": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment" } } }
+    }
+  }
+}

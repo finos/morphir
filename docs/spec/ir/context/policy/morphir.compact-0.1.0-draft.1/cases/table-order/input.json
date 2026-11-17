@@ -1,0 +1,15 @@
+{
+  "formatVersion": "3.1.0",
+  "name": "total",
+  "def": {
+    "access": "Public",
+    "value": {
+      "doc": "",
+      "value": {
+        "inputTypes": [[["discounted","amount","before","regional","sales","tax","adjustment"], {}, ["Reference", {}, [[["acme"],["order","management"]],[["pricing"],["discount","rules"]],["discounted","amount","before","regional","sales","tax","adjustment"]], []]]],
+        "outputType": ["Reference", {}, [[["acme"],["order","management"]],[["pricing"],["discount","rules"]],["discounted","amount","before","regional","sales","tax","adjustment"]], []],
+        "body": ["Apply", {}, ["Apply", {}, ["Reference", {}, [[["morphir"],["s","d","k"]],[["basics"]],["multiply"]]], ["Variable", {}, ["discounted","amount","before","regional","sales","tax","adjustment"]]], ["Variable", {}, ["discounted","amount","before","regional","sales","tax","adjustment"]]]
+      }
+    }
+  }
+}

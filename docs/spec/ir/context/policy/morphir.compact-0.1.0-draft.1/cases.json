@@ -1,0 +1,23 @@
+{
+  "policy": "morphir.compact/0.1.0-draft.1",
+  "schema": "website/static/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "cases": [
+    { "id": "v4-single-file", "ir": 4, "kind": "single-file", "compacted": true },
+    { "id": "v4-manifest", "ir": 4, "kind": "manifest", "compacted": false },
+    { "id": "v4-module", "ir": 4, "kind": "module", "compacted": true },
+    { "id": "v4-type", "ir": 4, "kind": "type", "compacted": true },
+    { "id": "v4-value", "ir": 4, "kind": "value", "compacted": true },
+    { "id": "v3-single-file", "ir": 3, "kind": "single-file", "compacted": true },
+    { "id": "v3-manifest", "ir": 3, "kind": "manifest", "compacted": false },
+    { "id": "v3-module", "ir": 3, "kind": "module", "compacted": true },
+    { "id": "v3-type", "ir": 3, "kind": "type", "compacted": true },
+    { "id": "v3-value", "ir": 3, "kind": "value", "compacted": true },
+    { "id": "name-used-once", "ir": 4, "kind": "type", "compacted": true },
+    { "id": "non-ascii-content", "ir": 4, "kind": "type", "compacted": true },
+    { "id": "alias-allocation-order", "ir": 4, "kind": "type", "compacted": true },
+    { "id": "tie", "ir": 4, "kind": "type", "compacted": true },
+    { "id": "table-order", "ir": 3, "kind": "value", "compacted": true },
+    { "id": "look-alike-literal", "ir": 4, "kind": "value", "compacted": true },
+    { "id": "loss", "ir": 4, "kind": "type", "compacted": false }
+  ]
+}

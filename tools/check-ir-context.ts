@@ -1,6 +1,7 @@
-// Checks the fixed examples of the Morphir file context (ir-context 0.1.0-draft.1).
+// Checks the fixed examples of the Morphir file context (ir-context 0.1.0-draft.1) and the fixed cases of the writer
+// policy morphir.compact/0.1.0-draft.1.
 //
-//   bun run tools/check-ir-context.ts            # check docs/spec/ir/context/examples
+//   bun run tools/check-ir-context.ts            # check docs/spec/ir/context/examples and .../policy
 //
 // The examples are data for readers in other repositories. This script states nothing about the contract that
 // openspec/changes/add-bounded-model-access/specs/ir/name-compaction/spec.md does not already state; it checks that
@@ -17,7 +18,7 @@
 // The expansion check also does not choose the table from the position: it accepts a reference when one of the
 // tables defining its id gives the twin's value. Position typing is the reader's job, tested where readers live.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -329,10 +330,84 @@ export function exampleProblems(root: string, dir = EXAMPLES_DIR): string[] {
 	return problems;
 }
 
+/**
+ * RFC 8785 canonical JSON of a parsed value: members sorted by UTF-16 code units (JavaScript's default string order),
+ * no whitespace, and ECMAScript string and number serialization, which RFC 8785 adopts.
+ */
+export function jcs(v: Ordered): string {
+	if (Array.isArray(v)) return `[${v.map(jcs).join(",")}]`;
+	if (isObject(v)) {
+		const members = [...v.members].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+		return `{${members.map(([k, m]) => `${JSON.stringify(k)}:${jcs(m)}`).join(",")}}`;
+	}
+	if (typeof v === "number" && !Number.isFinite(v)) throw new Error("JCS has no form for a non-finite number");
+	return JSON.stringify(v);
+}
+
+/** Why bytes are not RFC 8785 JCS, or undefined when they are: valid UTF-8, no duplicate member, the canonical text. */
+export function jcsProblem(bytes: Uint8Array): string | undefined {
+	let text: string;
+	try {
+		text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+	} catch {
+		return "not valid UTF-8";
+	}
+	let parsed: Ordered;
+	try {
+		parsed = parseOrdered(text);
+	} catch (error) {
+		return String(error);
+	}
+	const duplicate = (v: Ordered): boolean =>
+		Array.isArray(v) ? v.some(duplicate) : isObject(v) ? new Set(v.members.map(([k]) => k)).size !== v.members.length || v.members.some(([, m]) => duplicate(m)) : false;
+	if (duplicate(parsed)) return "a member appears twice";
+	const canonical = jcs(parsed);
+	if (canonical !== text) {
+		let at = 0;
+		while (at < text.length && text[at] === canonical[at]) at++;
+		return `not canonical from character ${at}: ${JSON.stringify(text.slice(at, at + 40))} where JCS has ${JSON.stringify(canonical.slice(at, at + 40))}`;
+	}
+	return undefined;
+}
+
+export type PolicyCase = { id: string; ir: number; kind: string; compacted: boolean };
+export type PolicyIndex = { policy: string; schema: string; cases: PolicyCase[] };
+export const POLICY_DIR = "docs/spec/ir/context/policy/morphir.compact-0.1.0-draft.1";
+
+/**
+ * Every problem with the policy's fixed cases. This checks the form of each expected file only (JCS, the envelope
+ * schema for a compacted one, no envelope for a plain one) and that each input is a valid plain document; it never
+ * computes what the policy would write. The expected bytes are worked out by hand in each case's README.
+ */
+export function policyProblems(root: string, dir = POLICY_DIR): string[] {
+	const index = JSON.parse(readFileSync(path.join(root, dir, "cases.json"), "utf8")) as PolicyIndex;
+	const problems: string[] = [];
+	if (index.policy !== "morphir.compact/0.1.0-draft.1") problems.push(`cases.json names the policy ${index.policy}`);
+	const schema = path.join(root, index.schema);
+	for (const c of index.cases) {
+		const at = path.join(root, dir, "cases", c.id);
+		const bytes = readFileSync(path.join(at, "expected.json"));
+		const problem = jcsProblem(bytes);
+		if (problem !== undefined) {
+			problems.push(`${c.id}: expected.json is not JCS: ${problem}`);
+			continue;
+		}
+		const expected = parseOrdered(new TextDecoder().decode(bytes));
+		const envelope = member(expected, "$schema") !== undefined;
+		if (envelope !== c.compacted) problems.push(`${c.id}: cases.json says compacted ${c.compacted}, but expected.json ${envelope ? "has" : "has no"} envelope`);
+		if (envelope && !schemaAcceptsFile(schema, path.join(at, "expected.json"))) problems.push(`${c.id}: expected.json does not satisfy ${index.schema}`);
+		if (envelope && contextDiagnostics(new TextDecoder().decode(bytes), { maxTableEntries: 16384, maxSpellingBytes: 1024 }).length > 0) problems.push(`${c.id}: expected.json breaks a reader rule`);
+		const input = JSON.parse(readFileSync(path.join(at, "input.json"), "utf8")) as unknown;
+		if (plainSchemaAccepts(root, c.ir, c.kind, input) === false) problems.push(`${c.id}: input.json is not a valid plain v${c.ir} ${c.kind} document`);
+		if (!existsSync(path.join(at, "README.md"))) problems.push(`${c.id}: no README.md with the hand computation`);
+	}
+	return problems;
+}
+
 if (import.meta.main) {
 	const root = path.resolve(import.meta.dir, "..");
-	const problems = exampleProblems(root);
+	const problems = [...exampleProblems(root), ...policyProblems(root)];
 	for (const p of problems) console.error(p);
 	if (problems.length > 0) process.exit(1);
-	console.log("ir-context examples: every case is what cases.json says it is");
+	console.log("ir-context examples and morphir.compact/0.1.0-draft.1 cases: every case is what its cases.json says it is");
 }

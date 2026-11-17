@@ -12,8 +12,12 @@ import {
 	contextDiagnostics,
 	exampleProblems,
 	expansionProblems,
+	jcsProblem,
 	parseOrdered,
 	plainSchemaAccepts,
+	POLICY_DIR,
+	type PolicyIndex,
+	policyProblems,
 	schemaAccepts,
 } from "./check-ir-context";
 
@@ -55,6 +59,41 @@ describe("ir-context examples", () => {
 		expect(contextDiagnostics(atLimit, index.limits)).toEqual([]);
 		expect(schemaAccepts(schema, JSON.parse(atLimit))).toBe(true);
 	}, 60_000);
+});
+
+describe("morphir.compact/0.1.0-draft.1 fixed cases", () => {
+	const policyDir = path.join(root, POLICY_DIR);
+	const policy = JSON.parse(readFileSync(path.join(policyDir, "cases.json"), "utf8")) as PolicyIndex;
+
+	test("every expected file is JCS and has the form its row says, and every input is a valid plain document", () => {
+		expect(policyProblems(root)).toEqual([]);
+	}, 180_000);
+
+	test("the cases cover each file kind at v3 and v4 and each policy rule", () => {
+		const ids = policy.cases.map(c => c.id).sort();
+		expect(ids).toEqual([
+			"alias-allocation-order", "look-alike-literal", "loss", "name-used-once", "non-ascii-content", "table-order", "tie",
+			"v3-manifest", "v3-module", "v3-single-file", "v3-type", "v3-value",
+			"v4-manifest", "v4-module", "v4-single-file", "v4-type", "v4-value",
+		]);
+		expect(policy.cases.filter(c => !c.compacted).map(c => c.id).sort()).toEqual(["loss", "v3-manifest", "v4-manifest"]);
+	});
+
+	test("non-ASCII content is written raw, as two UTF-8 bytes per letter", () => {
+		const bytes = readFileSync(path.join(policyDir, "cases/non-ascii-content/expected.json"));
+		expect(bytes.includes(Buffer.from("réduit", "utf8"))).toBe(true);
+		expect(bytes.includes(Buffer.from("\\u00e9"))).toBe(false);
+	});
+
+	test("JCS problems are found: order, whitespace, escapes, numbers, duplicates, a trailing newline", () => {
+		const bytes = (text: string) => new TextEncoder().encode(text);
+		expect(jcsProblem(bytes('{"a":1,"b":[true,null,"é"]}'))).toBeUndefined();
+		expect(jcsProblem(bytes('{"B":1,"a":2}'))).toBeUndefined();
+		for (const bad of ['{"b":1,"a":2}', '{"a": 1}', '{"a":"\\u00e9"}', '{"a":1.0}', '{"a":1,"a":1}', '{"a":1}\n', '{"a":"\\/"}']) {
+			expect(jcsProblem(bytes(bad)), bad).toBeDefined();
+		}
+		expect(jcsProblem(new Uint8Array([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d]))).toBe("not valid UTF-8");
+	});
 });
 
 describe("the checker can fail", () => {

@@ -1,0 +1,22 @@
+{
+  "formatVersion": "3.1.0",
+  "name": "order-total",
+  "def": {
+    "access": "Public",
+    "value": {
+      "doc": "",
+      "value": [
+        "TypeAliasDefinition",
+        [],
+        [
+          "Record",
+          {},
+          [
+            { "name": ["base"], "tpe": ["Reference", {}, [[["acme"],["order","management"]],[["pricing"],["discount","rules"]],["discounted","amount","before","regional","sales","tax","adjustment"]], []] },
+            { "name": ["bonus"], "tpe": ["Reference", {}, [[["acme"],["order","management"]],[["pricing"],["discount","rules"]],["discounted","amount","before","regional","sales","tax","adjustment"]], []] }
+          ]
+        ]
+      ]
+    }
+  }
+}

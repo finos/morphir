@@ -101,4 +101,4 @@ case is what `cases.json` says, and `bun test tools/check-ir-context.test.ts` ru
 
 Reading one name without building the document, accepting a context after the document through bounded spill, and
 passing unknown optional members through byte for byte belong to bounded model access (tasks 2.2 and 2.3 of
-`add-bounded-model-access`), not to these whole-file examples.
+`add-bounded-model-access`), not to these whole-file examples. The writer policy and its fixed bytes are in `../policy/morphir.compact-0.1.0-draft.1/`.
