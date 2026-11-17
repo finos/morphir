@@ -1,0 +1,148 @@
+{
+  "target": "https://morphir.finos.org/schemas/morphir-ir-v4.json#/definitions/PackageDefinition",
+  "tests": [
+    {
+      "description": "canonical: the access level as the key, with a valid module",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "Public": {
+              "types": { "amount": { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } } },
+              "values": {}
+            }
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "legacy: access and value, with a valid module",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "value": {
+              "types": { "amount": { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } } },
+              "values": {}
+            }
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "flattened: types, values and doc beside access, with a valid module",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "types": { "amount": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } },
+            "values": {},
+            "doc": "Invoices."
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "flattened: a private module with only types",
+      "data": {
+        "modules": {
+          "internal": {
+            "access": "Private",
+            "types": { "amount": { "Private": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } } }
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "flattened: an invalid type node inside the module is refused",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "types": { "amount": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": 42 } } },
+            "values": {}
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "flattened: an invalid type entry inside the module is refused",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "types": { "amount": { "access": "Public" } }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "canonical: an invalid type node inside the module is refused",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "Public": {
+              "types": { "amount": { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": 42 } } } }
+            }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "legacy: an invalid type node inside the module is refused",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "value": {
+              "types": { "amount": { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": 42 } } } }
+            }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "flattened: a member a module does not have is refused",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "types": {},
+            "annotations": []
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "flattened and legacy at once is refused",
+      "data": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "types": {},
+            "value": { "types": {} }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "an entry that states only its access is refused",
+      "data": { "modules": { "invoicing": { "access": "Public" } } },
+      "valid": false
+    },
+    {
+      "description": "canonical: a module that is not an object is refused",
+      "data": { "modules": { "invoicing": { "Public": "invoicing" } } },
+      "valid": false
+    }
+  ]
+}
