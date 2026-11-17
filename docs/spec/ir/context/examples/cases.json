@@ -1,0 +1,24 @@
+{
+  "schema": "website/static/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "schemaUrl": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "limits": { "maxTableEntries": 16384, "maxSpellingBytes": 1024 },
+  "cases": [
+    { "id": "v4-single-file", "file": "valid/v4-single-file.json", "expanded": "expanded/v4-single-file.json", "ir": 4, "kind": "single-file", "expected": "valid", "schemaValid": true },
+    { "id": "v4-manifest", "file": "valid/v4-manifest.json", "expanded": "expanded/v4-manifest.json", "ir": 4, "kind": "manifest", "expected": "valid", "schemaValid": true },
+    { "id": "v4-module", "file": "valid/v4-module.json", "expanded": "expanded/v4-module.json", "ir": 4, "kind": "module", "expected": "valid", "schemaValid": true },
+    { "id": "v4-type", "file": "valid/v4-type.json", "expanded": "expanded/v4-type.json", "ir": 4, "kind": "type", "expected": "valid", "schemaValid": true },
+    { "id": "v4-value", "file": "valid/v4-value.json", "expanded": "expanded/v4-value.json", "ir": 4, "kind": "value", "expected": "valid", "schemaValid": true },
+    { "id": "v3-single-file", "file": "valid/v3-single-file.json", "expanded": "expanded/v3-single-file.json", "ir": 3, "kind": "single-file", "expected": "valid", "schemaValid": true },
+    { "id": "v3-manifest", "file": "valid/v3-manifest.json", "expanded": "expanded/v3-manifest.json", "ir": 3, "kind": "manifest", "expected": "valid", "schemaValid": true },
+    { "id": "v3-module", "file": "valid/v3-module.json", "expanded": "expanded/v3-module.json", "ir": 3, "kind": "module", "expected": "valid", "schemaValid": true },
+    { "id": "v3-type", "file": "valid/v3-type.json", "expanded": "expanded/v3-type.json", "ir": 3, "kind": "type", "expected": "valid", "schemaValid": true },
+    { "id": "v3-value", "file": "valid/v3-value.json", "expanded": "expanded/v3-value.json", "ir": 3, "kind": "value", "expected": "valid", "schemaValid": true },
+    { "id": "undeclared-schema", "file": "invalid/undeclared-schema.json", "ir": 4, "kind": "type", "expected": "context.undeclared_schema", "schemaValid": false },
+    { "id": "unknown-alias", "file": "invalid/unknown-alias.json", "ir": 4, "kind": "type", "expected": "context.unknown_alias", "schemaValid": true },
+    { "id": "duplicate-entry", "file": "invalid/duplicate-entry.json", "ir": 4, "kind": "type", "expected": "context.duplicate_entry", "schemaValid": true },
+    { "id": "unknown-critical", "file": "invalid/unknown-critical.json", "ir": 4, "kind": "type", "expected": "context.unknown_critical", "schemaValid": false },
+    { "id": "too-many-entries", "file": "invalid/too-many-entries.json", "ir": 4, "kind": "type", "expected": "context.too_many_entries", "schemaValid": false },
+    { "id": "name-too-long", "file": "invalid/name-too-long.json", "ir": 4, "kind": "type", "expected": "context.name_too_long", "schemaValid": false },
+    { "id": "context-after-document", "file": "invalid/context-after-document.json", "ir": 4, "kind": "type", "expected": "context.after_document", "schemaValid": true }
+  ]
+}

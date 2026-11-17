@@ -1,0 +1,22 @@
+{
+  "formatVersion": "3.1.0",
+  "name": "invoice-line",
+  "def": {
+    "access": "Public",
+    "value": {
+      "doc": "One line of an invoice.",
+      "value": [
+        "TypeAliasDefinition",
+        [],
+        [
+          "Record",
+          {},
+          [
+            { "name": ["quantity"], "tpe": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []] },
+            { "name": ["unit", "price"], "tpe": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []] }
+          ]
+        ]
+      ]
+    }
+  }
+}

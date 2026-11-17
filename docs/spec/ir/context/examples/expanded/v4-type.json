@@ -1,0 +1,19 @@
+{
+  "formatVersion": 4,
+  "name": "invoice-line",
+  "def": {
+    "access": "Public",
+    "doc": "One line of an invoice.",
+    "TypeAliasDefinition": {
+      "typeParams": [],
+      "typeExp": {
+        "Record": {
+          "fields": {
+            "quantity": "morphir/SDK:basics#int",
+            "unit-price": "morphir/SDK:basics#int"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "formatVersion": "3.1.0",
+  "path": "invoicing",
+  "doc": "Invoices.",
+  "types": ["invoice-line"],
+  "values": ["line-total"]
+}

@@ -6,11 +6,11 @@ Provides reversible, typed name aliases for Morphir documents, reducing repeated
 
 ### One repeated reference, one scoped alias
 
-The running package repeats SDK references in signatures and expression attributes. A contextual document can carry their expanded spelling once. This is a proposed storage envelope, not syntax accepted by the current bare v4 tree codec.
+The running package repeats SDK references in signatures and expression attributes. A contextual document can carry their expanded spelling once. This is a storage envelope, not syntax accepted by the bare v3 or v4 codecs. Its JSON Schema is published at `https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json` (source `website/static/schemas/ir-context/0.1.0-draft.1/document.schema.json`), and its fixed examples are in `docs/spec/ir/context/examples/`.
 
 ```json
 {
-  "contextVersion": "0.1.0-draft.1",
+  "$schema": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
   "context": {
     "fqNames": {"q0": "morphir/SDK:basics#int"}
   },
@@ -44,22 +44,53 @@ flowchart LR
   B -->|resolve one alias| D[One typed name]
 ```
 
+### Whole-file and bounded requirements
+
+A whole-file reader reads the entire file, checks its context and expands every reference in memory. A whole-file writer compacts an expanded document it holds in memory. Bounded reading resolves names without building the expanded document and keeps resident memory within fixed limits. The first delivery of compacted files (morphir-dotnet `model convert`) is whole-file; bounded reading stays with tasks 2.2, 2.3, 3.2 and 3.3.
+
+| Requirement | Whole-file reader and writer | Bounded reading |
+| --- | --- | --- |
+| Identify the envelope by its schema URL | All | — |
+| Refuse an undeclared envelope | All | — |
+| Preserve the document's semantic version | All | — |
+| Use typed file-local tables | All | — |
+| Reference aliases only at typed name positions | All | — |
+| Resolve each position through its own table and encoding | All | — |
+| Leave arbitrary content uninterpreted | All | — |
+| Keep context resolution explicit and finite | All | — |
+| Refuse duplicate members | All | — |
+| Limit context tables and spellings | All (bounded reading adds resident-memory bounds) | — |
+| Admit unknown optional context members safely | Ignoring unknown members; refusing unknown critical paths | Retaining the original bytes for pass-through |
+| Make expansion lossless | All | — |
+| Make compaction deterministic and cost-aware | All | — |
+| Support bounded alias resolution | — | All |
+| Order the context before the document | Refusing a context after the document | Accepting it through bounded spill or a further pass |
+| Advertise the streaming order only when declared | All | All |
+| Treat dictionaries independently of reference summaries | All | All |
+
 ### What remains an experiment
 
 Shared contexts might reduce duplication across very small files, but also couple retrieval to another artifact. The first contract deliberately makes each file independently interpretable. An indexed-access experiment will compare this baseline with dictionary-only lookup and digest-bound occurrence indexes before proposing shared imports or independently readable blocks.
 
 ## ADDED Requirements
 
-### Requirement: Select a separately versioned contextual encoding
-Contextual documents SHALL use an explicitly selected encoding with `contextVersion` exactly `0.1.0-draft.1`, a `context` object and a `document` value. All tree file kinds and single-file distributions SHALL support this envelope when claimed. Plain profiles SHALL keep their existing grammar; readers SHALL NOT infer support from an IR major alone.
+### Requirement: Identify the envelope by its schema URL
+A contextual document SHALL be a JSON object whose `$schema` member is exactly `https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json`, with a `context` object, a `document` object and an optional `critical` array. All tree file kinds (manifest, module, type and value) and single-file distributions, of IR 3.1.0 and IR 4, SHALL support this envelope when claimed. Plain profiles SHALL keep their existing grammar; readers SHALL NOT infer support from an IR major alone.
 
 #### Scenario: Legacy reader receives contextual storage
 - **WHEN** a consumer supports plain v4 JSON but has not claimed contextual-document encoding
 - **THEN** it is not selected to read the contextual artifact as plain v4 JSON
 - **AND** the host uses a supported lossless expansion or reports unsupported encoding
 
+### Requirement: Refuse an undeclared envelope
+A top-level `$schema` member SHALL mark a file as an envelope, because no plain Morphir document defines that member. A reader SHALL refuse an envelope whose URL it does not declare with `context.undeclared_schema`, naming the file and the URL. A file without `$schema` SHALL be read as plain.
+
+#### Scenario: An undeclared envelope version is refused
+- **WHEN** a file's `$schema` is `https://morphir.finos.org/schemas/ir-context/0.2.0/document.schema.json` and the reader declares only `0.1.0-draft.1`
+- **THEN** reading is refused with `context.undeclared_schema`, naming the file and the URL
+
 ### Requirement: Preserve the document's semantic version
-The enclosed document SHALL retain the exact semantic IR contract it represents. Expansion SHALL produce a valid ordinary document of that version and kind before semantic use. Contextual encoding SHALL NOT relabel a v3 payload as v4 or add accepted members to an existing plain profile.
+The enclosed document SHALL retain the exact semantic IR contract it represents, including its own `formatVersion`. Expansion SHALL produce a valid ordinary document of that version and kind before semantic use. Contextual encoding SHALL NOT relabel a v3 payload as v4 or add accepted members to an existing plain profile.
 
 #### Scenario: Classic attribute slots survive
 - **WHEN** a contextual v3.1 tree value contains classic names and expression attributes
@@ -67,7 +98,7 @@ The enclosed document SHALL retain the exact semantic IR contract it represents.
 - **AND** it does not project those attributes into the v4 model
 
 ### Requirement: Use typed file-local tables
-The context SHALL support optional `names`, `packagePaths`, `modulePaths` and `fqNames` tables. Their values SHALL be fully expanded canonical spellings of their respective Morphir types, validated at admission. Alias ids SHALL be nonempty ASCII alphanumeric strings beginning with a letter. Missing tables SHALL mean empty tables.
+The context SHALL support optional `names`, `packagePaths`, `modulePaths` and `fqNames` tables. Their values SHALL be fully expanded canonical spellings of their respective Morphir types (a name, a package path, a module path, a `package:module#name` FQName), validated at admission. Alias ids SHALL be nonempty ASCII alphanumeric strings beginning with a letter. Missing tables SHALL mean empty tables.
 
 #### Scenario: One alias id in distinct tables
 - **WHEN** `names` and `fqNames` both define `a0`
@@ -75,12 +106,23 @@ The context SHALL support optional `names`, `packagePaths`, `modulePaths` and `f
 - **AND** an FQName position cannot resolve through the Name table
 
 ### Requirement: Reference aliases only at typed name positions
-A reference SHALL be exactly the object `{"$name":"<id>"}` at a schema-defined Name, PackagePath, ModulePath or FQName position. Expansion SHALL resolve through that position's table and encode the result in the enclosed document's version-specific representation. Name-keyed maps SHALL remain expanded in this first contract.
+A reference SHALL be exactly the object `{"$name":"<id>"}` at a typed name position: a value the enclosed document's IR JSON Schema types as `Name`, `PackageName`, `ModuleName`, `Path` or `FQName`, a canonical-string envelope member of a v3 tree file, or a v4 type written as a bare FQName string. A reference SHALL NOT appear inside another typed position in this draft. Name-keyed maps SHALL remain expanded.
+
+#### Scenario: A map key is not a position
+- **WHEN** a v4 record type's fields map has the key `quantity`
+- **THEN** the key stays spelled out, and only the field's type may be a reference
+
+### Requirement: Resolve each position through its own table and encoding
+A Name position SHALL resolve through `names`, a PackageName position through `packagePaths`, a ModuleName position through `modulePaths`, and an FQName position through `fqNames`. Expansion SHALL encode the spelling as the enclosed document's version writes that position: a canonical string in v4 and in v3 tree envelope members, classic word arrays in a classic v3 slot.
 
 #### Scenario: FQName expands differently in classic JSON
 - **WHEN** an alias occupies a classic v3 FQName slot
 - **THEN** expansion returns the corresponding classic package/module/name arrays
 - **AND** a v4 FQName slot expands to the corresponding canonical FQName string
+
+#### Scenario: One table feeds strings and arrays in a v3 tree file
+- **WHEN** a v3 tree type file uses aliases from `names` in its `name` member and in a classic record field name
+- **THEN** the `name` member expands to the canonical string and the field name to classic word arrays
 
 ### Requirement: Leave arbitrary content uninterpreted
 Expansion and compaction SHALL NOT rewrite ordinary strings, documentation, string literals, embedded document literals or opaque extension data as names. A member named `$name` in such a literal SHALL keep its ordinary value. Unsupported typed vocabulary SHALL fail according to the selected document contract rather than trigger heuristic replacement.
@@ -91,20 +133,46 @@ Expansion and compaction SHALL NOT rewrite ordinary strings, documentation, stri
 - **AND** an actual FQName field containing the same object resolves through the context
 
 ### Requirement: Keep context resolution explicit and finite
-The first contextual contract SHALL use only the file's own tables, with no remote loading, parent-directory inheritance, nested shadowing or alias-to-alias entries. Every used alias SHALL resolve in its typed table. Duplicate table members, malformed known tables and malformed references SHALL be refused with the document and member location.
+The first contextual contract SHALL use only the file's own tables, with no remote loading, parent-directory inheritance, nested shadowing or alias-to-alias entries. Every used alias SHALL resolve in its typed table; an unresolved reference SHALL be refused with `context.unknown_alias`, naming the file and the id. Malformed known tables and malformed references SHALL be refused with the document and member location. A refused file SHALL give no document.
 
 #### Scenario: A file is moved between directories
 - **WHEN** a contextual type document is transported independently with its envelope
 - **THEN** its aliases have the same expansion
 - **AND** a missing alias is not supplied by a neighboring module file
 
+#### Scenario: Unknown alias
+- **WHEN** a document references `{"$name":"zz"}` and no table defines `zz`
+- **THEN** reading is refused with `context.unknown_alias`, naming the file and `zz`
+
+### Requirement: Refuse duplicate members
+Duplicate members of a table, of the context or of the envelope SHALL be refused with `context.duplicate_entry`, naming the file and the member, even where a JSON parser would keep one of them.
+
+#### Scenario: Duplicate table entry
+- **WHEN** `fqNames` defines `i` twice in the same file
+- **THEN** reading is refused with `context.duplicate_entry`, although a JSON Schema validator alone accepts the file
+
+### Requirement: Limit context tables and spellings
+A reader SHALL refuse a table with more than 16,384 entries with `context.too_many_entries`, and an expanded spelling longer than 1,024 UTF-8 bytes with `context.name_too_long`, before it expands any reference. A writer SHALL NOT exceed either limit. Context bytes SHALL count toward the reader's file size limit. `docs/spec/ir/context/examples/README.md` gives the reason for each value.
+
+#### Scenario: A table one entry over the limit
+- **WHEN** a `names` table holds 16,385 entries
+- **THEN** reading is refused with `context.too_many_entries`
+
+#### Scenario: Small alias references an oversized spelling
+- **WHEN** `q0` maps to an expanded spelling of 1,025 bytes
+- **THEN** admission refuses that context with `context.name_too_long` before repeated expansion allocates oversized names
+
 ### Requirement: Admit unknown optional context members safely
-Readers SHALL ignore unknown optional envelope/context members and retain original encoded artifacts for opaque pass-through. An optional `critical` list SHALL name exact paths requiring understanding. Draft.1 SHALL recognize `contextVersion`, `context`, its four named tables, `document` and `critical`; any other critical path SHALL be refused before alias resolution.
+Readers SHALL ignore unknown optional envelope and context members. An optional `critical` list SHALL name exact member paths requiring understanding. Draft.1 SHALL recognize `$schema`, `context`, its four `context.<table>` paths, `critical` and `document`; any other critical path SHALL be refused with `context.unknown_critical` before alias resolution. Bounded readers SHALL also retain the original encoded artifact for opaque pass-through.
 
 #### Scenario: Future optional table
 - **WHEN** the context contains an unknown `prefixes` member that no alias uses and no critical path names
-- **THEN** the reader ignores it while retaining the original artifact
-- **AND** marking `context.prefixes` critical causes a precise unsupported-critical-path refusal
+- **THEN** the reader ignores it
+- **AND** marking `context.prefixes` critical causes `context.unknown_critical`
+
+#### Scenario: Pass-through keeps the original bytes
+- **WHEN** a bounded reader admits a file with an ignored `prefixes` member and passes the file on
+- **THEN** it retains the original artifact bytes rather than re-encoding them
 
 ### Requirement: Make expansion lossless
 For every supported model document and admitted compaction policy, `expandNames(compactNames(document))` SHALL equal the original typed document. Equality SHALL preserve all supported attributes, metadata, literals and semantically ordered collections. Semantic node addresses SHALL not depend on alias allocation. Byte digests SHALL continue to bind the actual encoded bytes.
@@ -123,19 +191,30 @@ A compactor SHALL identify its fixed writer policy and produce deterministic out
 - **AND** repeating compaction with the same policy yields identical bytes
 
 ### Requirement: Support bounded alias resolution
-Readers SHALL support resolving individual names without constructing the complete expanded document. Context bytes, entry counts and expanded spelling lengths SHALL count toward admission limits. Expansion exports SHALL support bounded writing. A valid context SHALL NOT bypass document, batch or resident-memory bounds.
+Bounded readers SHALL support resolving individual names without constructing the complete expanded document. Context bytes, entry counts and expanded spelling lengths SHALL count toward admission limits. Expansion exports SHALL support bounded writing. A valid context SHALL NOT bypass document, batch or resident-memory bounds.
 
-#### Scenario: Small alias references an oversized spelling
-- **WHEN** `q0` maps to an expanded FQName beyond the configured spelling limit
-- **THEN** admission rejects that context before repeated expansion allocates oversized names
+#### Scenario: One name is read without the document
+- **WHEN** a bounded reader is asked for the FQName at one position of a large compacted value file
+- **THEN** it resolves that name through the context without building the expanded document
 
-### Requirement: Preserve unordered object semantics
-General contextual JSON/YAML readers SHALL accept context and document members in either order. A separately declared streaming form SHALL require the envelope version and complete context before the document. A nonstreaming document SHALL NOT be advertised as satisfying that ordering guarantee merely because a canonical writer usually places context first.
+### Requirement: Order the context before the document
+A whole-file reader SHALL refuse a contextual document whose `document` member comes before its `context` member, with `context.after_document`, naming the file and saying that the context must come first. A bounded general reader MAY accept that order using bounded spill or a further pass. A separately declared streaming form SHALL require the envelope's `$schema` and complete context before the document.
 
-#### Scenario: Context comes last
-- **WHEN** a general contextual document places `document` before `context`
-- **THEN** a general reader accepts it using bounded spill or a further pass
+#### Scenario: A whole-file reader meets a context after the document
+- **WHEN** a whole-file reader reads a file whose `document` member comes before its `context` member
+- **THEN** reading is refused with `context.after_document`, naming the file
+
+#### Scenario: Context comes last for a bounded reader
+- **WHEN** a bounded general reader reads a document that places `document` before `context`
+- **THEN** it accepts it using bounded spill or a further pass
 - **AND** a streaming-only request rejects that representation with an ordering diagnostic or uses an explicit supported conversion
+
+### Requirement: Advertise the streaming order only when declared
+A nonstreaming document SHALL NOT be advertised as satisfying the streaming ordering guarantee merely because a canonical writer usually places the context first.
+
+#### Scenario: A canonical file is not a streaming declaration
+- **WHEN** a writer places `context` before `document` without declaring the streaming form
+- **THEN** a consumer does not treat the file as satisfying the streaming ordering guarantee
 
 ### Requirement: Treat dictionaries independently of reference summaries
 A context table SHALL NOT be treated as a complete occurrence or dependency index. Reference push-down SHALL require separately specified complete summaries or indexes bound to the source snapshot and contexts. Missing optional summaries SHALL permit a bounded scan; they SHALL NOT imply that a reference is absent.

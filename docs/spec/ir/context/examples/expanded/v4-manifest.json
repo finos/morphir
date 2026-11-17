@@ -1,0 +1,7 @@
+{
+  "formatVersion": 4,
+  "distribution": "Library",
+  "package": "my-org/billing",
+  "pathBudget": 4000,
+  "dependencies": ["morphir/SDK"]
+}
