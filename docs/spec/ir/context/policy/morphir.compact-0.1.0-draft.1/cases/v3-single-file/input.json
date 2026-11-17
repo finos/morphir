@@ -1,0 +1,31 @@
+{
+  "formatVersion": 3,
+  "distribution": [
+    "Library",
+    [["acme"], ["order", "management"]],
+    [],
+    {
+      "modules": [
+        [
+          [["pricing"]],
+          {
+            "access": "Public",
+            "value": {
+              "types": [],
+              "values": [
+                [["total"], { "access": "Public", "value": {
+      "doc": "",
+      "value": {
+        "inputTypes": [[["first"], {}, ["Reference", {}, [[["acme"],["order","management"]],[["pricing"],["discount","rules"]],["discounted","amount","before","regional","sales","tax","adjustment"]], []]]],
+        "outputType": ["Reference", {}, [[["acme"],["order","management"]],[["pricing"],["discount","rules"]],["discounted","amount","before","regional","sales","tax","adjustment"]], []],
+        "body": ["Variable", {}, ["first"]]
+      }
+    } }]
+              ]
+            }
+          }
+        ]
+      ]
+    }
+  ]
+}

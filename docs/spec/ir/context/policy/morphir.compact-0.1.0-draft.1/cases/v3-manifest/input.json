@@ -1,0 +1,7 @@
+{
+  "formatVersion": "3.1.0",
+  "distribution": "Library",
+  "package": "acme/order-management",
+  "pathBudget": 4000,
+  "dependencies": ["morphir/SDK"]
+}

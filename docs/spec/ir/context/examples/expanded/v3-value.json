@@ -1,0 +1,27 @@
+{
+  "formatVersion": "3.1.0",
+  "name": "line-total",
+  "def": {
+    "access": "Public",
+    "value": {
+      "doc": "Quantity times unit price.",
+      "value": {
+        "inputTypes": [
+          [["line"], {}, ["Reference", {}, [[["my", "org"], ["billing"]], [["invoicing"]], ["invoice", "line"]], []]]
+        ],
+        "outputType": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []],
+        "body": [
+          "Apply",
+          {},
+          [
+            "Apply",
+            {},
+            ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["multiply"]]],
+            ["Field", {}, ["Variable", {}, ["line"]], ["quantity"]]
+          ],
+          ["Field", {}, ["Variable", {}, ["line"]], ["unit", "price"]]
+        ]
+      }
+    }
+  }
+}

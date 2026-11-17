@@ -126,9 +126,9 @@ release(snapshotLease)            -&gt; backing resources can retire</code></pre
 
 <h3 id="name-1">NAME-1. Give each document an independently usable context</h3>
 <p class="step">4. Repeated SDK references use one typed local alias.</p>
-<p>The proposed contextual-document envelope has its own exact <code>contextVersion: 0.1.0-draft.1</code>. Its <code>document</code> holds an existing file-kind payload. Expansion removes the envelope and restores that payload's version-specific name spelling before ordinary validation.</p>
+<p>The proposed contextual-document envelope is identified by its exact schema URL, <code>$schema: https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json</code>, published under <code>website/static/schemas/ir-context/</code>. Its <code>document</code> holds an existing file-kind payload. Expansion removes the envelope and restores that payload's version-specific name spelling before ordinary validation.</p>
 <pre><code class="language-json">{
-  "contextVersion": "0.1.0-draft.1",
+  "$schema": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
   "context": {"fqNames": {"q0": "morphir/SDK:basics#int"}},
   "document": {
     "formatVersion": 4,

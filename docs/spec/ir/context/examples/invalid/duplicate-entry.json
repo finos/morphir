@@ -1,0 +1,26 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "context": {
+    "names": { "t": "invoice-line" },
+    "fqNames": { "i": "morphir/SDK:basics#int", "i": "morphir/SDK:basics#float" }
+  },
+  "document": {
+    "formatVersion": 4,
+    "name": { "$name": "t" },
+    "def": {
+      "access": "Public",
+      "doc": "One line of an invoice.",
+      "TypeAliasDefinition": {
+        "typeParams": [],
+        "typeExp": {
+          "Record": {
+            "fields": {
+              "quantity": { "$name": "i" },
+              "unit-price": { "$name": "i" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

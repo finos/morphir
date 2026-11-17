@@ -870,21 +870,10 @@
       "type": "object",
       "properties": {
         "modules": {
-          "description": "Dictionary mapping module paths to access-controlled module definitions.\nV4 uses object format: { \"module/path\": { \"access\": \"Public\", \"value\": {...} } }\nOptional - defaults to empty object if omitted.\n",
+          "description": "Dictionary mapping module paths to access-controlled module definitions.\nV4 uses object format: { \"module/path\": { \"Public\": { \"types\": {...}, \"values\": {...} } } }\nOptional - defaults to empty object if omitted.\n",
           "type": "object",
           "additionalProperties": {
-            "allOf": [
-              {
-                "$ref": "#/definitions/AccessControlled"
-              },
-              {
-                "properties": {
-                  "value": {
-                    "$ref": "#/definitions/ModuleDefinition"
-                  }
-                }
-              }
-            ]
+            "$ref": "#/definitions/AccessControlledModuleDefinition"
           }
         }
       }
@@ -1212,6 +1201,122 @@
           "$ref": "#/definitions/Doc"
         }
       }
+    },
+    "AccessControlledModuleDefinition": {
+      "description": "An access-controlled module definition, the entry shape of PackageDefinition.modules.\nCanonical: { \"Public\": { \"types\": {...}, \"values\": {...} } }\nAccepted: the legacy { \"access\": \"Public\", \"value\": { \"types\": {...}, \"values\": {...} } },\nthe flattened { \"access\": \"Public\", \"types\": {...}, \"values\": {...}, \"doc\": \"...\" }, and\nthe lowercase and \"pub\" spellings of the access level.\n",
+      "examples": [
+        {
+          "Public": {
+            "types": {},
+            "values": {}
+          }
+        },
+        {
+          "access": "Public",
+          "value": {
+            "types": {},
+            "values": {}
+          }
+        },
+        {
+          "access": "Private",
+          "doc": "Internal helpers",
+          "types": {},
+          "values": {}
+        }
+      ],
+      "anyOf": [
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "Public" ],
+              "properties": {
+                "Public": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "Private" ],
+              "properties": {
+                "Private": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "public" ],
+              "properties": {
+                "public": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "private" ],
+              "properties": {
+                "private": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "pub" ],
+              "properties": {
+                "pub": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [ "access", "value" ],
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            },
+            "doc": {
+              "$ref": "#/definitions/Doc"
+            },
+            "value": {
+              "$ref": "#/definitions/ModuleDefinition"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "access" ],
+          "minProperties": 2,
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            },
+            "doc": {
+              "$ref": "#/definitions/Doc"
+            },
+            "types": {
+              "$ref": "#/definitions/ModuleDefinition/properties/types"
+            },
+            "values": {
+              "$ref": "#/definitions/ModuleDefinition/properties/values"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "ModuleSpecification": {
       "description": "Module specification containing only public interfaces (no implementations).\nUsed in PackageSpecification and dependencies.\nThe \"types\" and \"values\" fields can be omitted if empty.\n\nCanonical: \"doc\" flattened first beside the variant (decision 0010); the nested\n{ \"doc\", \"value\" } form is accepted for one release.\n",

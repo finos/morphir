@@ -508,14 +508,10 @@ definitions:
     properties:
       modules:
         type: object
-        additionalProperties:
-          allOf:
-            - $ref: "#/definitions/AccessControlled"
-            - properties:
-                value: { $ref: "#/definitions/ModuleDefinition" }
+        additionalProperties: { $ref: "#/definitions/AccessControlledModuleDefinition" }
         description: |
           Dictionary mapping module paths to access-controlled module definitions.
-          V4 uses object format: { "module/path": { "access": "Public", "value": {...} } }
+          V4 uses object format: { "module/path": { "Public": { "types": {...}, "values": {...} } } }
           Optional - defaults to empty object if omitted.
     description: |
       Full package definition containing all modules with their complete implementations.
@@ -693,6 +689,68 @@ definitions:
       - { "types": { "user": { "Public": { "doc": "The user's display name", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } } }, "values": {} }
       - { "types": {}, "values": { "calculate": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } } } }, "doc": "Module documentation" }
       - { "values": { "main": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": { "Unit": {} }, "body": { "Unit": {} } } } } }
+
+  AccessControlledModuleDefinition:
+    # anyOf rather than oneOf, as in AccessControlledTypeDefinition: the legacy
+    # { access, value } form and the flattened form share the "access" member.
+    # Every form checks the module's types and values; none admits other members.
+    anyOf:
+      # Canonical: the access level is the key
+      - oneOf:
+          - type: object
+            required: ["Public"]
+            additionalProperties: false
+            properties:
+              Public: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["Private"]
+            additionalProperties: false
+            properties:
+              Private: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["public"]
+            additionalProperties: false
+            properties:
+              public: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["private"]
+            additionalProperties: false
+            properties:
+              private: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["pub"]
+            additionalProperties: false
+            properties:
+              pub: { $ref: "#/definitions/ModuleDefinition" }
+      # Legacy: access and value members
+      - type: object
+        required: ["access", "value"]
+        additionalProperties: false
+        properties:
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
+          value: { $ref: "#/definitions/ModuleDefinition" }
+      # Flattened: the module's members sit beside "access". minProperties keeps
+      # the bare { "access": ... } entry refused, as AccessControlled refuses it.
+      - type: object
+        required: ["access"]
+        minProperties: 2
+        additionalProperties: false
+        properties:
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
+          types: { $ref: "#/definitions/ModuleDefinition/properties/types" }
+          values: { $ref: "#/definitions/ModuleDefinition/properties/values" }
+    description: |
+      An access-controlled module definition, the entry shape of PackageDefinition.modules.
+      Canonical: { "Public": { "types": {...}, "values": {...} } }
+      Accepted: the legacy { "access": "Public", "value": { "types": {...}, "values": {...} } },
+      the flattened { "access": "Public", "types": {...}, "values": {...}, "doc": "..." }, and
+      the lowercase and "pub" spellings of the access level.
+    examples:
+      - { "Public": { "types": {}, "values": {} } }
+      - { "access": "Public", "value": { "types": {}, "values": {} } }
+      - { "access": "Private", "doc": "Internal helpers", "types": {}, "values": {} }
 
   ModuleSpecification:
     type: object

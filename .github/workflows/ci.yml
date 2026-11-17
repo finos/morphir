@@ -127,6 +127,8 @@ jobs:
               # the tracked IR fixtures and the corpus generator are validated
               # in the docs job, and the mise tasks define what that job runs
               - 'tests/bdd/fixtures/**'
+              # tools/morphir-ir-v4-schema.test.ts checks the v4 schema against these cases
+              - 'tests/fixtures/morphir-ir-v4-schema/**'
               - 'tools/gen-naming-corpus.ts'
               - 'tools/check-vendored-fixture.ts'
               # regenerates the JSON schemas and compares them with the committed ones

@@ -1,0 +1,71 @@
+{
+  "formatVersion": 3,
+  "distribution": [
+    "Library",
+    [["my", "org"], ["billing"]],
+    [],
+    {
+      "modules": [
+        [
+          [["invoicing"]],
+          {
+            "access": "Public",
+            "value": {
+              "types": [
+                [
+                  ["invoice", "line"],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": "One line of an invoice.",
+                      "value": [
+                        "TypeAliasDefinition",
+                        [],
+                        [
+                          "Record",
+                          {},
+                          [
+                            { "name": ["quantity"], "tpe": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []] },
+                            { "name": ["unit", "price"], "tpe": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []] }
+                          ]
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              ],
+              "values": [
+                [
+                  ["line", "total"],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": "Quantity times unit price.",
+                      "value": {
+                        "inputTypes": [
+                          [["line"], {}, ["Reference", {}, [[["my", "org"], ["billing"]], [["invoicing"]], ["invoice", "line"]], []]]
+                        ],
+                        "outputType": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []],
+                        "body": [
+                          "Apply",
+                          {},
+                          [
+                            "Apply",
+                            {},
+                            ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["multiply"]]],
+                            ["Field", {}, ["Variable", {}, ["line"]], ["quantity"]]
+                          ],
+                          ["Field", {}, ["Variable", {}, ["line"]], ["unit", "price"]]
+                        ]
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      ]
+    }
+  ]
+}
