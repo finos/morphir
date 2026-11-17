@@ -21,6 +21,6 @@
     { "id": "name-too-long", "file": "invalid/name-too-long.json", "ir": 4, "kind": "type", "expected": "context.name_too_long", "schemaValid": false },
     { "id": "context-after-document", "file": "invalid/context-after-document.json", "ir": 4, "kind": "type", "expected": "context.after_document", "schemaValid": true },
     { "id": "critical-not-a-list", "file": "invalid/critical-not-a-list.json", "ir": 4, "kind": "type", "expected": "context.invalid_envelope", "schemaValid": false },
-    { "id": "non-canonical-entry", "file": "invalid/non-canonical-entry.json", "ir": 4, "kind": "type", "expected": "context.invalid_entry", "schemaValid": true }
+    { "id": "mixed-case-entry", "file": "invalid/mixed-case-entry.json", "ir": 4, "kind": "type", "expected": "context.invalid_entry", "schemaValid": false }
   ]
 }

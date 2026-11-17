@@ -8,9 +8,9 @@
 // each example is what docs/spec/ir/context/examples/cases.json says it is:
 //
 // - the envelope JSON Schema accepts exactly the cases marked `schemaValid`;
-// - the reader rules a schema cannot state (duplicate table members, member order, unresolved references, spellings
-//   that do not print back identically) and the ones it can (declared URL, envelope shape, critical paths, limits)
-//   give exactly the case's expected diagnostic, or none;
+// - the reader rules a schema cannot state (duplicate table members, member order, unresolved references) and the
+//   ones it can (declared URL, envelope shape, critical paths, limits, the form of each spelling) give exactly the
+//   case's expected diagnostic, or none;
 // - each valid example's expanded twin is the example with every reference replaced by its spelling, and the twin
 //   is a valid plain document of its IR version and file kind.
 //
@@ -144,54 +144,21 @@ function references(v: Ordered, out: string[] = []): string[] {
 	return out;
 }
 
-/**
- * The words of a canonical name, read as a reader reads one (each `-` segment is all lowercase and digits, one word,
- * or all uppercase and digits, an initialism of one word per letter and per digit run), or undefined when the text
- * is not a name.
- */
-export function canonicalNameWords(text: string): string[] | undefined {
-	const words: string[] = [];
-	for (const segment of text.split("-")) {
-		if (/^[a-z0-9]+$/.test(segment)) words.push(segment);
-		else if (/^[A-Z0-9]+$/.test(segment)) words.push(...(segment.match(/[0-9]+|[A-Z]/g) ?? []).map(w => w.toLowerCase()));
-		else return undefined;
-	}
-	return words;
-}
-
-/** The canonical spelling of a name's words: each run of two or more one-letter words is written as one initialism. */
-export function printName(words: string[]): string {
-	const out: string[] = [];
-	for (let i = 0; i < words.length; ) {
-		let j = i;
-		while (j < words.length && /^[a-z]$/.test(words[j]!)) j++;
-		if (j - i >= 2) {
-			out.push(words.slice(i, j).join("").toUpperCase());
-			i = j;
-		} else out.push(words[i++]!);
-	}
-	return out.join("-");
-}
+/** A name by the grammar of docs/spec/draft/names.md: `-`-joined segments, each a word or an initialism. */
+const NAME = /^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$/;
 
 /**
- * The canonical spelling that a table's spelling reads as and prints back to, or undefined when it is not a
- * spelling of the table's type at all. An entry is canonical when this gives the spelling itself.
+ * Whether a spelling is one of its table's type: a name, a `/`-separated path of names, or a `package:module#name`
+ * FQName. A name is a sequence of segments, and its canonical form writes each segment as it is read (a word in
+ * lowercase, an initialism in uppercase, joined by `-`), so every spelling the grammar accepts is canonical.
+ * Spellings are never read through the classic word arrays, which cannot hold an initialism such as `FR2052A`.
  */
-export function canonicalSpelling(table: Table, spelling: string): string | undefined {
-	const name = (text: string) => {
-		const words = canonicalNameWords(text);
-		return words === undefined ? undefined : printName(words);
-	};
-	const pathOf = (text: string) => {
-		const names = text.split("/").map(name);
-		return names.some(n => n === undefined) ? undefined : names.join("/");
-	};
-	if (table === "names") return name(spelling);
-	if (table !== "fqNames") return pathOf(spelling);
+export function isSpelling(table: Table, spelling: string): boolean {
+	const isPath = (text: string) => text.split("/").every(n => NAME.test(n));
+	if (table === "names") return NAME.test(spelling);
+	if (table !== "fqNames") return isPath(spelling);
 	const match = /^([^:#]+):([^:#]+)#([^:#]+)$/.exec(spelling);
-	if (match === null) return undefined;
-	const [pkg, mod, local] = [pathOf(match[1]!), pathOf(match[2]!), name(match[3]!)];
-	return pkg === undefined || mod === undefined || local === undefined ? undefined : `${pkg}:${mod}#${local}`;
+	return match !== null && isPath(match[1]!) && isPath(match[2]!) && NAME.test(match[3]!);
 }
 
 /**
@@ -234,7 +201,7 @@ export function contextDiagnostics(text: string, limits: Limits): string[] {
 			defined.add(id);
 			if (!/^[A-Za-z][A-Za-z0-9]*$/.test(id) || typeof spelling !== "string") report("context.invalid_entry");
 			else if (Buffer.byteLength(spelling, "utf8") > limits.maxSpellingBytes) report("context.name_too_long");
-			else if (canonicalSpelling(t, spelling) !== spelling) report("context.invalid_entry");
+			else if (!isSpelling(t, spelling)) report("context.invalid_entry");
 		}
 	}
 	if (found.length > 0) return found;

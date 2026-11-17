@@ -7,12 +7,12 @@ import {
 	CONTEXT_SCHEMA_URL,
 	EXAMPLES_DIR,
 	type ExampleIndex,
-	canonicalSpelling,
 	classicFqName,
 	classicName,
 	contextDiagnostics,
 	exampleProblems,
 	expansionProblems,
+	isSpelling,
 	jcsProblem,
 	parseOrdered,
 	plainSchemaAccepts,
@@ -130,7 +130,7 @@ describe("the checker can fail", () => {
 		expect(envelope(e => ((e.$schema = 1), delete e.context))).toEqual(["context.undeclared_schema"]);
 	});
 
-	test("an entry that is not a canonical spelling of its table's type is context.invalid_entry", () => {
+	test("an entry that is not a spelling of its table's type is context.invalid_entry", () => {
 		const valid = JSON.parse(read("valid/v4-type.json")) as { context: Record<string, unknown> };
 		const tables = (context: Record<string, unknown>) => {
 			const e = structuredClone(valid);
@@ -143,22 +143,59 @@ describe("the checker can fail", () => {
 			{ names: { t: 1 } },
 			{ names: { t: "invoice-Line" } },
 			{ names: { t: "invoice_line" } },
-			{ names: { t: "a-b" } },
-			{ names: { t: "USD1" } },
 			{ packagePaths: { p: "my-org//billing" } },
-			{ modulePaths: { m: "S-D-K" } },
-			{ fqNames: { i: "morphir/S-D-K:basics#int" } },
+			{ modulePaths: { m: "Basics" } },
+			{ fqNames: { i: "morphir/Sdk:basics#int" } },
 			{ fqNames: { i: "morphir/SDK.basics#int" } },
 			{ fqNames: { i: "morphir/SDK:basics#int#x" } },
 		]) {
 			expect(tables(context), JSON.stringify(context)).toEqual(["context.invalid_entry"]);
 		}
-		for (const context of [{ names: { t: "value-in-USD" } }, { names: { t: "a" } }, { names: { t: "USD-1" } }, { packagePaths: { p: "morphir/SDK" } }, { fqNames: { i: "my-org/billing:invoicing#line-total" } }]) {
+		// Each segment is written as it is read, so these are canonical: `a-b` is two words, `USD1` one initialism,
+		// and `morphir/S-D-K` a package of three one-letter initialisms, a different path from `morphir/SDK`.
+		for (const context of [
+			{ names: { t: "value-in-USD" } },
+			{ names: { t: "a" } },
+			{ names: { t: "a-b" } },
+			{ names: { t: "USD1" } },
+			{ names: { t: "USD-1" } },
+			{ packagePaths: { p: "morphir/SDK" } },
+			{ modulePaths: { m: "S-D-K" } },
+			{ fqNames: { i: "morphir/S-D-K:basics#int" } },
+			{ fqNames: { i: "my-org/billing:invoicing#line-total" } },
+		]) {
 			expect(tables(context), JSON.stringify(context)).toEqual([]);
 		}
-		expect(canonicalSpelling("fqNames", "morphir/S-D-K:basics#int")).toBe("morphir/SDK:basics#int");
-		expect(canonicalSpelling("names", "USD1")).toBe("USD-1");
+		expect(isSpelling("fqNames", "morphir/S-D-K:basics#int")).toBe(true);
+		expect(isSpelling("fqNames", "morphir/Sdk:basics#int")).toBe(false);
 		expect(tables({ names: { t: `${"x".repeat(1025)}_` } })).toEqual(["context.name_too_long"]);
+	});
+
+	test("table spellings are judged by the naming conformance fixture's segment grammar", () => {
+		const naming = JSON.parse(readFileSync(path.join(root, "docs/spec/ir/fixtures/naming-conformance.json"), "utf8")) as {
+			roundTripCases: { canonical: { uppercase: string } }[];
+			pathCases: { canonical: { uppercase: string } }[];
+			fqNameCases: { canonical: { uppercase: string } }[];
+			rejectCases: { input: string; validAs: { uppercase: boolean } }[];
+		};
+		const valid = JSON.parse(read("valid/v4-type.json")) as { context: Record<string, unknown> };
+		const entry = (table: string, spelling: string) => {
+			const e = structuredClone(valid);
+			e.context = { ...e.context, [table]: { ...(e.context[table] as Record<string, string> | undefined), fixture: spelling } };
+			return contextDiagnostics(JSON.stringify(e), index.limits);
+		};
+		const verdicts: string[] = [];
+		const expectVerdict = (table: string, spelling: string, expected: string[]) => {
+			const got = entry(table, spelling);
+			if (!Bun.deepEquals(got, expected)) verdicts.push(`${table} ${spelling}: [${got}], expected [${expected}]`);
+		};
+		for (const c of naming.roundTripCases) expectVerdict("names", c.canonical.uppercase, []);
+		for (const c of naming.pathCases) for (const t of ["packagePaths", "modulePaths"]) expectVerdict(t, c.canonical.uppercase, []);
+		for (const c of naming.fqNameCases) expectVerdict("fqNames", c.canonical.uppercase, []);
+		// The fixture's FQName cases hold no digit initialism, so its paths and names are also combined into FQNames.
+		for (const p of naming.pathCases) for (const n of naming.roundTripCases) expectVerdict("fqNames", `${p.canonical.uppercase}:${p.canonical.uppercase}#${n.canonical.uppercase}`, []);
+		for (const c of naming.rejectCases) if (!c.validAs.uppercase) expectVerdict("names", c.input, ["context.invalid_entry"]);
+		expect(verdicts).toEqual([]);
 	});
 
 	test("member order and duplicate members survive parsing", () => {

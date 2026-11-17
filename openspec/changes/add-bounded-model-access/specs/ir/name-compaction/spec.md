@@ -121,12 +121,11 @@ The context SHALL support optional `names`, `packagePaths`, `modulePaths` and `f
 - **AND** an FQName position cannot resolve through the Name table
 
 ### Requirement: Refuse a malformed table entry
-A reader SHALL refuse with `context.invalid_entry`, naming the file and the entry, a known table that is not a JSON object, an alias id that is not ASCII letters and digits starting with a letter, and a spelling that is not a string, is not a spelling of its table's type, or does not print back identically when read as that type and written in canonical form. The limits SHALL be checked first.
+A reader SHALL refuse with `context.invalid_entry`, naming the file and the entry, a known table that is not a JSON object, an alias id that is not ASCII letters and digits starting with a letter, and a spelling that is not a string or is not a spelling of its table's type. The limits SHALL be checked first.
 
-#### Scenario: A spelling that is not canonical
-- **WHEN** `fqNames` maps `i` to `morphir/S-D-K:basics#int`, which reads as the FQName whose canonical spelling is `morphir/SDK:basics#int`
+#### Scenario: An FQName with a mixed-case segment
+- **WHEN** `fqNames` maps `i` to `morphir/Sdk:basics#int`, whose segment `Sdk` is neither a word nor an initialism
 - **THEN** reading is refused with `context.invalid_entry`, naming the file and `context.fqNames.i`
-- **AND** the envelope schema alone accepts the file
 
 #### Scenario: A spelling that is not a name
 - **WHEN** `names` maps `t` to `invoice_line`

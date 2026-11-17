@@ -65,7 +65,7 @@ reader's limit on the size of the file.
 | `context.unknown_critical` | `critical` names a path draft.1 does not recognize |
 | `context.too_many_entries` | A table has more than 16,384 entries |
 | `context.name_too_long` | An expanded spelling is longer than 1,024 bytes |
-| `context.invalid_entry` | A table is not an object, an alias id is not ASCII letters and digits starting with a letter, or a spelling is not a string, not a valid spelling of its table's type, or not printed back identically in canonical form |
+| `context.invalid_entry` | A table is not an object, an alias id is not ASCII letters and digits starting with a letter, or a spelling is not a string or not a spelling of its table's type |
 | `context.unknown_alias` | A reference's id is not in the table of its position |
 
 ## The cases
@@ -96,7 +96,7 @@ the plain document a reader must produce. Every case uses one small model: packa
 | `invalid/name-too-long.json` | A 1,025-byte name |
 | `invalid/context-after-document.json` | `document` before `context` |
 | `invalid/critical-not-a-list.json` | `critical` is the string `"context.names"`, not an array |
-| `invalid/non-canonical-entry.json` | `fqNames` maps `i` to `morphir/S-D-K:basics#int`, which prints back as `morphir/SDK:basics#int`; JSON Schema cannot see it |
+| `invalid/mixed-case-entry.json` | `fqNames` maps `i` to `morphir/Sdk:basics#int`, whose segment `Sdk` is neither a word nor an initialism; the envelope schema refuses it too |
 
 The invalid cases change one thing each in `valid/v4-type.json`. `bun run tools/check-ir-context.ts` checks that every
 case is what `cases.json` says, and `bun test tools/check-ir-context.test.ts` runs it with checks that it can fail.
