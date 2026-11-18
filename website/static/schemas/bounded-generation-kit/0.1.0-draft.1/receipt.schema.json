@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/bounded-generation-kit/0.1.0-draft.1/receipt.schema.json",
+  "title": "Bounded generation kit receipt",
+  "description": "Records one bounded-generation kit case, its exact implementation and input tuple, and the observations used to replay correctness and resource outcomes",
+  "type": "object",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "execution": {
+            "const": "wasm-generation"
+          }
+        }
+      },
+      "then": {
+        "required": [ "guest" ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "execution": {
+            "const": "in-process-reader"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "comparison": {
+            "properties": {
+              "kind": {
+                "enum": [ "reader-facts", "diagnostic-facts" ]
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "comparison": {
+            "properties": {
+              "kind": {
+                "enum": [ "artifact-set", "diagnostic-facts" ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "required": [
+    "$schema",
+    "kit",
+    "fixture",
+    "runner",
+    "adapter",
+    "host",
+    "platform",
+    "execution",
+    "target",
+    "generatorOptionsSha256",
+    "tuple",
+    "comparison",
+    "limits",
+    "measurements",
+    "correctness",
+    "resources"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/bounded-generation-kit/0.1.0-draft.1/receipt.schema.json"
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonempty"
+      }
+    },
+    "kit": {
+      "type": "object",
+      "required": [ "contractSha256", "suiteSha256", "caseId" ],
+      "properties": {
+        "contractSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "suiteSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "caseId": {
+          "$ref": "#/$defs/nonempty"
+        }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "required": [ "scale", "expandedInputBytes", "largestDocumentBytes" ],
+      "properties": {
+        "scale": {
+          "enum": [ "small", "large" ]
+        },
+        "expandedInputBytes": {
+          "$ref": "#/$defs/positive"
+        },
+        "largestDocumentBytes": {
+          "$ref": "#/$defs/positive"
+        }
+      }
+    },
+    "runner": {
+      "$ref": "#/$defs/implementation"
+    },
+    "adapter": {
+      "$ref": "#/$defs/implementation"
+    },
+    "host": {
+      "$ref": "#/$defs/implementation"
+    },
+    "guest": {
+      "$ref": "#/$defs/implementation"
+    },
+    "platform": {
+      "type": "object",
+      "required": [ "os", "architecture" ],
+      "properties": {
+        "os": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "architecture": {
+          "$ref": "#/$defs/nonempty"
+        }
+      }
+    },
+    "execution": {
+      "enum": [ "in-process-reader", "native-generation", "wasm-generation" ]
+    },
+    "target": {
+      "$ref": "#/$defs/nonempty"
+    },
+    "generatorOptionsSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "tuple": {
+      "$ref": "#/$defs/tuple"
+    },
+    "comparison": {
+      "type": "object",
+      "required": [ "kind", "expectedSha256" ],
+      "properties": {
+        "kind": {
+          "enum": [ "reader-facts", "artifact-set", "diagnostic-facts" ]
+        },
+        "expectedSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "observedSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "hostTreeResidentBytes",
+        "guestLinearMemoryBytes",
+        "documentBytes",
+        "decodedResidentBytes",
+        "decodedResidentNodes",
+        "inputBatchBytes",
+        "outputBatchBytes",
+        "contextBytes",
+        "indexBytes"
+      ],
+      "properties": {
+        "hostTreeResidentBytes": {
+          "$ref": "#/$defs/limit"
+        },
+        "guestLinearMemoryBytes": {
+          "$ref": "#/$defs/limit"
+        },
+        "documentBytes": {
+          "$ref": "#/$defs/limit"
+        },
+        "decodedResidentBytes": {
+          "$ref": "#/$defs/limit"
+        },
+        "decodedResidentNodes": {
+          "$ref": "#/$defs/limit"
+        },
+        "inputBatchBytes": {
+          "$ref": "#/$defs/limit"
+        },
+        "outputBatchBytes": {
+          "$ref": "#/$defs/limit"
+        },
+        "contextBytes": {
+          "$ref": "#/$defs/limit"
+        },
+        "indexBytes": {
+          "$ref": "#/$defs/limit"
+        }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "required": [
+        "peakHostResidentBytes",
+        "peakDescendantResidentBytes",
+        "peakHostTreeResidentBytes",
+        "peakGuestLinearMemoryBytes",
+        "peakDecodedResidentBytes",
+        "peakDecodedResidentNodes",
+        "maxInputBatchBytes",
+        "maxOutputBatchBytes",
+        "peakContextBytes",
+        "peakIndexBytes",
+        "bytesRead",
+        "bytesWritten",
+        "elapsedMilliseconds"
+      ],
+      "properties": {
+        "peakHostResidentBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "peakDescendantResidentBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "peakHostTreeResidentBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "peakGuestLinearMemoryBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "peakDecodedResidentBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "peakDecodedResidentNodes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "maxInputBatchBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "maxOutputBatchBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "peakContextBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "peakIndexBytes": {
+          "$ref": "#/$defs/measurement"
+        },
+        "bytesRead": {
+          "$ref": "#/$defs/measurement"
+        },
+        "bytesWritten": {
+          "$ref": "#/$defs/measurement"
+        },
+        "elapsedMilliseconds": {
+          "$ref": "#/$defs/measurement"
+        }
+      }
+    },
+    "correctness": {
+      "$ref": "#/$defs/outcome"
+    },
+    "resources": {
+      "$ref": "#/$defs/outcome"
+    }
+  },
+  "$defs": {
+    "nonempty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$",
+      "maxLength": 64,
+      "minLength": 64
+    },
+    "count": {
+      "type": "integer",
+      "maximum": 9007199254740991,
+      "minimum": 0
+    },
+    "positive": {
+      "type": "integer",
+      "maximum": 9007199254740991,
+      "minimum": 1
+    },
+    "implementation": {
+      "type": "object",
+      "required": [ "name", "repository", "revision", "artifactSha256" ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "repository": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$",
+          "maxLength": 40,
+          "minLength": 40
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": [ "method", "evidenceSha256" ],
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "evidenceSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "measurement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "state", "value", "source" ],
+          "properties": {
+            "reason": false,
+            "state": {
+              "const": "measured"
+            },
+            "value": {
+              "$ref": "#/$defs/count"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [ "state", "reason" ],
+          "properties": {
+            "value": false,
+            "source": false,
+            "state": {
+              "enum": [ "missing", "not-applicable" ]
+            },
+            "reason": {
+              "$ref": "#/$defs/nonempty"
+            }
+          }
+        }
+      ]
+    },
+    "limit": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "state", "ceiling", "source" ],
+          "properties": {
+            "reason": false,
+            "state": {
+              "const": "enforced"
+            },
+            "ceiling": {
+              "$ref": "#/$defs/positive"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [ "state", "ceiling", "reason" ],
+          "properties": {
+            "source": false,
+            "state": {
+              "const": "not-enforced"
+            },
+            "ceiling": {
+              "$ref": "#/$defs/positive"
+            },
+            "reason": {
+              "$ref": "#/$defs/nonempty"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [ "state", "reason" ],
+          "properties": {
+            "ceiling": false,
+            "source": false,
+            "state": {
+              "const": "not-applicable"
+            },
+            "reason": {
+              "$ref": "#/$defs/nonempty"
+            }
+          }
+        }
+      ]
+    },
+    "tuple": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "accessVersion",
+        "operation",
+        "irVersion",
+        "profile",
+        "codec",
+        "layout",
+        "contextualEncoding"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "const": "0.2.0-draft.2"
+        },
+        "accessVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "operation": {
+          "const": "morphir.backend.generateModel"
+        },
+        "irVersion": {
+          "enum": [ "3.1.0", "4.0.0" ]
+        },
+        "profile": {
+          "const": "morphir-ir"
+        },
+        "codec": {
+          "enum": [ "morphir-json", "morphir-yaml" ]
+        },
+        "layout": {
+          "const": "document-tree"
+        },
+        "contextualEncoding": {
+          "enum": [
+            "plain",
+            "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json"
+          ]
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "required": [ "state", "reasons" ],
+      "properties": {
+        "state": {
+          "enum": [ "passed", "failed", "not-run" ]
+        },
+        "reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonempty"
+          }
+        }
+      }
+    }
+  }
+}
