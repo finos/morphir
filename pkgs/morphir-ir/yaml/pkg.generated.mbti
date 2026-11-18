@@ -2,13 +2,19 @@
 package "finos/morphir-ir/yaml"
 
 import {
+  "finos/morphir-ir/common",
+  "finos/morphir-ir/version",
   "finos/morphir-ir/versioned",
+  "finos/morphir-ir/versions/v3",
   "finos/morphir-ir/versions/v4",
   "finos/morphir-ir/wire",
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
 // Values
+pub fn open_bounded_tree(TreeSource, limits? : Limits) -> BoundedTree raise
+
 pub fn parse(String, limits? : Limits) -> @json.Json raise @wire.CodecError
 
 pub fn read(String, limits? : Limits) -> @v4.IRFile raise
@@ -20,8 +26,20 @@ pub fn read_tree_versioned(Map[String, String], limits? : Limits) -> @versioned.
 pub fn read_versioned(String, limits? : Limits) -> @versioned.IRFile raise
 
 // Errors
+pub(all) suberror TreeSourceError {
+  RevisionChanged
+  DocumentTooLarge
+}
 
 // Types and methods
+type BoundedTree
+pub fn BoundedTree::dependency_packages(Self) -> Iter[@common.Path]
+pub fn BoundedTree::format_version(Self) -> @version.FormatVersion
+pub fn BoundedTree::members(Self, @common.Path, @common.Path, limit~ : Int32, cursor? : TreeCursor) -> TreePage[TreeMember] raise
+pub fn BoundedTree::modules(Self, @common.Path, limit~ : Int32, cursor? : TreeCursor) -> TreePage[TreeModule] raise
+pub fn BoundedTree::package_name(Self) -> @common.Path
+pub fn BoundedTree::read_member(Self, @common.Path, @common.Path, TreeMemberKind, @common.Name) -> TreeMemberBody raise
+
 pub(all) struct Limits {
   max_bytes : Int32
   max_events : Int32
@@ -31,6 +49,66 @@ pub(all) struct Limits {
   max_assembly_nodes : Int32
 }
 pub fn Limits::default() -> Self
+
+type TreeCursor
+
+pub struct TreeMember {
+  package_name : @common.Path
+  module_name : @common.Path
+  name : @common.Name
+  kind : TreeMemberKind
+  role : TreeRole
+  document : String
+}
+
+pub(all) enum TreeMemberBody {
+  V3TypeDefinition(@common.AccessControlled[@v3.Documented[@v3.TypeDefinition[Unit]]])
+  V3ValueDefinition(@common.AccessControlled[@v3.Documented[@v3.ValueDefinition[Unit, @v3.Type[Unit]]]])
+  V3TypeSpecification(@v3.Documented[@v3.TypeSpecification[Unit]])
+  V3ValueSpecification(@v3.Documented[@v3.ValueSpecification[Unit]])
+  V4TypeDefinition(@common.AccessControlled[@common.Documented[@v4.TypeDefinition]])
+  V4ValueDefinition(@common.AccessControlled[@common.Documented[@v4.ValueDefinition]])
+  V4TypeSpecification(@common.Documented[@v4.TypeSpecification])
+  V4ValueSpecification(@common.Documented[@v4.ValueSpecification])
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum TreeMemberKind {
+  TypeMember
+  ValueMember
+}
+pub fn TreeMemberKind::equal(Self, Self) -> Bool
+pub fn TreeMemberKind::not_equal(Self, Self) -> Bool
+pub fn TreeMemberKind::to_repr(Self) -> @debug.Repr
+
+pub struct TreeModule {
+  package_name : @common.Path
+  path : @common.Path
+  document : String
+  role : TreeRole
+  access : @common.Access?
+}
+
+pub struct TreePage[T] {
+  items : Array[T]
+  next : TreeCursor?
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum TreeRole {
+  Definition
+  Specification
+}
+pub fn TreeRole::equal(Self, Self) -> Bool
+pub fn TreeRole::not_equal(Self, Self) -> Bool
+pub fn TreeRole::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TreeSource {
+  revision : () -> String raise
+  contains : (String, String) -> Bool raise
+  next_module : (String, String, String?) -> String? raise
+  read : (String, String, Int32) -> String raise
+}
 
 // Type aliases
 

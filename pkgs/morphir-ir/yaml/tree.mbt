@@ -133,6 +133,52 @@ fn tree_doc(value : Json) -> Json raise {
 }
 
 ///|
+fn tree_node_payload(
+  node : Json,
+  path : String,
+  parsed : @ir.Name,
+  specification : Bool,
+) -> Json raise {
+  @wire.fields(node, ["formatVersion", "name", "def", "spec"])
+  if canonical_name(@wire.field(node, "name")) != parsed {
+    tree_error(
+      "invalid_distribution_shape",
+      path + "/name",
+      "Node name disagrees with its module listing",
+    )
+  }
+  let body = if specification { "spec" } else { "def" }
+  let other = if specification { "def" } else { "spec" }
+  guard @wire.optional(node, other) is None &&
+    @wire.optional(node, body) is Some(payload) else {
+    tree_error(
+      "invalid_distribution_shape", path, "Node must carry exactly the body required by its module role",
+    )
+  }
+  payload
+}
+
+///|
+fn tree_member_path(
+  name : @ir.Name,
+  kind : String,
+  directory : String,
+  file_names : Map[String, Json],
+) -> String raise {
+  let stem = match file_names.get(name.to_canonical()) {
+    None => escaped_name(name)
+    Some(value) => @wire.string(value)
+  }
+  guard valid_stem(stem) &&
+    directory.length() + stem.length() + kind.length() + 2 <= 4096 else {
+    tree_error(
+      "invalid_distribution_shape", directory, "Invalid or oversized fileNames stem",
+    )
+  }
+  directory + "/" + stem + "." + kind
+}
+
+///|
 fn TreeReader::entries(
   self : TreeReader,
   module_doc : Json,
@@ -165,34 +211,9 @@ fn TreeReader::entries(
             "Duplicate listed name " + name,
           )
         }
-        let stem = match file_names.get(name) {
-          None => escaped_name(parsed)
-          Some(value) => @wire.string(value)
-        }
-        guard valid_stem(stem) &&
-          directory.length() + stem.length() + kind.length() + 2 <= 4096 else {
-          tree_error(
-            "invalid_distribution_shape", directory, "Invalid or oversized fileNames stem",
-          )
-        }
-        let path = directory + "/" + stem + "." + kind
+        let path = tree_member_path(parsed, kind, directory, file_names)
         let node = self.load(path)
-        @wire.fields(node, ["formatVersion", "name", "def", "spec"])
-        if canonical_name(@wire.field(node, "name")) != parsed {
-          tree_error(
-            "invalid_distribution_shape",
-            path + "/name",
-            "Node name disagrees with its module listing",
-          )
-        }
-        let body = if specification { "spec" } else { "def" }
-        let other = if specification { "def" } else { "spec" }
-        guard @wire.optional(node, other) is None &&
-          @wire.optional(node, body) is Some(payload) else {
-          tree_error(
-            "invalid_distribution_shape", path, "Node must carry exactly the body required by its module role",
-          )
-        }
+        let payload = tree_node_payload(node, path, parsed, specification)
         self.charge(1)
         entries[name] = payload
       }
@@ -219,6 +240,97 @@ fn TreeReader::entries(
 }
 
 ///|
+fn tree_module_path(
+  module_doc : Json,
+  physical : String,
+  prefix : String,
+  version : @version.FormatVersion,
+  specification : Bool,
+) -> @ir.Path raise {
+  @wire.fields(
+    module_doc,
+    if version.major == 3U {
+      ["formatVersion", "path", "access", "doc", "types", "values", "fileNames"]
+    } else {
+      [
+        "formatVersion", "path", "module", "access", "doc", "types", "values", "fileNames",
+      ]
+    },
+  )
+  if specification && @wire.optional(module_doc, "access") is Some(_) {
+    tree_error(
+      "unknown_member",
+      physical + "/access",
+      "Module specifications have no access",
+    )
+  }
+  if @wire.optional(module_doc, "path") is Some(_) &&
+    @wire.optional(module_doc, "module") is Some(_) {
+    tree_error("duplicate_member", physical, "Use one module path member")
+  }
+  let name = canonical_path(
+    @wire.optional(module_doc, "path").unwrap_or_else(() => {
+      @wire.optional(module_doc, "module").unwrap_or(Json::null())
+    }),
+  )
+  let expected = prefix + "/" + escaped_path(name) + "/module"
+  if physical != expected {
+    tree_error(
+      "invalid_distribution_shape",
+      physical + "/path",
+      "Module path disagrees with directory",
+    )
+  }
+  name
+}
+
+///|
+fn tree_module_access(module_doc : Json, path : String) -> @common.Access raise {
+  match @wire.optional(module_doc, "access") {
+    None | Some(String("Public")) => Public
+    Some(String("Private")) => Private
+    _ =>
+      tree_error(
+        "invalid_access",
+        path + "/access",
+        "Expected Public or Private",
+      )
+  }
+}
+
+///|
+fn tree_file_names(module_doc : Json, path : String) -> Map[String, Json] raise {
+  let location = path + "/fileNames"
+  let file_names = match @wire.optional(module_doc, "fileNames") {
+    None => Map([])
+    Some(Object(names)) => names
+    _ => tree_error("invalid_type", location, "Expected a stem map")
+  }
+  for key, value in file_names {
+    ignore(canonical_name(@wire.text(key)))
+    let stem = @wire.string(value) catch {
+      @wire.Invalid(code, detail) => tree_error(code, location, detail)
+    }
+    guard valid_stem(stem) else {
+      tree_error("invalid_distribution_shape", location, "Invalid file stem")
+    }
+    let listed = ["types", "values"].any(kind => {
+      match @wire.optional(module_doc, kind) {
+        Some(Object(items)) => items.contains(key)
+        Some(Array(items)) => items.contains(@wire.text(key))
+        _ => false
+      }
+    })
+    guard listed else {
+      tree_error(
+        "unknown_member", location, "Stem map key is not listed in types or values",
+      )
+    }
+  }
+  file_names
+}
+
+///|
 fn TreeReader::assemble_package(
   self : TreeReader,
   prefix : String,
@@ -232,72 +344,17 @@ fn TreeReader::assemble_package(
   let modules : Map[String, Json] = Map([])
   for physical in paths {
     let module_doc = self.load(physical)
-    @wire.fields(
+    let name = tree_module_path(
       module_doc,
-      if self.version.major == 3U {
-        [
-          "formatVersion", "path", "access", "doc", "types", "values", "fileNames",
-        ]
-      } else {
-        [
-          "formatVersion", "path", "module", "access", "doc", "types", "values",
-          "fileNames",
-        ]
-      },
+      physical,
+      prefix,
+      self.version,
+      specification,
     )
-    if specification && @wire.optional(module_doc, "access") is Some(_) {
-      tree_error(
-        "unknown_member",
-        physical + "/access",
-        "Module specifications have no access",
-      )
-    }
-    if @wire.optional(module_doc, "path") is Some(_) &&
-      @wire.optional(module_doc, "module") is Some(_) {
-      tree_error("duplicate_member", physical, "Use one module path member")
-    }
-    let name = canonical_path(
-      @wire.optional(module_doc, "path").unwrap_or_else(() => {
-        @wire.optional(module_doc, "module").unwrap_or(Json::null())
-      }),
-    )
-    let expected = prefix + "/" + escaped_path(name) + "/module"
-    if physical != expected {
-      tree_error(
-        "invalid_distribution_shape",
-        physical + "/path",
-        "Module path disagrees with directory",
-      )
-    }
     let directory = physical[:physical.length() - 7].to_owned()
     let types = self.entries(module_doc, directory, "type", specification)
     let values = self.entries(module_doc, directory, "value", specification)
-    if @wire.optional(module_doc, "fileNames") is Some(file_names) {
-      for key, value in @wire.object(file_names) {
-        ignore(canonical_name(@wire.text(key)))
-        if !valid_stem(@wire.string(value)) {
-          tree_error(
-            "invalid_distribution_shape",
-            physical + "/fileNames",
-            "Invalid file stem",
-          )
-        }
-        let listed = ["types", "values"].any(kind => {
-          match @wire.optional(module_doc, kind) {
-            Some(Object(items)) => items.contains(key)
-            Some(Array(items)) => items.contains(@wire.text(key))
-            _ => false
-          }
-        })
-        if !listed {
-          tree_error(
-            "unknown_member",
-            physical + "/fileNames",
-            "Stem map key is not listed in types or values",
-          )
-        }
-      }
-    }
+    ignore(tree_file_names(module_doc, physical))
     self.charge(6)
     let body = @wire.obj([("types", types), ("values", values)])
     if @wire.optional(module_doc, "doc") is Some(doc) {
@@ -306,15 +363,9 @@ fn TreeReader::assemble_package(
     let entry = if specification {
       body
     } else {
-      let access = @wire.optional(module_doc, "access").unwrap_or(
-        @wire.text("Public"),
-      )
-      if access != @wire.text("Public") && access != @wire.text("Private") {
-        tree_error(
-          "invalid_access",
-          physical + "/access",
-          "Expected Public or Private",
-        )
+      let access = match tree_module_access(module_doc, physical) {
+        Public => @wire.text("Public")
+        Private => @wire.text("Private")
       }
       @wire.obj([("access", access), ("value", body)])
     }
@@ -343,6 +394,102 @@ fn TreeReader::assemble_package(
 }
 
 ///|
+#derive(Eq)
+priv enum TreeDistributionKind {
+  Library
+  Specs
+  Application
+}
+
+///|
+fn TreeDistributionKind::wire_name(self : TreeDistributionKind) -> String {
+  match self {
+    Library => "Library"
+    Specs => "Specs"
+    Application => "Application"
+  }
+}
+
+///|
+priv struct TreeManifest {
+  version : @version.FormatVersion
+  kind : TreeDistributionKind
+  package_name : @ir.Path
+  path_budget : Double
+}
+
+///|
+fn tree_entry_points(
+  manifest : Json,
+  kind : TreeDistributionKind,
+) -> Json? raise {
+  match (kind, @wire.optional(manifest, "entryPoints")) {
+    (Application, Some(points)) => Some(points)
+    (Application, None) =>
+      tree_error(
+        "missing_member", "manifest/entryPoints", "Application requires entry points",
+      )
+    (_, Some(_)) =>
+      tree_error(
+        "unknown_member", "manifest/entryPoints", "Only Application has entry points",
+      )
+    (_, None) => None
+  }
+}
+
+///|
+fn tree_manifest(manifest : Json) -> TreeManifest raise {
+  let version = @wire.read_version(@wire.field(manifest, "formatVersion"))
+  if version.major == 3U && version.to_release_string() != "3.1.0" {
+    tree_error(
+      "version_mismatch", "manifest/formatVersion", "A v3 tree is exactly 3.1.0",
+    )
+  }
+  guard version.major == 3U || version.major == 4U else {
+    tree_error(
+      "version_mismatch", "manifest/formatVersion", "Tree versions are v3.1.0 and supported v4",
+    )
+  }
+  version.check_supported()
+  ignore(@wire.object(manifest).remove("$meta"))
+  @wire.fields(
+    manifest,
+    if version.major == 3U {
+      ["formatVersion", "distribution", "package", "pathBudget", "dependencies"]
+    } else {
+      [
+        "formatVersion", "distribution", "package", "pathBudget", "dependencies",
+        "entryPoints", "version", "created", "layout",
+      ]
+    },
+  )
+  let kind = match @wire.string(@wire.field(manifest, "distribution")) {
+    "Library" => Library
+    "Specs" => Specs
+    "Application" if version.major == 4U => Application
+    _ =>
+      tree_error(
+        "invalid_distribution_shape", "manifest/distribution", "Unsupported tree distribution kind",
+      )
+  }
+  let package_name = canonical_path(@wire.field(manifest, "package"))
+  let budget_value = @wire.field(manifest, "pathBudget")
+  guard @wire.is_integral_number(budget_value) &&
+    @wire.float(budget_value) >= 64 else {
+    tree_error(
+      "invalid_type", "manifest/pathBudget", "pathBudget must be an integer of at least 64",
+    )
+  }
+  let path_budget = @wire.float(budget_value)
+  for key in ["version", "created", "layout"] {
+    if @wire.optional(manifest, key) is Some(value) {
+      ignore(@wire.string(value))
+    }
+  }
+  { version, kind, package_name, path_budget, }
+}
+
+///|
 /// Assemble v4 and exactly v3.1.0 trees under shared whole-tree budgets.
 /// Physical parsing and version-specific semantic decoding remain the existing
 /// shared boundaries. This function performs only tree ownership and assembly.
@@ -357,14 +504,7 @@ pub fn read_tree_versioned(
   let mut bytes = 0
   let mut manifest_yaml : Bool? = None
   for path, source in files {
-    guard path.length() <= 4096 &&
-      !path.has_prefix("/") &&
-      !path.contains("\\") &&
-      !path.contains(":") &&
-      !path.contains("\u0000") &&
-      path
-      .split("/")
-      .all(part => !part.is_empty() && part != "." && part != "..") else {
+    guard safe_tree_path(path) else {
       tree_error("invalid_distribution_shape", "/", "Unsafe physical tree path")
     }
     guard source.length() <= limits.max_bytes - bytes else {
@@ -388,15 +528,7 @@ pub fn read_tree_versioned(
         )
       }
     }
-    let extension = if path.has_suffix(".yaml") {
-      5
-    } else if path.has_suffix(".yml") {
-      4
-    } else if path.has_suffix(".json") {
-      5
-    } else {
-      0
-    }
+    let extension = tree_extension_length(path)
     if extension == 0 {
       continue
     }
@@ -423,52 +555,7 @@ pub fn read_tree_versioned(
   let (manifest, nodes, events) = parse_tree_document(
     manifest_path, source, limits,
   )
-  let version = @wire.read_version(@wire.field(manifest, "formatVersion"))
-  if version.major == 3U && version.to_release_string() != "3.1.0" {
-    tree_error(
-      "version_mismatch", "manifest/formatVersion", "A v3 tree is exactly 3.1.0",
-    )
-  }
-  guard version.major == 3U || version.major == 4U else {
-    tree_error(
-      "version_mismatch", "manifest/formatVersion", "Tree versions are v3.1.0 and supported v4",
-    )
-  }
-  version.check_supported()
-  ignore(@wire.object(manifest).remove("$meta"))
-  @wire.fields(
-    manifest,
-    if version.major == 3U {
-      ["formatVersion", "distribution", "package", "pathBudget", "dependencies"]
-    } else {
-      [
-        "formatVersion", "distribution", "package", "pathBudget", "dependencies",
-        "entryPoints", "version", "created", "layout",
-      ]
-    },
-  )
-  let kind = @wire.string(@wire.field(manifest, "distribution"))
-  guard kind == "Library" ||
-    kind == "Specs" ||
-    (kind == "Application" && version.major == 4U) else {
-    tree_error(
-      "invalid_distribution_shape", "manifest/distribution", "Unsupported tree distribution kind",
-    )
-  }
-  let package_name = canonical_path(@wire.field(manifest, "package"))
-  let budget_value = @wire.field(manifest, "pathBudget")
-  guard @wire.is_integral_number(budget_value) &&
-    @wire.float(budget_value) >= 64 else {
-    tree_error(
-      "invalid_type", "manifest/pathBudget", "pathBudget must be an integer of at least 64",
-    )
-  }
-  let path_budget = @wire.float(budget_value)
-  for key in ["version", "created", "layout"] {
-    if @wire.optional(manifest, key) is Some(value) {
-      ignore(@wire.string(value))
-    }
-  }
+  let { version, kind, package_name, path_budget, } = tree_manifest(manifest)
   let reader = TreeReader::{
     files: logical,
     consumed: Map([("manifest", true)]),
@@ -512,14 +599,14 @@ pub fn read_tree_versioned(
     }
     let body = reader.assemble_package(
       "deps/" + escaped_path(name) + "/@",
-      kind != "Application",
+      kind != Application,
     )
     reader.charge(1)
     dependencies[key] = body
   }
   let own = reader.assemble_package(
     "pkg/" + escaped_path(package_name),
-    kind == "Specs",
+    kind == Specs,
   )
   for path, _ in logical {
     if (path.has_prefix("pkg/") || path.has_prefix("deps/")) &&
@@ -542,7 +629,7 @@ pub fn read_tree_versioned(
       )
     }
     Json::array([
-      @wire.text(kind),
+      @wire.text(kind.wire_name()),
       @wire.write_legacy_path(package_name),
       Json::array(pairs),
       own,
@@ -551,18 +638,12 @@ pub fn read_tree_versioned(
     let payload = @wire.obj([
       ("packageName", @wire.text(package_name.to_canonical())),
       ("dependencies", Json::object(dependencies)),
-      (if kind == "Specs" { "spec" } else { "def" }, own),
+      (if kind == Specs { "spec" } else { "def" }, own),
     ])
-    if kind == "Application" {
-      @wire.object(payload)["entryPoints"] = @wire.field(
-        manifest, "entryPoints",
-      )
-    } else if @wire.optional(manifest, "entryPoints") is Some(_) {
-      tree_error(
-        "unknown_member", "manifest/entryPoints", "Only Application has entry points",
-      )
+    if tree_entry_points(manifest, kind) is Some(points) {
+      @wire.object(payload)["entryPoints"] = points
     }
-    @wire.tag(kind, payload)
+    @wire.tag(kind.wire_name(), payload)
   }
   let value = @wire.obj([
     ("formatVersion", @wire.write_version(version)),
@@ -612,6 +693,29 @@ fn parse_tree_document(
     }
   }
   (root, nodes, nodes * 2)
+}
+
+///|
+fn tree_extension_length(path : String) -> Int32 {
+  if path.has_suffix(".yaml") {
+    5
+  } else if path.has_suffix(".yml") {
+    4
+  } else if path.has_suffix(".json") {
+    5
+  } else {
+    0
+  }
+}
+
+///|
+fn safe_tree_path(path : String) -> Bool {
+  path.length() <= 4096 &&
+  !path.has_prefix("/") &&
+  !path.contains("\\") &&
+  !path.contains(":") &&
+  !path.contains("\u0000") &&
+  path.split("/").all(part => !part.is_empty() && part != "." && part != "..")
 }
 
 ///|

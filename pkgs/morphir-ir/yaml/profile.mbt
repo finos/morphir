@@ -233,12 +233,7 @@ fn scalar(
 }
 
 ///|
-/// Parse exactly one mapping-root document under the normative Morphir profile.
-/// No generic YAML loader or implicit scalar coercion participates in this path.
-fn parse_document(
-  source : String,
-  limits : Limits,
-) -> (Json, Int32, Int32) raise @wire.CodecError {
+fn check_limits(limits : Limits) -> Unit raise @wire.CodecError {
   guard limits.max_bytes > 0 &&
     limits.max_events > 0 &&
     limits.max_nodes > 0 &&
@@ -250,6 +245,13 @@ fn parse_document(
       "yaml_invalid_limits", "Limits must be nonnegative, depth at most 512, and source/event/node/assembly budgets positive",
     )
   }
+}
+
+///|
+fn check_source_bytes(
+  source : String,
+  limits : Limits,
+) -> Unit raise @wire.CodecError {
   guard source.length() <= limits.max_bytes else {
     raise @wire.Invalid("yaml_source_limit", "Source byte budget exceeded")
   }
@@ -269,6 +271,17 @@ fn parse_document(
     }
     source_bytes += units
   }
+}
+
+///|
+/// Parse exactly one mapping-root document under the normative Morphir profile.
+/// No generic YAML loader or implicit scalar coercion participates in this path.
+fn parse_document(
+  source : String,
+  limits : Limits,
+) -> (Json, Int32, Int32) raise @wire.CodecError {
+  check_limits(limits)
+  check_source_bytes(source, limits)
   let text = if source.length() > 0 && source[0].to_int() == 65279 {
     source[1:]
   } else {

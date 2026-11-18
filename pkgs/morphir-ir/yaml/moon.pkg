@@ -6,10 +6,17 @@ import {
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/version",
   "finos/morphir-ir/migration",
+  "finos/morphir-ir/common",
+  "finos/morphir-ir/versions/v3",
+  "finos/morphir-ir/versions/v4",
+  "finos/morphir-ir/versions/v3/json" @v3_json,
+  "finos/morphir-ir/versions/v4/json" @v4_json,
+  "moonbitlang/core/debug",
 }
 
 import {
   "finos/morphir-ir/yaml",
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/versions/v4/json" @codec,
+  "finos/morphir-ir/wire",
 } for "test"
