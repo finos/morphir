@@ -64,6 +64,11 @@
       "patch": [
         {
           "op": "replace",
+          "path": "/measurements/peakHostResidentBytes/value",
+          "value": 2097153
+        },
+        {
+          "op": "replace",
           "path": "/measurements/peakHostTreeResidentBytes/value",
           "value": 2097153
         },
@@ -303,6 +308,11 @@
       "patch": [
         {
           "op": "replace",
+          "path": "/measurements/peakHostResidentBytes/value",
+          "value": 2097153
+        },
+        {
+          "op": "replace",
           "path": "/measurements/peakHostTreeResidentBytes/value",
           "value": 2097153
         },
@@ -414,6 +424,20 @@
       "schemaValid": false,
       "expected": {
         "refusal": "invalid_shape"
+      }
+    },
+    {
+      "id": "contradictory-host-tree-peak",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/measurements/peakHostTreeResidentBytes/value",
+          "value": 2097153
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "refusal": "contradictory_evidence"
       }
     },
     {

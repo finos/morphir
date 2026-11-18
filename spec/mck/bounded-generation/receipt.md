@@ -17,7 +17,7 @@ The receipt family starts at `0.1.0-draft.1`. Its [schema](../../../website/stat
 
 The report checker resolves the exact kit and case by digest, checks the identities and replays the comparison. The independent case supplies the expected digest. An artifact inventory uses the RFC 8785 JSON form of a list of `{path, sha256}` entries sorted by the UTF-8 bytes of their relative path. The digest covers the whole inventory. Each artifact digest covers its original output bytes. Reader and diagnostic observations use the canonical result required by the case. Diagnostic facts include the refusal and whether a successful output record or installed artifact appeared.
 
-The optional `critical` list contains RFC 6901 JSON Pointers to understood members. An unknown critical path fails with `unknown_critical`. The checker refuses a report with an invalid schema shape (`invalid_shape`), an altered case expectation (`expected_digest_mismatch`), or an outcome that disagrees with replay (`outcome_mismatch`). It also refuses a wrong kit identity or contradictory evidence. Unknown optional members follow the versioned contract policy.
+The optional `critical` list contains RFC 6901 JSON Pointers to understood members. An unknown critical path fails with `unknown_critical`. The checker refuses a report with an invalid schema shape (`invalid_shape`), an altered case expectation (`expected_digest_mismatch`), or an outcome that disagrees with replay (`outcome_mismatch`). It also refuses a wrong kit identity or contradictory evidence (`contradictory_evidence`). Unknown optional members follow the versioned contract policy.
 
 ## Read the measurement scope
 
@@ -32,7 +32,7 @@ The optional `critical` list contains RFC 6901 JSON Pointers to understood membe
 | `peakContextBytes`, `peakIndexBytes` | Peak retained context and discovery index storage in memory. Count a disabled cache as zero. |
 | `bytesRead`, `bytesWritten`, `elapsedMilliseconds` | Total operation I/O bytes and elapsed time from admission to resource release. |
 
-Each recorded source names the measurement or enforcement method and the SHA-256 of its retained evidence. A sampling method identifies the tool, interval and observed process scope. The process-tree observation accounts for simultaneous residents. Guest linear memory remains a separate measure even when the engine shares the host process. The limits record the configured maximum for one document, working sets, input and output batches, and the host and guest ceilings.
+Each recorded source names the measurement or enforcement method and the SHA-256 of its retained evidence. A sampling method identifies the tool, interval and observed process scope. The process-tree observation accounts for simultaneous residents. When the same samples cover a host with no descendants, the host and tree peaks must agree. The checker refuses contradictory measurements before replaying the claimed outcomes. Guest linear memory remains a separate measure even when the engine shares the host process. The limits record the configured maximum for one document, working sets, input and output batches, and the host and guest ceilings.
 
 ## Replay the two decisions
 
