@@ -20,9 +20,9 @@
 //    spec/mep/mck/model-transport.cases.json, and compares the findings with
 //    spec/mep/smithy/mck-expectations.json;
 // 6. compares the types of spec/mep/contract/src/mep.gleam with the shapes
-//    of the model: record fields with structure members, by wire name, and
-//    enum constructors with enum members. CONTRACT_EXCEPTIONS lists each
-//    known difference.
+//    of the model: record and union variant fields with structure members,
+//    by wire name, and enum constructors with enum members.
+//    CONTRACT_EXCEPTIONS lists each known mapping.
 //
 // The CLI runs through moonx at a pinned version, so the result does not
 // depend on a locally installed smithy binary.
@@ -146,10 +146,10 @@ export function codeDifference(expected: string[], actual: string[]): string | u
 	return canonical(want) === canonical(actual) ? undefined : `expected [${want.join(", ")}], found [${actual.join(", ")}]`;
 }
 
-export type GleamType = { name: string; constructors: { name: string; labels: string[] }[] };
+export type GleamType = { name: string; constructors: { name: string; labels: string[]; optionalLabels: string[] }[] };
 
 /** The `pub type` declarations of a Gleam module, with the labels of each
- * constructor. Comments are removed first. */
+ * constructor and which fields have type `Option`. Comments are removed first. */
 export function gleamTypes(source: string): GleamType[] {
 	const code = source.replace(/\/\/.*$/gm, "");
 	const types: GleamType[] = [];
@@ -162,6 +162,7 @@ export function gleamTypes(source: string): GleamType[] {
 			if (!head) break;
 			index += head.index + head[0].length;
 			const labels: string[] = [];
+			const optionalLabels: string[] = [];
 			if (body.slice(index).trimStart().startsWith("(")) {
 				index = body.indexOf("(", index) + 1;
 				let depth = 1;
@@ -178,11 +179,14 @@ export function gleamTypes(source: string): GleamType[] {
 				}
 				parts.push(part);
 				for (const argument of parts) {
-					const label = /^\s*([a-z]\w*)\s*:/.exec(argument);
-					if (label?.[1]) labels.push(label[1]);
+					const field = /^\s*([a-z]\w*)\s*:\s*((?:option\.)?Option\s*\()?/.exec(argument);
+					if (field?.[1]) {
+						labels.push(field[1]);
+						if (field[2]) optionalLabels.push(field[1]);
+					}
 				}
 			}
-			constructors.push({ name: head[0], labels });
+			constructors.push({ name: head[0], labels, optionalLabels });
 		}
 		types.push({ name, constructors });
 	}
@@ -205,6 +209,8 @@ export type ContractException = {
 	shapeType?: string;
 	/** A sum type that the model writes as one structure with a tag member. */
 	tag?: string;
+	/** Gleam constructor names mapped to Smithy union member names. */
+	union?: Record<string, string>;
 	/** The model writes the constructors as operations of the services. */
 	operations?: boolean;
 	reason: string;
@@ -222,13 +228,24 @@ export const CONTRACT_EXCEPTIONS: Record<string, ContractException> = {
 	CompileModelResult: { tag: "success", reason: "a sum tagged by success (smithy-2qe.34.21)" },
 	ModelAccessRequest: { tag: "kind", reason: "bounded request variant" },
 	ModelAccessDelivery: { tag: "kind", reason: "bounded delivery variant" },
+	ModelInventoryEntry: { union: { ModuleEntry: "module", TypeEntry: "type", ValueEntry: "value" }, reason: "inventory entry variant is the wire key" },
 	ModelAccessStep: { tag: "state", reason: "bounded generation outcome" },
 };
 
-type AstShape = { type: string; members?: Record<string, unknown>; operations?: { target: string }[] };
+type AstMember = { target?: string; traits?: Record<string, unknown> };
+type AstShape = { type: string; members?: Record<string, AstMember>; operations?: { target: string }[] };
 
 function sorted(values: Iterable<string>): string[] {
 	return [...new Set(values)].sort();
+}
+
+function structureDifferences(name: string, expected: string[], members: string[]): string[] {
+	const differences: string[] = [];
+	const absent = expected.filter((field) => !members.includes(field));
+	const extra = members.filter((member) => !expected.includes(member));
+	if (absent.length > 0) differences.push(`${name}: the structure has no member ${absent.join(", ")}`);
+	if (extra.length > 0) differences.push(`${name}: the contract has no field ${extra.join(", ")}`);
+	return differences;
 }
 
 /** The differences between the Gleam types and the shapes of a Smithy JSON
@@ -259,13 +276,46 @@ export function contractDifferences(
 		}
 		const isRecord = type.constructors.length === 1 && (type.constructors[0]?.labels.length ?? 0) > 0;
 		const isEnum = type.constructors.every((constructor) => constructor.labels.length === 0);
-		const expectedType = exception.shapeType ?? (isEnum ? "enum" : "structure");
+		const expectedType = exception.shapeType ?? (exception.union ? "union" : isEnum ? "enum" : "structure");
 		if (shape.type !== expectedType && !(expectedType === "enum" && shape.type === "intEnum")) {
 			differences.push(`${type.name}: expected a ${expectedType}, found a ${shape.type}`);
 			continue;
 		}
 		if (exception.shapeType) continue;
 		const members = sorted(Object.keys(shape.members ?? {}));
+		if (exception.union) {
+			const variantNames = new Set<string>();
+			for (const { name, labels, optionalLabels } of type.constructors) {
+				const member = exception.union[name];
+				if (member === undefined) {
+					differences.push(`${type.name}: no union member mapping for ${name}`);
+					continue;
+				}
+				variantNames.add(member);
+				const target = `${namespace}#${name}`;
+				const variant = shapes[target];
+				if (shape.members?.[member]?.target !== target || variant?.type !== "structure") {
+					differences.push(`${type.name}.${member}: expected a structure with target ${target}`);
+					continue;
+				}
+				const payload = `${type.name}.${member}`;
+				const fields = sorted(labels.map(wireName));
+				const optionalFields = optionalLabels.map(wireName);
+				const payloadMembers = variant.members ?? {};
+				differences.push(...structureDifferences(payload, fields, sorted(Object.keys(payloadMembers))));
+				for (const field of fields) {
+					const wireMember = payloadMembers[field];
+					if (!wireMember) continue;
+					const required = !optionalFields.includes(field);
+					if (required !== ("smithy.api#required" in (wireMember.traits ?? {}))) {
+						differences.push(`${payload}.${field}: Smithy member must be ${required ? "required" : "optional"} to match Gleam`);
+					}
+				}
+			}
+			const extra = members.filter((member) => !variantNames.has(member));
+			if (extra.length) differences.push(`${type.name}: the contract has no variant for ${extra.join(", ")}`);
+			continue;
+		}
 		if (isEnum) {
 			if (members.length !== type.constructors.length) {
 				differences.push(`${type.name}: ${type.constructors.length} constructors, but ${members.length} enum members`);
@@ -281,10 +331,7 @@ export function contractDifferences(
 		const expected = sorted([...fields, ...(exception.tag ? [exception.tag] : []), ...(exception.added ?? [])]).filter(
 			(field) => !(exception.missing ?? []).includes(field),
 		);
-		const absent = expected.filter((field) => !members.includes(field));
-		const extra = members.filter((member) => !expected.includes(member));
-		if (absent.length > 0) differences.push(`${type.name}: the structure has no member ${absent.join(", ")}`);
-		if (extra.length > 0) differences.push(`${type.name}: the contract has no field ${extra.join(", ")}`);
+		differences.push(...structureDifferences(type.name, expected, members));
 	}
 	return differences;
 }

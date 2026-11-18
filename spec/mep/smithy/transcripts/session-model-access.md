@@ -27,7 +27,7 @@ The host and guest agree on the exact bounded-access tuple. The guest first requ
 ```
 
 ```jsonrpc host -> extension
-{"jsonrpc":"2.0","id":3,"method":"morphir.backend.generateModel.advance","params":{"sessionId":"orders-generation","round":1,"deliveries":[{"requestId":"root-modules","kind":"inventory","snapshotId":"orders-snapshot","entries":[{"documentId":"pkg/acme/orders/domain/module","packageName":"acme/orders","modulePath":"domain","kind":"module","role":"definition","memberSelection":"orders-domain-members"}]}]}}
+{"jsonrpc":"2.0","id":3,"method":"morphir.backend.generateModel.advance","params":{"sessionId":"orders-generation","round":1,"deliveries":[{"requestId":"root-modules","kind":"inventory","snapshotId":"orders-snapshot","entries":[{"module":{"documentId":"pkg/acme/orders/domain/module","packageName":"acme/orders","modulePath":"domain","role":"definition","memberSelection":"orders-domain-members"}}]}]}}
 ```
 
 ```jsonrpc extension -> host
@@ -47,7 +47,7 @@ The guest refuses a replay of round 1. The outstanding round remains 2 and no ar
 The guest walks both pages of the selected module before asking for a value body.
 
 ```jsonrpc host -> extension
-{"jsonrpc":"2.0","id":5,"method":"morphir.backend.generateModel.advance","params":{"sessionId":"orders-generation","round":2,"deliveries":[{"requestId":"domain-first","kind":"inventory","snapshotId":"orders-snapshot","entries":[{"documentId":"pkg/acme/orders/domain/order.type","packageName":"acme/orders","modulePath":"domain","kind":"type","role":"definition","name":"order"},{"documentId":"pkg/acme/orders/domain/order.value","packageName":"acme/orders","modulePath":"domain","kind":"value","role":"definition","name":"order"}],"nextCursor":"domain-page-two"}]}}
+{"jsonrpc":"2.0","id":5,"method":"morphir.backend.generateModel.advance","params":{"sessionId":"orders-generation","round":2,"deliveries":[{"requestId":"domain-first","kind":"inventory","snapshotId":"orders-snapshot","entries":[{"type":{"documentId":"pkg/acme/orders/domain/order.type","packageName":"acme/orders","modulePath":"domain","role":"definition","name":"order"}},{"value":{"documentId":"pkg/acme/orders/domain/order.value","packageName":"acme/orders","modulePath":"domain","role":"definition","name":"order"}}],"nextCursor":"domain-page-two"}]}}
 ```
 
 ```jsonrpc extension -> host
@@ -55,7 +55,7 @@ The guest walks both pages of the selected module before asking for a value body
 ```
 
 ```jsonrpc host -> extension
-{"jsonrpc":"2.0","id":6,"method":"morphir.backend.generateModel.advance","params":{"sessionId":"orders-generation","round":3,"deliveries":[{"requestId":"domain-second","kind":"inventory","snapshotId":"orders-snapshot","entries":[{"documentId":"pkg/acme/orders/domain/total-in-_usd.value","packageName":"acme/orders","modulePath":"domain","kind":"value","role":"definition","name":"total-in-USD"}]}]}}
+{"jsonrpc":"2.0","id":6,"method":"morphir.backend.generateModel.advance","params":{"sessionId":"orders-generation","round":3,"deliveries":[{"requestId":"domain-second","kind":"inventory","snapshotId":"orders-snapshot","entries":[{"value":{"documentId":"pkg/acme/orders/domain/total-in-_usd.value","packageName":"acme/orders","modulePath":"domain","role":"definition","name":"total-in-USD"}}]}]}}
 ```
 
 ```jsonrpc extension -> host

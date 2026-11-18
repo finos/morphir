@@ -205,6 +205,124 @@
       "source": "spec/mep/model-access.md",
       "value": 9007199254740992,
       "expect": ["Range"]
+    },
+    {
+      "name": "bounded access: a module may omit its member selection",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "module": {
+          "documentId": "pkg/acme/orders/domain/module",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "bounded access: a type entry requires a name",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "type": {
+          "documentId": "pkg/acme/orders/domain/order.type",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition"
+        }
+      },
+      "expect": ["RequiredMember"]
+    },
+    {
+      "name": "bounded access: a value entry requires a name",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "value": {
+          "documentId": "pkg/acme/orders/domain/order.value",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition"
+        }
+      },
+      "expect": ["RequiredMember"]
+    },
+    {
+      "name": "bounded access: a type entry cannot carry a member selection",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "type": {
+          "documentId": "pkg/acme/orders/domain/order.type",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order",
+          "memberSelection": "orders-domain-members"
+        }
+      },
+      "expect": ["UnknownMember"]
+    },
+    {
+      "name": "bounded access: a value entry cannot carry a member selection",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "value": {
+          "documentId": "pkg/acme/orders/domain/order.value",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order",
+          "memberSelection": "orders-domain-members"
+        }
+      },
+      "expect": ["UnknownMember"]
+    },
+    {
+      "name": "bounded access: a module entry cannot carry a name",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "module": {
+          "documentId": "pkg/acme/orders/domain/module",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "domain"
+        }
+      },
+      "expect": ["UnknownMember"]
+    },
+    {
+      "name": "bounded access: an inventory entry requires a variant key",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {},
+      "expect": ["UnionMember"]
+    },
+    {
+      "name": "bounded access: an inventory entry accepts only one variant key",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "type": {
+          "documentId": "pkg/acme/orders/domain/order.type",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order"
+        },
+        "value": {
+          "documentId": "pkg/acme/orders/domain/order.value",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order"
+        }
+      },
+      "expect": ["UnionMember"]
     }
   ]
 }

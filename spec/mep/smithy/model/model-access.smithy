@@ -244,18 +244,19 @@ list ModelAccessDeliveryList {
     member: ModelAccessDelivery
 }
 
-enum ModelInventoryKind {
-    MODULE = "module"
-    TYPE = "type"
-    VALUE = "value"
-}
-
 enum ModelInventoryRole {
     DEFINITION = "definition"
     SPECIFICATION = "specification"
 }
 
-structure ModelInventoryEntry {
+/// The single member name selects the corresponding inventory entry.
+union ModelInventoryEntry {
+    module: ModuleEntry
+    type: TypeEntry
+    value: ValueEntry
+}
+
+structure ModuleEntry {
     @required
     documentId: NonEmptyString
 
@@ -266,13 +267,43 @@ structure ModelInventoryEntry {
     modulePath: NonEmptyString
 
     @required
-    kind: ModelInventoryKind
+    role: ModelInventoryRole
+
+    memberSelection: NonEmptyString
+}
+
+structure TypeEntry {
+    @required
+    documentId: NonEmptyString
+
+    @required
+    packageName: NonEmptyString
+
+    @required
+    modulePath: NonEmptyString
 
     @required
     role: ModelInventoryRole
 
+    @required
     name: NonEmptyString
-    memberSelection: NonEmptyString
+}
+
+structure ValueEntry {
+    @required
+    documentId: NonEmptyString
+
+    @required
+    packageName: NonEmptyString
+
+    @required
+    modulePath: NonEmptyString
+
+    @required
+    role: ModelInventoryRole
+
+    @required
+    name: NonEmptyString
 }
 
 list ModelInventoryEntryList {

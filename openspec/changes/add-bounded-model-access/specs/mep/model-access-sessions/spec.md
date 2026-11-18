@@ -104,6 +104,8 @@ Each advance SHALL identify the operation and expected round, and match deliveri
 ### Requirement: Request independently interpretable data
 Requests SHALL support paged inventory and selected logical documents. Each delivered contextual document SHALL include its complete file-local context. The receiving adapter SHALL check integrity and decode the selected file contract before semantic use, retaining original profile content when required by that profile.
 
+An inventory entry SHALL contain exactly one member named `module`, `type` or `value` with the corresponding entry payload. A `module` payload MAY contain `memberSelection` and SHALL omit `name`. A `type` or `value` payload SHALL contain `name` and SHALL omit `memberSelection`.
+
 #### Scenario: Definition arrives alone
 - **WHEN** the host delivers a contextual type file without the other files in its module
 - **THEN** the guest can resolve its aliases from the delivered envelope

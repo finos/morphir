@@ -59,6 +59,8 @@ spec/mep/smithy/
   the reply of a cancelled request can be `-32800`.
 - Smithy member names are the wire names, including the snake_case members
   of `ExtensionInfo`. Use the default `--member-names smithy`.
+- `ModelInventoryEntry` is a union with `module`, `type` and `value` keys.
+  The OpenRPC schema checks the single-key object and its variant payload.
 - A Gleam `Json` value is a Smithy `document`. A member that is "read as
   empty when absent" has a default (`= []`, `= {}` or `= false`).
 - The contract does not define the results of `morphir.ping` and
@@ -88,10 +90,11 @@ script:
 5. validates the request, the result and the two transport offers of each
    case in [`../mck/model-transport.cases.json`](../mck/model-transport.cases.json),
    and compares the findings with `mck-expectations.json`;
-6. compares the types of `mep.gleam` with the shapes of the model: the fields
-   of each record with the members of its structure, by wire name, and the
-   constructors of each enum with its members. `CONTRACT_EXCEPTIONS` in the
-   script lists each known difference and its reason.
+6. compares the types of `mep.gleam` with the shapes of the model. It checks
+   record fields and union variant fields against their structure members by
+   wire name. It also checks which variant fields are required and compares
+   enum constructor counts. `CONTRACT_EXCEPTIONS` lists the special mappings
+   and their reasons.
 
 The CI `docs` job runs the task when `spec/mep/**`, a Markdown file or the
 script changes.
@@ -120,6 +123,7 @@ match that list.
 | `doc-generate.md` | protocol.md generate request and result, backend capability | Valid |
 | `session-legacy.md` | historical `0.1` session with claims draft.2, separate from the current preview example | Valid |
 | `session-model-transport.md` | a `0.2.0-draft.1` session with MCK cases model-0028 and model-0001 | Valid |
+| `session-model-access.md` | a `0.2.0-draft.2` session with the module, type and value inventory entry variants | Valid |
 | `session-validate-model.md` | a `0.2.0-draft.1` validator session with MCK case model-0036 | Valid |
 | `validate-model-failure.md` | a validator that cannot run, then -32003 | Valid |
 | `lifecycle-violations.md` | requests in the wrong state, capabilities not advertised | 7 expected findings |

@@ -970,29 +970,35 @@ pub type ModelAccessDelivery {
   )
 }
 
-/// Wire kinds `module`, `type`, and `value`.
-pub type ModelInventoryKind {
-  ModuleEntry
-  TypeEntry
-  ValueEntry
-}
-
 /// Wire roles `definition` and `specification`.
 pub type ModelInventoryRole {
   DefinitionEntry
   SpecificationEntry
 }
 
-/// One inventory entry. Only modules can carry a member selection.
+/// One inventory entry. The wire object has a single key `module`, `type`,
+/// or `value`, whose value is the corresponding constructor's record.
 pub type ModelInventoryEntry {
-  ModelInventoryEntry(
+  ModuleEntry(
     document_id: String,
     package_name: String,
     module_path: String,
-    kind: ModelInventoryKind,
     role: ModelInventoryRole,
-    name: Option(String),
     member_selection: Option(String),
+  )
+  TypeEntry(
+    document_id: String,
+    package_name: String,
+    module_path: String,
+    role: ModelInventoryRole,
+    name: String,
+  )
+  ValueEntry(
+    document_id: String,
+    package_name: String,
+    module_path: String,
+    role: ModelInventoryRole,
+    name: String,
   )
 }
 

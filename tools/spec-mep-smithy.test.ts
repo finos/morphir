@@ -84,12 +84,14 @@ test("the orders walkthrough uses checked wire frames and the frozen corpus", ()
 		}
 	}
 
-	type Delivery = { requestId: string; kind: string; entries?: { documentId: string }[]; documentId?: string; decodedByteLength?: number; sha256?: string; content?: string };
+	type InventoryEntry = Partial<Record<"module" | "type" | "value", { documentId: string }>>;
+	type Delivery = { requestId: string; kind: string; entries?: InventoryEntry[]; documentId?: string; decodedByteLength?: number; sha256?: string; content?: string };
 	const frames = transcript as { params?: { deliveries?: Delivery[] } }[];
 	const deliveries = frames.flatMap(frame => frame.params?.deliveries ?? []);
 	const expected = JSON.parse(readFileSync(`${fixture}/expected.json`, "utf8")) as { domainInventory: { pages: string[][]; finalPageBody: { document: string } } };
 	const pages = deliveries.filter(delivery => delivery.requestId === "domain-first" || delivery.requestId === "domain-second");
-	expect(pages.map(page => page.entries?.map(entry => entry.documentId))).toEqual(expected.domainInventory.pages);
+	expect(pages.map(page => page.entries?.map(entry => Object.keys(entry)))).toEqual([[["type"], ["value"]], [["value"]]]);
+	expect(pages.map(page => page.entries?.flatMap(entry => Object.values(entry).map(payload => payload.documentId)))).toEqual(expected.domainInventory.pages);
 
 	const documents = deliveries.filter(delivery => delivery.kind === "document");
 	expect(documents.map(document => document.documentId)).toEqual([
@@ -199,13 +201,13 @@ pub type Outcome {
 
 test("reads Gleam types, constructors and labels, with nested type arguments", () => {
 	expect(gleamTypes(gleam)).toEqual([
-		{ name: "PeerInfo", constructors: [{ name: "PeerInfo", labels: ["kind", "name", "min_sdk_version"] }] },
-		{ name: "PeerKind", constructors: [{ name: "Cli", labels: [] }, { name: "Unspecified", labels: [] }] },
+		{ name: "PeerInfo", constructors: [{ name: "PeerInfo", labels: ["kind", "name", "min_sdk_version"], optionalLabels: ["min_sdk_version"] }] },
+		{ name: "PeerKind", constructors: [{ name: "Cli", labels: [], optionalLabels: [] }, { name: "Unspecified", labels: [], optionalLabels: [] }] },
 		{
 			name: "Outcome",
 			constructors: [
-				{ name: "Done", labels: ["model", "diagnostics"] },
-				{ name: "Failed", labels: ["diagnostics"] },
+				{ name: "Done", labels: ["model", "diagnostics"], optionalLabels: [] },
+				{ name: "Failed", labels: ["diagnostics"], optionalLabels: [] },
 			],
 		},
 	]);
@@ -249,4 +251,46 @@ test("applies exceptions for snake_case, missing and added members", () => {
 	};
 	const changed = { ...shapes, "demo#PeerInfo": { type: "structure", members: { name: {}, min_sdk_version: {}, extra: {} } } };
 	expect(contractDifferences(gleamTypes(gleam), changed, "demo", exceptions)).toEqual([]);
+});
+
+test("compares each member-tagged union variant with its Gleam constructor", () => {
+	const required = { traits: { "smithy.api#required": {} } };
+	const source = `
+pub type Entry {
+  ModuleEntry(document_id: String, member_selection: Option(String))
+  TypeEntry(document_id: String, name: String)
+}
+`;
+	const entries = gleamTypes(source);
+	const unionShapes = {
+		"demo#Entry": {
+			type: "union",
+			members: { module: { target: "demo#ModuleEntry" }, type: { target: "demo#TypeEntry" } },
+		},
+		"demo#ModuleEntry": { type: "structure", members: { documentId: required, memberSelection: {} } },
+		"demo#TypeEntry": { type: "structure", members: { documentId: required, name: required } },
+	};
+	const exceptions = { Entry: { union: { ModuleEntry: "module", TypeEntry: "type" }, reason: "member-tagged" } };
+	expect(contractDifferences(entries, unionShapes, "demo", exceptions)).toEqual([]);
+
+	const swappedFields = {
+		...unionShapes,
+		"demo#TypeEntry": { type: "structure", members: { documentId: required, memberSelection: {} } },
+	};
+	expect(contractDifferences(entries, swappedFields, "demo", exceptions)).toEqual([
+		"Entry.type: the structure has no member name",
+		"Entry.type: the contract has no field memberSelection",
+	]);
+
+	const optionalName = {
+		...unionShapes,
+		"demo#TypeEntry": { type: "structure", members: { documentId: required, name: {} } },
+	};
+	expect(contractDifferences(entries, optionalName, "demo", exceptions)).toEqual([
+		"Entry.type.name: Smithy member must be required to match Gleam",
+	]);
+	const optionalInGleam = gleamTypes(source.replace("name: String", "name: Option(String)"));
+	expect(contractDifferences(optionalInGleam, unionShapes, "demo", exceptions)).toEqual([
+		"Entry.type.name: Smithy member must be optional to match Gleam",
+	]);
 });

@@ -65,7 +65,17 @@ Request objects have a nonempty `requestId` unique for the operation. The two va
 | `inventory` | `requestId`, `kind`, `selection`, `pageSize`, optional `cursor` | `requestId`, `kind`, `snapshotId`, `entries`, optional `nextCursor` |
 | `document` | `requestId`, `kind`, `documentId` | `requestId`, `kind`, `snapshotId`, `documentId`, `decodedByteLength`, `sha256`, `content` |
 
-`selection` identifies a module listing or member listing in the admitted view. It is an opaque selection identity bound to the snapshot, and the producer describes available selections with inventory entries. The reserved selection `root` enumerates the view's modules. A module entry can advertise a `memberSelection` for its members. Each entry carries `documentId`, `packageName`, `modulePath`, `kind` (`module`, `type` or `value`), and `role` (`definition` or `specification`). Type and value entries also carry `name`. The host determines order from the snapshot inventory and binds each continuation cursor to the same snapshot and selection.
+`selection` is an opaque identity for a module or member listing in the admitted snapshot. The reserved selection `root` enumerates the view's modules. A module entry can advertise a `memberSelection` that enumerates its members. The host determines order from the snapshot inventory and binds each continuation cursor to the same snapshot and selection.
+
+Each object in `entries` has exactly one key, `module`, `type` or `value`. The key selects the payload object, which requires `documentId`, `packageName`, `modulePath` and `role` (`definition` or `specification`).
+
+| Key | Additional payload members |
+| --- | --- |
+| `module` | Optional `memberSelection`. |
+| `type` | Required `name`. |
+| `value` | Required `name`. |
+
+The receiver rejects a `module` payload that includes `name` or a `type` or `value` payload that includes `memberSelection`. [Examples of all three variants](smithy/transcripts/session-model-access.md)
 
 `documentId` names the logical document within the snapshot, without the physical extension or a host path. The reserved identity `manifest` can be requested before enumeration. `content` contains canonical padded RFC 4648 base64 of the selected document's original bytes. Check the length and lowercase SHA-256 before parsing under the exact selected tuple. A contextual delivery includes the file's entire local table. Receiving a type or value file on its own never requires a second file to resolve one of its aliases.
 

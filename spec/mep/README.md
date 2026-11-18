@@ -98,6 +98,7 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `ValidateModelResult` | No success flag. A failure to run is a JSON-RPC error. |
 | `ModelAccessTuple` | Exact protocol, access and semantic IR version tokens. The codec and contextual encoding are separate tuple members. |
 | `ModelAccessRequest`, `ModelAccessDelivery` | The wire `kind` selects inventory or document. The [bounded-generation rules](model-access.md#requests-and-deliveries) list the required member set for each tag. |
+| `ModelInventoryEntry` | One wire key (`module`, `type` or `value`) selects the payload. A module may supply `memberSelection`. Types and values require `name`. |
 | `ModelAccessStep` | The wire `state` selects `continue`, `complete` or `failed`. A terminal failure carries only the session identity and diagnostics beside the tag. |
 | `GenerateRequest` | `options` is read as empty when absent. |
 | `GenerateResult` | `artifacts` and `diagnostics` are read as empty when absent. |
