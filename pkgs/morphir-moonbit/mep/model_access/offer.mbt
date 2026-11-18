@@ -147,6 +147,15 @@ pub fn AccessTuple::to_json(self : AccessTuple) -> Json {
 const FRAME_BYTES_INDEX : Int32 = 0
 
 ///|
+const ENCODED_BYTES_INDEX : Int32 = 1
+
+///|
+const DECODED_BYTES_INDEX : Int32 = 2
+
+///|
+const DOCUMENT_COUNT_INDEX : Int32 = 3
+
+///|
 let limit_names : Array[String] = [
   "maxFrameBytes", "maxEncodedBytesPerExchange", "maxDecodedBytesPerExchange", "maxDocumentsPerBatch",
   "maxDepth", "maxNodes", "maxDiagnosticsPerExchange", "maxOutstandingRequests",

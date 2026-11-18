@@ -124,9 +124,12 @@ The driver applies the shorter host deadline and the operation's call limit
 to each exchange. The generation deadline starts at its first call and
 includes time between advances. A deadline stops the worker before the
 session reports termination.
-The worker conversation validates the exchange and returns typed chunks.
-The generation caller verifies delivered bytes and stages those chunks before
-it publishes an artifact.
+
+Both peers check the requested inventory page size and the document batch
+ceilings before dispatch. They verify canonical base64, decoded length, and
+SHA-256 before a selected document reaches the backend. The generation
+caller checks the admitted IR profile and stages returned chunks before
+publishing an artifact.
 
 A small model can use an older protocol when no complete bounded tuple
 matches. Pass a byte-capped reader to `BoundedGenerateChoice::select` only

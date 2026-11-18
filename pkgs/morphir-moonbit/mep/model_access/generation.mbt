@@ -29,23 +29,57 @@ pub fn GenerationRun::new(request : Start) -> GenerationRun {
 }
 
 ///|
-/// Verifies that the deliveries answer the outstanding requests in order.
-/// Contents and inventory bounds are checked by the receiving exchange.
+fn DocumentDelivery::matches_bytes(self : DocumentDelivery) -> Bool {
+  let bytes = @base64.decode(self.content) catch { _ => return false }
+  bytes.length() == self.decoded_byte_length &&
+  @base64.encode(bytes[:]) == self.content &&
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes)) == self.sha256
+}
+
+///|
+/// Verifies ordered delivery ownership, inventory and batch bounds, and the
+/// integrity of document bytes before a peer can dispatch the advance.
 pub fn GenerationRun::accepts(self : GenerationRun, advance : Advance) -> Bool {
   guard self.session_id == advance.session_id &&
     self.round == advance.round &&
     self.requests.length() == advance.deliveries.length() else {
     return false
   }
+  let mut document_count = 0L
+  let mut encoded = 0L
+  let mut decoded = 0L
   for i, request in self.requests {
     let delivery = advance.deliveries[i]
-    let document_id = match request {
-      Inventory(..) => None
-      Document(document_id~, ..) => Some(document_id)
-    }
     if delivery.request_id() != request.request_id() ||
-      delivery.snapshot_id() != self.snapshot_id ||
-      delivery.document_id() != document_id {
+      delivery.snapshot_id() != self.snapshot_id {
+      return false
+    }
+    match (request, delivery) {
+      (Inventory(page_size~, ..), Inventory(page)) if page.entries.length() <=
+        page_size => ()
+      (Document(document_id~, ..), Document(document)) if document.document_id ==
+        document_id => {
+        let size = document.decoded_byte_length.to_int64()
+        let wire_size = document.content.length().to_int64()
+        guard size >= 0L && wire_size == (size + 2L) / 3L * 4L else {
+          return false
+        }
+        document_count += 1L
+        encoded += wire_size
+        decoded += size
+      }
+      _ => return false
+    }
+  }
+
+  // Refuse the whole batch before base64 decoding any selected document.
+  guard document_count <= self.limits.values[DOCUMENT_COUNT_INDEX] &&
+    encoded <= self.limits.values[ENCODED_BYTES_INDEX] &&
+    decoded <= self.limits.values[DECODED_BYTES_INDEX] else {
+    return false
+  }
+  for delivery in advance.deliveries {
+    if delivery is Document(document) && !document.matches_bytes() {
       return false
     }
   }

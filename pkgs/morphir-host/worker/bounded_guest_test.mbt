@@ -66,6 +66,45 @@ fn guest_error_code(response : Json) -> Json {
 }
 
 ///|
+fn delivery_refusals(request : Json, index : Int32) -> Array[Json] raise {
+  guard request is Object(fields) &&
+    fields.get("params") is Some(Object(parameters)) &&
+    parameters.get("deliveries") is Some(Array([Object(delivery)])) else {
+    fail("the pinned advance has no single delivery")
+  }
+  let variants : Array[(String, Json)] = if index == 5 {
+    guard delivery.get("entries") is Some(Array([entry])) else {
+      fail("the first inventory page has no module")
+    }
+    [("entries", Json::array([entry, entry]))]
+  } else {
+    guard delivery.get("content") is Some(String(content)) &&
+      content.has_suffix("o=") else {
+      fail("the pinned document has no expected padding")
+    }
+    [
+      ("sha256", Json::string("0".repeat(64))),
+      ("decodedByteLength", Json::number(258)),
+      ("content", Json::string("!" + content[1:].to_owned())),
+      (
+        "content",
+        Json::string(content[:content.length() - 2].to_owned() + "p="),
+      ),
+    ]
+  }
+  variants.map(change => {
+    let (key, value) = change
+    let changed = delivery.copy()
+    changed[key] = value
+    let params = parameters.copy()
+    params["deliveries"] = Json::array([Json::object(changed)])
+    let altered = fields.copy()
+    altered["params"] = Json::object(params)
+    Json::object(altered)
+  })
+}
+
+///|
 test "bounded MoonBit guest replays ordered rounds, failure, cancellation and release" {
   let entries = read_transcript(
     "../../tests/fixtures/mep-bounded-generation/session-model-access.md",
@@ -106,6 +145,14 @@ test "bounded MoonBit guest replays ordered rounds, failure, cancellation and re
       bounded_guest_start(entries[i].1)
     } else {
       entries[i].1
+    }
+    if i == 5 || i == 13 {
+      let before = counts[1]
+      for invalid in delivery_refusals(message, i) {
+        let error = guest.handle(invalid).unwrap()
+        assert_eq(guest_error_code(error), Json::number(-32602))
+        assert_eq(counts[1], before)
+      }
     }
     let response = guest.handle(message).unwrap()
     if i == 7 {
@@ -236,6 +283,19 @@ async test "MoonBit host and guest exchange the pinned orders rounds over one ch
     }
     assert_eq(step.to_json(), recorded_part(entries[4].1, "result"))
     for i in [5, 9, 11, 13, 15] {
+      if i == 5 || i == 13 {
+        let before = received.length()
+        for invalid in delivery_refusals(entries[i].1, i) {
+          let refused = @model_access.Advance::from_json(
+            recorded_part(invalid, "params"),
+          )
+          assert_true(
+            session.advance_generation(refused).class
+            is Refused(code=AgreementMismatch, ..),
+          )
+          assert_eq(received.length(), before)
+        }
+      }
       let advance = @model_access.Advance::from_json(
         recorded_part(entries[i].1, "params"),
       )
@@ -596,4 +656,63 @@ test "bounded fallback checks the exact legacy document version" {
     fail("the dual-line guest did not select legacy generation")
   }
   assert_eq(fallback.ir_version.map(name => name.to_string()), Some("3.0.0"))
+}
+
+///|
+test "bounded delivery admission enforces each aggregate document ceiling" {
+  let entries = read_transcript(
+    "../../tests/fixtures/mep-bounded-generation/session-model-access.md",
+  )
+  let requests = [12, 14].map(index => {
+    guard recorded_part(recorded_part(entries[index].1, "result"), "requests")
+      is Array([request]) else {
+      fail("missing fixed document request")
+    }
+    request
+  })
+  let deliveries = [13, 15].map(index => {
+    guard recorded_part(recorded_part(entries[index].1, "params"), "deliveries")
+      is Array([delivery]) else {
+      fail("missing fixed document delivery")
+    }
+    delivery
+  })
+  let step = @model_access.GenerationStep::from_json({
+    "sessionId": "orders-generation",
+    "state": "continue",
+    "round": 1,
+    "requests": requests,
+    "artifacts": [],
+    "diagnostics": [],
+  })
+  let batch = @model_access.Advance::from_json({
+    "sessionId": "orders-generation",
+    "round": 1,
+    "deliveries": deliveries,
+  })
+  let params = recorded_part(bounded_guest_start(entries[3].1), "params")
+  guard params is Object(start_fields) &&
+    start_fields.get("limits") is Some(Object(start_limits)) else {
+    fail("missing fixed start limits")
+  }
+  for
+    (documents, encoded, decoded, expected) in [
+      (2, 672, 503, true),
+      (1, 672, 503, false),
+      (2, 671, 503, false),
+      (2, 672, 502, false),
+    ] {
+    let limits = start_limits.copy()
+    limits["maxDocumentsPerBatch"] = Json::number(documents.to_double())
+    limits["maxEncodedBytesPerExchange"] = Json::number(encoded.to_double())
+    limits["maxDecodedBytesPerExchange"] = Json::number(decoded.to_double())
+    let start = start_fields.copy()
+    start["limits"] = Json::object(limits)
+    let run = @model_access.GenerationRun::new(
+        @model_access.Start::from_json(Json::object(start)),
+      )
+      .accept_step(step)
+      .unwrap()
+    assert_eq(run.accepts(batch), expected)
+  }
 }
