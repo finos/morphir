@@ -16,6 +16,8 @@ priv struct Reader {
   chars : Array[Char]
   mut index : Int32
   max_depth : Int32
+  allow_document_layer : Bool
+  mut used_document_layer : Bool
   mut nodes : Int32?
   mut string_units : Int32?
   context_duplicates : Ref[(String, String, String)?]?
@@ -79,21 +81,30 @@ fn Reader::string(self : Reader) -> String raise CodecError {
 }
 
 ///|
+fn Reader::depth_error(self : Reader) -> CodecError {
+  Invalid(
+    if self.nodes is None {
+      "invalid_json"
+    } else {
+      "json_limit"
+    },
+    "Depth budget exceeded",
+  )
+}
+
+///|
 fn Reader::value(
   self : Reader,
   depth : Int32,
   context_path : String?,
+  in_document~ : Bool = false,
 ) -> Json raise CodecError {
   self.space()
   if depth > self.max_depth {
-    raise Invalid(
-      if self.nodes is None {
-        "invalid_json"
-      } else {
-        "json_limit"
-      },
-      "Depth budget exceeded",
-    )
+    guard in_document && depth == self.max_depth + 1 else {
+      raise self.depth_error()
+    }
+    self.used_document_layer = true
   }
   if self.nodes is Some(remaining) {
     guard remaining > 0 else {
@@ -148,7 +159,9 @@ fn Reader::value(
           }
           _ => None
         }
-        let item = self.value(depth + 1, child_path)
+        let in_document = in_document ||
+          (self.allow_document_layer && depth == 0 && key == "document")
+        let item = self.value(depth + 1, child_path, in_document~)
         if !duplicate {
           fields[key] = item
         }
@@ -170,7 +183,7 @@ fn Reader::value(
         return Json::array(items)
       }
       while true {
-        items.push(self.value(depth + 1, None))
+        items.push(self.value(depth + 1, None, in_document~))
         self.space()
         if self.index < self.chars.length() && self.chars[self.index] == ']' {
           self.index += 1
@@ -206,9 +219,12 @@ fn Reader::value(
 }
 
 ///|
+const PlainDocumentMaxDepth = 512
+
+///|
 /// Reject duplicate members and preserve every numeric lexeme before decoding IR.
 pub fn parse(text : String) -> Json raise CodecError {
-  parse_with_limits(text, 512, None, None, false)
+  parse_with_limits(text, PlainDocumentMaxDepth, None, None, false)
 }
 
 ///|
@@ -237,6 +253,7 @@ fn parse_with_limits(
   nodes : Int32?,
   string_units : Int32?,
   contextual : Bool,
+  allow_document_layer~ : Bool = false,
 ) -> Json raise CodecError {
   let duplicates : Ref[(String, String, String)?]? = if contextual {
     Some(Ref(None))
@@ -247,6 +264,8 @@ fn parse_with_limits(
     chars: text.iter().collect(),
     index: 0,
     max_depth,
+    allow_document_layer,
+    used_document_layer: false,
     nodes,
     string_units,
     context_duplicates: duplicates,
@@ -255,6 +274,15 @@ fn parse_with_limits(
   reader.space()
   if reader.index != reader.chars.length() {
     raise Invalid("invalid_json", "Trailing input")
+  }
+  // The document is a full plain IR payload. Its envelope may add one level.
+  // Confirm the marker here because JSON can place it after the document.
+  if reader.used_document_layer {
+    guard result is Object(fields) &&
+      fields.get("$schema") is Some(String(url)) &&
+      url == ContextualSchema else {
+      raise reader.depth_error()
+    }
   }
   if duplicates is Some(first) && first.val is Some((code, key, path)) {
     if result is Object(fields) && fields.contains("$schema") {

@@ -95,6 +95,14 @@ Migrations fail when the target cannot retain information:
 
 Catch errors normally, or use `@wire.diagnostic(error)` for a stable diagnostic code. Treat migrated files as new values: no source model is mutated.
 
+## Whole-file name compaction
+
+Use `@wire.compact_names(json)` on an expanded IR v3, v3.1 or v4 JSON document. The result gives the policy identifier, the written JSON and whether it contains a context. A manifest, module, type file or value file has its own table. The writer measures UTF-8 bytes and emits the canonical plain JSON when the complete envelope would use as much space or more.
+
+`@wire.expand_names(json)` restores aliases in typed slots. It preserves classic arrays, v4 parameter order, number spellings and document literal data. A contextual file must place its context before its document for this whole-file API. The [bounded reader](yaml/README.md) also supports contextual YAML and its separately limited context-last path.
+
+Pass valid IR to the writer and use the versioned codec to validate typed data when reading. Legacy array spellings in v4 canonical slots stay expanded so writing and expanding preserves their form. The writer works on one complete JSON file in memory. The [21 shared policy cases](https://github.com/finos/morphir/tree/4fa51c8b9a8634f8779e0e6b9900fc14b049da06/docs/spec/ir/context/policy/morphir.compact-0.1.0-draft.1) fix the written bytes and round-trip expectations for `morphir.compact/0.1.0-draft.1`.
+
 ## Verification and upstream sources
 
 The fixture suite checks upstream JSON examples for canonical output, equivalent accepted spellings, rejection diagnostics, exact number text, and migration behavior. Elm v1/v2 rentals files and a complete v3 distribution exercise real package conversions. Tests are embedded in MoonBit source so every target runs the same corpus without filesystem access.
