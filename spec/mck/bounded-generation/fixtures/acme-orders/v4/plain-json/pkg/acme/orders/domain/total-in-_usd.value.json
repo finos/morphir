@@ -1,0 +1,13 @@
+{
+  "formatVersion": 4,
+  "name": "total-in-USD",
+  "def": {
+    "Public": {
+      "ExpressionBody": {
+        "inputTypes": {},
+        "outputType": "morphir/SDK:basics#int",
+        "body": { "Reference": "acme/orders:domain#order" }
+      }
+    }
+  }
+}

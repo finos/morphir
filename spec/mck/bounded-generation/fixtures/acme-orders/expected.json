@@ -1,0 +1,70 @@
+{
+  "distribution": "Library",
+  "package": "acme/orders",
+  "pathBudget": 4000,
+  "dependencies": ["morphir/SDK"],
+  "modules": [
+    {
+      "package": "acme/orders",
+      "path": "audit",
+      "role": "definition",
+      "access": "Private",
+      "document": "pkg/acme/orders/audit/module",
+      "members": []
+    },
+    {
+      "package": "acme/orders",
+      "path": "domain",
+      "role": "definition",
+      "access": "Public",
+      "document": "pkg/acme/orders/domain/module",
+      "members": [
+        { "name": "order", "kind": "type", "role": "definition", "document": "pkg/acme/orders/domain/order.type" },
+        { "name": "order", "kind": "value", "role": "definition", "document": "pkg/acme/orders/domain/order.value" },
+        { "name": "total-in-USD", "kind": "value", "role": "definition", "document": "pkg/acme/orders/domain/total-in-_usd.value" }
+      ]
+    },
+    {
+      "package": "morphir/SDK",
+      "path": "basics",
+      "role": "specification",
+      "document": "deps/morphir/_sdk/@/basics/module",
+      "members": [
+        { "name": "int", "kind": "type", "role": "specification", "document": "deps/morphir/_sdk/@/basics/int.type" },
+        { "name": "add", "kind": "value", "role": "specification", "document": "deps/morphir/_sdk/@/basics/add.value" }
+      ]
+    }
+  ],
+  "domainInventory": {
+    "pageSize": 2,
+    "pages": [
+      ["pkg/acme/orders/domain/order.type", "pkg/acme/orders/domain/order.value"],
+      ["pkg/acme/orders/domain/total-in-_usd.value"]
+    ],
+    "finalPageBody": {
+      "document": "pkg/acme/orders/domain/total-in-_usd.value",
+      "outputType": "morphir/SDK:basics#int",
+      "reference": "acme/orders:domain#order",
+      "referenceKind": "value",
+      "referencedIntegerLiteral": 73
+    }
+  },
+  "classicAttributes": [
+    { "document": "pkg/acme/orders/domain/order.type", "pointer": "/def/value/value/2/1", "value": {} },
+    { "document": "pkg/acme/orders/domain/order.value", "pointer": "/def/value/value/outputType/1", "value": {} },
+    {
+      "document": "pkg/acme/orders/domain/order.value",
+      "pointer": "/def/value/value/body/1",
+      "value": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]
+    },
+    { "document": "pkg/acme/orders/domain/total-in-_usd.value", "pointer": "/def/value/value/outputType/1", "value": {} },
+    {
+      "document": "pkg/acme/orders/domain/total-in-_usd.value",
+      "pointer": "/def/value/value/body/1",
+      "value": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]
+    },
+    { "document": "deps/morphir/_sdk/@/basics/add.value", "pointer": "/spec/value/inputs/0/1/1", "value": {} },
+    { "document": "deps/morphir/_sdk/@/basics/add.value", "pointer": "/spec/value/inputs/1/1/1", "value": {} },
+    { "document": "deps/morphir/_sdk/@/basics/add.value", "pointer": "/spec/value/output/1", "value": {} }
+  ]
+}

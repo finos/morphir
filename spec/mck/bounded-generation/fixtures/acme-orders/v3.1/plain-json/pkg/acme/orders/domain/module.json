@@ -1,0 +1,7 @@
+{
+  "formatVersion": "3.1.0",
+  "path": "domain",
+  "doc": "Order totals.",
+  "types": ["order"],
+  "values": ["order", "total-in-USD"]
+}

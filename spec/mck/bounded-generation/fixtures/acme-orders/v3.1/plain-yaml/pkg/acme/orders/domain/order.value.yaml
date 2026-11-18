@@ -1,0 +1,20 @@
+formatVersion: 3.1.0
+name: order
+def:
+  access: Public
+  value:
+    doc: ""
+    value:
+      inputTypes: []
+      outputType:
+        - Reference
+        - {}
+        - [[[morphir], [s, d, k]], [[basics]], [int]]
+        - []
+      body:
+        - Literal
+        - - Reference
+          - {}
+          - [[[morphir], [s, d, k]], [[basics]], [int]]
+          - []
+        - [WholeNumberLiteral, 73]

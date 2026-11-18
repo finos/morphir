@@ -1,0 +1,20 @@
+formatVersion: 3.1.0
+name: total-in-USD
+def:
+  access: Public
+  value:
+    doc: ""
+    value:
+      inputTypes: []
+      outputType:
+        - Reference
+        - {}
+        - [[[morphir], [s, d, k]], [[basics]], [int]]
+        - []
+      body:
+        - Reference
+        - - Reference
+          - {}
+          - [[[morphir], [s, d, k]], [[basics]], [int]]
+          - []
+        - [[[acme], [orders]], [[domain]], [order]]
