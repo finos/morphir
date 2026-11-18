@@ -65,7 +65,7 @@ A whole-file reader reads the entire file, checks its context and expands every 
 | Admit unknown optional context members safely | Ignoring unknown members; refusing unknown critical paths | Retaining the original bytes for pass-through |
 | Make expansion lossless | All | — |
 | Make compaction deterministic and cost-aware | All | — |
-| Name the writer policy, and the eleven policy requirements after it | All | — |
+| Name the writer policy, and the twelve policy requirements after it | All | — |
 | Support bounded alias resolution | — | All |
 | Order the context before the document | Refusing a context after the document | Accepting it through bounded spill or a further pass |
 | Advertise the streaming order only when declared | All | All |
@@ -246,8 +246,15 @@ A file written under the policy SHALL be in its written form: the envelope with 
 - **WHEN** a file to compact holds a doc string with `é`
 - **THEN** the policy counts `é` as two bytes, and the written file holds `é` unescaped
 
+### Requirement: Take lexemes and member order from the given text
+When the writer is given the plain document as JSON text, such as a file or a stream, the source lexemes and source member order SHALL be those of that text, whatever the writer holds in memory. Only a plain document with no source text, such as the output of a version or profile conversion, SHALL take the text its own plain encoder writes; that output is deterministic for one encoder, not across hosts.
+
+#### Scenario: A file read from disk keeps its own spelling
+- **WHEN** a writer compacts a file on disk whose `FloatLiteral` is spelled `1e2`, and its in-memory model would encode it as `100.0`
+- **THEN** the written file spells it `1e2`
+
 ### Requirement: Keep every number's source lexeme
-Every JSON number SHALL be written with its exact source lexeme, the characters that spell it in the plain document given to the writer, and SHALL NOT be reformatted; a number SHALL cost the UTF-8 bytes of its lexeme. The plain document is JSON text; a writer that builds it in memory SHALL take the text its plain encoder writes. JCS number form would change IR values, so it SHALL NOT be used.
+Every JSON number SHALL be written with its exact source lexeme, the characters that spell it in the plain document given to the writer, and SHALL NOT be reformatted; a number SHALL cost the UTF-8 bytes of its lexeme. JCS number form would change IR values, so it SHALL NOT be used.
 
 #### Scenario: An integer beyond 2^53 keeps its digits
 - **WHEN** a v4 value file holds the `IntegerLiteral` 9007199254740993 (case `exact-numbers`)

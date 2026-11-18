@@ -24,7 +24,9 @@ implementation produced any of them.
 
   The escaping and no-whitespace rules hold inside order-carrying objects and `DocumentLiteral` content too. The plain
   document given to the writer is JSON text, and its source lexemes and source member order are those of that text.
-  A writer that builds the plain document in memory takes the text its own plain encoder writes.
+  When the writer is given JSON text (a file or a stream), the lexemes and member order are that text's, whatever the
+  writer holds in memory. Only a plain document with no source text, such as the output of a version or profile
+  conversion, takes the text its own plain encoder writes, which is deterministic for one encoder, not across hosts.
 - An order-carrying object is one whose member order the enclosed document's IR JSON Schema declares semantic. In IR 4
   (`website/static/schemas/morphir-ir-v4.json`) these are exactly:
   - the `inputTypes` of each value definition body, `ExpressionBody`, `NativeBody`, `ExternalBody` and
