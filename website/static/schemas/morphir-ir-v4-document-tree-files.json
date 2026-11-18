@@ -341,7 +341,7 @@
               "additionalProperties": true
             },
             "spec": {
-              "description": "Value specification (interface). Used in PackageSpecification.\nMust contain output (type); inputs (object mapping parameter names to types) is\nomitted when empty and accepted when written empty.\n",
+              "description": "Value specification (interface). Used in PackageSpecification.\nMust contain output (type); inputs (object mapping parameter names to types) is\nomitted when empty and accepted when written empty. The key order of \"inputs\"\nis the parameter order.\n",
               "type": "object",
               "required": [],
               "properties": {

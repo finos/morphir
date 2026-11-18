@@ -11,7 +11,8 @@ the literal is the JSON string `"{\"$name\":\"a\"}"`.
    32. Spelled out.
 3. `label` (`names`) at `name`, O = 7, once: spelled out.
 
-The literal stays a string, written by JCS with its quotes escaped, `"{\"$name\":\"a\"}"`, and it never expands.
+The literal stays a string, written with its quotes escaped as RFC 8785 escapes them,
+`"{\"$name\":\"a\"}"`, and it never expands.
 
 **Loss decision.** Overhead = 118 + 12 + 105 + 0 = 235. Savings 264 > 235, so the envelope is written, 29 bytes
 smaller: 522 bytes plain, 493 bytes compacted.

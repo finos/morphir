@@ -65,7 +65,7 @@ A whole-file reader reads the entire file, checks its context and expands every 
 | Admit unknown optional context members safely | Ignoring unknown members; refusing unknown critical paths | Retaining the original bytes for pass-through |
 | Make expansion lossless | All | — |
 | Make compaction deterministic and cost-aware | All | — |
-| Name the writer policy, and the seven policy requirements after it | All | — |
+| Name the writer policy, and the eleven policy requirements after it | All | — |
 | Support bounded alias resolution | — | All |
 | Order the context before the document | Refusing a context after the document | Accepting it through bounded spill or a further pass |
 | Advertise the streaming order only when declared | All | All |
@@ -205,7 +205,11 @@ Readers SHALL ignore unknown optional envelope and context members. An optional 
 - **THEN** it retains the original artifact bytes rather than re-encoding them
 
 ### Requirement: Make expansion lossless
-For every supported model document and admitted compaction policy, `expandNames(compactNames(document))` SHALL equal the original typed document. Equality SHALL preserve all supported attributes, metadata, literals and semantically ordered collections. Semantic node addresses SHALL not depend on alias allocation. Byte digests SHALL continue to bind the actual encoded bytes.
+For every supported model document and admitted compaction policy, `expandNames(compactNames(document))` SHALL equal the original typed document. Equality SHALL preserve all supported attributes, metadata, literals and semantically ordered collections, each number's lexeme and the member order of `DocumentLiteral` content. Semantic node addresses SHALL not depend on alias allocation. Byte digests SHALL continue to bind the actual encoded bytes.
+
+#### Scenario: Number lexemes expand back
+- **WHEN** a compacted v4 value file holds the `IntegerLiteral` 9007199254740993 and the `FloatLiteral` `1.0` (case `exact-numbers`)
+- **THEN** its expansion holds 9007199254740993 and `1.0`, spelled as the original document spelled them
 
 #### Scenario: Parameter order expands back
 - **WHEN** a compacted v4 value file's `inputTypes` lists `rate`, `amount`, `discount`, `limit` (case `ordered-inputs`)
@@ -232,7 +236,7 @@ The first published writer policy SHALL be `morphir.compact/0.1.0-draft.1`, defi
 - **THEN** its output bytes equal the case's `expected.json`
 
 ### Requirement: Write compacted output as RFC 8785 canonical JSON
-A file written under the policy SHALL be in its written form: the RFC 8785 (JCS) text of the envelope with exactly `$schema`, `context` and `document`, or of the plain document when the policy declines, with the member order of order-carrying objects excepted. JCS sorts all other members, so the context precedes the document; a table with no entry is left out. Every size the policy compares SHALL be the UTF-8 byte length of written-form text.
+A file written under the policy SHALL be in its written form: the envelope with exactly `$schema`, `context` and `document`, or the plain document when the policy declines, with members sorted by UTF-16 code units, RFC 8785 string escaping and no whitespace, except for number lexemes, order-carrying objects and `DocumentLiteral` content. The context precedes the document; a table with no entry is left out. Every size the policy compares SHALL be the UTF-8 byte length of written-form text.
 
 #### Scenario: Tables in JCS order
 - **WHEN** a compacted file's context has entries in all four tables
@@ -242,8 +246,30 @@ A file written under the policy SHALL be in its written form: the RFC 8785 (JCS)
 - **WHEN** a file to compact holds a doc string with `é`
 - **THEN** the policy counts `é` as two bytes, and the written file holds `é` unescaped
 
+### Requirement: Keep every number's source lexeme
+Every JSON number SHALL be written with its exact source lexeme, the characters that spell it in the plain document given to the writer, and SHALL NOT be reformatted; a number SHALL cost the UTF-8 bytes of its lexeme. The plain document is JSON text; a writer that builds it in memory SHALL take the text its plain encoder writes. JCS number form would change IR values, so it SHALL NOT be used.
+
+#### Scenario: An integer beyond 2^53 keeps its digits
+- **WHEN** a v4 value file holds the `IntegerLiteral` 9007199254740993 (case `exact-numbers`)
+- **THEN** the written file holds 9007199254740993, not the 9007199254740992 of JCS
+
+#### Scenario: A float keeps its spelling
+- **WHEN** a v4 value file holds the `FloatLiteral`s `1.0` and `1e2`
+- **THEN** the written file holds `1.0` and `1e2`, not `1` and `100`
+
+#### Scenario: Costs count lexemes
+- **WHEN** the policy measures the plain document of case `exact-numbers`
+- **THEN** it is 801 bytes, the size of its written form, although its JCS text is 798 bytes
+
+### Requirement: Keep DocumentLiteral content verbatim
+The content of a v4 `DocumentLiteral`, the JSON value of its `DocumentLiteral` member, which the schema says is carried verbatim, SHALL keep its source member order in every object inside it, at any depth, and its number lexemes. RFC 8785 string escaping and the absence of whitespace SHALL still apply to it. IR 3 has no `DocumentLiteral`.
+
+#### Scenario: A document literal keeps its member order
+- **WHEN** a v4 value file holds the literal `{"region": …, "cap": 1.50, "tiers": [{"upTo": 1e3, "rate": 0.10}]}` (case `exact-numbers`)
+- **THEN** the written file keeps `region`, `cap`, `tiers` and `upTo`, `rate` in that order, with `1.50`, `1e3` and `0.10`
+
 ### Requirement: Keep the order of order-carrying members
-The members of an order-carrying object SHALL keep their order in the plain document given to the writer, and expansion SHALL return them in that order. JCS escaping, number form and the absence of whitespace SHALL still apply to them. Member order does not change a byte length, so every cost equals that of the JCS text. An order-carrying object SHALL be one whose member order the enclosed document's IR JSON Schema declares semantic.
+The members of an order-carrying object SHALL keep their order in the plain document given to the writer, and expansion SHALL return them in that order. RFC 8785 string escaping, number lexemes and the absence of whitespace SHALL still apply to them. Member order does not change a byte length. An order-carrying object SHALL be one whose member order the enclosed document's IR JSON Schema declares semantic.
 
 #### Scenario: Parameter order survives compaction
 - **WHEN** a v4 value file's `inputTypes` lists `rate` before `amount` (case `ordered-inputs`)
@@ -255,7 +281,7 @@ The members of an order-carrying object SHALL keep their order in the plain docu
 - **THEN** the plain document it writes keeps that order of `inputTypes`
 
 ### Requirement: List the order-carrying objects
-In IR 4 the order-carrying objects SHALL be exactly the `inputTypes` of the value definition bodies `ExpressionBody`, `NativeBody`, `ExternalBody` and `IncompleteBody`, and the object form of a `ValueSpecification`'s `inputs`, wherever they appear; `website/static/schemas/morphir-ir-v4.json` says the key order of each is the parameter order. IR 3 SHALL have none: its parameters are arrays. No object inside a `DocumentLiteral` SHALL be one.
+In IR 4 the order-carrying objects SHALL be exactly the `inputTypes` of the value definition bodies `ExpressionBody`, `NativeBody`, `ExternalBody` and `IncompleteBody`, and the object form of a `ValueSpecification`'s `inputs`, wherever they appear; `website/static/schemas/morphir-ir-v4.json` says the key order of each is the parameter order. IR 3 SHALL have none: its parameters are arrays. No object inside a `DocumentLiteral` SHALL be one; its content keeps its order as verbatim content.
 
 #### Scenario: A specification's inputs keep their order
 - **WHEN** a v4 value file's `spec` has `inputs` `{"rate": …, "amount": …}`
@@ -270,7 +296,7 @@ In IR 4 the order-carrying objects SHALL be exactly the `inputTypes` of the valu
 - **THEN** every object in it is written in JCS order, and its parameters keep their order as array items
 
 ### Requirement: Take candidates at outermost typed positions
-A candidate SHALL be a pair of a table and an expanded spelling. Its occurrences SHALL be the typed name positions of the plain document holding it that are not inside another typed position. An occurrence's size SHALL be the JCS size of its value as the plain document writes it: the canonical string with its quotes, or the classic word arrays of a classic v3 slot.
+A candidate SHALL be a pair of a table and an expanded spelling. Its occurrences SHALL be the typed name positions of the plain document holding it that are not inside another typed position. An occurrence's size SHALL be the written-form size of its value as the plain document writes it: the canonical string with its quotes, or the classic word arrays of a classic v3 slot.
 
 #### Scenario: A classic slot weighs its arrays
 - **WHEN** an FQName occupies a classic v3 slot
@@ -284,7 +310,7 @@ Candidates SHALL be taken in the order of the byte offset of their first occurre
 - **THEN** G is aliased as `a` and F as `b`
 
 ### Requirement: Measure each cost as the bytes of its JCS text
-`len(x)` SHALL be the UTF-8 byte length of an id, a spelling or a table name as JCS writes it inside a string, without its quotes; ids and spellings are ASCII, so it is their character count. Every other cost SHALL be the whole byte length of the JCS text it names, counting each quote, colon, comma, bracket and brace in that text and nothing else.
+`len(x)` SHALL be the UTF-8 byte length of an id, a spelling or a table name as the written form writes it inside a string, without its quotes; ids and spellings are ASCII, so it is their character count. Every other cost SHALL be the whole byte length of the written-form text it names, counting each quote, colon, comma, bracket and brace in that text and each number's lexeme, and nothing else.
 
 #### Scenario: A table name is measured without its quotes
 - **WHEN** the policy measures the `fqNames` table

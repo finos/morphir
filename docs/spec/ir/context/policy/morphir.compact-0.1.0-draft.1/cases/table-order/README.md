@@ -14,7 +14,7 @@ reference to M.
    E = 106: aliased as `c`.
 4. `total` (`names`) at `name`, a canonical string, once. Tentative id `d`: S = −6 ≤ E = 12, spelled out.
 
-Ids run `a`, `b`, `c` across the two tables in first-use order. JCS writes the context's members sorted, so
+Ids run `a`, `b`, `c` across the two tables in first-use order. The written form sorts the context's members, so
 `fqNames` (holding `a` and `c`) comes before `names` (holding `b`), whatever order the ids were given in.
 
 **Loss decision.** Overhead = 118 + 12 (`fqNames`) + 10 (`names`) + (1 + 27 + 5) + (1 + 99 + 5) + (1 + 54 + 5) +

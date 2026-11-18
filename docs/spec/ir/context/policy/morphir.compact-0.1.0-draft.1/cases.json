@@ -21,6 +21,7 @@
     { "id": "loss", "ir": 4, "kind": "type", "compacted": false },
     { "id": "loss-boundary-declined", "ir": 4, "kind": "type", "compacted": false },
     { "id": "loss-boundary-accepted", "ir": 4, "kind": "type", "compacted": true },
-    { "id": "ordered-inputs", "ir": 4, "kind": "value", "compacted": true }
+    { "id": "ordered-inputs", "ir": 4, "kind": "value", "compacted": true },
+    { "id": "exact-numbers", "ir": 4, "kind": "value", "compacted": true }
   ]
 }
