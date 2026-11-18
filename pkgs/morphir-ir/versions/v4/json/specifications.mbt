@@ -131,8 +131,9 @@ fn read_constructors(
   json : Json,
   context : @wire.DocumentNameContext?,
 ) -> @model.Constructors raise {
-  @wire.read_map(json, @wire.read_name, child => {
-    read_inputs_with_context(child, context)
+  let read_name = fn(child) raise { @wire.read_context_name(child, context) }
+  @wire.read_map(json, read_name, child => {
+    read_typed_pair_inputs(child, context)
   })
 }
 
@@ -364,7 +365,7 @@ pub fn read_value_specification_with_context(
   @wire.fields(json, ["annotations", "inputs", "output"])
   {
     annotations: read_annotations(json, context, preserve_input_order~),
-    inputs: read_inputs_with_context(
+    inputs: read_typed_pair_inputs(
       optional_object(json, "inputs"),
       context,
       preserve_input_order~,

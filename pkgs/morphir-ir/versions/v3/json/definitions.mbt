@@ -12,7 +12,10 @@ fn[TA] read_constructors_with_context(
   ta : (Json) -> TA raise,
   context : @wire.DocumentNameContext?,
 ) -> @model.Constructors[TA] raise {
-  @wire.read_map(json, @wire.read_name, fn(args) raise {
+  let read_name = fn(child) raise {
+    @wire.read_classic_context_name(child, context)
+  }
+  @wire.read_map(json, read_name, fn(args) raise {
     @wire.array(args).map(arg => {
       let a = @wire.tuple(arg, 2)
       (

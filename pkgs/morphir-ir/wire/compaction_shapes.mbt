@@ -886,13 +886,18 @@ fn v4_compaction_inputs(_json : Json) -> CompactionShape {
 }
 
 ///|
+fn v4_compaction_definition_inputs(_json : Json) -> CompactionShape {
+  compaction_map(v4_compaction_type, keep_order=true)
+}
+
+///|
 fn v4_compaction_value_definition(_json : Json) -> CompactionShape {
   compaction_members([
     (
       "ExpressionBody",
       _ => {
         compaction_members([
-          ("inputTypes", v4_compaction_inputs),
+          ("inputTypes", v4_compaction_definition_inputs),
           ("outputType", v4_compaction_type),
           ("body", v4_compaction_value),
         ])
@@ -902,7 +907,7 @@ fn v4_compaction_value_definition(_json : Json) -> CompactionShape {
       "NativeBody",
       _ => {
         compaction_members([
-          ("inputTypes", v4_compaction_inputs),
+          ("inputTypes", v4_compaction_definition_inputs),
           ("outputType", v4_compaction_type),
         ])
       },
@@ -911,7 +916,7 @@ fn v4_compaction_value_definition(_json : Json) -> CompactionShape {
       "ExternalBody",
       _ => {
         compaction_members([
-          ("inputTypes", v4_compaction_inputs),
+          ("inputTypes", v4_compaction_definition_inputs),
           ("outputType", v4_compaction_type),
           ("body", v4_compaction_value),
         ])
@@ -921,7 +926,7 @@ fn v4_compaction_value_definition(_json : Json) -> CompactionShape {
       "IncompleteBody",
       _ => {
         compaction_members([
-          ("inputTypes", v4_compaction_inputs),
+          ("inputTypes", v4_compaction_definition_inputs),
           ("outputType", v4_compaction_type),
           ("incompleteness", v4_compaction_incompleteness),
           ("partialBody", v4_compaction_value),

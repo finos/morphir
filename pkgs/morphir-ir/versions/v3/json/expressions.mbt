@@ -314,7 +314,7 @@ pub fn[TA, VA] read_value_with_context(
       ignore(@wire.tuple(json, 3))
       @model.Record(
         va(a[1]),
-        @wire.read_map(a[2], @wire.read_name, fn(item) raise {
+        @wire.read_map(a[2], read_name, fn(item) raise {
           read_value(item, ta, va)
         }),
       )
@@ -356,7 +356,7 @@ pub fn[TA, VA] read_value_with_context(
       ignore(@wire.tuple(json, 4))
       @model.LetRecursion(
         va(a[1]),
-        @wire.read_map(a[2], @wire.read_name, fn(item) raise {
+        @wire.read_map(a[2], read_name, fn(item) raise {
           read_value_definition(item, ta, va)
         }),
         read_value(a[3], ta, va),
@@ -396,7 +396,7 @@ pub fn[TA, VA] read_value_with_context(
       @model.UpdateRecord(
         va(a[1]),
         read_value(a[2], ta, va),
-        @wire.read_map(a[3], @wire.read_name, fn(item) raise {
+        @wire.read_map(a[3], read_name, fn(item) raise {
           read_value(item, ta, va)
         }),
       )

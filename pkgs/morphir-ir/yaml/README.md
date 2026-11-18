@@ -88,6 +88,12 @@ flowchart LR
     E --> C
 ```
 
+A typed name in a legacy pair array can carry an alias. This includes
+classic record fields, recursive bindings and constructors, plus v4
+constructor and value specification inputs. JSON object keys stay spelled
+out. The v4 value definition's input map also keeps its names expanded
+when read in the tolerated pair-array spelling.
+
 The general reader admits a context after the document with a second
 bounded read of the same revision. It releases the first parse tree
 before that read. `ContextualDraft1Ordered` requires both the schema

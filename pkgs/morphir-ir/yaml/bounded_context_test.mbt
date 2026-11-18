@@ -1088,19 +1088,20 @@ test "v4 constructor expressions and unresolved holes resolve shorthand aliases"
 }
 
 ///|
-test "constructor map keys stay expanded in both map spellings" {
+test "constructor object keys stay spelled out and typed legacy pairs resolve aliases" {
   let context = shorthand_context()
-  let text = "{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":"
-  for expanded in ["{\"order\":[]}", "[[\"order\",[]]]"] {
-    let definition = @wire.parse(text + expanded + "}}")
-    ignore(@codec.read_type_definition_with_context(definition, context))
-  }
-  let aliased_key = @wire.parse(text + "[[{\"$name\":\"n\"},[]]]}}")
-  assert_true(
-    tree_failure(() => {
-      @codec.read_type_definition_with_context(aliased_key, context)
-    })
-    is Some(@wire.Invalid("invalid_name", _)),
+  let prefix = "{\"CustomTypeDefinition\":{\"typeParams\":[],\"access\":\"Public\",\"constructors\":"
+  let map = @wire.parse(prefix + "{\"n\":[]}}}")
+  let literal_pair = @wire.parse(prefix + "[[\"n\",[]]]}}")
+  let order_pair = @wire.parse(prefix + "[[\"order\",[]]]}}")
+  let aliased_pair = @wire.parse(prefix + "[[{\"$name\":\"n\"},[]]]}}")
+  assert_eq(
+    @codec.read_type_definition_with_context(map, context),
+    @codec.read_type_definition(literal_pair),
+  )
+  assert_eq(
+    @codec.read_type_definition_with_context(aliased_pair, context),
+    @codec.read_type_definition(order_pair),
   )
 }
 
@@ -1337,21 +1338,34 @@ test "a contextual tree keeps plain parameter order when compaction is declined"
 }
 
 ///|
-test "v4 contextual parameter map keys stay expanded in pair arrays" {
+test "v4 specification input pairs resolve aliases and detect duplicate parameter names" {
   let context = shorthand_context()
   let good = @wire.parse(
-    "{\"inputs\":[[\"order\",{\"$name\":\"q\"}]],\"output\":{\"$name\":\"q\"}}",
+    "{\"inputs\":[[{\"$name\":\"n\"},{\"$name\":\"q\"}]],\"output\":{\"$name\":\"q\"}}",
   )
   let specification = @codec.read_value_specification_with_context(
     good, context,
   )
   assert_eq(specification.inputs.map(input => input.0.to_canonical()), ["order"])
-  let bad = @wire.parse(
-    "{\"inputs\":[[{\"$name\":\"n\"},{\"$name\":\"q\"}]],\"output\":{\"$name\":\"q\"}}",
+  let duplicate = @wire.parse(
+    "{\"inputs\":[[\"order\",{\"$name\":\"q\"}],[{\"$name\":\"n\"},{\"$name\":\"q\"}]],\"output\":{\"$name\":\"q\"}}",
   )
   assert_true(
     tree_failure(() => {
-      @codec.read_value_specification_with_context(bad, context)
+      @codec.read_value_specification_with_context(duplicate, context)
+    })
+    is Some(@wire.Invalid("duplicate_member", "order")),
+  )
+}
+
+///|
+test "v4 definition input map keys stay expanded in tolerated pair arrays" {
+  let context = shorthand_context()
+  let source =
+    #|{"ExpressionBody":{"inputTypes":[[{"$name":"n"},{"$name":"q"}]],"outputType":{"$name":"q"},"body":{"Variable":"order"}}}
+  assert_true(
+    tree_failure(() => {
+      @codec.read_definition_with_context(@wire.parse(source), context)
     })
     is Some(@wire.Invalid("invalid_name", _)),
   )

@@ -172,6 +172,28 @@ pub fn read_inputs_with_context(
   context : @wire.DocumentNameContext?,
   preserve_input_order~ : Bool = false,
 ) -> Array[(@model.Name, @model.Type)] raise {
+  read_input_entries(json, context, @wire.read_name, preserve_input_order~)
+}
+
+///|
+// Value specification and constructor parameters have schema-typed Name
+// entries in their array spelling. Value definition input maps do not.
+fn read_typed_pair_inputs(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> Array[(@model.Name, @model.Type)] raise {
+  let read_name = fn(child) raise { @wire.read_context_name(child, context) }
+  read_input_entries(json, context, read_name, preserve_input_order~)
+}
+
+///|
+fn read_input_entries(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  read_name : (Json) -> @model.Name raise,
+  preserve_input_order~ : Bool,
+) -> Array[(@model.Name, @model.Type)] raise {
   let read_type = fn(child) raise { read_type_with_context(child, context) }
   let entries = match json {
     Array(entries) =>
@@ -195,7 +217,7 @@ pub fn read_inputs_with_context(
   }
   let seen = Map([])
   entries.map(entry => {
-    let name = @wire.read_name(entry.0)
+    let name = read_name(entry.0)
     if seen.contains(name) {
       raise @wire.Invalid("duplicate_member", name.to_canonical())
     }

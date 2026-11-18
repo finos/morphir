@@ -702,3 +702,15 @@ test "the envelope layer cannot make an oversized payload or plain document admi
     }
   }
 }
+
+///|
+test "v4 definition input-map keys stay expanded in tolerated pair arrays" {
+  let template =
+    #|{"formatVersion":4,"name":"order","def":{"Public":{"ExpressionBody":{"inputTypes":[["@name@", "morphir/SDK:basics#int"]],"outputType":"morphir/SDK:basics#int","body":{"Tuple":[{"Variable":"@name@"},{"Variable":"@name@"},{"Variable":"@name@"}]}}}}}
+  let name = "authorization-and-reconciliation-amount".repeat(6)
+  let plain = template.replace_all(old="@name@", new=name)
+  let compacted = compact_names(plain)
+  assert_true(compacted.compacted)
+  assert_true(compacted.written.contains("\"inputTypes\":[[\"" + name + "\""))
+  assert_eq(expand_names(compacted.written), expand_names(plain))
+}
