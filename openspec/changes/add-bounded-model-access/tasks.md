@@ -1,6 +1,6 @@
 # Tasks
 
-Beads tracks this OpenSpec change under epic `morphir-f6aa`. Task 1.2 is tracked as `morphir-f6aa.3`, task 1.3 as `morphir-f6aa.1`, task 1.5 as `morphir-f6aa.5`, task 1.6 as `morphir-f6aa.4`, and task 1.7 as `morphir-f6aa.2`. Link each remaining implementation task to its Beads issue before claiming it.
+Beads tracks this OpenSpec change under epic `morphir-f6aa`. Tasks 1.2, 1.3, 1.5, 1.6 and 1.7 are tracked as `morphir-f6aa.3`, `morphir-f6aa.1`, `morphir-f6aa.5`, `morphir-f6aa.4` and `morphir-f6aa.2`, respectively. The .NET reader in task 2.1 is `morphir-f6aa.6`. The MoonBit reader in task 3.1 is `morphir-f6aa.7`. Link each remaining implementation task to its Beads issue before claiming it.
 
 Dependencies: group 1 establishes the contract and fixed corpus; groups 2 and 3 implement independent readers against it; group 4 establishes the shared session exchange; groups 5 and 6 integrate each host after its reader and group 4; group 7 consolidates qualification after both integrations. Group 8 is an independent experiment and does not block the bounded-generation gate. Keep implementation changes in their owning repositories.
 
