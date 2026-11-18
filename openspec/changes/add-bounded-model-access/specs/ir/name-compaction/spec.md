@@ -235,7 +235,7 @@ The first published writer policy SHALL be `morphir.compact/0.1.0-draft.1`, defi
 - **WHEN** a writer applies the policy to each case's `input.json`
 - **THEN** its output bytes equal the case's `expected.json`
 
-### Requirement: Write compacted output as RFC 8785 canonical JSON
+### Requirement: Write compacted output in the policy's written form
 A file written under the policy SHALL be in its written form: the envelope with exactly `$schema`, `context` and `document`, or the plain document when the policy declines, with members sorted by UTF-16 code units, RFC 8785 string escaping and no whitespace, except for number lexemes, order-carrying objects and `DocumentLiteral` content. The context precedes the document; a table with no entry is left out. Every size the policy compares SHALL be the UTF-8 byte length of written-form text.
 
 #### Scenario: Tables in JCS order
@@ -309,7 +309,7 @@ Candidates SHALL be taken in the order of the byte offset of their first occurre
 - **WHEN** the input lists a field of type F before a field of type G, but JCS sorts the G field first
 - **THEN** G is aliased as `a` and F as `b`
 
-### Requirement: Measure each cost as the bytes of its JCS text
+### Requirement: Measure each cost as the bytes of its written form
 `len(x)` SHALL be the UTF-8 byte length of an id, a spelling or a table name as the written form writes it inside a string, without its quotes; ids and spellings are ASCII, so it is their character count. Every other cost SHALL be the whole byte length of the written-form text it names, counting each quote, colon, comma, bracket and brace in that text and each number's lexeme, and nothing else.
 
 #### Scenario: A table name is measured without its quotes
