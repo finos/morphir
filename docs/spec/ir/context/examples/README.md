@@ -45,7 +45,7 @@ name:
 ```
 
 The reader resolves `t` through `context.names`, yielding `invoice-line`. The JSON and YAML examples expand to
-the same plain document. A contextual YAML reader applies the [YAML processing rules](../../schemas/v4/yaml-profile.md#yaml-processing-profile)
+the same plain document. A contextual YAML reader applies the [YAML reader restrictions](../../schemas/v4/yaml-profile.md#reader-restrictions)
 before resolving the Morphir references.
 
 ## Limits
@@ -113,7 +113,7 @@ the plain document a reader must produce. Every case uses one small model: packa
 The invalid cases change one thing each in `valid/v4-type.json`. `bun run tools/check-ir-context.ts` checks that every
 case is what `cases.json` says, and `bun test tools/check-ir-context.test.ts` runs it with checks that it can fail.
 Each valid JSON example also has a `.yaml` twin with the same stem. The tests check that every YAML twin maps to
-the same envelope members in order and passes the published envelope schema.
+the same envelope members in order, preserves the numeric tokens, and passes the published envelope schema.
 
 ## What these examples do not cover
 

@@ -62,7 +62,7 @@ A whole-file reader reads the entire file, checks its context and expands every 
 | Resolve each position through its own table and encoding | All | — |
 | Leave arbitrary content uninterpreted | All | — |
 | Keep context resolution explicit and finite | All | — |
-| Refuse duplicate members | All | — |
+| Refuse duplicate members | All | All |
 | Limit context tables and spellings | All (bounded reading adds resident-memory bounds) | — |
 | Admit unknown optional context members safely | Ignoring unknown members; refusing unknown critical paths | Retaining the original bytes for pass-through |
 | Make expansion lossless | All | — |
@@ -96,10 +96,14 @@ A reader claiming contextual YAML SHALL accept the explicit YAML representation 
 - **AND** it produces the same expanded document as the matching JSON example, preserving classic attribute slots and semantic member order
 
 ### Requirement: Admit YAML syntax before alias resolution
-Contextual YAML readers SHALL apply the [YAML processing rules](../../../../../../docs/spec/ir/schemas/v4/yaml-profile.md#yaml-processing-profile) to both IR versions. Duplicate keys in the envelope, context or a table SHALL use `context.duplicate_entry`. A Morphir name alias SHALL use the one-entry `$name` mapping.
+Contextual YAML readers SHALL apply the [YAML reader restrictions](../../../../../../docs/spec/ir/schemas/v4/yaml-profile.md#reader-restrictions) and enforce input byte, nesting and event limits for both IR versions. Duplicate keys in the envelope, context or a table SHALL use `context.duplicate_entry`. A Morphir name alias SHALL use the one-entry `$name` mapping.
 
 #### Scenario: YAML aliases cannot replace Morphir name aliases
 - **WHEN** a contextual YAML document uses a YAML anchor or alias
+- **THEN** YAML profile admission refuses it with `unsupported_yaml_feature` before Morphir alias resolution
+
+#### Scenario: A directive is refused
+- **WHEN** a contextual YAML document starts with a `%YAML 1.2` directive
 - **THEN** YAML profile admission refuses it with `unsupported_yaml_feature` before Morphir alias resolution
 
 ### Requirement: Refuse an undeclared envelope

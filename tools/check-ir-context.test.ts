@@ -2,6 +2,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { isMap, isScalar, isSeq, parseDocument } from "yaml";
 
 import {
 	CONTEXT_SCHEMA_URL,
@@ -17,7 +18,9 @@ import {
 	jcs,
 	jcsProblem,
 	Lexeme,
+	type Ordered,
 	parseOrdered,
+	plain,
 	plainSchemaAccepts,
 	plainSchemaAcceptsText,
 	POLICY_DIR,
@@ -32,6 +35,32 @@ const examples = path.join(root, EXAMPLES_DIR);
 const read = (file: string) => readFileSync(path.join(examples, file), "utf8");
 const index = JSON.parse(read("cases.json")) as ExampleIndex;
 const schema = path.join(root, index.schema);
+
+function parseOrderedYaml(text: string): Ordered {
+	const document = parseDocument(text);
+	expect(document.errors).toEqual([]);
+
+	function value(node: unknown): Ordered {
+		if (node === null) return null;
+		if (isMap(node)) {
+			return { members: node.items.map(({ key, value: child }) => {
+				if (!isScalar(key) || typeof key.value !== "string") throw new Error("Expected a string YAML key");
+				return [key.value, value(child)];
+			}) };
+		}
+		if (isSeq(node)) return node.items.map(value);
+		if (isScalar(node)) {
+			const scalar = node.value;
+			if (scalar === null || typeof scalar === "boolean" || typeof scalar === "string") return scalar;
+			if (typeof scalar === "number" && node.range) {
+				return new Lexeme(text.slice(node.range[0], node.range[1]));
+			}
+		}
+		throw new Error("Expected an explicit YAML value");
+	}
+
+	return value(document.contents);
+}
 
 describe("ir-context examples", () => {
 	test("every example is what cases.json says it is", () => {
@@ -51,12 +80,18 @@ describe("ir-context examples", () => {
 
 	test("every valid example has an explicit YAML spelling of the same contextual envelope", () => {
 		for (const c of index.cases.filter(c => c.expected === "valid")) {
-			const yaml = c.file.replace(/\.json$/, ".yaml");
-			const fromYaml = Bun.YAML.parse(read(yaml));
-			expect(schemaAccepts(schema, fromYaml), c.id).toBe(true);
-			expect(JSON.stringify(fromYaml), c.id).toBe(JSON.stringify(JSON.parse(read(c.file))));
+			const yaml = parseOrderedYaml(read(c.file.replace(/\.json$/, ".yaml")));
+			expect(yaml, c.id).toEqual(parseOrdered(read(c.file), { lexemes: true }));
+			expect(schemaAccepts(schema, plain(yaml)), c.id).toBe(true);
 		}
 	}, 60_000);
+
+	test("a YAML twin may not spell an integer format version as a float", () => {
+		const json = read("valid/v4-type.json");
+		const yaml = read("valid/v4-type.yaml");
+		const changed = yaml.replace("formatVersion: 4", "formatVersion: 4.0");
+		expect(parseOrderedYaml(changed)).not.toEqual(parseOrdered(json, { lexemes: true }));
+	});
 
 	test("the README states the limits that cases.json and the schema use", () => {
 		const readme = read("README.md");
