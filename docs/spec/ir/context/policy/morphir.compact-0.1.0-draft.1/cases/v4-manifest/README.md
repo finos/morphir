@@ -10,5 +10,5 @@ self-naming dependency), so no package path can repeat in it.
 2. `acme/order-management` (`packagePaths`) at `package`, O = 23, once. Tentative id `a`: S = 10 ≤ E = 28: spelled
    out.
 
-**Loss decision.** No candidate is aliased, so the output is the plain document as JCS, 127 bytes, with no envelope,
-and the result says that no alias was worth its cost.
+**Loss decision.** No candidate is aliased, so the output is the plain document in the written form, 127 bytes, with no
+envelope, and the result says that no alias was worth its cost.

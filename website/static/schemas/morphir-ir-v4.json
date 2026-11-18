@@ -3886,7 +3886,7 @@
       "required": [ "inputTypes", "outputType", "body" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"
@@ -3921,7 +3921,7 @@
       "required": [ "inputTypes", "outputType", "nativeInfo" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"
@@ -3978,7 +3978,7 @@
       "required": [ "inputTypes", "outputType", "externals" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"
@@ -4025,7 +4025,7 @@
       "required": [ "inputTypes", "incompleteness" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"

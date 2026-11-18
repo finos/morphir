@@ -11,5 +11,5 @@ The `v4-type` record with a doc string, `Montant réduit après la taxe régiona
 
 **Loss decision.** Overhead = 118 + 12 + 105 + 0 = 235. Savings 264 > 235: the envelope is written, 29 bytes smaller.
 The doc string is in both files, so it does not change either decision, but it is in every size: 521 bytes plain and
-492 bytes compacted count it as 42 + 2 bytes with its quotes. JCS writes it raw: an escaping writer would spell each
-of the three letters as a six-byte `\u` escape, adding 12 bytes and changing the expected bytes.
+492 bytes compacted count it as 42 + 2 bytes with its quotes. The written form has it raw: an escaping writer would
+spell each of the three letters as a six-byte `\u` escape, adding 12 bytes and changing the expected bytes.

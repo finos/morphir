@@ -23,11 +23,22 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-/** A parsed JSON value that keeps every object member in order, duplicates included. */
-export type Ordered = null | boolean | number | string | Ordered[] | { members: [string, Ordered][] };
+/** A JSON number kept as the exact text it was written with, such as `1.0`, `1e2` or `9007199254740993`. */
+export class Lexeme {
+	constructor(readonly text: string) {}
+}
 
-/** Parses JSON text without losing member order or duplicate members, which `JSON.parse` drops. */
-export function parseOrdered(text: string): Ordered {
+/**
+ * A parsed JSON value that keeps every object member in order, duplicates included. A number is a JavaScript number,
+ * or its {@link Lexeme} when it was parsed with `lexemes`.
+ */
+export type Ordered = null | boolean | number | Lexeme | string | Ordered[] | { members: [string, Ordered][] };
+
+/**
+ * Parses JSON text without losing member order or duplicate members, which `JSON.parse` drops. With `lexemes`, each
+ * number is kept as its {@link Lexeme}, so that `1.0` and `1`, or 9007199254740993 and 9007199254740992, stay apart.
+ */
+export function parseOrdered(text: string, { lexemes = false }: { lexemes?: boolean } = {}): Ordered {
 	let at = 0;
 	const fail = (what: string): never => {
 		throw new Error(`invalid JSON at offset ${at}: ${what}`);
@@ -110,7 +121,7 @@ export function parseOrdered(text: string): Ordered {
 		const number = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/.exec(text.slice(at));
 		if (number === null) return fail("unexpected character");
 		at += number[0].length;
-		return Number(number[0]);
+		return lexemes ? new Lexeme(number[0]) : Number(number[0]);
 	};
 	const result = value();
 	space();
@@ -118,7 +129,7 @@ export function parseOrdered(text: string): Ordered {
 	return result;
 }
 
-const isObject = (v: Ordered | undefined): v is { members: [string, Ordered][] } => typeof v === "object" && v !== null && !Array.isArray(v);
+const isObject = (v: Ordered | undefined): v is { members: [string, Ordered][] } => typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Lexeme);
 const member = (v: Ordered | undefined, key: string): Ordered | undefined => (isObject(v) ? v.members.find(([k]) => k === key)?.[1] : undefined);
 
 /** The ir-context draft this checker knows. */
@@ -226,6 +237,7 @@ export function classicFqName(fq: string): [string[][], string[][], string[]] {
 
 /** Plain JSON of an ordered value; the first of duplicate members wins (no example with duplicates is expanded). */
 export function plain(v: Ordered): unknown {
+	if (v instanceof Lexeme) return Number(v.text);
 	if (Array.isArray(v)) return v.map(plain);
 	if (isObject(v)) {
 		const out: Record<string, unknown> = {};
@@ -282,10 +294,15 @@ export function expansionProblems(example: Ordered, twin: unknown): string[] {
 
 /** Validates a JSON value against a schema with the sourcemeta `jsonschema` CLI, as the other parent checks do. */
 export function schemaAccepts(schema: string, value: unknown, resolve: string[] = []): boolean {
+	return schemaAcceptsText(schema, JSON.stringify(value), resolve);
+}
+
+/** Like {@link schemaAccepts}, for JSON text, so that its number lexemes reach the validator unchanged. */
+export function schemaAcceptsText(schema: string, text: string, resolve: string[] = []): boolean {
 	const temp = mkdtempSync(path.join(tmpdir(), "morphir-ir-context-"));
 	try {
 		const instance = path.join(temp, "instance.json");
-		writeFileSync(instance, JSON.stringify(value));
+		writeFileSync(instance, text);
 		return schemaAcceptsFile(schema, instance, resolve);
 	} finally {
 		rmSync(temp, { recursive: true, force: true });
@@ -309,16 +326,21 @@ export function plainSchemaOf(ir: number, kind: string): { file: string; definit
 }
 
 export function plainSchemaAccepts(root: string, ir: number, kind: string, value: unknown): boolean | undefined {
+	return plainSchemaAcceptsText(root, ir, kind, JSON.stringify(value));
+}
+
+/** Like {@link plainSchemaAccepts}, for the document's JSON text as written. */
+export function plainSchemaAcceptsText(root: string, ir: number, kind: string, text: string): boolean | undefined {
 	const target = plainSchemaOf(ir, kind);
 	if (target === undefined) return undefined;
 	const file = path.join(root, target.file);
-	if (target.definition === undefined) return schemaAccepts(file, value);
+	if (target.definition === undefined) return schemaAcceptsText(file, text);
 	const temp = mkdtempSync(path.join(tmpdir(), "morphir-ir-context-ref-"));
 	try {
 		const id = (JSON.parse(readFileSync(file, "utf8")) as { $id: string }).$id;
 		const wrapper = path.join(temp, "wrapper.json");
 		writeFileSync(wrapper, JSON.stringify({ $schema: "https://json-schema.org/draft/2020-12/schema", $ref: `${id}#/definitions/${target.definition}` }));
-		return schemaAccepts(wrapper, value, [file]);
+		return schemaAcceptsText(wrapper, text, [file]);
 	} finally {
 		rmSync(temp, { recursive: true, force: true });
 	}
@@ -368,12 +390,86 @@ export function jcs(v: Ordered): string {
 		const members = [...v.members].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
 		return `{${members.map(([k, m]) => `${JSON.stringify(k)}:${jcs(m)}`).join(",")}}`;
 	}
-	if (typeof v === "number" && !Number.isFinite(v)) throw new Error("JCS has no form for a non-finite number");
-	return JSON.stringify(v);
+	const value = v instanceof Lexeme ? Number(v.text) : v;
+	if (typeof value === "number" && !Number.isFinite(value)) throw new Error("JCS has no form for a non-finite number");
+	return JSON.stringify(value);
 }
 
-/** Why bytes are not RFC 8785 JCS, or undefined when they are: valid UTF-8, no duplicate member, the canonical text. */
-export function jcsProblem(bytes: Uint8Array): string | undefined {
+/** The four variants of a v4 value definition body, each of which holds `inputTypes`. */
+const BODY_VARIANTS = ["ExpressionBody", "NativeBody", "ExternalBody", "IncompleteBody"];
+
+/**
+ * Whether the object at this key path from the root of a plain IR `ir` document is order-carrying: an object whose
+ * member order the IR JSON Schema declares semantic ("The key order of ... is the parameter order"). In v4 these are
+ * the `inputTypes` of the four value definition bodies and the object form of a value specification's `inputs`. IR 3
+ * has none: its parameters are arrays.
+ *
+ * The positions are recognized by key path. A body variant's name is not a Name, so it cannot be a map key. A value
+ * specification's `inputs` sits at `values/<name>/inputs` or `values/<name>/value/inputs` of a module specification,
+ * or at `spec/inputs` of a value file. A `DocumentLiteral` holds arbitrary JSON, so nothing inside one is a position.
+ *
+ * Key-path matching is not schema typing. It is exact for every case here, because a map key is always a Name and the
+ * keys it looks for (`inputTypes` under a body variant, `inputs` under `spec` or `values/<name>`, `DocumentLiteral`)
+ * are never Names. It would misjudge JSON that the schema does not type, such as an extension's opaque data holding
+ * `{"ExpressionBody":{"inputTypes":…}}`; no case holds such data, and a writer types positions by the schema.
+ */
+export function isOrderCarrying(ir: number, keys: readonly string[]): boolean {
+	if (ir !== 4 || keys.includes("DocumentLiteral")) return false;
+	const at = (back: number) => keys[keys.length - back];
+	if (at(1) === "inputTypes") return BODY_VARIANTS.includes(at(2) ?? "");
+	if (at(1) !== "inputs") return false;
+	return (keys.length === 2 && at(2) === "spec") || at(3) === "values" || (at(2) === "value" && at(4) === "values");
+}
+
+/**
+ * The text the policy writes for a parsed file of IR `ir`: object members sorted by UTF-16 code units, RFC 8785 string
+ * escaping and no whitespace, except that
+ *
+ * 1. every number is written with its source lexeme, never reformatted;
+ * 2. the members of an order-carrying object keep their source order;
+ * 3. the content of a v4 `DocumentLiteral`, which the schema says is carried verbatim, keeps its source member order
+ *    (and its lexemes) everywhere inside it.
+ *
+ * `source` is the plain document the file was written from, parsed with `lexemes`. A number takes the lexeme of the
+ * number at the same path in it, and an order-carrying object or an object inside `DocumentLiteral` content takes the
+ * member order of the object at the same path. References replace only strings, so the document's paths are the
+ * source's. Without a source, each number and each such object keeps its own lexeme or order.
+ */
+export function policyForm(v: Ordered, ir: number, source?: Ordered): string {
+	const isEnvelope = member(v, "$schema") !== undefined;
+	const at = (keys: string[]) => `/${keys.join("/")}`;
+	const sourceOrder = (node: { members: [string, Ordered][] }, from: Ordered | undefined, keys: string[]) => {
+		if (source === undefined) return node.members;
+		if (!isObject(from)) throw new Error(`the source has no object at ${at(keys)}`);
+		const order = from.members.map(([k]) => k);
+		if (order.length !== node.members.length || node.members.some(([k]) => !order.includes(k))) throw new Error(`the object at ${at(keys)} does not have the members of the source's`);
+		return [...node.members].sort(([a], [b]) => order.indexOf(a) - order.indexOf(b));
+	};
+	const write = (node: Ordered, from: Ordered | undefined, keys: string[], verbatim: boolean): string => {
+		if (node instanceof Lexeme || typeof node === "number") {
+			if (source === undefined) return node instanceof Lexeme ? node.text : jcs(node);
+			if (typeof from === "number") throw new Error("the source must be parsed with lexemes");
+			if (!(from instanceof Lexeme)) throw new Error(`the source has no number at ${at(keys)}`);
+			return from.text;
+		}
+		if (Array.isArray(node)) return `[${node.map((item, i) => write(item, Array.isArray(from) ? from[i] : undefined, [...keys, String(i)], verbatim)).join(",")}]`;
+		if (!isObject(node)) return jcs(node);
+		const keepsOrder = verbatim || (referenceId(node) === undefined && isOrderCarrying(ir, keys));
+		const members = keepsOrder ? sourceOrder(node, from, keys) : [...node.members].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+		// IR 3 has no DocumentLiteral. The content is the member's value, whatever JSON it is.
+		const content = (k: string) => verbatim || (ir === 4 && k === "DocumentLiteral");
+		return `{${members.map(([k, m]) => `${JSON.stringify(k)}:${write(m, member(from, k), [...keys, k], content(k))}`).join(",")}}`;
+	};
+	if (!isEnvelope) return write(v, source, [], false);
+	const parts = [...(v as { members: [string, Ordered][] }).members].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+	return `{${parts.map(([k, m]) => `${JSON.stringify(k)}:${k === "document" ? write(m, source, [], false) : jcs(m)}`).join(",")}}`;
+}
+
+/**
+ * Why bytes are not the given canonical text of themselves, or undefined when they are: valid UTF-8, no duplicate
+ * member, the canonical text. With `lexemes`, numbers are parsed as their lexemes.
+ */
+function canonicalProblem(bytes: Uint8Array, canonicalOf: (parsed: Ordered) => string, lexemes = false): string | undefined {
 	let text: string;
 	try {
 		text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
@@ -382,20 +478,40 @@ export function jcsProblem(bytes: Uint8Array): string | undefined {
 	}
 	let parsed: Ordered;
 	try {
-		parsed = parseOrdered(text);
+		parsed = parseOrdered(text, { lexemes });
 	} catch (error) {
 		return String(error);
 	}
 	const duplicate = (v: Ordered): boolean =>
 		Array.isArray(v) ? v.some(duplicate) : isObject(v) ? new Set(v.members.map(([k]) => k)).size !== v.members.length || v.members.some(([, m]) => duplicate(m)) : false;
 	if (duplicate(parsed)) return "a member appears twice";
-	const canonical = jcs(parsed);
+	let canonical: string;
+	try {
+		canonical = canonicalOf(parsed);
+	} catch (error) {
+		return String(error);
+	}
 	if (canonical !== text) {
 		let at = 0;
 		while (at < text.length && text[at] === canonical[at]) at++;
-		return `not canonical from character ${at}: ${JSON.stringify(text.slice(at, at + 40))} where JCS has ${JSON.stringify(canonical.slice(at, at + 40))}`;
+		return `not canonical from character ${at}: ${JSON.stringify(text.slice(at, at + 40))} where the canonical form has ${JSON.stringify(canonical.slice(at, at + 40))}`;
 	}
 	return undefined;
+}
+
+/** Why bytes are not RFC 8785 JCS, or undefined when they are: valid UTF-8, no duplicate member, the canonical text. */
+export function jcsProblem(bytes: Uint8Array): string | undefined {
+	return canonicalProblem(bytes, jcs);
+}
+
+/**
+ * Why bytes are not the policy's written form (see {@link policyForm}) of a file of IR `ir` written from the plain
+ * document `source`, parsed with `lexemes`, or undefined when they are: sorted members, except in order-carrying
+ * objects and `DocumentLiteral` content, which keep the source's member order, and every number spelled as the
+ * source spells it.
+ */
+export function policyFormProblem(bytes: Uint8Array, ir: number, source?: Ordered): string | undefined {
+	return canonicalProblem(bytes, parsed => policyForm(parsed, ir, source), true);
 }
 
 export type PolicyCase = { id: string; ir: number; kind: string; compacted: boolean };
@@ -403,9 +519,11 @@ export type PolicyIndex = { policy: string; schema: string; cases: PolicyCase[] 
 export const POLICY_DIR = "docs/spec/ir/context/policy/morphir.compact-0.1.0-draft.1";
 
 /**
- * Every problem with the policy's fixed cases. This checks the form of each expected file only (JCS, the envelope
- * schema for a compacted one, no envelope for a plain one) and that each input is a valid plain document; it never
- * computes what the policy would write. The expected bytes are worked out by hand in each case's README.
+ * Every problem with the policy's fixed cases. This checks the form of each expected file only (the policy's written
+ * form: sorted members except in order-carrying objects and DocumentLiteral content, which follow input.json, and
+ * every number spelled as input.json spells it; the envelope schema for a compacted one, no envelope for a plain one)
+ * and that each input is a valid plain document; it never computes which names the policy would alias. The expected
+ * bytes are worked out by hand in each case's README.
  */
 export function policyProblems(root: string, dir = POLICY_DIR): string[] {
 	const index = JSON.parse(readFileSync(path.join(root, dir, "cases.json"), "utf8")) as PolicyIndex;
@@ -415,9 +533,11 @@ export function policyProblems(root: string, dir = POLICY_DIR): string[] {
 	for (const c of index.cases) {
 		const at = path.join(root, dir, "cases", c.id);
 		const bytes = readFileSync(path.join(at, "expected.json"));
-		const problem = jcsProblem(bytes);
+		const inputText = readFileSync(path.join(at, "input.json"), "utf8");
+		const source = parseOrdered(inputText, { lexemes: true });
+		const problem = policyFormProblem(bytes, c.ir, source);
 		if (problem !== undefined) {
-			problems.push(`${c.id}: expected.json is not JCS: ${problem}`);
+			problems.push(`${c.id}: expected.json is not the policy's written form: ${problem}`);
 			continue;
 		}
 		const expected = parseOrdered(new TextDecoder().decode(bytes));
@@ -425,8 +545,8 @@ export function policyProblems(root: string, dir = POLICY_DIR): string[] {
 		if (envelope !== c.compacted) problems.push(`${c.id}: cases.json says compacted ${c.compacted}, but expected.json ${envelope ? "has" : "has no"} envelope`);
 		if (envelope && !schemaAcceptsFile(schema, path.join(at, "expected.json"))) problems.push(`${c.id}: expected.json does not satisfy ${index.schema}`);
 		if (envelope && contextDiagnostics(new TextDecoder().decode(bytes), { maxTableEntries: 16384, maxSpellingBytes: 1024 }).length > 0) problems.push(`${c.id}: expected.json breaks a reader rule`);
-		const input = JSON.parse(readFileSync(path.join(at, "input.json"), "utf8")) as unknown;
-		if (plainSchemaAccepts(root, c.ir, c.kind, input) === false) problems.push(`${c.id}: input.json is not a valid plain v${c.ir} ${c.kind} document`);
+		// The input's own text is validated: a JSON.parse round trip would turn 1.0 into 1 and round large integers.
+		if (plainSchemaAcceptsText(root, c.ir, c.kind, inputText) === false) problems.push(`${c.id}: input.json is not a valid plain v${c.ir} ${c.kind} document`);
 		if (!existsSync(path.join(at, "README.md"))) problems.push(`${c.id}: no README.md with the hand computation`);
 	}
 	return problems;

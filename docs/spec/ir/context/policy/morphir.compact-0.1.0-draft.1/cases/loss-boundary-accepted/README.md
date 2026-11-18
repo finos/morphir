@@ -15,7 +15,7 @@ Y = `acme/order-management:pricing/discount-rules#discounted-amount-before-regio
 **Loss decision.** One table, `fqNames`, with one entry: overhead = 118 + 12 + (1 + 159 + 5) + (1 − 1) = 295.
 Savings 296 > 295, so the envelope is written, one byte smaller than the plain file.
 
-**Bytes.** The plain JCS file is 158 + 2 × 161 = 480 bytes (the 158 bytes besides the values are counted in
+**Bytes.** The plain file is 158 + 2 × 161 = 480 bytes (the 158 bytes besides the values are counted in
 `loss-boundary-declined`). The compacted file is `{"$schema":"` (12), the URL (79), `","context":{` (13),
 `"fqNames":{` (11), `"a":"Y"` (165), `}` (1), `},"document":` (13), the document with two 13-byte references
 (158 + 26 = 184) and `}` (1): 479 bytes, the expected file. 480 − 296 + 295 = 479 gives the same number.

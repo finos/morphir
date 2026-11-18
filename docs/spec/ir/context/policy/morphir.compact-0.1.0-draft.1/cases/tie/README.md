@@ -14,5 +14,5 @@ entry costs.
 smaller: 555 bytes plain, 526 bytes compacted.
 
 **Ordering ties.** The policy also breaks ties in first-use order, by the ordinal order of the spelling and then by
-table. Two outermost positions never start at the same offset of the JCS text, so draft.1 never reaches those keys,
+table. Two outermost positions never start at the same offset of the written form, so draft.1 never reaches those keys,
 and no case can show them; they only make the order total by definition.

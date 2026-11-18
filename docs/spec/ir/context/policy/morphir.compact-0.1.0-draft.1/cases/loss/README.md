@@ -9,5 +9,5 @@ A v4 type file with two fields of type F.
 2. `order-total` (`names`), once: S = 0 ≤ E = 18, spelled out.
 
 **Loss decision.** Overhead = 118 + 12 + 105 + 0 = 235. Savings 176 ≤ 235: the envelope would make the file
-59 bytes larger. The writer writes the plain document as JCS, 360 bytes, with no envelope, and its result says that no
-alias was worth its cost.
+59 bytes larger. The writer writes the plain document in the written form, 360 bytes, with no envelope, and its
+result says that no alias was worth its cost.

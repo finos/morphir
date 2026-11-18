@@ -12,12 +12,17 @@ import {
 	contextDiagnostics,
 	exampleProblems,
 	expansionProblems,
+	isOrderCarrying,
 	isSpelling,
+	jcs,
 	jcsProblem,
+	Lexeme,
 	parseOrdered,
 	plainSchemaAccepts,
+	plainSchemaAcceptsText,
 	POLICY_DIR,
 	type PolicyIndex,
+	policyFormProblem,
 	policyProblems,
 	schemaAccepts,
 } from "./check-ir-context";
@@ -69,15 +74,15 @@ describe("morphir.compact/0.1.0-draft.1 fixed cases", () => {
 	const policyDir = path.join(root, POLICY_DIR);
 	const policy = JSON.parse(readFileSync(path.join(policyDir, "cases.json"), "utf8")) as PolicyIndex;
 
-	test("every expected file is JCS and has the form its row says, and every input is a valid plain document", () => {
+	test("every expected file is in the written form and has the form its row says, and every input is a valid plain document", () => {
 		expect(policyProblems(root)).toEqual([]);
 	}, 180_000);
 
 	test("the cases cover each file kind at v3 and v4 and each policy rule", () => {
 		const ids = policy.cases.map(c => c.id).sort();
 		expect(ids).toEqual([
-			"alias-allocation-order", "look-alike-literal", "loss", "loss-boundary-accepted", "loss-boundary-declined",
-			"name-used-once", "non-ascii-content", "table-order", "tie",
+			"alias-allocation-order", "exact-numbers", "look-alike-literal", "loss", "loss-boundary-accepted", "loss-boundary-declined",
+			"name-used-once", "non-ascii-content", "ordered-inputs", "table-order", "tie",
 			"v3-manifest", "v3-module", "v3-single-file", "v3-type", "v3-value",
 			"v4-manifest", "v4-module", "v4-single-file", "v4-type", "v4-value",
 		]);
@@ -98,6 +103,106 @@ describe("morphir.compact/0.1.0-draft.1 fixed cases", () => {
 			expect(jcsProblem(bytes(bad)), bad).toBeDefined();
 		}
 		expect(jcsProblem(new Uint8Array([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d]))).toBe("not valid UTF-8");
+	});
+
+	test("the order-carrying objects are the v4 body inputTypes and value specification inputs, and IR 3 has none", () => {
+		for (const body of ["ExpressionBody", "NativeBody", "ExternalBody", "IncompleteBody"]) expect(isOrderCarrying(4, ["def", body, "inputTypes"]), body).toBe(true);
+		expect(isOrderCarrying(4, ["values", "total", "ExpressionBody", "inputTypes"])).toBe(true);
+		expect(isOrderCarrying(4, ["spec", "inputs"])).toBe(true);
+		expect(isOrderCarrying(4, ["values", "total", "inputs"])).toBe(true);
+		expect(isOrderCarrying(4, ["values", "total", "value", "inputs"])).toBe(true);
+		// A record's fields, a module's values, a field that happens to be named inputs, and JSON inside a literal are not.
+		expect(isOrderCarrying(4, ["def", "TypeAliasDefinition", "typeExp", "Record", "fields"])).toBe(false);
+		expect(isOrderCarrying(4, ["values"])).toBe(false);
+		expect(isOrderCarrying(4, ["def", "TypeAliasDefinition", "typeExp", "Record", "fields", "inputs"])).toBe(false);
+		expect(isOrderCarrying(4, ["def", "ExpressionBody", "body", "Literal", "DocumentLiteral", "ExpressionBody", "inputTypes"])).toBe(false);
+		expect(isOrderCarrying(3, ["def", "value", "value", "inputTypes"])).toBe(false);
+	});
+
+	test("the written form keeps the input's parameter order and sorts every other object", () => {
+		const policyDir = path.join(root, POLICY_DIR, "cases/ordered-inputs");
+		const bytes = readFileSync(path.join(policyDir, "expected.json"));
+		const source = parseOrdered(readFileSync(path.join(policyDir, "input.json"), "utf8"), { lexemes: true });
+		expect(policyFormProblem(bytes, 4, source)).toBeUndefined();
+		// The same file is not JCS, and the JCS-sorted parameters are not the policy's form of this input.
+		expect(jcsProblem(bytes)).toBeDefined();
+		const text = new TextDecoder().decode(bytes);
+		const sorted = text.replace('"rate":{"$name":"a"},"amount":{"$name":"b"},"discount":{"$name":"a"},"limit":{"$name":"b"}', '"amount":{"$name":"b"},"discount":{"$name":"a"},"limit":{"$name":"b"},"rate":{"$name":"a"}');
+		expect(sorted).not.toBe(text);
+		expect(policyFormProblem(new TextEncoder().encode(sorted), 4, source)).toBeDefined();
+		// Outside the order-carrying object, document order is not kept: an unsorted def is refused.
+		const unsortedDef = text.replace(',"access":"Public"}', "}").replace('{"def":{"ExpressionBody"', '{"def":{"access":"Public","ExpressionBody"');
+		expect(unsortedDef).not.toBe(text);
+		expect(policyFormProblem(new TextEncoder().encode(unsortedDef), 4, source)).toBeDefined();
+		// In IR 3 every object is sorted.
+		expect(policyFormProblem(new TextEncoder().encode('{"inputTypes":{"b":1,"a":2}}'), 3)).toBeDefined();
+		expect(policyFormProblem(new TextEncoder().encode('{"def":{"ExpressionBody":{"inputTypes":{"b":1,"a":2}}}}'), 4)).toBeUndefined();
+	});
+
+	describe("the written form keeps every number lexeme and DocumentLiteral content as input.json writes them", () => {
+		const caseDir = path.join(root, POLICY_DIR, "cases/exact-numbers");
+		const inputText = readFileSync(path.join(caseDir, "input.json"), "utf8");
+		const source = parseOrdered(inputText, { lexemes: true });
+		const text = readFileSync(path.join(caseDir, "expected.json"), "utf8");
+		const problem = (t: string, ir = 4, from: typeof source = source) => policyFormProblem(new TextEncoder().encode(t), ir, from);
+		const sourceless = (t: string, ir: number) => policyFormProblem(new TextEncoder().encode(t), ir);
+		const changed = (from: string, to: string) => {
+			expect(text.includes(from), from).toBe(true);
+			return text.replace(from, to);
+		};
+
+		test("exact-numbers is in the written form, and is not JCS", () => {
+			expect(problem(text)).toBeUndefined();
+			expect(jcsProblem(new TextEncoder().encode(text))).toBeDefined();
+			// JCS would round the integer, drop the fractions and expand the exponents, and sort the literal's members.
+			const asJcs = jcs(parseOrdered(text, { lexemes: true }));
+			expect(asJcs).toContain('"IntegerLiteral":9007199254740992');
+			expect(asJcs).toContain('"FloatLiteral":1}');
+			expect(asJcs).toContain('"FloatLiteral":100}');
+			expect(asJcs).toContain('{"cap":1.5,"region":"outside-primary","tiers":[{"rate":0.1,"upTo":1000}]}');
+			expect(problem(asJcs)).toBeDefined();
+		});
+
+		test("a number spelled otherwise than in input.json is refused, even when its value is the same", () => {
+			for (const [from, to] of [
+				["9007199254740993", "9007199254740992"],
+				['"FloatLiteral":1.0}', '"FloatLiteral":1}'],
+				['"FloatLiteral":1.0}', '"FloatLiteral":1.00}'],
+				['"FloatLiteral":1e2}', '"FloatLiteral":100}'],
+				['"FloatLiteral":1e2}', '"FloatLiteral":1E2}'],
+				['"cap":1.50', '"cap":1.5'],
+				['"upTo":1e3', '"upTo":1000'],
+				['"rate":0.10', '"rate":0.1'],
+				['"formatVersion":4', '"formatVersion":4.0'],
+			]) {
+				expect(problem(changed(from!, to!)), `${from} -> ${to}`).toBeDefined();
+			}
+		});
+
+		test("DocumentLiteral content keeps the input's member order at every depth; other objects are still sorted", () => {
+			expect(problem(changed('{"region":"outside-primary","cap":1.50,', '{"cap":1.50,"region":"outside-primary",'))).toBeDefined();
+			expect(problem(changed('{"upTo":1e3,"rate":0.10}', '{"rate":0.10,"upTo":1e3}'))).toBeDefined();
+			// The wrapper around the literal is sorted as before: its one member cannot be out of order, but body is.
+			expect(problem(changed('{"def":{"ExpressionBody"', '{"def":{"access":"Public","ExpressionBody"').replace(',"access":"Public"}', "}"))).toBeDefined();
+			// Escaping and whitespace rules still hold inside the literal.
+			expect(problem(changed('"region":"outside-primary"', '"region": "outside-primary"'))).toBeDefined();
+			expect(problem(changed('"region":"outside-primary"', '"region":"outside\\u002dprimary"'))).toBeDefined();
+		});
+
+		test("without a source each number and literal object keeps its own form; IR 3 has no DocumentLiteral", () => {
+			const literal = '{"Literal":{"DocumentLiteral":{"b":1.0,"a":[{"d":1e2,"c":-0}]}}}';
+			expect(sourceless(literal, 4)).toBeUndefined();
+			expect(sourceless(literal, 3)).toBeDefined();
+			expect(sourceless('{"a":{"DocumentLiteral":{"a":1,"b":2}}}', 3)).toBeUndefined();
+			// A number where the source has none, and a source parsed without lexemes, are reported.
+			expect(problem('{"a":1}', 4, parseOrdered('{"a":"1"}', { lexemes: true }))).toContain("no number at /a");
+			expect(problem('{"a":1}', 4, parseOrdered('{"a":1}'))).toContain("parsed with lexemes");
+		});
+
+		test("the input's own text is what the plain schema validates", () => {
+			expect(plainSchemaAcceptsText(root, 4, "value", inputText)).toBe(true);
+			expect(plainSchemaAcceptsText(root, 4, "value", inputText.replace('"name": "limits"', '"name": "Limits"'))).toBe(false);
+		}, 60_000);
 	});
 });
 
@@ -201,6 +306,8 @@ describe("the checker can fail", () => {
 	test("member order and duplicate members survive parsing", () => {
 		expect(parseOrdered('{"b":1,"a":[true,null],"b":"x"}')).toEqual({ members: [["b", 1], ["a", [true, null]], ["b", "x"]] });
 		expect(() => parseOrdered('{"a":1,}')).toThrow("invalid JSON");
+		expect(parseOrdered("[1.0,1e2,9007199254740993]", { lexemes: true })).toEqual([new Lexeme("1.0"), new Lexeme("1e2"), new Lexeme("9007199254740993")]);
+		expect(parseOrdered("[1.0,1e2]")).toEqual([1, 100]);
 	});
 
 	test("a twin that does not match the example is reported", () => {

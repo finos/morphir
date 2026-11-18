@@ -1,8 +1,8 @@
 # Alias allocation order
 
 A v4 type file whose record alternates F and G over six fields. The input lists the fields as `rebate`, `base`,
-`bonus`, `extra`, `fee`, `gain`, so F comes first in the input; first use is measured in JCS order, which sorts the
-fields as `base`, `bonus`, `extra`, `fee`, `gain`, `rebate`.
+`bonus`, `extra`, `fee`, `gain`, so F comes first in the input; first use is measured in the written form, which
+sorts the fields as `base`, `bonus`, `extra`, `fee`, `gain`, `rebate`.
 
 **Occurrences in first-use order.**
 
