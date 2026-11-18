@@ -170,6 +170,159 @@
         "UnknownMember"
       ],
       "note": "`profile` is an extra member beside the named members. MEP accepts it; Smithy cannot declare it: smithy-2qe.34.18."
+    },
+    {
+      "name": "bounded access: exact access draft",
+      "shape": "morphir.mep#ModelAccessVersion",
+      "source": "spec/mep/model-access.md",
+      "value": "0.1.0-draft.1",
+      "expect": []
+    },
+    {
+      "name": "bounded access: another access draft is unsupported",
+      "shape": "morphir.mep#ModelAccessVersion",
+      "source": "spec/mep/model-access.md",
+      "value": "0.1.0-draft.2",
+      "expect": ["EnumValue"]
+    },
+    {
+      "name": "bounded access: a previous MEP draft is unsupported",
+      "shape": "morphir.mep#ModelAccessProtocolVersion",
+      "source": "spec/mep/model-access.md",
+      "value": "0.2.0-draft.1",
+      "expect": ["EnumValue"]
+    },
+    {
+      "name": "bounded access: a zero round or frame budget is refused",
+      "shape": "morphir.mep#PositiveLimit",
+      "source": "spec/mep/model-access.md",
+      "value": 0,
+      "expect": ["Range"]
+    },
+    {
+      "name": "bounded access: cumulative limits exceed the safe integer range",
+      "shape": "morphir.mep#PositiveSessionLimit",
+      "source": "spec/mep/model-access.md",
+      "value": 9007199254740992,
+      "expect": ["Range"]
+    },
+    {
+      "name": "bounded access: a module may omit its member selection",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "module": {
+          "documentId": "pkg/acme/orders/domain/module",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "bounded access: a type entry requires a name",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "type": {
+          "documentId": "pkg/acme/orders/domain/order.type",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition"
+        }
+      },
+      "expect": ["RequiredMember"]
+    },
+    {
+      "name": "bounded access: a value entry requires a name",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "value": {
+          "documentId": "pkg/acme/orders/domain/order.value",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition"
+        }
+      },
+      "expect": ["RequiredMember"]
+    },
+    {
+      "name": "bounded access: a type entry cannot carry a member selection",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "type": {
+          "documentId": "pkg/acme/orders/domain/order.type",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order",
+          "memberSelection": "orders-domain-members"
+        }
+      },
+      "expect": ["UnknownMember"]
+    },
+    {
+      "name": "bounded access: a value entry cannot carry a member selection",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "value": {
+          "documentId": "pkg/acme/orders/domain/order.value",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order",
+          "memberSelection": "orders-domain-members"
+        }
+      },
+      "expect": ["UnknownMember"]
+    },
+    {
+      "name": "bounded access: a module entry cannot carry a name",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "module": {
+          "documentId": "pkg/acme/orders/domain/module",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "domain"
+        }
+      },
+      "expect": ["UnknownMember"]
+    },
+    {
+      "name": "bounded access: an inventory entry requires a variant key",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {},
+      "expect": ["UnionMember"]
+    },
+    {
+      "name": "bounded access: an inventory entry accepts only one variant key",
+      "shape": "morphir.mep#ModelInventoryEntry",
+      "source": "spec/mep/model-access.md",
+      "value": {
+        "type": {
+          "documentId": "pkg/acme/orders/domain/order.type",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order"
+        },
+        "value": {
+          "documentId": "pkg/acme/orders/domain/order.value",
+          "packageName": "acme/orders",
+          "modulePath": "domain",
+          "role": "definition",
+          "name": "order"
+        }
+      },
+      "expect": ["UnionMember"]
     }
   ]
 }

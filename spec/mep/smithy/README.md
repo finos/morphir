@@ -16,12 +16,11 @@ this model in the same pull request. The check below compares the two.
 
 ## Scope
 
-- **Protocol version:** MEP `0.2.0-draft.1`, the version in
-  `contract/gleam.toml`. This draft keeps every legacy `0.1` method and shape,
-  and adds `morphir.frontend.compileModel`, `morphir.backend.generateModel`
-  and `morphir.validator.validateModel`. So one model covers legacy `0.1`
-  sessions and `0.2.0-draft.1` sessions. The services have
-  `version: "0.2.0-draft.1"`.
+- **Protocol version:** MEP `0.2.0-draft.2`, the version in
+  `contract/gleam.toml`. One model keeps legacy `0.1` and the exact draft.1
+  rich-model methods, and adds the [bounded-generation methods](../model-access.md)
+  with the separate `modelAccess` capability. The services have
+  `version: "0.2.0-draft.2"`.
 - **Claims document family:** current standalone claims use the required `$schema` URL at `0.1.0-preview.1`. The model maps its `schema` member through `@jsonName("$schema")`; that inventory entry uses JSON member naming. Historical claim sets stay labeled in the inventory and transcripts. This does not change MEP wire or protocol versions.
 - **JSON-RPC version:** 2.0 only.
 - **Not in scope:** Content-Length framing, which is transport, and admission
@@ -40,6 +39,7 @@ spec/mep/smithy/
     compile.smithy          legacy compile request and result
     generate.smithy         generate request and result, diagnostics
     model-transport.smithy  rich model transport (0.2.0-draft.1)
+    model-access.smithy     bounded generation (0.2.0-draft.2)
     validate.smithy         validateModel request, result and capability
   transcripts/              session transcripts, checked as tests
   values.json               JSON examples that are not JSON-RPC messages
@@ -59,6 +59,8 @@ spec/mep/smithy/
   the reply of a cancelled request can be `-32800`.
 - Smithy member names are the wire names, including the snake_case members
   of `ExtensionInfo`. Use the default `--member-names smithy`.
+- `ModelInventoryEntry` is a union with `module`, `type` and `value` keys.
+  The OpenRPC schema checks the single-key object and its variant payload.
 - A Gleam `Json` value is a Smithy `document`. A member that is "read as
   empty when absent" has a default (`= []`, `= {}` or `= false`).
 - The contract does not define the results of `morphir.ping` and
@@ -88,10 +90,11 @@ script:
 5. validates the request, the result and the two transport offers of each
    case in [`../mck/model-transport.cases.json`](../mck/model-transport.cases.json),
    and compares the findings with `mck-expectations.json`;
-6. compares the types of `mep.gleam` with the shapes of the model: the fields
-   of each record with the members of its structure, by wire name, and the
-   constructors of each enum with its members. `CONTRACT_EXCEPTIONS` in the
-   script lists each known difference and its reason.
+6. compares the types of `mep.gleam` with the shapes of the model. It checks
+   record fields and union variant fields against their structure members by
+   wire name. It also checks which variant fields are required and compares
+   enum constructor counts. `CONTRACT_EXCEPTIONS` lists the special mappings
+   and their reasons.
 
 The CI `docs` job runs the task when `spec/mep/**`, a Markdown file or the
 script changes.
@@ -120,6 +123,7 @@ match that list.
 | `doc-generate.md` | protocol.md generate request and result, backend capability | Valid |
 | `session-legacy.md` | historical `0.1` session with claims draft.2, separate from the current preview example | Valid |
 | `session-model-transport.md` | a `0.2.0-draft.1` session with MCK cases model-0028 and model-0001 | Valid |
+| `session-model-access.md` | a `0.2.0-draft.2` session with the module, type and value inventory entry variants | Valid |
 | `session-validate-model.md` | a `0.2.0-draft.1` validator session with MCK case model-0036 | Valid |
 | `validate-model-failure.md` | a validator that cannot run, then -32003 | Valid |
 | `lifecycle-violations.md` | requests in the wrong state, capabilities not advertised | 7 expected findings |

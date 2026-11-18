@@ -52,6 +52,9 @@ structure InitializeParams {
     /// to an extension whose describe result or recorded claims list at
     /// least one validateModel tuple in `capabilities.modelTransport`.
     modelTransport: ModelTransportSupport
+
+    /// The separate bounded-generation offer. Left out for older drafts.
+    modelAccess: ModelAccessSupport
 }
 
 /// Result of `morphir.initialize`.
@@ -191,6 +194,8 @@ structure ExtensionCapabilities {
     validator: ValidatorCapability
 
     modelTransport: ModelTransportSupport
+
+    modelAccess: ModelAccessSupport
 
     streaming: Boolean = false
 

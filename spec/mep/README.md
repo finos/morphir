@@ -8,7 +8,7 @@ This folder holds the contract as a Morphir model. [`contract/src/mep.gleam`](co
 
 ## Versioning
 
-The contract version in `contract/gleam.toml` is **`0.2.0-draft.1`**. The
+The contract version in `contract/gleam.toml` is **`0.2.0-draft.2`**. The
 handshake sends the full SemVer string and matches this prerelease exactly.
 This change adopts the accepted [SemVer contract policy](../../kb/bundles/morphir/morphir-cli/decisions/0003-semver-is-the-default-contract-versioning-scheme.md):
 released versions are compatible within a major, the minor acts as the major on
@@ -16,12 +16,17 @@ the `0.y.z` line, and drafts only match exactly.
 
 The legacy `0.1` protocol remains frozen with its existing JSON operations and
 handshake spelling. Current SDK implementations continue to advertise `0.1`;
-this source contract does not update their runtime support. New rich model
-operations require the new draft and bilateral transport admission. Their
+this source contract does not update their runtime support. Rich model
+operations require exact draft.1 and bilateral transport admission. Their
 independent model envelope version is `0.1.0-draft.1`; see
 [model transport](model-transport.md) for its normative rules. The examples use
 IR `4.0.0`, which remains draft work. Its integer `4` / string `"4.0.0"` wire
 spellings follow the independent IR contract and do not imply stabilization.
+
+[Bounded generation](model-access.md) requires exact draft.2 and bilateral
+model-access admission. Its three operations have their own named requests and
+use file-local document deliveries. Draft.2 does not change the older session
+shapes.
 
 The capability claims format has its own version, separate from MEP. Writers send `claimsVersion` `0.1.0-draft.2`, and readers also accept `0.1.0-draft.1`.
 
@@ -31,6 +36,7 @@ The capability claims format has its own version, separate from MEP. Writers sen
 spec/mep/
   README.md                 this file
   model-transport.md        rich-model wire and admission rules
+  model-access.md           bounded-generation wire and admission rules
   wasm-execution-profiles.md    how a host runs a WASM extension: the two ABI profiles
   wasm-execution-profiles.json  the same tables as data
   contract/                 Gleam project, the source of truth
@@ -90,6 +96,10 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `ValidatorCapability` | `rules` is left out when empty and read as empty when absent. An empty list means that the validator does not list its rules. Each rule `id` is an absolute IRI, compared as a plain string, and each rule `code` is non-empty; each rule `id` and `code` is unique in one list. |
 | `ValidateModelRequest` | Absent `options` defaults to empty. `input` must be an admitted validateModel tuple, and the model must match it. A host converts a model for validation only without loss; it never sends a lossy conversion, even when the user allows loss. |
 | `ValidateModelResult` | No success flag. A failure to run is a JSON-RPC error. |
+| `ModelAccessTuple` | Exact protocol, access and semantic IR version tokens. The codec and contextual encoding are separate tuple members. |
+| `ModelAccessRequest`, `ModelAccessDelivery` | The wire `kind` selects inventory or document. The [bounded-generation rules](model-access.md#requests-and-deliveries) list the required member set for each tag. |
+| `ModelInventoryEntry` | One wire key (`module`, `type` or `value`) selects the payload. A module may supply `memberSelection`. Types and values require `name`. |
+| `ModelAccessStep` | The wire `state` selects `continue`, `complete` or `failed`. A terminal failure carries only the session identity and diagnostics beside the tag. |
 | `GenerateRequest` | `options` is read as empty when absent. |
 | `GenerateResult` | `artifacts` and `diagnostics` are read as empty when absent. |
 | `Artifact` | When `binary` is true, `content` is base64. `binary` is read as false when absent. |

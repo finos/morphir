@@ -54,11 +54,13 @@ pub type DescribeParams {
 /// claims list at least one validateModel tuple in
 /// `capabilities.modelTransport`. A host without either offers none: an
 /// extension that does not know an operation can refuse the whole offer.
+/// `modelAccess` is the separate optional offer for bounded generation.
 pub type InitializeParams {
   InitializeParams(
     protocol_versions: List(String),
     host: PeerInfo,
     model_transport: Option(ModelTransportSupport),
+    model_access: Option(ModelAccessSupport),
   )
 }
 
@@ -179,7 +181,8 @@ pub type ValidatorRule {
 ///   an `extra` key. Unknown members are read into `extra`.
 /// - A writer refuses an `extra` key that is one of the reserved names
 ///   `frontend`, `backend`, `workspace`, `validator`, `streaming`,
-///   `incremental`, `cancellation`, `progress` or `modelTransport`.
+///   `incremental`, `cancellation`, `progress`, `modelTransport` or `modelAccess`.
+/// `modelAccess` is left out when absent, including on older sessions.
 pub type ExtensionCapabilities {
   ExtensionCapabilities(
     frontend: Option(FrontendCapability),
@@ -187,6 +190,7 @@ pub type ExtensionCapabilities {
     workspace: Option(WorkspaceCapability),
     validator: Option(ValidatorCapability),
     model_transport: Option(ModelTransportSupport),
+    model_access: Option(ModelAccessSupport),
     streaming: Bool,
     incremental: Bool,
     cancellation: Bool,
@@ -256,6 +260,9 @@ pub type CapabilityClaimSet {
 /// | `CompileModel`      | `morphir.frontend.compileModel`   | request      |
 /// | `Generate`          | `morphir.backend.generate`        | request      |
 /// | `GenerateModel`     | `morphir.backend.generateModel`   | request      |
+/// | `GenerateModelStart` | `morphir.backend.generateModel.start` | request |
+/// | `GenerateModelAdvance` | `morphir.backend.generateModel.advance` | request |
+/// | `GenerateModelCancel` | `morphir.backend.generateModel.cancel` | request |
 /// | `Validate`          | `morphir.validator.validate`      | request      |
 /// | `ValidateModel`     | `morphir.validator.validateModel` | request      |
 /// | `Transform`         | `morphir.transform.transform`     | request      |
@@ -283,6 +290,9 @@ pub type Method {
   CompileModel
   Generate
   GenerateModel
+  GenerateModelStart
+  GenerateModelAdvance
+  GenerateModelCancel
   Validate
   ValidateModel
   Transform
@@ -803,6 +813,222 @@ pub type GenerateResult {
 /// text. An absent `binary` is read as false.
 pub type Artifact {
   Artifact(path: String, content: String, binary: Bool)
+}
+
+// -- Bounded model access ---------------------------------------------------
+
+/// Exact bounded-generation MEP draft, wire spelling `0.2.0-draft.2`.
+pub type ModelAccessProtocolVersion {
+  ModelAccessProtocolDraft2
+}
+
+/// Exact bounded-access contract draft, wire spelling `0.1.0-draft.1`.
+pub type ModelAccessVersion {
+  ModelAccessDraft1
+}
+
+/// Exact semantic IR versions on the wire, `3.1.0` and `4.0.0`.
+pub type ModelAccessIrVersion {
+  ModelAccessIr3
+  ModelAccessIr4
+}
+
+/// This draft supports the `morphir.backend.generateModel` operation.
+pub type ModelAccessOperation {
+  BoundedGenerateModel
+}
+
+/// The first access profile has wire spelling `morphir-ir`.
+pub type ModelAccessProfile {
+  MorphirIrProfile
+}
+
+/// Wire spellings `morphir-json` and `morphir-yaml`.
+pub type ModelAccessCodec {
+  AccessJsonCodec
+  AccessYamlCodec
+}
+
+/// The first access layout has wire spelling `document-tree`.
+pub type ModelAccessLayout {
+  DocumentTreeAccess
+}
+
+/// Wire spellings `plain` and the ir-context draft.1 envelope schema URL.
+pub type ModelAccessEncoding {
+  PlainAccess
+  ContextualAccessDraft1
+}
+
+/// The host's choice is one exact tuple already admitted by both peers.
+pub type ModelAccessTuple {
+  ModelAccessTuple(
+    protocol_version: ModelAccessProtocolVersion,
+    access_version: ModelAccessVersion,
+    operation: ModelAccessOperation,
+    ir_version: ModelAccessIrVersion,
+    profile: ModelAccessProfile,
+    codec: ModelAccessCodec,
+    layout: ModelAccessLayout,
+    contextual_encoding: ModelAccessEncoding,
+  )
+}
+
+/// Positive bounds for this exchange and the complete operation.
+pub type ModelAccessLimits {
+  ModelAccessLimits(
+    max_frame_bytes: Int,
+    max_encoded_bytes_per_exchange: Int,
+    max_decoded_bytes_per_exchange: Int,
+    max_documents_per_batch: Int,
+    max_depth: Int,
+    max_nodes: Int,
+    max_diagnostics_per_exchange: Int,
+    max_outstanding_requests: Int,
+    max_guest_state_bytes: Int,
+    max_host_cache_bytes: Int,
+    max_artifact_chunk_bytes: Int,
+    max_artifact_bytes: Int,
+    max_total_artifact_bytes: Int,
+    max_session_disk_bytes: Int,
+    max_session_work_units: Int,
+    max_rounds: Int,
+    max_call_milliseconds: Int,
+    max_session_milliseconds: Int,
+  )
+}
+
+/// Unique complete tuples in host preference order and scoped limits.
+pub type ModelAccessSupport {
+  ModelAccessSupport(tuples: List(ModelAccessTuple), limits: ModelAccessLimits)
+}
+
+/// Opaque snapshot identity, model revision, dependency context and view.
+pub type ModelAccessSnapshot {
+  ModelAccessSnapshot(
+    snapshot_id: String,
+    model_id: String,
+    revision: String,
+    context_digest: String,
+    scope: String,
+  )
+}
+
+/// Named parameters of `morphir.backend.generateModel.start`.
+pub type ModelAccessStart {
+  ModelAccessStart(
+    session_id: String,
+    snapshot: ModelAccessSnapshot,
+    input: ModelAccessTuple,
+    target: String,
+    options: Json,
+    required_guarantees: List(ModelGuaranteeRequirement),
+    limits: ModelAccessLimits,
+  )
+}
+
+/// Named parameters of `morphir.backend.generateModel.advance`.
+pub type ModelAccessAdvance {
+  ModelAccessAdvance(
+    session_id: String,
+    round: Int,
+    deliveries: List(ModelAccessDelivery),
+  )
+}
+
+/// Parameters and acknowledgment of `morphir.backend.generateModel.cancel`.
+pub type ModelAccessCancel {
+  ModelAccessCancel(session_id: String)
+}
+
+/// The wire tag `kind` selects `inventory` or `document`.
+pub type ModelAccessRequest {
+  InventoryRequest(
+    request_id: String,
+    selection: String,
+    page_size: Int,
+    cursor: Option(String),
+  )
+  DocumentRequest(request_id: String, document_id: String)
+}
+
+/// The wire tag `kind` selects `inventory` or `document`.
+pub type ModelAccessDelivery {
+  InventoryDelivery(
+    request_id: String,
+    snapshot_id: String,
+    entries: List(ModelInventoryEntry),
+    next_cursor: Option(String),
+  )
+  DocumentDelivery(
+    request_id: String,
+    snapshot_id: String,
+    document_id: String,
+    decoded_byte_length: Int,
+    sha256: String,
+    content: String,
+  )
+}
+
+/// Wire roles `definition` and `specification`.
+pub type ModelInventoryRole {
+  DefinitionEntry
+  SpecificationEntry
+}
+
+/// One inventory entry. The wire object has a single key `module`, `type`,
+/// or `value`, whose value is the corresponding constructor's record.
+pub type ModelInventoryEntry {
+  ModuleEntry(
+    document_id: String,
+    package_name: String,
+    module_path: String,
+    role: ModelInventoryRole,
+    member_selection: Option(String),
+  )
+  TypeEntry(
+    document_id: String,
+    package_name: String,
+    module_path: String,
+    role: ModelInventoryRole,
+    name: String,
+  )
+  ValueEntry(
+    document_id: String,
+    package_name: String,
+    module_path: String,
+    role: ModelInventoryRole,
+    name: String,
+  )
+}
+
+/// One bounded output chunk. Content is canonical padded base64.
+pub type ModelArtifactChunk {
+  ModelArtifactChunk(
+    path: String,
+    offset: Int,
+    decoded_byte_length: Int,
+    sha256: String,
+    content: String,
+    end: Bool,
+  )
+}
+
+/// The wire `state` selects exactly one of `continue`, `complete`, or `failed`.
+pub type ModelAccessStep {
+  ContinueGeneration(
+    session_id: String,
+    round: Int,
+    requests: List(ModelAccessRequest),
+    artifacts: List(ModelArtifactChunk),
+    diagnostics: List(Diagnostic),
+  )
+  CompleteGeneration(
+    session_id: String,
+    artifacts: List(ModelArtifactChunk),
+    diagnostics: List(Diagnostic),
+  )
+  FailGeneration(session_id: String, diagnostics: List(Diagnostic))
 }
 
 // -- Diagnostics ------------------------------------------------------------
