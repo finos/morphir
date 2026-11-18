@@ -106,7 +106,7 @@ definitions:
       inputs:
         type: object
         additionalProperties: true
-        description: "Input parameter types"
+        description: "Input parameter types. The key order of \"inputs\" is the parameter order."
       output:
         description: "Output type"
     additionalProperties: true

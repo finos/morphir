@@ -103,7 +103,7 @@
       "required": [ "output" ],
       "properties": {
         "inputs": {
-          "description": "Input parameter types",
+          "description": "Input parameter types. The key order of \"inputs\" is the parameter order.",
           "type": "object",
           "additionalProperties": true
         },

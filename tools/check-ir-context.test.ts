@@ -12,12 +12,14 @@ import {
 	contextDiagnostics,
 	exampleProblems,
 	expansionProblems,
+	isOrderCarrying,
 	isSpelling,
 	jcsProblem,
 	parseOrdered,
 	plainSchemaAccepts,
 	POLICY_DIR,
 	type PolicyIndex,
+	policyFormProblem,
 	policyProblems,
 	schemaAccepts,
 } from "./check-ir-context";
@@ -77,7 +79,7 @@ describe("morphir.compact/0.1.0-draft.1 fixed cases", () => {
 		const ids = policy.cases.map(c => c.id).sort();
 		expect(ids).toEqual([
 			"alias-allocation-order", "look-alike-literal", "loss", "loss-boundary-accepted", "loss-boundary-declined",
-			"name-used-once", "non-ascii-content", "table-order", "tie",
+			"name-used-once", "non-ascii-content", "ordered-inputs", "table-order", "tie",
 			"v3-manifest", "v3-module", "v3-single-file", "v3-type", "v3-value",
 			"v4-manifest", "v4-module", "v4-single-file", "v4-type", "v4-value",
 		]);
@@ -98,6 +100,40 @@ describe("morphir.compact/0.1.0-draft.1 fixed cases", () => {
 			expect(jcsProblem(bytes(bad)), bad).toBeDefined();
 		}
 		expect(jcsProblem(new Uint8Array([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d]))).toBe("not valid UTF-8");
+	});
+
+	test("the order-carrying objects are the v4 body inputTypes and value specification inputs, and IR 3 has none", () => {
+		for (const body of ["ExpressionBody", "NativeBody", "ExternalBody", "IncompleteBody"]) expect(isOrderCarrying(4, ["def", body, "inputTypes"]), body).toBe(true);
+		expect(isOrderCarrying(4, ["values", "total", "ExpressionBody", "inputTypes"])).toBe(true);
+		expect(isOrderCarrying(4, ["spec", "inputs"])).toBe(true);
+		expect(isOrderCarrying(4, ["values", "total", "inputs"])).toBe(true);
+		expect(isOrderCarrying(4, ["values", "total", "value", "inputs"])).toBe(true);
+		// A record's fields, a module's values, a field that happens to be named inputs, and JSON inside a literal are not.
+		expect(isOrderCarrying(4, ["def", "TypeAliasDefinition", "typeExp", "Record", "fields"])).toBe(false);
+		expect(isOrderCarrying(4, ["values"])).toBe(false);
+		expect(isOrderCarrying(4, ["def", "TypeAliasDefinition", "typeExp", "Record", "fields", "inputs"])).toBe(false);
+		expect(isOrderCarrying(4, ["def", "ExpressionBody", "body", "Literal", "DocumentLiteral", "ExpressionBody", "inputTypes"])).toBe(false);
+		expect(isOrderCarrying(3, ["def", "value", "value", "inputTypes"])).toBe(false);
+	});
+
+	test("the written form keeps the input's parameter order and sorts every other object", () => {
+		const policyDir = path.join(root, POLICY_DIR, "cases/ordered-inputs");
+		const bytes = readFileSync(path.join(policyDir, "expected.json"));
+		const source = parseOrdered(readFileSync(path.join(policyDir, "input.json"), "utf8"));
+		expect(policyFormProblem(bytes, 4, source)).toBeUndefined();
+		// The same file is not JCS, and the JCS-sorted parameters are not the policy's form of this input.
+		expect(jcsProblem(bytes)).toBeDefined();
+		const text = new TextDecoder().decode(bytes);
+		const sorted = text.replace('"rate":{"$name":"a"},"amount":{"$name":"b"},"discount":{"$name":"a"},"limit":{"$name":"b"}', '"amount":{"$name":"b"},"discount":{"$name":"a"},"limit":{"$name":"b"},"rate":{"$name":"a"}');
+		expect(sorted).not.toBe(text);
+		expect(policyFormProblem(new TextEncoder().encode(sorted), 4, source)).toBeDefined();
+		// Outside the order-carrying object, document order is not kept: an unsorted def is refused.
+		const unsortedDef = text.replace(',"access":"Public"}', "}").replace('{"def":{"ExpressionBody"', '{"def":{"access":"Public","ExpressionBody"');
+		expect(unsortedDef).not.toBe(text);
+		expect(policyFormProblem(new TextEncoder().encode(unsortedDef), 4, source)).toBeDefined();
+		// In IR 3 every object is sorted.
+		expect(policyFormProblem(new TextEncoder().encode('{"inputTypes":{"b":1,"a":2}}'), 3)).toBeDefined();
+		expect(policyFormProblem(new TextEncoder().encode('{"def":{"ExpressionBody":{"inputTypes":{"b":1,"a":2}}}}'), 4)).toBeUndefined();
 	});
 });
 

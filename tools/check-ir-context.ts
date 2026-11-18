@@ -372,8 +372,54 @@ export function jcs(v: Ordered): string {
 	return JSON.stringify(v);
 }
 
-/** Why bytes are not RFC 8785 JCS, or undefined when they are: valid UTF-8, no duplicate member, the canonical text. */
-export function jcsProblem(bytes: Uint8Array): string | undefined {
+/** The four variants of a v4 value definition body, each of which holds `inputTypes`. */
+const BODY_VARIANTS = ["ExpressionBody", "NativeBody", "ExternalBody", "IncompleteBody"];
+
+/**
+ * Whether the object at this key path from the root of a plain IR `ir` document is order-carrying: an object whose
+ * member order the IR JSON Schema declares semantic ("The key order of ... is the parameter order"). In v4 these are
+ * the `inputTypes` of the four value definition bodies and the object form of a value specification's `inputs`. IR 3
+ * has none: its parameters are arrays.
+ *
+ * The positions are recognized by key path. A body variant's name is not a Name, so it cannot be a map key. A value
+ * specification's `inputs` sits at `values/<name>/inputs` or `values/<name>/value/inputs` of a module specification,
+ * or at `spec/inputs` of a value file. A `DocumentLiteral` holds arbitrary JSON, so nothing inside one is a position.
+ */
+export function isOrderCarrying(ir: number, keys: readonly string[]): boolean {
+	if (ir !== 4 || keys.includes("DocumentLiteral")) return false;
+	const at = (back: number) => keys[keys.length - back];
+	if (at(1) === "inputTypes") return BODY_VARIANTS.includes(at(2) ?? "");
+	if (at(1) !== "inputs") return false;
+	return (keys.length === 2 && at(2) === "spec") || at(3) === "values" || (at(2) === "value" && at(4) === "values");
+}
+
+/**
+ * The text the policy writes for a parsed file of IR `ir`: RFC 8785 JCS, except that the members of an order-carrying
+ * object of the enclosed (or plain) document keep their document order. `source` is the plain document the file was
+ * written from; an order-carrying object takes the member order of the object at the same path in it. Without a
+ * source, an order-carrying object keeps its own order.
+ */
+export function policyForm(v: Ordered, ir: number, source?: Ordered): string {
+	const isEnvelope = member(v, "$schema") !== undefined;
+	const write = (node: Ordered, from: Ordered | undefined, keys: string[]): string => {
+		if (Array.isArray(node)) return `[${node.map((item, i) => write(item, Array.isArray(from) ? from[i] : undefined, [...keys, String(i)])).join(",")}]`;
+		if (!isObject(node)) return jcs(node);
+		let members = [...node.members].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+		if (referenceId(node) === undefined && isOrderCarrying(ir, keys)) {
+			const order = isObject(from) ? from.members.map(([k]) => k) : node.members.map(([k]) => k);
+			const missing = node.members.map(([k]) => k).filter(k => !order.includes(k));
+			if (missing.length > 0 || order.length !== node.members.length) throw new Error(`the order-carrying object at /${keys.join("/")} does not have the members of the source's`);
+			members = [...node.members].sort(([a], [b]) => order.indexOf(a) - order.indexOf(b));
+		}
+		return `{${members.map(([k, m]) => `${JSON.stringify(k)}:${write(m, member(from, k), [...keys, k])}`).join(",")}}`;
+	};
+	if (!isEnvelope) return write(v, source, []);
+	const parts = [...(v as { members: [string, Ordered][] }).members].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+	return `{${parts.map(([k, m]) => `${JSON.stringify(k)}:${k === "document" ? write(m, source, []) : jcs(m)}`).join(",")}}`;
+}
+
+/** Why bytes are not the given canonical text of themselves, or undefined when they are: valid UTF-8, no duplicate member, the canonical text. */
+function canonicalProblem(bytes: Uint8Array, canonicalOf: (parsed: Ordered) => string): string | undefined {
 	let text: string;
 	try {
 		text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
@@ -389,13 +435,31 @@ export function jcsProblem(bytes: Uint8Array): string | undefined {
 	const duplicate = (v: Ordered): boolean =>
 		Array.isArray(v) ? v.some(duplicate) : isObject(v) ? new Set(v.members.map(([k]) => k)).size !== v.members.length || v.members.some(([, m]) => duplicate(m)) : false;
 	if (duplicate(parsed)) return "a member appears twice";
-	const canonical = jcs(parsed);
+	let canonical: string;
+	try {
+		canonical = canonicalOf(parsed);
+	} catch (error) {
+		return String(error);
+	}
 	if (canonical !== text) {
 		let at = 0;
 		while (at < text.length && text[at] === canonical[at]) at++;
-		return `not canonical from character ${at}: ${JSON.stringify(text.slice(at, at + 40))} where JCS has ${JSON.stringify(canonical.slice(at, at + 40))}`;
+		return `not canonical from character ${at}: ${JSON.stringify(text.slice(at, at + 40))} where the canonical form has ${JSON.stringify(canonical.slice(at, at + 40))}`;
 	}
 	return undefined;
+}
+
+/** Why bytes are not RFC 8785 JCS, or undefined when they are: valid UTF-8, no duplicate member, the canonical text. */
+export function jcsProblem(bytes: Uint8Array): string | undefined {
+	return canonicalProblem(bytes, jcs);
+}
+
+/**
+ * Why bytes are not the policy's written form of a file of IR `ir` written from the plain document `source`, or
+ * undefined when they are: JCS everywhere except the order-carrying objects, which keep the source's member order.
+ */
+export function policyFormProblem(bytes: Uint8Array, ir: number, source?: Ordered): string | undefined {
+	return canonicalProblem(bytes, parsed => policyForm(parsed, ir, source));
 }
 
 export type PolicyCase = { id: string; ir: number; kind: string; compacted: boolean };
@@ -403,9 +467,10 @@ export type PolicyIndex = { policy: string; schema: string; cases: PolicyCase[] 
 export const POLICY_DIR = "docs/spec/ir/context/policy/morphir.compact-0.1.0-draft.1";
 
 /**
- * Every problem with the policy's fixed cases. This checks the form of each expected file only (JCS, the envelope
- * schema for a compacted one, no envelope for a plain one) and that each input is a valid plain document; it never
- * computes what the policy would write. The expected bytes are worked out by hand in each case's README.
+ * Every problem with the policy's fixed cases. This checks the form of each expected file only (the policy's written
+ * form: JCS, with each order-carrying object in the member order of input.json; the envelope schema for a compacted
+ * one, no envelope for a plain one) and that each input is a valid plain document; it never computes which names the
+ * policy would alias. The expected bytes are worked out by hand in each case's README.
  */
 export function policyProblems(root: string, dir = POLICY_DIR): string[] {
 	const index = JSON.parse(readFileSync(path.join(root, dir, "cases.json"), "utf8")) as PolicyIndex;
@@ -415,9 +480,10 @@ export function policyProblems(root: string, dir = POLICY_DIR): string[] {
 	for (const c of index.cases) {
 		const at = path.join(root, dir, "cases", c.id);
 		const bytes = readFileSync(path.join(at, "expected.json"));
-		const problem = jcsProblem(bytes);
+		const source = parseOrdered(readFileSync(path.join(at, "input.json"), "utf8"));
+		const problem = policyFormProblem(bytes, c.ir, source);
 		if (problem !== undefined) {
-			problems.push(`${c.id}: expected.json is not JCS: ${problem}`);
+			problems.push(`${c.id}: expected.json is not the policy's written form: ${problem}`);
 			continue;
 		}
 		const expected = parseOrdered(new TextDecoder().decode(bytes));

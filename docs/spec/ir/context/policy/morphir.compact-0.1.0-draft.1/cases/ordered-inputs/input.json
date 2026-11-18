@@ -1,0 +1,17 @@
+{
+  "formatVersion": 4,
+  "name": "adjust",
+  "def": {
+    "access": "Public",
+    "ExpressionBody": {
+      "inputTypes": {
+        "rate": "acme/order-management:pricing/discount-rules#loyalty-discount-rate-for-premium-members",
+        "amount": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment",
+        "discount": "acme/order-management:pricing/discount-rules#loyalty-discount-rate-for-premium-members",
+        "limit": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment"
+      },
+      "outputType": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment",
+      "body": { "Variable": "amount" }
+    }
+  }
+}

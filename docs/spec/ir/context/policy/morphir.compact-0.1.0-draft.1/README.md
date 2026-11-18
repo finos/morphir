@@ -8,14 +8,31 @@ implementation produced any of them.
 
 ## Output form
 
-- The output is the RFC 8785 canonical JSON (JCS) of the file: object members sorted by their UTF-16 code units, no
-  whitespace, strings with only `"`, `\` and control characters escaped (non-ASCII written raw as UTF-8), numbers in
-  the ECMAScript form. There is no trailing newline.
+- The output is the policy's **written form** of the file: the RFC 8785 canonical JSON (JCS) of the file, except that
+  the members of an order-carrying object keep their document order. Everywhere else object members are sorted by
+  their UTF-16 code units. There is no whitespace, strings have only `"`, `\` and control characters escaped
+  (non-ASCII written raw as UTF-8), numbers are in the ECMAScript form, and there is no trailing newline. These rules
+  apply inside an order-carrying object too.
+- An order-carrying object is one whose member order the enclosed document's IR JSON Schema declares semantic. In IR 4
+  (`website/static/schemas/morphir-ir-v4.json`) these are exactly:
+  - the `inputTypes` of each value definition body, `ExpressionBody`, `NativeBody`, `ExternalBody` and
+    `IncompleteBody`, wherever the body appears (a module's values, a value file's `def`, a `LetDefinition` or
+    `LetRecursion` definition). The schema says: "The key order of "inputTypes" is the parameter order."
+  - the object form of a `ValueSpecification`'s `inputs`, wherever the specification appears (a module
+    specification's values, a value file's `spec`). The schema says: "The key order of "inputs" is the parameter
+    order." (`morphir-ir-v4-document-tree-files.json` says the same of its `ValueSpecification`.)
+
+  IR 3 has no order-carrying object: its parameters are arrays, and the objects of a v3 tree file are maps. A
+  `DocumentLiteral` holds arbitrary JSON, so no object inside one is order-carrying. The document order of an
+  order-carrying object is its member order in the plain document the writer was given, and expansion gives the
+  members back in that order.
 - A compacted file is the envelope with exactly three members, `$schema`, `context` and `document`. JCS sorts them in
   that order, so the context always comes before the document. The writer adds no `critical` list.
 - The context's tables are therefore written in JCS order: `fqNames`, `modulePaths`, `names`, `packagePaths`. A table
   with no entry is left out.
-- Every size below is the UTF-8 byte length of JCS text.
+- When the writer declines, the plain document is written in the same written form.
+- Every size below is the UTF-8 byte length of text in the written form. Member order does not change a byte length,
+  so each cost is the same as the cost of the JCS text.
 
 ## Candidates
 
@@ -27,8 +44,8 @@ have occurrences of both kinds in a v3 tree file.
 
 ## Order and ids
 
-Candidates are taken in first-use order: by the byte offset, in the JCS text of the plain document, at which their
-first occurrence starts. Then by the ordinal (UTF-16) order of the spelling, and then by table, in the order `names`,
+Candidates are taken in first-use order: by the byte offset, in the written form of the plain document, at which
+their first occurrence starts. Inside an order-carrying object that is document order, not sorted order. Then by the ordinal (UTF-16) order of the spelling, and then by table, in the order `names`,
 `packagePaths`, `modulePaths`, `fqNames`. Two outermost positions never start at the same offset, so in draft.1 the
 first key decides every order; the further keys make the order total by definition, and no case can exercise them.
 
@@ -61,9 +78,9 @@ commas and braces that text holds, and only those are counted.
    `H = 118 + Σ_tables T + Σ_entries (len(id) + len(s) + 5) + (k − 1)`, summed over the tables that hold an entry and
    over the `k` entries. The compacted file is `plain − Σ S + H` bytes. The writer writes the envelope only when
    `Σ S > H`, so the compacted file is smaller than the plain one. When `Σ S = H` the two are the same size and the
-   writer declines. Otherwise, or when no candidate is aliased, it writes the plain document as JCS, and its result
-   says that no alias was worth its cost. `loss-boundary-declined` (`Σ S = H`) and `loss-boundary-accepted`
-   (`Σ S = H + 1`) pin the boundary.
+   writer declines. Otherwise, or when no candidate is aliased, it writes the plain document in the written form,
+   and its result says that no alias was worth its cost. `loss-boundary-declined` (`Σ S = H`) and
+   `loss-boundary-accepted` (`Σ S = H + 1`) pin the boundary.
 
 ## Spellings used by the cases
 
@@ -96,14 +113,16 @@ computed by hand and then compared with the byte length of the written files.
 | `v4-value`, `v3-value` | A value file; a rejected candidate consumes no id |
 | `name-used-once` | An FQName used once stays spelled out beside an aliased one |
 | `non-ascii-content` | A doc string with `é` and `è` is measured and written as raw UTF-8 |
-| `alias-allocation-order` | Ids follow first use in JCS order, not the order of the input file |
+| `alias-allocation-order` | Ids follow first use in the written form (here JCS order), not the order of the input file |
 | `tie` | A saving exactly equal to the entry's cost stays spelled out |
 | `table-order` | Ids run across tables in first-use order; JCS writes `fqNames` before `names`; a classic FQName used once is worth an alias |
 | `look-alike-literal` | A string literal holding `{"$name":"a"}` stays a literal beside a real alias `a` |
 | `loss` | An alias worth its entry, but not the envelope: the output is the plain file |
 | `loss-boundary-declined` | Savings exactly equal to the overhead (294): the output is the plain file |
 | `loss-boundary-accepted` | Savings one byte above the overhead (296 > 295): the envelope is written, one byte smaller |
+| `ordered-inputs` | Parameters `rate`, `amount`, `discount`, `limit` keep their order in `inputTypes`, and ids follow first use in that order |
 
-`bun test tools/check-ir-context.test.ts` checks only that each `expected.json` is JCS, that a compacted one
-satisfies the envelope schema and a plain one has no envelope, and that each input is a valid plain document where a
-JSON Schema exists for it. It never computes an expected file.
+`bun test tools/check-ir-context.test.ts` checks only that each `expected.json` is in the written form (JCS, with each
+order-carrying object in the member order of `input.json`), that a compacted one satisfies the envelope schema and a
+plain one has no envelope, and that each input is a valid plain document where a JSON Schema exists for it. It never
+computes an expected file.

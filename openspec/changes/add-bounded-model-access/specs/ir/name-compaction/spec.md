@@ -207,6 +207,10 @@ Readers SHALL ignore unknown optional envelope and context members. An optional 
 ### Requirement: Make expansion lossless
 For every supported model document and admitted compaction policy, `expandNames(compactNames(document))` SHALL equal the original typed document. Equality SHALL preserve all supported attributes, metadata, literals and semantically ordered collections. Semantic node addresses SHALL not depend on alias allocation. Byte digests SHALL continue to bind the actual encoded bytes.
 
+#### Scenario: Parameter order expands back
+- **WHEN** a compacted v4 value file's `inputTypes` lists `rate`, `amount`, `discount`, `limit` (case `ordered-inputs`)
+- **THEN** its expansion lists the parameters in that order, as the original document did
+
 #### Scenario: Different aliases name the same type
 - **WHEN** two contextual representations use `q0` and `ref7` for the same FQName
 - **THEN** their expanded documents and semantic node identities are equal
@@ -228,11 +232,42 @@ The first published writer policy SHALL be `morphir.compact/0.1.0-draft.1`, defi
 - **THEN** its output bytes equal the case's `expected.json`
 
 ### Requirement: Write compacted output as RFC 8785 canonical JSON
-A file written under the policy SHALL be the RFC 8785 (JCS) serialization of the envelope with exactly `$schema`, `context` and `document`, or of the plain document when the policy declines. JCS sorts members, so the context comes before the document and the tables appear as `fqNames`, `modulePaths`, `names`, `packagePaths`; a table with no entry is left out. Every size the policy compares SHALL be the UTF-8 byte length of JCS text.
+A file written under the policy SHALL be in its written form: the RFC 8785 (JCS) text of the envelope with exactly `$schema`, `context` and `document`, or of the plain document when the policy declines, with the member order of order-carrying objects excepted. JCS sorts all other members, so the context precedes the document; a table with no entry is left out. Every size the policy compares SHALL be the UTF-8 byte length of written-form text.
+
+#### Scenario: Tables in JCS order
+- **WHEN** a compacted file's context has entries in all four tables
+- **THEN** the tables appear as `fqNames`, `modulePaths`, `names`, `packagePaths`
 
 #### Scenario: Non-ASCII content is measured as UTF-8
 - **WHEN** a file to compact holds a doc string with `é`
 - **THEN** the policy counts `é` as two bytes, and the written file holds `é` unescaped
+
+### Requirement: Keep the order of order-carrying members
+The members of an order-carrying object SHALL keep their order in the plain document given to the writer, and expansion SHALL return them in that order. JCS escaping, number form and the absence of whitespace SHALL still apply to them. Member order does not change a byte length, so every cost equals that of the JCS text. An order-carrying object SHALL be one whose member order the enclosed document's IR JSON Schema declares semantic.
+
+#### Scenario: Parameter order survives compaction
+- **WHEN** a v4 value file's `inputTypes` lists `rate` before `amount` (case `ordered-inputs`)
+- **THEN** the written file lists `rate` before `amount`, although JCS would sort `amount` first
+- **AND** every other object in the file is written in JCS order
+
+#### Scenario: A declined file keeps parameter order
+- **WHEN** the policy declines to compact a v4 value file whose `inputTypes` is not in sorted order
+- **THEN** the plain document it writes keeps that order of `inputTypes`
+
+### Requirement: List the order-carrying objects
+In IR 4 the order-carrying objects SHALL be exactly the `inputTypes` of the value definition bodies `ExpressionBody`, `NativeBody`, `ExternalBody` and `IncompleteBody`, and the object form of a `ValueSpecification`'s `inputs`, wherever they appear; `website/static/schemas/morphir-ir-v4.json` says the key order of each is the parameter order. IR 3 SHALL have none: its parameters are arrays. No object inside a `DocumentLiteral` SHALL be one.
+
+#### Scenario: A specification's inputs keep their order
+- **WHEN** a v4 value file's `spec` has `inputs` `{"rate": …, "amount": …}`
+- **THEN** the written file keeps `rate` before `amount`
+
+#### Scenario: A record's fields are sorted
+- **WHEN** a v4 record type lists the field `rate` before `amount`
+- **THEN** the written file sorts the fields, because the schema declares no order for them
+
+#### Scenario: IR 3 has no order-carrying object
+- **WHEN** the policy writes a v3 value file
+- **THEN** every object in it is written in JCS order, and its parameters keep their order as array items
 
 ### Requirement: Take candidates at outermost typed positions
 A candidate SHALL be a pair of a table and an expanded spelling. Its occurrences SHALL be the typed name positions of the plain document holding it that are not inside another typed position. An occurrence's size SHALL be the JCS size of its value as the plain document writes it: the canonical string with its quotes, or the classic word arrays of a classic v3 slot.
@@ -242,7 +277,7 @@ A candidate SHALL be a pair of a table and an expanded spelling. Its occurrences
 - **THEN** its occurrence size is that of its classic package, module and name arrays, not of its canonical spelling
 
 ### Requirement: Allocate alias ids in first-use order
-Candidates SHALL be taken in the order of the byte offset of their first occurrence in the JCS text of the plain document, then by the ordinal order of the spelling, then by table in the order `names`, `packagePaths`, `modulePaths`, `fqNames`. Ids SHALL be `a` to `z`, then `aa`, `ab` and on (bijective base 26), one sequence for all tables. Only an aliased candidate SHALL consume an id.
+Candidates SHALL be taken in the order of the byte offset of their first occurrence in the written form of the plain document (so in document order inside an order-carrying object), then by the ordinal order of the spelling, then by table in the order `names`, `packagePaths`, `modulePaths`, `fqNames`. Ids SHALL be `a` to `z`, then `aa`, `ab` and on (bijective base 26), one sequence for all tables. Only an aliased candidate SHALL consume an id.
 
 #### Scenario: Ids follow first use, not input order
 - **WHEN** the input lists a field of type F before a field of type G, but JCS sorts the G field first
@@ -274,15 +309,15 @@ With `R = 12 + len(id)`, the bytes of the reference `{"$name":"<id>"}`, and `E =
 - **THEN** the candidate stays spelled out and consumes no id
 
 ### Requirement: Decline compaction that would be a loss
-Let `H` be the bytes the envelope adds: 118, plus each table header, plus each entry, plus `k − 1` commas. The writer SHALL write the envelope only when the aliased candidates' savings are greater than `H`, so that the file is smaller than the plain document. Savings equal to `H` give a file of the same size, and the writer SHALL decline. When it declines, or when no candidate is aliased, it SHALL write the plain document as JCS and its result SHALL say that no alias was worth its cost.
+Let `H` be the bytes the envelope adds: 118, plus each table header, plus each entry, plus `k − 1` commas. The writer SHALL write the envelope only when the aliased candidates' savings are greater than `H`, so that the file is smaller than the plain one. Savings equal to `H` give a file of the same size, and the writer SHALL decline. When it declines, or when no candidate is aliased, it SHALL write the plain document in the written form; its result SHALL say that no alias was worth its cost.
 
 #### Scenario: Compaction that would be a loss is not applied
 - **WHEN** an alias saves more than its entry costs but less than the envelope adds
-- **THEN** the written file is the plain document in JCS, with no envelope
+- **THEN** the written file is the plain document in the written form, with no envelope
 
 #### Scenario: Savings equal to the overhead
 - **WHEN** the aliased candidates save exactly `H` bytes (case `loss-boundary-declined`: 294 = 294)
-- **THEN** the written file is the plain document in JCS, with no envelope
+- **THEN** the written file is the plain document in the written form, with no envelope
 
 #### Scenario: Savings one byte above the overhead
 - **WHEN** the aliased candidates save `H + 1` bytes (case `loss-boundary-accepted`: 296 against 295)
