@@ -258,11 +258,11 @@ fn check_limits(limits : Limits) -> Unit raise @wire.CodecError {
 }
 
 ///|
-fn check_source_bytes(
+fn count_source_bytes(
   source : String,
-  limits : Limits,
-) -> Unit raise @wire.CodecError {
-  guard source.length() <= limits.max_bytes else {
+  max_bytes : Int32,
+) -> Int32 raise @wire.CodecError {
+  guard source.length() <= max_bytes else {
     raise @wire.Invalid("yaml_source_limit", "Source byte budget exceeded")
   }
   let mut source_bytes = 0
@@ -276,11 +276,20 @@ fn check_source_bytes(
     } else {
       4
     }
-    guard units <= limits.max_bytes - source_bytes else {
+    guard units <= max_bytes - source_bytes else {
       raise @wire.Invalid("yaml_source_limit", "Source byte budget exceeded")
     }
     source_bytes += units
   }
+  source_bytes
+}
+
+///|
+fn check_source_bytes(
+  source : String,
+  limits : Limits,
+) -> Unit raise @wire.CodecError {
+  ignore(count_source_bytes(source, limits.max_bytes))
 }
 
 ///|

@@ -100,49 +100,87 @@ fn candidate_spelling(
 }
 
 ///|
-// The same traversal supplies the policy's written order and its first-use order.
-fn policy_walk(
+// The same traversal defines the written order and the order of name uses.
+fn write_policy_value(
   value : Json,
   shape : CompactionShape?,
   at_reference : (CompactionTable, CompactionSpelling, Json) -> Json raise CodecError,
-) -> Json raise CodecError {
+  emit : (String) -> Unit raise CodecError,
+  verbatim~ : Bool = false,
+) -> Unit raise CodecError {
   if shape is Some(mark) {
     if mark.verbatim {
-      return value
+      write_policy_value(value, None, at_reference, emit, verbatim=true)
+      return
     }
     if mark.reference is Some((table, spelling)) {
-      return at_reference(table, spelling, value)
+      let resolved = at_reference(table, spelling, value)
+      write_policy_value(resolved, None, at_reference, emit, verbatim=true)
+      return
     }
   }
   match value {
     Object(fields) => {
+      emit("{")
       let keys = fields.keys().collect()
-      if !(shape is Some(mark) && mark.keep_order) {
+      if !(verbatim || (shape is Some(mark) && mark.keep_order)) {
         keys.sort_by((left, right) => left.lexical_compare(right))
       }
-      let ordered : Map[String, Json] = Map([])
-      for key in keys {
+      for index, key in keys {
+        if index > 0 {
+          emit(",")
+        }
+        emit(Json::string(key).stringify())
+        emit(":")
         let child = fields[key]
         let next = match shape {
           Some(mark) => (mark.member_shape)(value, key, child)
           None => None
         }
-        ordered[key] = policy_walk(child, next, at_reference)
+        write_policy_value(child, next, at_reference, emit, verbatim~)
       }
-      Json::object(ordered)
+      emit("}")
     }
-    Array(items) =>
-      Json::array(
-        items.mapi((index, child) => {
-          let next = match shape {
-            Some(mark) => (mark.item_shape)(value, index, child)
-            None => None
-          }
-          policy_walk(child, next, at_reference)
-        }),
-      )
-    _ => value
+    Array(items) => {
+      emit("[")
+      for index, child in items {
+        if index > 0 {
+          emit(",")
+        }
+        let next = match shape {
+          Some(mark) => (mark.item_shape)(value, index, child)
+          None => None
+        }
+        write_policy_value(child, next, at_reference, emit, verbatim~)
+      }
+      emit("]")
+    }
+    _ => emit(value.stringify())
   }
+}
+
+///|
+fn policy_text(
+  value : Json,
+  shape : CompactionShape,
+  at_reference : (CompactionTable, CompactionSpelling, Json) -> Json raise CodecError,
+  max_bytes~ : Int64? = None,
+) -> String raise CodecError {
+  let builder = StringBuilder()
+  let mut remaining = max_bytes
+  write_policy_value(value, Some(shape), at_reference, fragment => {
+    if remaining is Some(available) {
+      let size = compaction_bytes(fragment)
+      guard size <= available else {
+        raise Invalid(
+          "document_size_limit", "Expanded document byte budget exceeded",
+        )
+      }
+      remaining = Some(available - size)
+    }
+    builder.write_string(fragment)
+  })
+  builder.to_string()
 }
 
 ///|
@@ -184,10 +222,10 @@ pub fn compact_names(text : String) -> NameCompaction raise CodecError {
   guard input is Object(fields) && fields.get("$schema") is None else {
     raise Invalid("context.not_plain_document", "Expected a plain IR document")
   }
-  let shape = Some(policy_shape(input))
+  let shape = policy_shape(input)
   let indexed : Map[(String, String), NameCandidate] = Map([])
   let first_use : Array[NameCandidate] = []
-  let plain = policy_walk(input, shape, (table, spelling, value) => {
+  let plain = policy_text(input, shape, (table, spelling, value) => {
     if contains_name_reference(value) {
       raise Invalid(
         "context.not_plain_document", "A typed position already contains an alias",
@@ -216,7 +254,7 @@ pub fn compact_names(text : String) -> NameCompaction raise CodecError {
       }
     }
     value
-  }).stringify()
+  })
 
   let tables : Map[String, Map[String, Json]] = Map([])
   let mut aliases = 0
@@ -247,7 +285,7 @@ pub fn compact_names(text : String) -> NameCompaction raise CodecError {
     return { policy: CompactionPolicyId, written: plain, compacted: false, }
   }
 
-  let document = policy_walk(input, shape, (table, spelling, value) => {
+  let document = policy_text(input, shape, (table, spelling, value) => {
     if candidate_spelling(table, spelling, value) is Some(text) &&
       indexed.get((compaction_table_name(table), text))
       is Some({ assigned_id: Some(id), .. }) {
@@ -269,12 +307,15 @@ pub fn compact_names(text : String) -> NameCompaction raise CodecError {
     }
     context[name] = Json::object(ordered)
   }
-  let envelope : Json = {
-    "$schema": ContextualSchema,
-    "context": Json::object(context),
-    "document": document,
-  }
-  let written = envelope.stringify()
+  let envelope = StringBuilder()
+  envelope.write_string("{\"$schema\":")
+  envelope.write_string(Json::string(ContextualSchema).stringify())
+  envelope.write_string(",\"context\":")
+  envelope.write_string(Json::object(context).stringify())
+  envelope.write_string(",\"document\":")
+  envelope.write_string(document)
+  envelope.write_string("}")
+  let written = envelope.to_string()
   if compaction_bytes(written) < compaction_bytes(plain) {
     { policy: CompactionPolicyId, written, compacted: true, }
   } else {
@@ -317,55 +358,90 @@ pub fn expand_names(text : String) -> String raise CodecError {
       }
     }
   }
-  let shape = Some(policy_shape(document))
+  render_expanded_names(document, name_context)
+}
+
+///|
+/// Render one already admitted document without building an expanded JSON tree.
+/// The limit is checked in UTF-8 bytes before each write to the output buffer.
+pub fn expand_admitted_names(
+  document : Json,
+  name_context : DocumentNameContext?,
+  max_bytes~ : Int32,
+) -> String raise CodecError {
+  guard max_bytes > 0 else {
+    raise Invalid(
+      "document_size_limit", "Expected a positive expanded document byte limit",
+    )
+  }
+  render_expanded_names(
+    document,
+    name_context,
+    max_bytes=Some(max_bytes.to_int64()),
+  )
+}
+
+///|
+fn render_expanded_names(
+  document : Json,
+  name_context : DocumentNameContext?,
+  max_bytes~ : Int64? = None,
+) -> String raise CodecError {
+  let shape = policy_shape(document)
+
   let name_context = name_context.map(context => context.with_document(document))
-  policy_walk(document, shape, (table, spelling, value) => {
-    guard value is Object(fields) && fields.contains("$name") else {
-      if contains_name_reference(value) {
+  policy_text(
+    document,
+    shape,
+    (table, spelling, value) => {
+      guard value is Object(fields) && fields.contains("$name") else {
+        if contains_name_reference(value) {
+          raise Invalid(
+            "context.invalid_reference", "An alias must occupy the complete typed name position",
+          )
+        }
+        return value
+      }
+      guard name_context is Some(context) else {
         raise Invalid(
-          "context.invalid_reference", "An alias must occupy the complete typed name position",
+          "context.not_plain_document", "A typed position carries an alias without a context",
         )
       }
-      return value
-    }
-    guard name_context is Some(context) else {
-      raise Invalid(
-        "context.not_plain_document", "A typed position carries an alias without a context",
-      )
-    }
-    try {
-      match table {
-        NameTable => {
-          let name = context.canonical_name(value)
-          match spelling {
-            CanonicalSpelling => Json::string(name.to_canonical())
-            ClassicSpelling => write_legacy_name(name)
+      try {
+        match table {
+          NameTable => {
+            let name = context.canonical_name(value)
+            match spelling {
+              CanonicalSpelling => Json::string(name.to_canonical())
+              ClassicSpelling => write_legacy_name(name)
+            }
+          }
+          PackagePathTable | ModulePathTable => {
+            let path = match table {
+              PackagePathTable => context.package_path(value)
+              _ => context.module_path(value)
+            }
+            match spelling {
+              CanonicalSpelling => Json::string(path.to_canonical())
+              ClassicSpelling => write_legacy_path(path)
+            }
+          }
+          FQNameTable => {
+            let name = context.canonical_fqname(value)
+            match spelling {
+              CanonicalSpelling => Json::string(name.to_canonical())
+              ClassicSpelling => write_legacy_fqname(name)
+            }
           }
         }
-        PackagePathTable | ModulePathTable => {
-          let path = match table {
-            PackagePathTable => context.package_path(value)
-            _ => context.module_path(value)
-          }
-          match spelling {
-            CanonicalSpelling => Json::string(path.to_canonical())
-            ClassicSpelling => write_legacy_path(path)
-          }
-        }
-        FQNameTable => {
-          let name = context.canonical_fqname(value)
-          match spelling {
-            CanonicalSpelling => Json::string(name.to_canonical())
-            ClassicSpelling => write_legacy_fqname(name)
-          }
-        }
+      } catch {
+        Invalid(code, detail) => raise Invalid(code, detail)
+        _ =>
+          raise Invalid(
+            "context.invalid_entry", "The alias cannot be expressed in this typed position",
+          )
       }
-    } catch {
-      Invalid(code, detail) => raise Invalid(code, detail)
-      _ =>
-        raise Invalid(
-          "context.invalid_entry", "The alias cannot be expressed in this typed position",
-        )
-    }
-  }).stringify()
+    },
+    max_bytes~,
+  )
 }

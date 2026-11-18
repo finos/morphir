@@ -387,6 +387,7 @@ fn BoundedTree::package_location(
 fn BoundedTree::load(
   self : BoundedTree,
   logical : String,
+  preserve_metadata~ : Bool = false,
 ) -> (Json, @wire.DocumentNameContext?) raise {
   let physical = tree_physical_path(self.source, self.revision, logical)
   guard physical.has_suffix(".json") != self.yaml &&
@@ -415,7 +416,9 @@ fn BoundedTree::load(
       "Every tree file must match the manifest revision",
     )
   }
-  ignore(@wire.object(document).remove("$meta"))
+  if !preserve_metadata {
+    ignore(@wire.object(document).remove("$meta"))
+  }
   (document, context)
 }
 
@@ -792,14 +795,12 @@ pub(all) enum TreeArtifact {
 }
 
 ///|
-/// Reopen one admitted document under the same revision and byte limit.
-/// Return its physical path and original UTF-8 text for opaque pass-through.
-pub fn BoundedTree::read_original_document(
+fn BoundedTree::validated_artifact_path(
   self : BoundedTree,
   artifact : TreeArtifact,
-) -> (String, String) raise {
+) -> String raise {
   self.check_revision()
-  let logical = match artifact {
+  match artifact {
     ManifestArtifact => "manifest"
     ModuleArtifact(package_name, module_name) => {
       let (prefix, role) = self.package_location(package_name)
@@ -810,6 +811,16 @@ pub fn BoundedTree::read_original_document(
     MemberArtifact(package_name, module_name, kind, name) =>
       self.read_member_document(package_name, module_name, kind, name).1
   }
+}
+
+///|
+/// Reopen one admitted document under the same revision and byte limit.
+/// Return its physical path and original UTF-8 text for opaque pass-through.
+pub fn BoundedTree::read_original_document(
+  self : BoundedTree,
+  artifact : TreeArtifact,
+) -> (String, String) raise {
+  let logical = self.validated_artifact_path(artifact)
   let physical = tree_physical_path(self.source, self.revision, logical)
   let text = read_bounded_source_text(
     self.source,
@@ -820,6 +831,135 @@ pub fn BoundedTree::read_original_document(
   )
   self.check_revision()
   (physical, text)
+}
+
+///|
+/// Expand one revision-bound artifact to plain JSON. If the selected member is
+/// inline, return the containing module. No output is returned on refusal.
+pub fn BoundedTree::read_expanded_document(
+  self : BoundedTree,
+  artifact : TreeArtifact,
+  max_output_bytes~ : Int32,
+) -> (String, String) raise {
+  let logical = self.validated_artifact_path(artifact)
+  let output = logical + ".json"
+  guard output.length().to_double() <= self.manifest.path_budget else {
+    tree_error(
+      "invalid_distribution_shape", logical, "Expanded physical path exceeds pathBudget",
+    )
+  }
+  let (document, context) = self.load(logical, preserve_metadata=true)
+  let expanded = @wire.expand_admitted_names(
+    document,
+    context,
+    max_bytes=max_output_bytes,
+  ) catch {
+    @wire.Invalid(code, detail) => tree_error(code, logical, detail)
+  }
+  self.check_revision()
+  (output, expanded)
+}
+
+///|
+/// Limits for documents written to an expanded export's private stage.
+pub(all) struct ExpandedTreeLimits {
+  max_document_bytes : Int32
+  max_total_bytes : Int64
+  page_size : Int32
+}
+
+///|
+/// Emit an expanded plain JSON tree a file at a time. The callback owns
+/// staging. It must publish only after this walk succeeds, since a later
+/// read, byte limit, or source revision change can fail the export.
+pub fn BoundedTree::write_expanded_tree(
+  self : BoundedTree,
+  limits : ExpandedTreeLimits,
+  stage_file : (String, String) -> Unit raise,
+) -> Unit raise {
+  guard limits.max_document_bytes > 0 && limits.max_total_bytes > 0L else {
+    tree_error(
+      "document_size_limit", "manifest", "Expected positive export byte limits",
+    )
+  }
+  guard limits.page_size > 0 && limits.page_size <= 256 else {
+    tree_error(
+      "invalid_page_limit", "manifest", "Page size must be between 1 and 256",
+    )
+  }
+  let mut remaining = limits.max_total_bytes
+  let stage = fn(artifact) raise {
+    guard remaining > 0L else {
+      tree_error(
+        "document_size_limit", "manifest", "Expanded export byte budget exhausted",
+      )
+    }
+    let max_output_bytes = if remaining < limits.max_document_bytes.to_int64() {
+      remaining.to_int()
+    } else {
+      limits.max_document_bytes
+    }
+    let (path, expanded) = self.read_expanded_document(
+      artifact,
+      max_output_bytes~,
+    )
+    remaining -= count_source_bytes(expanded, max_output_bytes).to_int64()
+    stage_file(path, expanded)
+  }
+  let write_module = fn(module_info : TreeModule) raise {
+    stage(ModuleArtifact(module_info.package_name, module_info.path))
+    let mut cursor = None
+    while true {
+      let page = self.members(
+        module_info.package_name,
+        module_info.path,
+        limit=limits.page_size,
+        cursor?,
+      )
+      for entry in page.items {
+        if entry.document == module_info.document {
+          // The containing module is already staged. Check the inline
+          // definition without writing another file for the same identity.
+          ignore(
+            self.read_member(
+              entry.package_name,
+              entry.module_name,
+              entry.kind,
+              entry.name,
+            ),
+          )
+        } else {
+          stage(
+            MemberArtifact(
+              entry.package_name,
+              entry.module_name,
+              entry.kind,
+              entry.name,
+            ),
+          )
+        }
+      }
+      guard page.next is Some(_) else { break }
+      cursor = page.next
+    }
+  }
+  let write_package = fn(package_name) raise {
+    let mut cursor = None
+    while true {
+      let page = self.modules(package_name, limit=limits.page_size, cursor?)
+      for module_info in page.items {
+        write_module(module_info)
+      }
+      guard page.next is Some(_) else { break }
+      cursor = page.next
+    }
+  }
+  stage(ManifestArtifact)
+  write_package(self.package_name())
+  for dependency in self.dependency_packages() {
+    write_package(dependency)
+  }
+  self.check_revision()
 }
 
 ///|

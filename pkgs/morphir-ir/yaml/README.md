@@ -106,6 +106,26 @@ their containing module. The reader validates the selection and reopens
 the artifact under the same revision and byte limit, preserving optional
 content, formatting and numeric spellings.
 
+### Stage an expanded JSON export
+
+`read_expanded_document` returns a selected, already scoped artifact as
+plain JSON with a caller-supplied output byte cap. An inline member selects
+its containing module. The same revision and input caps apply to every read,
+including the extra read for a context after its document.
+
+`write_expanded_tree` stages one file at a time using the bounded module and
+member pages. It emits the manifest, then the root package and its declared
+dependencies. Each inline module is written once. A document and the
+combined output have separate UTF-8 byte caps. The tree retains only the
+current documents and bounded pages. The callback owns the private stage.
+Publish it only after the walk returns successfully. A late limit, invalid
+document, callback error, or revision change can fail the walk.
+
+Use `read_original_document` for exact pass-through, including optional
+envelope data and YAML presentation. Expanded export deliberately emits
+plain JSON and keeps typed name values, numeric lexemes and meaningful
+member order.
+
 ## Limits
 
 Default limits are finite and configurable:
