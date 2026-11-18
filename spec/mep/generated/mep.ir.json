@@ -3502,20 +3502,6 @@
                     }
                   }
                 },
-                "model-inventory-kind": {
-                  "Public": {
-                    "doc": "Wire kinds `module`, `type`, and `value`.",
-                    "CustomTypeDefinition": {
-                      "typeParams": [],
-                      "access": "Public",
-                      "constructors": {
-                        "module-entry": [],
-                        "type-entry": [],
-                        "value-entry": []
-                      }
-                    }
-                  }
-                },
                 "model-inventory-role": {
                   "Public": {
                     "doc": "Wire roles `definition` and `specification`.",
@@ -3531,12 +3517,12 @@
                 },
                 "model-inventory-entry": {
                   "Public": {
-                    "doc": "One inventory entry. Only modules can carry a member selection.",
+                    "doc": "One inventory entry. The wire object has a single key `module`, `type`,\nor `value`, whose value is the corresponding constructor's record.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
                       "constructors": {
-                        "model-inventory-entry": [
+                        "module-entry": [
                           [
                             "document-id",
                             {
@@ -3562,33 +3548,10 @@
                             }
                           ],
                           [
-                            "kind",
-                            {
-                              "Reference": {
-                                "fqname": "morphir/mep:mep#model-inventory-kind"
-                              }
-                            }
-                          ],
-                          [
                             "role",
                             {
                               "Reference": {
                                 "fqname": "morphir/mep:mep#model-inventory-role"
-                              }
-                            }
-                          ],
-                          [
-                            "name",
-                            {
-                              "Reference": {
-                                "fqname": "morphir/SDK:maybe#maybe",
-                                "args": [
-                                  {
-                                    "Reference": {
-                                      "fqname": "morphir/SDK:string#string"
-                                    }
-                                  }
-                                ]
                               }
                             }
                           ],
@@ -3604,6 +3567,90 @@
                                     }
                                   }
                                 ]
+                              }
+                            }
+                          ]
+                        ],
+                        "type-entry": [
+                          [
+                            "document-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "package-name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "module-path",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "role",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-inventory-role"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ],
+                        "value-entry": [
+                          [
+                            "document-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "package-name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "module-path",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "role",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-inventory-role"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
                               }
                             }
                           ]
