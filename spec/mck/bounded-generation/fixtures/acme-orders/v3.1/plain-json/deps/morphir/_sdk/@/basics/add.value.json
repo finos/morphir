@@ -1,0 +1,14 @@
+{
+  "formatVersion": "3.1.0",
+  "name": "add",
+  "spec": {
+    "doc": "",
+    "value": {
+      "inputs": [
+        [["a"], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]],
+        [["b"], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]]
+      ],
+      "output": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]
+    }
+  }
+}

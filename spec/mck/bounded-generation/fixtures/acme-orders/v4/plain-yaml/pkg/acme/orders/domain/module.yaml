@@ -1,0 +1,5 @@
+formatVersion: 4
+path: domain
+doc: Order totals.
+types: [order]
+values: [order, total-in-USD]

@@ -1,0 +1,7 @@
+{
+  "formatVersion": "3.1.0",
+  "path": "basics",
+  "doc": "Integer operations.",
+  "types": ["int"],
+  "values": ["add"]
+}

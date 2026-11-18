@@ -1,0 +1,49 @@
+$schema: https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json
+context:
+  names:
+    "n": line
+  fqNames:
+    i: "morphir/SDK:basics#int"
+    m: "morphir/SDK:basics#multiply"
+    l: "my-org/billing:invoicing#invoice-line"
+document:
+  formatVersion: 3.1.0
+  name: line-total
+  def:
+    access: Public
+    value:
+      doc: Quantity times unit price.
+      value:
+        inputTypes:
+          - - $name: "n"
+            - {}
+            - - Reference
+              - {}
+              - $name: l
+              - []
+        outputType:
+          - Reference
+          - {}
+          - $name: i
+          - []
+        body:
+          - Apply
+          - {}
+          - - Apply
+            - {}
+            - - Reference
+              - {}
+              - $name: m
+            - - Field
+              - {}
+              - - Variable
+                - {}
+                - $name: "n"
+              - - quantity
+          - - Field
+            - {}
+            - - Variable
+              - {}
+              - $name: "n"
+            - - unit
+              - price

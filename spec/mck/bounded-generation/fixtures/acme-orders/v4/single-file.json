@@ -1,0 +1,49 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "acme/orders",
+      "dependencies": {
+        "morphir/SDK": {
+          "modules": {
+            "basics": {
+              "doc": "Integer operations.",
+              "types": { "int": { "OpaqueTypeSpecification": {} } },
+              "values": {
+                "add": {
+                  "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" },
+                  "output": "morphir/SDK:basics#int"
+                }
+              }
+            }
+          }
+        }
+      },
+      "def": {
+        "modules": {
+          "audit": { "Private": { "doc": "Internal audit.", "types": {}, "values": {} } },
+          "domain": {
+            "Public": {
+              "doc": "Order totals.",
+              "types": {
+                "order": { "Public": { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" } } }
+              },
+              "values": {
+                "order": { "Public": { "ExpressionBody": {
+                  "inputTypes": {},
+                  "outputType": "morphir/SDK:basics#int",
+                  "body": { "Literal": { "IntegerLiteral": 73 } }
+                } } },
+                "total-in-USD": { "Public": { "ExpressionBody": {
+                  "inputTypes": {},
+                  "outputType": "morphir/SDK:basics#int",
+                  "body": { "Reference": "acme/orders:domain#order" }
+                } } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

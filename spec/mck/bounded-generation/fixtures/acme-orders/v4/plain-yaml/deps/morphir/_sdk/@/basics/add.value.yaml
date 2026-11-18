@@ -1,0 +1,7 @@
+formatVersion: 4
+name: add
+spec:
+  inputs:
+    a: morphir/SDK:basics#int
+    b: morphir/SDK:basics#int
+  output: morphir/SDK:basics#int

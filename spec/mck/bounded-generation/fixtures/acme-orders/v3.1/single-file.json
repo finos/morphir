@@ -1,0 +1,71 @@
+{
+  "formatVersion": 3,
+  "distribution": [
+    "Library",
+    [["acme"], ["orders"]],
+    [
+      [
+        [["morphir"], ["s", "d", "k"]],
+        { "modules": [
+          [
+            [["basics"]],
+            {
+              "types": [[["int"], { "doc": "", "value": ["OpaqueTypeSpecification", []] }]],
+              "values": [
+                [
+                  ["add"],
+                  { "doc": "", "value": {
+                    "inputs": [
+                      [["a"], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]],
+                      [["b"], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]]
+                    ],
+                    "output": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]
+                  } }
+                ]
+              ],
+              "doc": "Integer operations."
+            }
+          ]
+        ] }
+      ]
+    ],
+    { "modules": [
+      [
+        [["audit"]],
+        { "access": "Private", "value": { "types": [], "values": [], "doc": "Internal audit." } }
+      ],
+      [
+        [["domain"]],
+        { "access": "Public", "value": {
+          "types": [
+            [
+              ["order"],
+              { "access": "Public", "value": { "doc": "", "value": [
+                "TypeAliasDefinition", [], ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []]
+              ] } }
+            ]
+          ],
+          "values": [
+            [
+              ["order"],
+              { "access": "Public", "value": { "doc": "", "value": {
+                "inputTypes": [],
+                "outputType": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []],
+                "body": ["Literal", ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []], ["WholeNumberLiteral", 73]]
+              } } }
+            ],
+            [
+              ["total", "in", "u", "s", "d"],
+              { "access": "Public", "value": { "doc": "", "value": {
+                "inputTypes": [],
+                "outputType": ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []],
+                "body": ["Reference", ["Reference", {}, [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]], []], [[["acme"], ["orders"]], [["domain"]], ["order"]]]
+              } } }
+            ]
+          ],
+          "doc": "Order totals."
+        } }
+      ]
+    ] }
+  ]
+}
