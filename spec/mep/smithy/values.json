@@ -170,6 +170,41 @@
         "UnknownMember"
       ],
       "note": "`profile` is an extra member beside the named members. MEP accepts it; Smithy cannot declare it: smithy-2qe.34.18."
+    },
+    {
+      "name": "bounded access: exact access draft",
+      "shape": "morphir.mep#ModelAccessVersion",
+      "source": "spec/mep/model-access.md",
+      "value": "0.1.0-draft.1",
+      "expect": []
+    },
+    {
+      "name": "bounded access: another access draft is unsupported",
+      "shape": "morphir.mep#ModelAccessVersion",
+      "source": "spec/mep/model-access.md",
+      "value": "0.1.0-draft.2",
+      "expect": ["EnumValue"]
+    },
+    {
+      "name": "bounded access: a previous MEP draft is unsupported",
+      "shape": "morphir.mep#ModelAccessProtocolVersion",
+      "source": "spec/mep/model-access.md",
+      "value": "0.2.0-draft.1",
+      "expect": ["EnumValue"]
+    },
+    {
+      "name": "bounded access: a zero round or frame budget is refused",
+      "shape": "morphir.mep#PositiveLimit",
+      "source": "spec/mep/model-access.md",
+      "value": 0,
+      "expect": ["Range"]
+    },
+    {
+      "name": "bounded access: cumulative limits exceed the safe integer range",
+      "shape": "morphir.mep#PositiveSessionLimit",
+      "source": "spec/mep/model-access.md",
+      "value": 9007199254740992,
+      "expect": ["Range"]
     }
   ]
 }

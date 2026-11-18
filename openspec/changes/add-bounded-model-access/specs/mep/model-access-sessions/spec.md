@@ -25,7 +25,7 @@ sequenceDiagram
   H->>H: validate and publish task result
 ```
 
-Illustrative result payload, before generated contract models fix its wire fields:
+The [bounded-generation wire draft](../../../../../../spec/mep/model-access.md) defines the methods, limits and named members. This result asks for one document in the next round.
 
 ```json
 {
@@ -42,7 +42,7 @@ The session contract is proposed as access version `0.1.0-draft.1` on MEP `0.2.0
 
 ### Transport boundary
 
-Process connections and WASM byte calls implement the same externally visible state transitions. Nested callbacks, new WASM imports and a mandatory daemon are unnecessary for this first exchange. Final method names and serialized sum shapes belong in the parent contract model and generated transcripts before implementation; the example above is deliberately labeled illustrative.
+Process connections and WASM byte calls implement the same externally visible state transitions. Nested callbacks, new WASM imports and a mandatory daemon are unnecessary for this first exchange. The source models and generated transcripts must agree with the wire draft before adapter implementation.
 
 ## ADDED Requirements
 
@@ -60,6 +60,14 @@ The new access methods SHALL require the new exact MEP draft. MEP `0.1` and `0.2
 #### Scenario: Guest selects the old draft
 - **WHEN** initialization selects `0.2.0-draft.1`
 - **THEN** the host does not send start or advance messages for bounded access
+
+### Requirement: Use the bounded generation method family
+The host SHALL use `morphir.backend.generateModel.start`, `morphir.backend.generateModel.advance` and `morphir.backend.generateModel.cancel` for the three bounded operations. Each SHALL use named JSON-RPC parameters and remain distinct from single-document `morphir.backend.generateModel`.
+
+#### Scenario: A bounded call follows initialization
+- **WHEN** the selected draft and tuple admit bounded generation
+- **THEN** the host starts one bounded operation with `morphir.backend.generateModel.start`
+- **AND** sends subsequent deliveries only through `morphir.backend.generateModel.advance`
 
 ### Requirement: Permit supported compatible fallback
 A host SHALL permit a compatible existing operation when the requested behavior fits its supported limits and conversion policy. It SHALL disclose a protocol fallback and apply existing loss rules. If bounded operation is explicitly required, an inline fallback SHALL NOT bypass that requirement or be reported as bounded qualification.

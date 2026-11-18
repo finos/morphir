@@ -5,6 +5,7 @@
 // importing it here does not run the smithy CLI.
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { format, parse } from "@std/semver";
 import {
 	canonical,
 	codeDifference,
@@ -49,6 +50,21 @@ test("the current protocol values are inventoried separately from historical cla
 	const current = values.find((v: any) => v.value?.$schema?.endsWith("/claims.schema.json"));
 	expect(current?.memberNames).toBe("json");
 	expect(values.find((v: any) => v.value?.claimsVersion)?.name).toContain("historical");
+});
+
+test("bounded-generation handshakes use exact, canonical version tokens", () => {
+	type VersionTuple = { protocolVersion: string; accessVersion: string; irVersion: string };
+	type Handshake = {
+		params: { protocolVersions: string[]; modelAccess: { tuples: VersionTuple[] } };
+	};
+	const file = "spec/mep/smithy/transcripts/session-model-access.md";
+	const [initialize] = transcriptMessages(readFileSync(file, "utf8")) as Handshake[];
+	const [tuple] = initialize!.params.modelAccess.tuples;
+	expect(initialize!.params.protocolVersions).toEqual(["0.2.0-draft.2", "0.2.0-draft.1"]);
+	expect(tuple).toMatchObject({ protocolVersion: "0.2.0-draft.2", accessVersion: "0.1.0-draft.1", irVersion: "4.0.0" });
+	for (const version of [tuple!.protocolVersion, tuple!.accessVersion, tuple!.irVersion]) {
+		expect(format(parse(version))).toBe(version);
+	}
 });
 
 test("reads fences with their info string and opening line", () => {

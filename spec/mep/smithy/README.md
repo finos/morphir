@@ -16,12 +16,11 @@ this model in the same pull request. The check below compares the two.
 
 ## Scope
 
-- **Protocol version:** MEP `0.2.0-draft.1`, the version in
-  `contract/gleam.toml`. This draft keeps every legacy `0.1` method and shape,
-  and adds `morphir.frontend.compileModel`, `morphir.backend.generateModel`
-  and `morphir.validator.validateModel`. So one model covers legacy `0.1`
-  sessions and `0.2.0-draft.1` sessions. The services have
-  `version: "0.2.0-draft.1"`.
+- **Protocol version:** MEP `0.2.0-draft.2`, the version in
+  `contract/gleam.toml`. One model keeps legacy `0.1` and the exact draft.1
+  rich-model methods, and adds the [bounded-generation methods](../model-access.md)
+  with the separate `modelAccess` capability. The services have
+  `version: "0.2.0-draft.2"`.
 - **Claims document family:** current standalone claims use the required `$schema` URL at `0.1.0-preview.1`. The model maps its `schema` member through `@jsonName("$schema")`; that inventory entry uses JSON member naming. Historical claim sets stay labeled in the inventory and transcripts. This does not change MEP wire or protocol versions.
 - **JSON-RPC version:** 2.0 only.
 - **Not in scope:** Content-Length framing, which is transport, and admission
@@ -40,6 +39,7 @@ spec/mep/smithy/
     compile.smithy          legacy compile request and result
     generate.smithy         generate request and result, diagnostics
     model-transport.smithy  rich model transport (0.2.0-draft.1)
+    model-access.smithy     bounded generation (0.2.0-draft.2)
     validate.smithy         validateModel request, result and capability
   transcripts/              session transcripts, checked as tests
   values.json               JSON examples that are not JSON-RPC messages

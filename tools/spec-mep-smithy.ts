@@ -220,6 +220,9 @@ export const CONTRACT_EXCEPTIONS: Record<string, ContractException> = {
 	CompileOptions: { missing: ["extra"], reason: "extra members beside named members (smithy-2qe.34.18)" },
 	CapabilityClaimSet: { added: ["statementVersion", "schema"], reason: "historical draft.1 name and current standalone claims family URL (smithy-2qe.34.21); MEP wire/protocol versions are unchanged" },
 	CompileModelResult: { tag: "success", reason: "a sum tagged by success (smithy-2qe.34.21)" },
+	ModelAccessRequest: { tag: "kind", reason: "bounded request variant" },
+	ModelAccessDelivery: { tag: "kind", reason: "bounded delivery variant" },
+	ModelAccessStep: { tag: "state", reason: "bounded generation outcome" },
 };
 
 type AstShape = { type: string; members?: Record<string, unknown>; operations?: { target: string }[] };

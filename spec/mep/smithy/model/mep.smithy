@@ -8,10 +8,10 @@ $version: "2"
 // Member names are the wire names, so validation uses the default
 // `--member-names smithy`.
 //
-// Scope: MEP 0.2.0-draft.1. That draft keeps every legacy 0.1 method and
+// Scope: MEP 0.2.0-draft.2. Draft.1 keeps every legacy 0.1 method and
 // shape, and adds morphir.frontend.compileModel,
 // morphir.backend.generateModel and morphir.validator.validateModel. One
-// model covers both protocol versions.
+// model covers these protocol versions. Draft.2 adds bounded generation.
 //
 // A comment that starts with `GAP smithy-` names an open beads issue in
 // moonrockz/smithy. At that place, the smithy.rpc traits or the CLI cannot
@@ -65,6 +65,7 @@ use smithy.rpc#method
         { name: "validator", method: "morphir.initialize", pointer: "/capabilities/validator" }
         { name: "workspaceDiscover", method: "morphir.initialize", pointer: "/capabilities/workspace/discover" }
         { name: "modelTransport", method: "morphir.initialize", pointer: "/capabilities/modelTransport" }
+        { name: "modelAccess", method: "morphir.initialize", pointer: "/capabilities/modelAccess" }
     ]
 )
 structure MepSession {}
@@ -76,7 +77,7 @@ structure MepSession {}
 // them or the `data` of -32011. See ErrorCode.
 @jsonRpc(versions: ["2.0"])
 service ExtensionService {
-    version: "0.2.0-draft.1"
+    version: "0.2.0-draft.2"
     operations: [
         Initialize
         Describe
@@ -88,6 +89,9 @@ service ExtensionService {
         CompileModel
         Generate
         GenerateModel
+        GenerateModelStart
+        GenerateModelAdvance
+        GenerateModelCancel
         Validate
         ValidateModel
         Transform
@@ -101,7 +105,7 @@ service ExtensionService {
 /// The methods that a host accepts from its extension.
 @jsonRpc(versions: ["2.0"])
 service HostService {
-    version: "0.2.0-draft.1"
+    version: "0.2.0-draft.2"
     operations: [
         Progress
     ]
@@ -278,6 +282,30 @@ operation Generate {
 operation GenerateModel {
     input: GenerateModelRequest
     output: GenerateResult
+}
+
+/// Starts one bounded operation on a snapshot in the admitted view.
+@method(name: "morphir.backend.generateModel.start", params: "named")
+@jsonRpcLifecycle(allowedIn: ["ready"], requires: ["backend", "modelAccess"])
+operation GenerateModelStart {
+    input: ModelAccessStart
+    output: ModelAccessStep
+}
+
+/// Advances the next round of a bounded operation.
+@method(name: "morphir.backend.generateModel.advance", params: "named")
+@jsonRpcLifecycle(allowedIn: ["ready"], requires: ["backend", "modelAccess"])
+operation GenerateModelAdvance {
+    input: ModelAccessAdvance
+    output: ModelAccessStep
+}
+
+/// Cancels one bounded operation and acknowledges that its state was released.
+@method(name: "morphir.backend.generateModel.cancel", params: "named")
+@jsonRpcLifecycle(allowedIn: ["ready"], requires: ["backend", "modelAccess"])
+operation GenerateModelCancel {
+    input: ModelAccessCancel
+    output: ModelAccessCancel
 }
 
 /// Validate Morphir IR. Legacy operation. The contract does not specify the
