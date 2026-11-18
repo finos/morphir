@@ -1,0 +1,39 @@
+$schema: https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json
+context:
+  names:
+    a: line
+  fqNames:
+    a: "morphir/SDK:basics#multiply"
+    b: "morphir/SDK:basics#int"
+    c: "my-org/billing:invoicing#invoice-line"
+document:
+  formatVersion: 4
+  name: line-total
+  def:
+    access: Public
+    doc: "Quantity times unit price. The text {\"$name\":\"a\"} in this sentence is not a reference."
+    ExpressionBody:
+      inputTypes:
+        line:
+          $name: c
+      outputType:
+        $name: b
+      body:
+        Apply:
+          function:
+            Apply:
+              function:
+                Reference:
+                  $name: a
+              argument:
+                Field:
+                  target:
+                    Variable:
+                      $name: a
+                  name: quantity
+          argument:
+            Field:
+              target:
+                Variable:
+                  $name: a
+              name: unit-price

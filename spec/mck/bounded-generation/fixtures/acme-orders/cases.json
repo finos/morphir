@@ -8,7 +8,8 @@
       "trees": {
         "plainJson": "v3.1/plain-json",
         "plainYaml": "v3.1/plain-yaml",
-        "contextualJson": "v3.1/contextual-json"
+        "contextualJson": "v3.1/contextual-json",
+        "contextualYaml": "v3.1/contextual-yaml"
       }
     },
     {
@@ -17,7 +18,8 @@
       "trees": {
         "plainJson": "v4/plain-json",
         "plainYaml": "v4/plain-yaml",
-        "contextualJson": "v4/contextual-json"
+        "contextualJson": "v4/contextual-json",
+        "contextualYaml": "v4/contextual-yaml"
       }
     }
   ]

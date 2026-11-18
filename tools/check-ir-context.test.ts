@@ -49,6 +49,15 @@ describe("ir-context examples", () => {
 		expect(index.limits).toEqual({ maxTableEntries: 16384, maxSpellingBytes: 1024 });
 	});
 
+	test("every valid example has an explicit YAML spelling of the same contextual envelope", () => {
+		for (const c of index.cases.filter(c => c.expected === "valid")) {
+			const yaml = c.file.replace(/\.json$/, ".yaml");
+			const fromYaml = Bun.YAML.parse(read(yaml));
+			expect(schemaAccepts(schema, fromYaml), c.id).toBe(true);
+			expect(JSON.stringify(fromYaml), c.id).toBe(JSON.stringify(JSON.parse(read(c.file))));
+		}
+	}, 60_000);
+
 	test("the README states the limits that cases.json and the schema use", () => {
 		const readme = read("README.md");
 		expect(readme).toContain("16,384");

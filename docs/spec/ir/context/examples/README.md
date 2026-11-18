@@ -36,6 +36,18 @@ in other repositories, which pin them with their own provenance. They are not ki
 - Unknown optional members of the envelope and of `context` are ignored.
 - `context` comes before `document`. A whole-file reader refuses a file where it does not.
 
+The YAML spelling uses the same envelope members and the explicit YAML data model. In
+[the YAML type-file example](valid/v4-type.yaml), the `name` mapping is written as:
+
+```yaml
+name:
+  $name: t
+```
+
+The reader resolves `t` through `context.names`, yielding `invoice-line`. The JSON and YAML examples expand to
+the same plain document. A contextual YAML reader applies the [YAML processing rules](../../schemas/v4/yaml-profile.md#yaml-processing-profile)
+before resolving the Morphir references.
+
 ## Limits
 
 A reader refuses a context that exceeds either limit, before it expands any reference. A writer never exceeds them.
@@ -100,6 +112,8 @@ the plain document a reader must produce. Every case uses one small model: packa
 
 The invalid cases change one thing each in `valid/v4-type.json`. `bun run tools/check-ir-context.ts` checks that every
 case is what `cases.json` says, and `bun test tools/check-ir-context.test.ts` runs it with checks that it can fail.
+Each valid JSON example also has a `.yaml` twin with the same stem. The tests check that every YAML twin maps to
+the same envelope members in order and passes the published envelope schema.
 
 ## What these examples do not cover
 

@@ -1,14 +1,14 @@
 # `acme/orders` bounded-generation fixture
 
 Start with [cases.json](cases.json). Each row gives the semantic IR version,
-three tree roots and an expanded single-file JSON baseline. Paths in the row
+four tree roots and an expanded single-file JSON baseline. Paths in the row
 are relative to this directory. The classic trees write `"3.1.0"` in every
 file, and the equivalent classic Library writes integer `3` in its single
 file. The v4 inputs use integer `4` in both layouts.
 
 Each tree has the same nine extensionless document paths. Add `.json` or
 `.yaml` for the selected profile. The plain JSON tree also supplies the
-expanded document for every contextual JSON twin. The contextual inputs use
+expanded document for every contextual JSON and YAML twin. The contextual inputs use
 hand-selected aliases to exercise decoding, including in classic type and
 expression attribute slots. They pin no compaction writer output bytes.
 
@@ -24,8 +24,6 @@ Pointers into expanded v3.1 documents.
 
 The fixtures follow the [v3.1 tree contract](../../../../../docs/spec/ir/schemas/v3/document-tree-files.md),
 [v4 tree contract](../../../../../docs/spec/ir/schemas/v4/document-tree-files.md)
-and [contextual JSON examples](../../../../../docs/spec/ir/context/examples/README.md).
-The v3.1 and v4 contextual YAML trees are pending the YAML envelope spelling
-and validation in [task 1.7](../../../../../openspec/changes/add-bounded-model-access/tasks.md).
-The current [envelope requirement](../../../../../openspec/changes/add-bounded-model-access/specs/ir/name-compaction/spec.md#requirement-identify-the-envelope-by-its-schema-url)
-specifies JSON.
+and [contextual envelope examples](../../../../../docs/spec/ir/context/examples/README.md).
+Each contextual YAML tree carries the same typed tables and name references
+as its contextual JSON twin.

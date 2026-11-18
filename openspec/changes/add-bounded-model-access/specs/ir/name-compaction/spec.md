@@ -51,6 +51,8 @@ A whole-file reader reads the entire file, checks its context and expands every 
 | Requirement | Whole-file reader and writer | Bounded reading |
 | --- | --- | --- |
 | Identify the envelope by its schema URL | All | — |
+| Read the contextual YAML profile | When the profile is claimed | When the profile is claimed |
+| Admit YAML syntax before alias resolution | On YAML input | On YAML input |
 | Refuse an undeclared envelope | All | — |
 | Refuse a malformed envelope | All | — |
 | Preserve the document's semantic version | All | — |
@@ -78,12 +80,27 @@ Shared contexts might reduce duplication across very small files, but also coupl
 ## ADDED Requirements
 
 ### Requirement: Identify the envelope by its schema URL
-A contextual document SHALL be a JSON object whose `$schema` member is exactly `https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json`, with a `context` object, a `document` object and an optional `critical` array. All tree file kinds (manifest, module, type and value) and single-file distributions, of IR 3.1.0 and IR 4, SHALL support this envelope when claimed. Plain profiles SHALL keep their existing grammar; readers SHALL NOT infer support from an IR major alone.
+A contextual document SHALL represent a JSON object with `$schema` set to `https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json`, a `context` object, a `document` object and an optional `critical` array. This envelope SHALL cover all tree file kinds and single-file distributions of IR 3.1.0 and IR 4 when claimed. Plain profiles SHALL keep their grammar. Readers SHALL NOT infer envelope support from an IR major.
 
 #### Scenario: Legacy reader receives contextual storage
 - **WHEN** a consumer supports plain v4 JSON but has not claimed contextual-document encoding
 - **THEN** it is not selected to read the contextual artifact as plain v4 JSON
 - **AND** the host uses a supported lossless expansion or reports unsupported encoding
+
+### Requirement: Read the contextual YAML profile
+A reader claiming contextual YAML SHALL accept the explicit YAML representation of the envelope. It SHALL preserve the enclosed document's version, semantic member order and scalar semantics. A contextual YAML tree SHALL follow the existing YAML file names and homogeneous tree profile. A JSON-only claim SHALL NOT imply contextual YAML support. The JSON writer policy SHALL NOT define YAML output bytes.
+
+#### Scenario: A contextual YAML file has the same expansion as its JSON twin
+- **WHEN** a reader has claimed contextual YAML and opens a v3.1 or v4 file whose envelope is expressed as a YAML mapping
+- **THEN** it selects the same envelope version and validates the same typed context tables as for JSON
+- **AND** it produces the same expanded document as the matching JSON example, preserving classic attribute slots and semantic member order
+
+### Requirement: Admit YAML syntax before alias resolution
+Contextual YAML readers SHALL apply the [YAML processing rules](../../../../../../docs/spec/ir/schemas/v4/yaml-profile.md#yaml-processing-profile) to both IR versions. Duplicate keys in the envelope, context or a table SHALL use `context.duplicate_entry`. A Morphir name alias SHALL use the one-entry `$name` mapping.
+
+#### Scenario: YAML aliases cannot replace Morphir name aliases
+- **WHEN** a contextual YAML document uses a YAML anchor or alias
+- **THEN** YAML profile admission refuses it with `unsupported_yaml_feature` before Morphir alias resolution
 
 ### Requirement: Refuse an undeclared envelope
 A top-level `$schema` member SHALL mark a file as an envelope, because no plain Morphir document defines that member. A reader SHALL refuse an envelope whose URL it does not declare with `context.undeclared_schema`, naming the file and the URL. A file without `$schema` SHALL be read as plain.

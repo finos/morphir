@@ -1,0 +1,18 @@
+$schema: https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json
+context:
+  names:
+    "n": add
+  fqNames:
+    i: "morphir/SDK:basics#int"
+document:
+  formatVersion: 4
+  name:
+    $name: "n"
+  spec:
+    inputs:
+      a:
+        $name: i
+      b:
+        $name: i
+    output:
+      $name: i
