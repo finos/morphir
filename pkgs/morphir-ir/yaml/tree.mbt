@@ -111,8 +111,24 @@ fn escaped_path(path : @ir.Path) -> String {
 }
 
 ///|
-fn canonical_name(value : Json) -> @ir.Name raise {
-  @ir.Name::parse(@wire.string(value))
+fn[T] resolve_tree_slot(path : String, read : () -> T raise) -> T raise {
+  read() catch {
+    @wire.Invalid(code, detail) => tree_error(code, path, detail)
+    error => raise error
+  }
+}
+
+///|
+fn canonical_name(
+  value : Json,
+  context~ : @wire.DocumentNameContext? = None,
+  location~ : String = "/",
+) -> @ir.Name raise {
+  match context {
+    Some(names) =>
+      resolve_tree_slot(location, () => names.canonical_name(value))
+    None => @ir.Name::parse(@wire.string(value))
+  }
 }
 
 ///|
@@ -138,9 +154,15 @@ fn tree_node_payload(
   path : String,
   parsed : @ir.Name,
   specification : Bool,
+  context~ : @wire.DocumentNameContext? = None,
 ) -> Json raise {
   @wire.fields(node, ["formatVersion", "name", "def", "spec"])
-  if canonical_name(@wire.field(node, "name")) != parsed {
+  if canonical_name(
+      @wire.field(node, "name"),
+      context~,
+      location=path + "/name",
+    ) !=
+    parsed {
     tree_error(
       "invalid_distribution_shape",
       path + "/name",
@@ -246,6 +268,7 @@ fn tree_module_path(
   prefix : String,
   version : @version.FormatVersion,
   specification : Bool,
+  context~ : @wire.DocumentNameContext? = None,
 ) -> @ir.Path raise {
   @wire.fields(
     module_doc,
@@ -268,11 +291,14 @@ fn tree_module_path(
     @wire.optional(module_doc, "module") is Some(_) {
     tree_error("duplicate_member", physical, "Use one module path member")
   }
-  let name = canonical_path(
-    @wire.optional(module_doc, "path").unwrap_or_else(() => {
-      @wire.optional(module_doc, "module").unwrap_or(Json::null())
-    }),
-  )
+  let raw_path = @wire.optional(module_doc, "path").unwrap_or_else(() => {
+    @wire.optional(module_doc, "module").unwrap_or(Json::null())
+  })
+  let name = match context {
+    Some(names) =>
+      resolve_tree_slot(physical + "/path", () => names.module_path(raw_path))
+    None => canonical_path(raw_path)
+  }
   let expected = prefix + "/" + escaped_path(name) + "/module"
   if physical != expected {
     tree_error(
@@ -299,7 +325,11 @@ fn tree_module_access(module_doc : Json, path : String) -> @common.Access raise 
 }
 
 ///|
-fn tree_file_names(module_doc : Json, path : String) -> Map[String, Json] raise {
+fn tree_file_names(
+  module_doc : Json,
+  path : String,
+  context~ : @wire.DocumentNameContext? = None,
+) -> Map[String, Json] raise {
   let location = path + "/fileNames"
   let file_names = match @wire.optional(module_doc, "fileNames") {
     None => Map([])
@@ -307,7 +337,7 @@ fn tree_file_names(module_doc : Json, path : String) -> Map[String, Json] raise 
     _ => tree_error("invalid_type", location, "Expected a stem map")
   }
   for key, value in file_names {
-    ignore(canonical_name(@wire.text(key)))
+    let name = canonical_name(@wire.text(key))
     let stem = @wire.string(value) catch {
       @wire.Invalid(code, detail) => tree_error(code, location, detail)
     }
@@ -317,7 +347,14 @@ fn tree_file_names(module_doc : Json, path : String) -> Map[String, Json] raise 
     let listed = ["types", "values"].any(kind => {
       match @wire.optional(module_doc, kind) {
         Some(Object(items)) => items.contains(key)
-        Some(Array(items)) => items.contains(@wire.text(key))
+        Some(Array(items)) =>
+          if context is Some(_) {
+            items.any(raw => {
+              canonical_name(raw, context~, location=path + "/" + kind) == name
+            })
+          } else {
+            items.contains(@wire.text(key))
+          }
         _ => false
       }
     })
@@ -438,7 +475,10 @@ fn tree_entry_points(
 }
 
 ///|
-fn tree_manifest(manifest : Json) -> TreeManifest raise {
+fn tree_manifest(
+  manifest : Json,
+  context~ : @wire.DocumentNameContext? = None,
+) -> TreeManifest raise {
   let version = @wire.read_version(@wire.field(manifest, "formatVersion"))
   if version.major == 3U && version.to_release_string() != "3.1.0" {
     tree_error(
@@ -472,7 +512,14 @@ fn tree_manifest(manifest : Json) -> TreeManifest raise {
         "invalid_distribution_shape", "manifest/distribution", "Unsupported tree distribution kind",
       )
   }
-  let package_name = canonical_path(@wire.field(manifest, "package"))
+  let raw_package = @wire.field(manifest, "package")
+  let package_name = match context {
+    Some(names) =>
+      resolve_tree_slot("manifest/package", () => {
+        names.package_path(raw_package)
+      })
+    None => canonical_path(raw_package)
+  }
   let budget_value = @wire.field(manifest, "pathBudget")
   guard @wire.is_integral_number(budget_value) &&
     @wire.float(budget_value) >= 64 else {
@@ -660,9 +707,10 @@ fn parse_tree_document(
   path : String,
   source : String,
   limits : Limits,
+  contextual~ : Bool = false,
 ) -> (Json, Int32, Int32) raise @wire.CodecError {
   if !path.has_suffix(".json") {
-    return parse_document(source, limits)
+    return parse_document(source, limits, contextual~)
   }
   let cap = limits.max_nodes
     .min(limits.max_assembly_nodes)
@@ -675,6 +723,7 @@ fn parse_tree_document(
     max_depth=limits.max_depth,
     max_nodes=cap,
     max_string_units=limits.max_scalar_units,
+    contextual~,
   )
   let pending = [root]
   let mut nodes = 0

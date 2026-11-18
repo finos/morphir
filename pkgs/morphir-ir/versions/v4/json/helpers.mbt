@@ -111,6 +111,15 @@ pub fn write_type_attributes(value : @model.TypeAttributes) -> Json raise {
 
 ///|
 pub fn read_value_attributes(json : Json) -> @model.ValueAttributes raise {
+  read_value_attributes_with_context(json, None)
+}
+
+///|
+pub fn read_value_attributes_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.ValueAttributes raise {
+  let read_type = fn(child) raise { read_type_with_context(child, context) }
   @wire.fields(json, ["source", "inferredType", "extensions"])
   {
     source: read_optional(json, "source", read_source),

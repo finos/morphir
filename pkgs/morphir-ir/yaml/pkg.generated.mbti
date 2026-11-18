@@ -13,7 +13,7 @@ import {
 }
 
 // Values
-pub fn open_bounded_tree(TreeSource, limits? : Limits) -> BoundedTree raise
+pub fn open_bounded_tree(TreeSource, limits? : Limits, encoding? : TreeEncoding) -> BoundedTree raise
 
 pub fn parse(String, limits? : Limits) -> @json.Json raise @wire.CodecError
 
@@ -39,6 +39,7 @@ pub fn BoundedTree::members(Self, @common.Path, @common.Path, limit~ : Int32, cu
 pub fn BoundedTree::modules(Self, @common.Path, limit~ : Int32, cursor? : TreeCursor) -> TreePage[TreeModule] raise
 pub fn BoundedTree::package_name(Self) -> @common.Path
 pub fn BoundedTree::read_member(Self, @common.Path, @common.Path, TreeMemberKind, @common.Name) -> TreeMemberBody raise
+pub fn BoundedTree::read_original_document(Self, TreeArtifact) -> (String, String) raise
 
 pub(all) struct Limits {
   max_bytes : Int32
@@ -50,7 +51,19 @@ pub(all) struct Limits {
 }
 pub fn Limits::default() -> Self
 
+pub(all) enum TreeArtifact {
+  ManifestArtifact
+  ModuleArtifact(@common.Path, @common.Path)
+  MemberArtifact(@common.Path, @common.Path, TreeMemberKind, @common.Name)
+}
+
 type TreeCursor
+
+pub(all) enum TreeEncoding {
+  Plain
+  ContextualDraft1
+  ContextualDraft1Ordered
+}
 
 pub struct TreeMember {
   package_name : @common.Path

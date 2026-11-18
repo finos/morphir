@@ -1,5 +1,41 @@
 ///|
+fn shorthand_name_payload(
+  payload : Json,
+  field : String,
+  context : @wire.DocumentNameContext?,
+) -> Json {
+  match payload {
+    String(_) | Array(_) => @wire.obj([(field, payload)])
+    Object(fields) if context is Some(_) && fields.contains("$name") =>
+      @wire.obj([(field, payload)])
+    _ => payload
+  }
+}
+
+///|
 pub fn read_type(json : Json) -> @model.Type raise {
+  read_type_with_context(json, None)
+}
+
+///|
+pub fn read_type_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.Type raise {
+  let read_type = fn(child) raise { read_type_with_context(child, context) }
+  let read_name = fn(child) raise { @wire.read_context_name(child, context) }
+  let read_fqname = fn(child) raise {
+    @wire.read_context_fqname(child, context)
+  }
+  if context is Some(names) &&
+    json is Object(fields) &&
+    fields.contains("$name") {
+    return @model.Type::Reference(
+      @model.TypeAttributes::default(),
+      names.canonical_fqname(json),
+      [],
+    )
+  }
   if json is Object(fields) && fields.length() != 1 {
     raise @wire.Invalid("unknown_node", "Expected a type variant")
   }
@@ -8,14 +44,11 @@ pub fn read_type(json : Json) -> @model.Type raise {
       return if text.contains("#") {
         @model.Type::Reference(
           @model.TypeAttributes::default(),
-          @wire.read_fqname(json),
+          read_fqname(json),
           [],
         )
       } else {
-        @model.Type::Variable(
-          @model.TypeAttributes::default(),
-          @wire.read_name(json),
-        )
+        @model.Type::Variable(@model.TypeAttributes::default(), read_name(json))
       }
     Array(items) =>
       return @model.Type::Tuple(
@@ -27,18 +60,17 @@ pub fn read_type(json : Json) -> @model.Type raise {
   let (tag, payload) = variant(json)
   match tag {
     "Variable" => {
-      let payload = match payload {
-        String(_) | Array(_) => @wire.obj([("name", payload)])
-        _ => payload
-      }
+      let payload = shorthand_name_payload(payload, "name", context)
       payload_fields(payload, ["name"])
       @model.Type::Variable(
         read_type_attributes(attr_payload(payload)),
-        @wire.read_name(@wire.field(payload, "name")),
+        read_name(@wire.field(payload, "name")),
       )
     }
     "Reference" => {
       let payload = match payload {
+        Object(fields) if context is Some(_) && fields.contains("$name") =>
+          @wire.obj([("fqname", payload)])
         String(_) => @wire.obj([("fqname", payload)])
         Array(items) if !items.is_empty() =>
           @wire.obj([
@@ -50,7 +82,7 @@ pub fn read_type(json : Json) -> @model.Type raise {
       payload_fields(payload, ["fqname", "args"])
       @model.Type::Reference(
         read_type_attributes(attr_payload(payload)),
-        @wire.read_fqname(@wire.field(payload, "fqname")),
+        read_fqname(@wire.field(payload, "fqname")),
         @wire.array(optional_array(payload, "args")).map(read_type),
       )
     }
@@ -101,7 +133,7 @@ pub fn read_type(json : Json) -> @model.Type raise {
       payload_fields(payload, ["variable", "fields"])
       @model.Type::ExtensibleRecord(
         read_type_attributes(attr_payload(payload)),
-        @wire.read_name(@wire.field(payload, "variable")),
+        read_name(@wire.field(payload, "variable")),
         @wire.read_map(
           @wire.field(payload, "fields"),
           @wire.read_name,
@@ -209,6 +241,24 @@ pub fn write_type(value : @model.Type) -> Json raise {
 
 ///|
 pub fn read_pattern(json : Json) -> @model.Pattern raise {
+  read_pattern_with_context(json, None)
+}
+
+///|
+pub fn read_pattern_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.Pattern raise {
+  let read_pattern = fn(child) raise {
+    read_pattern_with_context(child, context)
+  }
+  let read_value_attributes = fn(child) raise {
+    read_value_attributes_with_context(child, context)
+  }
+  let read_name = fn(child) raise { @wire.read_context_name(child, context) }
+  let read_fqname = fn(child) raise {
+    @wire.read_context_fqname(child, context)
+  }
   if json is Array(items) {
     return @model.Pattern::TuplePattern(
       @model.ValueAttributes::default(),
@@ -228,7 +278,7 @@ pub fn read_pattern(json : Json) -> @model.Pattern raise {
       @model.Pattern::AsPattern(
         read_value_attributes(attr_payload(payload)),
         read_pattern(@wire.field(payload, "pattern")),
-        @wire.read_name(@wire.field(payload, "name")),
+        read_name(@wire.field(payload, "name")),
       )
     }
     "TuplePattern" => {
@@ -246,7 +296,7 @@ pub fn read_pattern(json : Json) -> @model.Pattern raise {
       payload_fields(payload, ["fqname", "patterns"])
       @model.Pattern::ConstructorPattern(
         read_value_attributes(attr_payload(payload)),
-        @wire.read_fqname(@wire.field(payload, "fqname")),
+        read_fqname(@wire.field(payload, "fqname")),
         @wire.array(@wire.field(payload, "patterns")).map(read_pattern),
       )
     }
@@ -345,17 +395,46 @@ pub fn write_pattern(value : @model.Pattern) -> Json raise {
 
 ///|
 pub fn read_value(json : Json) -> @model.Value raise {
+  read_value_with_context(json, None)
+}
+
+///|
+pub fn read_value_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> @model.Value raise {
+  let read_value = fn(child) raise {
+    read_value_with_context(child, context, preserve_input_order~)
+  }
+  let read_pattern = fn(child) raise {
+    read_pattern_with_context(child, context)
+  }
+  let read_definition = fn(child) raise {
+    read_definition_with_context(child, context, preserve_input_order~)
+  }
+  let read_case = fn(child) raise {
+    read_case_with_context(child, context, preserve_input_order)
+  }
+  let read_type = fn(child) raise { read_type_with_context(child, context) }
+  let read_value_attributes = fn(child) raise {
+    read_value_attributes_with_context(child, context)
+  }
+  let read_name = fn(child) raise { @wire.read_context_name(child, context) }
+  let read_fqname = fn(child) raise {
+    @wire.read_context_fqname(child, context)
+  }
   match json {
     String(text) =>
       return if text.contains("#") {
         @model.Value::Reference(
           @model.ValueAttributes::default(),
-          @wire.read_fqname(json),
+          read_fqname(json),
         )
       } else {
         @model.Value::Variable(
           @model.ValueAttributes::default(),
-          @wire.read_name(json),
+          read_name(json),
         )
       }
     Array(items) =>
@@ -384,14 +463,11 @@ pub fn read_value(json : Json) -> @model.Value raise {
       )
     }
     "Constructor" => {
-      let payload = match payload {
-        String(_) | Array(_) => @wire.obj([("fqname", payload)])
-        _ => payload
-      }
+      let payload = shorthand_name_payload(payload, "fqname", context)
       payload_fields(payload, ["fqname"])
       @model.Value::Constructor(
         read_value_attributes(attr_payload(payload)),
-        @wire.read_fqname(@wire.field(payload, "fqname")),
+        read_fqname(@wire.field(payload, "fqname")),
       )
     }
     "Tuple" => {
@@ -432,25 +508,19 @@ pub fn read_value(json : Json) -> @model.Value raise {
       )
     }
     "Variable" => {
-      let payload = match payload {
-        String(_) | Array(_) => @wire.obj([("name", payload)])
-        _ => payload
-      }
+      let payload = shorthand_name_payload(payload, "name", context)
       payload_fields(payload, ["name"])
       @model.Value::Variable(
         read_value_attributes(attr_payload(payload)),
-        @wire.read_name(@wire.field(payload, "name")),
+        read_name(@wire.field(payload, "name")),
       )
     }
     "Reference" => {
-      let payload = match payload {
-        String(_) | Array(_) => @wire.obj([("fqname", payload)])
-        _ => payload
-      }
+      let payload = shorthand_name_payload(payload, "fqname", context)
       payload_fields(payload, ["fqname"])
       @model.Value::Reference(
         read_value_attributes(attr_payload(payload)),
-        @wire.read_fqname(@wire.field(payload, "fqname")),
+        read_fqname(@wire.field(payload, "fqname")),
       )
     }
     "Field" => {
@@ -458,18 +528,15 @@ pub fn read_value(json : Json) -> @model.Value raise {
       @model.Value::Field(
         read_value_attributes(attr_payload(payload)),
         read_value(alias_field(payload, "target", ["subject"])),
-        @wire.read_name(alias_field(payload, "name", ["fieldName"])),
+        read_name(alias_field(payload, "name", ["fieldName"])),
       )
     }
     "FieldFunction" => {
-      let payload = match payload {
-        String(_) | Array(_) => @wire.obj([("name", payload)])
-        _ => payload
-      }
+      let payload = shorthand_name_payload(payload, "name", context)
       payload_fields(payload, ["name"])
       @model.Value::FieldFunction(
         read_value_attributes(attr_payload(payload)),
-        @wire.read_name(@wire.field(payload, "name")),
+        read_name(@wire.field(payload, "name")),
       )
     }
     "Apply" => {
@@ -494,7 +561,7 @@ pub fn read_value(json : Json) -> @model.Value raise {
       ])
       @model.Value::LetDefinition(
         read_value_attributes(attr_payload(payload)),
-        @wire.read_name(alias_field(payload, "name", ["valueName"])),
+        read_name(alias_field(payload, "name", ["valueName"])),
         read_definition(alias_field(payload, "definition", ["valueDefinition"])),
         read_value(alias_field(payload, "in", ["inValue"])),
       )
@@ -561,7 +628,7 @@ pub fn read_value(json : Json) -> @model.Value raise {
       payload_fields(payload, ["reason", "expectedType"])
       @model.Value::Hole(
         read_value_attributes(attr_payload(payload)),
-        read_reason(@wire.field(payload, "reason")),
+        read_reason_with_context(@wire.field(payload, "reason"), context),
         read_optional(payload, "expectedType", read_type),
       )
     }
@@ -727,7 +794,17 @@ pub fn write_value(value : @model.Value) -> Json raise {
 }
 
 ///|
-fn read_case(json : Json) -> (@model.Pattern, @model.Value) raise {
+fn read_case_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order : Bool,
+) -> (@model.Pattern, @model.Value) raise {
+  let read_pattern = fn(child) raise {
+    read_pattern_with_context(child, context)
+  }
+  let read_value = fn(child) raise {
+    read_value_with_context(child, context, preserve_input_order~)
+  }
   @wire.fields(json, ["pattern", "body"])
   (
     read_pattern(@wire.field(json, "pattern")),

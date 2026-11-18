@@ -29,6 +29,7 @@ struct BoundedTree {
   manifest : TreeManifest
   dependencies : Array[@ir.Path]
   yaml : Bool
+  encoding : TreeEncoding
   limits : Limits
 }
 
@@ -122,13 +123,13 @@ fn tree_physical_path(
 }
 
 ///|
-fn bounded_document(
+fn read_bounded_source_text(
   source : TreeSource,
   revision : String,
   physical : String,
   logical : String,
   limits : Limits,
-) -> Json raise {
+) -> String raise {
   let text = (source.read)(revision, physical, limits.max_bytes) catch {
     TreeSourceError::DocumentTooLarge =>
       tree_error(
@@ -136,16 +137,34 @@ fn bounded_document(
       )
     error => raise error
   }
-  let (document, _, _) = try {
-    if physical.has_suffix(".json") {
-      check_source_bytes(text, limits)
-    }
-    parse_tree_document(physical, text, limits)
-  } catch {
+  check_source_bytes(text, limits) catch {
     @wire.Invalid("yaml_source_limit", _) =>
       tree_error(
         "document_size_limit", logical, "Document byte budget exceeded",
       )
+    @wire.Invalid(code, detail) => tree_error(code, logical, detail)
+  }
+  text
+}
+
+///|
+fn parse_bounded_source(
+  source : TreeSource,
+  revision : String,
+  physical : String,
+  logical : String,
+  limits : Limits,
+  encoding : TreeEncoding,
+) -> Json raise {
+  let text = read_bounded_source_text(
+    source, revision, physical, logical, limits,
+  )
+  let (document, _, _) = parse_tree_document(
+    physical,
+    text,
+    limits,
+    contextual=!(encoding is Plain),
+  ) catch {
     @wire.Invalid(code, detail) => tree_error(code, logical, detail)
   }
   ignore(assembly_cost(document, limits.max_assembly_nodes)) catch {
@@ -155,9 +174,89 @@ fn bounded_document(
 }
 
 ///|
+priv enum DocumentAdmission {
+  Ready(Json, @wire.DocumentNameContext?)
+  Reopen(@wire.DocumentNameContext)
+}
+
+///|
+fn admit_bounded_source(
+  source : TreeSource,
+  revision : String,
+  physical : String,
+  logical : String,
+  limits : Limits,
+  encoding : TreeEncoding,
+) -> DocumentAdmission raise {
+  let input = parse_bounded_source(
+    source, revision, physical, logical, limits, encoding,
+  )
+  let (document, context) = @wire.admit_contextual_document(
+    input,
+    !(encoding is Plain),
+  ) catch {
+    @wire.Invalid(code, detail) => tree_error(code, logical, detail)
+  }
+  if context is Some(names) {
+    let mut schema_seen = false
+    let mut context_seen = false
+    for key, _ in @wire.object(input) {
+      match key {
+        "$schema" => schema_seen = true
+        "context" => context_seen = true
+        "document" => break
+        _ => ()
+      }
+    }
+    if encoding is ContextualDraft1Ordered && (!schema_seen || !context_seen) {
+      tree_error(
+        "context.after_document", logical, "Expected schema and context before document",
+      )
+    }
+    if !context_seen {
+      return Reopen(names)
+    }
+  }
+  Ready(document, context.map(names => names.with_document(document)))
+}
+
+///|
+fn bounded_document(
+  source : TreeSource,
+  revision : String,
+  physical : String,
+  logical : String,
+  limits : Limits,
+  encoding : TreeEncoding,
+) -> (Json, @wire.DocumentNameContext?) raise {
+  match
+    admit_bounded_source(source, revision, physical, logical, limits, encoding) {
+    Ready(document, context) => (document, context)
+    Reopen(context) => {
+      // The first parse tree has gone out of scope. The source must serve
+      // exactly the same revision and cap the new read at the same limit.
+      let input = parse_bounded_source(
+        source, revision, physical, logical, limits, encoding,
+      )
+      let document = @wire.field(input, "document")
+      (document, Some(context.with_document(document)))
+    }
+  }
+}
+
+///|
+/// The selected per-file encoding for the document tree.
+pub(all) enum TreeEncoding {
+  Plain
+  ContextualDraft1
+  ContextualDraft1Ordered
+}
+
+///|
 pub fn open_bounded_tree(
   source : TreeSource,
   limits~ : Limits = Limits::default(),
+  encoding~ : TreeEncoding = Plain,
 ) -> BoundedTree raise {
   check_limits(limits)
   guard limits.max_depth > 0 else {
@@ -167,10 +266,10 @@ pub fn open_bounded_tree(
   }
   let revision = (source.revision)()
   let physical = tree_physical_path(source, revision, "manifest")
-  let document = bounded_document(
-    source, revision, physical, "manifest", limits,
+  let (document, context) = bounded_document(
+    source, revision, physical, "manifest", limits, encoding,
   )
-  let manifest = tree_manifest(document)
+  let manifest = tree_manifest(document, context~)
   if tree_entry_points(document, manifest.kind) is Some(points) {
     let location = "manifest/entryPoints"
     guard points is Object(entries) && !entries.is_empty() else {
@@ -178,16 +277,8 @@ pub fn open_bounded_tree(
         "invalid_type", location, "Expected a nonempty entry point map",
       )
     }
-    // Use the v4 entry point decoder with an empty package body. Opening
-    // the manifest does not load modules or resolve the targets.
-    let application = @wire.tag(
-      "Application",
-      @wire.obj([
-        ("packageName", @wire.text(manifest.package_name.to_canonical())),
-        ("entryPoints", points),
-      ]),
-    )
-    ignore(@v4_json.read_distribution(application)) catch {
+    // The manifest validates the target names without opening their bodies.
+    ignore(@v4_json.read_entry_points(points, context~)) catch {
       @wire.Invalid(code, detail) => tree_error(code, location, detail)
       error => raise error
     }
@@ -205,7 +296,11 @@ pub fn open_bounded_tree(
   )
   let seen : Map[@ir.Path, Unit] = Map([])
   for raw in listed {
-    let dependency = canonical_path(raw)
+    let dependency = match context {
+      Some(names) =>
+        resolve_tree_slot("manifest/dependencies", () => names.package_path(raw))
+      None => canonical_path(raw)
+    }
     guard dependency != manifest.package_name else {
       tree_error(
         "invalid_distribution_shape", "manifest/dependencies", "A package cannot depend on itself",
@@ -231,6 +326,7 @@ pub fn open_bounded_tree(
     manifest,
     dependencies,
     yaml: !physical.has_suffix(".json"),
+    encoding,
     limits,
   }
   tree.check_revision()
@@ -288,7 +384,10 @@ fn BoundedTree::package_location(
 }
 
 ///|
-fn BoundedTree::load(self : BoundedTree, logical : String) -> Json raise {
+fn BoundedTree::load(
+  self : BoundedTree,
+  logical : String,
+) -> (Json, @wire.DocumentNameContext?) raise {
   let physical = tree_physical_path(self.source, self.revision, logical)
   guard physical.has_suffix(".json") != self.yaml &&
     safe_tree_path(physical) &&
@@ -297,12 +396,13 @@ fn BoundedTree::load(self : BoundedTree, logical : String) -> Json raise {
       "invalid_distribution_shape", logical, "Invalid physical profile or path budget",
     )
   }
-  let document = bounded_document(
+  let (document, context) = bounded_document(
     self.source,
     self.revision,
     physical,
     logical,
     self.limits,
+    self.encoding,
   )
   let version = @wire.read_version(@wire.field(document, "formatVersion")) catch {
     @wire.Invalid(code, detail) => tree_error(code, logical, detail)
@@ -316,7 +416,7 @@ fn BoundedTree::load(self : BoundedTree, logical : String) -> Json raise {
     )
   }
   ignore(@wire.object(document).remove("$meta"))
-  document
+  (document, context)
 }
 
 ///|
@@ -325,14 +425,21 @@ fn BoundedTree::load_module(
   prefix : String,
   logical : String,
   role : TreeRole,
-) -> (Json, @ir.Path, @common.Access?, Map[String, Json]) raise {
-  let document = self.load(logical)
+) -> (
+  Json,
+  @ir.Path,
+  @common.Access?,
+  Map[String, Json],
+  @wire.DocumentNameContext?,
+) raise {
+  let (document, context) = self.load(logical)
   let path = tree_module_path(
     document,
     logical,
     prefix,
     self.manifest.version,
     role == Specification,
+    context~,
   )
   let access = if role == Definition {
     Some(tree_module_access(document, logical))
@@ -342,7 +449,13 @@ fn BoundedTree::load_module(
   if @wire.optional(document, "doc") is Some(doc) {
     ignore(tree_doc(doc))
   }
-  (document, path, access, tree_file_names(document, logical))
+  (
+    document,
+    path,
+    access,
+    tree_file_names(document, logical, context~),
+    context,
+  )
 }
 
 ///|
@@ -429,7 +542,7 @@ pub fn BoundedTree::members(
   let (prefix, role) = self.package_location(package_name)
   let directory = module_directory(prefix, module_name)
   let module_path = directory + "/module"
-  let (module_doc, _, _, file_names) = self.load_module(
+  let (module_doc, _, _, file_names, context) = self.load_module(
     prefix, module_path, role,
   )
   let items : Array[TreeMember] = []
@@ -437,7 +550,11 @@ pub fn BoundedTree::members(
   for kind in [TreeMemberKind::TypeMember, ValueMember] {
     let seen : Map[String, Unit] = Map([])
     for (raw, inline) in module_entries(module_doc, kind) {
-      let name = canonical_name(raw)
+      let name = canonical_name(
+        raw,
+        context~,
+        location=module_path + "/" + kind.file_suffix() + "s",
+      )
       let document = if inline is Some(_) {
         module_path
       } else {
@@ -516,7 +633,7 @@ pub fn BoundedTree::modules(
       })
       return { items, next, }
     }
-    let (_, path, access, _) = self.load_module(prefix, logical, role)
+    let (_, path, access, _, _) = self.load_module(prefix, logical, role)
     items.push({ package_name, path, role, access, document: logical, })
     previous = Some(logical)
   }
@@ -549,11 +666,11 @@ fn BoundedTree::resolve_member(
   module_name : @ir.Path,
   kind : TreeMemberKind,
   name : @ir.Name,
-) -> (String, TreeRole, Json?) raise {
+) -> (String, TreeRole, (Json, @wire.DocumentNameContext?)?) raise {
   let (prefix, role) = self.package_location(package_name)
   let directory = module_directory(prefix, module_name)
   let module_path = directory + "/module"
-  let (module_doc, _, _, file_names) = self.load_module(
+  let (module_doc, _, _, file_names, context) = self.load_module(
     prefix, module_path, role,
   )
   let listing = @wire.optional(module_doc, kind.file_suffix() + "s").unwrap_or(
@@ -565,7 +682,7 @@ fn BoundedTree::resolve_member(
         "missing_member", module_path, "Member is outside its module listing",
       )
     }
-    return (module_path, role, Some(payload))
+    return (module_path, role, Some((payload, context)))
   }
   let logical = tree_member_path(
     name,
@@ -575,7 +692,11 @@ fn BoundedTree::resolve_member(
   )
   let mut found = false
   for raw in @wire.array(listing) {
-    let candidate = canonical_name(raw)
+    let candidate = canonical_name(
+      raw,
+      context~,
+      location=module_path + "/" + kind.file_suffix() + "s",
+    )
     if tree_member_path(candidate, kind.file_suffix(), directory, file_names) ==
       logical {
       guard candidate == name && !found else {
@@ -604,6 +725,17 @@ pub fn BoundedTree::read_member(
   kind : TreeMemberKind,
   name : @ir.Name,
 ) -> TreeMemberBody raise {
+  self.read_member_document(package_name, module_name, kind, name).0
+}
+
+///|
+fn BoundedTree::read_member_document(
+  self : BoundedTree,
+  package_name : @ir.Path,
+  module_name : @ir.Path,
+  kind : TreeMemberKind,
+  name : @ir.Name,
+) -> (TreeMemberBody, String) raise {
   self.check_revision()
   let canonical = @ir.Name::parse(name.to_canonical()) catch {
     _ =>
@@ -620,23 +752,74 @@ pub fn BoundedTree::read_member(
     package_name, module_name, kind, name,
   )
   let body = try {
-    let payload = match inline {
-      Some(payload) => payload
-      None =>
-        tree_node_payload(
-          self.load(logical),
+    let (payload, context) = match inline {
+      Some(selected) => selected
+      None => {
+        let (document, context) = self.load(logical)
+        let payload = tree_node_payload(
+          document,
           logical,
           name,
           role == Specification,
+          context~,
         )
+        (payload, context)
+      }
     }
-    decode_tree_member(self.manifest.version, kind, role, payload)
+    decode_tree_member(
+      self.manifest.version,
+      kind,
+      role,
+      payload,
+      context,
+      !(self.encoding is Plain),
+    )
   } catch {
     @wire.Invalid(code, detail) => tree_error(code, logical, detail)
     error => raise error
   }
   self.check_revision()
-  body
+  (body, logical)
+}
+
+///|
+/// Select a physical document by its tree identity. An inline member
+/// selects the containing module artifact.
+pub(all) enum TreeArtifact {
+  ManifestArtifact
+  ModuleArtifact(@ir.Path, @ir.Path)
+  MemberArtifact(@ir.Path, @ir.Path, TreeMemberKind, @ir.Name)
+}
+
+///|
+/// Reopen one admitted document under the same revision and byte limit.
+/// Return its physical path and original UTF-8 text for opaque pass-through.
+pub fn BoundedTree::read_original_document(
+  self : BoundedTree,
+  artifact : TreeArtifact,
+) -> (String, String) raise {
+  self.check_revision()
+  let logical = match artifact {
+    ManifestArtifact => "manifest"
+    ModuleArtifact(package_name, module_name) => {
+      let (prefix, role) = self.package_location(package_name)
+      let path = module_directory(prefix, module_name) + "/module"
+      ignore(self.load_module(prefix, path, role))
+      path
+    }
+    MemberArtifact(package_name, module_name, kind, name) =>
+      self.read_member_document(package_name, module_name, kind, name).1
+  }
+  let physical = tree_physical_path(self.source, self.revision, logical)
+  let text = read_bounded_source_text(
+    self.source,
+    self.revision,
+    physical,
+    logical,
+    self.limits,
+  )
+  self.check_revision()
+  (physical, text)
 }
 
 ///|
@@ -645,6 +828,8 @@ fn decode_tree_member(
   kind : TreeMemberKind,
   role : TreeRole,
   payload : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order : Bool,
 ) -> TreeMemberBody raise {
   if version.major == 3U {
     let type_attribute = fn(value) raise { @wire.unit(value) }
@@ -653,7 +838,9 @@ fn decode_tree_member(
         V3TypeDefinition(
           @v3_json.read_access(payload, fn(doc) raise {
             @v3_json.read_documented(doc, fn(value) raise {
-              @v3_json.read_type_definition(value, type_attribute)
+              @v3_json.read_type_definition_with_context(
+                value, type_attribute, context,
+              )
             })
           }),
         )
@@ -661,24 +848,33 @@ fn decode_tree_member(
         V3ValueDefinition(
           @v3_json.read_access(payload, fn(doc) raise {
             @v3_json.read_documented(doc, fn(value) raise {
-              @v3_json.read_value_definition(value, type_attribute, fn(
-                attribute,
-              ) raise {
-                @v3_json.read_type(attribute, type_attribute)
-              })
+              @v3_json.read_value_definition_with_context(
+                value,
+                type_attribute,
+                fn(attribute) raise {
+                  @v3_json.read_type_with_context(
+                    attribute, type_attribute, context,
+                  )
+                },
+                context,
+              )
             })
           }),
         )
       (TypeMember, Specification) =>
         V3TypeSpecification(
           @v3_json.read_documented(payload, fn(value) raise {
-            @v3_json.read_type_specification(value, type_attribute)
+            @v3_json.read_type_specification_with_context(
+              value, type_attribute, context,
+            )
           }),
         )
       (ValueMember, Specification) =>
         V3ValueSpecification(
           @v3_json.read_documented(payload, fn(value) raise {
-            @v3_json.read_value_specification(value, type_attribute)
+            @v3_json.read_value_specification_with_context(
+              value, type_attribute, context,
+            )
           }),
         )
     }
@@ -687,22 +883,42 @@ fn decode_tree_member(
       (TypeMember, Definition) =>
         V4TypeDefinition(
           @v4_json.read_access(payload, fn(doc) raise {
-            @v4_json.read_documented(doc, @v4_json.read_type_definition)
+            @v4_json.read_documented(doc, fn(value) raise {
+              @v4_json.read_type_definition_with_context(value, context)
+            })
           }),
         )
       (ValueMember, Definition) =>
         V4ValueDefinition(
           @v4_json.read_access(payload, fn(doc) raise {
-            @v4_json.read_documented(doc, @v4_json.read_definition)
+            @v4_json.read_documented(doc, fn(value) raise {
+              @v4_json.read_definition_with_context(
+                value,
+                context,
+                preserve_input_order~,
+              )
+            })
           }),
         )
       (TypeMember, Specification) =>
         V4TypeSpecification(
-          @v4_json.read_documented(payload, @v4_json.read_type_specification),
+          @v4_json.read_documented(payload, fn(value) raise {
+            @v4_json.read_type_specification_with_context(
+              value,
+              context,
+              preserve_input_order~,
+            )
+          }),
         )
       (ValueMember, Specification) =>
         V4ValueSpecification(
-          @v4_json.read_documented(payload, @v4_json.read_value_specification),
+          @v4_json.read_documented(payload, fn(value) raise {
+            @v4_json.read_value_specification_with_context(
+              value,
+              context,
+              preserve_input_order~,
+            )
+          }),
         )
     }
   }

@@ -3,6 +3,24 @@ pub fn[TA] read_type(
   json : Json,
   ta : (Json) -> TA raise,
 ) -> @model.Type[TA] raise {
+  read_type_with_context(json, ta, None)
+}
+
+///|
+pub fn[TA] read_type_with_context(
+  json : Json,
+  ta : (Json) -> TA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.Type[TA] raise {
+  let read_type = fn(child, read_type_attr) raise {
+    read_type_with_context(child, read_type_attr, context)
+  }
+  let read_name = fn(child) raise {
+    @wire.read_classic_context_name(child, context)
+  }
+  let read_fqname = fn(child) raise {
+    @wire.read_classic_context_fqname(child, context)
+  }
   let a = @wire.array(json)
   if a.is_empty() {
     raise @wire.Invalid("invalid_arity", "Empty node")
@@ -10,13 +28,13 @@ pub fn[TA] read_type(
   match @wire.string(a[0]) {
     "Variable" => {
       ignore(@wire.tuple(json, 3))
-      @model.Variable(ta(a[1]), @wire.read_name(a[2]))
+      @model.Variable(ta(a[1]), read_name(a[2]))
     }
     "Reference" => {
       ignore(@wire.tuple(json, 4))
       @model.Reference(
         ta(a[1]),
-        @wire.read_fqname(a[2]),
+        read_fqname(a[2]),
         @wire.array(a[3]).map(item => read_type(item, ta)),
       )
     }
@@ -29,7 +47,7 @@ pub fn[TA] read_type(
       @model.Record(
         ta(a[1]),
         @wire.array(a[2]).map(item => @model.Field::{
-          name: @wire.read_name(@wire.field(item, "name")),
+          name: read_name(@wire.field(item, "name")),
           tpe: read_type(@wire.field(item, "tpe"), ta),
         }),
       )
@@ -38,9 +56,9 @@ pub fn[TA] read_type(
       ignore(@wire.tuple(json, 4))
       @model.ExtensibleRecord(
         ta(a[1]),
-        @wire.read_name(a[2]),
+        read_name(a[2]),
         @wire.array(a[3]).map(item => @model.Field::{
-          name: @wire.read_name(@wire.field(item, "name")),
+          name: read_name(@wire.field(item, "name")),
           tpe: read_type(@wire.field(item, "tpe"), ta),
         }),
       )
@@ -121,6 +139,24 @@ pub fn[VA] read_pattern(
   json : Json,
   va : (Json) -> VA raise,
 ) -> @model.Pattern[VA] raise {
+  read_pattern_with_context(json, va, None)
+}
+
+///|
+pub fn[VA] read_pattern_with_context(
+  json : Json,
+  va : (Json) -> VA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.Pattern[VA] raise {
+  let read_pattern = fn(child, read_value_attr) raise {
+    read_pattern_with_context(child, read_value_attr, context)
+  }
+  let read_name = fn(child) raise {
+    @wire.read_classic_context_name(child, context)
+  }
+  let read_fqname = fn(child) raise {
+    @wire.read_classic_context_fqname(child, context)
+  }
   let a = @wire.array(json)
   if a.is_empty() {
     raise @wire.Invalid("invalid_arity", "Empty node")
@@ -132,7 +168,7 @@ pub fn[VA] read_pattern(
     }
     "AsPattern" => {
       ignore(@wire.tuple(json, 4))
-      @model.AsPattern(va(a[1]), read_pattern(a[2], va), @wire.read_name(a[3]))
+      @model.AsPattern(va(a[1]), read_pattern(a[2], va), read_name(a[3]))
     }
     "TuplePattern" => {
       ignore(@wire.tuple(json, 3))
@@ -145,7 +181,7 @@ pub fn[VA] read_pattern(
       ignore(@wire.tuple(json, 4))
       @model.ConstructorPattern(
         va(a[1]),
-        @wire.read_fqname(a[2]),
+        read_fqname(a[2]),
         @wire.array(a[3]).map(item => read_pattern(item, va)),
       )
     }
@@ -220,6 +256,33 @@ pub fn[TA, VA] read_value(
   ta : (Json) -> TA raise,
   va : (Json) -> VA raise,
 ) -> @model.Value[TA, VA] raise {
+  read_value_with_context(json, ta, va, None)
+}
+
+///|
+pub fn[TA, VA] read_value_with_context(
+  json : Json,
+  ta : (Json) -> TA raise,
+  va : (Json) -> VA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.Value[TA, VA] raise {
+  let read_value = fn(child, read_type_attr, read_value_attr) raise {
+    read_value_with_context(child, read_type_attr, read_value_attr, context)
+  }
+  let read_pattern = fn(child, read_value_attr) raise {
+    read_pattern_with_context(child, read_value_attr, context)
+  }
+  let read_value_definition = fn(child, read_type_attr, read_value_attr) raise {
+    read_value_definition_with_context(
+      child, read_type_attr, read_value_attr, context,
+    )
+  }
+  let read_name = fn(child) raise {
+    @wire.read_classic_context_name(child, context)
+  }
+  let read_fqname = fn(child) raise {
+    @wire.read_classic_context_fqname(child, context)
+  }
   let a = @wire.array(json)
   if a.is_empty() {
     raise @wire.Invalid("invalid_arity", "Empty node")
@@ -231,7 +294,7 @@ pub fn[TA, VA] read_value(
     }
     "Constructor" => {
       ignore(@wire.tuple(json, 3))
-      @model.Constructor(va(a[1]), @wire.read_fqname(a[2]))
+      @model.Constructor(va(a[1]), read_fqname(a[2]))
     }
     "Tuple" => {
       ignore(@wire.tuple(json, 3))
@@ -258,19 +321,19 @@ pub fn[TA, VA] read_value(
     }
     "Variable" => {
       ignore(@wire.tuple(json, 3))
-      @model.Variable(va(a[1]), @wire.read_name(a[2]))
+      @model.Variable(va(a[1]), read_name(a[2]))
     }
     "Reference" => {
       ignore(@wire.tuple(json, 3))
-      @model.Reference(va(a[1]), @wire.read_fqname(a[2]))
+      @model.Reference(va(a[1]), read_fqname(a[2]))
     }
     "Field" => {
       ignore(@wire.tuple(json, 4))
-      @model.Field(va(a[1]), read_value(a[2], ta, va), @wire.read_name(a[3]))
+      @model.Field(va(a[1]), read_value(a[2], ta, va), read_name(a[3]))
     }
     "FieldFunction" => {
       ignore(@wire.tuple(json, 3))
-      @model.FieldFunction(va(a[1]), @wire.read_name(a[2]))
+      @model.FieldFunction(va(a[1]), read_name(a[2]))
     }
     "Apply" => {
       ignore(@wire.tuple(json, 4))
@@ -284,7 +347,7 @@ pub fn[TA, VA] read_value(
       ignore(@wire.tuple(json, 5))
       @model.LetDefinition(
         va(a[1]),
-        @wire.read_name(a[2]),
+        read_name(a[2]),
         read_value_definition(a[3], ta, va),
         read_value(a[4], ta, va),
       )

@@ -81,6 +81,7 @@ fn place(
   root : Ref[Json?],
   value : Json,
   mark : @parser.Marker,
+  duplicates : Ref[(String, String, @parser.Marker)?]?,
 ) -> Unit raise @wire.CodecError {
   match stack.last() {
     None => {
@@ -90,7 +91,7 @@ fn place(
       root.val = Some(value)
     }
     Some(Sequence(items, _)) => items.push(value)
-    Some(Mapping(fields, pending, _)) =>
+    Some(Mapping(fields, pending, parent)) =>
       match pending.val {
         None => {
           guard value is String(key) else {
@@ -109,18 +110,27 @@ fn place(
               "merge keys are not part of the profile",
             )
           }
-          guard !fields.contains(key) else {
-            reject(
-              "duplicate_member",
-              cursor(stack),
-              mark,
-              "duplicate member " + key,
-            )
+          if fields.contains(key) {
+            if duplicates is Some(first) &&
+              @wire.is_context_duplicate_scope(parent) {
+              if first.val is None {
+                first.val = Some((parent, key, mark))
+              }
+            } else {
+              reject(
+                "duplicate_member",
+                cursor(stack),
+                mark,
+                "duplicate member " + key,
+              )
+            }
           }
           pending.val = Some(key)
         }
         Some(key) => {
-          fields[key] = value
+          if !fields.contains(key) {
+            fields[key] = value
+          }
           pending.val = None
         }
       }
@@ -279,6 +289,7 @@ fn check_source_bytes(
 fn parse_document(
   source : String,
   limits : Limits,
+  contextual~ : Bool = false,
 ) -> (Json, Int32, Int32) raise @wire.CodecError {
   check_limits(limits)
   check_source_bytes(source, limits)
@@ -295,6 +306,11 @@ fn parse_document(
   )
   let stack : Array[Frame] = []
   let root : Ref[Json?] = Ref(None)
+  let duplicates : Ref[(String, String, @parser.Marker)?]? = if contextual {
+    Some(Ref(None))
+  } else {
+    None
+  }
   let mut documents = 0
   let mut events = 0
   let mut nodes = 0
@@ -337,7 +353,7 @@ fn parse_document(
             reject("yaml_depth_limit", path, mark, "Depth budget exceeded")
           }
           nodes += 1
-          place(stack, root, scalar(value, style, path, mark), mark)
+          place(stack, root, scalar(value, style, path, mark), mark, duplicates)
         }
         SequenceStart(id~, tag~) | MappingStart(id~, tag~) => {
           guard id == 0 && tag is None else {
@@ -360,7 +376,7 @@ fn parse_document(
             reject("invalid_type", path, mark, "mapping keys must be strings")
           }
           nodes += 1
-          let base = if path == "/" { "" } else { path }
+          let base = if stack.is_empty() { "" } else { path }
           stack.push(
             match event {
               SequenceStart(..) => Sequence([], base)
@@ -376,7 +392,7 @@ fn parse_document(
             Sequence(items, _) => Json::array(items)
             Mapping(fields, _, _) => Json::object(fields)
           }
-          place(stack, root, value, mark)
+          place(stack, root, value, mark, duplicates)
         }
       }
     }
@@ -396,8 +412,32 @@ fn parse_document(
   guard documents == 1 && root.val is Some(value) else {
     raise @wire.Invalid("invalid_yaml", "expected exactly one document")
   }
-  guard value is Object(_) else {
+  guard value is Object(fields) else {
     raise @wire.Invalid("invalid_type", "Root must be a mapping")
+  }
+  if duplicates is Some(first) && first.val is Some((parent, key, mark)) {
+    if fields.contains("$schema") {
+      let component = key
+        .replace_all(old="~", new="~0")
+        .replace_all(old="/", new="~1")
+      reject(
+        "context.duplicate_entry",
+        parent + "/" + component,
+        mark,
+        "duplicate member " + key,
+      )
+    } else {
+      reject(
+        "duplicate_member",
+        if parent == "" {
+          "/"
+        } else {
+          parent
+        },
+        mark,
+        "duplicate member " + key,
+      )
+    }
   }
   (value, nodes, events)
 }

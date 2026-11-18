@@ -3,10 +3,22 @@ pub fn[TA] read_constructors(
   json : Json,
   ta : (Json) -> TA raise,
 ) -> @model.Constructors[TA] raise {
+  read_constructors_with_context(json, ta, None)
+}
+
+///|
+fn[TA] read_constructors_with_context(
+  json : Json,
+  ta : (Json) -> TA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.Constructors[TA] raise {
   @wire.read_map(json, @wire.read_name, fn(args) raise {
     @wire.array(args).map(arg => {
       let a = @wire.tuple(arg, 2)
-      (@wire.read_name(a[0]), read_type(a[1], ta))
+      (
+        @wire.read_classic_context_name(a[0], context),
+        read_type_with_context(a[1], ta, context),
+      )
     })
   })
 }
@@ -90,15 +102,31 @@ pub fn[TA] read_type_definition(
   json : Json,
   ta : (Json) -> TA raise,
 ) -> @model.TypeDefinition[TA] raise {
+  read_type_definition_with_context(json, ta, None)
+}
+
+///|
+pub fn[TA] read_type_definition_with_context(
+  json : Json,
+  ta : (Json) -> TA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.TypeDefinition[TA] raise {
   let a = @wire.tuple(json, 3)
-  let params = @wire.array(a[1]).map(@wire.read_name)
+  let params = @wire.array(a[1]).map(child => {
+    @wire.read_classic_context_name(child, context)
+  })
   match @wire.string(a[0]) {
     "TypeAliasDefinition" =>
-      @model.TypeAliasDefinition(params, read_type(a[2], ta))
+      @model.TypeAliasDefinition(
+        params,
+        read_type_with_context(a[2], ta, context),
+      )
     "CustomTypeDefinition" =>
       @model.CustomTypeDefinition(
         params,
-        read_access(a[2], fn(c) raise { read_constructors(c, ta) }),
+        read_access(a[2], fn(c) raise {
+          read_constructors_with_context(c, ta, context)
+        }),
       )
     tag => raise @wire.Invalid("unknown_node", tag)
   }
@@ -130,15 +158,29 @@ pub fn[TA] read_type_specification(
   json : Json,
   ta : (Json) -> TA raise,
 ) -> @model.TypeSpecification[TA] raise {
+  read_type_specification_with_context(json, ta, None)
+}
+
+///|
+pub fn[TA] read_type_specification_with_context(
+  json : Json,
+  ta : (Json) -> TA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.TypeSpecification[TA] raise {
   let a = @wire.array(json)
   if a.length() < 2 {
     raise @wire.Invalid("invalid_arity", "Type specification")
   }
-  let params = @wire.array(a[1]).map(@wire.read_name)
+  let params = @wire.array(a[1]).map(child => {
+    @wire.read_classic_context_name(child, context)
+  })
   match @wire.string(a[0]) {
     "TypeAliasSpecification" => {
       ignore(@wire.tuple(json, 3))
-      @model.TypeAliasSpecification(params, read_type(a[2], ta))
+      @model.TypeAliasSpecification(
+        params,
+        read_type_with_context(a[2], ta, context),
+      )
     }
     "OpaqueTypeSpecification" => {
       ignore(@wire.tuple(json, 2))
@@ -146,15 +188,28 @@ pub fn[TA] read_type_specification(
     }
     "CustomTypeSpecification" => {
       ignore(@wire.tuple(json, 3))
-      @model.CustomTypeSpecification(params, read_constructors(a[2], ta))
+      @model.CustomTypeSpecification(
+        params,
+        read_constructors_with_context(a[2], ta, context),
+      )
     }
     "DerivedTypeSpecification" => {
       ignore(@wire.tuple(json, 3))
       @wire.fields(a[2], ["baseType", "fromBaseType", "toBaseType"])
       @model.DerivedTypeSpecification(params, {
-        base_type: read_type(@wire.field(a[2], "baseType"), ta),
-        from_base_type: @wire.read_fqname(@wire.field(a[2], "fromBaseType")),
-        to_base_type: @wire.read_fqname(@wire.field(a[2], "toBaseType")),
+        base_type: read_type_with_context(
+          @wire.field(a[2], "baseType"),
+          ta,
+          context,
+        ),
+        from_base_type: @wire.read_classic_context_fqname(
+          @wire.field(a[2], "fromBaseType"),
+          context,
+        ),
+        to_base_type: @wire.read_classic_context_fqname(
+          @wire.field(a[2], "toBaseType"),
+          context,
+        ),
       })
     }
     tag => raise @wire.Invalid("unknown_node", tag)
@@ -202,13 +257,25 @@ pub fn[TA] read_value_specification(
   json : Json,
   ta : (Json) -> TA raise,
 ) -> @model.ValueSpecification[TA] raise {
+  read_value_specification_with_context(json, ta, None)
+}
+
+///|
+pub fn[TA] read_value_specification_with_context(
+  json : Json,
+  ta : (Json) -> TA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.ValueSpecification[TA] raise {
   @wire.fields(json, ["inputs", "output"])
   {
     inputs: @wire.array(@wire.field(json, "inputs")).map(input => {
       let a = @wire.tuple(input, 2)
-      (@wire.read_name(a[0]), read_type(a[1], ta))
+      (
+        @wire.read_classic_context_name(a[0], context),
+        read_type_with_context(a[1], ta, context),
+      )
     }),
-    output: read_type(@wire.field(json, "output"), ta),
+    output: read_type_with_context(@wire.field(json, "output"), ta, context),
   }
 }
 
@@ -239,11 +306,30 @@ pub fn[TA, VA] read_value_definition(
   ta : (Json) -> TA raise,
   va : (Json) -> VA raise,
 ) -> @model.ValueDefinition[TA, VA] raise {
+  read_value_definition_with_context(json, ta, va, None)
+}
+
+///|
+pub fn[TA, VA] read_value_definition_with_context(
+  json : Json,
+  ta : (Json) -> TA raise,
+  va : (Json) -> VA raise,
+  context : @wire.DocumentNameContext?,
+) -> @model.ValueDefinition[TA, VA] raise {
+  let read_type = fn(child, read_type_attr) raise {
+    read_type_with_context(child, read_type_attr, context)
+  }
+  let read_value = fn(child, read_type_attr, read_value_attr) raise {
+    read_value_with_context(child, read_type_attr, read_value_attr, context)
+  }
+  let read_name = fn(child) raise {
+    @wire.read_classic_context_name(child, context)
+  }
   @wire.fields(json, ["inputTypes", "outputType", "body"])
   {
     input_types: @wire.array(@wire.field(json, "inputTypes")).map(input => {
       let a = @wire.tuple(input, 3)
-      (@wire.read_name(a[0]), va(a[1]), read_type(a[2], ta))
+      (read_name(a[0]), va(a[1]), read_type(a[2], ta))
     }),
     output_type: read_type(@wire.field(json, "outputType"), ta),
     body: read_value(@wire.field(json, "body"), ta, va),

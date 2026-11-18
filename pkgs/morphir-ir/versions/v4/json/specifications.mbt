@@ -1,5 +1,14 @@
 ///|
 pub fn read_annotation(json : Json) -> @model.Annotation raise {
+  read_annotation_with_context(json, None)
+}
+
+///|
+fn read_annotation_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> @model.Annotation raise {
   match json {
     String(text) => {
       let parts = text.split(":").map(part => part.to_owned()).collect()
@@ -17,18 +26,29 @@ pub fn read_annotation(json : Json) -> @model.Annotation raise {
     _ => {
       @wire.fields(json, ["name", "arguments"])
       @model.Structured(
-        @wire.read_fqname(@wire.field(json, "name")),
+        @wire.read_context_fqname(@wire.field(json, "name"), context),
         @wire.array(optional_array(json, "arguments")).map(argument => {
           match argument {
             Object(fields) if fields.contains("name") &&
               fields.contains("value") => {
               @wire.fields(argument, ["name", "value"])
               @model.Named(
-                @wire.read_name(@wire.field(argument, "name")),
-                read_value(@wire.field(argument, "value")),
+                @wire.read_context_name(@wire.field(argument, "name"), context),
+                read_value_with_context(
+                  @wire.field(argument, "value"),
+                  context,
+                  preserve_input_order~,
+                ),
               )
             }
-            _ => @model.Positional(read_value(argument))
+            _ =>
+              @model.Positional(
+                read_value_with_context(
+                  argument,
+                  context,
+                  preserve_input_order~,
+                ),
+              )
           }
         }),
       )
@@ -76,8 +96,14 @@ pub fn write_annotation(annotation : @model.Annotation) -> Json raise {
 }
 
 ///|
-fn read_annotations(json : Json) -> Array[@model.Annotation] raise {
-  @wire.array(optional_array(json, "annotations")).map(read_annotation)
+fn read_annotations(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> Array[@model.Annotation] raise {
+  @wire.array(optional_array(json, "annotations")).map(child => {
+    read_annotation_with_context(child, context, preserve_input_order~)
+  })
 }
 
 ///|
@@ -91,13 +117,23 @@ fn put_annotations(
 }
 
 ///|
-fn read_params(payload : Json) -> Array[@model.Name] raise {
-  @wire.array(optional_array(payload, "typeParams")).map(@wire.read_name)
+fn read_params(
+  payload : Json,
+  context : @wire.DocumentNameContext?,
+) -> Array[@model.Name] raise {
+  @wire.array(optional_array(payload, "typeParams")).map(child => {
+    @wire.read_context_name(child, context)
+  })
 }
 
 ///|
-fn read_constructors(json : Json) -> @model.Constructors raise {
-  @wire.read_map(json, @wire.read_name, read_inputs)
+fn read_constructors(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.Constructors raise {
+  @wire.read_map(json, @wire.read_name, child => {
+    read_inputs_with_context(child, context)
+  })
 }
 
 ///|
@@ -114,6 +150,15 @@ fn write_constructors(constructors : @model.Constructors) -> Json raise {
 
 ///|
 pub fn read_type_specification(json : Json) -> @model.TypeSpecification raise {
+  read_type_specification_with_context(json, None)
+}
+
+///|
+pub fn read_type_specification_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> @model.TypeSpecification raise {
   let (tag, payload) = match json {
     Array(items) => {
       if items.length() < 2 {
@@ -137,15 +182,15 @@ pub fn read_type_specification(json : Json) -> @model.TypeSpecification raise {
     }
     _ => variant(json)
   }
-  let annotations = read_annotations(payload)
-  let params = read_params(payload)
+  let annotations = read_annotations(payload, context, preserve_input_order~)
+  let params = read_params(payload, context)
   let body = match tag {
     "TypeAliasSpecification" => {
       @wire.fields(payload, ["annotations", "typeParams", "typeExp"])
       ignore(@wire.field(payload, "typeParams"))
       @model.TypeAliasSpecification(
         params,
-        read_type(@wire.field(payload, "typeExp")),
+        read_type_with_context(@wire.field(payload, "typeExp"), context),
       )
     }
     "OpaqueTypeSpecification" => {
@@ -157,7 +202,7 @@ pub fn read_type_specification(json : Json) -> @model.TypeSpecification raise {
       ignore(@wire.field(payload, "typeParams"))
       @model.CustomTypeSpecification(
         params,
-        read_constructors(@wire.field(payload, "constructors")),
+        read_constructors(@wire.field(payload, "constructors"), context),
       )
     }
     "DerivedTypeSpecification" => {
@@ -166,9 +211,18 @@ pub fn read_type_specification(json : Json) -> @model.TypeSpecification raise {
       ])
       ignore(@wire.field(payload, "typeParams"))
       @model.DerivedTypeSpecification(params, {
-        base_type: read_type(@wire.field(payload, "baseType")),
-        from_base_type: @wire.read_fqname(@wire.field(payload, "fromBaseType")),
-        to_base_type: @wire.read_fqname(@wire.field(payload, "toBaseType")),
+        base_type: read_type_with_context(
+          @wire.field(payload, "baseType"),
+          context,
+        ),
+        from_base_type: @wire.read_context_fqname(
+          @wire.field(payload, "fromBaseType"),
+          context,
+        ),
+        to_base_type: @wire.read_context_fqname(
+          @wire.field(payload, "toBaseType"),
+          context,
+        ),
       })
     }
     _ => raise @wire.Invalid("unknown_node", tag)
@@ -218,16 +272,24 @@ pub fn write_type_specification(
 
 ///|
 pub fn read_type_definition(json : Json) -> @model.TypeDefinition raise {
+  read_type_definition_with_context(json, None)
+}
+
+///|
+pub fn read_type_definition_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.TypeDefinition raise {
   let (tag, payload) = variant(json)
-  let params = @wire.array(@wire.field(payload, "typeParams")).map(
-    @wire.read_name,
-  )
+  let params = @wire.array(@wire.field(payload, "typeParams")).map(child => {
+    @wire.read_context_name(child, context)
+  })
   match tag {
     "TypeAliasDefinition" => {
       @wire.fields(payload, ["typeParams", "typeExp"])
       @model.TypeAliasDefinition(
         params,
-        read_type(@wire.field(payload, "typeExp")),
+        read_type_with_context(@wire.field(payload, "typeExp"), context),
       )
     }
     "CustomTypeDefinition" => {
@@ -235,15 +297,20 @@ pub fn read_type_definition(json : Json) -> @model.TypeDefinition raise {
       let access = read_access_level(@wire.field(payload, "access"))
       @model.CustomTypeDefinition(params, {
         access,
-        value: read_constructors(@wire.field(payload, "constructors")),
+        value: read_constructors(@wire.field(payload, "constructors"), context),
       })
     }
     "IncompleteTypeDefinition" => {
       @wire.fields(payload, ["typeParams", "incompleteness", "partialTypeExp"])
       @model.IncompleteTypeDefinition(
         params,
-        read_incompleteness(@wire.field(payload, "incompleteness")),
-        read_optional(payload, "partialTypeExp", read_type),
+        read_incompleteness_with_context(
+          @wire.field(payload, "incompleteness"),
+          context,
+        ),
+        read_optional(payload, "partialTypeExp", child => {
+          read_type_with_context(child, context)
+        }),
       )
     }
     _ => raise @wire.Invalid("unknown_node", tag)
@@ -285,11 +352,24 @@ pub fn write_type_definition(value : @model.TypeDefinition) -> Json raise {
 
 ///|
 pub fn read_value_specification(json : Json) -> @model.ValueSpecification raise {
+  read_value_specification_with_context(json, None)
+}
+
+///|
+pub fn read_value_specification_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> @model.ValueSpecification raise {
   @wire.fields(json, ["annotations", "inputs", "output"])
   {
-    annotations: read_annotations(json),
-    inputs: read_inputs(optional_object(json, "inputs")),
-    output: read_type(@wire.field(json, "output")),
+    annotations: read_annotations(json, context, preserve_input_order~),
+    inputs: read_inputs_with_context(
+      optional_object(json, "inputs"),
+      context,
+      preserve_input_order~,
+    ),
+    output: read_type_with_context(@wire.field(json, "output"), context),
   }
 }
 

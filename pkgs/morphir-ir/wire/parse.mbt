@@ -18,6 +18,7 @@ priv struct Reader {
   max_depth : Int32
   mut nodes : Int32?
   mut string_units : Int32?
+  context_duplicates : Ref[(String, String, String)?]?
 }
 
 ///|
@@ -78,7 +79,11 @@ fn Reader::string(self : Reader) -> String raise CodecError {
 }
 
 ///|
-fn Reader::value(self : Reader, depth : Int32) -> Json raise CodecError {
+fn Reader::value(
+  self : Reader,
+  depth : Int32,
+  context_path : String?,
+) -> Json raise CodecError {
   self.space()
   if depth > self.max_depth {
     raise Invalid(
@@ -111,18 +116,42 @@ fn Reader::value(self : Reader, depth : Int32) -> Json raise CodecError {
       }
       while true {
         let key = self.string()
-        if fields.contains(key) {
-          raise Invalid(
-            if key == "formatVersion" && depth == 0 {
-              "duplicate_format_version"
-            } else {
-              "duplicate_member"
-            },
-            key,
-          )
+        let duplicate = fields.contains(key)
+        if duplicate {
+          let code = if key == "formatVersion" && depth == 0 {
+            "duplicate_format_version"
+          } else {
+            "duplicate_member"
+          }
+          if self.context_duplicates is Some(first) &&
+            context_path is Some(parent) {
+            if first.val is None {
+              let component = key
+                .replace_all(old="~", new="~0")
+                .replace_all(old="/", new="~1")
+              first.val = Some((code, key, parent + "/" + component))
+            }
+          } else {
+            raise Invalid(code, key)
+          }
         }
         self.take(':')
-        fields[key] = self.value(depth + 1)
+        let child_path = match context_path {
+          Some("") if key == "context" => Some("/context")
+          Some("/context") => {
+            let child = "/context/" + key
+            if is_context_duplicate_scope(child) {
+              Some(child)
+            } else {
+              None
+            }
+          }
+          _ => None
+        }
+        let item = self.value(depth + 1, child_path)
+        if !duplicate {
+          fields[key] = item
+        }
         self.space()
         if self.index < self.chars.length() && self.chars[self.index] == '}' {
           self.index += 1
@@ -141,7 +170,7 @@ fn Reader::value(self : Reader, depth : Int32) -> Json raise CodecError {
         return Json::array(items)
       }
       while true {
-        items.push(self.value(depth + 1))
+        items.push(self.value(depth + 1, None))
         self.space()
         if self.index < self.chars.length() && self.chars[self.index] == ']' {
           self.index += 1
@@ -179,7 +208,7 @@ fn Reader::value(self : Reader, depth : Int32) -> Json raise CodecError {
 ///|
 /// Reject duplicate members and preserve every numeric lexeme before decoding IR.
 pub fn parse(text : String) -> Json raise CodecError {
-  parse_with_limits(text, 512, None, None)
+  parse_with_limits(text, 512, None, None, false)
 }
 
 ///|
@@ -190,8 +219,15 @@ pub fn parse_bounded(
   max_depth~ : Int32 = 64,
   max_nodes~ : Int32 = 100000,
   max_string_units~ : Int32 = 1048576,
+  contextual~ : Bool = false,
 ) -> Json raise CodecError {
-  parse_with_limits(text, max_depth, Some(max_nodes), Some(max_string_units))
+  parse_with_limits(
+    text,
+    max_depth,
+    Some(max_nodes),
+    Some(max_string_units),
+    contextual,
+  )
 }
 
 ///|
@@ -200,18 +236,31 @@ fn parse_with_limits(
   max_depth : Int32,
   nodes : Int32?,
   string_units : Int32?,
+  contextual : Bool,
 ) -> Json raise CodecError {
+  let duplicates : Ref[(String, String, String)?]? = if contextual {
+    Some(Ref(None))
+  } else {
+    None
+  }
   let reader = Reader::{
     chars: text.iter().collect(),
     index: 0,
     max_depth,
     nodes,
     string_units,
+    context_duplicates: duplicates,
   }
-  let result = reader.value(0)
+  let result = reader.value(0, if contextual { Some("") } else { None })
   reader.space()
   if reader.index != reader.chars.length() {
     raise Invalid("invalid_json", "Trailing input")
+  }
+  if duplicates is Some(first) && first.val is Some((code, key, path)) {
+    if result is Object(fields) && fields.contains("$schema") {
+      raise Invalid("context.duplicate_entry", path)
+    }
+    raise Invalid(code, key)
   }
   result
 }

@@ -62,6 +62,44 @@ pages and decoded bodies they retain. Discovery leaves unread bodies
 unvalidated. Use `read_tree_versioned` or `read_tree` for whole-model assembly
 and validation, including checks for stray tree files.
 
+### Read file-local name tables
+
+Use `open_bounded_tree(source, encoding=ContextualDraft1)` to admit the
+[draft.1 contextual envelope](https://github.com/finos/morphir/blob/177371fa7a6199b7f177a8c1d886f583ee57e813/openspec/changes/add-bounded-model-access/specs/ir/name-compaction/spec.md)
+in JSON or YAML. Plain reading is the default. The encoding selection is
+explicit and separate from the manifest's IR version. Within an opted-in
+tree, a file without an envelope keeps its plain representation.
+
+When the orders generator selects `total-in-USD`, the value file's
+`fqNames` table resolves its reference to `acme/orders:domain#order`. The
+reader returns that typed reference without opening `order.value`. A
+`$name` member inside a document literal remains ordinary data. Each
+context has four separate typed tables, at most 16,384 entries per table,
+and at most 1,024 UTF-8 bytes per spelling. The envelope, including ignored
+optional context content, counts toward the encoded file's byte and
+assembly limits.
+
+```mermaid
+flowchart LR
+    A[Open one capped document] --> B[Validate its envelope and tables]
+    B --> C[Resolve aliases in typed name slots]
+    C --> D[Return selected versioned member]
+    B -->|Context follows document| E[Reopen the same revision under the same cap]
+    E --> C
+```
+
+The general reader admits a context after the document with a second
+bounded read of the same revision. It releases the first parse tree
+before that read. `ContextualDraft1Ordered` requires both the schema
+marker and context before the document. This option checks input order.
+The reader still parses one capped document at a time.
+
+Use `reader.read_original_document` with a manifest, module or member
+identity to pass through the original UTF-8 text. Inline members select
+their containing module. The reader validates the selection and reopens
+the artifact under the same revision and byte limit, preserving optional
+content, formatting and numeric spellings.
+
 ## Limits
 
 Default limits are finite and configurable:

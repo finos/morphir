@@ -82,7 +82,7 @@ pub fn read_module_specification(
 ) -> @model.ModuleSpecification raise {
   @wire.fields(json, ["types", "values", "doc", "annotations"])
   {
-    annotations: read_annotations(json),
+    annotations: read_annotations(json, None),
     types: @wire.read_map(optional_object(json, "types"), @wire.read_name, fn(
       item,
     ) raise {
@@ -157,7 +157,10 @@ pub fn write_package_specification(
 }
 
 ///|
-fn read_entry_point(json : Json) -> @model.EntryPoint raise {
+fn read_entry_point(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.EntryPoint raise {
   @wire.fields(json, ["target", "kind", "doc"])
   let kind = match @wire.string(@wire.field(json, "kind")) {
     "main" => @model.Main
@@ -168,7 +171,7 @@ fn read_entry_point(json : Json) -> @model.EntryPoint raise {
     other => raise @wire.Invalid("invalid_type", other)
   }
   {
-    target: @wire.read_fqname(@wire.field(json, "target")),
+    target: @wire.read_context_fqname(@wire.field(json, "target"), context),
     kind,
     doc: match @wire.optional(json, "doc") {
       None => None
@@ -194,7 +197,7 @@ fn write_entry_point(value : @model.EntryPoint) -> Json raise {
     fields.push(("doc", @wire.text(doc)))
   }
   let json = @wire.obj(fields)
-  ignore(read_entry_point(json))
+  ignore(read_entry_point(json, None))
   json
 }
 
@@ -206,6 +209,16 @@ fn string_key(value : String) -> Json raise {
 ///|
 fn read_string_key(value : Json) -> String raise {
   @wire.string(value)
+}
+
+///|
+pub fn read_entry_points(
+  json : Json,
+  context~ : @wire.DocumentNameContext? = None,
+) -> Map[String, @model.EntryPoint] raise {
+  @wire.read_map(json, read_string_key, point => {
+    read_entry_point(point, context)
+  })
 }
 
 ///|
@@ -254,11 +267,7 @@ pub fn read_distribution(json : Json) -> @model.Distribution raise {
           read_package_definition,
         ),
         read_package_definition(optional_object(payload, "def")),
-        @wire.read_map(
-          @wire.field(payload, "entryPoints"),
-          read_string_key,
-          read_entry_point,
-        ),
+        read_entry_points(@wire.field(payload, "entryPoints")),
       )
     }
     _ => raise @wire.Invalid("unknown_node", tag)

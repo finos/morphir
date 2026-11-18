@@ -1,12 +1,21 @@
 ///|
 pub fn read_reason(json : Json) -> @model.HoleReason raise {
+  read_reason_with_context(json, None)
+}
+
+///|
+pub fn read_reason_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.HoleReason raise {
+  let read_fqname = fn(child) raise {
+    @wire.read_context_fqname(child, context)
+  }
   let (tag, payload) = variant(json)
   match tag {
     "UnresolvedReference" => {
       @wire.fields(payload, ["target"])
-      @model.UnresolvedReference(
-        @wire.read_fqname(@wire.field(payload, "target")),
-      )
+      @model.UnresolvedReference(read_fqname(@wire.field(payload, "target")))
     }
     "DeletedDuringRefactor" => {
       @wire.fields(payload, ["tx-id"])
@@ -46,6 +55,16 @@ pub fn write_reason(value : @model.HoleReason) -> Json raise {
 
 ///|
 pub fn read_incompleteness(json : Json) -> @model.Incompleteness raise {
+  read_incompleteness_with_context(json, None)
+}
+
+///|
+pub fn read_incompleteness_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+) -> @model.Incompleteness raise {
+  let read_reason = fn(child) raise { read_reason_with_context(child, context) }
+  let read_type = fn(child) raise { read_type_with_context(child, context) }
   let (tag, payload) = variant(json)
   match tag {
     "Draft" => {
@@ -144,17 +163,31 @@ fn write_binding(value : @model.ExternalBinding) -> Json {
 ///|
 /// Preserve input parameter order; refuse duplicate names in accepted pair arrays.
 pub fn read_inputs(json : Json) -> Array[(@model.Name, @model.Type)] raise {
+  read_inputs_with_context(json, None)
+}
+
+///|
+pub fn read_inputs_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> Array[(@model.Name, @model.Type)] raise {
+  let read_type = fn(child) raise { read_type_with_context(child, context) }
   let entries = match json {
     Array(entries) =>
       entries.map(entry => {
         let pair = @wire.tuple(entry, 2)
         (pair[0], pair[1])
       })
-    Object(fields) => {
-      let names = fields.keys().collect()
-      names.sort()
-      names.map(name => (Json::string(name), fields[name]))
-    }
+    Object(fields) =>
+      if preserve_input_order || context is Some(_) {
+        // Contextual trees may contain both compacted and ordinary files.
+        fields.iter().map(entry => (Json::string(entry.0), entry.1)).collect()
+      } else {
+        let names = fields.keys().collect()
+        names.sort()
+        names.map(name => (Json::string(name), fields[name]))
+      }
     _ =>
       raise @wire.Invalid(
         "invalid_type", "Expected input map or ordered pair array",
@@ -192,6 +225,25 @@ pub fn write_inputs(value : Array[(@model.Name, @model.Type)]) -> Json raise {
 
 ///|
 pub fn read_definition(json : Json) -> @model.ValueDefinition raise {
+  read_definition_with_context(json, None)
+}
+
+///|
+pub fn read_definition_with_context(
+  json : Json,
+  context : @wire.DocumentNameContext?,
+  preserve_input_order~ : Bool = false,
+) -> @model.ValueDefinition raise {
+  let read_inputs = fn(child) raise {
+    read_inputs_with_context(child, context, preserve_input_order~)
+  }
+  let read_type = fn(child) raise { read_type_with_context(child, context) }
+  let read_value = fn(child) raise {
+    read_value_with_context(child, context, preserve_input_order~)
+  }
+  let read_incompleteness = fn(child) raise {
+    read_incompleteness_with_context(child, context)
+  }
   let (tag, payload) = variant(json)
   let inputs = read_inputs(@wire.field(payload, "inputTypes"))
   match tag {
