@@ -4,6 +4,7 @@
 // spec-mep-smithy.ts guards its CLI body behind `if (import.meta.main)`, so
 // importing it here does not run the smithy CLI.
 import { expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { format, parse } from "@std/semver";
 import {
@@ -64,6 +65,42 @@ test("bounded-generation handshakes use exact, canonical version tokens", () => 
 	expect(tuple).toMatchObject({ protocolVersion: "0.2.0-draft.2", accessVersion: "0.1.0-draft.1", irVersion: "4.0.0" });
 	for (const version of [tuple!.protocolVersion, tuple!.accessVersion, tuple!.irVersion]) {
 		expect(format(parse(version))).toBe(version);
+	}
+});
+
+test("the orders walkthrough uses checked wire frames and the frozen corpus", () => {
+	const fixture = "spec/mck/bounded-generation/fixtures/acme-orders";
+	const walkthrough = readFileSync("docs/spec/ir/bounded-generation.md", "utf8");
+	const { messages } = protocolExamples(walkthrough);
+	const transcript = transcriptMessages(readFileSync("spec/mep/smithy/transcripts/session-model-access.md", "utf8"));
+	expect(messages).toHaveLength(1);
+	expect(uncovered(messages, transcript)).toEqual([]);
+
+	type Version = { singleFile: string; trees: Record<string, string> };
+	const { versions } = JSON.parse(readFileSync(`${fixture}/cases.json`, "utf8")) as { versions: Version[] };
+	for (const { singleFile, trees } of versions) {
+		for (const path of [singleFile, ...Object.values(trees)]) {
+			expect(walkthrough).toContain(`${fixture}/${path})`);
+		}
+	}
+
+	type Delivery = { requestId: string; kind: string; entries?: { documentId: string }[]; documentId?: string; decodedByteLength?: number; sha256?: string; content?: string };
+	const frames = transcript as { params?: { deliveries?: Delivery[] } }[];
+	const deliveries = frames.flatMap(frame => frame.params?.deliveries ?? []);
+	const expected = JSON.parse(readFileSync(`${fixture}/expected.json`, "utf8")) as { domainInventory: { pages: string[][]; finalPageBody: { document: string } } };
+	const pages = deliveries.filter(delivery => delivery.requestId === "domain-first" || delivery.requestId === "domain-second");
+	expect(pages.map(page => page.entries?.map(entry => entry.documentId))).toEqual(expected.domainInventory.pages);
+
+	const documents = deliveries.filter(delivery => delivery.kind === "document");
+	expect(documents.map(document => document.documentId)).toEqual([
+		expected.domainInventory.finalPageBody.document,
+		"pkg/acme/orders/domain/order.value",
+	]);
+	for (const document of documents) {
+		const bytes = readFileSync(`${fixture}/v4/plain-json/${document.documentId}.json`);
+		expect(document.decodedByteLength).toBe(bytes.length);
+		expect(document.sha256).toBe(createHash("sha256").update(bytes).digest("hex"));
+		expect(document.content).toBe(bytes.toString("base64"));
 	}
 });
 
