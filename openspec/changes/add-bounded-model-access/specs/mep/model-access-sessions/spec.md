@@ -104,12 +104,17 @@ Each advance SHALL identify the operation and expected round, and match deliveri
 ### Requirement: Request independently interpretable data
 Requests SHALL support paged inventory and selected logical documents. Each delivered contextual document SHALL include its complete file-local context. The receiving adapter SHALL check integrity and decode the selected file contract before semantic use, retaining original profile content when required by that profile.
 
-An inventory entry SHALL contain exactly one member named `module`, `type` or `value` with the corresponding entry payload. A `module` payload MAY contain `memberSelection` and SHALL omit `name`. A `type` or `value` payload SHALL contain `name` and SHALL omit `memberSelection`.
-
 #### Scenario: Definition arrives alone
 - **WHEN** the host delivers a contextual type file without the other files in its module
 - **THEN** the guest can resolve its aliases from the delivered envelope
 - **AND** it does not invent an inherited module context
+
+### Requirement: Validate inventory entries by variant
+An inventory entry SHALL contain exactly one member named `module`, `type` or `value` with the corresponding entry payload. A `module` payload MAY contain `memberSelection` and SHALL omit `name`. A `type` or `value` payload SHALL contain `name` and SHALL omit `memberSelection`.
+
+#### Scenario: A member arrives without a name
+- **WHEN** the host delivers a `type` or `value` inventory entry without `name`
+- **THEN** the receiving adapter refuses the entry
 
 ### Requirement: Bound exchanges and retained state separately
 Session admission SHALL bound outer frames, encoded/decoded bytes per exchange, documents per batch, decoding depth and nodes, resident guest state, host caches, artifact chunks, diagnostics and outstanding requests. Cumulative work, disk use, rounds and elapsed time SHALL have separate finite limits. Whole-model bytes SHALL NOT be equated with a per-frame limit.
