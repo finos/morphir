@@ -214,3 +214,38 @@ test "backend refuses unsupported targets options and lossy or malformed IR" {
   assert_eq(@wire.field(result, "success"), Json::boolean(false))
   assert_eq(@wire.field(result, "artifacts"), Json::array([]))
 }
+
+///|
+test "bounded generation methods require admission on the current session" {
+  let session = @mep.Session::new()
+  let check = () => {
+    for
+      operation in [
+        "morphir.backend.generateModel.start", "morphir.backend.generateModel.advance",
+        "morphir.backend.generateModel.cancel",
+      ] {
+      let response = call(session, operation)
+      assert_eq(
+        @wire.field(@wire.field(response, "error"), "code"),
+        Json::number(-32013),
+      )
+    }
+  }
+  check()
+  initialize(session)
+  check()
+}
+
+///|
+test "an ordinary guest refuses a draft.2-only offer and can still initialize on 0.1" {
+  let session = @mep.Session::new()
+  let response = call(session, "morphir.initialize", params={
+    "protocolVersions": ["0.2.0-draft.2"],
+    "host": { "name": "morphir-cli", "version": "0.5.0" },
+  })
+  assert_eq(
+    @wire.field(@wire.field(response, "error"), "code"),
+    Json::number(-32011),
+  )
+  initialize(session)
+}

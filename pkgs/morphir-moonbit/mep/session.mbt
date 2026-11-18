@@ -13,6 +13,10 @@ pub struct Session {
   priv metadata_capabilities : @linked_metadata.Capabilities
   priv frontend : Frontend?
   priv cancelled : () -> Bool
+  priv bounded : BoundedBackend?
+  priv mut bounded_activation : BoundedActivation
+  priv mut generation : GuestGeneration?
+  priv used_generation_ids : Array[String]
 }
 
 ///|
@@ -22,13 +26,22 @@ pub fn Session::new(
   metadata_capabilities~ : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
   frontend~ : Frontend? = None,
   cancelled~ : () -> Bool = fn() { false },
+  bounded~ : BoundedBackend? = None,
 ) -> Session {
+  let bounded = match bounded {
+    Some(backend) if !backend.support.tuples().is_empty() => bounded
+    _ => None
+  }
   {
     lifecycle: BeforeInitialize,
     models: None,
     metadata_capabilities,
     frontend,
     cancelled,
+    bounded,
+    bounded_activation: BoundedInactive,
+    generation: None,
+    used_generation_ids: [],
   }
 }
 
@@ -53,13 +66,25 @@ fn Session::info(self : Session) -> Json {
 }
 
 ///|
-fn Session::capabilities(self : Session, models : ModelTransport?) -> Json {
+fn Session::capabilities(
+  self : Session,
+  models : ModelTransport?,
+  access~ : @model_access.Support? = None,
+  bounded_line~ : Bool = false,
+) -> Json {
   let value : Json = {
-    "backend": { "targets": ["moonbit"], "irVersions": ["4"], "generate": true },
+    "backend": {
+      "targets": ["moonbit"],
+      "irVersions": ["4"],
+      "generate": !bounded_line,
+    },
     "streaming": false,
     "incremental": false,
     "cancellation": false,
     "progress": false,
+  }
+  if access is Some(support) && value is Object(fields) {
+    fields["modelAccess"] = support.to_json()
   }
   if models is Some(support) && value is Object(fields) {
     fields["modelTransport"] = support.to_json()
@@ -103,7 +128,11 @@ fn field(value : Json, key : String) -> Json {
 }
 
 ///|
-fn negotiation(params : Json, initialize~ : Bool = false) -> Int32? {
+fn negotiation(
+  params : Json,
+  initialize~ : Bool = false,
+  bounded~ : Bool = false,
+) -> Int32? {
   guard params is Object(_) &&
     field(params, "protocolVersions") is Array(versions) &&
     !versions.is_empty() else {
@@ -122,7 +151,8 @@ fn negotiation(params : Json, initialize~ : Bool = false) -> Int32? {
     }
   }
   if versions.contains(Json::string("0.1")) ||
-    versions.contains(Json::string(MODEL_PROTOCOL)) {
+    versions.contains(Json::string(MODEL_PROTOCOL)) ||
+    (bounded && versions.contains(Json::string(@model_access.PROTOCOL))) {
     None
   } else {
     Some(-32011)
@@ -153,6 +183,11 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
   guard fields.get("id") is Some(id) else {
     if operation == "morphir.exit" {
       self.lifecycle = Exited
+      self.release_generation()
+    } else if operation == "morphir.initialized" &&
+      self.lifecycle is Ready &&
+      self.bounded_activation is BoundedWaiting(agreed) {
+      self.bounded_activation = BoundedReady(agreed)
     }
     // Notifications, including initialized, never generate a response.
     return None
@@ -175,11 +210,15 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
   if operation == "morphir.exit" {
     return Some(rpc_error(id, -32600, "morphir.exit must be a notification"))
   }
+  let bounded_method = operation == @model_access.START ||
+    operation == @model_access.ADVANCE ||
+    operation == @model_access.CANCEL
   match self.lifecycle {
     Exited | Shutdown =>
       return Some(rpc_error(id, -32014, "Session has shut down"))
     BeforeInitialize =>
-      if !["morphir.initialize", "morphir.extension.describe", "morphir.ping"].contains(
+      if !bounded_method &&
+        !["morphir.initialize", "morphir.extension.describe", "morphir.ping"].contains(
           operation,
         ) {
         return Some(rpc_error(id, -32014, "Initialize the extension first"))
@@ -190,6 +229,9 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
       }
   }
   let params = fields.get("params").unwrap_or(Json::object({}))
+  if bounded_method {
+    return Some(self.bounded_message(id, operation, params))
+  }
   if !(params is Object(_)) {
     return Some(rpc_error(id, -32602, "Object parameters required"))
   }
@@ -197,7 +239,11 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
     match operation {
       "morphir.extension.describe" | "morphir.initialize" =>
         match
-          negotiation(params, initialize=operation == "morphir.initialize") {
+          negotiation(
+            params,
+            initialize=operation == "morphir.initialize",
+            bounded=self.bounded is Some(_),
+          ) {
           Some(code) =>
             rpc_error(
               id, code, "Invalid negotiation parameters or unsupported MEP version",
@@ -206,10 +252,48 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
             if operation == "morphir.extension.describe" {
               result(id, {
                 "claimsVersion": "0.1.0-draft.2",
-                "protocolVersions": [MODEL_PROTOCOL, "0.1"],
+                "protocolVersions": if self.bounded is Some(_) {
+                  [@model_access.PROTOCOL, MODEL_PROTOCOL, "0.1"]
+                } else {
+                  [MODEL_PROTOCOL, "0.1"]
+                },
                 "extension": self.info(),
                 "capabilities": self.capabilities(
                   Some(model_support(frontend=self.frontend is Some(_))),
+                  access=self.bounded.map(backend => backend.support),
+                ),
+              })
+            } else if self.bounded is Some(backend) &&
+              field(params, "protocolVersions") is Array(versions) &&
+              versions.contains(Json::string(@model_access.PROTOCOL)) {
+              let agreement = if params is Object(fields) &&
+                fields.get("modelAccess") is Some(offer) {
+                let host = @model_access.Support::from_json(offer) catch {
+                  _ =>
+                    return Some(
+                      rpc_error(
+                        id, -32602, "Invalid bounded model access offer",
+                      ),
+                    )
+                }
+                let chosen = host.intersect(backend.support)
+                if chosen.tuples().is_empty() {
+                  None
+                } else {
+                  Some(chosen)
+                }
+              } else {
+                None
+              }
+              self.bounded_activation = BoundedWaiting(agreement)
+              self.lifecycle = Ready
+              result(id, {
+                "protocolVersion": @model_access.PROTOCOL,
+                "extension": self.info(),
+                "capabilities": self.capabilities(
+                  None,
+                  access=agreement,
+                  bounded_line=true,
                 ),
               })
             } else {
@@ -258,11 +342,26 @@ pub fn Session::handle(self : Session, request : Json) -> Json? {
       "morphir.ping" => result(id, { "ok": true })
       "morphir.extension.info" => result(id, self.info())
       "morphir.extension.capabilities" =>
-        result(id, self.capabilities(self.models))
+        match self.bounded_activation {
+          BoundedInactive => result(id, self.capabilities(self.models))
+          BoundedWaiting(agreed) | BoundedReady(agreed) =>
+            result(
+              id,
+              self.capabilities(None, access=agreed, bounded_line=true),
+            )
+        }
       "morphir.shutdown" => {
         self.lifecycle = Shutdown
+        self.release_generation()
         result(id, Json::object({}))
       }
+      _ if !(self.bounded_activation is BoundedInactive) &&
+        [
+          "morphir.backend.generate", "morphir.backend.generateModel", "morphir.frontend.compileModel",
+        ].contains(operation) =>
+        rpc_error(
+          id, -32013, "The bounded session does not admit whole-model methods",
+        )
       "morphir.backend.generate" => generate(id, params)
       "morphir.backend.generateModel" => self.generate_model(id, params)
       "morphir.frontend.compileModel" => self.compile_model(id, params)

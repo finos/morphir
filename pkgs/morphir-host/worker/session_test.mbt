@@ -150,7 +150,7 @@ fn sends(step : @worker.Step) -> Array[@worker.Message] {
   match step {
     Exchange(sends~, ..) => sends
     Activated(_, sends~) => sends
-    Answered(_, sends~) => sends
+    Answered(_, sends~) | BoundedAnswered(_, sends~) => sends
     Finished(_, sends~, ..) => sends
   }
 }
@@ -1449,4 +1449,393 @@ test "channel refusal: a worker that refused to serve ends the session as refuse
     fail("a refusal did not end the session: \{@debug.to_string(step)}")
   }
   assert_true(message.contains("build b"))
+}
+
+///|
+// The tuple and limits are the fixed v4 offer in the parent bounded-generation
+// transcript. The probe description uses the same guest and claimed capability.
+fn bounded_probe_description(
+  tuple : Map[String, Json],
+  protocol~ : String = "0.2.0-draft.2",
+) -> Json {
+  {
+    "claimsVersion": "0.1.0-draft.2",
+    "protocolVersions": [protocol],
+    "extension": {
+      "id": "org.finos.morphir.orders",
+      "name": "Orders generator",
+      "version": "0.1.0",
+      "types": ["backend"],
+    },
+    "capabilities": {
+      "backend": {
+        "targets": ["text"],
+        "irVersions": ["4.0.0"],
+        "generate": false,
+      },
+      "modelAccess": {
+        "tuples": [Json::object(tuple)],
+        "limits": {
+          "maxFrameBytes": 32768,
+          "maxEncodedBytesPerExchange": 8192,
+          "maxDecodedBytesPerExchange": 6144,
+          "maxDocumentsPerBatch": 8,
+          "maxDepth": 64,
+          "maxNodes": 256,
+          "maxDiagnosticsPerExchange": 16,
+          "maxOutstandingRequests": 8,
+          "maxGuestStateBytes": 1048576,
+          "maxHostCacheBytes": 1048576,
+          "maxArtifactChunkBytes": 4096,
+          "maxArtifactBytes": 4294967296,
+          "maxTotalArtifactBytes": 4294967296,
+          "maxSessionDiskBytes": 8589934592,
+          "maxSessionWorkUnits": 4096,
+          "maxRounds": 16,
+          "maxCallMilliseconds": 500,
+          "maxSessionMilliseconds": 2500,
+        },
+      },
+    },
+    "critical": ["capabilities.modelAccess"],
+  }
+}
+
+///|
+fn bounded_probe_tuple() -> Map[String, Json] {
+  {
+    "protocolVersion": "0.2.0-draft.2",
+    "accessVersion": "0.1.0-draft.1",
+    "operation": "morphir.backend.generateModel",
+    "irVersion": "4.0.0",
+    "profile": "morphir-ir",
+    "codec": "morphir-json",
+    "layout": "document-tree",
+    "contextualEncoding": "plain",
+  }
+}
+
+///|
+test "bounded probe decodes the exact draft.2 capability and keeps ordinary generate unclaimed" {
+  let (conversation, probe) = @worker.Conversation::probe()
+  let result = bounded_probe_description(bounded_probe_tuple())
+  let packet = @worker.Message::new({
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": result,
+  })
+  let received = @worker.Message::parse(packet.to_bytes())
+  let (_, step) = conversation.on(Received(received))
+  guard step is Finished(stop=CloseAfterExit, Described(description), ..) else {
+    fail("the probe did not accept the fixed draft.2 description")
+  }
+  let offered = sends(probe)[0].json()
+  guard offered is Object(fields) &&
+    fields.get("params") is Some(Object(params)) &&
+    params.get("protocolVersions") is Some(Array(versions)) else {
+    fail("the probe did not send protocol versions")
+  }
+  assert_eq(versions, ["0.2.0-draft.2", "0.2.0-draft.1", "0.1"])
+  assert_eq(description.claims.protocol_lines.map(line => line.to_string()), [
+    "0.2.0-draft.2",
+  ])
+  assert_eq(
+    description.claims.backend_ir_versions.map(version => version.to_string()),
+    ["4.0.0"],
+  )
+  let expected = bounded_probe_description(bounded_probe_tuple())
+  guard expected is Object(fields) &&
+    fields.get("capabilities") is Some(Object(capabilities)) else {
+    fail("the fixed description has no capabilities")
+  }
+  assert_eq(
+    Some(description.claims.model_access.unwrap().to_json()),
+    capabilities.get("modelAccess"),
+  )
+  assert_false(description.claims.offers(Generate))
+  assert_eq(methods(step), ["morphir.exit"])
+}
+
+///|
+test "bounded probe refuses missing tuple members, adjacent drafts and integer IR spellings" {
+  for
+    (key, invalid) in [
+      ("contextualEncoding", Json::null()),
+      ("accessVersion", Json::string("0.1.0-draft.2")),
+      ("protocolVersion", Json::string("0.2.0-draft.1")),
+      ("irVersion", Json::string("4")),
+    ] {
+    let tuple = bounded_probe_tuple()
+    if invalid == Json::null() {
+      tuple.remove(key)
+    } else {
+      tuple[key] = invalid
+    }
+    let (conversation, _) = @worker.Conversation::probe()
+    let (_, step) = conversation.on(answer(1, bounded_probe_description(tuple)))
+    assert_false(step is Finished(Described(_), ..))
+  }
+  let (conversation, _) = @worker.Conversation::probe()
+  let (_, step) = conversation.on(
+    answer(
+      1,
+      bounded_probe_description(bounded_probe_tuple(), protocol="0.2.0-draft.1"),
+    ),
+  )
+  assert_false(step is Finished(Described(_), ..))
+}
+
+///|
+fn test_support(description : Json) -> Json raise {
+  guard description is Object(fields) &&
+    fields.get("capabilities") is Some(Object(capabilities)) &&
+    capabilities.get("modelAccess") is Some(Object(support)) else {
+    fail("the fixed description has no bounded access")
+  }
+  Json::object(support)
+}
+
+///|
+test "bounded tuple intersection retains host order and exact wide byte ceilings" {
+  let plain = bounded_probe_tuple()
+  let yaml = bounded_probe_tuple()
+  yaml["codec"] = "morphir-yaml"
+  let contextual = bounded_probe_tuple()
+  contextual["contextualEncoding"] = "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json"
+
+  let host_description = bounded_probe_description(plain)
+  guard test_support(host_description) is Object(host_support) else {
+    fail("expected a fixed access offer")
+  }
+  host_support["tuples"] = [
+    Json::object(yaml),
+    Json::object(plain),
+    Json::object(contextual),
+  ]
+
+  let guest_description = bounded_probe_description(plain)
+  guard test_support(guest_description) is Object(guest_support) &&
+    guest_support.get("limits") is Some(Object(guest_limits)) else {
+    fail("expected fixed guest access limits")
+  }
+  guest_support["tuples"] = [Json::object(plain), Json::object(yaml)]
+  guest_limits["maxArtifactBytes"] = Json::number(2147483649.0)
+  guest_limits["maxSessionWorkUnits"] = Json::number(64)
+
+  let host = @worker.Claims::from_describe(host_description).model_access.unwrap()
+  let guest = @worker.Claims::from_describe(guest_description).model_access.unwrap()
+  let agreement = host.intersect(guest)
+  assert_eq(agreement.tuples().map(tuple => tuple.to_json()), [
+    Json::object(yaml),
+    Json::object(plain),
+  ])
+  assert_eq(agreement.limits.to_json(), Json::object(guest_limits))
+  assert_true(agreement.limits.at_most(host.limits))
+  assert_false(host.limits.at_most(agreement.limits))
+}
+
+///|
+test "bounded probe refuses duplicate offers and limits outside exact JSON integer range" {
+  let duplicate = bounded_probe_description(bounded_probe_tuple())
+  guard test_support(duplicate) is Object(support) else {
+    fail("expected a fixed access offer")
+  }
+  let tuple = Json::object(bounded_probe_tuple())
+  support["tuples"] = [tuple, tuple]
+  let (probe, _) = @worker.Conversation::probe()
+  let (_, step) = probe.on(answer(1, duplicate))
+  assert_false(step is Finished(Described(_), ..))
+
+  for
+    invalid in [
+      Json::number(0),
+      Json::number(1.5),
+      Json::number(9007199254740992.0),
+    ] {
+    let description = bounded_probe_description(bounded_probe_tuple())
+    guard test_support(description) is Object(support) &&
+      support.get("limits") is Some(Object(limits)) else {
+      fail("expected a fixed access offer")
+    }
+    limits["maxArtifactBytes"] = invalid
+    let (probe, _) = @worker.Conversation::probe()
+    let (_, step) = probe.on(answer(1, description))
+    assert_false(step is Finished(Described(_), ..))
+  }
+}
+
+///|
+fn bounded_activation_offer(
+  tuples : Array[Json],
+  frame_bytes~ : Int32 = 32768,
+) -> Json raise {
+  let description = bounded_probe_description(bounded_probe_tuple())
+  let access = test_support(description)
+  guard access is Object(fields) && fields.get("limits") is Some(Object(limits)) else {
+    fail("the fixed activation has no limits")
+  }
+  fields["tuples"] = Json::array(tuples)
+  limits["maxFrameBytes"] = Json::number(frame_bytes.to_double())
+  access
+}
+
+///|
+fn bounded_activation_reply(
+  access : Json?,
+  protocol~ : String = "0.2.0-draft.2",
+) -> Json raise {
+  let description = bounded_probe_description(bounded_probe_tuple())
+  guard description is Object(fields) &&
+    fields.get("capabilities") is Some(Object(capabilities)) else {
+    fail("the fixed activation has no capabilities")
+  }
+  fields.remove("protocolVersions")
+  fields.remove("claimsVersion")
+  fields.remove("critical")
+  fields["protocolVersion"] = Json::string(protocol)
+  match access {
+    Some(value) => capabilities["modelAccess"] = value
+    None => capabilities.remove("modelAccess")
+  }
+  description
+}
+
+///|
+fn bounded_yaml_tuple() -> Json {
+  let yaml = bounded_probe_tuple()
+  yaml["codec"] = "morphir-yaml"
+  Json::object(yaml)
+}
+
+///|
+fn bounded_activation_claims() -> @worker.Claims raise {
+  let plain = Json::object(bounded_probe_tuple())
+  let description = bounded_probe_description(bounded_probe_tuple())
+  guard test_support(description) is Object(access) else {
+    fail("the fixed description has no bounded offer")
+  }
+  access["tuples"] = [plain, bounded_yaml_tuple()]
+  @worker.Claims::from_describe(description)
+}
+
+///|
+test "bounded activation emits the complete host offer and admits only the live ordered agreement" {
+  let yaml = bounded_yaml_tuple()
+  let plain = Json::object(bounded_probe_tuple())
+  let host = @model_access.Support::from_json(
+    bounded_activation_offer([yaml, plain]),
+  )
+  let claim = bounded_activation_claims()
+  let offer : @worker.Offer = Bounded(host)
+  let (conversation, first) = @worker.Conversation::activate(
+    offer,
+    expected=claim,
+    limits=@worker.Limits::new(
+      request_bytes=20000,
+      response_bytes=24000,
+      model=@worker.Limits::host().model,
+    ),
+  )
+  assert_eq(methods(first), ["morphir.initialize"])
+  let initialize = sends(first)[0].json()
+  guard initialize is Object(fields) &&
+    fields.get("params") is Some(Object(params)) else {
+    fail("initialize does not have object parameters")
+  }
+  assert_eq(
+    params.get("protocolVersions"),
+    Some(Json::array(["0.2.0-draft.2"])),
+  )
+  assert_eq(params.get("modelTransport"), None)
+  assert_eq(
+    params.get("modelAccess"),
+    Some(bounded_activation_offer([yaml, plain], frame_bytes=20000)),
+  )
+
+  let live = bounded_activation_offer([yaml, plain], frame_bytes=12000)
+  let (session, step) = conversation.on(
+    answer(1, bounded_activation_reply(Some(live))),
+  )
+  guard step is Activated(negotiated, ..) else {
+    fail("the worker did not activate")
+  }
+  assert_eq(methods(step), ["morphir.initialized"])
+  assert_eq(negotiated.model_access.map(value => value.to_json()), Some(live))
+  assert_eq(negotiated.tuple, None)
+  assert_eq(session.limits().request_bytes, 12000)
+  assert_eq(session.limits().response_bytes, 12000)
+
+  let (_, unbounded) = session.generate(
+    generate_request({ "target": "text", "ir": {} }),
+  )
+  guard unbounded
+    is Answered({ class: Refused(code=CapabilityUnavailable, ..), .. }, ..) else {
+    fail("a bounded session allowed an unbounded call")
+  }
+  assert_eq(sends(unbounded).length(), 0)
+}
+
+///|
+test "bounded activation refuses an unsupported live tuple before sending initialized" {
+  let plain = Json::object(bounded_probe_tuple())
+  let yaml = bounded_yaml_tuple()
+  let other = bounded_probe_tuple()
+  other["irVersion"] = "3.1.0"
+  let other = Json::object(other)
+  let host = @model_access.Support::from_json(
+    bounded_activation_offer([yaml, plain, other]),
+  )
+  let claim = bounded_activation_claims()
+  let offer : @worker.Offer = Bounded(host)
+  for
+    live in [
+      None,
+      Some(bounded_activation_offer([])),
+      Some(bounded_activation_offer([plain, yaml])),
+      Some(bounded_activation_offer([other])),
+      Some(bounded_activation_offer([yaml], frame_bytes=32769)),
+    ] {
+    let (session, _) = @worker.Conversation::activate(offer, expected=claim)
+    let (session, step) = session.on(answer(1, bounded_activation_reply(live)))
+    assert_eq(methods(step), ["morphir.shutdown"])
+    assert_eq(session.negotiated(), None)
+    let (_, end) = session.on(answer(2, {}))
+    guard end is Finished(EndedEarly(Refused(..)), ..) else {
+      fail("a refusal did not settle as a refused activation")
+    }
+    assert_eq(methods(end), ["morphir.exit"])
+  }
+  let (session, _) = @worker.Conversation::activate(offer, expected=claim)
+  let (_, step) = session.on(
+    answer(1, bounded_activation_reply(None, protocol="0.2.0-draft.1")),
+  )
+  guard step is Finished(EndedEarly(Refused(code=ProtocolUnavailable, ..)), ..) else {
+    fail("an earlier draft was allowed to admit bounded access")
+  }
+  assert_eq(methods(step), ["morphir.exit"])
+}
+
+///|
+test "bounded offer preflight requires a whole recorded tuple" {
+  let plain = bounded_probe_tuple()
+  plain["irVersion"] = "3.1.0"
+  let offer : @worker.Offer = Bounded(
+    @model_access.Support::from_json(
+      bounded_activation_offer([Json::object(plain)]),
+    ),
+  )
+  let claims = bounded_activation_claims()
+  let code = try {
+    offer.check(claims)
+    None
+  } catch {
+    @worker.Refusal(code~, ..) => Some(code)
+  }
+  assert_eq(code, Some(TupleUnavailable))
+  let admitted : @worker.Offer = Bounded(
+    @model_access.Support::from_json(
+      bounded_activation_offer([bounded_yaml_tuple()]),
+    ),
+  )
+  admitted.check(claims)
 }

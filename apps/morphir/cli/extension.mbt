@@ -1659,6 +1659,11 @@ async fn extension_execute(
             inputs.ir_version,
           )
         (Model(_), _) => None
+        (Bounded(_), _) =>
+          raise refused(
+            Worker(CapabilityUnavailable),
+            "a bounded generation session cannot compile",
+          )
       }
       let language = extension_language(claims, inputs.language)
       let documents = extension_sources(
@@ -1792,6 +1797,11 @@ async fn extension_execute(
     (Model(_), Some({ tuple: Some(tuple), .. })) => Some(tuple)
     (Model(_), _) =>
       raise failed(ResultInvalid, "the session reports no agreed model tuple")
+    (Bounded(_), _) =>
+      raise failed(
+        ResultInvalid,
+        "a bounded generation session has no single-call result",
+      )
   }
   let limits = match report.negotiated {
     Some(negotiated) => negotiated.limits.model

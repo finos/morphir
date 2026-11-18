@@ -92,6 +92,59 @@ The host API has five operations for acquisition:
 5. `Host::supports` and `Host::runtimes` tell which runtimes the host can
    start.
 
+A draft.2 guest can describe bounded access in `capabilities.modelAccess`.
+For example, an orders generator can advertise plain JSON document trees for
+IR `4.0.0`. YAML and contextual encoding require their own complete tuples.
+The probe checks every tuple and the limit record, including artifact
+ceilings above 2 GiB. When the shared codec intersects two offers, it keeps
+the host's preference order.
+
+To activate for bounded generation, pass `Offer::Bounded` to `Host::activate`.
+The host first checks the recorded claims for a whole tuple and a generation
+target. It then sends the live `modelAccess` offer. The reply must contain a
+nonempty subset that both peers offered, in host order, and may only lower the
+shared ceilings. For example, a guest can lower a 20,000-byte frame offer to
+12,000 bytes. The host records the agreed tuples and limits under `modelAccess`
+in the session report. The current compile and generate operations use MEP
+`0.1` and `0.2.0-draft.1`.
+
+After activation, `Session::start_generation` binds a snapshot and the selected
+tuple to a fresh operation ID. A `Continue` reply gives the exact round and
+requested inventory pages or documents. Pass the deliveries in that order to
+`Session::advance_generation`. An advance with the wrong round or snapshot
+leaves the outstanding requests available for a corrected call. A
+`Complete` or `Failed` reply ends the operation. `Failed` carries diagnostics
+even though the RPC itself completed.
+
+`Session::cancel_generation` waits for an acknowledgement for the active
+operation. Closing with a round still active requests cancellation before
+shutdown and exit. An invalid advance (-32602) leaves the pending round
+available for correction. Other generation errors settle the round.
+The driver applies the shorter host deadline and the operation's call limit
+to each exchange. The generation deadline starts at its first call and
+includes time between advances. A deadline stops the worker before the
+session reports termination.
+The worker conversation validates the exchange and returns typed chunks.
+The generation caller verifies delivered bytes and stages those chunks before
+it publishes an artifact.
+
+A small model can use an older protocol when no complete bounded tuple
+matches. Pass a byte-capped reader to `BoundedGenerateChoice::select` only
+when the caller has a lossless single-document alternative. The chooser
+tries the bounded offer first. It reads the document only for a compatible
+fallback and returns an `extension.bounded_mep_fallback` diagnostic with
+the selected protocol. An integer document format version requires the
+corresponding exact release, such as 3.0.0 for 3. A required bounded run omits
+the reader.
+
+A MoonBit extension opts in by supplying a `BoundedBackend` to
+`mep.Session::new`. Its callback receives the admitted snapshot and creates
+an operation with an advance callback and a release callback. The guest runs
+the callback only after `initialized`. It releases the operation on completion,
+failure, cancellation, shutdown, or exit. Both peers use the same round and
+request checks. The ordinary constructor and the draft.1 session keep their
+single-document behavior.
+
 A session must be closed: until then its worker runs. Use `with_session`
 unless you need the session outside one function. The function can close the
 session itself to read its report; a second close returns the same report.

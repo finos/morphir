@@ -12,14 +12,14 @@ pub extend Refusal with Eq::{equal, not_equal}
 pub extend Refusal with @debug.Debug::{to_repr}
 
 ///|
-/// What the host offers in `initialize`: MEP 0.1 for the legacy compile and
-/// generate methods, or MEP 0.2.0-draft.1 with the model tuples of one
-/// operation in the host's order of preference (SES-3). The first tuple is
-/// the host's default; the order is the only signal for it.
+/// What the host offers at initialization: legacy methods on MEP 0.1,
+/// single-document model methods on draft.1, or model access on draft.2.
+/// Each offer lists complete tuples in the host's order of preference.
 #derive(Eq, Debug)
 pub(all) enum Offer {
   Legacy
   Model(Array[ModelTuple])
+  Bounded(@model_access.Support)
 }
 
 ///|
@@ -33,14 +33,16 @@ pub fn Offer::line(self : Offer) -> ProtocolLine {
   match self {
     Legacy => Mep0_1
     Model(_) => Mep0_2Draft1
+    Bounded(_) => Mep0_2Draft2
   }
 }
 
 ///|
-/// The operations a session with this offer can call.
+/// The single-call operations available on a legacy or draft.1 offer.
 pub fn Offer::operations(self : Offer) -> Array[Operation] {
   match self {
     Legacy => [Compile, Generate]
+    Bounded(_) => []
     Model(tuples) => {
       let operations : Array[Operation] = []
       for tuple in tuples {
@@ -58,7 +60,7 @@ pub fn Offer::operations(self : Offer) -> Array[Operation] {
 /// The first tuple of a model offer: the host's default. MEP 0.1 has none.
 pub fn Offer::default_tuple(self : Offer) -> ModelTuple? {
   match self {
-    Legacy => None
+    Legacy | Bounded(_) => None
     Model(tuples) => tuples.get(0)
   }
 }
@@ -361,6 +363,7 @@ pub fn Limits::for_probe(self : Limits) -> Limits {
 pub struct Negotiated {
   offer : Offer
   tuple : ModelTuple?
+  model_access : @model_access.Support?
   limits : Limits
 }
 
@@ -380,12 +383,20 @@ priv enum CallKind {
 }
 
 ///|
-fn CallKind::operation(self : CallKind, offer : Offer) -> Operation {
+fn CallKind::model_operation(self : CallKind) -> Operation {
+  match self {
+    CompileCall => CompileModel
+    GenerateCall => GenerateModel
+  }
+}
+
+///|
+fn CallKind::operation(self : CallKind, offer : Offer) -> Operation? {
   match (self, offer) {
-    (CompileCall, Legacy) => Compile
-    (GenerateCall, Legacy) => Generate
-    (CompileCall, Model(_)) => CompileModel
-    (GenerateCall, Model(_)) => GenerateModel
+    (CompileCall, Legacy) => Some(Compile)
+    (GenerateCall, Legacy) => Some(Generate)
+    (_, Model(_)) => Some(self.model_operation())
+    (_, Bounded(_)) => None
   }
 }
 
@@ -408,15 +419,6 @@ priv struct Call {
 }
 
 ///|
-let placeholder_tuple : ModelTuple = {
-  operation: CompileModel,
-  profile: MorphirModel,
-  codec: MorphirJson,
-  envelope_version: V0_1_0Draft1,
-  ir_version: V4_0_0,
-}
-
-///|
 /// Checks a call against its framed request limit when it is made, so that an
 /// oversized request is refused before any worker starts. A generate call with a
 /// `model` goes on the model line and has the host's frame. Any other call has
@@ -428,9 +430,7 @@ fn Call::make(
   let call = { kind, params: params.copy(), }
   // The model method is the longer name, so this bound holds on either line.
   let size = framed_size(
-    call
-    .message(first_operation_id, kind.operation(Model([placeholder_tuple])))
-    .size(),
+    call.message(first_operation_id, kind.model_operation()).size(),
   )
   let limit = match kind {
     GenerateCall if params.contains("model") => Limits::host().request_bytes

@@ -206,6 +206,9 @@ pub impl ToJson for SessionReport with fn to_json(self) {
     if negotiated.tuple is Some(tuple) {
       fields["tuple"] = tuple.to_json()
     }
+    if negotiated.model_access is Some(support) {
+      fields["modelAccess"] = support.to_json()
+    }
   }
   if self.extism is Some(profile) {
     fields["extismProfile"] = profile.to_json()

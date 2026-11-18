@@ -1,0 +1,282 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-moonbit/mep/model_access"
+
+import {
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub const ACCESS_VERSION : String = "0.1.0-draft.1"
+
+pub const ADVANCE : String = "morphir.backend.generateModel.advance"
+
+pub const CANCEL : String = "morphir.backend.generateModel.cancel"
+
+pub const CONTEXT_SCHEMA : String = "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json"
+
+pub const PROTOCOL : String = "0.2.0-draft.2"
+
+pub const START : String = "morphir.backend.generateModel.start"
+
+// Errors
+
+// Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) struct AccessTuple {
+  ir : IrVersion
+  codec : Codec
+  encoding : Encoding
+}
+pub fn AccessTuple::equal(Self, Self) -> Bool
+pub fn AccessTuple::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn AccessTuple::not_equal(Self, Self) -> Bool
+pub fn AccessTuple::to_json(Self) -> @json.Json
+pub fn AccessTuple::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct Advance {
+  session_id : String
+  round : Int32
+  deliveries : Array[Delivery]
+}
+pub fn Advance::equal(Self, Self) -> Bool
+pub fn Advance::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn Advance::not_equal(Self, Self) -> Bool
+pub fn Advance::to_json(Self) -> @json.Json
+pub fn Advance::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct ArtifactChunk {
+  path : String
+  offset : Int64
+  decoded_byte_length : Int32
+  sha256 : String
+  content : String
+  final_chunk : Bool
+}
+pub fn ArtifactChunk::equal(Self, Self) -> Bool
+pub fn ArtifactChunk::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn ArtifactChunk::not_equal(Self, Self) -> Bool
+pub fn ArtifactChunk::to_json(Self) -> @json.Json
+pub fn ArtifactChunk::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct Cancel {
+  session_id : String
+}
+pub fn Cancel::equal(Self, Self) -> Bool
+pub fn Cancel::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn Cancel::not_equal(Self, Self) -> Bool
+pub fn Cancel::to_json(Self) -> @json.Json
+pub fn Cancel::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum Codec {
+  MorphirJson
+  MorphirYaml
+}
+pub fn Codec::equal(Self, Self) -> Bool
+pub fn Codec::not_equal(Self, Self) -> Bool
+pub fn Codec::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub enum Delivery {
+  Inventory(InventoryDelivery)
+  Document(DocumentDelivery)
+}
+pub fn Delivery::document_id(Self) -> String?
+pub fn Delivery::equal(Self, Self) -> Bool
+pub fn Delivery::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn Delivery::not_equal(Self, Self) -> Bool
+pub fn Delivery::request_id(Self) -> String
+pub fn Delivery::snapshot_id(Self) -> String
+pub fn Delivery::to_json(Self) -> @json.Json
+pub fn Delivery::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct DocumentDelivery {
+  request_id : String
+  snapshot_id : String
+  document_id : String
+  decoded_byte_length : Int32
+  sha256 : String
+  content : String
+}
+pub fn DocumentDelivery::equal(Self, Self) -> Bool
+pub fn DocumentDelivery::not_equal(Self, Self) -> Bool
+pub fn DocumentDelivery::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum Encoding {
+  Plain
+  ContextualDraft1
+}
+pub fn Encoding::equal(Self, Self) -> Bool
+pub fn Encoding::not_equal(Self, Self) -> Bool
+pub fn Encoding::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct GenerationRun {
+  session_id : String
+  snapshot_id : String
+  limits : Limits
+  round : Int32
+  // private fields
+}
+pub fn GenerationRun::accept_step(Self, GenerationStep) -> Self? raise @wire.CodecError
+pub fn GenerationRun::accepts(Self, Advance) -> Bool
+pub fn GenerationRun::equal(Self, Self) -> Bool
+pub fn GenerationRun::new(Start) -> Self
+pub fn GenerationRun::not_equal(Self, Self) -> Bool
+pub fn GenerationRun::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum GenerationStep {
+  Continue(session_id~ : String, round~ : Int32, requests~ : Array[ReadRequest], artifacts~ : Array[ArtifactChunk], diagnostics~ : Array[@json.Json])
+  Complete(session_id~ : String, artifacts~ : Array[ArtifactChunk], diagnostics~ : Array[@json.Json])
+  Failed(session_id~ : String, first_diagnostic~ : @json.Json, other_diagnostics~ : Array[@json.Json])
+}
+pub fn GenerationStep::diagnostics(Self) -> Array[@json.Json]
+pub fn GenerationStep::equal(Self, Self) -> Bool
+pub fn GenerationStep::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn GenerationStep::not_equal(Self, Self) -> Bool
+pub fn GenerationStep::session_id(Self) -> String
+pub fn GenerationStep::to_json(Self) -> @json.Json
+pub fn GenerationStep::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct GuaranteeRequirement {
+  guarantee : String
+  scope : String
+}
+pub fn GuaranteeRequirement::equal(Self, Self) -> Bool
+pub fn GuaranteeRequirement::not_equal(Self, Self) -> Bool
+pub fn GuaranteeRequirement::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct InventoryDelivery {
+  request_id : String
+  snapshot_id : String
+  entries : Array[InventoryEntry]
+  next_cursor : String?
+}
+pub fn InventoryDelivery::equal(Self, Self) -> Bool
+pub fn InventoryDelivery::not_equal(Self, Self) -> Bool
+pub fn InventoryDelivery::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub enum InventoryEntry {
+  Module(InventoryIdentity, member_selection~ : String?)
+  Type(InventoryIdentity, name~ : String)
+  Value(InventoryIdentity, name~ : String)
+}
+pub fn InventoryEntry::equal(Self, Self) -> Bool
+pub fn InventoryEntry::not_equal(Self, Self) -> Bool
+pub fn InventoryEntry::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct InventoryIdentity {
+  document_id : String
+  package_name : String
+  module_path : String
+  role : InventoryRole
+}
+pub fn InventoryIdentity::equal(Self, Self) -> Bool
+pub fn InventoryIdentity::not_equal(Self, Self) -> Bool
+pub fn InventoryIdentity::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum InventoryRole {
+  Definition
+  Specification
+}
+pub fn InventoryRole::equal(Self, Self) -> Bool
+pub fn InventoryRole::not_equal(Self, Self) -> Bool
+pub fn InventoryRole::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum IrVersion {
+  V3_1
+  V4
+}
+pub fn IrVersion::equal(Self, Self) -> Bool
+pub fn IrVersion::not_equal(Self, Self) -> Bool
+pub fn IrVersion::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct Limits {
+  // private fields
+}
+pub fn Limits::at_most(Self, Self) -> Bool
+pub fn Limits::bound(Self, Self) -> Self
+pub fn Limits::call_milliseconds(Self) -> Int32
+pub fn Limits::diagnostics_per_exchange(Self) -> Int32
+pub fn Limits::equal(Self, Self) -> Bool
+pub fn Limits::frame_bytes(Self) -> Int64
+pub fn Limits::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn Limits::not_equal(Self, Self) -> Bool
+pub fn Limits::outstanding_requests(Self) -> Int32
+pub fn Limits::rounds(Self) -> Int32
+pub fn Limits::session_milliseconds(Self) -> Int32
+pub fn Limits::to_json(Self) -> @json.Json
+pub fn Limits::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum ReadRequest {
+  Inventory(request_id~ : String, selection~ : String, page_size~ : Int32, cursor~ : String?)
+  Document(request_id~ : String, document_id~ : String)
+}
+pub fn ReadRequest::equal(Self, Self) -> Bool
+pub fn ReadRequest::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn ReadRequest::not_equal(Self, Self) -> Bool
+pub fn ReadRequest::request_id(Self) -> String
+pub fn ReadRequest::to_json(Self) -> @json.Json
+pub fn ReadRequest::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct Snapshot {
+  snapshot_id : String
+  model_id : String
+  revision : String
+  context_digest : String
+  scope : String
+}
+pub fn Snapshot::equal(Self, Self) -> Bool
+pub fn Snapshot::not_equal(Self, Self) -> Bool
+pub fn Snapshot::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct Start {
+  session_id : String
+  snapshot : Snapshot
+  input : AccessTuple
+  target : String
+  options : @json.Json
+  required_guarantees : Array[GuaranteeRequirement]
+  limits : Limits
+}
+pub fn Start::equal(Self, Self) -> Bool
+pub fn Start::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn Start::not_equal(Self, Self) -> Bool
+pub fn Start::to_json(Self) -> @json.Json
+pub fn Start::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct Support {
+  limits : Limits
+  // private fields
+}
+pub fn Support::cap_frame(Self, Int32) -> Self raise @wire.CodecError
+pub fn Support::equal(Self, Self) -> Bool
+pub fn Support::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn Support::intersect(Self, Self) -> Self
+pub fn Support::not_equal(Self, Self) -> Bool
+pub fn Support::to_json(Self) -> @json.Json
+pub fn Support::to_repr(Self) -> @debug.Repr
+pub fn Support::tuples(Self) -> Array[AccessTuple]
+
+// Type aliases
+
+// Traits

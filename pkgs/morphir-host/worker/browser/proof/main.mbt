@@ -223,6 +223,7 @@ async fn describe_compile_generate(
     Model([tuple]) => moonbit_compile(tuple)
     Model(_) => fail("not one model tuple")
     Legacy => python_compile()
+    Bounded(_) => fail("a bounded-generation session cannot compile")
   }
   let started = @async.now()
   let mut memory = -1.0

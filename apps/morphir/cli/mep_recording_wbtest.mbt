@@ -4,7 +4,7 @@ fn recording_sends(step : @worker.Step) -> Array[Json] {
   let sends = match step {
     Exchange(sends~, ..) => sends
     Activated(sends~, _) => sends
-    Answered(sends~, _) => sends
+    Answered(sends~, _) | BoundedAnswered(sends~, _) => sends
     Finished(sends~, _, ..) => sends
   }
   sends.map(message => message.json())

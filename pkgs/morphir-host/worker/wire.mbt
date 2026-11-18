@@ -24,11 +24,12 @@ fn notification_message(method_name : String) -> Message {
 }
 
 ///|
-/// A probe offers both protocol lines, so that legacy and model guests both
+/// A probe offers the known protocol lines, so all supported guests can
 /// describe themselves.
 fn describe_message(id : Int32) -> Message {
   request_message(id, "morphir.extension.describe", {
     "protocolVersions": [
+      ProtocolLine::Mep0_2Draft2.to_string(),
       ProtocolLine::Mep0_2Draft1.to_string(),
       ProtocolLine::Mep0_1.to_string(),
     ],
@@ -41,12 +42,15 @@ fn initialize_message(id : Int32, offer : Offer, limits : Limits) -> Message {
     "protocolVersions": [offer.line().to_string()],
     "host": { "name": host_name, "version": host_version },
   }
-  if offer is Model(tuples) {
-    params["modelTransport"] = {
-      "tuples": Json::array(tuples.map(tuple => tuple.to_json())),
-      "limits": limits.model.to_json(),
-      "guarantees": [],
-    }
+  match offer {
+    Model(tuples) =>
+      params["modelTransport"] = {
+        "tuples": Json::array(tuples.map(tuple => tuple.to_json())),
+        "limits": limits.model.to_json(),
+        "guarantees": [],
+      }
+    Bounded(support) => params["modelAccess"] = support.to_json()
+    Legacy => ()
   }
   request_message(id, "morphir.initialize", params)
 }
@@ -268,11 +272,6 @@ fn read_claims(result : Json) -> Claims raise ValueError {
     }
     text
   }
-  for path in texts(field_at(result, ["critical"]), "critical") {
-    guard understood_paths.contains(path) else {
-      raise InvalidClaim("critical names \{path}, which the host does not read")
-    }
-  }
   let versions = match field_at(result, ["protocolVersion"]) {
     Some(String(version)) => [version]
     _ => texts(field_at(result, ["protocolVersions"]), "protocolVersions")
@@ -284,6 +283,23 @@ fn read_claims(result : Json) -> Claims raise ValueError {
       line => Some(line)
     }
   })
+  let bounded = protocol_lines.contains(Mep0_2Draft2)
+  for path in texts(field_at(result, ["critical"]), "critical") {
+    let access_path = [
+      "capabilities.modelAccess", "capabilities.modelAccess.tuples", "capabilities.modelAccess.limits",
+    ].contains(path)
+    guard understood_paths.contains(path) || (bounded && access_path) else {
+      raise InvalidClaim("critical names \{path}, which the host does not read")
+    }
+  }
+  let model_access = match field_at(result, ["capabilities", "modelAccess"]) {
+    Some(value) if bounded =>
+      Some(@model_access.Support::from_json(value)) catch {
+        @model_wire.Invalid(code, detail) =>
+          raise InvalidClaim("\{code}: \{detail}")
+      }
+    _ => None
+  }
   let capabilities = field_at(result, ["capabilities"])
   guard capabilities is Some(Object(_)) else {
     raise InvalidClaim("capabilities is not an object")
@@ -356,6 +372,7 @@ fn read_claims(result : Json) -> Claims raise ValueError {
       "backend irVersions",
     ),
     model_tuples~,
+    model_access~,
   )
 }
 
@@ -424,6 +441,7 @@ fn compare_claims(expected : Claims, live : Claims, offer : Offer) -> String? {
           ),
         ],
       )
+    Bounded(_) => (false, [missing("targets", expected.targets, live.targets)])
     Model(tuples) =>
       if tuples.iter().any(tuple => tuple.operation is GenerateModel) {
         (false, [missing("targets", expected.targets, live.targets)])

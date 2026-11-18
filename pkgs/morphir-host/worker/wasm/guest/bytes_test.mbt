@@ -129,7 +129,10 @@ fn drive(
   let mut step = step
   while true {
     let sends = match step {
-      Exchange(sends~, ..) | Activated(sends~, _) | Answered(sends~, _) => sends
+      Exchange(sends~, ..)
+      | Activated(sends~, _)
+      | Answered(sends~, _)
+      | BoundedAnswered(sends~, _) => sends
       Finished(_, ..) => break
     }
     let mut next = None

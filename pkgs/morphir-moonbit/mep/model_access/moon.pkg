@@ -1,0 +1,5 @@
+import {
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/string" @strconv,
+}

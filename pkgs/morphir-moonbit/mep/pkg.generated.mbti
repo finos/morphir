@@ -4,6 +4,7 @@ package "finos/morphir-moonbit/mep"
 import {
   "finos/morphir-metadata",
   "finos/morphir-moonbit",
+  "finos/morphir-moonbit/mep/model_access",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "moonrockz/ion/ion",
@@ -26,6 +27,16 @@ pub fn FrameError::message(Self) -> String
 pub fn FrameError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub struct BoundedBackend {
+  // private fields
+}
+pub fn BoundedBackend::new(@model_access.Support, (@model_access.Start) -> (@model_access.GenerationStep, BoundedOperation)) -> Self
+
+pub struct BoundedOperation {
+  // private fields
+}
+pub fn BoundedOperation::new(advance~ : (@model_access.Advance) -> @model_access.GenerationStep, release~ : () -> Unit) -> Self
+
 pub(all) enum Compilation {
   Compiled(@morphir-moonbit.Input, Array[String], Array[@json.Json])
   CompilationFailed(Array[@json.Json])
@@ -61,7 +72,7 @@ pub struct Session {
 }
 pub fn Session::exited(Self) -> Bool
 pub fn Session::handle(Self, @json.Json) -> @json.Json?
-pub fn Session::new(metadata_capabilities? : @morphir-metadata.Capabilities, frontend? : Frontend?, cancelled? : () -> Bool) -> Self
+pub fn Session::new(metadata_capabilities? : @morphir-metadata.Capabilities, frontend? : Frontend?, cancelled? : () -> Bool, bounded? : BoundedBackend?) -> Self
 pub fn Session::receive(Self, Bytes) -> @json.Json?
 
 // Type aliases

@@ -2,6 +2,7 @@ import {
   "finos/morphir-moonbit" @generator,
   "finos/morphir-ir/json" @ir_json,
   "finos/morphir-ir/wire",
+  "finos/morphir-moonbit/mep/model_access",
   "moonbitlang/core/string" @strconv,
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",

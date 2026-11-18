@@ -3,6 +3,7 @@ package "finos/morphir-host/worker"
 
 import {
   "finos/morphir-engine/ids",
+  "finos/morphir-moonbit/mep/model_access",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "moonrockz/moon-lander-hosting",
@@ -179,6 +180,16 @@ pub fn BoundGap::to_string(Self) -> String
 pub impl Show for BoundGap
 
 #derive(Eq, @debug.Debug)
+pub(all) enum BoundedGenerateChoice {
+  Access(Offer)
+  Inline(GenerateChoice, Diagnostic)
+}
+pub fn BoundedGenerateChoice::equal(Self, Self) -> Bool
+pub fn BoundedGenerateChoice::not_equal(Self, Self) -> Bool
+pub fn BoundedGenerateChoice::select(Claims, @model_access.Support, String, read_inline? : (Int32) -> Bytes raise Refusal) -> Self raise Refusal
+pub fn BoundedGenerateChoice::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
 pub struct Claims {
   extension_id : ExtensionId
   version : ExtensionVersion
@@ -190,11 +201,12 @@ pub struct Claims {
   targets : Array[@ids.BackendId]
   backend_ir_versions : Array[IrVersionName]
   model_tuples : Array[ModelTuple]
+  model_access : @model_access.Support?
 }
 pub fn Claims::compile_operation(Self) -> Operation
 pub fn Claims::equal(Self, Self) -> Bool
 pub fn Claims::from_describe(@json.Json) -> Self raise ValueError
-pub fn Claims::new(ExtensionId, ExtensionVersion, protocol_lines? : ArrayView[ProtocolLine], operations? : ArrayView[Operation], languages? : ArrayView[LanguageClaim], frontend_ir_versions? : ArrayView[IrVersionName], frontend_flags? : FrontendFlags, targets? : ArrayView[@ids.BackendId], backend_ir_versions? : ArrayView[IrVersionName], model_tuples? : ArrayView[ModelTuple]) -> Self
+pub fn Claims::new(ExtensionId, ExtensionVersion, protocol_lines? : ArrayView[ProtocolLine], operations? : ArrayView[Operation], languages? : ArrayView[LanguageClaim], frontend_ir_versions? : ArrayView[IrVersionName], frontend_flags? : FrontendFlags, targets? : ArrayView[@ids.BackendId], backend_ir_versions? : ArrayView[IrVersionName], model_tuples? : ArrayView[ModelTuple], model_access? : @model_access.Support?) -> Self
 pub fn Claims::not_equal(Self, Self) -> Bool
 pub fn Claims::offers(Self, Operation) -> Bool
 pub fn Claims::on_model_line(Self) -> Bool
@@ -233,6 +245,8 @@ pub struct Conversation {
   // private fields
 }
 pub fn Conversation::activate(Offer, expected~ : Claims, limits? : Limits) -> (Self, Step)
+pub fn Conversation::advance_generation(Self, @model_access.Advance) -> (Self, Step) raise SessionUnavailable
+pub fn Conversation::cancel_generation(Self, @model_access.Cancel) -> (Self, Step) raise SessionUnavailable
 pub fn Conversation::close(Self) -> (Self, Step) raise SessionUnavailable
 pub fn Conversation::compile(Self, CompileRequest) -> (Self, Step) raise SessionUnavailable
 pub fn Conversation::equal(Self, Self) -> Bool
@@ -242,6 +256,7 @@ pub fn Conversation::negotiated(Self) -> Negotiated?
 pub fn Conversation::not_equal(Self, Self) -> Bool
 pub fn Conversation::on(Self, Event) -> (Self, Step)
 pub fn Conversation::probe(limits? : Limits) -> (Self, Step)
+pub fn Conversation::start_generation(Self, @model_access.Start) -> (Self, Step) raise SessionUnavailable
 pub fn Conversation::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
@@ -509,6 +524,24 @@ pub fn Generated::equal(Self, Self) -> Bool
 pub fn Generated::new(@json.Json) -> Self
 pub fn Generated::not_equal(Self, Self) -> Bool
 pub fn Generated::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub struct GenerationAnswer {
+  class : OutcomeClass[GenerationReply]
+  diagnostics : Array[Diagnostic]
+}
+pub fn GenerationAnswer::equal(Self, Self) -> Bool
+pub fn GenerationAnswer::not_equal(Self, Self) -> Bool
+pub fn GenerationAnswer::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum GenerationReply {
+  Stepped(@model_access.GenerationStep)
+  CancelledGeneration(@model_access.Cancel)
+}
+pub fn GenerationReply::equal(Self, Self) -> Bool
+pub fn GenerationReply::not_equal(Self, Self) -> Bool
+pub fn GenerationReply::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
 pub(all) enum GuestFault {
@@ -847,6 +880,7 @@ pub impl @json.ToJson for ModelTuple
 pub struct Negotiated {
   offer : Offer
   tuple : ModelTuple?
+  model_access : @model_access.Support?
   limits : Limits
 }
 pub fn Negotiated::equal(Self, Self) -> Bool
@@ -857,6 +891,7 @@ pub fn Negotiated::to_repr(Self) -> @debug.Repr
 pub(all) enum Offer {
   Legacy
   Model(Array[ModelTuple])
+  Bounded(@model_access.Support)
 }
 pub fn Offer::check(Self, Claims) -> Unit raise Refusal
 pub fn Offer::default_tuple(Self) -> ModelTuple?
@@ -969,6 +1004,7 @@ pub impl Show for Platform
 pub(all) enum ProtocolLine {
   Mep0_1
   Mep0_2Draft1
+  Mep0_2Draft2
 }
 pub fn ProtocolLine::compare(Self, Self) -> Int32
 pub fn ProtocolLine::equal(Self, Self) -> Bool
@@ -1036,10 +1072,13 @@ pub impl Show for RuntimeKind
 pub struct Session {
   // private fields
 }
+pub async fn Session::advance_generation(Self, @model_access.Advance) -> Outcome[GenerationReply]
+pub async fn Session::cancel_generation(Self, @model_access.Cancel) -> Outcome[GenerationReply]
 pub async fn Session::close(Self) -> SessionReport
 pub async fn Session::compile(Self, CompileRequest) -> Outcome[Compiled]
 pub async fn Session::generate(Self, GenerateRequest) -> Outcome[Generated]
 pub fn Session::negotiated(Self) -> Negotiated?
+pub async fn Session::start_generation(Self, @model_access.Start) -> Outcome[GenerationReply]
 
 #derive(Eq, @debug.Debug)
 pub struct SessionReport {
@@ -1123,6 +1162,7 @@ pub(all) enum Step {
   Exchange(sends~ : Array[Message], awaiting~ : Int32)
   Activated(sends~ : Array[Message], Negotiated)
   Answered(sends~ : Array[Message], Answer)
+  BoundedAnswered(sends~ : Array[Message], GenerationAnswer)
   Finished(sends~ : Array[Message], stop~ : StopPlan, Conclusion)
 }
 pub fn Step::equal(Self, Self) -> Bool

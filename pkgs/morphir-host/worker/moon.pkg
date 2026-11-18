@@ -2,6 +2,7 @@ import {
   "finos/morphir-engine/ids",
   "finos/morphir-host/identity",
   "finos/morphir-ir/wire" @model_wire,
+  "finos/morphir-moonbit/mep/model_access",
   "moonbitlang/async",
   "moonbitlang/async/aqueue",
   "moonbitlang/core/cmp",
@@ -22,6 +23,10 @@ import {
   "finos/morphir-engine/ids",
   "finos/morphir-host/worker",
   "moonbitlang/x/fs",
+  "finos/morphir-moonbit/mep/model_access",
+  "finos/morphir-moonbit/mep" @guest_mep,
+  "finos/morphir-ir/json" @ir_json,
+  "finos/morphir-moonbit/fixtures" @generator_fixtures,
 } for "test"
 
 // moonbitlang/async has no event loop on wasm-gc. The types and the pure code
@@ -35,6 +40,7 @@ options(
     "memory_channel_test.mbt": [ "native", "js", "wasm" ],
     "host_driver.mbt": [ "native", "js", "wasm" ],
     "host_driver_test.mbt": [ "native", "js", "wasm" ],
+    "bounded_guest_test.mbt": [ "native", "js", "wasm" ],
     "host_driver_wbtest.mbt": [ "native", "js", "wasm" ],
   },
 )

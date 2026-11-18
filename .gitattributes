@@ -20,3 +20,5 @@ apps/morphir/fixtures/extism-python/** text eol=lf
 apps/morphir/fixtures/rust-extension/** text eol=lf
 apps/morphir/fixtures/morphir-extensions/** text eol=lf
 apps/morphir/fixtures/qualification/** text eol=lf
+# The shared MEP transcript is pinned by SHA-256.
+tests/fixtures/mep-bounded-generation/session-model-access.md text eol=lf

@@ -219,6 +219,7 @@ pub struct Claims {
   targets : Array[@ids.BackendId]
   backend_ir_versions : Array[IrVersionName]
   model_tuples : Array[ModelTuple]
+  model_access : @model_access.Support?
 }
 
 ///|
@@ -241,6 +242,7 @@ pub fn Claims::new(
   targets~ : ArrayView[@ids.BackendId] = [],
   backend_ir_versions~ : ArrayView[IrVersionName] = [],
   model_tuples~ : ArrayView[ModelTuple] = [],
+  model_access~ : @model_access.Support? = None,
 ) -> Claims {
   let merged : Array[LanguageClaim] = []
   for claim in sorted_set(languages) {
@@ -266,6 +268,7 @@ pub fn Claims::new(
     targets: sorted_set(targets),
     backend_ir_versions: sorted_set(backend_ir_versions),
     model_tuples: sorted_set(model_tuples),
+    model_access,
   }
 }
 
@@ -300,6 +303,7 @@ pub fn Claims::compile_operation(self : Claims) -> Operation {
 pub(all) enum ProtocolLine {
   Mep0_1
   Mep0_2Draft1
+  Mep0_2Draft2
 }
 
 ///|
@@ -316,6 +320,7 @@ pub fn ProtocolLine::parse(text : String) -> ProtocolLine raise ValueError {
   match text {
     "0.1" => Mep0_1
     "0.2.0-draft.1" => Mep0_2Draft1
+    version if version == @model_access.PROTOCOL => Mep0_2Draft2
     _ => raise UnknownProtocolLine(text)
   }
 }
@@ -326,6 +331,7 @@ pub impl Show for ProtocolLine with fn output(self, logger) {
     match self {
       Mep0_1 => "0.1"
       Mep0_2Draft1 => "0.2.0-draft.1"
+      Mep0_2Draft2 => @model_access.PROTOCOL
     },
   )
 }

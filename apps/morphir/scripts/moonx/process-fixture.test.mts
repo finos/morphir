@@ -5,6 +5,13 @@ import {mkdtempSync,realpathSync,writeFileSync,appendFileSync,rmSync} from 'node
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {start,finish,cleanup,waitControlLine,waitObservation,observations,gone,sleep,recoveryProblems} from './process-fixture.mts';
+async function waitForExit(pid: number) {
+ const deadline=Date.now()+3000;
+ while(!gone(pid)){
+  assert.ok(Date.now()<deadline,`Process ${pid} did not exit within the recovery bound`);
+  await sleep(10);
+ }
+}
 test('bounded process recovery and LF-complete records',async()=>{
 const root=realpathSync(mkdtempSync(join(tmpdir(),'morphir-process-recovery-')));
 try {
@@ -14,7 +21,7 @@ try {
  const events=join(root,'child.jsonl');
  const childSource=`require('node:fs').appendFileSync(${JSON.stringify(events)},JSON.stringify({event:'node-started',pid:process.pid})+'\\n');setInterval(()=>{},1000);`;
  const parent=join(root,'parent.cjs');
- writeFileSync(parent,`require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(childSource)}],{stdio:'inherit',detached:true});setInterval(()=>{},1000);`);
+ writeFileSync(parent,`require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(childSource)}],{stdio:'inherit',detached:true,cwd:require('node:os').tmpdir(),windowsHide:true});setInterval(()=>{},1000);`);
  const run=start(process.execPath,[parent],root,process.env,events);
  try {
   const child=await waitObservation(run,events,'node-started');
@@ -24,7 +31,7 @@ try {
   const started=performance.now();await cleanup(run);
   assert.ok(performance.now()-started<3000,'Recovery has a bounded wait');
   assert.equal(run.settled(),true);
-  const deadline=Date.now()+3000;while(!gone(child.pid)){assert.ok(Date.now()<deadline);await sleep(10);}
+  await waitForExit(child.pid);
   assert.deepEqual(recoveryProblems,[]);
  }finally{await cleanup(run);}
  const release=join(root,'release-control');
@@ -40,7 +47,7 @@ try {
  const hiddenEvents=join(root,'hidden-child.jsonl');
  const hiddenSource=`require('node:fs').appendFileSync(${JSON.stringify(hiddenEvents)},JSON.stringify({event:'node-started',pid:process.pid})+'\\n');setInterval(()=>{},1000);`;
  const hiddenParent=join(root,'hidden-parent.cjs');
- writeFileSync(hiddenParent,`require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(hiddenSource)}],{stdio:'inherit',detached:true});setInterval(()=>{},1000);`);
+ writeFileSync(hiddenParent,`require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(hiddenSource)}],{stdio:'inherit',detached:true,cwd:require('node:os').tmpdir(),windowsHide:true});setInterval(()=>{},1000);`);
  // Withhold descendant observations from the watchdog to model a missed PID.
  const hidden=start(process.execPath,[hiddenParent],root,process.env,undefined,10000);
  let hiddenPid: number|undefined;
@@ -53,7 +60,10 @@ try {
   assert.ok(performance.now()-recoveryStarted<4000);
   assert.equal(recoveryProblems.length,1);const recovery = recoveryProblems[0];assert.ok(recovery);assert.match(recovery,/pipes did not close/);
  } finally {
-  if(hiddenPid!==undefined&&!gone(hiddenPid))process.kill(hiddenPid,'SIGKILL');
+  if(hiddenPid!==undefined){
+   if(!gone(hiddenPid))process.kill(hiddenPid,'SIGKILL');
+   await waitForExit(hiddenPid);
+  }
   await cleanup(hidden);recoveryProblems.length=0;
  }
  console.log('Deadline regression: missed descendant held pipes; finish rejected on timeout and recovery returned within its bound. Fault child explicitly removed afterward.');

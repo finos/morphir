@@ -109,6 +109,7 @@ pub(all) enum Step {
   Exchange(sends~ : Array[Message], awaiting~ : Int32)
   Activated(sends~ : Array[Message], Negotiated)
   Answered(sends~ : Array[Message], Answer)
+  BoundedAnswered(sends~ : Array[Message], GenerationAnswer)
   Finished(sends~ : Array[Message], stop~ : StopPlan, Conclusion)
 }
 
@@ -140,6 +141,7 @@ priv enum Phase {
   Refusing(Ending)
   Ready
   Calling(CallKind, Operation)
+  CallingGeneration(PendingGeneration)
   Called
   ShuttingDown
   Over
@@ -160,6 +162,8 @@ pub struct Conversation {
   priv limits : Limits
   priv expected : Claims?
   priv negotiated : Negotiated?
+  priv generation : @model_access.GenerationRun?
+  priv used_generation_ids : Array[String]
 }
 
 ///|
@@ -182,6 +186,8 @@ pub fn Conversation::probe(
       limits,
       expected: None,
       negotiated: None,
+      generation: None,
+      used_generation_ids: [],
     },
     Exchange(sends=[describe_message(1)], awaiting=1),
   )
@@ -204,6 +210,22 @@ pub fn Offer::check(self : Offer, claims : Claims) -> Unit raise Refusal {
       code=ProtocolUnavailable,
       message="\{claims.extension_id} does not claim MEP \{line}",
     )
+  }
+  if self is Bounded(host) {
+    guard claims.model_access is Some(guest) &&
+      !host.intersect(guest).tuples().is_empty() else {
+      raise Refusal(
+        code=TupleUnavailable,
+        message="the recorded guest has none of the complete bounded tuples",
+      )
+    }
+    guard !claims.targets.is_empty() else {
+      raise Refusal(
+        code=CapabilityUnavailable,
+        message="the recorded guest has no generation target",
+      )
+    }
+    return
   }
   guard self.operations().iter().any(operation => claims.offers(operation)) else {
     raise Refusal(
@@ -230,17 +252,38 @@ pub fn Conversation::activate(
   expected~ : Claims,
   limits~ : Limits = Limits::host(),
 ) -> (Conversation, Step) {
+  let session : Conversation = {
+    phase: Initializing(offer, expected),
+    pending: 1,
+    next_id: 2,
+    answered: [],
+    limits,
+    expected: Some(expected),
+    negotiated: None,
+    generation: None,
+    used_generation_ids: [],
+  }
+  let admitted_offer = match offer {
+    Bounded(support) => {
+      let ceiling = @cmp.minimum(limits.request_bytes, limits.response_bytes)
+      Bounded(support.cap_frame(ceiling)) catch {
+        _ =>
+          return session.over(
+            Abort(Fault),
+            EndedEarly(
+              Refused(
+                code=RequestLimit,
+                message="the transport has no positive frame limit",
+              ),
+            ),
+          )
+      }
+    }
+    _ => offer
+  }
   (
-    {
-      phase: Initializing(offer, expected),
-      pending: 1,
-      next_id: 2,
-      answered: [],
-      limits,
-      expected: Some(expected),
-      negotiated: None,
-    },
-    Exchange(sends=[initialize_message(1, offer, limits)], awaiting=1),
+    { ..session, phase: Initializing(admitted_offer, expected), },
+    Exchange(sends=[initialize_message(1, admitted_offer, limits)], awaiting=1),
   )
 }
 
@@ -264,7 +307,16 @@ fn Conversation::over(
   conclusion : Conclusion,
   sends~ : Array[Message] = [],
 ) -> (Conversation, Step) {
-  ({ ..self, phase: Over, pending: 0, }, Finished(sends~, stop~, conclusion))
+  (
+    {
+      ..self,
+      phase: Over,
+      pending: 0,
+      generation: None,
+      used_generation_ids: [],
+    },
+    Finished(sends~, stop~, conclusion),
+  )
 }
 
 ///|
@@ -390,12 +442,25 @@ fn Conversation::received(
       ),
     )
   }
+  let reply_limit = match self.phase {
+    CallingGeneration(pending) => pending.run().limits.frame_bytes().to_int()
+    _ => self.limits.response_bytes
+  }
+  if self.phase is CallingGeneration(_) &&
+    framed_size(message.size()) > reply_limit {
+    return fault(
+      Host(
+        code=ResponseLimit,
+        message="the bounded response exceeds its frame limit",
+      ),
+    )
+  }
   let reply = match
     read_reply(
       message,
       pending=self.pending,
       answered=self.answered,
-      limit=self.limits.response_bytes,
+      limit=reply_limit,
     ) {
     Ok(Some(reply)) => reply
     // A notification from the worker is skipped.
@@ -444,13 +509,14 @@ fn Conversation::replied(
       self.initialized(offer, expected, result)
     (Refusing(ending), _) => self.exit(EndedEarly(ending))
     (Calling(kind, operation), reply) => {
-      let answer = match reply {
+      let answer : Answer = match reply {
         GuestError(code~, message~, data~) =>
           { class: Failed(Guest(code~, message~, data~)), diagnostics: [], }
         _ => self.answer(kind, operation, reply)
       }
       ({ ..self, phase: Called, pending: 0, }, Answered(sends=[], answer))
     }
+    (CallingGeneration(pending), reply) => self.generation_reply(pending, reply)
     (ShuttingDown, GuestError(code~, message~, data~)) =>
       self.exit(EndedEarly(Failed(Guest(code~, message~, data~))))
     (ShuttingDown, _) => self.exit(Closed)
@@ -500,8 +566,44 @@ fn Conversation::initialized(
   if compare_claims(expected, live, offer) is Some(text) {
     return refuse(ClaimsMismatch, text)
   }
-  let (tuple, limits) = match offer {
-    Legacy => (None, self.limits)
+  let (tuple, limits, model_access) = match offer {
+    Legacy => (None, self.limits, None)
+    Bounded(host) => {
+      guard expected.model_access is Some(recorded) &&
+        live.model_access is Some(agreed) else {
+        return refuse(
+          TupleUnavailable,
+          "the worker did not agree on bounded model access",
+        )
+      }
+      let bound = host.intersect(recorded)
+      let tuples = agreed.tuples()
+      guard !tuples.is_empty() else {
+        return refuse(
+          TupleUnavailable,
+          "the worker agreed on none of the offered bounded tuples",
+        )
+      }
+      guard bound.tuples().filter(tuple => tuples.contains(tuple)) == tuples else {
+        return refuse(
+          AgreementMismatch,
+          "the worker changed the complete bounded tuples or their order",
+        )
+      }
+      guard agreed.limits.at_most(bound.limits) else {
+        return refuse(
+          AgreementMismatch,
+          "the worker raised a bounded limit above a peer's ceiling",
+        )
+      }
+      // cap_frame bounded this value by both positive Int32 transport limits.
+      let frame = agreed.limits.frame_bytes().to_int()
+      (
+        None,
+        { ..self.limits, request_bytes: frame, response_bytes: frame, },
+        Some(agreed),
+      )
+    }
     Model(offered) => {
       let tuple = match agreement(offered, result) {
         Agreed(tuple) => tuple
@@ -521,10 +623,14 @@ fn Conversation::initialized(
             "the worker declared no valid model limits: \{error}",
           )
       }
-      (Some(tuple), { ..self.limits, model: self.limits.model.min(worker), })
+      (
+        Some(tuple),
+        { ..self.limits, model: self.limits.model.min(worker), },
+        None,
+      )
     }
   }
-  let negotiated = { offer, tuple, limits, }
+  let negotiated = { offer, tuple, model_access, limits, }
   (
     { ..self, phase: Ready, pending: 0, limits, negotiated: Some(negotiated), },
     Activated(sends=[notification_message("morphir.initialized")], negotiated),
@@ -693,7 +799,7 @@ fn Conversation::answer(
   operation : Operation,
   reply : Reply,
 ) -> Answer {
-  let broken = (message : String) => {
+  let broken = (message : String) => Answer::{
     class: Failed(Host(code=UnexpectedResponse, message~)),
     diagnostics: [],
   }
@@ -747,7 +853,12 @@ fn Conversation::call(
     )
   }
   let offer = negotiated.offer
-  let operation = call.kind.operation(offer)
+  guard call.kind.operation(offer) is Some(operation) else {
+    return refuse(
+      CapabilityUnavailable,
+      "a bounded session requires the bounded generation methods",
+    )
+  }
   guard offer.operations().contains(operation) else {
     return refuse(
       CapabilityUnavailable,
@@ -834,12 +945,17 @@ pub fn Conversation::generate(
 }
 
 ///|
-/// Starts the end of a ready session: `shutdown`, then `exit`.
+/// Cancels active bounded work before sending `shutdown` and `exit`.
 pub fn Conversation::close(
   self : Conversation,
 ) -> (Conversation, Step) raise SessionUnavailable {
   guard self.phase is (Ready | Called) else {
     raise SessionUnavailable("the session cannot close in its current state")
+  }
+  if self.generation is Some(run) {
+    return self.send_generation(Cancel(run, close=true), @model_access.CANCEL, {
+      "sessionId": run.session_id,
+    })
   }
   self.shutdown(ShuttingDown)
 }
