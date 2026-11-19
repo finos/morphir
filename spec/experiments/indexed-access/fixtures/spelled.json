@@ -1,0 +1,7 @@
+{
+  "formatVersion":4,"name":"b",
+  "def":{"access":"Public","ExpressionBody":{
+    "inputTypes":{},"outputType":"morphir/SDK:basics#int",
+    "body":{"Reference":"morphir/SDK:basics#add"}
+  }}
+}

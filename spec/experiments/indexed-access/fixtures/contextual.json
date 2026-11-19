@@ -1,0 +1,14 @@
+{
+  "$schema":"https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "context":{"fqNames":{"i":"morphir/SDK:basics#int","u":"morphir/SDK:basics#subtract"}},
+  "document":{
+    "formatVersion":4,"name":"a",
+    "def":{"access":"Public","ExpressionBody":{
+      "inputTypes":{},"outputType":{"$name":"i"},
+      "body":{"List":[{"Reference":{"$name":"i"}},"morphir/SDK:basics#add",{"Literal":{"DocumentLiteral":{
+        "Reference":{"$name":"u"},"Type":{"Reference":"lab/decoy:fake#reference"},"$name":"missing",
+        "ExpressionBody":{"outputType":"lab/decoy:fake#reference"}
+      }}},{"Literal":{"StringLiteral":"morphir/SDK:basics#subtract"}}]}
+    }}
+  }
+}
