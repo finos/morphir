@@ -1,0 +1,53 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/mep-guest-kit/0.1.0-draft.1/report.schema.json",
+  "suite": {
+    "kit": "spec/mep/mck/guest-generic-json.json",
+    "profile": "generic-json-library-v1",
+    "contractVersion": "0.1.0-draft.1",
+    "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "runner": { "name": "example-runner", "version": "0.0.0" },
+  "host": {
+    "executable": "/opt/morphir/morphir",
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "arguments": ["extension", "worker", "--abi", "extism-kernel-v1", "--module", "/opt/guests/old.wasm"],
+    "offering": "native-aot",
+    "platform": "linux-x64"
+  },
+  "artifacts": [
+    { "path": "/opt/guests/old.wasm", "sha256": "2222222222222222222222222222222222222222222222222222222222222222" }
+  ],
+  "plan": null,
+  "cases": [
+    {
+      "caseId": "describe",
+      "outcome": "failed",
+      "failure": "the claim does not list protocol version 0.2.0-draft.1",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.extension.describe",
+        "params": { "protocolVersions": ["0.2.0-draft.1"] }
+      },
+      "observed": {
+        "kind": "response",
+        "message": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "claimsVersion": "0.1.0-draft.2",
+            "extension": { "id": "example-old", "name": "Example old guest", "version": "0.4.2" },
+            "protocolVersions": ["0.1"],
+            "capabilities": {}
+          }
+        }
+      }
+    }
+  ],
+  "unmatched": [],
+  "totals": { "cases": 1, "passed": 0, "failed": 1, "notRun": 0 },
+  "verdict": {
+    "qualified": false,
+    "reasons": [{ "code": "case_failed", "caseId": "describe" }]
+  }
+}
