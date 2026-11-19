@@ -1,0 +1,125 @@
+{
+  "fixture": "fixtures/acme-orders/v4/plain-json",
+  "generator": {
+    "abi": "extism-kernel-v1",
+    "wat": "fixtures/wasm/orders-generator.wat",
+    "target": "text",
+    "sha256": "d12319c81f125c41d4e073e10d11c61bde9e64ebe14671dcf7ffffc8cb2320e0"
+  },
+  "tuple": {
+    "protocolVersion": "0.2.0-draft.2",
+    "accessVersion": "0.1.0-draft.1",
+    "operation": "morphir.backend.generateModel",
+    "irVersion": "4.0.0",
+    "profile": "morphir-ir",
+    "codec": "morphir-json",
+    "layout": "document-tree",
+    "contextualEncoding": "plain"
+  },
+  "limits": {
+    "maxFrameBytes": 8192,
+    "maxEncodedBytesPerExchange": 1024,
+    "maxDecodedBytesPerExchange": 512,
+    "maxDocumentsPerBatch": 1,
+    "maxDepth": 64,
+    "maxNodes": 256,
+    "maxDiagnosticsPerExchange": 1,
+    "maxOutstandingRequests": 1,
+    "maxGuestStateBytes": 1048576,
+    "maxHostCacheBytes": 1048576,
+    "maxArtifactChunkBytes": 4,
+    "maxArtifactBytes": 4,
+    "maxTotalArtifactBytes": 4,
+    "maxSessionDiskBytes": 4096,
+    "maxSessionWorkUnits": 65536,
+    "maxRounds": 5,
+    "maxCallMilliseconds": 1000,
+    "maxSessionMilliseconds": 10000
+  },
+  "domain": {
+    "packageName": "acme/orders",
+    "modulePath": "domain",
+    "rootPageSize": 3,
+    "memberPageSize": 2,
+    "firstPage": ["order.type", "order.value"],
+    "finalValue": "total-in-_usd.value",
+    "outputType": "morphir/SDK:basics#int"
+  },
+  "models": {
+    "frozen": {
+      "expect": {
+        "lastPage": ["total-in-_usd.value"],
+        "referencedValue": "order.value",
+        "artifacts": [{ "path": "order.txt", "utf8": "73\n" }]
+      }
+    },
+    "literal-74": {
+      "patchDocuments": {
+        "pkg/acme/orders/domain/order.value.json": [
+          { "op": "test", "path": "/def/Public/ExpressionBody/body/Literal/IntegerLiteral", "value": 73 },
+          { "op": "replace", "path": "/def/Public/ExpressionBody/body/Literal/IntegerLiteral", "value": 74 }
+        ]
+      },
+      "expect": {
+        "lastPage": ["total-in-_usd.value"],
+        "referencedValue": "order.value",
+        "artifacts": [{ "path": "order.txt", "utf8": "74\n" }]
+      }
+    },
+    "redirected-128": {
+      "patchDocuments": {
+        "pkg/acme/orders/domain/module.json": [
+          { "op": "test", "path": "/values", "value": ["order", "total-in-USD"] },
+          { "op": "add", "path": "/values/1", "value": "reserve" }
+        ],
+        "pkg/acme/orders/domain/total-in-_usd.value.json": [
+          { "op": "test", "path": "/def/Public/ExpressionBody/body/Reference", "value": "acme/orders:domain#order" },
+          { "op": "replace", "path": "/def/Public/ExpressionBody/body/Reference", "value": "acme/orders:domain#reserve" }
+        ]
+      },
+      "addDocuments": {
+        "pkg/acme/orders/domain/reserve.value.json": {
+          "formatVersion": 4,
+          "name": "reserve",
+          "def": {
+            "Public": {
+              "ExpressionBody": {
+                "inputTypes": {},
+                "outputType": "morphir/SDK:basics#int",
+                "body": { "Literal": { "IntegerLiteral": 128 } }
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "lastPage": ["reserve.value", "total-in-_usd.value"],
+        "referencedValue": "reserve.value",
+        "artifacts": [{ "path": "order.txt", "utf8": "128\n" }]
+      }
+    }
+  },
+  "cases": [
+    { "id": "frozen-orders", "model": "frozen" },
+    { "id": "changed-order-literal", "model": "literal-74" },
+    { "id": "redirected-final-reference", "model": "redirected-128" },
+    {
+      "id": "wrong-snapshot-then-retry",
+      "model": "frozen",
+      "beforeValidAdvance": {
+        "round": 4,
+        "patchDelivery": [{ "op": "replace", "path": "/snapshotId", "value": "wrong-snapshot" }],
+        "errorCode": -32602
+      }
+    },
+    {
+      "id": "wrong-digest-then-retry",
+      "model": "frozen",
+      "beforeValidAdvance": {
+        "round": 5,
+        "patchDelivery": [{ "op": "replace", "path": "/sha256", "value": "0000000000000000000000000000000000000000000000000000000000000000" }],
+        "errorCode": -32602
+      }
+    }
+  ]
+}
