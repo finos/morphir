@@ -117,6 +117,22 @@ relative to `model/`, NUL, its exact UTF-8 bytes, then NUL. Documents use compac
 `JSON.stringify` property order as written in the recipe and one final LF.
 This source fingerprint is distinct from the expected-artifact inventory digest.
 
+## Receipt case identities
+
+[Orders scale cases](orders-scale.cases.json) binds the two independent
+artifact inventories, the plain source-tree fingerprints, and the shared
+WASM guest. Use `orders-scale/a` or `orders-scale/b` as the receipt's
+`kit.caseId`. The contract digest is the SHA-256 of the receipt schema.
+The suite digest is the SHA-256 of the exact case file bytes. These
+identities and expectations come from the kit. An observed output digest
+comes from the published artifacts.
+
+The case file supplies the expanded input size for these plain trees and
+the largest individual document. They describe the source fixture. They
+are not measurements of residency or operation I/O. A successful output
+comparison leaves resource qualification pending unless the receipt also
+has the enforced ceilings and measurements required by draft.1.
+
 ## Tiny source tests and remaining qualification
 
 The imported `materialize({ scale, outputDir }, tinyTestDimensions?)` API accepts
