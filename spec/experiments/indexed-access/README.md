@@ -59,6 +59,8 @@ a streaming or bounded-memory claim.
 
 ## Replay and measurements
 
+The [measured results](results.md) include charts and the Windows ARM64 receipt.
+
 Run the light test from the umbrella root:
 
 ```powershell

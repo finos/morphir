@@ -1,0 +1,1264 @@
+{
+  "revision": "94788bfc7141f8c8c137b4852997098bc158a3cc",
+  "measuredAtUtc": "2026-11-19T05:59:13.898Z",
+  "runtime": {
+    "bun": "1.4.2",
+    "platform": "win32",
+    "architecture": "arm64",
+    "osRelease": "10.0.26300"
+  },
+  "expectedSha256": "bee7c5151a5d46c2f78785fedc1c36005b6e57c6f5dceddcf6f6f73bd6a0aad0",
+  "measurements": [
+    {
+      "control": "contextual",
+      "mode": "scan",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 694,
+          "gzipBytes": 347,
+          "sha256": "572cd1a1cec3788ff9a1bfed1f67e5b88105cdb34a1190c7fa9e319a15a977e2"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.338,
+        "milliseconds": 0.024,
+        "sourceFileBytesRead": 890,
+        "fullDocumentsDecoded": 0,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 1.822,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 11.966,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 227840,
+        "fullDocumentsDecoded": 512,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28098560,
+        "prepared": 28180480,
+        "after": 45543424,
+        "peak": 45563904
+      }
+    },
+    {
+      "control": "contextual",
+      "mode": "dictionary",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 694,
+          "gzipBytes": 347,
+          "sha256": "572cd1a1cec3788ff9a1bfed1f67e5b88105cdb34a1190c7fa9e319a15a977e2"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.122,
+        "milliseconds": 0.884,
+        "sourceFileBytesRead": 890,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 0.075,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "candidateDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "add",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/a.value.json",
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "unused",
+            "candidateDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "literal-only",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [],
+            "correctness": "occurrences-unproven"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 0.593,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 0,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28180480,
+        "prepared": 29044736,
+        "after": 30130176,
+        "peak": 30162944
+      }
+    },
+    {
+      "control": "contextual",
+      "mode": "index",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 694,
+          "gzipBytes": 347,
+          "sha256": "572cd1a1cec3788ff9a1bfed1f67e5b88105cdb34a1190c7fa9e319a15a977e2"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "index": {
+        "bytes": 1043,
+        "gzipBytes": 390,
+        "sha256": "ebdeabedffc9ac5c902c854653f4206ed6056436721376a6b43d41e3aa93560d"
+      },
+      "prepare": {
+        "sourceReadMilliseconds": 0.134,
+        "milliseconds": 2.966,
+        "buildMilliseconds": 2.253,
+        "bindMilliseconds": 0.704,
+        "sourceFileBytesRead": 890,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 1043,
+        "sourceBytesHashed": 1780
+      },
+      "cold": {
+        "milliseconds": 0.168,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 50,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 3,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 48,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 2,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 1.272,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 6272,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 320
+      },
+      "residentBytes": {
+        "before": 28467200,
+        "prepared": 30515200,
+        "after": 32362496,
+        "peak": 32395264
+      }
+    },
+    {
+      "control": "context-last",
+      "mode": "scan",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 694,
+          "gzipBytes": 347,
+          "sha256": "2334b1354ea030da4ea63a9293af33cc9b0a21cbd404a7f4eb7d5b8aa61df0c9"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.209,
+        "milliseconds": 0.019,
+        "sourceFileBytesRead": 890,
+        "fullDocumentsDecoded": 0,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 2.346,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 890,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 13.008,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 227840,
+        "fullDocumentsDecoded": 512,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28987392,
+        "prepared": 29048832,
+        "after": 46276608,
+        "peak": 46292992
+      }
+    },
+    {
+      "control": "context-last",
+      "mode": "dictionary",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 694,
+          "gzipBytes": 347,
+          "sha256": "2334b1354ea030da4ea63a9293af33cc9b0a21cbd404a7f4eb7d5b8aa61df0c9"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.139,
+        "milliseconds": 0.71,
+        "sourceFileBytesRead": 890,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 0.072,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "candidateDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "add",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/a.value.json",
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "unused",
+            "candidateDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "literal-only",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [],
+            "correctness": "occurrences-unproven"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 0.605,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 0,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28921856,
+        "prepared": 29495296,
+        "after": 30224384,
+        "peak": 30244864
+      }
+    },
+    {
+      "control": "context-last",
+      "mode": "index",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 694,
+          "gzipBytes": 347,
+          "sha256": "2334b1354ea030da4ea63a9293af33cc9b0a21cbd404a7f4eb7d5b8aa61df0c9"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "index": {
+        "bytes": 1043,
+        "gzipBytes": 391,
+        "sha256": "1a283b655d43db733441596bf4e08cab4fd7cfd76abfb2c8de6fa8f7d96dd5d0"
+      },
+      "prepare": {
+        "sourceReadMilliseconds": 0.154,
+        "milliseconds": 2.296,
+        "buildMilliseconds": 1.685,
+        "bindMilliseconds": 0.605,
+        "sourceFileBytesRead": 890,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 1043,
+        "sourceBytesHashed": 1780
+      },
+      "cold": {
+        "milliseconds": 0.147,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 50,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 3,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 48,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 2,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 1.173,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 6272,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 320
+      },
+      "residentBytes": {
+        "before": 28778496,
+        "prepared": 30556160,
+        "after": 32608256,
+        "peak": 32636928
+      }
+    },
+    {
+      "control": "reordered",
+      "mode": "scan",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 689,
+          "gzipBytes": 344,
+          "sha256": "5c2c3f01645fa99b5ce86e34409cd94e265b6c8f7824e8f5a8bbbe43507bc451"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.18,
+        "milliseconds": 0.018,
+        "sourceFileBytesRead": 885,
+        "fullDocumentsDecoded": 0,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 1.866,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 885,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 885,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 885,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 885,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 10.92,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 226560,
+        "fullDocumentsDecoded": 512,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28827648,
+        "prepared": 28889088,
+        "after": 45867008,
+        "peak": 45891584
+      }
+    },
+    {
+      "control": "reordered",
+      "mode": "dictionary",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 689,
+          "gzipBytes": 344,
+          "sha256": "5c2c3f01645fa99b5ce86e34409cd94e265b6c8f7824e8f5a8bbbe43507bc451"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.168,
+        "milliseconds": 1.131,
+        "sourceFileBytesRead": 885,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 0.095,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "candidateDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "add",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/a.value.json",
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "unused",
+            "candidateDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [
+              "pkg/lab/probe/a.value.json"
+            ],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "literal-only",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [],
+            "correctness": "occurrences-unproven"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 0.721,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 0,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28999680,
+        "prepared": 29593600,
+        "after": 30416896,
+        "peak": 30433280
+      }
+    },
+    {
+      "control": "reordered",
+      "mode": "index",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 689,
+          "gzipBytes": 344,
+          "sha256": "5c2c3f01645fa99b5ce86e34409cd94e265b6c8f7824e8f5a8bbbe43507bc451"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "index": {
+        "bytes": 1041,
+        "gzipBytes": 394,
+        "sha256": "0d6f148c7050a7b59fb8c369f42cc29c552f91a30cb30b1e296124447ece83b7"
+      },
+      "prepare": {
+        "sourceReadMilliseconds": 0.164,
+        "milliseconds": 2.975,
+        "buildMilliseconds": 2.33,
+        "bindMilliseconds": 0.638,
+        "sourceFileBytesRead": 885,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 1041,
+        "sourceBytesHashed": 1770
+      },
+      "cold": {
+        "milliseconds": 0.413,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 50,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 3,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 48,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 2,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 1.505,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 6272,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 320
+      },
+      "residentBytes": {
+        "before": 28893184,
+        "prepared": 30298112,
+        "after": 32272384,
+        "peak": 32292864
+      }
+    },
+    {
+      "control": "expanded",
+      "mode": "scan",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 496,
+          "gzipBytes": 260,
+          "sha256": "0884ec7d71656d111b9bab1aa951137b7e6b88905e5b3a3ceb4014eed56c1d94"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.156,
+        "milliseconds": 0.017,
+        "sourceFileBytesRead": 692,
+        "fullDocumentsDecoded": 0,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 1.594,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 692,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 692,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 692,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 692,
+            "fullDocumentsDecoded": 2,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 7.637,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 177152,
+        "fullDocumentsDecoded": 512,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28987392,
+        "prepared": 29044736,
+        "after": 43110400,
+        "peak": 43143168
+      }
+    },
+    {
+      "control": "expanded",
+      "mode": "dictionary",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 496,
+          "gzipBytes": 260,
+          "sha256": "0884ec7d71656d111b9bab1aa951137b7e6b88905e5b3a3ceb4014eed56c1d94"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "prepare": {
+        "sourceReadMilliseconds": 0.139,
+        "milliseconds": 0.756,
+        "sourceFileBytesRead": 692,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 0,
+        "sourceBytesHashed": 0
+      },
+      "cold": {
+        "milliseconds": 0.198,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/a.value.json",
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "add",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [
+              "pkg/lab/probe/a.value.json",
+              "pkg/lab/probe/b.value.json"
+            ],
+            "extraDocuments": [],
+            "correctness": "candidate-mismatch"
+          },
+          {
+            "id": "unused",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [],
+            "correctness": "occurrences-unproven"
+          },
+          {
+            "id": "literal-only",
+            "candidateDocuments": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "missedDocuments": [],
+            "extraDocuments": [],
+            "correctness": "occurrences-unproven"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 2.125,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 0,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 0
+      },
+      "residentBytes": {
+        "before": 28995584,
+        "prepared": 29499392,
+        "after": 30830592,
+        "peak": 30855168
+      }
+    },
+    {
+      "control": "expanded",
+      "mode": "index",
+      "sources": [
+        {
+          "document": "pkg/lab/probe/a.value.json",
+          "bytes": 496,
+          "gzipBytes": 260,
+          "sha256": "0884ec7d71656d111b9bab1aa951137b7e6b88905e5b3a3ceb4014eed56c1d94"
+        },
+        {
+          "document": "pkg/lab/probe/b.value.json",
+          "bytes": 196,
+          "gzipBytes": 159,
+          "sha256": "1370dc3f5d80b351e2c56a77c933cd03b860b38d965f39e5bd9144712c528153"
+        }
+      ],
+      "index": {
+        "bytes": 977,
+        "gzipBytes": 359,
+        "sha256": "fa740f08aaf939f911dbdf8cb64616d2769492cc554761e979a807cf21b76cfd"
+      },
+      "prepare": {
+        "sourceReadMilliseconds": 0.12,
+        "milliseconds": 2.195,
+        "buildMilliseconds": 1.455,
+        "bindMilliseconds": 0.732,
+        "sourceFileBytesRead": 692,
+        "fullDocumentsDecoded": 2,
+        "indexBytesDecoded": 977,
+        "sourceBytesHashed": 1384
+      },
+      "cold": {
+        "milliseconds": 0.131,
+        "sourceFileBytesRead": 0,
+        "queries": [
+          {
+            "id": "int",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              },
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/0",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/outputType",
+                "slot": "type-reference"
+              }
+            ],
+            "sourceBytes": 72,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 3,
+            "correctness": "match"
+          },
+          {
+            "id": "add",
+            "occurrences": [
+              {
+                "document": "pkg/lab/probe/a.value.json",
+                "location": "/def/ExpressionBody/body/List/1",
+                "slot": "value-reference"
+              },
+              {
+                "document": "pkg/lab/probe/b.value.json",
+                "location": "/def/ExpressionBody/body",
+                "slot": "value-reference"
+              }
+            ],
+            "sourceBytes": 48,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 2,
+            "correctness": "match"
+          },
+          {
+            "id": "unused",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          },
+          {
+            "id": "literal-only",
+            "occurrences": [],
+            "sourceBytes": 0,
+            "fullDocumentsDecoded": 0,
+            "referenceValuesDecoded": 0,
+            "correctness": "match"
+          }
+        ]
+      },
+      "warm": {
+        "sweeps": 64,
+        "milliseconds": 1.327,
+        "sourceFileBytesRead": 0,
+        "sourceBytes": 7680,
+        "fullDocumentsDecoded": 0,
+        "referenceValuesDecoded": 320
+      },
+      "residentBytes": {
+        "before": 29130752,
+        "prepared": 30494720,
+        "after": 32378880,
+        "peak": 32395264
+      }
+    }
+  ]
+}
