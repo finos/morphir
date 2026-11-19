@@ -208,11 +208,13 @@ export function summarize(input: GuestInput, change: Change): Summary {
 	const { base, rule } = input.controls;
 	const claim = mergePatch(base.claim, change.claimPatch ?? {});
 	const selected = select(rule, input.kitLanguages, claim);
+	// Positive controls establish required delivery. They are synthetic policy inputs.
+	const advertisesCall = change.advertisesCall ?? true;
 	let cases: RecordedCase[] = planOf(rule, selected).map((caseId) => ({
 		caseId,
 		outcome: caseId === "describe" && !selected ? "failed" : "passed",
 		kind: expectedKind(caseId),
-		...(expectedKind(caseId) === "silent" ? { delivery: change.advertisesCall ? "delivered" : "withheld" } : {}),
+		...(expectedKind(caseId) === "silent" ? { delivery: advertisesCall ? "delivered" : "withheld" } : {}),
 	}));
 	for (const entry of cases) {
 		const delivery = change.deliveries?.[entry.caseId];
@@ -220,7 +222,11 @@ export function summarize(input: GuestInput, change: Change): Summary {
 	}
 	for (const entry of cases) {
 		const outcome = change.outcomes?.[entry.caseId];
-		if (outcome) Object.assign(entry, { outcome, kind: outcome === "not_run" ? null : entry.kind }, outcome === "not_run" && "delivery" in entry ? { delivery: null } : {});
+		if (outcome) {
+			const unestablished = expectedKind(entry.caseId) === "silent" && (entry.delivery === "withheld" || entry.delivery === "unknown");
+			Object.assign(entry, { outcome, kind: outcome === "not_run" && !unestablished ? null : entry.kind },
+				outcome === "not_run" && !unestablished && "delivery" in entry ? { delivery: null } : {});
+		}
 	}
 	if (change.stopAfter) {
 		const at = cases.findIndex((entry) => entry.caseId === change.stopAfter);
@@ -249,7 +255,7 @@ export function summarize(input: GuestInput, change: Change): Summary {
 		suiteSha256: change.suiteSha256 ?? input.kitSha256,
 		recordedClaim: mergePatch(claim, change.editRecordedClaim ?? {}),
 		plan: change.recordedPlan === undefined ? selected : change.recordedPlan,
-		advertisesCall: change.advertisesCall ?? false,
+		advertisesCall,
 		cases,
 		unmatched: change.unmatched ?? [],
 		totals: { ...countTotals(cases), ...change.storedTotals },
@@ -275,22 +281,26 @@ export function checkSummary(input: GuestInput, summary: Summary): Verdict | { r
 	if (!sameJson(summary.plan, selected)) found.add("plan_mismatch");
 	const planned = planOf(rule, selected);
 	if (summary.cases.map((entry) => entry.caseId).join("\n") !== planned.join("\n")) found.add("case_inventory");
-	const firstNotRun = summary.cases.findIndex((entry) => entry.outcome === "not_run");
+	const unestablished = (entry: RecordedCase) =>
+		expectedKind(entry.caseId) === "silent" && (entry.delivery === "withheld" || entry.delivery === "unknown");
+	const firstStopped = summary.cases.findIndex((entry) => entry.outcome === "not_run" && !unestablished(entry));
 	const consistent = summary.cases.every((entry, index) => {
-		if (entry.outcome === "not_run") return entry.kind === null;
+		if (firstStopped >= 0 && index > firstStopped) return entry.outcome === "not_run" && entry.kind === null && !entry.delivery;
+		if (entry.outcome === "not_run") {
+			return unestablished(entry) ? entry.kind === null || entry.kind === "silent" || entry.kind === "incomplete" : entry.kind === null;
+		}
 		if (entry.kind === null) return false;
-		if (firstNotRun >= 0 && index > firstNotRun) return false;
 		if (entry.kind !== expectedKind(entry.caseId) && entry.outcome !== "failed") return false;
 		if (entry.caseId === "describe" && !selected && entry.outcome !== "failed") return false;
 		if (expectedKind(entry.caseId) === "silent" && entry.outcome === "passed") {
-			if (entry.delivery !== "delivered" && !(entry.delivery === "withheld" && !summary.advertisesCall)) return false;
+			if (entry.delivery !== "delivered") return false;
 		}
 		return true;
 	});
 	const unmatchedConsistent = summary.unmatched.every(({ duringCase }) =>
 		summary.cases.some((entry) => entry.caseId === duringCase && entry.outcome === "failed"),
 	);
-	const failedBeforeStop = firstNotRun < 0 || summary.cases.slice(0, firstNotRun).some((entry) => entry.outcome === "failed");
+	const failedBeforeStop = firstStopped < 0 || summary.cases.slice(0, firstStopped).some((entry) => entry.outcome === "failed");
 	if (!consistent || !failedBeforeStop || !unmatchedConsistent) found.add("outcome_inconsistent");
 	const counted = countTotals(summary.cases);
 	if (Object.keys(counted).some((key) => counted[key] !== summary.totals[key])) found.add("totals_mismatch");

@@ -36,8 +36,10 @@ digest. That report is defined separately, in
 | `verdict` | Whether the guest qualified, and every reason it did not. |
 
 A case entry holds the `caseId`, the `outcome`, the `request` the runner sent
-and what it `observed`. It may hold a `failure` message. A case that was not
-run has `request` and `observed` both `null`.
+and what it `observed`. It may hold a `failure` message. An unattempted case
+after the runner stopped has `request` and `observed` both `null`. A required
+notification with unestablished guest delivery is also `not_run`, and retains
+any actual outer request and observation. The outcome must not erase those facts.
 
 An observation is one of four kinds:
 
@@ -63,8 +65,10 @@ A notification case that ran also records its `delivery`:
 | `withheld` | The host did not pass it on, as its contract requires. A WASM host withholds every notification from an Extism guest whose `model-initialize` result does not set `capabilities.notificationDelivery` to `call`. |
 | `unknown` | The runner cannot tell. |
 
-A silent result after a withheld notification shows only that the host followed
-its contract, which is all the case can show for such a guest.
+A silent result after a withheld notification does not establish the required
+guest behavior. Correct host-side withholding and guest notification delivery
+are separate observations. Completed outer framing or a null adapter return
+does not by itself establish delivery inside a WASM guest.
 
 ## The plan
 
@@ -105,15 +109,17 @@ A case is `passed`, `failed` or `not_run`.
 
 - The runner computes `passed` or `failed` from the case's comparison, as the
   profile's requirements state it. An observation of another kind than the case
-  expects, or an `incomplete` one, is `failed`.
+  expects, or an `incomplete` one, is `failed`, except for the unestablished
+  guest-delivery rule below.
 - A runner may stop after a failed case. Every later planned case is then
   `not_run`. A runner may also go on, and a later case keeps its own outcome.
-- A runner never stops otherwise, so a `not_run` case comes after a failed one,
-  and only `not_run` cases follow it.
-- A notification case passes only when its notification was `delivered`, or
-  `withheld` from a guest that did not ask for `call` delivery. A notification
-  withheld from a guest that asked for it, or of `unknown` delivery, fails the
-  case.
+- An unattempted case with no request or observation must follow a failed case
+  when the runner stops. Every later case is then unattempted and `not_run`.
+- A notification case passes only when its notification was `delivered`.
+  Required `withheld` or `unknown` delivery leaves the guest check `not_run`,
+  including when the guest did not ask for `call`. This prevents qualification.
+  Actual outer observations remain recorded, and later cases may still run.
+  This does not authorize the host to deliver a notification its ABI withholds.
 - A case during which an `unmatched` message arrived fails.
 
 ## The verdict
@@ -141,7 +147,7 @@ applies in this order:
 | `kit_mismatch` | `suite.sha256` differs from the kit file the report is checked against. |
 | `plan_mismatch` | `plan` differs from what the recorded `describe` observation selects. |
 | `case_inventory` | The cases are not exactly the planned cases, once each, in plan order. A report that holds a case of the removed legacy tier, such as `initialize` or `compile-vthree`, is refused here. |
-| `outcome_inconsistent` | An outcome breaks a rule above that needs no comparison: a case that ran after a `not_run` case, a `not_run` case with no failed case before it, a case recorded with no observation that is not `not_run`, a passed case whose observation is of the wrong kind, a passed `describe` that selects nothing, a passed notification case whose delivery does not allow it, or a passed case named by an `unmatched` entry. |
+| `outcome_inconsistent` | An outcome breaks a rule above that needs no comparison: a case ran after the runner stopped, an unattempted `not_run` case has no prior failure and no unestablished delivery, a case has no observation but is not `not_run`, a passed case has the wrong observation kind, a passed `describe` selects nothing, a passed required notification lacks established delivery, or an `unmatched` entry names a passed case. |
 | `totals_mismatch` | `totals` differs from the counts of the recorded outcomes. |
 | `verdict_mismatch` | The recorded verdict differs from the computed one, in `qualified`, in a reason or in their order. |
 
@@ -167,8 +173,10 @@ report check must satisfy. Its schema is
 `https://morphir.finos.org/schemas/mep-guest-kit/0.1.0-draft.1/report-controls.schema.json`.
 The file states the plan's case lists, the reasons and refusals, and one base
 run: a constructed claim with the JSON tuple pair at both IR versions, in which
-every case passes. Each control says how its report differs from the base and
-gives the verdict and case count, or the refusals.
+every case passes and required notification delivery is explicitly established.
+These are synthetic policy inputs, not observed guest runs. Each control says
+how its report differs from the base and gives the verdict and case count, or
+the refusals.
 
 | Member | Effect |
 | --- | --- |
@@ -177,11 +185,11 @@ gives the verdict and case count, or the refusals.
 | `recordedPlan` | Record this `plan` in place of the selected one. |
 | `runner`, `host` | Replace the named members. `null` removes one. |
 | `suiteSha256` | Record this kit digest. |
-| `outcomes` | Record these outcomes. A `not_run` case has no observation. |
+| `outcomes` | Record these outcomes. Unestablished notification delivery retains its actual outer observation; an unattempted `not_run` case has none. |
 | `stopAfter` | Fail the named case and record every later case as `not_run`. |
 | `removeCases`, `addCases`, `swapCases` | Leave out, insert after a named case, or exchange cases. |
 | `storedTotals`, `storedVerdict` | Record these in place of the computed totals or verdict. |
-| `advertisesCall` | The guest's `model-initialize` result asks for `call` delivery, so its notifications are `delivered`. Without it they are `withheld`. |
+| `advertisesCall` | Synthetic controls default to `true` and establish delivery. An explicit `false` withholds notifications and cannot pass required guest checks. Actual reports must derive delivery from host evidence. |
 | `deliveries` | Record these deliveries for the named notification cases. |
 | `unmatched` | Record an unmatched message during each named case. |
 

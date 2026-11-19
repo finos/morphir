@@ -104,11 +104,13 @@ a wrong SHA-256 SHALL give `-32602`.
 - **THEN** the guest answers with error `-32014`
 
 ### Requirement: Recheck from the recorded claim
-A report SHALL follow the MEP guest kit report contract in
-`spec/mep/mck/guest-report.md`. Its report check SHALL rebuild the plan from the
-recorded describe observation, and SHALL check the case order, every request and
-every response against the kit. A changed claim in a stored report SHALL fail the
-recheck unless the full recorded plan agrees with it.
+A report SHALL follow `spec/mep/mck/guest-report.md`. Its check SHALL rebuild the
+plan from recorded describe and check order, every request and every response
+against the kit. Edited claims SHALL require agreement with the full plan.
+Required withheld, unknown or unestablished notification delivery SHALL be
+`not_run` and prevent qualification. Actual outer observations SHALL remain
+recorded; later cases MAY run. Correct ABI withholding SHALL NOT establish guest
+delivery.
 
 #### Scenario: Report with a removed case
 - **WHEN** a stored report omits the round trip case of a selected IR version
@@ -121,6 +123,14 @@ recheck unless the full recorded plan agrees with it.
 #### Scenario: Edited claim
 - **WHEN** a stored report's describe observation is edited so that it selects only IR `4.0.0` after a run of both versions
 - **THEN** the report check refuses it with `plan_mismatch` and `case_inventory`
+
+#### Scenario: Guest did not request notification delivery
+- **WHEN** the host correctly withholds a required notification from a guest that did not request `call` delivery
+- **THEN** the guest notification check is `not_run`, actual outer observations remain recorded, and the report is not qualified
+
+#### Scenario: Unestablished delivery without an earlier failure
+- **WHEN** required notification delivery is unknown and no previous case failed
+- **THEN** the guest notification check may be `not_run` while later cases run, and the verdict includes `case_not_run`
 
 ## REMOVED Requirements
 

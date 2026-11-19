@@ -19,6 +19,7 @@ import {
 	schemaProblems,
 	select,
 	summarize,
+	verdictOf,
 } from "./check-guest-report";
 
 const root = path.resolve(import.meta.dir, "..");
@@ -95,6 +96,33 @@ test("the observation each case expects", () => {
 	expect(expectedKind("after-shutdown")).toBe("response");
 });
 
+test("a required notification withheld without call delivery cannot pass", () => {
+	const report = summarize(input, {
+		advertisesCall: false,
+		deliveries: { "model-initialized-silent": "withheld" },
+	});
+	expect(checkSummary(input, report)).toEqual({ rejected: ["outcome_inconsistent"] });
+});
+
+test("unestablished notification delivery retains observations and need not stop later cases", () => {
+	for (const delivery of ["withheld", "unknown"] as const) {
+		const report = summarize(input, { advertisesCall: true });
+		const entry = report.cases.find((value) => value.caseId === "model-initialized-silent");
+		if (!entry) throw new Error("Fixed initialized case missing");
+		entry.outcome = "not_run";
+		entry.kind = "silent";
+		entry.delivery = delivery;
+		report.totals.passed = report.cases.length - 1;
+		report.totals.notRun = 1;
+		report.verdict = verdictOf(report.cases);
+		expect(checkSummary(input, report)).toEqual({
+			qualified: false,
+			reasons: [{ code: "case_not_run", caseId: "model-initialized-silent" }],
+		});
+		expect(report.cases.at(-1)?.outcome).toBe("passed");
+	}
+});
+
 test("a passed case with the wrong observation, and a stop with no failure, are inconsistent", () => {
 	const wrongKind = summarize(input, {});
 	const entry = wrongKind.cases.find((value) => value.caseId === "model-initialized-silent");
@@ -135,6 +163,13 @@ test.skipIf(!hasCli)("the report schema refuses wrong observations and verdicts"
 			return spawnSync(jsonschema, ["validate", path.join(root, REPORT_SCHEMA), file], { windowsHide: true }).status !== 0;
 		};
 		expect(refuses(() => {})).toBe(false);
+		expect(refuses((report) => report.cases.push({
+			caseId: "model-initialized-silent",
+			outcome: "not_run",
+			request: { jsonrpc: "2.0", method: "morphir.initialized", params: {} },
+			observed: { kind: "silent" },
+			delivery: "unknown",
+		}))).toBe(false);
 		expect(refuses((report) => (report.cases[0].observed = { kind: "silent", message: {} }))).toBe(true);
 		expect(refuses((report) => (report.cases[0].observed = { kind: "incomplete", reason: "crashed" }))).toBe(true);
 		expect(refuses((report) => (report.cases[0].outcome = "skipped"))).toBe(true);

@@ -47,6 +47,9 @@
       "delivered-on-request",
       "withheld-while-asked",
       "delivery-unknown",
+      "withheld-without-call",
+      "withheld-not-run",
+      "unknown-not-run",
       "unmatched-message",
       "unmatched-message-failed"
     ]
@@ -212,6 +215,41 @@
       "says": "A notification case passed although the runner cannot tell whether the host delivered it.",
       "change": { "deliveries": { "model-initialized-silent": "unknown" } },
       "expect": { "rejected": ["outcome_inconsistent"] }
+    },
+    {
+      "id": "withheld-without-call",
+      "covers": "withheld-without-call",
+      "says": "Correct withholding for a guest without call delivery still cannot pass its required notification check.",
+      "change": { "advertisesCall": false },
+      "expect": { "rejected": ["outcome_inconsistent"] }
+    },
+    {
+      "id": "withheld-not-run",
+      "covers": "withheld-not-run",
+      "says": "Withheld required delivery is not_run without a previous failure, preserves its outer observation and allows later cases to run.",
+      "change": {
+        "deliveries": { "model-initialized-silent": "withheld" },
+        "outcomes": { "model-initialized-silent": "not_run" }
+      },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_not_run", "caseId": "model-initialized-silent" }],
+        "cases": 21
+      }
+    },
+    {
+      "id": "unknown-not-run",
+      "covers": "unknown-not-run",
+      "says": "Unknown required delivery is not_run without a previous failure and cannot qualify the guest.",
+      "change": {
+        "deliveries": { "model-initialized-silent": "unknown" },
+        "outcomes": { "model-initialized-silent": "not_run" }
+      },
+      "expect": {
+        "qualified": false,
+        "reasons": [{ "code": "case_not_run", "caseId": "model-initialized-silent" }],
+        "cases": 21
+      }
     },
     {
       "id": "unmatched-message-passed",
