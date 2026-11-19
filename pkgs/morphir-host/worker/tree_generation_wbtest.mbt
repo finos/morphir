@@ -282,3 +282,217 @@ test "canonical base64 preflight counts padded and empty payloads without decodi
     assert_true(refused, msg=content)
   }
 }
+
+///|
+test "tree aggregate limits retain exact Int64 B budgets" {
+  guard tree_support().limits.to_json() is Object(fields) else {
+    abort("limits")
+  }
+  fields["maxArtifactBytes"] = Json::number(2181171200.0)
+  fields["maxTotalArtifactBytes"] = Json::number(2181171200.0)
+  fields["maxSessionDiskBytes"] = Json::number(4354412803.0)
+  fields["maxSessionWorkUnits"] = Json::number(2147483648.0)
+  let budget = TreeBudget::from_limits(
+    @model_access.Limits::from_json(Json::object(fields)),
+  )
+  assert_eq(budget.file.to_string(), "2181171200")
+  assert_eq(budget.total.to_string(), "2181171200")
+  assert_eq(budget.disk.to_string(), "4354412803")
+  assert_eq(budget.work.to_string(), "2147483648")
+  let defaults = TreeBudget::from_limits(tree_support().limits)
+  assert_eq(defaults.file.to_string(), "16777216")
+  assert_eq(defaults.total.to_string(), "67108864")
+  assert_eq(defaults.disk.to_string(), "134217728")
+  assert_eq(defaults.work.to_string(), "65536")
+}
+
+///|
+test "tree aggregate stage counter crosses Int32 with a three byte artifact" {
+  with_capture_test_root((path, _directory) => {
+    let budget = {
+      ..TreeBudget::from_limits(tree_support().limits),
+      total: 2181171200L,
+      disk: 4354412803L,
+    }
+    let stage = TreeStage::open(path + "/out", "int64-counter")
+    defer stage.dispose()
+    stage.bytes = 2147483646L
+    stage.write(test_tree_chunk("order.txt", b"73\n"), budget, 2173241603L)
+    assert_eq(stage.bytes, 2147483649L)
+    assert_eq(stage.files["order.txt"].bytes, 3)
+    assert_eq(
+      @platform.read(path + "/" + stage.temporary + "/order.txt"),
+      "73\n",
+    )
+  })
+}
+
+///|
+test "tree aggregate B disk ceiling accepts equality and refuses one extra byte" {
+  with_capture_test_root((path, _directory) => {
+    let budget = {
+      ..TreeBudget::from_limits(tree_support().limits),
+      total: 2181171201L,
+      disk: 4354412803L,
+    }
+    let stage = TreeStage::open(path + "/out", "int64-disk")
+    defer stage.dispose()
+    // Logical counters only. Exactly three bytes are written on disk.
+    stage.bytes = 2181171197L
+    stage.write(test_tree_chunk("order.txt", b"73\n"), budget, 2173241603L)
+    assert_eq(stage.bytes, 2181171200L)
+    let refused = try {
+      stage.write(test_tree_chunk("extra.txt", b"x"), budget, 2173241603L)
+      false
+    } catch {
+      TreeOutput(message) => message.contains("byte limit")
+      error => raise error
+    }
+    assert_true(refused)
+    assert_eq(stage.bytes, 2181171200L)
+    assert_false(stage.files.contains("extra.txt"))
+    assert_eq(stage.directory.list(1), ["order.txt"])
+  })
+}
+
+///|
+test "tree aggregate disk accounting refuses subtraction overflow before writes" {
+  with_capture_test_root((path, _directory) => {
+    let budget = {
+      ..TreeBudget::from_limits(tree_support().limits),
+      total: 9223372036854775807L,
+      disk: 4354412803L,
+    }
+    let stage = TreeStage::open(path + "/out", "int64-overflow")
+    defer stage.dispose()
+    stage.bytes = 9223372036854775804L
+    let refused = try {
+      stage.write(
+        test_tree_chunk("order.txt", b"73\n"),
+        budget,
+        9223372036854775807L,
+      )
+      false
+    } catch {
+      TreeOutput(message) => message.contains("byte limit")
+      error => raise error
+    }
+    assert_true(refused)
+    assert_eq(stage.bytes, 9223372036854775804L)
+    assert_true(stage.directory.list(0).is_empty())
+  })
+}
+
+///|
+test "tree aggregate artifact total ceiling is independent of the disk ceiling" {
+  with_capture_test_root((path, _directory) => {
+    let budget = {
+      ..TreeBudget::from_limits(tree_support().limits),
+      total: 2181171200L,
+      disk: 4354412804L,
+    }
+    let stage = TreeStage::open(path + "/out", "int64-total")
+    defer stage.dispose()
+    stage.bytes = 2181171197L
+    stage.write(test_tree_chunk("order.txt", b"73\n"), budget, 2173241603L)
+    assert_eq(stage.bytes, 2181171200L)
+    let refused = try {
+      stage.write(test_tree_chunk("extra.txt", b"x"), budget, 2173241603L)
+      false
+    } catch {
+      TreeOutput(message) => message.contains("byte limit")
+      error => raise error
+    }
+    assert_true(refused)
+    assert_eq(stage.bytes, 2181171200L)
+    assert_eq(stage.directory.list(1), ["order.txt"])
+  })
+}
+
+///|
+test "tree aggregate source counter retains B bytes without changing capture defaults" {
+  with_capture_test_root((path, directory) => {
+    directory.mkdir("tree")
+    directory.mkdir("capture")
+    let source = directory.child("tree")
+    defer source.close()
+    let scratch = directory.child("capture")
+    defer scratch.close()
+    source.write("manifest.json", capture_manifest, offset=0, create=true)
+    let captured = capture_tree(
+      () => @platform.BoundedDirectory::open(path + "/tree"),
+      source,
+      scratch,
+      directory.stamp(),
+      () => (),
+    )
+    assert_eq(captured.bytes, capture_manifest.length().to_int64())
+    assert_eq(TREE_DOCUMENT_BYTES, 1048576)
+    assert_eq(TREE_SNAPSHOT_BYTES, 67108864L)
+    // Only the counter is synthetic; the captured manifest stays tiny.
+    let logical = { ..captured, bytes: 2173241603L, }
+    let budget = {
+      ..TreeBudget::from_limits(tree_support().limits),
+      disk: 2173241603L,
+    }
+    let view = TreeView::open(logical, budget, "int64-source", () => ())
+    assert_eq(view.capture.bytes, 2173241603L)
+    let refused = try {
+      ignore(
+        TreeView::open(
+          logical,
+          { ..budget, disk: 2173241602L, },
+          "int64-source",
+          () => (),
+        ),
+      )
+      false
+    } catch {
+      TreeSource(message) => message.contains("negotiated disk")
+      error => raise error
+    }
+    assert_true(refused)
+  })
+}
+
+///|
+test "tree aggregate work crosses Int32 and refuses an over-budget update" {
+  let work = Ref(2147483647L)
+  charge_tree_work(work, 2147483648L, 1L, () => ())
+  assert_eq(work.val, 2147483648L)
+  let refused = try {
+    charge_tree_work(work, 2147483648L, 1L, () => ())
+    false
+  } catch {
+    TreeSource(message) => message.contains("work limit")
+    error => raise error
+  }
+  assert_true(refused)
+  assert_eq(work.val, 2147483648L)
+}
+
+///|
+test "tree aggregate widening preserves Int32 per-file bounds before writes" {
+  with_capture_test_root((path, _directory) => {
+    let budget = {
+      ..TreeBudget::from_limits(tree_support().limits),
+      file: 2147483648L,
+    }
+    let stage = TreeStage::open(path + "/out", "int32-file")
+    defer stage.dispose()
+    let refused = try {
+      stage.write(
+        test_tree_chunk("order.txt", b"x", offset=2147483647),
+        budget,
+        0L,
+      )
+      false
+    } catch {
+      TreeOutput(message) => message.contains("byte limit")
+      error => raise error
+    }
+    assert_true(refused)
+    assert_eq(stage.bytes, 0L)
+    assert_true(stage.directory.list(0).is_empty())
+  })
+}

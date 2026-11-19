@@ -27,30 +27,31 @@ priv struct TreeBudget {
   encoded : Int32
   cache : Int32
   chunk : Int32
-  file : Int32
-  total : Int32
-  disk : Int32
-  work : Int32
+  file : Int64
+  total : Int64
+  disk : Int64
+  work : Int64
 }
 
 ///|
 fn TreeBudget::from_limits(limits : @model_access.Limits) -> TreeBudget raise {
-  // All these values are bounded by the local offer before they reach here.
+  // Aggregate limits retain the wire's Int64 range. Per-document and
+  // per-exchange limits are Int32-bounded by the validated wire contract.
   let fields = limits.to_json()
   let get = key => {
     @string.parse_int64(
       @model_wire.integer_text(@model_wire.field(fields, key)),
-    ).to_int()
+    )
   }
   {
     frame: limits.frame_bytes().to_int(),
-    depth: get("maxDepth"),
-    nodes: get("maxNodes"),
-    document_count: get("maxDocumentsPerBatch"),
-    decoded: get("maxDecodedBytesPerExchange"),
-    encoded: get("maxEncodedBytesPerExchange"),
-    cache: get("maxHostCacheBytes"),
-    chunk: get("maxArtifactChunkBytes"),
+    depth: get("maxDepth").to_int(),
+    nodes: get("maxNodes").to_int(),
+    document_count: get("maxDocumentsPerBatch").to_int(),
+    decoded: get("maxDecodedBytesPerExchange").to_int(),
+    encoded: get("maxEncodedBytesPerExchange").to_int(),
+    cache: get("maxHostCacheBytes").to_int(),
+    chunk: get("maxArtifactChunkBytes").to_int(),
     file: get("maxArtifactBytes"),
     total: get("maxTotalArtifactBytes"),
     disk: get("maxSessionDiskBytes"),
@@ -109,7 +110,7 @@ priv struct TreeView {
   check : () -> Unit raise
   mut issued : Int32
   mut cache : Int32
-  work : Ref[Int32]
+  work : Ref[Int64]
 }
 
 ///|
@@ -119,9 +120,9 @@ fn TreeView::open(
   id : String,
   check : () -> Unit raise,
 ) -> TreeView raise {
-  guard capture.bytes <= budget.disk &&
+  guard tree_budget_fits(0L, capture.bytes, budget.disk) &&
     capture.cache <= budget.cache &&
-    capture.work <= budget.work else {
+    tree_budget_fits(0L, capture.work, budget.work) else {
     raise TreeSource(
       "captured source exceeds negotiated disk, metadata, or work limit",
     )
@@ -170,14 +171,20 @@ fn TreeView::open(
 }
 
 ///|
+// Check before adding so aggregate counters cannot wrap at either width.
+fn tree_budget_fits(used : Int64, extra : Int64, limit : Int64) -> Bool {
+  used >= 0L && extra >= 0L && used <= limit && extra <= limit - used
+}
+
+///|
 fn charge_tree_work(
-  work : Ref[Int32],
-  limit : Int32,
-  units : Int32,
+  work : Ref[Int64],
+  limit : Int64,
+  units : Int64,
   check : () -> Unit raise,
 ) -> Unit raise {
   check()
-  guard units <= limit - work.val else {
+  guard tree_budget_fits(work.val, units, limit) else {
     raise TreeSource("bounded generation work limit exceeded")
   }
   work.val += units
@@ -186,7 +193,7 @@ fn charge_tree_work(
 ///|
 fn TreeView::account(
   self : TreeView,
-  work : Int32,
+  work : Int64,
   cache~ : Int32 = 0,
 ) -> Unit raise {
   charge_tree_work(self.work, self.budget.work, work, self.check)
@@ -395,7 +402,7 @@ fn TreeView::deliver(
           encoded <= self.budget.encoded else {
           raise TreeSource("document delivery exceeds negotiated batch limits")
         }
-        self.account(1 + expected.size / 65536)
+        self.account(1L + expected.size.to_int64() / 65536L)
         let (path, content) = self.tree.read_original_document(artifact)
         let bytes = @utf8.encode(content)
         guard path == physical &&
@@ -593,7 +600,7 @@ async fn TreeView::generate(
     }
     self.budget.check_artifact_batch(artifacts)
     for chunk in artifacts {
-      self.account(1 + chunk.decoded_byte_length / 65536)
+      self.account(1L + chunk.decoded_byte_length.to_int64() / 65536L)
       let metadata = stage.metadata
       stage.write(chunk, self.budget, self.capture.bytes) catch {
         error => raise tree_output_error(error)
@@ -753,9 +760,10 @@ pub async fn Host::generate_tree(
         view.generate(session, stage, access, target, diagnostics)
         // Reserve the directory scan and the streaming verification pass.
         view.account(
-          stage.paths.length() +
-          stage.files.length() +
-          (stage.bytes + 65535) / 65536,
+          stage.paths.length().to_int64() +
+          stage.files.length().to_int64() +
+          stage.bytes / 65536L +
+          (if stage.bytes % 65536L == 0L { 0L } else { 1L }),
         )
         Ok(claims)
       } catch {

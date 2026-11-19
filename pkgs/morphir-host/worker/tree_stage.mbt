@@ -15,7 +15,7 @@ priv struct TreeStage {
   paths : Map[String, (String, Bool)]
   files : Map[String, StagedTreeFile]
   mut published : Bool
-  mut bytes : Int32
+  mut bytes : Int64
   mut metadata : Int32
 }
 
@@ -108,7 +108,7 @@ fn TreeStage::write(
   self : TreeStage,
   chunk : @model_access.ArtifactChunk,
   budget : TreeBudget,
-  snapshot_bytes : Int32,
+  snapshot_bytes : Int64,
 ) -> Unit raise {
   let path = chunk.path
   guard path.length() <= 1024 &&
@@ -127,12 +127,15 @@ fn TreeStage::write(
     raise TreeOutput("unsafe artifact path: " + path)
   }
   let size = chunk.decoded_byte_length
-  let file_size = chunk.offset + size.to_int64()
+  let size64 = size.to_int64()
   guard size <= budget.chunk &&
-    file_size <= budget.file.to_int64() &&
-    size <= budget.total - self.bytes &&
-    size <= budget.disk - snapshot_bytes - self.bytes &&
-    chunk.content.length() == (size + 2) / 3 * 4 else {
+    tree_budget_fits(chunk.offset, size64, budget.file) &&
+    // Native per-file offsets and lengths remain Int32-bounded.
+    tree_budget_fits(chunk.offset, size64, 2147483647L) &&
+    tree_budget_fits(self.bytes, size64, budget.total) &&
+    tree_budget_fits(snapshot_bytes, self.bytes, budget.disk) &&
+    size64 <= budget.disk - snapshot_bytes - self.bytes &&
+    chunk.content.length().to_int64() == (size64 + 2L) / 3L * 4L else {
     raise TreeOutput("artifact exceeds a byte limit: " + path)
   }
   let bytes = @base64.decode(chunk.content) catch {
@@ -165,7 +168,7 @@ fn TreeStage::write(
     file.digest.update(bytes)
     file.bytes += size
     file.finished = chunk.final_chunk
-    self.bytes += size
+    self.bytes += size.to_int64()
   })
 }
 

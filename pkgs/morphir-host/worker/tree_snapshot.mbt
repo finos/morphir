@@ -2,7 +2,7 @@
 const TREE_DOCUMENT_BYTES : Int32 = 1048576
 
 ///|
-const TREE_SNAPSHOT_BYTES : Int32 = 64 * 1024 * 1024
+const TREE_SNAPSHOT_BYTES : Int64 = 64 * 1024 * 1024
 
 ///|
 const TREE_ENTRIES : Int32 = 4096
@@ -24,9 +24,9 @@ priv struct TreeCapture {
   modules : Array[String]
   revision : String
   context_digest : String
-  bytes : Int32
+  bytes : Int64
   cache : Int32
-  work : Int32
+  work : Int64
 }
 
 ///|
@@ -44,9 +44,9 @@ priv struct TreeCaptureWalk {
   check : () -> Unit raise
   output_parent : String
   mut entries : Int32
-  mut bytes : Int32
+  mut bytes : Int64
   mut cache : Int32
-  mut work : Int32
+  mut work : Int64
 }
 
 ///|
@@ -90,11 +90,15 @@ fn TreeCaptureWalk::document(
   version : String,
 ) -> Unit raise {
   self.version(path, version)
+  guard tree_budget_fits(self.bytes, 0L, TREE_SNAPSHOT_BYTES) else {
+    raise TreeSource("source exceeds the snapshot byte limit")
+  }
   let limit = @cmp.minimum(
-    TREE_DOCUMENT_BYTES,
+    TREE_DOCUMENT_BYTES.to_int64(),
     TREE_SNAPSHOT_BYTES - self.bytes,
   )
-  let bytes = parent.read(name, limit)
+  // Narrow only after clamping to the per-document Int32 bound.
+  let bytes = parent.read(name, limit.to_int())
   guard parent.stamp(name~) == version else { tree_changed(path) }
   let digest = @identity.sha256(bytes)
   match self.pass {
@@ -111,8 +115,8 @@ fn TreeCaptureWalk::document(
       }
     }
   }
-  self.bytes += bytes.length()
-  self.work += 1 + bytes.length() / 65536
+  self.bytes += bytes.length().to_int64()
+  self.work += 1L + bytes.length().to_int64() / 65536L
 }
 
 ///|
@@ -133,7 +137,7 @@ fn TreeCaptureWalk::visit(
   self.version(prefix, expected)
   let names = source.list(TREE_ENTRIES - self.entries)
   self.entries += names.length()
-  self.work += 1 + names.length()
+  self.work += 1L + names.length().to_int64()
   for name in names {
     (self.check)()
     let path = if prefix == "" { name } else { prefix + "/" + name }
