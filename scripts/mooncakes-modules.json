@@ -157,6 +157,12 @@
       "name": "finos/morphir-workbench-native-session",
       "disposition": "public",
       "reason": "Public Morphir module; included in the dependency-closed FINOS release."
+    },
+    {
+      "path": "tools/native-reader-adapter",
+      "name": "finos/morphir-native-reader-adapter",
+      "disposition": "excluded",
+      "reason": "Development-only native reader adapter for explicit MCK selection; not a published package."
     }
   ]
 }

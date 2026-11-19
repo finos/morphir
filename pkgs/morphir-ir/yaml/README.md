@@ -155,3 +155,42 @@ underflow. Arbitrary-precision document numbers retain their lexemes.
 Normalization does not preserve YAML presentation. Callers retain original bytes
 separately through the shared model-document owner for exact downloads. This
 package implements input, not a canonical YAML writer.
+
+## In-process reader observations
+
+An explicit MCK adapter can use `tree.observation()` for admitted manifest
+facts and call `observation()` on each `TreeModule` or `TreeMember` returned
+by the existing paged reader. Keep `TreeCursor` opaque and pass it back to
+the same snapshot and selection. Inventory observations open no member bodies.
+`tree.observe_member(package, module, kind, name)` reads one selected typed
+member and returns its canonical identity, logical document, role and
+version-specific `payload`. Classic payloads retain type and expression
+attributes. Direct value references, integer literals and output type
+references also have normalized fact fields. Missing optional fields say
+nothing about nested expressions. This API does not evaluate expressions.
+
+To follow a direct reference, call `direct_value_reference()` on the typed
+`TreeMemberBody` and pass that FQName's package, module and local name to
+`read_member` or `observe_member` with `ValueMember`. A type with the same
+name has a separate identity. These reads retain the existing revision,
+selection and per-document admission checks. The adapter supplies a bounded
+revision-bound `TreeSource`; it need not construct a complete map of bodies.
+
+The observation API contains no fixture expectations, runner, receipt schema
+or implementation-revision claims. The owning runner records provenance,
+checks fixed expectations and determines correctness separately from resource
+qualification. `observation_fixture_test.mbt` embeds all 72 documents of the
+eight parent orders profiles and the independently authored `expected.json`
+from finos/morphir `3652032a53adeb6bfa4a5d672142487de45c57c5`. The focused
+`observation_test.mbt` emits normalized JSON facts for an eventual adapter and
+checks two domain pages, selected original bytes, roles, escaped IDs, classic
+attributes and a typed value reference resolving to integer 73. Controls
+change that literal, reuse a cursor across selections or readers, change the
+source revision and refuse missing or oversized selected documents.
+
+These tiny in-process cases use an in-memory fixture source. They establish
+reader behavior, not a filesystem snapshot lease, host generation, WASM
+execution or a measured memory ceiling. Compaction uses the existing public
+`wire.compact_names` and `wire.expand_names` APIs and the independent frozen
+policy cases in `wire/compaction_policy_wbtest.mbt`; no second policy checker
+is introduced here.

@@ -37,6 +37,8 @@ pub fn BoundedTree::dependency_packages(Self) -> Iter[@common.Path]
 pub fn BoundedTree::format_version(Self) -> @version.FormatVersion
 pub fn BoundedTree::members(Self, @common.Path, @common.Path, limit~ : Int32, cursor? : TreeCursor) -> TreePage[TreeMember] raise
 pub fn BoundedTree::modules(Self, @common.Path, limit~ : Int32, cursor? : TreeCursor) -> TreePage[TreeModule] raise
+pub fn BoundedTree::observation(Self) -> @json.Json raise
+pub fn BoundedTree::observe_member(Self, @common.Path, @common.Path, TreeMemberKind, @common.Name) -> @json.Json raise
 pub fn BoundedTree::package_name(Self) -> @common.Path
 pub fn BoundedTree::read_member(Self, @common.Path, @common.Path, TreeMemberKind, @common.Name) -> TreeMemberBody raise
 pub fn BoundedTree::read_original_document(Self, TreeArtifact) -> (String, String) raise
@@ -73,6 +75,7 @@ pub struct TreeMember {
   role : TreeRole
   document : String
 }
+pub fn TreeMember::observation(Self) -> @json.Json
 
 pub(all) enum TreeMemberBody {
   V3TypeDefinition(@common.AccessControlled[@v3.Documented[@v3.TypeDefinition[Unit]]])
@@ -84,6 +87,7 @@ pub(all) enum TreeMemberBody {
   V4TypeSpecification(@common.Documented[@v4.TypeSpecification])
   V4ValueSpecification(@common.Documented[@v4.ValueSpecification])
 }
+pub fn TreeMemberBody::direct_value_reference(Self) -> @common.FQName?
 
 #derive(Eq, @debug.Debug)
 pub(all) enum TreeMemberKind {
@@ -101,6 +105,7 @@ pub struct TreeModule {
   role : TreeRole
   access : @common.Access?
 }
+pub fn TreeModule::observation(Self) -> @json.Json
 
 pub struct TreePage[T] {
   items : Array[T]

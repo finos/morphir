@@ -1,0 +1,16 @@
+import {
+  "finos/morphir-ir" @ir,
+  "finos/morphir-ir/yaml",
+  "finos/morphir-ir/wire",
+  "moonbitlang/x/crypto",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/fs",
+  "moonbitlang/core/async/stdio",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+  "moonbitlang/core/path",
+  "moonbitlang/core/string",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/buffer",
+}
+options("is-main": true, "allow-experimental-packages": true)
