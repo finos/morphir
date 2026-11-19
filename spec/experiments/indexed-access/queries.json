@@ -1,0 +1,6 @@
+[
+  {"id":"int","fqName":"morphir/SDK:basics#int"},
+  {"id":"add","fqName":"morphir/SDK:basics#add"},
+  {"id":"unused","fqName":"morphir/SDK:basics#subtract"},
+  {"id":"literal-only","fqName":"lab/decoy:fake#reference"}
+]

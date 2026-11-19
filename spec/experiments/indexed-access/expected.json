@@ -1,0 +1,13 @@
+{
+  "int": [
+    {"document":"pkg/lab/probe/a.value.json","location":"/def/ExpressionBody/outputType","slot":"type-reference"},
+    {"document":"pkg/lab/probe/a.value.json","location":"/def/ExpressionBody/body/List/0","slot":"value-reference"},
+    {"document":"pkg/lab/probe/b.value.json","location":"/def/ExpressionBody/outputType","slot":"type-reference"}
+  ],
+  "add": [
+    {"document":"pkg/lab/probe/a.value.json","location":"/def/ExpressionBody/body/List/1","slot":"value-reference"},
+    {"document":"pkg/lab/probe/b.value.json","location":"/def/ExpressionBody/body","slot":"value-reference"}
+  ],
+  "unused": [],
+  "literal-only": []
+}
