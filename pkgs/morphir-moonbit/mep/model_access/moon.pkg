@@ -1,6 +1,7 @@
 import {
   "finos/morphir-ir/wire",
   "moonbitlang/core/debug",
+  "moonbitlang/core/immut/hashmap" @history,
   "moonbitlang/core/encoding/base64",
   "moonbitlang/x/crypto",
   "moonbitlang/core/string" @strconv,

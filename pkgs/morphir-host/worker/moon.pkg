@@ -52,6 +52,8 @@ options(
   targets: {
     "tree_producer_wbtest.mbt": [ "native" ],
     "tree_generation_wbtest.mbt": [ "native" ],
+    "tree_work_wbtest.mbt": [ "native" ],
+    "tree_work.mbt": [ "native" ],
     "tree_producer.mbt": [ "native" ],
     "tree_generation.mbt": [ "native" ],
     "tree_snapshot.mbt": [ "native" ],

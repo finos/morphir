@@ -7,7 +7,9 @@ pub struct GenerationRun {
   limits : Limits
   round : Int32
   priv requests : Array[ReadRequest]
-  priv request_ids : Array[String]
+  // Persistent core map: old round snapshots remain valid without copying
+  // the whole history on each continuation. Only the bounded batch is copied.
+  priv request_ids : @history.HashMap[String, Unit]
 }
 
 ///|
@@ -24,7 +26,7 @@ pub fn GenerationRun::new(request : Start) -> GenerationRun {
     limits: request.limits,
     round: 0,
     requests: [],
-    request_ids: [],
+    request_ids: @history.new(),
   }
 }
 
@@ -120,7 +122,9 @@ pub fn GenerationRun::accept_step(
       "model_access.requests_limit", "generation continuation exceeds the outstanding request limit",
     )
   }
-  let new_ids : Array[String] = []
+  // Validate the complete batch before building the next history root.
+  // A late duplicate must not consume IDs from earlier in this batch.
+  let new_ids : Map[String, Unit] = Map([])
   for request in requests {
     let id = request.request_id()
     guard !self.request_ids.contains(id) && !new_ids.contains(id) else {
@@ -128,12 +132,11 @@ pub fn GenerationRun::accept_step(
         "model_access.duplicate_request", "generation continuation repeats a request ID",
       )
     }
-    new_ids.push(id)
+    new_ids[id] = ()
   }
-  Some({
-    ..self,
-    round,
-    requests: [..requests],
-    request_ids: [..self.request_ids, ..new_ids],
-  })
+  let mut request_ids = self.request_ids
+  for id in new_ids.keys() {
+    request_ids = request_ids.add(id, ())
+  }
+  Some({ ..self, round, requests: [..requests], request_ids, })
 }

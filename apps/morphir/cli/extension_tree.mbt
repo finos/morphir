@@ -40,6 +40,7 @@ async fn extension_generate_tree(
     deadline=deadline(),
     stop~,
     diagnostics~,
+    profile=inputs.qualification,
   ) catch {
     @worker.Refusal(..) as refusal => raise refusal_error(refusal)
     @worker.Ended(ending, report~) => {
@@ -64,19 +65,25 @@ async fn extension_generate_tree(
     abort("published bounded generation requires a stopped worker")
   }
   @platform.stderr(extension_stderr_text(stopped.stderr))
-  Some(
-    extension_session_result(
-      Generate,
-      inputs,
-      generated.claims,
-      extension_worker_json(pin),
-      generated.session,
-      generated.files,
-      stopped.stderr,
-      protocol=Mep0_2Draft2,
-      probe=if claims is None { "initialized" } else { "described" },
-    ),
+  let (result, summary) = extension_session_result(
+    Generate,
+    inputs,
+    generated.claims,
+    extension_worker_json(pin),
+    generated.session,
+    generated.files,
+    stopped.stderr,
+    protocol=Mep0_2Draft2,
+    probe=if claims is None || inputs.qualification != Standard {
+      "initialized"
+    } else {
+      "described"
+    },
   )
+  if inputs.qualification != Standard && result is Object(fields) {
+    fields["treeAccounting"] = generated.accounting.to_json()
+  }
+  Some((result, summary))
 }
 
 ///|

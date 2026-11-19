@@ -215,6 +215,7 @@ extern "C" fn bounded_discard(
   parent : Int32,
   stage : Int32,
   name : Bytes,
+  entries : Int32,
 ) -> Int32 = "morphir_bounded_directory_discard"
 
 ///|
@@ -222,8 +223,9 @@ pub fn BoundedDirectory::discard(
   self : BoundedDirectory,
   stage : BoundedDirectory,
   name : String,
+  entries~ : Int32 = 8192,
 ) -> Unit raise {
-  match bounded_discard(self.fd, stage.fd, bounded_name(name)) {
+  match bounded_discard(self.fd, stage.fd, bounded_name(name), entries) {
     0 => ()
     -2 => raise IOError("bounded.cleanup_limit: " + name)
     _ => raise IOError("bounded.cleanup_unconfirmed: " + name)

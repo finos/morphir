@@ -20,6 +20,8 @@ priv struct CapturedDocument {
 ///|
 priv struct TreeCapture {
   directory : @platform.BoundedDirectory
+  admission : TreeAdmission
+  entries : Int32
   documents : Map[String, CapturedDocument]
   modules : Array[String]
   revision : String
@@ -37,6 +39,7 @@ priv enum CapturePass {
 
 ///|
 priv struct TreeCaptureWalk {
+  admission : TreeAdmission
   pass : CapturePass
   directory : @platform.BoundedDirectory
   documents : Map[String, CapturedDocument]
@@ -90,14 +93,18 @@ fn TreeCaptureWalk::document(
   version : String,
 ) -> Unit raise {
   self.version(path, version)
-  guard tree_budget_fits(self.bytes, 0L, TREE_SNAPSHOT_BYTES) else {
+  guard tree_budget_fits(self.bytes, 0L, self.admission.source_bytes) else {
     raise TreeSource("source exceeds the snapshot byte limit")
   }
   let limit = @cmp.minimum(
-    TREE_DOCUMENT_BYTES.to_int64(),
-    TREE_SNAPSHOT_BYTES - self.bytes,
+    self.admission.document_bytes.to_int64(),
+    self.admission.source_bytes - self.bytes,
   )
   // Narrow only after clamping to the per-document Int32 bound.
+  guard self.pass is Verify ||
+    self.documents.length() < self.admission.documents else {
+    raise TreeSource("source document count exceeds the admission limit")
+  }
   let bytes = parent.read(name, limit.to_int())
   guard parent.stamp(name~) == version else { tree_changed(path) }
   let digest = @identity.sha256(bytes)
@@ -120,6 +127,20 @@ fn TreeCaptureWalk::document(
 }
 
 ///|
+fn TreeCaptureWalk::admit_entries(
+  self : TreeCaptureWalk,
+  count : Int32,
+) -> Unit raise TreeGenerationError {
+  guard count >= 0 &&
+    self.entries >= 0 &&
+    self.entries <= self.admission.entries &&
+    count <= self.admission.entries - self.entries else {
+    raise TreeSource("source entry count exceeds the admission limit")
+  }
+  self.entries += count
+}
+
+///|
 fn TreeCaptureWalk::visit(
   self : TreeCaptureWalk,
   source : @platform.BoundedDirectory,
@@ -135,8 +156,13 @@ fn TreeCaptureWalk::visit(
     raise TreeSource("the output parent is inside the selected model tree")
   }
   self.version(prefix, expected)
-  let names = source.list(TREE_ENTRIES - self.entries)
-  self.entries += names.length()
+  self.admit_entries(0)
+  // The native listing API caps one directory at 65536, independently of
+  // the whole-tree entry counter. Orders splits members across modules.
+  let names = source.list(
+    @cmp.minimum(65536, self.admission.entries - self.entries),
+  )
+  self.admit_entries(names.length())
   self.work += 1L + names.length().to_int64()
   for name in names {
     (self.check)()
@@ -149,8 +175,8 @@ fn TreeCaptureWalk::visit(
       continue
     }
     self.cache += 512 + 4 * path.length()
-    guard path.length() <= 1024 &&
-      self.cache <= TREE_CACHE_BYTES &&
+    guard path.length() <= self.admission.path_units &&
+      self.cache <= self.admission.cache_bytes &&
       !path.contains("\\") &&
       !path.contains(":") &&
       !path.iter().any(c => c < ' ' || c == '\u007f') else {
@@ -179,10 +205,16 @@ fn capture_tree(
   directory : @platform.BoundedDirectory,
   output_parent : String,
   check : () -> Unit raise,
+  admission? : TreeAdmission,
 ) -> TreeCapture raise {
+  let admission = match admission {
+    Some(admission) => admission
+    None => TreeGenerationProfile::Standard.admission()
+  }
   let root = source.stamp()
   let copy : TreeCaptureWalk = {
     pass: Copy,
+    admission,
     directory,
     documents: Map([]),
     versions: Map([]),
@@ -235,6 +267,8 @@ fn capture_tree(
   modules.sort_by((a, b) => a[:].lexical_compare(b[:]))
   {
     directory,
+    admission,
+    entries: copy.entries,
     documents: copy.documents,
     modules,
     revision: @crypto.bytes_to_hex_string(revision.finalize()),

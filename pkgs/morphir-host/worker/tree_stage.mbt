@@ -7,6 +7,7 @@ priv struct StagedTreeFile {
 
 ///|
 priv struct TreeStage {
+  admission : TreeAdmission
   parent : @platform.BoundedDirectory
   parent_path : String
   directory : @platform.BoundedDirectory
@@ -24,8 +25,13 @@ fn TreeStage::open(
   output : String,
   nonce : String,
   source? : @platform.BoundedDirectory,
+  admission? : TreeAdmission,
   diagnostics~ : Array[Diagnostic] = [],
 ) -> TreeStage raise {
+  let admission = match admission {
+    Some(admission) => admission
+    None => TreeGenerationProfile::Standard.admission()
+  }
   let (parent_path, destination) = tree_parent_leaf(output)
   let parent = @platform.BoundedDirectory::open(parent_path)
   errdefer parent.close()
@@ -38,6 +44,7 @@ fn TreeStage::open(
     parent, temporary, "artifact stage", diagnostics,
   )
   {
+    admission,
     parent,
     parent_path,
     directory,
@@ -68,10 +75,14 @@ fn TreeStage::remember(
       false
     }
     None => {
-      guard self.paths.length() < 1024 else {
-        raise TreeOutput("staged file and directory limit exceeds 1024")
+      guard self.paths.length() < self.admission.output_paths else {
+        raise TreeOutput("staged file and directory admission limit exceeded")
       }
-      self.metadata += 512 + 4 * path.length() + 2 * key.length()
+      let retained = 512 + 4 * path.length() + 2 * key.length()
+      guard retained <= self.admission.cache_bytes - self.metadata else {
+        raise TreeOutput("staged metadata admission limit exceeded")
+      }
+      self.metadata += retained
       self.paths[key] = (path, directory)
       true
     }
@@ -111,7 +122,7 @@ fn TreeStage::write(
   snapshot_bytes : Int64,
 ) -> Unit raise {
   let path = chunk.path
-  guard path.length() <= 1024 &&
+  guard path.length() <= self.admission.path_units &&
     !path.contains("\\") &&
     !path.contains(":") &&
     !path.iter().any(c => c < ' ' || c == '\u007f') else {
@@ -170,6 +181,16 @@ fn TreeStage::write(
     file.finished = chunk.final_chunk
     self.bytes += size.to_int64()
   })
+}
+
+///|
+// Round each independently scanned file, not their aggregate byte count.
+fn TreeStage::verification_work(self : TreeStage) -> Int64 {
+  let mut blocks = 0L
+  for file in self.files.values() {
+    blocks += tree_verification_blocks(file.bytes.to_int64())
+  }
+  self.paths.length().to_int64() + self.files.length().to_int64() + blocks
 }
 
 ///|
@@ -298,7 +319,11 @@ fn TreeStage::dispose(
   diagnostics~ : Array[Diagnostic] = [],
 ) -> Unit {
   if !self.published {
-    self.parent.discard(self.directory, self.temporary) catch {
+    self.parent.discard(
+      self.directory,
+      self.temporary,
+      entries=self.admission.output_paths,
+    ) catch {
       error => tree_cleanup_unconfirmed(diagnostics, "artifact stage", error)
     }
   }

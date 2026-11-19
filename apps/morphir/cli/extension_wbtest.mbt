@@ -1115,3 +1115,64 @@ async test "a services helper that does not load fails with native.helper_unavai
     Some(Json::string("native.helper_unavailable")),
   )
 }
+
+///|
+test "Orders qualification profile is explicit and owned by extension generate" {
+  for
+    (name, expected, horizon) in [
+      ("orders-scale-a", @worker.TreeGenerationProfile::OrdersScaleA, 3600000),
+      ("orders-scale-b", @worker.TreeGenerationProfile::OrdersScaleB, 7200000),
+    ] {
+    let parsed = parse_cli([
+      "extension", "generate", "--task-result", "compile.json", "--extension-pin",
+      "pin.json", "--qualification-profile", name, "--target", "text", "--output",
+      "out", "--json",
+    ])
+    assert_eq(value(parsed, "qualification-profile"), name)
+    let profile = extension_qualification_profile(name, true, true)
+    assert_eq(profile, expected)
+    assert_eq(extension_tree_timeout(horizon.to_string(), profile), horizon)
+  }
+  assert_eq(
+    extension_qualification_profile("", false, false),
+    @worker.TreeGenerationProfile::Standard,
+  )
+  assert_eq(
+    extension_tree_timeout("60000", @worker.TreeGenerationProfile::Standard),
+    60000,
+  )
+  for
+    (name, recorded, pinned) in [
+      ("orders-scale-a", false, true),
+      ("orders-scale-b", true, false),
+      ("unknown", true, true),
+    ] {
+    let refused = try {
+      ignore(extension_qualification_profile(name, recorded, pinned))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused)
+  }
+  let refused = try {
+    ignore(
+      parse_cli([
+        "extension", "compile", "src", "--qualification-profile", "orders-scale-a",
+      ]),
+    )
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(refused)
+  let refused = try {
+    ignore(
+      extension_tree_timeout("3600000", @worker.TreeGenerationProfile::Standard),
+    )
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(refused)
+}

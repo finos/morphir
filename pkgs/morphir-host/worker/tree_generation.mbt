@@ -15,6 +15,55 @@ pub struct TreeGeneration {
   session : SessionReport
   claims : Claims
   files : Array[Json]
+  accounting : TreeGenerationAccounting
+}
+
+///|
+/// Logical counters for reproducing admission and tiny fixture measurements.
+/// These are not resident-memory measurements or a qualification receipt.
+pub struct TreeGenerationAccounting {
+  profile : TreeGenerationProfile
+  source_documents : Int32
+  source_entries : Int32
+  source_bytes : Int64
+  artifact_bytes : Int64
+  output_paths : Int32
+  deliveries : Int32
+  retained_request_ids : Int32
+  profile_minimum_deliveries : Int32
+  metadata_bytes : Int32
+  work_units : Int64
+  work_limit : Int64
+}
+
+///|
+fn tree_count_json(value : Int64) -> Json {
+  Json::number(value.to_double(), repr=value.to_string())
+}
+
+///|
+pub fn TreeGenerationAccounting::to_json(
+  self : TreeGenerationAccounting,
+) -> Json {
+  {
+    "profile": match self.profile {
+      Standard => "standard"
+      OrdersScaleA => "orders-scale-a"
+      OrdersScaleB => "orders-scale-b"
+    },
+    "residentMemoryQualified": false,
+    "sourceDocuments": self.source_documents,
+    "sourceEntries": self.source_entries,
+    "sourceBytes": tree_count_json(self.source_bytes),
+    "artifactBytes": tree_count_json(self.artifact_bytes),
+    "outputPaths": self.output_paths,
+    "deliveries": self.deliveries,
+    "retainedRequestIds": self.retained_request_ids,
+    "profileMinimumDeliveries": self.profile_minimum_deliveries,
+    "metadataBytes": self.metadata_bytes,
+    "workUnits": tree_count_json(self.work_units),
+    "provisionalWorkLimit": tree_count_json(self.work_limit),
+  }
 }
 
 ///|
@@ -109,6 +158,8 @@ priv struct TreeView {
   budget : TreeBudget
   check : () -> Unit raise
   mut issued : Int32
+  mut request_ids : Int32
+  mut deliveries : Int32
   mut cache : Int32
   work : Ref[Int64]
 }
@@ -130,10 +181,16 @@ fn TreeView::open(
   let defaults = @yaml.Limits::default()
   let limits = {
     ..defaults,
-    max_bytes: TREE_DOCUMENT_BYTES,
+    max_bytes: capture.admission.document_bytes,
     max_depth: budget.depth,
     max_nodes: budget.nodes,
-    max_assembly_nodes: budget.nodes,
+    // Typed normalization charges string/key UTF-16 units as well as nodes.
+    // Keep the wire node cap, with a separate finite allowance per 32 KiB
+    // document for the Orders literal bodies and shorthand normalization.
+    max_assembly_nodes: match capture.admission.profile {
+      Standard => budget.nodes
+      OrdersScaleA | OrdersScaleB => 4 * capture.admission.document_bytes
+    },
   }
   let work = Ref(capture.work)
   let observe = () => charge_tree_work(work, budget.work, 1, check)
@@ -165,6 +222,8 @@ fn TreeView::open(
     budget,
     check,
     issued: 0,
+    request_ids: 0,
+    deliveries: 0,
     cache: capture.cache,
     work,
   }
@@ -326,8 +385,8 @@ fn TreeView::inventory_delivery(
   page_size : Int32,
   cursor : String?,
 ) -> Json raise {
-  guard page_size <= 128 else {
-    raise TreeGuest("inventory page size exceeds 128")
+  guard page_size <= self.capture.admission.page_size else {
+    raise TreeGuest("inventory page size exceeds the admission limit")
   }
   let position = match cursor {
     Some(token) => {
@@ -377,15 +436,16 @@ fn TreeView::deliver(
   let mut remaining_frame = self.budget.frame - 128 - self.id.length()
   for request in requests {
     self.account(1)
-    guard request.request_id().length() <= 256 else {
-      raise TreeGuest("request ID exceeds 256 UTF-16 units")
+    guard request.request_id().length() <=
+      self.capture.admission.request_id_units else {
+      raise TreeGuest("request ID exceeds the admission limit")
     }
     let delivery : Json = match request {
       Inventory(request_id~, selection~, page_size~, cursor~) =>
         self.inventory_delivery(request_id, selection, page_size, cursor)
       Document(request_id~, document_id~) => {
-        guard document_id.length() <= 1024 else {
-          raise TreeGuest("document ID exceeds 1024 UTF-16 units")
+        guard document_id.length() <= self.capture.admission.path_units else {
+          raise TreeGuest("document ID exceeds the admission limit")
         }
         let physical = document_id + ".json"
         guard self.documents.get(document_id) is Some(artifact) &&
@@ -432,6 +492,7 @@ fn TreeView::deliver(
       )
     }
     deliveries.push(delivery)
+    self.deliveries += 1
   }
   @model_access.Advance::from_json({
     "sessionId": self.id,
@@ -466,6 +527,28 @@ fn tree_output_error(error : Error) -> Error {
 }
 
 ///|
+fn TreeView::retain_requests(
+  self : TreeView,
+  requests : Array[@model_access.ReadRequest],
+) -> Unit raise {
+  guard requests.length() <=
+    self.capture.admission.request_limit - self.request_ids else {
+    raise TreeGuest("retained request count exceeds the admission limit")
+  }
+  for request in requests {
+    let id = request.request_id()
+    guard id.length() <= self.capture.admission.request_id_units else {
+      raise TreeGuest("request ID exceeds the admission limit")
+    }
+    // GenerationRun retains every unique ID for replay protection. Charge
+    // its string, collection slots and overhead in the same cache as capture,
+    // inventory, diagnostics and staging. One decoded frame is transient.
+    self.account(0, cache=256 + 4 * id.length())
+    self.request_ids += 1
+  }
+}
+
+///|
 fn TreeView::step(
   self : TreeView,
   answer : Outcome[GenerationReply],
@@ -483,7 +566,12 @@ fn TreeView::step(
     diagnostics.push(diagnostic)
   }
   match answer.class {
-    Completed(Stepped(step)) => step
+    Completed(Stepped(step)) => {
+      if step is Continue(requests~, ..) {
+        self.retain_requests(requests)
+      }
+      step
+    }
     Cancelled => raise TreeInterrupted
     Deadline => raise TreeExpired
     Refused(code~, message~) => raise Refusal(code~, message~)
@@ -637,11 +725,26 @@ pub async fn Host::generate_tree(
   deadline~ : Deadline,
   stop~ : StopSignal,
   diagnostics~ : Array[Diagnostic],
+  profile~ : TreeGenerationProfile = Standard,
 ) -> TreeGeneration {
-  let admitted = match (spec.runtime, input, expected) {
-    (Process(..), _, Some(_)) => true
-    (Wasm(abi=Some(ExtismKernelV1)), CompileResult(_), None) => true
-    _ => false
+  let scale = profile != Standard
+  if scale &&
+    !(spec.runtime is Wasm(abi=Some(ExtismKernelV1)) &&
+    input is CompileResult(_) &&
+    target == "text") {
+    raise Refusal(
+      code=RuntimeUnavailable,
+      message="Orders qualification requires recorded Extism plain v4 text generation",
+    )
+  }
+  let admitted = if scale {
+    true
+  } else {
+    match (spec.runtime, input, expected) {
+      (Process(..), _, Some(_)) => true
+      (Wasm(abi=Some(ExtismKernelV1)), CompileResult(_), None) => true
+      _ => false
+    }
   }
   guard self.platform is Native(_) &&
     admitted &&
@@ -658,7 +761,9 @@ pub async fn Host::generate_tree(
       message="native document-tree generation supports plain JSON IR 4.0.0",
     )
   }
-  let support = tree_support()
+  let admission = profile.admission()
+  let support = admission.support
+  let bounded_host = { ..self, limits: profile.channel_limits(self.limits), }
   let offer = match expected {
     None => Offer::Bounded(support)
     Some(claims) =>
@@ -671,6 +776,14 @@ pub async fn Host::generate_tree(
           )
       }
   }
+  if scale {
+    guard offer is Bounded(offered) && offered.limits == support.limits else {
+      raise Refusal(
+        code=RequestLimit,
+        message="recorded claims narrow the Orders qualification offer",
+      )
+    }
+  }
   let expires = Ref(@async.now() + deadline.ms().to_int64())
   fn remaining() -> Deadline raise {
     if stop.requested() {
@@ -678,7 +791,7 @@ pub async fn Host::generate_tree(
     }
     let ms = expires.val - @async.now()
     guard ms > 0L else { raise TreeExpired }
-    Deadline::of_ms(ms.to_int())
+    profile.deadline(milliseconds=ms.to_int())
   }
   let check = () => ignore(remaining())
   let nonce = @platform.observation_id()
@@ -690,6 +803,7 @@ pub async fn Host::generate_tree(
     output,
     nonce,
     source=source.protected_directory,
+    admission~,
     diagnostics~,
   ) catch {
     error => raise tree_output_error(error)
@@ -707,7 +821,7 @@ pub async fn Host::generate_tree(
   let snapshot_released = Ref(false)
   defer {
     if !snapshot_released.val {
-      stage.parent.discard(snapshot, snapshot_name) catch {
+      stage.parent.discard(snapshot, snapshot_name, entries=admission.entries) catch {
         error => tree_cleanup_unconfirmed(diagnostics, "source snapshot", error)
       }
     }
@@ -719,12 +833,14 @@ pub async fn Host::generate_tree(
     snapshot,
     stage.parent.stamp(),
     check,
+    admission~,
   ) catch {
     error => raise tree_source_error(error)
   }
   // Keep the producer's lease through lazy delivery and worker settlement.
   // The outer defer releases it after any snapshot and stage cleanup.
-  let (outcome, report) = self.with_session_claims(
+  let accounting : Ref[TreeGenerationAccounting?] = Ref(None)
+  let (outcome, report) = bounded_host.with_session_claims(
     spec,
     expected,
     offer,
@@ -748,6 +864,12 @@ pub async fn Host::generate_tree(
             message="the initialized worker does not claim the bounded generation target",
           )
         }
+        if scale && access.limits != support.limits {
+          raise Refusal(
+            code=RequestLimit,
+            message="worker narrowed the Orders qualification offer",
+          )
+        }
         expires.val = @cmp.minimum(
           expires.val,
           @async.now() + access.limits.session_milliseconds().to_int64(),
@@ -759,12 +881,21 @@ pub async fn Host::generate_tree(
         }
         view.generate(session, stage, access, target, diagnostics)
         // Reserve the directory scan and the streaming verification pass.
-        view.account(
-          stage.paths.length().to_int64() +
-          stage.files.length().to_int64() +
-          stage.bytes / 65536L +
-          (if stage.bytes % 65536L == 0L { 0L } else { 1L }),
-        )
+        view.account(stage.verification_work())
+        accounting.val = Some({
+          profile: capture.admission.profile,
+          profile_minimum_deliveries: capture.admission.deliveries,
+          source_documents: capture.documents.length(),
+          source_entries: capture.entries,
+          source_bytes: capture.bytes,
+          artifact_bytes: stage.bytes,
+          output_paths: stage.paths.length(),
+          deliveries: view.deliveries,
+          retained_request_ids: view.request_ids,
+          metadata_bytes: view.cache,
+          work_units: view.work.val,
+          work_limit: budget.work,
+        })
         Ok(claims)
       } catch {
         error => Err(error)
@@ -791,12 +922,12 @@ pub async fn Host::generate_tree(
   guard report.stop is Some(stopped) && !(stopped.status is Unconfirmed(_)) else {
     raise TreeOutput("the host could not confirm that the worker tree stopped")
   }
-  stage.parent.discard(snapshot, snapshot_name) catch {
+  stage.parent.discard(snapshot, snapshot_name, entries=admission.entries) catch {
     error => raise tree_output_error(error)
   }
   snapshot_released.val = true
   let files = stage.publish_checked(check) catch {
     error => raise tree_output_error(error)
   }
-  { session: report, claims, files, }
+  { session: report, claims, files, accounting: accounting.val.unwrap(), }
 }

@@ -463,10 +463,13 @@ struct RecordedExitChannel {
   mut next : Message?
   mut exit_accepted : Bool
   mut settled : Bool
+  offers : Array[Json]
+  mut launched_limits : Limits?
 }
 
 ///|
-impl Launcher for RecordedExitChannel with fn launch(self, _, _) {
+impl Launcher for RecordedExitChannel with fn launch(self, _, limits) {
+  self.launched_limits = Some(limits)
   self
 }
 
@@ -485,7 +488,8 @@ impl Channel for RecordedExitChannel with fn send(self, message) {
   }
   guard fields.get("id") is Some(id) else { return }
   let result : Json = match method_ {
-    "morphir.initialize" =>
+    "morphir.initialize" => {
+      self.offers.push(@model_wire.field(fields["params"], "modelAccess"))
       {
         "protocolVersion": "0.2.0-draft.2",
         "extension": {
@@ -503,7 +507,12 @@ impl Channel for RecordedExitChannel with fn send(self, message) {
           "modelAccess": @model_wire.field(fields["params"], "modelAccess"),
         },
       }
+    }
     "morphir.backend.generateModel.start" => {
+      assert_eq(
+        @model_wire.field(fields["params"], "limits"),
+        @model_wire.field(self.offers[0], "limits"),
+      )
       let artifact = b"73\n"
       {
         "sessionId": @model_wire.field(fields["params"], "sessionId"),
@@ -602,6 +611,8 @@ async test "recorded WASM publication requires an accepted exit and a zero worke
       next: None,
       exit_accepted: false,
       settled: false,
+      offers: [],
+      launched_limits: None,
     }
     let host = Host::new(channel, Native(Machine::of(Aarch64AppleDarwin)))
     let spec = WorkerSpec::new(
@@ -647,4 +658,82 @@ async test "recorded WASM publication requires an accepted exit and a zero worke
     }
   }
   guard failures.is_empty() else { fail(failures.join("\n")) }
+}
+
+///|
+async test "Orders scale profile uses one offer across recorded leased WASM generation" {
+  for profile in [TreeGenerationProfile::OrdersScaleA, OrdersScaleB] {
+    let root = @fs.tmpdir(prefix="morphir-orders-admission-")
+    defer @fs.rmdir(root, recursive=true)
+    let path = root + "/task"
+    @fs.mkdir(path + "/compile.dest/model", recursive=true)
+    @fs.write_file(path + "/compile.dest/model/manifest.json", capture_manifest)
+    let record : Json = {
+      "schema": 1,
+      "task": "compile",
+      "module": "orders",
+      "completedAt": "2026-11-19T00:00:00Z",
+      "value": ["model"],
+      "ir": {
+        "layout": "document-tree",
+        "format": "json",
+        "version": "v4",
+        "path": "model",
+      },
+    }
+    @fs.write_file(path + "/compile.json", record.stringify())
+    @fs.write_file(path + "/compile.lock", "")
+    let task = @platform.BoundedDirectory::open(path)
+    defer task.close()
+    let channel : RecordedExitChannel = {
+      task,
+      root,
+      status: Exited(code=0),
+      reject_exit: false,
+      next: None,
+      exit_accepted: false,
+      settled: false,
+      offers: [],
+      launched_limits: None,
+    }
+    let host = Host::new(channel, Native(Machine::of(Aarch64AppleDarwin)))
+    let spec = WorkerSpec::new(
+      ArtifactRef::new(Memory(b""), Sha256::of(b"")),
+      Wasm(abi=Some(ExtismKernelV1)),
+    )
+    let generated = host.generate_tree(
+      spec,
+      input=CompileResult(path + "/compile.json"),
+      output=root + "/out",
+      target="text",
+      requested_ir=None,
+      deadline=Deadline::of_ms(3000),
+      stop=StopSignal::never(),
+      diagnostics=[],
+      profile~,
+    ) catch {
+      TreeSource(message) => fail(message)
+      TreeOutput(message) => fail(message)
+      Refusal(message~, ..) => fail(message)
+      error => raise error
+    }
+    assert_true(channel.settled)
+    assert_eq(channel.offers, [profile.admission().support.to_json()])
+    assert_eq(channel.launched_limits.unwrap().request_bytes, 65536)
+    assert_eq(channel.launched_limits.unwrap().response_bytes, 65536)
+    assert_eq(generated.accounting.profile, profile)
+    assert_eq(
+      generated.accounting.source_bytes,
+      capture_manifest.length().to_int64(),
+    )
+    assert_eq(generated.accounting.output_paths, 1)
+    assert_eq(generated.accounting.artifact_bytes, 3L)
+    assert_eq(
+      @model_wire.field(generated.accounting.to_json(), "artifactBytes"),
+      Json::number(3),
+    )
+    let writer = task.try_task_lease("compile.lock", exclusive=true).unwrap()
+    writer.close()
+    assert_eq(@fs.read_file(root + "/out/order.txt").binary(), b"73\n")
+  }
 }

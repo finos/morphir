@@ -48,7 +48,7 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "--mck-helper", "--extension-pin", "--extension-helper", "--input",
               "--version", "--types-only", "--services-pin", "--services-helper",
               "--repository", "--executable", "--sha256", "--extension-id", "--short-id",
-              "--platform", "--ir-version", "--source-base",
+              "--platform", "--ir-version", "--source-base", "--task-result", "--qualification-profile",
             ].map(Json::string),
           ),
         ),

@@ -276,6 +276,7 @@ fn extension_retired_options(cli : Cli) -> Unit raise ExtensionError {
 priv struct ExtensionInputs {
   path : String
   task_result : String?
+  qualification : @worker.TreeGenerationProfile
   output : String
   package_name : String
   codec : @worker.ModelCodec?
@@ -292,6 +293,60 @@ priv struct ExtensionInputs {
 }
 
 ///|
+fn extension_qualification_profile(
+  text : String,
+  recorded : Bool,
+  pinned : Bool,
+) -> @worker.TreeGenerationProfile raise ExtensionError {
+  let profile : @worker.TreeGenerationProfile = match text {
+    "" => Standard
+    "orders-scale-a" => OrdersScaleA
+    "orders-scale-b" => OrdersScaleB
+    _ => raise input_invalid("unknown --qualification-profile: " + text)
+  }
+  if profile != Standard && (!recorded || !pinned) {
+    raise input_invalid(
+      "Orders qualification requires --task-result and an explicit --extension-pin",
+    )
+  }
+  profile
+}
+
+///|
+fn extension_tree_timeout(
+  text : String,
+  profile : @worker.TreeGenerationProfile,
+) -> Int32 raise ExtensionError {
+  let ms = if profile == Standard {
+    build_timeout(text) catch {
+      _ => raise input_invalid("--timeout needs a whole number of milliseconds")
+    }
+  } else {
+    match (@json.parse(text) catch { _ => Json::null() }) {
+      Number(n, ..) if n > 0.0 &&
+        n <=
+        (profile.deadline() catch {
+          _ => raise input_invalid("invalid qualification deadline")
+        })
+        .ms()
+        .to_double() &&
+        n == n.to_int().to_double() => n.to_int()
+      _ =>
+        raise input_invalid(
+          "--timeout exceeds the provisional qualification horizon or is not whole milliseconds",
+        )
+    }
+  }
+  ignore(
+    profile.deadline(milliseconds=ms) catch {
+      _ =>
+        raise input_invalid("--timeout exceeds the selected deadline ceiling")
+    },
+  )
+  ms
+}
+
+///|
 fn ExtensionInputs::read(
   cli : Cli,
   command : ExtensionCommand,
@@ -305,13 +360,19 @@ fn ExtensionInputs::read(
     raise input_invalid("use either a positional input or --task-result")
   }
   let model_format = value(cli, "model-format")
-  let timeout_ms = build_timeout(value(cli, "timeout", fallback="60000")) catch {
-    _ => raise input_invalid("--timeout needs a whole number of milliseconds")
-  }
-  ignore(
-    @worker.Deadline::of_ms(timeout_ms) catch {
-      _ => raise input_invalid("--timeout allows at most 594000 ms")
-    },
+  let qualification = extension_qualification_profile(
+    value(cli, "qualification-profile"),
+    task_result is Some(_),
+    value(cli, "extension-pin") != "",
+  )
+  let default_timeout = (qualification.deadline() catch {
+      _ => raise input_invalid("invalid qualification deadline")
+    })
+    .ms()
+    .to_string()
+  let timeout_ms = extension_tree_timeout(
+    value(cli, "timeout", fallback=default_timeout),
+    qualification,
   )
   let ir_version = match value(cli, "ir-version") {
     "" => None
@@ -325,6 +386,7 @@ fn ExtensionInputs::read(
   let inputs : ExtensionInputs = {
     path,
     task_result,
+    qualification,
     output: "",
     package_name: value(cli, "package"),
     codec: None,
@@ -1586,6 +1648,13 @@ async fn extension_execute(
     _ => raise refused(PinInvalid, "the pin \{pin_path} is not UTF-8 JSON")
   }
   let pin = ExtensionPin::decode(pin_json, run.hosting.path_style())
+  if inputs.qualification != Standard &&
+    !(pin.spec.runtime is Wasm(abi=Some(ExtismKernelV1)) &&
+    inputs.target == "text") {
+    raise input_invalid(
+      "Orders qualification requires an extism-kernel-v1 pin and --target text",
+    )
+  }
   let kind = pin.spec.runtime.kind()
   guard run.hosting.kinds().contains(kind) else {
     raise refused(
@@ -1597,7 +1666,7 @@ async fn extension_execute(
   fn remaining() -> @worker.Deadline raise ExtensionError {
     let left = inputs.timeout_ms -
       ((@platform.monotonic_seconds() - started) * 1000.0).to_int()
-    @worker.Deadline::of_ms(left) catch {
+    inputs.qualification.deadline(milliseconds=left) catch {
       _ => raise ending_error(Deadline)
     }
   }
@@ -1619,12 +1688,12 @@ async fn extension_execute(
   if command is Generate &&
     inputs.task_result is Some(_) &&
     value(cli, "extension-pin") != "" &&
-    recorded is None &&
+    (recorded is None || inputs.qualification != Standard) &&
     pin.spec.runtime is Wasm(abi=Some(ExtismKernelV1)) &&
     extension_generate_tree(
       host,
       pin,
-      None,
+      recorded,
       inputs,
       deadline=remaining,
       stop~,

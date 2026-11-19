@@ -237,13 +237,14 @@ static int clear_owned_directory(int fd, dev_t device, int depth, int *remaining
 }
 #endif
 
-int morphir_bounded_directory_discard(int parent, int stage, const char *name) {
+int morphir_bounded_directory_discard(int parent, int stage, const char *name, int limit) {
 #if defined(__APPLE__) || defined(__linux__)
   struct stat owner, source, entry;
   if (!owned_directory(parent, &owner) || !owned_directory(stage, &source) ||
       fstatat(parent, name, &entry, AT_SYMLINK_NOFOLLOW) ||
       !same_identity(&source, &entry) || owner.st_dev != source.st_dev) return -1;
-  int remaining = 8192;
+  if (limit < 0) return -2;
+  int remaining = limit;
   int result = clear_owned_directory(stage, source.st_dev, 0, &remaining);
   if (result) return result;
   if (fstatat(parent, name, &entry, AT_SYMLINK_NOFOLLOW) ||

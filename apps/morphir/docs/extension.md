@@ -232,6 +232,128 @@ The agreement can lower the exchange and staging limits. The host enforces
 logical byte and work budgets. Process heap usage and the wall time of a
 blocked filesystem syscall require separate controls.
 
+#### Opt in to Orders scale admission
+
+`--qualification-profile orders-scale-a|orders-scale-b` selects a bounded
+admission profile for the Orders recipe at finos/morphir
+`3652032a53adeb6bfa4a5d672142487de45c57c5`. It requires a native recorded
+`--task-result`, an explicit `--extension-pin` for `extism-kernel-v1`, and
+`--target text`. It admits only plain JSON v4 document-tree generation. The
+normal defaults above stay unchanged. For example:
+
+```sh
+morphir extension generate --task-result ./task/compile.json \
+  --extension-pin ./scale-pin.json --target text --output ./generated \
+  --qualification-profile orders-scale-a --json
+```
+
+The embedding API selects the same path with
+`Host::generate_tree(..., profile=OrdersScaleA)` or `OrdersScaleB`.
+`TreeGenerationProfile::deadline()` constructs that profile's provisional
+horizon; normal `Deadline::of_ms` keeps its existing maximum. A shorter
+`--timeout` limits admitted generation and continuations. The host checks
+it during lease acquisition and capture and before further generation work;
+it cannot preempt a synchronous filesystem call already in progress.
+Mandatory worker settlement and snapshot/stage cleanup follow, still under
+the path, entry-count and depth bounds. They may run past the deadline, and
+the producer read lease remains held through that cleanup. Timeout is not
+an absolute synchronous cleanup-completion guarantee. The profile never
+falls back to a process worker, an inline model, another target or another tuple.
+
+| Hard logical limit | A | B |
+| --- | ---: | ---: |
+| Source documents | 68,611 | 137,219 |
+| Source file and directory entries | 69,643 | 139,275 |
+| Captured source bytes | 1,086,620,931 | 2,173,241,603 |
+| Artifact bytes | 1,090,585,600 | 2,181,171,200 |
+| Simultaneous snapshot and stage bytes | 2,177,206,531 | 4,354,412,803 |
+| Output file and directory paths | 1,025 | 2,049 |
+| Host logical metadata bytes | 268,435,456 | 536,870,912 |
+| Nominal full-recipe deliveries | 78,913 | 157,825 |
+| Maximum rounds and retained request IDs | 157,826 | 315,650 |
+| Derived canonical logical work ceiling | 5,965,836 | 11,933,774 |
+| Provisional session horizon, milliseconds | 3,600,000 | 7,200,000 |
+
+Both profiles use 32 KiB documents/chunks, 64 KiB request and response
+channels from launch onward, one outstanding request and one document per
+exchange, 64 KiB each for decoded and encoded exchange accounting,
+1,024 wire nodes, depth 64, a 16-row page,
+and 1,065,025 bytes per artifact. Host typed normalization separately allows
+131,072 units per document, since it charges string and key lengths as well
+as nodes. This permits the recipe's 16,560-byte literal document without
+raising the guest's node cap. The landed guest charges the delivery and
+emitted chunk together: the largest production pair uses 32,945 decoded
+and 43,928 base64 bytes. The independent document ceiling stays 32 KiB. Paths are at most 256 UTF-16 units and request
+IDs at most 64. These are explicit qualification restrictions, independent
+of the standard path and ID bounds.
+
+One selected offer supplies capture admission and live initialization/start
+limits. A guest that narrows a qualification offer is refused. Capture keeps
+separate document, entry, byte and metadata counters. Stage paths and bytes
+have independent counters. Snapshot cleanup receives the selected entry
+bound instead of the normal 8,192-entry cleanup allowance. All existing
+record, lease, identity, snapshot, digest, cursor and publication checks still
+apply. Retained unique request IDs cost `256 + 4 * UTF-16 length` logical
+metadata bytes each, sharing the cache budget with capture, inventory,
+diagnostics and staging. Metadata accounting is a finite logical admission
+counter, not a measurement or enforcement of process heap residency.
+
+The work ceiling follows the charged loops for the pinned recipe and guest.
+For `M` generated modules, let `G = ceil(M / 16)`,
+`P = ceil((M + 1) / 16)`, `D = 77M + P`, and
+`L = ceil(log2(M + 2))`. The components in `OrdersScaleWork` are:
+
+- Two capture walks: `272M + 46` units, including entry, directory and
+  document charges. Every source document is below 64 KiB.
+- Generation-loop and delivery dispatch: `2D + 1` units; document delivery
+  adds `67M`, and artifact chunks add `65M`.
+- Member resolution reloads `67M` module documents, scans `M` listed types,
+  and scans all 65 listed values for each of 66 value deliveries per module:
+  `66 * 65 * M` units. That value scan alone costs 4,392,960 / 8,785,920.
+- Two five-page member inventories per module cost `876M`, including module
+  loads, full 66-member scans on every page, emitted rows, unique document
+  admission and cursors.
+- Root inventory costs `3(M + 1) + (G + 1) + (P - 1)`; root module search
+  is bounded by `(M + G + 2) * L`, including page lookahead and SDK-prefix
+  callbacks.
+- Verification costs `(M + 1) + M + 17M`. Each independently scanned
+  1,065,025-byte artifact needs 17 rounded 64 KiB blocks. Rounding the
+  aggregate stage bytes would undercount these separate scans.
+
+The sum is the selected ceiling above. A bounded, independent counter-loop
+control covers the exact A/B dimensions and the exact/one-over allowance
+boundary without producing model or artifact bytes. This is a charge-model
+bound for this recipe, not a promise for arbitrary trees or request patterns.
+The normal 65,536-unit work ceiling is unchanged. The JSON field retains
+its draft name `provisionalWorkLimit` for compatibility.
+
+The one/two-hour horizons remain provisional. They allow 25 ms per nominal
+delivery, four source I/O passes and two artifact passes at 10 MiB/s, with
+startup margin. Real A/B throughput must establish whether those horizons
+are sufficient; mandatory cleanup may outlast them as described above.
+The JSON success result adds `treeAccounting` only when a qualification
+profile is selected. Existing success/error envelopes and stdout/stderr
+ownership remain the same.
+
+Request-ID replay history now uses the installed core immutable hash map.
+A batch-local map checks all IDs against history and against each other
+before committing a new persistent root. This removes whole-history array
+search/copy while preserving prior round snapshots, late-duplicate rollback
+and the ordered copy of the current bounded request batch. Retained IDs still
+share the logical cache charge described above. Expected lookup/update cost
+is a bounded hash-trie path rather than a whole-history traversal; collision
+buckets can still require linear comparisons.
+
+Real A/B runs are still required. Member resolution still scans/reloads its
+owning module for each selected document, inventory rescans whole member
+lists per page, and capture sorts the admitted path inventory. String work,
+hash collisions, filesystem and codec cost are not CPU instructions metered
+by the logical charge counter. Captured-document, version, inventory and
+request-ID metadata still grow with admitted source/request counts.
+Resident/descendant memory, full-scale timing and resource receipts remain
+unmeasured. These changes do not complete tasks 7.2 or 7.3, and tiny-run
+clearance is insufficient for that goal.
+
 The host checks artifact offsets, lengths, digests, path collisions, and end
 markers while writing a private stage. After the worker stops, it streams the
 staged files back through SHA-256, verifies the directory contains exactly the
