@@ -7,7 +7,7 @@
 import { beforeAll, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { checkKit, classify, type Contract, documentProblems, type Kit, type KitInput, loadKit, readModule, withDigests } from "./check-wasm-host-kit";
+import { checkKit, classify, type Contract, documentProblems, type Kit, type KitInput, loadKit, readModule, sha256, surfaceProblems, withDigests } from "./check-wasm-host-kit";
 
 const root = path.resolve(import.meta.dir, "..");
 let input: KitInput;
@@ -575,3 +575,176 @@ test("session stores round trip in one session, start empty in the next, and ref
 	expect(() => entries.call(frame("initialize"))).toThrow("over its limit");
 	expect(entries.cacheEntries()).toBe(1025);
 });
+
+
+test("the shared orders WASM guest follows live deliveries", () => {
+	const kitDir = path.join(root, "spec/mck/bounded-generation");
+	type Patch = { op: string; path: string; value: unknown };
+	type Model = {
+		patchDocuments?: Record<string, Patch[]>;
+		addDocuments?: Record<string, unknown>;
+		expect: { lastPage: string[]; referencedValue: string; artifacts: { path: string; utf8: string }[] };
+	};
+	const { fixture, generator, tuple, limits, domain, models, cases } = JSON.parse(readFileSync(path.join(kitDir, "orders-wasm.controls.json"), "utf8")) as {
+		fixture: string;
+		generator: { abi: string; wat: string; target: string; sha256: string };
+		tuple: { protocolVersion: string };
+		limits: Record<string, number>;
+		domain: { packageName: string; modulePath: string; rootPageSize: number; memberPageSize: number; firstPage: string[]; finalValue: string };
+		models: Record<string, Model>;
+		cases: { id: string; model: string; beforeValidAdvance?: { round: number; patchDelivery: Patch[]; errorCode: number } }[];
+	};
+	const bytes = input.assemble(generator.wat, readFileSync(path.join(kitDir, generator.wat), "utf8"));
+	expect(sha256(bytes)).toBe(generator.sha256);
+	const shape = readModule(bytes);
+	expect(shape.memories).toEqual([{ min: 1, max: 1, shared: false, memory64: false }]);
+	expect(shape.exports.map(entry => entry.name)).toEqual(["memory", "handle"]);
+	expect(shape.imports.map(entry => `${entry.module}.${entry.name}`).sort()).toEqual(
+		["alloc", "input_length", "input_load_u8", "output_set", "store_u8"].map(name => `extism:host/env.${name}`),
+	);
+	expect(classify(shape.imports, undefined, input.contract)).toBe(generator.abi);
+	expect(surfaceProblems(shape, generator.abi, input.contract)).toEqual([]);
+
+	const patch = (document: any, changes: Patch[]) => {
+		for (const change of changes) {
+			const fields = change.path.slice(1).split("/");
+			const key = fields.pop()!;
+			const parent = fields.reduce((node, field) => node[field], document);
+			switch (change.op) {
+				case "test": expect(parent[key]).toEqual(change.value); break;
+				case "replace": expect(Object.hasOwn(parent, key)).toBe(true); parent[key] = change.value; break;
+				case "add": expect(Array.isArray(parent)).toBe(true); parent.splice(Number(key), 0, change.value); break;
+				default: throw new Error("Unexpected fixture patch");
+			}
+		}
+		return document;
+	};
+	const orderMethod = "morphir.backend.generateModel";
+	const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value, null, 1));
+	const digestContent = (content: Uint8Array) => ({
+		decodedByteLength: content.length, sha256: sha256(content), content: Buffer.from(content).toString("base64"),
+	});
+	const support = { tuples: [tuple], limits };
+	const initialize = {
+		protocolVersions: [tuple.protocolVersion, "0.2.0-draft.1"],
+		host: { kind: "cli", name: "kit-test", version: "0.1.0" }, modelAccess: support,
+	};
+	const notification = (method: string) => encode({ jsonrpc: "2.0", method });
+	const unexpectedNotification = extismGuest(bytes);
+	const admission = unexpectedNotification.call(encode({ jsonrpc: "2.0", id: 1, method: "morphir.initialize", params: initialize }));
+	expect(json(admission.output)).toMatchObject({ id: 1, result: { protocolVersion: tuple.protocolVersion } });
+	expect(() => unexpectedNotification.call(notification("morphir.initialized"))).toThrow();
+
+	for (const entry of cases) {
+		const model = models[entry.model]!;
+		const guest = extismGuest(bytes);
+		const opaque = () => crypto.randomUUID() + '–"\\';
+		const sessionId = opaque();
+		const snapshotId = opaque();
+		const selection = opaque();
+		const cursor = opaque();
+		let id = 100;
+		const call = (method: string, params?: unknown) => {
+			const requestId = "rpc-" + ++id;
+			const { result, output, error } = guest.call(encode({ params, method, id: requestId, jsonrpc: "2.0" }));
+			expect(result, entry.id).toBe(0);
+			expect(error, entry.id).toBeUndefined();
+			const reply = json(output);
+			expect(reply).toMatchObject({ id: requestId, jsonrpc: "2.0" });
+			return reply;
+		};
+		const ok = (method: string, params?: unknown): any => {
+			const response = call(method, params);
+			expect(response.error, entry.id).toBeUndefined();
+			return response.result;
+		};
+		const initialized = ok("morphir.initialize", initialize);
+		expect(initialized.protocolVersion).toBe(tuple.protocolVersion);
+		expect(initialized.capabilities.modelAccess).toEqual(support);
+		expect(initialized.capabilities.backend.targets).toEqual([generator.target]);
+		expect(Object.hasOwn(initialized.capabilities, "notificationDelivery")).toBe(false);
+		expect(call("morphir.initialize", initialize).error).toMatchObject({ code: -32600 });
+
+		const ids = new Map<string, string>();
+		const preparedDocument = (file: string) => {
+			const name = `pkg/${domain.packageName}/${domain.modulePath}/${file}.json`;
+			const added = model.addDocuments?.[name];
+			const patches = model.patchDocuments?.[name];
+			if (added !== undefined) return encode(added);
+			const original = readFileSync(path.join(kitDir, fixture, name));
+			return patches ? encode(patch(json(original), patches)) : original;
+		};
+		const inventory = (name: string, kind: "type" | "value") => {
+			const file = name === "total-in-USD" ? domain.finalValue : `${name}.${kind}`;
+			const documentId = opaque();
+			ids.set(file, documentId);
+			return { [kind]: {
+				documentId, packageName: domain.packageName, modulePath: domain.modulePath, role: "definition",
+				name,
+			} };
+		};
+		const modDoc = json(preparedDocument("module")) as { types: string[]; values: string[] };
+		const entries = [
+			...modDoc.types.map(name => inventory(name, "type")),
+			...modDoc.values.map(name => inventory(name, "value")),
+		];
+		expect([...ids.keys()]).toEqual([...domain.firstPage, ...model.expect.lastPage]);
+		const firstPage = entries.slice(0, domain.memberPageSize);
+		const lastPage = entries.slice(domain.memberPageSize);
+		const mod = (packageName: string, modulePath: string, role: string, memberSelection?: string) => ({
+			module: { documentId: opaque(), packageName, modulePath, role, memberSelection },
+		});
+		const document = (file: string) => ({ documentId: ids.get(file), ...digestContent(preparedDocument(file)) });
+
+		let step = ok(orderMethod + ".start", {
+			sessionId, snapshot: { snapshotId, modelId: domain.packageName, revision: opaque(), contextDigest: "1".repeat(64), scope: opaque() },
+			input: tuple, target: generator.target, options: {}, requiredGuarantees: [], limits,
+		});
+		const requestIds = new Set<string>();
+		const advance = (round: number, expected: Record<string, unknown>, delivery: Record<string, unknown>) => {
+			const [request] = step.requests;
+			expect(step).toEqual({ sessionId, state: "continue", round, requests: [{ ...expected, requestId: request.requestId }], artifacts: [], diagnostics: [] });
+			expect(typeof request.requestId).toBe("string");
+			expect(request.requestId).not.toBe("");
+			expect(requestIds.has(request.requestId)).toBe(false);
+			requestIds.add(request.requestId);
+			const valid: Record<string, unknown> = { requestId: request.requestId, kind: request.kind, snapshotId, ...delivery };
+			const send = (deliveries: unknown[]) => ({ sessionId, round, deliveries });
+			const refusal = (bad: unknown, errorCode: number) => {
+				const rejected = call(orderMethod + ".advance", send([bad]));
+				expect(rejected.error).toMatchObject({ code: errorCode });
+				expect(rejected.result).toBeUndefined();
+			};
+			if (entry.beforeValidAdvance?.round === round) refusal(patch({ ...valid }, entry.beforeValidAdvance.patchDelivery), entry.beforeValidAdvance.errorCode);
+			if (round === 5 && entry.id === "frozen-orders") {
+				refusal({ ...valid, documentId: ids.get("order.type") }, -32602);
+				refusal({ ...valid, content: String(valid.content) + "=" }, -32602);
+				refusal({ ...valid, decodedByteLength: Number(valid.decodedByteLength) + 1 }, -32602);
+				const decoded = Buffer.from(String(valid.content), "base64");
+				const padded = digestContent(Buffer.concat([decoded, Buffer.alloc((4 - decoded.length % 3) % 3, 32)]));
+				const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+				const secondSextet = alphabet.indexOf(padded.content.at(-3)!);
+				const noncanonical = padded.content.slice(0, -3) + alphabet[secondSextet | 1] + "==";
+				refusal({ ...valid, ...padded, content: noncanonical }, -32602);
+				const malformed = Buffer.from('{"body": [}'); // Correct digest and base64 for invalid JSON.
+				refusal({ ...valid, ...digestContent(malformed) }, -32602);
+			}
+			step = ok(orderMethod + ".advance", send([valid]));
+		};
+		advance(1, { kind: "inventory", selection: "root", pageSize: domain.rootPageSize }, {
+			entries: [mod(domain.packageName, "audit", "definition"), mod(domain.packageName, domain.modulePath, "definition", selection), mod("morphir/SDK", "basics", "specification")],
+		});
+		advance(2, { kind: "inventory", selection, pageSize: domain.memberPageSize }, { entries: firstPage, nextCursor: cursor });
+		advance(3, { kind: "inventory", selection, pageSize: domain.memberPageSize, cursor }, { entries: lastPage });
+		advance(4, { kind: "document", documentId: ids.get(domain.finalValue) }, document(domain.finalValue));
+		advance(5, { kind: "document", documentId: ids.get(model.expect.referencedValue) }, document(model.expect.referencedValue));
+
+		expect(step).toEqual({
+			sessionId, state: "complete", diagnostics: [],
+			artifacts: model.expect.artifacts.map(artifact => ({ path: artifact.path, offset: 0, ...digestContent(Buffer.from(artifact.utf8)), end: true })),
+		});
+		expect(call(orderMethod + ".advance", { sessionId, round: 5, deliveries: [] }).error).toMatchObject({ code: -32602 });
+		expect(ok("morphir.shutdown")).toEqual({});
+		expect(() => guest.call(notification("morphir.exit"))).toThrow();
+	}
+}, 15_000);

@@ -106,6 +106,59 @@ test("the orders walkthrough uses checked wire frames and the frozen corpus", ()
 	}
 });
 
+test("the orders WASM controls pin independent outputs for literal and reference changes", () => {
+	type Patch = { op: string; path: string; value: unknown };
+	type ModelId = "frozen" | "literal-74" | "redirected-128";
+	type Model = {
+		patchDocuments?: Record<string, Patch[]>;
+		addDocuments?: Record<string, unknown>;
+		expect: { lastPage: string[]; referencedValue: string; artifacts: { path: string; utf8: string }[] };
+	};
+	const kit = "spec/mck/bounded-generation";
+	const { fixture, models, cases } = JSON.parse(readFileSync(`${kit}/orders-wasm.controls.json`, "utf8")) as {
+		fixture: string;
+		models: Record<ModelId, Model>;
+		cases: { model: ModelId; beforeValidAdvance?: { round: number; patchDelivery: Patch[]; errorCode: number } }[];
+	};
+	const domain = "pkg/acme/orders/domain";
+	const literal = "/def/Public/ExpressionBody/body/Literal/IntegerLiteral";
+	const reference = "/def/Public/ExpressionBody/body/Reference";
+	const readDocument = (path: string) => JSON.parse(readFileSync(`${kit}/${fixture}/${domain}/${path}.json`, "utf8"));
+	const frozenOrder = readDocument("order.value");
+	expect(pointerValue(frozenOrder, literal)).toBe(73);
+	expect(pointerValue(readDocument("total-in-_usd.value"), reference)).toBe("acme/orders:domain#order");
+
+	for (const model of Object.values(models)) {
+		for (const [path, patches] of Object.entries(model.patchDocuments ?? {})) {
+			const document = JSON.parse(readFileSync(`${kit}/${fixture}/${path}`, "utf8"));
+			for (const patch of patches.filter(patch => patch.op === "test")) {
+				expect(pointerValue(document, patch.path)).toEqual(patch.value);
+			}
+		}
+	}
+
+	const changed = models["literal-74"];
+	expect(changed.patchDocuments?.[`${domain}/order.value.json`]?.[1]).toEqual({ op: "replace", path: literal, value: 74 });
+	const redirected = models["redirected-128"];
+	expect(redirected.patchDocuments?.[`${domain}/module.json`]?.[1]).toEqual({ op: "add", path: "/values/1", value: "reserve" });
+	expect(redirected.patchDocuments?.[`${domain}/total-in-_usd.value.json`]?.[1]).toEqual({
+		op: "replace", path: reference, value: "acme/orders:domain#reserve",
+	});
+	expect(redirected.patchDocuments?.[`${domain}/order.value.json`]).toBeUndefined();
+	expect(pointerValue(redirected.addDocuments?.[`${domain}/reserve.value.json`], literal)).toBe(128);
+	expect(Object.values(models).map(({ expect: result }) => result)).toEqual([
+		{ lastPage: ["total-in-_usd.value"], referencedValue: "order.value", artifacts: [{ path: "order.txt", utf8: "73\n" }] },
+		{ lastPage: ["total-in-_usd.value"], referencedValue: "order.value", artifacts: [{ path: "order.txt", utf8: "74\n" }] },
+		{ lastPage: ["reserve.value", "total-in-_usd.value"], referencedValue: "reserve.value", artifacts: [{ path: "order.txt", utf8: "128\n" }] },
+	]);
+	expect(cases.flatMap(({ model, beforeValidAdvance }) =>
+		beforeValidAdvance ? [[model, beforeValidAdvance.round, beforeValidAdvance.patchDelivery[0]?.path, beforeValidAdvance.errorCode]] : [],
+	)).toEqual([
+		["frozen", 4, "/snapshotId", -32602],
+		["frozen", 5, "/sha256", -32602],
+	]);
+});
+
 test("reads fences with their info string and opening line", () => {
 	expect(fences(draft).map((fence) => [fence.info, fence.line])).toEqual([
 		["text", 3],
