@@ -462,18 +462,27 @@ static void sha256(Text s, char out[64]) {
 }
 
 // The guest has one admitted target and tuple. Limits in this table are ceilings.
-#define LIMITS(X)                                                                                  \
-    X(maxFrameBytes, FRAME)                                                                        \
-    X(maxEncodedBytesPerExchange, FRAME) X(maxDecodedBytesPerExchange, DOC * 2)                    \
-        X(maxDocumentsPerBatch, 1) X(maxDepth, DEPTH) X(maxNodes, TOKENS)                          \
-            X(maxDiagnosticsPerExchange, 1) X(maxOutstandingRequests, 1)                           \
-                X(maxGuestStateBytes, 1048576) X(maxHostCacheBytes, 1048576)                       \
-                    X(maxArtifactChunkBytes, DOC) X(maxArtifactBytes, 2147483647ULL)               \
-                        X(maxTotalArtifactBytes, 9007199254740991ULL)                              \
-                            X(maxSessionDiskBytes, 9007199254740991ULL)                            \
-                                X(maxSessionWorkUnits, 9007199254740991ULL) X(maxRounds, 10000000) \
-                                    X(maxCallMilliseconds, 1000)                                   \
-                                        X(maxSessionMilliseconds, 2147483647)
+// clang-format off
+#define LIMITS(X)                                      \
+    X(maxFrameBytes, FRAME)                            \
+    X(maxEncodedBytesPerExchange, FRAME)               \
+    X(maxDecodedBytesPerExchange, DOC * 2)             \
+    X(maxDocumentsPerBatch, 1)                          \
+    X(maxDepth, DEPTH)                                 \
+    X(maxNodes, TOKENS)                                \
+    X(maxDiagnosticsPerExchange, 1)                    \
+    X(maxOutstandingRequests, 1)                      \
+    X(maxGuestStateBytes, 1048576)                      \
+    X(maxHostCacheBytes, 1048576)                       \
+    X(maxArtifactChunkBytes, DOC)                      \
+    X(maxArtifactBytes, 2147483647ULL)                 \
+    X(maxTotalArtifactBytes, 9007199254740991ULL)       \
+    X(maxSessionDiskBytes, 9007199254740991ULL)         \
+    X(maxSessionWorkUnits, 9007199254740991ULL)         \
+    X(maxRounds, 10000000)                             \
+    X(maxCallMilliseconds, 1000)                       \
+    X(maxSessionMilliseconds, 2147483647)
+// clang-format on
 #define ENUM(name, ceiling) name,
 enum { LIMITS(ENUM) LIMIT_COUNT };
 #undef ENUM

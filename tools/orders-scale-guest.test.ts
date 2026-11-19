@@ -1,27 +1,38 @@
 // Tiny equivalent of d2804e50's materializer. This is a guest/shim test, not host qualification.
-import { beforeAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dir, "..");
 const hash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const opaque = () => randomUUID() + '–"\\';
+const clang = Bun.which("clang");
+const linker = clang && path.join(path.dirname(clang), process.platform === "win32" ? "wasm-ld.exe" : "wasm-ld");
+const hasToolchain = linker !== null && existsSync(linker);
+const scaleTest = test.skipIf(!hasToolchain);
 let wasm: WebAssembly.Module;
+let buildDirectory: string | undefined;
 beforeAll(() => {
-	mkdirSync(path.join(root, ".dev/scale-test"), { recursive: true });
-	const object = path.join(root, ".dev/scale-test/guest.o");
-	const build = Bun.spawnSync(["clang", "--target=wasm32", "-O2", "-fno-builtin", "-nostdlib", "-c",
+	if (!hasToolchain || !clang || !linker) return;
+	const scratch = path.join(root, ".dev");
+	mkdirSync(scratch, { recursive: true });
+	buildDirectory = mkdtempSync(path.join(scratch, "scale-test-"));
+	const object = path.join(buildDirectory, "guest.o");
+	const binary = path.join(buildDirectory, "guest.wasm");
+	const build = Bun.spawnSync([clang, "--target=wasm32", "-O2", "-fno-builtin", "-nostdlib", "-Wall", "-Wextra", "-Werror", "-c",
 		"-o", object, path.join(root, "spec/mck/bounded-generation/scale-guest.c")]);
 	expect(build.exitCode, new TextDecoder().decode(build.stderr)).toBe(0);
-	const linker = path.join(path.dirname(Bun.which("clang")!), process.platform === "win32" ? "wasm-ld.exe" : "wasm-ld");
 	const linked = Bun.spawnSync([linker, "--no-entry", "--export-memory", "-z", "stack-size=262144", "--initial-memory=1048576", "--max-memory=1048576",
-		"-o", path.join(root, ".dev/scale-test/guest.wasm"), object]);
+		"-o", binary, object]);
 	expect(linked.exitCode, new TextDecoder().decode(linked.stderr)).toBe(0);
-	wasm = new WebAssembly.Module(readFileSync(path.join(root, ".dev/scale-test/guest.wasm")));
+	wasm = new WebAssembly.Module(readFileSync(binary));
 	expect(WebAssembly.Module.imports(wasm).map(entry => `${entry.module}.${entry.name}`).sort()).toEqual(
 		["alloc", "input_length", "input_load_u8", "output_set", "store_u8"].map(name => `extism:host/env.${name}`).sort());
 	expect(WebAssembly.Module.exports(wasm).map(entry => entry.name).sort()).toEqual(["handle", "memory"]);
+});
+afterAll(() => {
+	if (buildDirectory) rmSync(buildDirectory, { recursive: true, force: true });
 });
 
 function guest() {
@@ -52,6 +63,8 @@ const limits = Object.fromEntries([
 	"maxDiagnosticsPerExchange", "maxOutstandingRequests", "maxGuestStateBytes", "maxHostCacheBytes", "maxArtifactChunkBytes",
 	"maxArtifactBytes", "maxTotalArtifactBytes", "maxSessionDiskBytes", "maxSessionWorkUnits", "maxRounds", "maxCallMilliseconds", "maxSessionMilliseconds",
 ].map(key => [key, key === "maxDepth" ? 64 : 2_147_483_647]));
+limits.maxTotalArtifactBytes = 2_181_171_200;
+limits.maxSessionDiskBytes = 4_294_967_296;
 const pad = (n: number) => String(n).padStart(6, "0");
 const payload = (m: number, v: number) => `m${pad(m)}/order${pad(v)}:`.padEnd(48, "x");
 
@@ -59,6 +72,8 @@ function run(control = "valid") {
 	const call = guest(), sessionId = opaque(), snapshotId = opaque();
 	const admission = call("morphir.initialize", { protocolVersions: [tuple.protocolVersion], host: { name: "tiny-shim", version: "0.1.0" }, modelAccess: { tuples: [tuple], limits } }).result;
 	const active = admission.capabilities.modelAccess.limits;
+	expect(active.maxTotalArtifactBytes).toBe(limits.maxTotalArtifactBytes!);
+	expect(active.maxSessionDiskBytes).toBe(limits.maxSessionDiskBytes!);
 	const pages = new Map<string, any[]>(), documents = new Map<string, any>();
 	const roots: any[] = [], rootCursors = new Set<string>(), memberCursors = new Set<string>();
 	const stringType = "morphir/SDK:string#string";
@@ -125,7 +140,7 @@ function run(control = "valid") {
 	return { artifacts, closed, step, error, rootCursors, memberCursors, call, sessionId };
 }
 
-for (const control of ["valid", "identity", "redirect", "late", "large-document"]) test(`scale guest streams exact tiny output: ${control}`, () => {
+for (const control of ["valid", "identity", "redirect", "late", "large-document"]) scaleTest(`scale guest streams exact tiny output: ${control}`, () => {
 	const result = run(control);
 	expect(result.error).toBeUndefined(); expect(result.step.state).toBe("complete");
 	expect([...result.closed]).toEqual([0, 1, 2].map(m => `orders/m${pad(m)}.txt`));
@@ -141,6 +156,6 @@ for (const control of ["valid", "identity", "redirect", "late", "large-document"
 	}
 	expect(result.call(operation + ".advance", { sessionId: result.sessionId, round: 1, deliveries: [] }).error.code).toBe(-32602);
 });
-for (const control of ["missing", "signature", "alias", "missing-reference", "reordered"]) test(`scale guest rejects ${control}`, () => {
+for (const control of ["missing", "signature", "alias", "missing-reference", "reordered"]) scaleTest(`scale guest rejects ${control}`, () => {
 	const result = run(control); expect(result.error?.code).toBe(-32602); expect(result.closed.size).toBe(0);
 });

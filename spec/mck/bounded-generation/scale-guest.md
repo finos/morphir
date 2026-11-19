@@ -38,13 +38,20 @@ Run from the repository root with installed Bun, Clang and `wasm-ld`:
 bun test tools/orders-scale-guest.test.ts
 ```
 
-The test compiles C to a WASM object with `--target=wasm32 -O2 -fno-builtin
--nostdlib -c`, then invokes the Clang installation's `wasm-ld` directly with
-`--no-entry --export-memory -z stack-size=262144 --initial-memory=1048576
---max-memory=1048576`. This avoids an optional `wasm-opt` invocation by some
-Clang drivers. Build products stay under ignored `.dev/scale-test/`. The module
-exports `memory` and `handle` and imports only the five kernel byte-exchange
-functions. The test does not need WABT or downloaded dependencies.
+The test builds with the commands below in a private scratch directory.
+Use these commands from the repository root to retain a module for host runs.
+Place the installed Clang and its matching `wasm-ld` on PATH.
+The test skips the WASM cases when the compiler or its matching linker is absent.
+
+```powershell
+clang --target=wasm32 -O2 -fno-builtin -nostdlib -Wall -Wextra -Werror -c spec/mck/bounded-generation/scale-guest.c -o .dev/scale-guest.o
+wasm-ld --no-entry --export-memory -z stack-size=262144 --initial-memory=1048576 --max-memory=1048576 -o .dev/scale-guest.wasm .dev/scale-guest.o
+Get-FileHash .dev/scale-guest.wasm -Algorithm SHA256
+```
+
+Direct linking avoids optional optimizer invocations. The module exports
+`memory` and `handle` and imports the five kernel byte-exchange functions.
+Record the toolchain versions and module digest with each host run.
 
 The test shim uses a tiny recipe equivalent with three generated modules,
 64 payloads per module and 48-byte payloads. It deliberately returns short root
@@ -57,17 +64,29 @@ Wrong document, request and snapshot identities, stale rounds, wrong byte
 lengths, digests and noncanonical base64 are rejected before a valid retry.
 
 Local verification on Windows with Bun 1.4.2 and Clang 23.1.5 passed all ten
-tests. A separate compile with `-Wall -Wextra -Werror` passed. TypeScript static
-checking was unavailable: this worktree has no `tools/node_modules/typescript`,
-and the installed `tsc` shim has no configured version. Nothing was installed.
+guest tests, four recipe tests, and TypeScript checking. The guest tests check
+the advertised memory size and verify negotiation of the 2,181,171,200-byte
+artifact budget and 4 GiB session disk budget before the tiny trials.
 
 ## Qualification still required
 
-This is a source and tiny correctness checkpoint for task 7.2. No A/B scale
-tree was generated, and no actual host, process adapter, resource receipt or
-measured scale run was exercised. The test shim is deliberately independent
-of a host implementation and retains test output to compare complete bytes.
-Its memory behavior is not host resource evidence.
+The Windows ARM64 development .NET CLI also used its configured WASM worker
+with Wasmtime 50.0.1 to process the materializer's three-module tree. The
+recorded input contained 204 documents and 47,206 source bytes. Generation
+exited 0, reported the WASM transport and published all three expected paths.
+Each artifact matched the formula-derived digest, covering 9,555 output bytes.
+
+| Evidence | SHA-256 |
+| --- | --- |
+| Built scale guest | `5d378059a78c20853545a989907de969c013083e888c815fcf2a0200fe2b75e0` |
+| Development `morphir.dll` | `aac58f8a8f86b258bcf48f3e1e9e4b88f79c456195c70ef6a3bf71be3ac8e626` |
+| Development `Morphir.Tooling.dll` | `5005c3ff57bb9e18b483f8bd1500a227135617d2b0a6ebd1892802302922274c` |
+| Tiny fixture source inventory | `01fd7006cdb04c4d3a5b55cb1bec730c2d72d2170f8e80db7748282b059db158` |
+| Independent artifact inventory | `f1e53c6d3d21983b66ca2638e3dfcb6da7582e0495a420f43fa62cfd3d49b0c4` |
+
+Task 7.2 still requires both production scales. The shim retains test output
+to compare complete bytes. The tiny .NET run exercises delivery and
+publication with the development binary identified above.
 
 The guest has fixed buffers and the test links a fixed 1 MiB linear memory.
 Negotiated bounds constrain documents, chunks, cumulative artifact bytes and
