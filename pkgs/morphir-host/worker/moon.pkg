@@ -1,6 +1,12 @@
 import {
   "finos/morphir-engine/ids",
   "finos/morphir-host/identity",
+  "finos/morphir-host/platform",
+  "finos/morphir-ir" @ir,
+  "finos/morphir-ir/yaml",
+  "moonbitlang/x/crypto",
+  "moonbit-community/casefold",
+  "moonbit-community/unicode-normalization" @normalization,
   "finos/morphir-ir/wire" @model_wire,
   "finos/morphir-moonbit/mep/model_access",
   "moonbitlang/async",
@@ -33,8 +39,23 @@ import {
 // build on all four targets; the async channel, launcher, driver and their
 // tests build on native, js and wasm only.
 
+import {
+  "finos/morphir-host" @host,
+  "finos/morphir-engine/data",
+  "finos/morphir-ir/version",
+  "moonbitlang/core/env",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+} for "wbtest"
+
 options(
   targets: {
+    "tree_producer_wbtest.mbt": [ "native" ],
+    "tree_generation_wbtest.mbt": [ "native" ],
+    "tree_producer.mbt": [ "native" ],
+    "tree_generation.mbt": [ "native" ],
+    "tree_snapshot.mbt": [ "native" ],
+    "tree_stage.mbt": [ "native" ],
     "channel.mbt": [ "native", "js", "wasm" ],
     "memory_channel.mbt": [ "native", "js", "wasm" ],
     "memory_channel_test.mbt": [ "native", "js", "wasm" ],

@@ -31,6 +31,8 @@ struct BoundedTree {
   yaml : Bool
   encoding : TreeEncoding
   limits : Limits
+  split_members_only : Bool
+  observe : () -> Unit raise
 }
 
 ///|
@@ -257,6 +259,8 @@ pub fn open_bounded_tree(
   source : TreeSource,
   limits~ : Limits = Limits::default(),
   encoding~ : TreeEncoding = Plain,
+  split_members_only~ : Bool = false,
+  observe~ : () -> Unit raise = fn() {  },
 ) -> BoundedTree raise {
   check_limits(limits)
   guard limits.max_depth > 0 else {
@@ -328,6 +332,8 @@ pub fn open_bounded_tree(
     yaml: !physical.has_suffix(".json"),
     encoding,
     limits,
+    split_members_only,
+    observe,
   }
   tree.check_revision()
   tree
@@ -435,7 +441,22 @@ fn BoundedTree::load_module(
   Map[String, Json],
   @wire.DocumentNameContext?,
 ) raise {
+  (self.observe)()
   let (document, context) = self.load(logical)
+  if self.split_members_only {
+    for field in ["types", "values"] {
+      match @wire.optional(document, field) {
+        None | Some(Array(_)) => ()
+        Some(Object(entries)) if entries.is_empty() => ()
+        _ =>
+          tree_error(
+            "split_members_required",
+            logical + "/" + field,
+            "Bounded generation requires split member files",
+          )
+      }
+    }
+  }
   let path = tree_module_path(
     document,
     logical,
@@ -456,7 +477,7 @@ fn BoundedTree::load_module(
     document,
     path,
     access,
-    tree_file_names(document, logical, context~),
+    tree_file_names(document, logical, context~, observe=self.observe),
     context,
   )
 }
@@ -553,6 +574,7 @@ pub fn BoundedTree::members(
   for kind in [TreeMemberKind::TypeMember, ValueMember] {
     let seen : Map[String, Unit] = Map([])
     for (raw, inline) in module_entries(module_doc, kind) {
+      (self.observe)()
       let name = canonical_name(
         raw,
         context~,
@@ -695,6 +717,7 @@ fn BoundedTree::resolve_member(
   )
   let mut found = false
   for raw in @wire.array(listing) {
+    (self.observe)()
     let candidate = canonical_name(
       raw,
       context~,

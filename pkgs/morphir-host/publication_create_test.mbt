@@ -18,6 +18,7 @@ test "create-only inventory commit preserves a destination created during stagin
     path: "out/originals/new.bin",
     source: "fixture",
     format: "bytes",
+    ir_json_version: None,
     content: @data.Binary(b"new"),
   })
   @platform.mkdir(root + "/out/originals")
@@ -54,6 +55,7 @@ test "create-only inventory commit publishes a complete new destination" {
     path: "out/originals/new.bin",
     source: "fixture",
     format: "bytes",
+    ir_json_version: None,
     content: @data.Binary(b"\x00\xff"),
   })
   (transaction.commit)("out/originals")

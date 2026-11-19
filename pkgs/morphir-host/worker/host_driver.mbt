@@ -195,9 +195,21 @@ async fn Running::drive_steps(
           }
         }
       Finished(sends~, stop~, conclusion) => {
-        let worker = match stop.after(self.send_all(sends)) {
-          CloseAfterExit => self.channel.close()
+        let plan = stop.after(self.send_all(sends))
+        let worker = match plan {
+          CloseAfterExit => self.channel.close_within(self.remaining_ms())
           Abort(reason) => self.channel.abort(reason)
+        }
+        let conclusion = match (stop, plan, worker.status) {
+          (CloseAfterExit, Abort(Deadline), _)
+          | (
+            CloseAfterExit,
+            CloseAfterExit,
+            Terminated(Deadline)
+            | Unconfirmed(Deadline),
+          ) => EndedEarly(Deadline)
+          (CloseAfterExit, Abort(Cancelled), _) => EndedEarly(Cancelled)
+          _ => conclusion
         }
         return (conversation, WorkerStopped(conclusion, worker))
       }
@@ -521,9 +533,8 @@ async fn[T] Session::exchange(
     bounded_expiry?,
   )
   self.conversation = conversation
-  if conversation.generation is None {
-    self.generation_expiry = None
-  }
+  // Keep the last bounded horizon for shutdown after a terminal reply.
+  // A subsequent bounded start replaces it.
   match settled {
     Paused(step) =>
       match read_answer(step) {
@@ -660,6 +671,14 @@ pub async fn Session::cancel_generation(
 /// A close during a call waits for the call to finish. A closed session
 /// returns the same report again.
 pub async fn Session::close(self : Session) -> SessionReport {
+  self.close_before(None)
+}
+
+///|
+async fn Session::close_before(
+  self : Session,
+  caller_expiry : Int64?,
+) -> SessionReport {
   self.busy.acquire()
   defer self.busy.release()
   if self.report is Some(report) {
@@ -673,11 +692,18 @@ pub async fn Session::close(self : Session) -> SessionReport {
   }
   let (conversation, step) = start
   let bounded_expiry = self.bounded_expiry(conversation)
-  let (conversation, settled) = self.link.drive(
-    conversation,
-    step,
-    bounded_expiry?,
+  let command_or_caller = @cmp.minimum(
+    self.link.expires_at,
+    caller_expiry.unwrap_or(self.link.expires_at),
   )
+  let expires_at = @cmp.minimum(
+    command_or_caller,
+    self.generation_expiry.unwrap_or(command_or_caller),
+  )
+  // The horizon applies to the cancel, shutdown and exit, including when
+  // the last generation reply already settled the operation.
+  let link = { ..self.link, expires_at, }
+  let (conversation, settled) = link.drive(conversation, step, bounded_expiry?)
   self.conversation = conversation
   if conversation.generation is None {
     self.generation_expiry = None

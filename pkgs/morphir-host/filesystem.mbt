@@ -45,7 +45,13 @@ fn ensure_dirs(root : String, path : String) -> Unit raise {
     current = @workspace.join(current, component.to_owned())
     let full = confined(root, current)
     match @platform.kind(full) {
-      0 => @platform.mkdir(full)
+      0 =>
+        @platform.mkdir(full) catch {
+          error =>
+            if @platform.kind(confined(root, current)) != 2 {
+              raise error
+            }
+        }
       2 => ()
       _ => raise @config.Invalid("Expected output directory: " + full)
     }
@@ -84,8 +90,16 @@ fn relative_to(root : String, path : String) -> String raise {
 pub fn ContentPublisher::filesystem(
   root : String,
   output_root : String,
+  compile_record? : CompileRecordOptions,
+  cancelled~ : () -> Bool = fn() { @platform.interruption_requested() },
 ) -> ContentPublisher raise {
-  filesystem_content_publisher(root, output_root, @platform.rename)
+  filesystem_content_publisher(
+    root,
+    output_root,
+    @platform.rename,
+    compile_record?,
+    cancelled~,
+  )
 }
 
 ///|
@@ -121,6 +135,8 @@ fn filesystem_content_publisher(
   rename : (String, String) -> Unit raise,
   directories~ : Array[String] = [],
   destination_policy~ : DestinationPolicy = Replace,
+  compile_record? : CompileRecordOptions,
+  cancelled~ : () -> Bool = fn() { @platform.interruption_requested() },
 ) -> ContentPublisher raise {
   let output_root = @workspace.normalize(output_root)
   if output_root == "" {
@@ -131,6 +147,14 @@ fn filesystem_content_publisher(
     write_bytes: @platform.bytes_supported(),
     begin: fn(destinations) raise {
       ensure_dirs(root, output_root)
+      let tasks = if destination_policy is Create {
+        CompilePublication::inactive()
+      } else {
+        begin_compile_publication(
+          root, output_root, destinations, compile_record, cancelled,
+        )
+      }
+      errdefer (tasks.close)()
       let lock = @workspace.join(output_root, ".morphir-publish.lock")
       // Exclusive mkdir serializes publishers. Existing locks require explicit recovery.
       @platform.mkdir(confined(root, lock))
@@ -161,10 +185,14 @@ fn filesystem_content_publisher(
         }
       }
       let done = Map([])
+      let products : Map[String, Array[(String, String?)]] = Map([])
       let recovery = Ref(false)
       {
         stage: fn(artifact) raise {
-          if !destinations.any(d => @workspace.within(d, artifact.path)) {
+          guard destinations
+            .iter()
+            .find_first(d => @workspace.within(d, artifact.path))
+            is Some(destination) else {
             raise @config.Invalid("Artifact outside planned destination")
           }
           let target = @workspace.join(
@@ -182,6 +210,16 @@ fn filesystem_content_publisher(
             Binary(bytes) =>
               @platform.write_bytes(confined(root, target), bytes)
           }
+          if (tasks.record_options)(destination) is Some(options) {
+            let entries = products.get(destination).unwrap_or([])
+            let path = relative_to(destination, artifact.path)
+            let version = match options.tree_product {
+              Some(tree) if path != tree + "/manifest.json" => None
+              _ => compile_artifact_version(artifact)
+            }
+            entries.push((path, version))
+            products[destination] = entries
+          }
         },
         commit: fn(destination) raise {
           if !destinations.contains(destination) || done.contains(destination) {
@@ -192,6 +230,9 @@ fn filesystem_content_publisher(
           let saved = @workspace.join(backup, rel)
           ensure_dirs(root, @workspace.parent(destination))
           ensure_dirs(root, @workspace.parent(saved))
+          if cancelled() {
+            raise @platform.Interrupted
+          }
           if destination_policy is Create {
             @platform.rename_directory_new(
               confined(root, staged),
@@ -204,38 +245,46 @@ fn filesystem_content_publisher(
           if existing != 0 && existing != 2 {
             raise @config.Invalid("Destination is not a directory")
           }
+          (tasks.before)(destination, products.get(destination).unwrap_or([]))
           if existing == 2 {
             rename(confined(root, destination), confined(root, saved))
           }
-          let publication = Ok(
-            rename(confined(root, staged), confined(root, destination)),
-          ) catch {
-            error => Err(error)
+          let mut moved = false
+          let publication_error = try {
+            rename(confined(root, staged), confined(root, destination))
+            moved = true
+            (tasks.complete)(destination)
+            None
+          } catch {
+            error => Some(error)
           }
-          match publication {
-            Ok(_) => ()
-            Err(cause) => {
-              if existing == 2 {
-                rename(confined(root, saved), confined(root, destination)) catch {
-                  rollback => {
-                    recovery.val = true
-                    raise @config.Invalid(
-                      "Publication failed: " +
-                      error_message(cause) +
-                      "; Rollback failed; preserved backup at " +
-                      saved +
-                      ": " +
-                      error_message(rollback),
-                    )
-                  }
-                }
+          if publication_error is Some(cause) {
+            try {
+              if moved {
+                rename(confined(root, destination), confined(root, staged))
               }
-              raise cause
+              if existing == 2 {
+                rename(confined(root, saved), confined(root, destination))
+              }
+            } catch {
+              rollback => {
+                recovery.val = true
+                raise @config.Invalid(
+                  "Publication failed: " +
+                  error_message(cause) +
+                  "; Rollback failed; preserved backup at " +
+                  saved +
+                  ": " +
+                  error_message(rollback),
+                )
+              }
             }
+            raise cause
           }
           done[destination] = true
         },
         abort: fn() raise {
+          defer (tasks.close)()
           if recovery.val {
             raise @config.Invalid(
               "Manual recovery required; preserving " + lock,
@@ -317,6 +366,7 @@ pub fn Publisher::filesystem(
             source: artifact.source,
             content: @data.Text(artifact.content),
             format: "text",
+            ir_json_version: None,
           })
         },
         commit: publication.commit,

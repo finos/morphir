@@ -17,8 +17,20 @@ pub(open) trait Channel {
   async fn send(Self, Message) -> Unit
   async fn receive(Self) -> Message
   async fn close(Self) -> WorkerStop
+  // A native process can limit only its graceful wait, leaving confirmed
+  // tree termination and cleanup outside the remaining protocol budget.
+  async fn close_within(Self, Int32) -> WorkerStop = _
   async fn abort(Self, StopReason) -> WorkerStop
   fn bounds(Self) -> EnforcedBounds? = _
+}
+
+///|
+impl Channel with fn close_within(self, remaining_ms) {
+  if remaining_ms <= 0 {
+    self.abort(Deadline)
+  } else {
+    self.close()
+  }
 }
 
 ///|

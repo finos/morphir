@@ -133,6 +133,7 @@ fn transfer_publish(
       path: @workspace.join(destination, file.path),
       source: "connected-artifact",
       format: "verified-bytes",
+      ir_json_version: None,
       content: @data.Binary(file.bytes),
     })
   }

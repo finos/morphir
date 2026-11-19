@@ -88,6 +88,7 @@ pub fn verify_and_publish(
       Binary(b) => @data.Binary(b)
     },
     format: "source",
+    ir_json_version: None,
   })
   let receipt_path = @workspace.join(destination, "verification.ionb")
   if artifacts.any(a => a.path == receipt_path) {
@@ -98,6 +99,7 @@ pub fn verify_and_publish(
     source: first.unit.id,
     content: @data.Binary(@ion_binary.write_binary([receipt])),
     format: "ion-binary",
+    ir_json_version: None,
   })
   let mut transaction : ContentPublication? = None
   let mut committed = false

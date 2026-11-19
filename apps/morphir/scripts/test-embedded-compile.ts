@@ -72,6 +72,39 @@ try {
   assert.equal(elmJson.state, 'succeeded');
   const json = JSON.parse(readFileSync(join(root, 'elm', elmJson.result.artifactDetails[0].path), 'utf8'));
   assert.equal(json.formatVersion, 4);
+  if (process.platform === 'darwin' || process.platform === 'linux') {
+    const task = join(root, 'elm/json-out');
+    const record = JSON.parse(readFileSync(join(task, 'compile.json'), 'utf8'));
+    const product = elmJson.result.artifactDetails[0].path.slice('json-out/compile.dest/'.length);
+    assert.equal(record.schema, 1);
+    assert.equal(record.task, 'compile');
+    assert.equal(record.module, '');
+    assert.deepEqual(record.value, [product]);
+    assert.deepEqual(record.ir, { path: product, layout: 'single-file', format: 'json', version: 'v4' });
+    assert.match(record.completedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+    assert.equal(readFileSync(join(task, 'compile.lock')).length, 0);
+  }
+  if (process.platform === 'darwin' || process.platform === 'linux') {
+    const classic = join(root, 'classic');
+    mkdirSync(join(classic, 'src'), { recursive: true });
+    writeFileSync(join(classic, 'src/Main.json'), JSON.stringify({
+      formatVersion: 3, distribution: ['Library', [['test']], [], { modules: [] }],
+    }));
+    for (const version of [1, 2, 3]) {
+      writeFileSync(join(classic, 'morphir.toml'),
+        `[project]\nname='ClassicSmoke'\nsource_directory='src'\n[ir]\nformat_version=${version}\n`);
+      const out = `classic-${version}`;
+      const result = invoke(['run', 'classic', '--frontend', 'ir-json', '--backend', 'ir-json', '--output', out, '--json']).report;
+      const productPath = result.artifactDetails[0].path;
+      const product = productPath.slice(`${out}/compile.dest/`.length);
+      const json = JSON.parse(readFileSync(join(classic, productPath), 'utf8'));
+      assert.equal(json.formatVersion, version);
+      const record = JSON.parse(readFileSync(join(classic, out, 'compile.json'), 'utf8'));
+      assert.deepEqual(record.value, [product]);
+      assert.deepEqual(record.ir, { path: product, layout: 'single-file', format: 'json', version: `v${version}` });
+      console.log(`classic run product formatVersion=${json.formatVersion}, compile record version=${record.ir.version}`);
+    }
+  }
   // Existing run retains its success schema and provider defaults.
   const existing = invoke(['run', 'elm', '--json']).report;
   assert.equal(existing.successful, true);

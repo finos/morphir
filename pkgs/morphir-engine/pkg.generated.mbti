@@ -7,6 +7,7 @@ import {
   "finos/morphir-engine/ids",
   "finos/morphir-engine/workspace",
   "finos/morphir-execution/diagnostics",
+  "finos/morphir-ir/version",
   "finos/morphir-ir/versions/v4",
   "finos/morphir-metadata",
   "finos/morphir-scheme",
@@ -88,6 +89,7 @@ pub(all) struct ContentArtifact {
   source : String
   content : @data.Content
   format : String
+  ir_json_version : @version.FormatVersion?
 }
 
 pub(all) struct ContentReport {

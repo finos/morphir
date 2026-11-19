@@ -256,7 +256,7 @@ fn command_schema(path : String) -> CliSchema {
     }
     "extension generate" => {
       options = extension_options +
-        ["target", "output", "model-format", "ir-version"]
+        ["target", "output", "model-format", "ir-version", "task-result"]
       positional = true
     }
     "model inspect" => {
@@ -324,7 +324,7 @@ fn render_help(path : String) -> String {
     } else if path == "extension compile" {
       " <source>"
     } else if path == "extension generate" {
-      " <model>"
+      " <model|--task-result FILE>"
     } else {
       " [path]"
     }
@@ -384,7 +384,7 @@ fn render_help(path : String) -> String {
     text += "--language selects that language when the extension claims several.\n"
     text += "Each document URI is the file's path relative to --source-base (default: the input directory), percent-encoded.\n"
     text += "compile writes model-envelope.json and model.ionb or model.json, or morphir-ir.json on MEP 0.1.\n"
-    text += "generate reads a model envelope or Morphir IR JSON and writes the returned artifacts.\n"
+    text += "generate reads a model envelope or Morphir IR JSON and writes the returned artifacts.\nOn the native macOS or Linux CLI, use --task-result with a schema-1 compile.json for leased tree generation.\n"
     text += "JSON returns morphir/command-result 0.1.0; diagnostics and guest stderr go to stderr.\n"
     text += "Exit 0 success, 1 failure, 2 refusal, 124 deadline, 130 cancellation, 143 SIGTERM, in every mode.\n"
     text += "Old pins, --extension-helper and --node are refused; see https://github.com/finos/morphir-moonbit/blob/main/apps/morphir/docs/extension.md#migrate-a-pin.\n"

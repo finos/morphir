@@ -703,3 +703,20 @@ async test "a FIFO artifact is refused without blocking" {
     fail("expected a refused FIFO, got \{describe(refused.unwrap_or(None))}")
   }
 }
+
+///|
+#cfg(not(platform="windows"))
+async test "deadline-capped graceful close confirms the stubborn tree stopped and removes its stage" {
+  let staged = @native.stage(fixture())
+  let channel = @native.ProcessLauncher::new().start(staged, ["stubborn"])
+  let grandchild = grandchild_of(channel)
+  let began = @async.now()
+  let stop = channel.close_within(50)
+  assert_true(@async.now() - began < 1500L)
+  assert_eq(stop.status, Terminated(Deadline))
+  assert_eq(stop.stop_method, GroupSignal)
+  assert_true(gone(channel.pid()))
+  assert_true(gone(grandchild))
+  assert_false(@fs.exists(staged.directory()))
+  assert_eq(channel.close(), stop)
+}

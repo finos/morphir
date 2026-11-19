@@ -81,7 +81,14 @@ fn Link::ended(self : Link, reason : StopReason) -> WorkerStop {
 }
 
 ///|
-pub extend MemoryChannel with Channel::{send, receive, close, abort, bounds}
+pub extend MemoryChannel with Channel::{
+  send,
+  receive,
+  close,
+  close_within,
+  abort,
+  bounds,
+}
 
 ///|
 pub impl Channel for MemoryChannel with fn bounds(self) {

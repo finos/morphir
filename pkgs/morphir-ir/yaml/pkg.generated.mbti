@@ -13,7 +13,7 @@ import {
 }
 
 // Values
-pub fn open_bounded_tree(TreeSource, limits? : Limits, encoding? : TreeEncoding) -> BoundedTree raise
+pub fn open_bounded_tree(TreeSource, limits? : Limits, encoding? : TreeEncoding, split_members_only? : Bool, observe? : () -> Unit raise) -> BoundedTree raise
 
 pub fn parse(String, limits? : Limits) -> @json.Json raise @wire.CodecError
 

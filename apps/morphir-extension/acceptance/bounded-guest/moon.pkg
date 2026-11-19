@@ -1,0 +1,18 @@
+pkgtype(kind: "executable")
+
+import {
+  "finos/morphir-moonbit/mep",
+  "finos/morphir-moonbit/mep/model_access" @access,
+  "finos/morphir-ir/wire",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+options(
+  backend: [ "native" ],
+)

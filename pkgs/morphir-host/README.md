@@ -135,6 +135,16 @@ Configuration or transformation failures publish nothing. Successful transformat
 
 Filesystem publishers acquire `.morphir-publish.lock` under the output root with exclusive directory creation. They move an existing task directory to a backup, then move its staged replacement into place. This provides recoverable task replacement, with a brief interval when the destination is absent. It does not provide atomic replacement across tasks. Reports list the destinations that actually committed.
 
+Native macOS and Linux publishers take each affected `compile.lock` exclusively
+before the output-root guard. They acquire member locks in destination order,
+and waiting for a reader does not hold the root guard. The task lock stays on
+disk when the transaction closes. A recorded compile stages its files first,
+retires the prior result with a schema-1 tombstone before replacing
+`compile.dest`, and publishes the new `compile.json` under the same lease.
+A failure before record retirement preserves the accepted result. A failure after
+retirement can restore the prior bytes while leaving the tombstone and its
+install ledger. A replacement without a new record retires any prior record.
+
 Normal completion/failure removes only the invocation's staging and backup data. If restoring a backup fails, the publisher preserves the lock and backup and reports their location. A lock left by a crashed process requires inspection and explicit recovery; another invocation never removes it automatically.
 
 Default limits are 10,000 entries, depth 64 and 64 MiB per configuration/source/artifact phase. Filesystem adapters limit each text or byte read to 16 MiB. Source contents are snapshots, not a streaming interface. Files changing during snapshot preparation can yield contents from different moments. Checkpoint codecs enforce their own byte/traversal budgets in addition to host limits.

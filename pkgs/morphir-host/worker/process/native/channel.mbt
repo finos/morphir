@@ -189,6 +189,7 @@ pub extend ProcessChannel with @worker.Channel::{
   send,
   receive,
   close,
+  close_within,
   abort,
   bounds,
 }
@@ -296,6 +297,29 @@ async fn[X] ProcessChannel::fault(
 
 ///|
 pub impl @worker.Channel for ProcessChannel with fn close(self) {
+  self.wait_then_finish(self.grace_ms, GraceExpired)
+}
+
+///|
+pub impl @worker.Channel for ProcessChannel with fn close_within(
+  self,
+  remaining_ms,
+) {
+  if remaining_ms <= 0 {
+    self.abort(Deadline)
+  } else if remaining_ms <= self.grace_ms {
+    self.wait_then_finish(remaining_ms, Deadline)
+  } else {
+    self.close()
+  }
+}
+
+///|
+async fn ProcessChannel::wait_then_finish(
+  self : ProcessChannel,
+  wait_ms : Int32,
+  timeout : @worker.StopReason,
+) -> @worker.WorkerStop {
   if self.stop is Some(stop) {
     return stop
   }
@@ -304,7 +328,7 @@ pub impl @worker.Channel for ProcessChannel with fn close(self) {
   // the wait ends and `finish` returns the abort's stop, which came first.
   let exited = @async.handle_cancellation(() => {
     self.with_stderr(() => {
-      self.with_output_drain(() => self.leader.wait_for(self.grace_ms))
+      self.with_output_drain(() => self.leader.wait_for(wait_ms))
     })
   }) catch {
     _ => Some(None)
@@ -312,7 +336,7 @@ pub impl @worker.Channel for ProcessChannel with fn close(self) {
   self.finish(
     match exited {
       Some(Some(raw)) => LeaderExited(raw)
-      Some(None) => Stop(GraceExpired)
+      Some(None) => Stop(timeout)
       None => Stop(Cancelled)
     },
   )

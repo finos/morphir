@@ -47,6 +47,11 @@ pub fn verify_and_publish(Array[@execution.Plan], @execution.Provider, @executio
 // Errors
 
 // Types and methods
+pub(all) struct CompileRecordOptions {
+  explicit_selection : Bool
+  tree_product : String?
+}
+
 pub(all) struct ContentPublication {
   stage : (@morphir-engine.ContentArtifact) -> Unit raise
   commit : (String) -> Unit raise
@@ -58,7 +63,7 @@ pub(all) struct ContentPublisher {
   write_bytes : Bool
   begin : (Array[String]) -> ContentPublication raise
 }
-pub fn ContentPublisher::filesystem(String, String) -> Self raise
+pub fn ContentPublisher::filesystem(String, String, compile_record? : CompileRecordOptions, cancelled? : () -> Bool) -> Self raise
 pub fn ContentPublisher::filesystem_inventory(String, String, Array[String], destination_policy? : DestinationPolicy) -> Self raise
 pub fn ContentPublisher::memory(Map[String, @data.Content]) -> Self
 pub fn ContentPublisher::text(Publisher) -> Self

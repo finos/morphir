@@ -10,6 +10,8 @@ import {
 }
 
 // Values
+pub fn artifact_path_key(String) -> String
+
 pub let legacy_fallback_code : String
 
 pub let max_call_instructions : Int64
@@ -752,6 +754,7 @@ pub struct MemoryChannel {
 pub async fn MemoryChannel::abort(Self, StopReason) -> WorkerStop
 pub fn MemoryChannel::bounds(Self) -> EnforcedBounds?
 pub async fn MemoryChannel::close(Self) -> WorkerStop
+pub async fn MemoryChannel::close_within(Self, Int32) -> WorkerStop
 pub fn MemoryChannel::pair(grace_ms? : Int32, bounds? : EnforcedBounds) -> (Self, MemoryWorker)
 pub async fn MemoryChannel::receive(Self) -> Message
 pub async fn MemoryChannel::send(Self, Message) -> Unit
@@ -1285,6 +1288,7 @@ pub(open) trait Channel {
   async fn send(Self, Message) -> Unit
   async fn receive(Self) -> Message
   async fn close(Self) -> WorkerStop
+  async fn close_within(Self, Int32) -> WorkerStop = _
   async fn abort(Self, StopReason) -> WorkerStop
   fn bounds(Self) -> EnforcedBounds? = _
 }

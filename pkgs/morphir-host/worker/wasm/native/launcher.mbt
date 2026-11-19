@@ -353,6 +353,7 @@ pub extend WasmProcessChannel with @worker.Channel::{
   send,
   receive,
   close,
+  close_within,
   abort,
   bounds,
 }
@@ -377,6 +378,14 @@ pub impl @worker.Channel for WasmProcessChannel with fn receive(self) {
 ///|
 pub impl @worker.Channel for WasmProcessChannel with fn close(self) {
   self.inner.close()
+}
+
+///|
+pub impl @worker.Channel for WasmProcessChannel with fn close_within(
+  self,
+  remaining_ms,
+) {
+  self.inner.close_within(remaining_ms)
 }
 
 ///|

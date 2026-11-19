@@ -257,6 +257,7 @@ fn Host::validate_libraries(
       source: project.source,
       content: @data.Binary(bytes),
       format: "ion-binary",
+      ir_json_version: None,
     })
     validated.push({
       project_id: project.id,

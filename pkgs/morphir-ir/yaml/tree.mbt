@@ -329,6 +329,7 @@ fn tree_file_names(
   module_doc : Json,
   path : String,
   context~ : @wire.DocumentNameContext? = None,
+  observe~ : () -> Unit raise = fn() {  },
 ) -> Map[String, Json] raise {
   let location = path + "/fileNames"
   let file_names = match @wire.optional(module_doc, "fileNames") {
@@ -337,6 +338,7 @@ fn tree_file_names(
     _ => tree_error("invalid_type", location, "Expected a stem map")
   }
   for key, value in file_names {
+    observe()
     let name = canonical_name(@wire.text(key))
     let stem = @wire.string(value) catch {
       @wire.Invalid(code, detail) => tree_error(code, location, detail)
@@ -348,13 +350,14 @@ fn tree_file_names(
       match @wire.optional(module_doc, kind) {
         Some(Object(items)) => items.contains(key)
         Some(Array(items)) =>
-          if context is Some(_) {
-            items.any(raw => {
+          items.any(raw => {
+            observe()
+            if context is Some(_) {
               canonical_name(raw, context~, location=path + "/" + kind) == name
-            })
-          } else {
-            items.contains(@wire.text(key))
-          }
+            } else {
+              raw == @wire.text(key)
+            }
+          })
         _ => false
       }
     })

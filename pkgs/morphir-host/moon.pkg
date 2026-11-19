@@ -49,3 +49,7 @@ import {
 // The native and JS recovery tests use the fixture import.
 
 warnings = "-29"
+
+options(
+  targets: { "compile_publication_native.mbt": [ "native" ] },
+)

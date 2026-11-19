@@ -187,6 +187,7 @@ fn originals_publish(
       path: @workspace.join(destination, path),
       source: "connected-model-original",
       format: "original-bytes",
+      ir_json_version: None,
       content: @data.Binary(bytes),
     })
   }

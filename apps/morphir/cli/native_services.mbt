@@ -73,14 +73,6 @@ fn fresh_output(text : String) -> String raise {
 }
 
 ///|
-/// The key that two artifact paths share when a file system may treat them
-/// as one name: NFC-normalized and case-folded, then normalized again, since
-/// case folding can leave a string that is not in NFC.
-fn extension_path_key(path : String) -> String {
-  @normalization.nfc(@casefold.casefold(@normalization.nfc(path)))
-}
-
-///|
 /// Generated paths are relative, slash-separated and confined to the output.
 /// Two paths that differ only by case or by Unicode normalization collide, as
 /// does a file whose name is also a directory of another artifact.
@@ -111,7 +103,7 @@ fn extension_artifacts(result : Json) -> Array[(String, Bytes)] raise {
       (binary == Json::boolean(true) || binary == Json::boolean(false)) else {
       raise invalid("an artifact has an unsafe or incomplete entry")
     }
-    let key = extension_path_key(path)
+    let key = @worker.artifact_path_key(path)
     if file_keys.get(key) is Some(other) {
       raise invalid(
         "the artifacts \{other} and \{path} collide by case or Unicode normalization",

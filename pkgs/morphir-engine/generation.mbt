@@ -313,6 +313,7 @@ fn validate_batch(
       source,
       content: file.content,
       format: file.format,
+      ir_json_version: None,
     })
   }
   for project in batch.projects {

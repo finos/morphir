@@ -113,6 +113,7 @@ fn model_command_run(cli : Cli, mode : OutputMode) -> Int32 raise {
         path: @workspace.join(destination, name),
         source: path,
         format: "original-bytes",
+        ir_json_version: None,
         content: @data.Binary(files[name]),
       })
     }

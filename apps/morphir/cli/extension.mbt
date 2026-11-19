@@ -275,6 +275,7 @@ fn extension_retired_options(cli : Cli) -> Unit raise ExtensionError {
 /// The local inputs of one command, checked before any worker starts.
 priv struct ExtensionInputs {
   path : String
+  task_result : String?
   output : String
   package_name : String
   codec : @worker.ModelCodec?
@@ -296,6 +297,13 @@ fn ExtensionInputs::read(
   command : ExtensionCommand,
 ) -> ExtensionInputs raise ExtensionError {
   let path = value(cli, "path")
+  let task_result = match value(cli, "task-result") {
+    "" => None
+    path => Some(path)
+  }
+  if task_result is Some(_) && path != "" {
+    raise input_invalid("use either a positional input or --task-result")
+  }
   let model_format = value(cli, "model-format")
   let timeout_ms = build_timeout(value(cli, "timeout", fallback="60000")) catch {
     _ => raise input_invalid("--timeout needs a whole number of milliseconds")
@@ -316,6 +324,7 @@ fn ExtensionInputs::read(
   }
   let inputs : ExtensionInputs = {
     path,
+    task_result,
     output: "",
     package_name: value(cli, "package"),
     codec: None,
@@ -337,7 +346,7 @@ fn ExtensionInputs::read(
       inputs
     }
     Compile | Generate => {
-      if path == "" || path == "-" {
+      if (path == "" && task_result is None) || path == "-" {
         raise input_invalid(
           if command is Compile {
             "compile needs a source file or directory"
@@ -1640,6 +1649,19 @@ async fn extension_execute(
       "\{identity}: \{pin.spec.runtime.kind()} worker; MEP \{lines}; \{operations}",
     )
   }
+  if command is Generate &&
+    extension_generate_tree(
+      host,
+      pin,
+      claims,
+      inputs,
+      deadline=remaining,
+      stop~,
+      diagnostics~,
+    )
+    is Some(result) {
+    return result
+  }
   // Inputs that need the claims are read after the probe, before any call.
   let (line, call, ir_version) = match command {
     Compile => {
@@ -1818,11 +1840,38 @@ async fn extension_execute(
         "cannot publish \{inputs.output}: \{@host.error_message(error)}",
       )
   }
+  extension_session_result(
+    command,
+    inputs,
+    claims,
+    worker,
+    report,
+    receipts,
+    stderr,
+    protocol=offer.line(),
+  )
+}
+
+///|
+fn extension_session_result(
+  command : ExtensionCommand,
+  inputs : ExtensionInputs,
+  claims : @worker.Claims,
+  worker : Json,
+  report : @worker.SessionReport,
+  receipts : Array[Json],
+  stderr : @worker.StderrTail,
+  protocol~ : @worker.ProtocolLine,
+) -> (Json, String) {
+  let identity = "\{claims.extension_id} \{claims.version}"
   let session = report.to_json()
   let negotiated : Map[String, Json] = {
-    "protocolVersion": offer.line().to_string(),
+    "protocolVersion": protocol.to_string(),
   }
   if report.negotiated is Some(agreed) {
+    if agreed.model_access is Some(access) {
+      negotiated["modelAccess"] = access.to_json()
+    }
     if agreed.tuple is Some(tuple) {
       negotiated["tuple"] = tuple.to_json()
     }
@@ -1867,7 +1916,7 @@ async fn extension_execute(
       "id": claims.extension_id.to_string(),
       "version": claims.version.to_string(),
     },
-    "protocolVersion": offer.line().to_string(),
+    "protocolVersion": protocol.to_string(),
     "negotiated": Json::object(negotiated),
     "bounds": Json::object(bounds),
     "output": { "directory": inputs.output, "files": Json::array(receipts) },
@@ -1879,7 +1928,7 @@ async fn extension_execute(
   }
   (
     result,
-    "\{identity} on MEP \{offer.line()}: wrote \{receipts.length()} file(s) to \{inputs.output}",
+    "\{identity} on MEP \{protocol}: wrote \{receipts.length()} file(s) to \{inputs.output}",
   )
 }
 

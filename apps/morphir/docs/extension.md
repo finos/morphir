@@ -114,7 +114,7 @@ Consider `extension compile main.mbt --package acme/rules --output model`:
    `model` exists (`extension.input_invalid`). It reads and decodes the pin, and
    reads and checks the descriptor when the pin names one.
 2. **Probe.** It starts a first worker, sends `morphir.extension.describe`,
-   offering MEP `0.2.0-draft.1` and `0.1`, then `morphir.exit`, and stops the
+   offering MEP `0.2.0-draft.2`, `0.2.0-draft.1`, and `0.1`, then `morphir.exit`, and stops the
    worker. The answer gives the claims. The descriptor's claims, when the pin
    names a descriptor, are compared with them.
 3. **Offer.** The protocol line comes from the claims, not from the pin. A
@@ -174,6 +174,74 @@ file's `formatVersion` and sends it with `morphir.backend.generateModel`, when t
 guest claims that tuple. For a guest that claims nothing but MEP `0.1`, plain IR
 goes as it is to `morphir.backend.generate`, and so it does for a guest on both
 lines when the [legacy fallback](#legacy-mep-01-fallback) applies.
+
+### Generate from a document tree
+
+On the native macOS and Linux CLI, give the producer's schema-1
+`compile.json` with `--task-result`. Its IR descriptor selects a declared
+product under the sibling `compile.dest/`. The process worker must claim MEP `0.2.0-draft.2`, access version `0.1.0-draft.1`, and the generation tuple
+`morphir-ir / morphir-json / 4.0.0 / document-tree / plain`.
+
+```sh
+morphir extension generate --task-result .morphir/out/compile.json \
+  --target moonbit --output ./generated --extension-pin ./pin.json --json
+```
+
+The host opens the existing `compile.lock` with the producer's shared POSIX
+`flock` before reading the record. It refuses tombstones, missing or unsupported
+IR descriptors, explicit source selections, and escaping paths. It holds the
+lock through capture, the final lazy batch, worker settlement, and scratch
+cleanup. Lazy deliveries use the captured bytes and check their digest.
+A producer taking the matching exclusive lock waits for success, cancellation,
+or rejection to release the read lease.
+
+The output parent must be outside the source tree and the entire `compile.dest`
+for a recorded input. It must be owned by the CLI user and
+protected from group and other writes. On macOS it must have no extended ACL.
+The host copies admitted document bytes one file at a time into a private
+sibling scratch directory, then rechecks the source identities and contents.
+Module and member pages use snapshot-scoped, single-use cursors. The worker
+requests documents by IDs it received from inventory, and the host validates
+each selected document before delivery.
+
+The capture admits up to 4,096 directory entries, 32 levels of directories,
+1 MiB per document, and 64 MiB of document bytes. The session offer caps a page
+at 128 rows, decoded document batches at 256 KiB, framed messages at 1 MiB,
+artifact chunks at 64 KiB, a file at 16 MiB, and all artifacts at 64 MiB.
+The agreement can lower the exchange and staging limits. The host enforces
+logical byte and work budgets. Process heap usage and the wall time of a
+blocked filesystem syscall require separate controls.
+
+The host checks artifact offsets, lengths, digests, path collisions, and end
+markers while writing a private stage. After the worker stops, it streams the
+staged files back through SHA-256, verifies the directory contains exactly the
+declared artifacts, and renames the stage into the absent output directory.
+The JSON result reports the agreed access tuple under `negotiated.modelAccess`.
+
+The native fixture also exercises positional tree directories. Two matching
+capture passes prove the stability of the retained copy, while the original
+directory's atomic revision remains unqualified. A writer that can mask
+individual changes can present an old file and a new file in both passes even
+if that pair never coexisted. The recorded-input guarantee relies on the
+producer honoring the same lock; the native worker runs under the CLI's OS user.
+
+Native MoonBit compile on macOS and Linux takes an exclusive lock on the
+same persistent `compile.lock` before acquiring its output-root mkdir guard.
+This protects the staged replacement and schema-1 record publication. A
+replacement that fails after retiring the prior record leaves a tombstone.
+Cancellation while waiting for the task lock preserves the accepted record
+and product.
+
+The current MoonBit compile CLI publishes single-file outputs. Its schema-1
+record lists those outputs and supplies an IR descriptor for a single JSON
+IR product. Classic JSON exports through `morphir run` record the version
+stored in the emitted IR. Bounded generation needs a producer that publishes a split
+document tree. For a relocated root and workspace member, pass the member's
+record explicitly, for example `--task-result relocated/packages/orders/compile.json`.
+Implicit task lookup and install remain separate work. Native process
+qualification covers plain JSON v4 split members on macOS. Linux, WASM,
+Windows, other versions and encodings, and inline members require their
+own qualification.
 
 ### Legacy MEP 0.1 fallback
 
@@ -342,7 +410,8 @@ sources; a larger request is refused with `extension.request_limit`.
 | `<source>` | compile | A source file, or a directory snapshot of claimed source files |
 | `--language ID` | compile | One of the claimed languages; required when the extension claims more than one |
 | `--source-base DIR` | compile | The directory that document URIs are relative to; by default a directory source is its own base. The source must be this directory or below it |
-| `<model>` | generate | A model envelope, or plain Morphir IR JSON |
+| `<model>` | generate | A model envelope or plain Morphir IR JSON |
+| `--task-result FILE` | generate | A [schema-1 compile result](#generate-from-a-document-tree) naming a bounded document tree. Use it in place of a positional model |
 | `--package NAME` | compile | The package name; required |
 | `--model-format ion\|json` | compile | Narrows the offer on the model line to the tuples of that format. Without it, the CLI offers Ion and JSON tuples and uses the first tuple that the extension agrees on. MEP `0.1` compiles return Morphir JSON and refuse `ion` |
 | `--frontend-profile ID` | compile | The frontend profile option on the model line |

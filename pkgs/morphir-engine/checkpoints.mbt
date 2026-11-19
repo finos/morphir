@@ -11,6 +11,8 @@ pub(all) struct ContentArtifact {
   source : String
   content : @data.Content
   format : String
+  /// The version serialized by a versioned JSON IR writer.
+  ir_json_version : @version.FormatVersion?
 }
 
 ///|

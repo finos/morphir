@@ -43,6 +43,7 @@ priv struct Job {
   runtime : @scheme.Runtime
   frontend : Frontend?
   backend : Backend?
+  plain_json_version : @version.FormatVersion?
   /// A rich frontend with a backend that has `emit_unit`: the unit goes to the backend with its metadata.
   unit_backend : Bool
   read_bytes : Bool
@@ -337,22 +338,12 @@ pub fn Engine::plan(
         None =>
           raise @configuration.Invalid("Unknown backend: " + settings.backend)
       }
-      Some(
-        if settings.backend == "ir-json" {
-          Backend::{
-            extension: registered.extension,
-            emit: fn(ir) raise {
-              @versioned_json.write(
-                @migration.migrate(@versioned.V4(ir), version),
-              )
-            },
-            rich_units: registered.rich_units,
-            emit_unit: None,
-          }
-        } else {
-          registered
-        },
-      )
+      Some(registered)
+    }
+    let plain_json_version = if !checkpoint && settings.backend == "ir-json" {
+      Some(version)
+    } else {
+      None
     }
     if unit_backend &&
       (
@@ -545,6 +536,7 @@ pub fn Engine::plan(
       runtime,
       frontend,
       backend,
+      plain_json_version,
       unit_backend,
       suffix,
       read_bytes,
@@ -878,20 +870,28 @@ pub fn Engine::execute_content(
               source: path,
               content: file.content,
               format: file.format,
+              ir_json_version: None,
             })
           }
           processed += 1
           continue
         }
-        let content = match job.boundary {
-          Some(boundary) =>
-            boundary.codecs.encode(
-              boundary.output.codec,
-              match checkpoint_unit {
-                Some(unit) => unit
-                None => @data.IRUnit::new(unit_id, ir)
-              },
-            )
+        let (content, ir_json_version) = match job.boundary {
+          Some(boundary) => {
+            let unit = match checkpoint_unit {
+              Some(unit) => unit
+              None => @data.IRUnit::new(unit_id, ir)
+            }
+            let content = boundary.codecs.encode(boundary.output.codec, unit)
+            // This registry entry is the built-in, non-replaceable JSON
+            // writer. It serializes the version on the unit's IR file.
+            let version = if boundary.output.codec == "morphir-json" {
+              Some(unit.distribution.format_version)
+            } else {
+              None
+            }
+            (content, version)
+          }
           None => {
             let unit = checkpoint_unit.unwrap()
             // every unit carries the pipeline marker annotation; only other annotations are dropped data
@@ -912,7 +912,16 @@ pub fn Engine::execute_content(
                 problem: None,
               })
             }
-            @data.Text((job.backend.unwrap().emit)(ir))
+            match job.plain_json_version {
+              Some(requested) => {
+                let file = @migration.migrate(@versioned.V4(ir), requested)
+                (
+                  @data.Text(@versioned_json.write(file)),
+                  Some(file.format_version()),
+                )
+              }
+              None => (@data.Text((job.backend.unwrap().emit)(ir)), None)
+            }
           }
         }
         if job.boundary is Some(boundary) {
@@ -927,6 +936,7 @@ pub fn Engine::execute_content(
           path: join(job.destination, unit_id + job.suffix),
           source: path,
           content,
+          ir_json_version,
           format: match job.boundary {
             Some(b) => b.output.codec
             None => job.settings.backend

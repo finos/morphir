@@ -39,8 +39,6 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/encoding/base64",
-  "moonbit-community/casefold",
-  "moonbit-community/unicode-normalization" @normalization,
   "finos/morphir-moonbit/mep",
   "finos/morphir-host/worker",
 }
@@ -66,6 +64,7 @@ max_concurrent_tests = 1
 options(
   targets: {
     "hosting_wbtest.mbt": [ "native", "js" ],
+    "extension_tree.mbt": [ "native", "js" ],
     "extension.mbt": [ "native", "js" ],
     "worker_hosting.mbt": [ "native", "js" ],
     "extension_unhosted.mbt": [ "wasm", "wasm-gc" ],

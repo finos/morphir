@@ -692,14 +692,53 @@ static int directory_append(unsigned char **data, size_t *used, size_t *capacity
   return 0;
 }
 
+#ifndef _WIN32
+static int directory_read_fd(int fd, int limit, int (*interrupted)(void),
+    unsigned char **data, size_t *used, size_t *capacity) {
+  DIR *directory = fdopendir(fd);
+  if (!directory) return close(fd) ? 4 : 5;
+  int status = 0, count = 0;
+  for (;;) {
+    if (interrupted()) { status = 6; break; }
+    errno = 0;
+    struct dirent *entry = readdir(directory);
+    if (!entry) { if (errno) status = 3; break; }
+    status = directory_append(data, used, capacity, &count, limit, entry->d_name);
+    if (status) break;
+  }
+  if (closedir(directory)) status = 4;
+  return status;
+}
+#endif
+
+moonbit_bytes_t morphir_bounded_directory_list(int parent, int limit, int (*interrupted)(void)) {
+#ifndef _WIN32
+  size_t used = 1, capacity = 64;
+  unsigned char *data = malloc(capacity);
+  if (!data || limit < 0 || limit > 65536) {
+    free(data); return moonbit_make_bytes(1, 5);
+  }
+  int fd = openat(parent, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+  int status = fd < 0 ? 5 : directory_read_fd(fd, limit, interrupted, &data, &used, &capacity);
+  moonbit_bytes_t result = moonbit_make_bytes_raw(status ? 1 : (int32_t)used);
+  result[0] = (unsigned char)status;
+  if (!status && used > 1) memcpy(result + 1, data + 1, used - 1);
+  free(data);
+  return result;
+#else
+  return moonbit_make_bytes(1, 5);
+#endif
+}
+
 moonbit_bytes_t morphir_host_list_bounded(const char *path, int limit, int (*interrupted)(void)) {
   size_t used = 1, capacity = 64;
   unsigned char *data = malloc(capacity);
-  int status = 0, count = 0;
+  int status = 0;
   if (!data || limit < 0 || limit > 65536) {
     free(data); return moonbit_make_bytes(1, 5);
   }
 #ifdef _WIN32
+  int count = 0;
   wchar_t *wide = wide_path(path);
   HANDLE directory = INVALID_HANDLE_VALUE;
   if (!wide || morphir_host_kind(path) != 2) status = 5;
@@ -734,26 +773,9 @@ moonbit_bytes_t morphir_host_list_bounded(const char *path, int limit, int (*int
   free(wide);
   if (directory != INVALID_HANDLE_VALUE && !FindClose(directory)) status = 4;
 #else
-  DIR *directory = NULL;
-  /* Existing Mount confinement checks every component. Refuse a final symlink
-   * here as well; the portable host assumes caller-owned parents stay stable. */
+  /* The last component must be a directory, never a link. */
   int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-  if (fd < 0) status = 5;
-  else {
-    directory = fdopendir(fd);
-    if (!directory) { status = 5; if (close(fd)) status = 4; }
-  }
-  if (directory) {
-    for (;;) {
-      if (interrupted()) { status = 6; break; }
-      errno = 0;
-      struct dirent *entry = readdir(directory);
-      if (!entry) { if (errno) status = 3; break; }
-      status = directory_append(&data, &used, &capacity, &count, limit, entry->d_name);
-      if (status) break;
-    }
-    if (closedir(directory)) status = 4;
-  }
+  status = fd < 0 ? 5 : directory_read_fd(fd, limit, interrupted, &data, &used, &capacity);
 #endif
   moonbit_bytes_t result = moonbit_make_bytes_raw(status ? 1 : (int32_t)used);
   result[0] = (unsigned char)status;

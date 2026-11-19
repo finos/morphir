@@ -156,10 +156,11 @@ fn pipeline_command(
       @platform.system_type(),
     )
   }
-  let host = @host.Host::new(mount, environment~, cancelled=fn() {
+  let cancelled = () => {
     @platform.interruption_requested() ||
     (cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0)
-  })
+  }
+  let host = @host.Host::new(mount, environment~, cancelled~)
   let snapshot = host.snapshot()
   let discovery_overlay = @config.from_json(
     Json::object(overlay_fields),
@@ -298,9 +299,21 @@ fn pipeline_command(
     )
     return 0
   }
+  let boundaries = plan.boundaries()
   let publisher = @host.ContentPublisher::filesystem(
     location.root,
     plan.output_root,
+    compile_record?=if kind is PipelineCompile ||
+      boundaries.any(boundary => boundary.output_format == "ir-json") {
+      Some({
+        explicit_selection: request.file is Some(_) ||
+        request.directory is Some(_),
+        tree_product: None,
+      })
+    } else {
+      None
+    },
+    cancelled~,
   )
   let build_config = @config.merge(workspace.document, overlay)
   let provider = match build_config.text("pipeline.build_provider", "") {
@@ -323,7 +336,6 @@ fn pipeline_command(
   }
   // Retain the owner used by the effect-free metadata binder during planning.
   let host = { ..host, library_build: provider, }
-  let boundaries = plan.boundaries()
   let result = host.run_content(
     engine,
     plan,

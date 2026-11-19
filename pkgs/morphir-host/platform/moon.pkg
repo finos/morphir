@@ -13,10 +13,11 @@ import {
 } for "test"
 
 options(
-  "native-stub": [ "platform.c", "originals_observer.c" ],
+  "native-stub": [ "platform.c", "originals_observer.c", "bounded_directory.c" ],
   targets: {
     "observation.mbt": [ "wasm", "wasm-gc" ],
     "desktop.mbt": [ "native", "js" ],
+    "bounded_directory.mbt": [ "native" ],
     "native.mbt": [ "native" ],
     "js.mbt": [ "js" ],
     "wasi.mbt": [ "wasm" ],

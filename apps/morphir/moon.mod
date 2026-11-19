@@ -23,8 +23,6 @@ import {
   "moonrockz/moon-lander-moonx@0.11.0",
   "moonbitlang/async@0.22.7",
   "moonbitlang/x@0.5.5",
-  "moonbit-community/casefold@0.1.7",
-  "moonbit-community/unicode-normalization@0.6.0",
   "moonrockz/expect@0.6.1",
   "finos/morphir-execution@0.1.0",
   "finos/morphir-engine@0.1.0",
