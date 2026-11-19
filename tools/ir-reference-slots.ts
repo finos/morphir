@@ -1,10 +1,15 @@
 // Typed traversal for the small IDX-1 controls, not a general IR reader.
 // Reuses the umbrella's ordered JSON and contextual spelling API. Unsupported
 // IR nodes fail closed so this experiment cannot silently claim completeness.
-import { isSpelling, type Ordered, referenceId } from "./check-ir-context";
+import { escapeJsonPointerSegment, isSpelling, type Ordered, referenceId } from "./check-ir-context";
 
 export type ReferenceSlot = "type-reference" | "value-reference";
-export type ReferenceOccurrence = Readonly<{ location: string; slot: ReferenceSlot; fqName: string }>;
+export type ReferenceOccurrence = Readonly<{
+  location: string;
+  spellingLocation: string;
+  slot: ReferenceSlot;
+  fqName: string;
+}>;
 type ObjectValue = { members: [string, Ordered][] };
 
 export function object(value: Ordered | undefined): ObjectValue {
@@ -17,7 +22,12 @@ export function field(value: Ordered, key: string): Ordered {
   if (!found) throw new Error(`Missing ${key}`);
   return found[1];
 }
-const pointer = (key: string) => key.replaceAll("~", "~0").replaceAll("/", "~1");
+export function resolveReferenceName(value: Ordered, fqNames: ReadonlyMap<string, string>, location: string): string {
+  const id = referenceId(value);
+  const fqName = id === undefined ? value : fqNames.get(id);
+  if (typeof fqName !== "string" || !isSpelling("fqNames", fqName)) throw new Error(`Invalid or unresolved FQName at ${location}`);
+  return fqName;
+}
 
 /** Visits only typed reference slots in the explicitly supported v4 control grammar. */
 export function referenceSlots(document: Ordered, fqNames: ReadonlyMap<string, string>): ReferenceOccurrence[] {
@@ -27,17 +37,15 @@ export function referenceSlots(document: Ordered, fqNames: ReadonlyMap<string, s
   const def = field(document, "def");
   const body = field(def, "ExpressionBody");
   const out: ReferenceOccurrence[] = [];
-  const emit = (value: Ordered, location: string, slot: ReferenceSlot) => {
-    const id = referenceId(value);
-    const fqName = id === undefined ? value : fqNames.get(id);
-    if (typeof fqName !== "string" || !isSpelling("fqNames", fqName)) throw new Error(`Invalid or unresolved FQName at ${location}`);
-    out.push({ location, slot, fqName });
+  const emit = (value: Ordered, location: string, slot: ReferenceSlot, spellingLocation = location) => {
+    const fqName = resolveReferenceName(value, fqNames, location);
+    out.push({ location, spellingLocation, slot, fqName });
   };
   const type = (value: Ordered, location: string): void => {
     if (typeof value === "string" || referenceId(value) !== undefined) return emit(value, location, "type-reference");
     const members = object(value).members;
     if (members.length !== 1 || members[0]![0] !== "Reference") throw new Error(`Unsupported control type at ${location}`);
-    emit(members[0]![1], location, "type-reference");
+    emit(members[0]![1], location, "type-reference", `${location}/Reference`);
   };
   const expression = (value: Ordered, location: string): void => {
     if (typeof value === "string") return emit(value, location, "value-reference");
@@ -45,7 +53,7 @@ export function referenceSlots(document: Ordered, fqNames: ReadonlyMap<string, s
     if (members.length !== 1) throw new Error(`Unsupported control value at ${location}`);
     const [tag, payload] = members[0]!;
     switch (tag) {
-      case "Reference": return emit(payload, location, "value-reference");
+      case "Reference": return emit(payload, location, "value-reference", `${location}/Reference`);
       case "List":
         if (!Array.isArray(payload)) throw new Error("Expected List items");
         payload.forEach((item, i) => expression(item, `${location}/List/${i}`));
@@ -62,7 +70,7 @@ export function referenceSlots(document: Ordered, fqNames: ReadonlyMap<string, s
     }
   };
   const base = "/def/ExpressionBody";
-  for (const [name, value] of object(field(body, "inputTypes")).members) type(value, `${base}/inputTypes/${pointer(name)}`);
+  for (const [name, value] of object(field(body, "inputTypes")).members) type(value, `${base}/inputTypes/${escapeJsonPointerSegment(name)}`);
   type(field(body, "outputType"), `${base}/outputType`);
   expression(field(body, "body"), `${base}/body`);
   return out;

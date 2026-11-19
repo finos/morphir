@@ -34,11 +34,19 @@ export class Lexeme {
  */
 export type Ordered = null | boolean | number | Lexeme | string | Ordered[] | { members: [string, Ordered][] };
 
+export function escapeJsonPointerSegment(key: string): string {
+	return key.replaceAll("~", "~0").replaceAll("/", "~1");
+}
+
 /**
  * Parses JSON text without losing member order or duplicate members, which `JSON.parse` drops. With `lexemes`, each
  * number is kept as its {@link Lexeme}, so that `1.0` and `1`, or 9007199254740993 and 9007199254740992, stay apart.
+ * The optional span observer receives each completed value's JSON Pointer and half-open UTF-16 offsets.
  */
-export function parseOrdered(text: string, { lexemes = false }: { lexemes?: boolean } = {}): Ordered {
+export function parseOrdered(text: string, { lexemes = false, onValueSpan }: {
+	lexemes?: boolean;
+	onValueSpan?: (pointer: string, start: number, end: number) => void;
+} = {}): Ordered {
 	let at = 0;
 	const fail = (what: string): never => {
 		throw new Error(`invalid JSON at offset ${at}: ${what}`);
@@ -61,8 +69,14 @@ export function parseOrdered(text: string, { lexemes = false }: { lexemes?: bool
 		at++;
 		return JSON.parse(text.slice(start, at)) as string;
 	};
-	const value = (): Ordered => {
+	const value = (pointer?: string): Ordered => {
 		space();
+		const start = at;
+		const parsed = readValue(pointer);
+		if (pointer !== undefined) onValueSpan?.(pointer, start, at);
+		return parsed;
+	};
+	const readValue = (pointer?: string): Ordered => {
 		const c = text[at];
 		if (c === "{") {
 			at++;
@@ -79,7 +93,8 @@ export function parseOrdered(text: string, { lexemes = false }: { lexemes?: bool
 				space();
 				if (text[at] !== ":") fail("expected :");
 				at++;
-				members.push([key, value()]);
+				const child = pointer === undefined ? undefined : `${pointer}/${escapeJsonPointerSegment(key)}`;
+				members.push([key, value(child)]);
 				space();
 				if (text[at] === ",") {
 					at++;
@@ -101,7 +116,7 @@ export function parseOrdered(text: string, { lexemes = false }: { lexemes?: bool
 				return items;
 			}
 			for (;;) {
-				items.push(value());
+				items.push(value(pointer === undefined ? undefined : `${pointer}/${items.length}`));
 				space();
 				if (text[at] === ",") {
 					at++;
@@ -123,7 +138,7 @@ export function parseOrdered(text: string, { lexemes = false }: { lexemes?: bool
 		at += number[0].length;
 		return lexemes ? new Lexeme(number[0]) : Number(number[0]);
 	};
-	const result = value();
+	const result = value(onValueSpan === undefined ? undefined : "");
 	space();
 	if (at !== text.length) fail("trailing text");
 	return result;
