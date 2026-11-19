@@ -3,7 +3,7 @@
 async fn extension_generate_tree(
   host : @worker.Host,
   pin : ExtensionPin,
-  claims : @worker.Claims,
+  claims : @worker.Claims?,
   inputs : ExtensionInputs,
   deadline~ : () -> @worker.Deadline raise ExtensionError,
   stop~ : @worker.StopSignal,
@@ -19,10 +19,20 @@ async fn extension_generate_tree(
       ExplicitDirectory(inputs.path)
     }
   }
-  let target = extension_target(claims, inputs.target)
+  let target = match claims {
+    Some(claims) => extension_target(claims, inputs.target)
+    None => {
+      guard inputs.target != "" else {
+        raise input_invalid(
+          "recorded bounded WASM generation requires --target",
+        )
+      }
+      inputs.target
+    }
+  }
   let generated = host.generate_tree(
     pin.spec,
-    expected=claims,
+    expected?=claims,
     input~,
     output=inputs.output,
     target~,
@@ -58,12 +68,13 @@ async fn extension_generate_tree(
     extension_session_result(
       Generate,
       inputs,
-      claims,
+      generated.claims,
       extension_worker_json(pin),
       generated.session,
       generated.files,
       stopped.stderr,
       protocol=Mep0_2Draft2,
+      probe=if claims is None { "initialized" } else { "described" },
     ),
   )
 }
@@ -73,7 +84,7 @@ async fn extension_generate_tree(
 fn extension_generate_tree(
   _host : @worker.Host,
   _pin : ExtensionPin,
-  _claims : @worker.Claims,
+  _claims : @worker.Claims?,
   inputs : ExtensionInputs,
   deadline~ : () -> @worker.Deadline raise ExtensionError,
   stop~ : @worker.StopSignal,
@@ -83,7 +94,7 @@ fn extension_generate_tree(
   if inputs.task_result is Some(_) {
     raise refused(
       Worker(RuntimeUnavailable),
-      "--task-result needs a native macOS or Linux process worker",
+      "--task-result needs the native macOS or Linux CLI",
     )
   }
   None

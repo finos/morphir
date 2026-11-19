@@ -1614,6 +1614,25 @@ async fn extension_execute(
     extension_descriptor(descriptor, pin.spec.artifact.sha256)
   })
   let stop = @worker.StopSignal::new(run.stopped)
+  // The pinned byte-call module can advertise its bounded tuple on
+  // initialize without supporting a standalone describe request.
+  if command is Generate &&
+    inputs.task_result is Some(_) &&
+    value(cli, "extension-pin") != "" &&
+    recorded is None &&
+    pin.spec.runtime is Wasm(abi=Some(ExtismKernelV1)) &&
+    extension_generate_tree(
+      host,
+      pin,
+      None,
+      inputs,
+      deadline=remaining,
+      stop~,
+      diagnostics~,
+    )
+    is Some(result) {
+    return result
+  }
   let description = host.probe(pin.spec, deadline=remaining(), stop~) catch {
     @worker.Ended(ending, report~) => {
       // The guest's own logs go to stderr even when the session failed.
@@ -1653,7 +1672,7 @@ async fn extension_execute(
     extension_generate_tree(
       host,
       pin,
-      claims,
+      Some(claims),
       inputs,
       deadline=remaining,
       stop~,
@@ -1862,6 +1881,7 @@ fn extension_session_result(
   receipts : Array[Json],
   stderr : @worker.StderrTail,
   protocol~ : @worker.ProtocolLine,
+  probe~ : String = "described",
 ) -> (Json, String) {
   let identity = "\{claims.extension_id} \{claims.version}"
   let session = report.to_json()
@@ -1902,7 +1922,7 @@ fn extension_session_result(
     )
   }
   let lifecycle : Map[String, Json] = {
-    "probe": "described",
+    "probe": Json::string(probe),
     "shutdown": "acknowledged",
     "workerStopped": true,
     "wireCancellation": false,

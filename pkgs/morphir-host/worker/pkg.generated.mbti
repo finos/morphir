@@ -755,6 +755,8 @@ pub async fn MemoryChannel::abort(Self, StopReason) -> WorkerStop
 pub fn MemoryChannel::bounds(Self) -> EnforcedBounds?
 pub async fn MemoryChannel::close(Self) -> WorkerStop
 pub async fn MemoryChannel::close_within(Self, Int32) -> WorkerStop
+pub fn MemoryChannel::guest_state_ceiling(Self) -> Int32?
+pub fn MemoryChannel::limit_frames(Self, Int32) -> Unit
 pub fn MemoryChannel::pair(grace_ms? : Int32, bounds? : EnforcedBounds) -> (Self, MemoryWorker)
 pub async fn MemoryChannel::receive(Self) -> Message
 pub async fn MemoryChannel::send(Self, Message) -> Unit
@@ -1291,6 +1293,8 @@ pub(open) trait Channel {
   async fn close_within(Self, Int32) -> WorkerStop = _
   async fn abort(Self, StopReason) -> WorkerStop
   fn bounds(Self) -> EnforcedBounds? = _
+  fn guest_state_ceiling(Self) -> Int32? = _
+  fn limit_frames(Self, Int32) -> Unit = _
 }
 
 pub(open) trait Launcher {

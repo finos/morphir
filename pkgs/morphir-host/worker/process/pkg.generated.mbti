@@ -28,12 +28,15 @@ pub struct FrameReader {
 }
 pub fn FrameReader::feed(Self, Bytes) -> Array[@worker.Message] raise @worker.ChannelError
 pub fn FrameReader::finish(Self) -> Unit raise @worker.ChannelError
+pub fn FrameReader::limit_frame(Self, Int32) -> Unit
 pub fn FrameReader::new(limit~ : Int32) -> Self
+pub fn FrameReader::next(Self, BytesView) -> (Int32, @worker.Message?) raise @worker.ChannelError
 
 pub struct FrameWriter {
   // private fields
 }
 pub fn FrameWriter::encode(Self, @worker.Message) -> Bytes raise @worker.ChannelError
+pub fn FrameWriter::limit_frame(Self, Int32) -> Unit
 pub fn FrameWriter::new(limit~ : Int32) -> Self
 
 pub struct StagedArtifact {

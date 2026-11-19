@@ -6,7 +6,6 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/aqueue",
   "moonbitlang/async/js_async",
-  "moonbitlang/core/deque",
 }
 
 import {

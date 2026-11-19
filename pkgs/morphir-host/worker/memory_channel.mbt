@@ -88,6 +88,8 @@ pub extend MemoryChannel with Channel::{
   close_within,
   abort,
   bounds,
+  limit_frames,
+  guest_state_ceiling,
 }
 
 ///|

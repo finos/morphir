@@ -8,7 +8,7 @@ const IR_CACHE_ENTRIES : Int32 = 1024
 
 ///|
 /// The most bytes of Extism variables that one session holds.
-const VARIABLE_BYTES : Int32 = 1048576
+pub let extism_variable_bytes : Int32 = 1048576
 
 ///|
 /// An `extism-kernel-v1` guest: one plugin instance for the session. Each
@@ -290,7 +290,9 @@ fn ExtismGuest::load(
     }
     let policy = @extism.Policy::default()
       .config(Empty)
-      .variables(Session(@extism.ByteLimit::parse(VARIABLE_BYTES.to_int64())))
+      .variables(
+        Session(@extism.ByteLimit::parse(extism_variable_bytes.to_int64())),
+      )
       .logging(
         Sink(Info, (level, text) => {
           (services.output)(Log(log_level(level), text))

@@ -35,6 +35,24 @@ pub fn FrameReader::feed(
 }
 
 ///|
+pub fn FrameReader::limit_frame(self : FrameReader, limit : Int32) -> Unit {
+  self.decoder.limit_frame(limit)
+}
+
+///|
+/// Read one message without decoding any bytes of the next frame. This lets
+/// the host apply the live limit before reading buffered post-initialize data.
+pub fn FrameReader::next(
+  self : FrameReader,
+  chunk : BytesView,
+) -> (Int32, @worker.Message?) raise @worker.ChannelError {
+  let (consumed, body) = self.decoder.next(chunk) catch {
+    error => raise read_error(error)
+  }
+  (consumed, body.map(@worker.Message::parse))
+}
+
+///|
 /// Checks the end of the stream: a partial frame is invalid.
 pub fn FrameReader::finish(
   self : FrameReader,
@@ -47,12 +65,19 @@ pub fn FrameReader::finish(
 ///|
 /// Encodes MEP messages for a worker's stdin with Content-Length framing.
 pub struct FrameWriter {
-  priv limit : Int32
+  priv mut limit : Int32
 }
 
 ///|
 pub fn FrameWriter::new(limit~ : Int32) -> FrameWriter {
   { limit, }
+}
+
+///|
+pub fn FrameWriter::limit_frame(self : FrameWriter, limit : Int32) -> Unit {
+  if limit < self.limit {
+    self.limit = limit
+  }
 }
 
 ///|

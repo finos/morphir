@@ -9,7 +9,7 @@ pub struct NodeProcessChannel {
   priv stdout : @js_async.ReadableStream
   priv reader : @process.FrameReader
   priv writer : @process.FrameWriter
-  priv pending : @deque.Deque[@worker.Message]
+  priv mut pending : BytesView
   priv stderr : @process.StderrBuffer
   /// Abort reasons that reach a `close` waiting for the grace period.
   priv aborts : @aqueue.Queue[@worker.StopReason]
@@ -69,7 +69,7 @@ async fn NodeProcessChannel::start_with(
     stdout: @js_async.ReadableStream::from_js(child.stdout()),
     reader: @process.FrameReader::new(limit=limits.response_bytes),
     writer: @process.FrameWriter::new(limit=limits.request_bytes),
-    pending: @deque.Deque([]),
+    pending: b""[:],
     stderr,
     aborts: @aqueue.Queue(kind=Unbounded),
     stopped: @async.CondVar::Cond(),
@@ -256,6 +256,17 @@ pub extend NodeProcessChannel with @worker.Channel::{
   close_within,
   abort,
   bounds,
+  limit_frames,
+  guest_state_ceiling,
+}
+
+///|
+pub impl @worker.Channel for NodeProcessChannel with fn limit_frames(
+  self,
+  limit,
+) {
+  self.reader.limit_frame(limit)
+  self.writer.limit_frame(limit)
 }
 
 ///|
@@ -280,7 +291,14 @@ pub impl @worker.Channel for NodeProcessChannel with fn send(self, message) {
 ///|
 pub impl @worker.Channel for NodeProcessChannel with fn receive(self) {
   self.check_open()
-  while self.pending.is_empty() {
+  while true {
+    if !self.pending.is_empty() {
+      let (consumed, message) = self.reader.next(self.pending)
+      self.pending = self.pending[consumed:]
+      if message is Some(message) {
+        return message
+      }
+    }
     let chunk = self.read_chunk() catch {
       error => {
         // A read that overlaps a stop ends with the stop.
@@ -297,11 +315,9 @@ pub impl @worker.Channel for NodeProcessChannel with fn receive(self) {
       self.reader.finish()
       raise @worker.WorkerClosed
     }
-    for message in self.reader.feed(bytes) {
-      self.pending.push_back(message)
-    }
+    self.pending = bytes[:]
   }
-  self.pending.pop_front().unwrap()
+  panic()
 }
 
 ///|

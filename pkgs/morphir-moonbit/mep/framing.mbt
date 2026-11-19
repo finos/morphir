@@ -36,6 +36,7 @@ pub struct Decoder {
   /// Where the current header line starts.
   priv mut line_start : Int32
   priv max_body : Int32
+  priv mut max_frame : Int32?
 }
 
 ///|
@@ -47,7 +48,20 @@ pub fn Decoder::new(max_body~ : Int32 = MAX_FRAME_BYTES) -> Decoder {
   } else {
     MAX_FRAME_BYTES
   }
-  { state: Header([]), line_start: 0, max_body, }
+  { state: Header([]), line_start: 0, max_body, max_frame: None, }
+}
+
+///|
+/// Tightens the ceiling for subsequent frames, including their wire headers.
+/// Set this between frames, before decoding any bytes of the next header.
+pub fn Decoder::limit_frame(self : Decoder, limit : Int32) -> Unit {
+  self.max_frame = Some(
+    if self.max_frame is Some(previous) && previous < limit {
+      previous
+    } else {
+      limit
+    },
+  )
 }
 
 ///|
@@ -56,7 +70,7 @@ pub fn Decoder::new(max_body~ : Int32 = MAX_FRAME_BYTES) -> Decoder {
 const MAX_DECLARED : Int64 = 999999999999999999L
 
 ///|
-fn content_length(header : Array[Byte], max_body : Int32) -> Int32 raise {
+fn Decoder::content_length(self : Decoder, header : Array[Byte]) -> Int32 raise {
   let text = @utf8.decode(Bytes::from_array(header)[:])
   let mut length : Int64? = None
   for line in text.split("\r\n") {
@@ -90,8 +104,12 @@ fn content_length(header : Array[Byte], max_body : Int32) -> Int32 raise {
   let declared = length.unwrap_or_else(() => {
     raise InvalidFrame("Missing Content-Length")
   })
-  guard declared <= max_body.to_int64() else {
-    raise FrameTooLarge(declared~, limit=max_body)
+  let frame = header.length().to_int64() + declared
+  if self.max_frame is Some(limit) && frame > limit.to_int64() {
+    raise FrameTooLarge(declared=frame, limit~)
+  }
+  guard declared <= self.max_body.to_int64() else {
+    raise FrameTooLarge(declared~, limit=self.max_body)
   }
   declared.to_int()
 }
@@ -138,34 +156,54 @@ fn Decoder::check_header(self : Decoder, header : Array[Byte]) -> Bool raise {
 }
 
 ///|
-pub fn Decoder::feed(self : Decoder, bytes : Bytes) -> Array[Bytes] raise {
-  let frames = []
-  for byte in bytes {
+/// Consumes bytes up to the first complete frame and returns its body and
+/// how many input bytes were used. The caller keeps the unconsumed suffix.
+pub fn Decoder::next(
+  self : Decoder,
+  bytes : BytesView,
+) -> (Int32, Bytes?) raise {
+  for index, byte in bytes {
     match self.state {
       Header(header) => {
+        let size = header.length() + 1
+        if self.max_frame is Some(limit) && size > limit {
+          raise FrameTooLarge(declared=size.to_int64(), limit~)
+        }
         header.push(byte)
-        guard header.length() <= 8192 else {
+        guard size <= 8192 else {
           raise InvalidFrame("MEP header exceeds 8 KiB")
         }
         if self.check_header(header) {
-          let length = content_length(header, self.max_body)
+          let length = self.content_length(header)
           self.line_start = 0
           if length == 0 {
-            frames.push(b"")
             self.state = Header([])
-          } else {
-            self.state = Body(length, [])
+            return (index + 1, Some(b""))
           }
+          self.state = Body(length, [])
         }
       }
       Body(length, body) => {
         body.push(byte)
         if body.length() == length {
-          frames.push(Bytes::from_array(body))
           self.state = Header([])
+          return (index + 1, Some(Bytes::from_array(body)))
         }
       }
     }
+  }
+  (bytes.length(), None)
+}
+
+///|
+pub fn Decoder::feed(self : Decoder, bytes : Bytes) -> Array[Bytes] raise {
+  let frames = []
+  for offset = 0; offset < bytes.length(); {
+    let (consumed, body) = self.next(bytes[offset:])
+    if body is Some(body) {
+      frames.push(body)
+    }
+    continue offset + consumed
   }
   frames
 }

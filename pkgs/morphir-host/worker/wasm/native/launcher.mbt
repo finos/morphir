@@ -303,7 +303,7 @@ pub impl @worker.Launcher for WasmProcessLauncher with fn launch(
     ["extension", "worker", ..options.to_args()],
     limits~,
   )
-  WasmProcessChannel::{ inner: channel, }
+  WasmProcessChannel::{ inner: channel, abi: prepared.abi, }
 }
 
 ///|
@@ -335,6 +335,7 @@ fn worker_options(
 /// refusal that the report names.
 pub struct WasmProcessChannel {
   priv inner : @process.ProcessChannel
+  priv abi : @worker.WasmAbi
 }
 
 ///|
@@ -356,6 +357,16 @@ pub extend WasmProcessChannel with @worker.Channel::{
   close_within,
   abort,
   bounds,
+  limit_frames,
+  guest_state_ceiling,
+}
+
+///|
+pub impl @worker.Channel for WasmProcessChannel with fn limit_frames(
+  self,
+  limit,
+) {
+  self.inner.limit_frames(limit)
 }
 
 ///|
@@ -391,6 +402,19 @@ pub impl @worker.Channel for WasmProcessChannel with fn close_within(
 ///|
 pub impl @worker.Channel for WasmProcessChannel with fn abort(self, reason) {
   self.inner.abort(reason)
+}
+
+///|
+/// Extism loads the fixed policy before calling initialize. The adapter
+/// exposes no API for replacing that policy on the live plugin instance.
+pub impl @worker.Channel for WasmProcessChannel with fn guest_state_ceiling(
+  self,
+) {
+  if self.abi is ExtismKernelV1 {
+    Some(@guest.extism_variable_bytes)
+  } else {
+    None
+  }
 }
 
 ///|

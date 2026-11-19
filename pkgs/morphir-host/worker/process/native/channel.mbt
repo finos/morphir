@@ -34,7 +34,7 @@ pub struct ProcessChannel {
   priv confirm_ms : Int32
   priv reader : @shared.FrameReader
   priv writer : @shared.FrameWriter
-  priv pending : Array[@worker.Message]
+  priv mut pending : BytesView
   priv leader : Leader
   priv drain : StderrDrain
   priv lock : @async.Mutex
@@ -62,7 +62,7 @@ fn ProcessChannel::new(
     confirm_ms,
     reader: @shared.FrameReader::new(limit=limits.response_bytes),
     writer: @shared.FrameWriter::new(limit=limits.request_bytes),
-    pending: [],
+    pending: b""[:],
     leader: Leader::new(worker.pid),
     drain: StderrDrain::new(worker.errors),
     lock: @async.Mutex(),
@@ -192,6 +192,14 @@ pub extend ProcessChannel with @worker.Channel::{
   close_within,
   abort,
   bounds,
+  limit_frames,
+  guest_state_ceiling,
+}
+
+///|
+pub impl @worker.Channel for ProcessChannel with fn limit_frames(self, limit) {
+  self.reader.limit_frame(limit)
+  self.writer.limit_frame(limit)
 }
 
 ///|
@@ -213,8 +221,14 @@ pub impl @worker.Channel for ProcessChannel with fn send(self, message) {
 pub impl @worker.Channel for ProcessChannel with fn receive(self) {
   self.in_call(() => {
     while true {
-      if self.pending.length() > 0 {
-        return self.pending.remove(0)
+      if !self.pending.is_empty() {
+        let (consumed, message) = self.reader.next(self.pending) catch {
+          error => self.fault(error)
+        }
+        self.pending = self.pending[consumed:]
+        if message is Some(message) {
+          return message
+        }
       }
       guard !self.output_ended else { raise @worker.WorkerClosed }
       let chunk = self.with_stderr(() => self.read_output()) catch {
@@ -234,12 +248,7 @@ pub impl @worker.Channel for ProcessChannel with fn receive(self) {
             error => self.fault(error)
           }
         }
-        Some(bytes) =>
-          self.pending.append(
-            self.reader.feed(bytes) catch {
-              error => self.fault(error)
-            },
-          )
+        Some(bytes) => self.pending = bytes[:]
       }
     }
     panic()

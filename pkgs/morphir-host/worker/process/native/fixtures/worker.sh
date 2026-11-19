@@ -15,6 +15,7 @@
 #                a grandchild, answer {"grandchild":PID}, and never exit
 #   flood        write 10 MiB and then TAIL-END to stderr, then echo
 #   junk         write text that is not a frame to stdout, then wait
+#   frames       write one valid frame and the supplied raw frame in one write
 #   eof          answer {"ready":true}, wait for the end of stdin, write
 #                "eof" to stderr, exit 0
 #   exit CODE    exit with CODE at once
@@ -90,6 +91,10 @@ case $mode in
   junk)
     printf 'not a frame\r\n\r\n'
     while :; do /bin/sleep 1; done
+    ;;
+  frames)
+    printf 'Content-Length: 2\r\n\r\n{}%s' "$1"
+    /bin/cat >/dev/null
     ;;
   eof)
     reply '{"ready":true}'

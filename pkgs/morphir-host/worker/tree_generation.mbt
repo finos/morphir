@@ -13,6 +13,7 @@ pub(all) suberror TreeGenerationError {
 ///|
 pub struct TreeGeneration {
   session : SessionReport
+  claims : Claims
   files : Array[Json]
 }
 
@@ -621,7 +622,7 @@ async fn TreeView::generate(
 pub async fn Host::generate_tree(
   self : Host,
   spec : WorkerSpec,
-  expected~ : Claims,
+  expected? : Claims,
   input~ : TreeGenerationInput,
   output~ : String,
   target~ : String,
@@ -630,12 +631,17 @@ pub async fn Host::generate_tree(
   stop~ : StopSignal,
   diagnostics~ : Array[Diagnostic],
 ) -> TreeGeneration {
+  let admitted = match (spec.runtime, input, expected) {
+    (Process(..), _, Some(_)) => true
+    (Wasm(abi=Some(ExtismKernelV1)), CompileResult(_), None) => true
+    _ => false
+  }
   guard self.platform is Native(_) &&
-    spec.runtime is Process(..) &&
+    admitted &&
     ["macos", "linux"].contains(@platform.system_type()) else {
     raise Refusal(
       code=RuntimeUnavailable,
-      message="bounded tree generation needs a macOS or Linux native process worker",
+      message="bounded tree generation needs a native process or a pinned Extism WASM worker with a compile result",
     )
   }
   if requested_ir is Some(version) &&
@@ -646,12 +652,17 @@ pub async fn Host::generate_tree(
     )
   }
   let support = tree_support()
-  guard BoundedGenerateChoice::select(expected, support, target)
-    is Access(offer) else {
-    raise Refusal(
-      code=TupleUnavailable,
-      message="a document tree requires the bounded generation tuple",
-    )
+  let offer = match expected {
+    None => Offer::Bounded(support)
+    Some(claims) =>
+      match BoundedGenerateChoice::select(claims, support, target) {
+        Access(offer) => offer
+        _ =>
+          raise Refusal(
+            code=TupleUnavailable,
+            message="a document tree requires the bounded generation tuple",
+          )
+      }
   }
   let expires = Ref(@async.now() + deadline.ms().to_int64())
   fn remaining() -> Deadline raise {
@@ -706,18 +717,28 @@ pub async fn Host::generate_tree(
   }
   // Keep the producer's lease through lazy delivery and worker settlement.
   // The outer defer releases it after any snapshot and stage cleanup.
-  let (outcome, report) = self.with_session(
+  let (outcome, report) = self.with_session_claims(
     spec,
-    expected~,
-    offer~,
-    deadline=remaining(),
-    stop~,
+    expected,
+    offer,
+    remaining(),
+    stop,
     async fn(session) {
       let completed = try {
         guard session.negotiated() is Some({ model_access: Some(access), .. }) else {
           raise Refusal(
             code=AgreementMismatch,
             message="worker supplied no live bounded agreement",
+          )
+        }
+        guard session.conversation.expected is Some(claims) &&
+          (
+            expected is Some(_) ||
+            BoundedGenerateChoice::select(claims, support, target) is Access(_)
+          ) else {
+          raise Refusal(
+            code=CapabilityUnavailable,
+            message="the initialized worker does not claim the bounded generation target",
           )
         }
         expires.val = @cmp.minimum(
@@ -736,19 +757,25 @@ pub async fn Host::generate_tree(
           stage.files.length() +
           (stage.bytes + 65535) / 65536,
         )
-        Ok(())
+        Ok(claims)
       } catch {
         error => Err(error)
       }
       // Closing an unfinished bounded session uses the worker's typed cancel
       // exchange before shutdown, or terminates the process on a stop/deadline.
-      (completed, session.close_before(Some(expires.val)))
+      (
+        completed,
+        session.close_before(
+          Some(expires.val),
+          require_clean_exit=spec.runtime is Wasm(..),
+        ),
+      )
     },
   )
-  match outcome {
+  let claims = match outcome {
     Err(TreeWorker(ending)) => raise Ended(ending, report~)
     Err(error) => raise error
-    Ok(_) => ()
+    Ok(claims) => claims
   }
   if report.ending is Some(ending) {
     raise Ended(ending, report~)
@@ -763,5 +790,5 @@ pub async fn Host::generate_tree(
   let files = stage.publish_checked(check) catch {
     error => raise tree_output_error(error)
   }
-  { session: report, files, }
+  { session: report, claims, files, }
 }

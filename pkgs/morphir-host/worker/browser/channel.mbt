@@ -128,6 +128,8 @@ pub extend PortChannel with @worker.Channel::{
   close_within,
   abort,
   bounds,
+  limit_frames,
+  guest_state_ceiling,
 }
 
 ///|

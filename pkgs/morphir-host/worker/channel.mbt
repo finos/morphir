@@ -22,6 +22,10 @@ pub(open) trait Channel {
   async fn close_within(Self, Int32) -> WorkerStop = _
   async fn abort(Self, StopReason) -> WorkerStop
   fn bounds(Self) -> EnforcedBounds? = _
+  // A runtime with a fixed retained-variable policy reports its byte ceiling.
+  fn guest_state_ceiling(Self) -> Int32? = _
+  // Framed transports apply this to unread wire bytes and subsequent writes.
+  fn limit_frames(Self, Int32) -> Unit = _
 }
 
 ///|
@@ -36,6 +40,16 @@ impl Channel with fn close_within(self, remaining_ms) {
 ///|
 impl Channel with fn bounds(_) {
   None
+}
+
+///|
+impl Channel with fn guest_state_ceiling(_) {
+  None
+}
+
+///|
+impl Channel with fn limit_frames(_, _) {
+  ()
 }
 
 ///|

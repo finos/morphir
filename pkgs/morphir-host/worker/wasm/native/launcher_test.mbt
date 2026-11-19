@@ -392,3 +392,95 @@ async test "runaway guest on the model line: the call deadline stops a call of e
     }
   })
 }
+
+///|
+async test "native Extism refuses a negotiated variable ceiling below the loaded policy" {
+  guard @env.get_env_var("MORPHIR_MEP_BOUNDED_WASM") is Some(module_path) else {
+    return
+  }
+  let bytes = @fs.read_file(module_path).binary()
+  assert_eq(
+    @worker.Sha256::of(bytes).to_string(),
+    "d12319c81f125c41d4e073e10d11c61bde9e64ebe14671dcf7ffffc8cb2320e0",
+  )
+  let spec = wasm_spec(bytes, abi=ExtismKernelV1)
+  let host_path = @env.get_env_var("MORPHIR_MEP_BOUNDED_HOST").unwrap()
+  with_host(host_path, host => {
+    for guest_bytes in [1048576, 1048575] {
+      let tuple : @model_access.AccessTuple = {
+        ir: V4,
+        codec: MorphirJson,
+        encoding: Plain,
+      }
+      let support_json : Json = {
+        "tuples": [tuple.to_json()],
+        "limits": {
+          "maxFrameBytes": 8192,
+          "maxEncodedBytesPerExchange": 1024,
+          "maxDecodedBytesPerExchange": 512,
+          "maxDocumentsPerBatch": 1,
+          "maxDepth": 64,
+          "maxNodes": 256,
+          "maxDiagnosticsPerExchange": 1,
+          "maxOutstandingRequests": 1,
+          "maxGuestStateBytes": guest_bytes,
+          "maxHostCacheBytes": 1048576,
+          "maxArtifactChunkBytes": 4,
+          "maxArtifactBytes": 4,
+          "maxTotalArtifactBytes": 4,
+          "maxSessionDiskBytes": 4096,
+          "maxSessionWorkUnits": 65536,
+          "maxRounds": 5,
+          "maxCallMilliseconds": 1000,
+          "maxSessionMilliseconds": 10000,
+        },
+      }
+      let expected = @worker.Claims::from_describe({
+        "protocolVersions": ["0.2.0-draft.2"],
+        "extension": {
+          "id": "org.finos.morphir.orders",
+          "name": "Orders",
+          "version": "0.1.0",
+          "types": ["backend"],
+        },
+        "capabilities": {
+          "backend": {
+            "targets": ["text"],
+            "irVersions": ["4.0.0"],
+            "generate": false,
+          },
+          "modelAccess": support_json,
+        },
+      })
+      let result = try {
+        let session = host.activate(
+          spec,
+          expected~,
+          offer=Bounded(@model_access.Support::from_json(support_json)),
+          deadline=@worker.Deadline::of_ms(5000),
+        )
+        let active = session.negotiated().unwrap().model_access.unwrap()
+        let report = session.close()
+        assert_true(report.stop is Some({ status: Exited(code=0), .. }))
+        assert_eq(active.to_json(), support_json)
+        None
+      } catch {
+        @worker.Ended(ending, report~) => Some((ending, report))
+        error => raise error
+      }
+      if guest_bytes == 1048576 {
+        assert_true(result is None)
+      } else {
+        guard result
+          is Some((Refused(code=AgreementMismatch, message~), report)) else {
+          fail("real WAMR worker admitted maxGuestStateBytes=1048575")
+        }
+        assert_true(message.contains("maxGuestStateBytes"))
+        guard report.stop is Some(stop) else { fail("no worker stop") }
+        assert_false(stop.status is Unconfirmed(_))
+        let stderr = @utf8.decode_lossy(stop.stderr.bytes())
+        assert_true(stderr.contains("\"event\":\"started\""))
+      }
+    }
+  })
+}

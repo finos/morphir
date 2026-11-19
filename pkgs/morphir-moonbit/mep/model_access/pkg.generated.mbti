@@ -216,6 +216,7 @@ pub fn Limits::diagnostics_per_exchange(Self) -> Int32
 pub fn Limits::equal(Self, Self) -> Bool
 pub fn Limits::frame_bytes(Self) -> Int64
 pub fn Limits::from_json(@json.Json) -> Self raise @wire.CodecError
+pub fn Limits::guest_state_bytes(Self) -> Int32
 pub fn Limits::not_equal(Self, Self) -> Bool
 pub fn Limits::outstanding_requests(Self) -> Int32
 pub fn Limits::rounds(Self) -> Int32

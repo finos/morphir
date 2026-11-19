@@ -147,6 +147,9 @@ pub fn AccessTuple::to_json(self : AccessTuple) -> Json {
 const FRAME_BYTES_INDEX : Int32 = 0
 
 ///|
+const GUEST_STATE_BYTES_INDEX : Int32 = 8
+
+///|
 const ENCODED_BYTES_INDEX : Int32 = 1
 
 ///|
@@ -227,6 +230,11 @@ pub fn Limits::bound(self : Limits, peer : Limits) -> Limits {
 ///|
 pub fn Limits::frame_bytes(self : Limits) -> Int64 {
   self.values[FRAME_BYTES_INDEX]
+}
+
+///|
+pub fn Limits::guest_state_bytes(self : Limits) -> Int32 {
+  self.values[GUEST_STATE_BYTES_INDEX].to_int()
 }
 
 ///|

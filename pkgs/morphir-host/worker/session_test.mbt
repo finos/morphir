@@ -1839,3 +1839,36 @@ test "bounded offer preflight requires a whole recorded tuple" {
   )
   admitted.check(claims)
 }
+
+///|
+test "bounded shutdown counts the serialized frame header at the inclusive ceiling" {
+  let frame = 1000
+  let access = bounded_activation_offer(
+    [Json::object(bounded_probe_tuple())],
+    frame_bytes=frame,
+  )
+  let (conversation, _) = @worker.Conversation::activate(
+    Bounded(@model_access.Support::from_json(access)),
+    expected=bounded_activation_claims(),
+  )
+  let (ready, step) = conversation.on(
+    answer(1, bounded_activation_reply(Some(access))),
+  )
+  assert_true(step is Activated(_, ..))
+  let (closing, _) = ready.close()
+  let body = "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}"
+  // Both replies have a three-digit Content-Length. Only one fits the frame.
+  let fitting = body + " ".repeat(frame - 23 - body.length())
+  let (_, step) = closing.on(
+    Received(@worker.Message::parse(@utf8.encode(fitting))),
+  )
+  assert_true(step is Finished(Closed, ..))
+  let (_, step) = closing.on(
+    Received(@worker.Message::parse(@utf8.encode(fitting + " "))),
+  )
+  guard step is Finished(EndedEarly(Failed(Host(code=ResponseLimit, ..))), ..) else {
+    fail(
+      "accepted a bounded shutdown reply whose body fits but whose full frame is oversized",
+    )
+  }
+}

@@ -58,7 +58,9 @@ pub struct Decoder {
 }
 pub fn Decoder::feed(Self, Bytes) -> Array[Bytes] raise
 pub fn Decoder::finish(Self) -> Unit raise FrameError
+pub fn Decoder::limit_frame(Self, Int32) -> Unit
 pub fn Decoder::new(max_body? : Int32) -> Self
+pub fn Decoder::next(Self, BytesView) -> (Int32, Bytes?) raise
 
 pub(all) struct Frontend {
   language_id : String

@@ -49,6 +49,7 @@ priv struct Running {
   channel : &Channel
   expires_at : Int64
   stop : StopSignal
+  require_clean_exit : Bool
 }
 
 ///|
@@ -143,6 +144,21 @@ fn StopPlan::after(self : StopPlan, event : Event?) -> StopPlan {
 }
 
 ///|
+fn Running::guest_state_refusal(
+  self : Running,
+  limits : @model_access.Limits,
+) -> String? {
+  let selected = limits.guest_state_bytes()
+  if self.channel.guest_state_ceiling() is Some(ceiling) && selected < ceiling {
+    Some(
+      "maxGuestStateBytes=\{selected} is below this worker's fixed retained-variable ceiling of \{ceiling} bytes",
+    )
+  } else {
+    None
+  }
+}
+
+///|
 /// Executes steps over the channel until the session pauses or its worker
 /// stops. When the task that drives the worker is cancelled, the worker is
 /// aborted at once and the cancellation continues.
@@ -168,6 +184,14 @@ async fn Running::drive_steps(
   let mut conversation = conversation
   let mut step = step
   while true {
+    if step is Activated({ model_access: Some(access), .. }, ..) {
+      self.channel.limit_frames(access.limits.frame_bytes().to_int())
+      if self.guest_state_refusal(access.limits) is Some(message) {
+        let refusal = Ending::Refused(code=AgreementMismatch, message~)
+        let worker = self.channel.abort(Fault)
+        return (conversation, WorkerStopped(EndedEarly(refusal), worker))
+      }
+    }
     match step {
       Exchange(sends~, ..) => {
         // A bounded cancel may continue into ordinary shutdown after its ack.
@@ -209,6 +233,15 @@ async fn Running::drive_steps(
             | Unconfirmed(Deadline),
           ) => EndedEarly(Deadline)
           (CloseAfterExit, Abort(Cancelled), _) => EndedEarly(Cancelled)
+          (CloseAfterExit, Abort(Fault), _) if self.require_clean_exit =>
+            EndedEarly(
+              incomplete_exit("the worker did not accept morphir.exit"),
+            )
+          (CloseAfterExit, CloseAfterExit, _) if self.require_clean_exit &&
+            (
+              worker.status != Exited(code=0) ||
+              worker.stop_method != ExitedAfterExit
+            ) => EndedEarly(incomplete_exit("the worker did not exit cleanly"))
           _ => conclusion
         }
         return (conversation, WorkerStopped(conclusion, worker))
@@ -350,7 +383,12 @@ async fn Host::start(
     None => raise before_start(Deadline, limits, extism)
     Some(None) => raise before_start(Cancelled, limits, extism)
     Some(Some(channel)) =>
-      { channel, expires_at: started + deadline.ms().to_int64(), stop, }
+      {
+        channel,
+        expires_at: started + deadline.ms().to_int64(),
+        stop,
+        require_clean_exit: false,
+      }
   }
 }
 
@@ -410,18 +448,32 @@ pub async fn Host::activate(
   deadline~ : Deadline = Deadline::default(),
   stop~ : StopSignal = StopSignal::never(),
 ) -> Session {
+  self.activate_with_claims(spec, Some(expected), offer, deadline, stop)
+}
+
+///|
+async fn Host::activate_with_claims(
+  self : Host,
+  spec : WorkerSpec,
+  expected : Claims?,
+  offer : Offer,
+  deadline : Deadline,
+  stop : StopSignal,
+) -> Session {
   let limits = self.limits.for_session(offer, spec.runtime)
   let extism = if offer is Legacy && spec.runtime is Wasm(..) {
     Some(ExtismProfile::restricted())
   } else {
     None
   }
-  offer.check(expected) catch {
-    Refusal(code~, message~) =>
-      raise before_start(Refused(code~, message~), limits, extism)
+  if expected is Some(claims) {
+    offer.check(claims) catch {
+      Refusal(code~, message~) =>
+        raise before_start(Refused(code~, message~), limits, extism)
+    }
   }
   let link = self.start(spec, deadline, stop, limits, extism)
-  let (conversation, step) = Conversation::activate(offer, expected~, limits~)
+  let (conversation, step) = Conversation::initialize(offer, expected, limits)
   let (conversation, settled) = link.drive(conversation, step)
   match settled {
     Paused(_) =>
@@ -641,6 +693,11 @@ pub async fn Session::start_generation(
 ) -> Outcome[GenerationReply] {
   self.ready()
   defer self.busy.release()
+  if self.link.guest_state_refusal(request.limits) is Some(message) {
+    return self.run_generation(
+      self.conversation.generation_refusal(AgreementMismatch, message),
+    )
+  }
   self.run_generation(self.conversation.start_generation(request))
 }
 
@@ -678,6 +735,7 @@ pub async fn Session::close(self : Session) -> SessionReport {
 async fn Session::close_before(
   self : Session,
   caller_expiry : Int64?,
+  require_clean_exit~ : Bool = false,
 ) -> SessionReport {
   self.busy.acquire()
   defer self.busy.release()
@@ -687,7 +745,12 @@ async fn Session::close_before(
   let start = self.conversation.close() catch {
     _ => {
       let worker = self.link.channel.abort(Fault)
-      return self.finish(worker, None)
+      let ending = if require_clean_exit {
+        Some(incomplete_exit("the worker could not begin shutdown"))
+      } else {
+        None
+      }
+      return self.finish(worker, ending)
     }
   }
   let (conversation, step) = start
@@ -702,7 +765,7 @@ async fn Session::close_before(
   )
   // The horizon applies to the cancel, shutdown and exit, including when
   // the last generation reply already settled the operation.
-  let link = { ..self.link, expires_at, }
+  let link = { ..self.link, expires_at, require_clean_exit, }
   let (conversation, settled) = link.drive(conversation, step, bounded_expiry?)
   self.conversation = conversation
   if conversation.generation is None {
@@ -724,6 +787,11 @@ async fn Session::close_before(
         Some(internal_error("the close paused")),
       )
   }
+}
+
+///|
+fn incomplete_exit(message : String) -> Ending {
+  Failed(Host(code=IncompleteSession, message~))
 }
 
 ///|
@@ -754,7 +822,20 @@ pub async fn[X] Host::with_session(
   stop~ : StopSignal = StopSignal::never(),
   f : async (Session) -> X,
 ) -> X {
-  let session = self.activate(spec, expected~, offer~, deadline~, stop~)
+  self.with_session_claims(spec, Some(expected), offer, deadline, stop, f)
+}
+
+///|
+async fn[X] Host::with_session_claims(
+  self : Host,
+  spec : WorkerSpec,
+  expected : Claims?,
+  offer : Offer,
+  deadline : Deadline,
+  stop : StopSignal,
+  f : async (Session) -> X,
+) -> X {
+  let session = self.activate_with_claims(spec, expected, offer, deadline, stop)
   let result = cleanup_on_cancel(
     () => Ok(f(session)) catch { error => Err(error) },
     () => session.cancel(),

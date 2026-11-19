@@ -179,13 +179,33 @@ lines when the [legacy fallback](#legacy-mep-01-fallback) applies.
 
 On the native macOS and Linux CLI, give the producer's schema-1
 `compile.json` with `--task-result`. Its IR descriptor selects a declared
-product under the sibling `compile.dest/`. The process worker must claim MEP `0.2.0-draft.2`, access version `0.1.0-draft.1`, and the generation tuple
+product under the sibling `compile.dest/`. The worker must claim MEP `0.2.0-draft.2`, access version `0.1.0-draft.1`, and the generation tuple
 `morphir-ir / morphir-json / 4.0.0 / document-tree / plain`.
 
 ```sh
 morphir extension generate --task-result .morphir/out/compile.json \
   --target moonbit --output ./generated --extension-pin ./pin.json --json
 ```
+
+An explicit `--extension-pin` can also name an `extism-kernel-v1` WASM
+artifact without a release descriptor. This route requires a recorded tree
+and an explicit `--target`. It obtains the live tuple, generation target and
+limits during initialization in the native CLI's existing byte-call worker.
+The result reports `lifecycle.probe: "initialized"`. The Extism adapter
+handles notifications without invoking the guest's request export and ends
+the instance on exit. Publication requires the worker to accept the exit
+write and exit with status zero without host termination. After initialization
+the process channel checks the full serialized frame against the agreed limit.
+The native Extism plugin loads with a fixed 1 MiB retained-variable ceiling.
+The host refuses any selection of `maxGuestStateBytes` below that ceiling.
+
+The shared Orders module was exercised on macOS arm64 with `moonrockz/extism`
+0.3.0 and WAMR 2.4.5. The native `text` route produced exact `73\n`,
+`74\n` and `128\n` outputs and confirmed worker exit before publication.
+The same module refused the wrong snapshot and wrong digest in direct worker
+exchanges. This evidence covers the pinned module and transport on macOS.
+Cross-host equality and wall-clock and resource qualification are separate
+gates.
 
 The host opens the existing `compile.lock` with the producer's shared POSIX
 `flock` before reading the record. It refuses tombstones, missing or unsupported
@@ -239,7 +259,7 @@ stored in the emitted IR. Bounded generation needs a producer that publishes a s
 document tree. For a relocated root and workspace member, pass the member's
 record explicitly, for example `--task-result relocated/packages/orders/compile.json`.
 Implicit task lookup and install remain separate work. Native process
-qualification covers plain JSON v4 split members on macOS. Linux, WASM,
+qualification covers plain JSON v4 split members on macOS. Linux, additional WASM,
 Windows, other versions and encodings, and inline members require their
 own qualification.
 

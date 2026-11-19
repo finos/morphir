@@ -453,3 +453,198 @@ async fn live_compile_during_generation(
     })
   })
 }
+
+///|
+struct RecordedExitChannel {
+  task : @platform.BoundedDirectory
+  root : String
+  status : StopStatus
+  reject_exit : Bool
+  mut next : Message?
+  mut exit_accepted : Bool
+  mut settled : Bool
+}
+
+///|
+impl Launcher for RecordedExitChannel with fn launch(self, _, _) {
+  self
+}
+
+///|
+impl Channel for RecordedExitChannel with fn send(self, message) {
+  let fields = @model_wire.object(message.json())
+  guard fields.get("method") is Some(String(method_)) else {
+    fail("missing request method")
+  }
+  if method_ == "morphir.exit" {
+    if self.reject_exit {
+      raise TransportFailed("exit write failed")
+    }
+    self.exit_accepted = true
+    return
+  }
+  guard fields.get("id") is Some(id) else { return }
+  let result : Json = match method_ {
+    "morphir.initialize" =>
+      {
+        "protocolVersion": "0.2.0-draft.2",
+        "extension": {
+          "id": "org.finos.morphir.orders",
+          "name": "Orders",
+          "version": "0.1.0",
+          "types": ["backend"],
+        },
+        "capabilities": {
+          "backend": {
+            "targets": ["text"],
+            "irVersions": ["4.0.0"],
+            "generate": false,
+          },
+          "modelAccess": @model_wire.field(fields["params"], "modelAccess"),
+        },
+      }
+    "morphir.backend.generateModel.start" => {
+      let artifact = b"73\n"
+      {
+        "sessionId": @model_wire.field(fields["params"], "sessionId"),
+        "state": "complete",
+        "diagnostics": [],
+        "artifacts": [
+          {
+            "path": "order.txt",
+            "offset": 0,
+            "end": true,
+            "decodedByteLength": artifact.length(),
+            "sha256": @identity.sha256(artifact),
+            "content": @base64.encode(artifact[:]),
+          },
+        ],
+      }
+    }
+    "morphir.shutdown" => {}
+    _ => fail("unexpected request: " + method_)
+  }
+  self.next = Some(
+    Message::new({ "jsonrpc": "2.0", "id": id, "result": result }),
+  )
+}
+
+///|
+impl Channel for RecordedExitChannel with fn receive(self) {
+  self.next.unwrap()
+}
+
+///|
+async fn RecordedExitChannel::settle(self : RecordedExitChannel) -> WorkerStop {
+  // Observe the real producer lock and private stage across asynchronous
+  // settlement, before the host can publish or release the producer.
+  @async.sleep(10)
+  assert_true(self.task.try_task_lease("compile.lock", exclusive=true) is None)
+  assert_false(@fs.exists(self.root + "/out"))
+  let stages = @fs.readdir(self.root, include_hidden=true).filter(name => {
+    name.has_prefix(".morphir-bounded-")
+  })
+  assert_eq(stages.length(), 1)
+  assert_eq(
+    @fs.read_file(self.root + "/" + stages[0] + "/order.txt").binary(),
+    b"73\n",
+  )
+  self.settled = true
+  WorkerStop::new(
+    self.status,
+    stop_method=if self.status is Exited(..) {
+      ExitedAfterExit
+    } else {
+      GroupSignal
+    },
+    stderr=StderrTail::of(b""),
+  )
+}
+
+///|
+impl Channel for RecordedExitChannel with fn close(self) {
+  self.settle()
+}
+
+///|
+impl Channel for RecordedExitChannel with fn abort(self, _) {
+  self.settle()
+}
+
+///|
+async test "recorded WASM publication requires an accepted exit and a zero worker status" {
+  guard @platform.system_type() != "windows" &&
+    @env.get_env_var("MORPHIR_MEP_BOUNDED_REPOSITORY") is Some(repo) else {
+    return
+  }
+  let fixture = repo +
+    "/apps/morphir-extension/acceptance/fixtures/acme-orders-v4/plain-json"
+  let failures : Array[String] = []
+  for
+    (label, status, reject_exit) in [
+      ("success", Exited(code=0), false),
+      ("broken pipe", Exited(code=0), true),
+      ("nonzero", Exited(code=7), false),
+      ("signal", Signalled(signal=9), false),
+      ("grace expired", Terminated(GraceExpired), false),
+    ] {
+    let root = @fs.tmpdir(prefix="morphir-recorded-exit-")
+    defer @fs.rmdir(root, recursive=true)
+    publish_orders_product(root, "orders", fixture)
+    let path = root + "/relocated/orders"
+    let task = @platform.BoundedDirectory::open(path)
+    defer task.close()
+    let channel = {
+      task,
+      root,
+      status,
+      reject_exit,
+      next: None,
+      exit_accepted: false,
+      settled: false,
+    }
+    let host = Host::new(channel, Native(Machine::of(Aarch64AppleDarwin)))
+    let spec = WorkerSpec::new(
+      ArtifactRef::new(Memory(b""), Sha256::of(b"")),
+      Wasm(abi=Some(ExtismKernelV1)),
+    )
+    let result = try {
+      ignore(
+        host.generate_tree(
+          spec,
+          input=CompileResult(path + "/compile.json"),
+          output=root + "/out",
+          target="text",
+          requested_ir=None,
+          deadline=Deadline::of_ms(3000),
+          stop=StopSignal::never(),
+          diagnostics=[],
+        ),
+      )
+      "published"
+    } catch {
+      Ended(Failed(Host(code=IncompleteSession, ..)), report~) if report.stop
+        is Some(stop) &&
+        stop.status == status => "refused"
+      error => error.to_string()
+    }
+    assert_true(channel.settled, msg=label + ": " + result)
+    assert_eq(channel.exit_accepted, !reject_exit)
+    let writer = task.try_task_lease("compile.lock", exclusive=true).unwrap()
+    writer.close()
+    let names = @fs.readdir(root, include_hidden=true)
+    assert_false(
+      names
+      .iter()
+      .any(name => {
+        name.has_prefix(".morphir-bounded-") ||
+        name.has_prefix(".morphir-source-")
+      }),
+    )
+    let expected = if label == "success" { "published" } else { "refused" }
+    if result != expected || names.contains("out") != (label == "success") {
+      failures.push(label + ": " + result)
+    }
+  }
+  guard failures.is_empty() else { fail(failures.join("\n")) }
+}

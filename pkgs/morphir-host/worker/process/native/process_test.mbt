@@ -720,3 +720,45 @@ async test "deadline-capped graceful close confirms the stubborn tree stopped an
   assert_false(@fs.exists(staged.directory()))
   assert_eq(channel.close(), stop)
 }
+
+///|
+#cfg(not(platform="windows"))
+async test "a coalesced next frame waits for the negotiated full-frame limit" {
+  let header = "Content-Length: 2\r\nX-Extra: 1234\r\n\r\n"
+  let ceiling = @utf8.encode(header).length() + 2
+  for
+    (label, suffix, limit, refused) in [
+      // Count optional header bytes, with an inclusive limit.
+      ("exact", header + "{}", ceiling, false),
+      // These frames have no body. Refusal must happen upon reading the header.
+      ("header alone", header, ceiling - 1, true),
+      ("invalid JSON", header + "??", ceiling - 1, true),
+    ] {
+    let staged = @native.stage(fixture())
+    let channel = @native.ProcessLauncher::new().start(staged, [
+      "frames", suffix,
+    ])
+    defer @async.protect_from_cancel(() => ignore(channel.abort(Fault)))
+    @async.with_timeout(1500, () => {
+      assert_eq(channel.receive().json(), Json::object({}))
+      channel.limit_frames(limit)
+      let result = Ok(channel.receive()) catch { error => Err(error) }
+      if refused {
+        guard result
+          is Err(
+            @worker.FrameLimit(direction=Response, declared~, limit=actual)
+          ) else {
+          fail(label + ": expected a frame ceiling refusal")
+        }
+        assert_eq(declared, ceiling.to_int64())
+        assert_eq(actual, limit)
+        assert_eq(channel.abort(Fault).status, Terminated(Fault))
+      } else {
+        assert_true(result is Ok(_))
+        assert_eq(channel.close().status, Exited(code=0))
+      }
+    })
+    assert_true(gone(channel.pid()))
+    assert_false(@fs.exists(staged.directory()))
+  }
+}

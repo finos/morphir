@@ -137,7 +137,7 @@ pub extend SessionUnavailable with @debug.Debug::{to_repr}
 #derive(Eq, Debug)
 priv enum Phase {
   Describing
-  Initializing(Offer, Claims)
+  Initializing(Offer)
   Refusing(Ending)
   Ready
   Calling(CallKind, Operation)
@@ -252,13 +252,22 @@ pub fn Conversation::activate(
   expected~ : Claims,
   limits~ : Limits = Limits::host(),
 ) -> (Conversation, Step) {
+  Conversation::initialize(offer, Some(expected), limits)
+}
+
+///|
+fn Conversation::initialize(
+  offer : Offer,
+  expected : Claims?,
+  limits : Limits,
+) -> (Conversation, Step) {
   let session : Conversation = {
-    phase: Initializing(offer, expected),
+    phase: Initializing(offer),
     pending: 1,
     next_id: 2,
     answered: [],
     limits,
-    expected: Some(expected),
+    expected,
     negotiated: None,
     generation: None,
     used_generation_ids: [],
@@ -282,7 +291,7 @@ pub fn Conversation::activate(
     _ => offer
   }
   (
-    { ..session, phase: Initializing(admitted_offer, expected), },
+    { ..session, phase: Initializing(admitted_offer), },
     Exchange(sends=[initialize_message(1, admitted_offer, limits)], awaiting=1),
   )
 }
@@ -446,7 +455,7 @@ fn Conversation::received(
     CallingGeneration(pending) => pending.run().limits.frame_bytes().to_int()
     _ => self.limits.response_bytes
   }
-  if self.phase is CallingGeneration(_) &&
+  if self.negotiated is Some({ model_access: Some(_), .. }) &&
     framed_size(message.size()) > reply_limit {
     return fault(
       Host(
@@ -505,8 +514,7 @@ fn Conversation::replied(
     }
     (Initializing(_), GuestError(code~, message~, data~)) =>
       self.exit(EndedEarly(Failed(Guest(code~, message~, data~))))
-    (Initializing(offer, expected), Answer(result)) =>
-      self.initialized(offer, expected, result)
+    (Initializing(offer), Answer(result)) => self.initialized(offer, result)
     (Refusing(ending), _) => self.exit(EndedEarly(ending))
     (Calling(kind, operation), reply) => {
       let answer : Answer = match reply {
@@ -538,7 +546,6 @@ fn Conversation::replied(
 fn Conversation::initialized(
   self : Conversation,
   offer : Offer,
-  expected : Claims,
   result : Json,
 ) -> (Conversation, Step) {
   let line = offer.line()
@@ -563,8 +570,19 @@ fn Conversation::initialized(
         "the initialize result has no valid claims: \{error}",
       )
   }
-  if compare_claims(expected, live, offer) is Some(text) {
-    return refuse(ClaimsMismatch, text)
+  let expected = match self.expected {
+    Some(expected) => {
+      if compare_claims(expected, live, offer) is Some(text) {
+        return refuse(ClaimsMismatch, text)
+      }
+      expected
+    }
+    None => {
+      offer.check(live) catch {
+        Refusal(code~, message~) => return refuse(code, message)
+      }
+      live
+    }
   }
   let (tuple, limits, model_access) = match offer {
     Legacy => (None, self.limits, None)
@@ -632,7 +650,14 @@ fn Conversation::initialized(
   }
   let negotiated = { offer, tuple, model_access, limits, }
   (
-    { ..self, phase: Ready, pending: 0, limits, negotiated: Some(negotiated), },
+    {
+      ..self,
+      phase: Ready,
+      pending: 0,
+      limits,
+      expected: Some(expected),
+      negotiated: Some(negotiated),
+    },
     Activated(sends=[notification_message("morphir.initialized")], negotiated),
   )
 }
