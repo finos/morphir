@@ -6,7 +6,7 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 
 - **morphir-elm** – Reference Elm implementation (tracking `vnext`). Contains IR definition, Elm compiler, visualization components, and backend processors.
 - **morphir-dotnet** – The Morphir CLI source. finos/morphir pins it and builds, qualifies and releases its four offerings with that source's own build (`.github/workflows/release.yml`, `.config/cli-release.json`). Change the CLI in finos/morphir-dotnet; move the pin here only as a reviewed delivery update, checked by `bun run tools/cli-release.ts verify-source`.
-- **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). This repository no longer has a Rust product CLI. Its development tools, `morphir-mck` (`crates/morphir-mck-cli`) and `morphir-dev` (`crates/morphir-dev-tools`), depend on morphir-rust crates via path, so the submodule stays while they need it.
+- **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). It also holds this repository's Rust development tools, `morphir-mck` and `morphir-dev`, in its `umbrella-tools/` workspace. finos/morphir has no Rust workspace and no Rust product CLI; its mise tasks and CI build the tools from this submodule, so the submodule stays while they need it.
 - **morphir-examples** – Example Morphir projects.
 - **morphir-moonbit** – MoonBit implementation of Morphir tooling.
 - **morphir-python** – Python implementation of Morphir tooling. Owns the Python compiler and the `morphir-python` WASM extension.
@@ -19,10 +19,9 @@ Do not edit submodule content in-place for long-term changes. Prefer contributin
 
 ## Path dependencies
 
-- The development tools (`crates/morphir-mck-cli`, `crates/morphir-dev-tools`) and `crates/morphir-mck` depend on crates under `ecosystem/morphir-rust/crates/`.
-- Use paths relative to the consuming crate. Example from `crates/morphir-dev-tools`:
-  `morphir_core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }`
-- Do **not** add `ecosystem/morphir-rust` as a workspace member in the root `Cargo.toml`; only use path dependencies to specific crates.
+- finos/morphir has no `Cargo.toml`. The development tools (`morphir-mck-cli`, `morphir-dev-tools`, `morphir-mck`) are the `ecosystem/morphir-rust/umbrella-tools` workspace. Do **not** add a Rust workspace or crate to the root of finos/morphir.
+- That workspace reads this repository's `spec/`, `docs/` and `website/` files by relative path, so it builds only inside a finos/morphir checkout. Run it from the root of finos/morphir with the mise tasks (`mise run mck -- <command>`, `mise run kb -- <command>`, `mise run test`) or with `cargo ... --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml`.
+- A change to the tools is a pull request in finos/morphir-rust, then a move of the submodule pin here. A change that needs new kit files and new tool code needs both, in that order or with the pin on the finos/morphir-rust branch while both are in review.
 
 ## Commit authorship
 

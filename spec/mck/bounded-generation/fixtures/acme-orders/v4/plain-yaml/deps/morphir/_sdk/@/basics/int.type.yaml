@@ -1,0 +1,4 @@
+formatVersion: 4
+name: int
+spec:
+  OpaqueTypeSpecification: {}

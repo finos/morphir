@@ -1,0 +1,25 @@
+{
+  "formatVersion": 4,
+  "name": "line-total",
+  "def": {
+    "access": "Public",
+    "doc": "Quantity times unit price. The text {\"$name\":\"a\"} in this sentence is not a reference.",
+    "ExpressionBody": {
+      "inputTypes": {
+        "line": "my-org/billing:invoicing#invoice-line"
+      },
+      "outputType": "morphir/SDK:basics#int",
+      "body": {
+        "Apply": {
+          "function": {
+            "Apply": {
+              "function": { "Reference": "morphir/SDK:basics#multiply" },
+              "argument": { "Field": { "target": { "Variable": "line" }, "name": "quantity" } }
+            }
+          },
+          "argument": { "Field": { "target": { "Variable": "line" }, "name": "unit-price" } }
+        }
+      }
+    }
+  }
+}

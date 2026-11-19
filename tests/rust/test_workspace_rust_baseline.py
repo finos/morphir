@@ -11,7 +11,16 @@ CURRENT_STABLE_RUST_VERSION = "1.98"
 class WorkspaceRustBaselineTests(unittest.TestCase):
     def test_every_workspace_package_uses_current_stable_rust(self) -> None:
         completed = subprocess.run(
-            ["cargo", "metadata", "--no-deps", "--format-version", "1"],
+            [
+                "cargo",
+                "metadata",
+                "--no-deps",
+                "--format-version",
+                "1",
+                # The Rust development tools are in the morphir-rust submodule.
+                "--manifest-path",
+                "ecosystem/morphir-rust/umbrella-tools/Cargo.toml",
+            ],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,

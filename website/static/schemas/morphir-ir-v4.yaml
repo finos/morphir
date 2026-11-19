@@ -135,7 +135,7 @@ definitions:
           - $ref: "#/definitions/ModuleName"
           - $ref: "#/definitions/Name"
         description: "Legacy array representation: [packageName, moduleName, name]"
-        examples: [["morphir/SDK", "list", "map"], [["morphir"], ["s", "d", "k"], ["list"], ["map"]]]
+        examples: [["morphir/SDK", "list", "map"], [[["morphir"], ["s", "d", "k"]], [["list"]], ["map"]]]
 
   # Attributes
   SourceLocation:
@@ -508,14 +508,10 @@ definitions:
     properties:
       modules:
         type: object
-        additionalProperties:
-          allOf:
-            - $ref: "#/definitions/AccessControlled"
-            - properties:
-                value: { $ref: "#/definitions/ModuleDefinition" }
+        additionalProperties: { $ref: "#/definitions/AccessControlledModuleDefinition" }
         description: |
           Dictionary mapping module paths to access-controlled module definitions.
-          V4 uses object format: { "module/path": { "access": "Public", "value": {...} } }
+          V4 uses object format: { "module/path": { "Public": { "types": {...}, "values": {...} } } }
           Optional - defaults to empty object if omitted.
     description: |
       Full package definition containing all modules with their complete implementations.
@@ -694,6 +690,68 @@ definitions:
       - { "types": {}, "values": { "calculate": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } } } }, "doc": "Module documentation" }
       - { "values": { "main": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": { "Unit": {} }, "body": { "Unit": {} } } } } }
 
+  AccessControlledModuleDefinition:
+    # anyOf rather than oneOf, as in AccessControlledTypeDefinition: the legacy
+    # { access, value } form and the flattened form share the "access" member.
+    # Every form checks the module's types and values; none admits other members.
+    anyOf:
+      # Canonical: the access level is the key
+      - oneOf:
+          - type: object
+            required: ["Public"]
+            additionalProperties: false
+            properties:
+              Public: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["Private"]
+            additionalProperties: false
+            properties:
+              Private: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["public"]
+            additionalProperties: false
+            properties:
+              public: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["private"]
+            additionalProperties: false
+            properties:
+              private: { $ref: "#/definitions/ModuleDefinition" }
+          - type: object
+            required: ["pub"]
+            additionalProperties: false
+            properties:
+              pub: { $ref: "#/definitions/ModuleDefinition" }
+      # Legacy: access and value members
+      - type: object
+        required: ["access", "value"]
+        additionalProperties: false
+        properties:
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
+          value: { $ref: "#/definitions/ModuleDefinition" }
+      # Flattened: the module's members sit beside "access". minProperties keeps
+      # the bare { "access": ... } entry refused, as AccessControlled refuses it.
+      - type: object
+        required: ["access"]
+        minProperties: 2
+        additionalProperties: false
+        properties:
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
+          types: { $ref: "#/definitions/ModuleDefinition/properties/types" }
+          values: { $ref: "#/definitions/ModuleDefinition/properties/values" }
+    description: |
+      An access-controlled module definition, the entry shape of PackageDefinition.modules.
+      Canonical: { "Public": { "types": {...}, "values": {...} } }
+      Accepted: the legacy { "access": "Public", "value": { "types": {...}, "values": {...} } },
+      the flattened { "access": "Public", "types": {...}, "values": {...}, "doc": "..." }, and
+      the lowercase and "pub" spellings of the access level.
+    examples:
+      - { "Public": { "types": {}, "values": {} } }
+      - { "access": "Public", "value": { "types": {}, "values": {} } }
+      - { "access": "Private", "doc": "Internal helpers", "types": {}, "values": {} }
+
   ModuleSpecification:
     type: object
     properties:
@@ -832,7 +890,7 @@ definitions:
       Reference to a named type, optionally with type arguments.
 
       Canonical (no args): "morphir/SDK:basics#int"
-      Canonical (with args): {"Reference": ["morphir/SDK:list#list", "a"]}
+      Canonical (with args): {"Reference": {"fqname": "morphir/SDK:list#list", "args": ["a"]}}
 
       Accepted formats:
       - Bare FQName string: "morphir/SDK:basics#int"
@@ -2069,7 +2127,7 @@ definitions:
                 - $ref: "#/definitions/Type"
         description: |
           Input parameters.
-          Canonical (output): Object keyed by parameter name: { "x": type, "y": type }
+          Canonical (output): Object keyed by parameter name: { "x": type, "y": type }. The key order of "inputs" is the parameter order.
           Accepted (input): Array format: [["x", type], ["y", type]]
           Can be omitted if empty (no inputs).
       output: { $ref: "#/definitions/Type" }
@@ -2079,7 +2137,7 @@ definitions:
     description: |
       Value specification (public interface - signature only, no implementation).
 
-      Canonical format: { "inputs": { "a": type, "b": type }, "output": type }
+      Canonical format: { "inputs": { "a": type, "b": type }, "output": type }, where the key order of "inputs" is the parameter order.
       The "inputs" field can be omitted if empty.
 
       Encoders should output the canonical object format.
@@ -2131,6 +2189,7 @@ definitions:
         description: |
           Dictionary mapping input parameter names to their types.
           V4 uses object format: { "param-name": type, ... }
+          The key order of "inputTypes" is the parameter order.
       outputType: { $ref: "#/definitions/Type" }
       body: { $ref: "#/definitions/Value" }
     description: |
@@ -2151,6 +2210,7 @@ definitions:
         description: |
           Dictionary mapping input parameter names to their types.
           V4 uses object format: { "param-name": type, ... }
+          The key order of "inputTypes" is the parameter order.
       outputType: { $ref: "#/definitions/Type" }
       nativeInfo: { $ref: "#/definitions/NativeInfo" }
     description: |
@@ -2181,6 +2241,7 @@ definitions:
         description: |
           Dictionary mapping input parameter names to their types.
           V4 uses object format: { "param-name": type, ... }
+          The key order of "inputTypes" is the parameter order.
       outputType: { $ref: "#/definitions/Type" }
       externals:
         type: array
@@ -2211,6 +2272,7 @@ definitions:
         description: |
           Dictionary mapping input parameter names to their types.
           V4 uses object format: { "param-name": type, ... }
+          The key order of "inputTypes" is the parameter order.
       outputType: { $ref: "#/definitions/Type" }
       incompleteness: { $ref: "#/definitions/Incompleteness" }
       partialBody: { $ref: "#/definitions/Value" }

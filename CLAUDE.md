@@ -9,7 +9,8 @@ For complete development guidelines, coding standards, and contribution practice
 **finos/morphir** is the parent repository for the Morphir ecosystem. It contains:
 
 - **Documentation** — Docusaurus site (`website/`) and published docs (`docs/`)
-- **Morphir CLI** — Rust command-line tool (`crates/morphir`)
+- **Morphir CLI delivery** — builds, qualification and releases of the Morphir CLI, whose source is finos/morphir-dotnet (`ecosystem/morphir-dotnet`)
+- **Specifications and compatibility kits** — `spec/`, checked by development tools whose Rust source is in finos/morphir-rust (`ecosystem/morphir-rust/umbrella-tools`)
 - **Ecosystem integration** — Git submodules for language implementations (`ecosystem/`)
 
 This is **not** the Morphir Go repository. Go-based Morphir tooling lives in the sibling repo [finos/morphir-go](https://github.com/finos/morphir-go).
@@ -33,7 +34,7 @@ Only the human developer should be listed as the author/co-author. See [AGENTS.m
 
 ## Quick Reference
 
-- **Umbrella repo**: Docs, Rust CLI, and ecosystem submodules — not a single-language implementation
+- **Umbrella repo**: Docs, specifications, CLI delivery and ecosystem submodules — not a single-language implementation. It has no Rust workspace
 - **Functional Programming First**: This codebase follows functional programming principles
 - **TDD/BDD**: Write tests before implementation
 - **No AI Co-Authors**: See critical warning above - this breaks EasyCLA

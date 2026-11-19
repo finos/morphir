@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/journal.schema.json",
+  "title": "Extension state transaction",
+  "type": "object",
+  "required": [ "$schema", "nextLock", "nextCatalog" ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/journal.schema.json"
+    },
+    "nextLock": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "maximum": 255,
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "nextCatalog": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "maximum": 255,
+            "minimum": 0
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

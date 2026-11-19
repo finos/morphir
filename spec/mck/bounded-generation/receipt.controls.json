@@ -1,0 +1,501 @@
+{
+  "description": "Synthetic report-check inputs. Identities, digests and measurements are illustrative.",
+  "baseReceipt": "fixtures/receipt-qualified-wasm.json",
+  "caseExpectation": {
+    "contractSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "suiteSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "caseId": "synthetic/orders-large-wasm",
+    "expectedSha256": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "cases": [
+    {
+      "id": "qualified-wasm",
+      "patch": [],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "passed",
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "missing-guest-peak",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/measurements/peakGuestLinearMemoryBytes",
+          "value": {
+            "state": "missing",
+            "reason": "The example engine memory counter was unavailable."
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/resources",
+          "value": {
+            "state": "not-run",
+            "reasons": [
+              "resource.measurement_missing"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "not-run",
+          "reasons": [
+            "resource.measurement_missing"
+          ]
+        }
+      }
+    },
+    {
+      "id": "host-tree-over-ceiling",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/measurements/peakHostResidentBytes/value",
+          "value": 2097153
+        },
+        {
+          "op": "replace",
+          "path": "/measurements/peakHostTreeResidentBytes/value",
+          "value": 2097153
+        },
+        {
+          "op": "replace",
+          "path": "/resources",
+          "value": {
+            "state": "failed",
+            "reasons": [
+              "resource.ceiling_exceeded"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "failed",
+          "reasons": [
+            "resource.ceiling_exceeded"
+          ]
+        }
+      }
+    },
+    {
+      "id": "limit-not-enforced",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/limits/hostTreeResidentBytes",
+          "value": {
+            "state": "not-enforced",
+            "ceiling": 2097152,
+            "reason": "The process-tree limit was unavailable."
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/resources",
+          "value": {
+            "state": "not-run",
+            "reasons": [
+              "resource.limit_not_enforced"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "not-run",
+          "reasons": [
+            "resource.limit_not_enforced"
+          ]
+        }
+      }
+    },
+    {
+      "id": "oversize-document",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/fixture/largestDocumentBytes",
+          "value": 65537
+        },
+        {
+          "op": "replace",
+          "path": "/resources",
+          "value": {
+            "state": "failed",
+            "reasons": [
+              "resource.document_oversize"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "failed",
+          "reasons": [
+            "resource.document_oversize"
+          ]
+        }
+      }
+    },
+    {
+      "id": "input-equals-host-ceiling",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/fixture/expandedInputBytes",
+          "value": 2097152
+        },
+        {
+          "op": "replace",
+          "path": "/resources",
+          "value": {
+            "state": "failed",
+            "reasons": [
+              "resource.input_too_small"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "failed",
+          "reasons": [
+            "resource.input_too_small"
+          ]
+        }
+      }
+    },
+    {
+      "id": "small-case",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/fixture/scale",
+          "value": "small"
+        },
+        {
+          "op": "replace",
+          "path": "/fixture/expandedInputBytes",
+          "value": 131072
+        },
+        {
+          "op": "replace",
+          "path": "/resources",
+          "value": {
+            "state": "not-run",
+            "reasons": [
+              "resource.small_case"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "not-run",
+          "reasons": [
+            "resource.small_case"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrong-output",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/comparison/observedSha256",
+          "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "op": "replace",
+          "path": "/correctness",
+          "value": {
+            "state": "failed",
+            "reasons": [
+              "comparison.mismatch"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "failed",
+          "reasons": [
+            "comparison.mismatch"
+          ]
+        },
+        "resources": {
+          "state": "passed",
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "comparison-not-run",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/comparison/observedSha256"
+        },
+        {
+          "op": "replace",
+          "path": "/correctness",
+          "value": {
+            "state": "not-run",
+            "reasons": [
+              "comparison.missing"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "not-run",
+          "reasons": [
+            "comparison.missing"
+          ]
+        },
+        "resources": {
+          "state": "passed",
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "ceiling-failure-takes-precedence-over-missing",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/measurements/peakHostResidentBytes/value",
+          "value": 2097153
+        },
+        {
+          "op": "replace",
+          "path": "/measurements/peakHostTreeResidentBytes/value",
+          "value": 2097153
+        },
+        {
+          "op": "replace",
+          "path": "/measurements/peakGuestLinearMemoryBytes",
+          "value": {
+            "state": "missing",
+            "reason": "The example engine memory counter was unavailable."
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/resources",
+          "value": {
+            "state": "failed",
+            "reasons": [
+              "resource.ceiling_exceeded",
+              "resource.measurement_missing"
+            ]
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "failed",
+          "reasons": [
+            "resource.ceiling_exceeded",
+            "resource.measurement_missing"
+          ]
+        }
+      }
+    },
+    {
+      "id": "unknown-optional-member",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/exampleExtra",
+          "value": true
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "correctness": {
+          "state": "passed",
+          "reasons": []
+        },
+        "resources": {
+          "state": "passed",
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "missing-required-measurement-row",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/measurements/peakGuestLinearMemoryBytes"
+        }
+      ],
+      "schemaValid": false,
+      "expected": {
+        "refusal": "invalid_shape"
+      }
+    },
+    {
+      "id": "missing-wasm-guest-identity",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/guest"
+        }
+      ],
+      "schemaValid": false,
+      "expected": {
+        "refusal": "invalid_shape"
+      }
+    },
+    {
+      "id": "contradictory-measurement-state",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/measurements/peakGuestLinearMemoryBytes/reason",
+          "value": "Contradicts measured state."
+        }
+      ],
+      "schemaValid": false,
+      "expected": {
+        "refusal": "invalid_shape"
+      }
+    },
+    {
+      "id": "wrong-comparison-kind-for-generation",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/comparison/kind",
+          "value": "reader-facts"
+        }
+      ],
+      "schemaValid": false,
+      "expected": {
+        "refusal": "invalid_shape"
+      }
+    },
+    {
+      "id": "contradictory-host-tree-peak",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/measurements/peakHostTreeResidentBytes/value",
+          "value": 2097153
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "refusal": "contradictory_evidence"
+      }
+    },
+    {
+      "id": "forged-resource-pass",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/measurements/peakGuestLinearMemoryBytes",
+          "value": {
+            "state": "missing",
+            "reason": "The example engine memory counter was unavailable."
+          }
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "refusal": "outcome_mismatch"
+      }
+    },
+    {
+      "id": "unknown-critical-member",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/exampleExtra",
+          "value": true
+        },
+        {
+          "op": "add",
+          "path": "/critical",
+          "value": [
+            "/exampleExtra"
+          ]
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "refusal": "unknown_critical"
+      }
+    },
+    {
+      "id": "substituted-case-expectation",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/comparison/expectedSha256",
+          "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "op": "replace",
+          "path": "/comparison/observedSha256",
+          "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      ],
+      "schemaValid": true,
+      "expected": {
+        "refusal": "expected_digest_mismatch"
+      }
+    }
+  ]
+}

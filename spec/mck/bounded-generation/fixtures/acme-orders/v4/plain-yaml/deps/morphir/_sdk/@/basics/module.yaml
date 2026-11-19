@@ -1,0 +1,5 @@
+formatVersion: 4
+path: basics
+doc: Integer operations.
+types: [int]
+values: [add]

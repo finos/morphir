@@ -1,0 +1,59 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Library": {
+      "packageName": "my-org/billing",
+      "def": {
+        "modules": {
+          "invoicing": {
+            "access": "Public",
+            "value": {
+              "types": {
+                "invoice-line": {
+                  "Public": {
+                    "doc": "One line of an invoice.",
+                    "TypeAliasDefinition": {
+                      "typeParams": [],
+                      "typeExp": {
+                        "Record": {
+                          "fields": {
+                            "quantity": "morphir/SDK:basics#int",
+                            "unit-price": "morphir/SDK:basics#int"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {
+                "line-total": {
+                  "Public": {
+                    "doc": "Quantity times unit price.",
+                    "ExpressionBody": {
+                      "inputTypes": {
+                        "line": "my-org/billing:invoicing#invoice-line"
+                      },
+                      "outputType": "morphir/SDK:basics#int",
+                      "body": {
+                        "Apply": {
+                          "function": {
+                            "Apply": {
+                              "function": { "Reference": "morphir/SDK:basics#multiply" },
+                              "argument": { "Field": { "target": { "Variable": "line" }, "name": "quantity" } }
+                            }
+                          },
+                          "argument": { "Field": { "target": { "Variable": "line" }, "name": "unit-price" } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

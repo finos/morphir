@@ -1,0 +1,10 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/result.schema.json",
+  "command": "setup",
+  "status": "installed",
+  "origin": "release-checksum",
+  "candidateSha256": "37146dab49c337e5d2e6b0507ccf42861492b6ce4d8fe351555bed2d5507372b",
+  "generationSha256": "bc51a134c558c49b48d9b893e50759c7d9db00b424fc754858c81f55c95f69f1",
+  "receiptPath": "toolchains/generations/bc51a134c558c49b48d9b893e50759c7d9db00b424fc754858c81f55c95f69f1/receipt.json",
+  "selectionPath": "toolchains/default.json"
+}

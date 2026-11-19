@@ -1,0 +1,944 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/claims.schema.json",
+  "title": "Extension capability claims",
+  "type": "object",
+  "not": {
+    "anyOf": [
+      {
+        "required": [ "claimsVersion" ]
+      },
+      {
+        "required": [ "statementVersion" ]
+      }
+    ]
+  },
+  "required": [ "$schema", "protocolVersions", "extension", "capabilities" ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/claims.schema.json"
+    },
+    "protocolVersions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+      }
+    },
+    "extension": {
+      "type": "object",
+      "required": [ "id", "name", "version", "types" ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "not": {
+            "pattern": "^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\\.|$)"
+          },
+          "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?(\\.[a-z]([a-z0-9-]*[a-z0-9])?)*$",
+          "maxLength": 238
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+        },
+        "types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "frontend",
+              "backend",
+              "transform",
+              "validator",
+              "workspace"
+            ]
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "license": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "homepage": {
+          "type": "string"
+        },
+        "min_sdk_version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "frontend": {
+          "type": "object",
+          "required": [ "languages", "irVersions", "compile" ],
+          "properties": {
+            "languages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [ "id", "fileExtensions" ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fileExtensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "irVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "compile": {
+              "type": "boolean"
+            },
+            "incremental": {
+              "type": "boolean"
+            },
+            "fragments": {
+              "type": "boolean"
+            },
+            "multiDocument": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "backend": {
+          "type": "object",
+          "required": [ "targets", "irVersions", "generate" ],
+          "properties": {
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "irVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "generate": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "workspace": {
+          "type": "object",
+          "required": [ "protocolVersions", "discover" ],
+          "properties": {
+            "protocolVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "discover": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "validator": {
+          "type": "object",
+          "required": [ "irVersions" ],
+          "properties": {
+            "irVersions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [ "id", "code" ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "transform": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "modelTransport": {
+          "type": "object",
+          "required": [ "tuples", "limits" ],
+          "properties": {
+            "tuples": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "operation",
+                  "profile",
+                  "codec",
+                  "envelopeVersion",
+                  "irVersion"
+                ],
+                "properties": {
+                  "operation": {
+                    "enum": [
+                      "morphir.frontend.compileModel",
+                      "morphir.backend.generateModel",
+                      "morphir.validator.validateModel"
+                    ]
+                  },
+                  "profile": {
+                    "type": "string"
+                  },
+                  "codec": {
+                    "type": "string"
+                  },
+                  "envelopeVersion": {
+                    "type": "string"
+                  },
+                  "irVersion": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "limits": {
+              "type": "object",
+              "required": [
+                "maxEncodedBytes",
+                "maxDecodedBytes",
+                "maxDepth",
+                "maxNodes"
+              ],
+              "properties": {
+                "maxEncodedBytes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "maxDecodedBytes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "maxDepth": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "maxNodes": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": true
+            },
+            "guarantees": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "streaming": {
+          "type": "boolean"
+        },
+        "incremental": {
+          "type": "boolean"
+        },
+        "cancellation": {
+          "type": "boolean"
+        },
+        "progress": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "requires": {
+      "type": "object",
+      "required": [ "host" ],
+      "properties": {
+        "host": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "embedded": {
+      "type": "object",
+      "not": {
+        "anyOf": [
+          {
+            "required": [ "$schema" ]
+          },
+          {
+            "required": [ "claimsVersion" ]
+          },
+          {
+            "required": [ "statementVersion" ]
+          }
+        ]
+      },
+      "required": [ "protocolVersions", "extension", "capabilities" ],
+      "properties": {
+        "protocolVersions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+          }
+        },
+        "extension": {
+          "type": "object",
+          "required": [ "id", "name", "version", "types" ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "not": {
+                "pattern": "^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\\.|$)"
+              },
+              "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?(\\.[a-z]([a-z0-9-]*[a-z0-9])?)*$",
+              "maxLength": 238
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+            },
+            "types": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "frontend",
+                  "backend",
+                  "transform",
+                  "validator",
+                  "workspace"
+                ]
+              }
+            },
+            "description": {
+              "type": "string"
+            },
+            "license": {
+              "type": "string"
+            },
+            "author": {
+              "type": "string"
+            },
+            "homepage": {
+              "type": "string"
+            },
+            "min_sdk_version": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "capabilities": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "frontend": {
+              "type": "object",
+              "required": [ "languages", "irVersions", "compile" ],
+              "properties": {
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [ "id", "fileExtensions" ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fileExtensions": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "irVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "compile": {
+                  "type": "boolean"
+                },
+                "incremental": {
+                  "type": "boolean"
+                },
+                "fragments": {
+                  "type": "boolean"
+                },
+                "multiDocument": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            "backend": {
+              "type": "object",
+              "required": [ "targets", "irVersions", "generate" ],
+              "properties": {
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "irVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "generate": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            "workspace": {
+              "type": "object",
+              "required": [ "protocolVersions", "discover" ],
+              "properties": {
+                "protocolVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "discover": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            "validator": {
+              "type": "object",
+              "required": [ "irVersions" ],
+              "properties": {
+                "irVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [ "id", "code" ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "code": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            "transform": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "modelTransport": {
+              "type": "object",
+              "required": [ "tuples", "limits" ],
+              "properties": {
+                "tuples": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "operation",
+                      "profile",
+                      "codec",
+                      "envelopeVersion",
+                      "irVersion"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "enum": [
+                          "morphir.frontend.compileModel",
+                          "morphir.backend.generateModel",
+                          "morphir.validator.validateModel"
+                        ]
+                      },
+                      "profile": {
+                        "type": "string"
+                      },
+                      "codec": {
+                        "type": "string"
+                      },
+                      "envelopeVersion": {
+                        "type": "string"
+                      },
+                      "irVersion": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "required": [
+                    "maxEncodedBytes",
+                    "maxDecodedBytes",
+                    "maxDepth",
+                    "maxNodes"
+                  ],
+                  "properties": {
+                    "maxEncodedBytes": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxDecodedBytes": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxDepth": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxNodes": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "guarantees": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": true
+            },
+            "streaming": {
+              "type": "boolean"
+            },
+            "incremental": {
+              "type": "boolean"
+            },
+            "cancellation": {
+              "type": "boolean"
+            },
+            "progress": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "critical": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requires": {
+          "type": "object",
+          "required": [ "host" ],
+          "properties": {
+            "host": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "closedEmbedded": {
+      "type": "object",
+      "not": {
+        "anyOf": [
+          {
+            "required": [ "$schema" ]
+          },
+          {
+            "required": [ "claimsVersion" ]
+          },
+          {
+            "required": [ "statementVersion" ]
+          }
+        ]
+      },
+      "required": [ "protocolVersions", "extension", "capabilities" ],
+      "properties": {
+        "protocolVersions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+          }
+        },
+        "extension": {
+          "type": "object",
+          "required": [ "id", "name", "version", "types" ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "not": {
+                "pattern": "^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\\.|$)"
+              },
+              "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?(\\.[a-z]([a-z0-9-]*[a-z0-9])?)*$",
+              "maxLength": 238
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+            },
+            "types": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "frontend",
+                  "backend",
+                  "transform",
+                  "validator",
+                  "workspace"
+                ]
+              }
+            },
+            "description": {
+              "type": "string"
+            },
+            "license": {
+              "type": "string"
+            },
+            "author": {
+              "type": "string"
+            },
+            "homepage": {
+              "type": "string"
+            },
+            "min_sdk_version": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "capabilities": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "frontend": {
+              "type": "object",
+              "required": [ "languages", "irVersions", "compile" ],
+              "properties": {
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [ "id", "fileExtensions" ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fileExtensions": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "irVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "compile": {
+                  "type": "boolean"
+                },
+                "incremental": {
+                  "type": "boolean"
+                },
+                "fragments": {
+                  "type": "boolean"
+                },
+                "multiDocument": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "backend": {
+              "type": "object",
+              "required": [ "targets", "irVersions", "generate" ],
+              "properties": {
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "irVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "generate": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "workspace": {
+              "type": "object",
+              "required": [ "protocolVersions", "discover" ],
+              "properties": {
+                "protocolVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "discover": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "validator": {
+              "type": "object",
+              "required": [ "irVersions" ],
+              "properties": {
+                "irVersions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [ "id", "code" ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "code": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "transform": {
+              "type": "object",
+              "additionalProperties": false
+            },
+            "modelTransport": {
+              "type": "object",
+              "required": [ "tuples", "limits" ],
+              "properties": {
+                "tuples": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "operation",
+                      "profile",
+                      "codec",
+                      "envelopeVersion",
+                      "irVersion"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "enum": [
+                          "morphir.frontend.compileModel",
+                          "morphir.backend.generateModel",
+                          "morphir.validator.validateModel"
+                        ]
+                      },
+                      "profile": {
+                        "type": "string"
+                      },
+                      "codec": {
+                        "type": "string"
+                      },
+                      "envelopeVersion": {
+                        "type": "string"
+                      },
+                      "irVersion": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "required": [
+                    "maxEncodedBytes",
+                    "maxDecodedBytes",
+                    "maxDepth",
+                    "maxNodes"
+                  ],
+                  "properties": {
+                    "maxEncodedBytes": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxDecodedBytes": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxDepth": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxNodes": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "guarantees": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "streaming": {
+              "type": "boolean"
+            },
+            "incremental": {
+              "type": "boolean"
+            },
+            "cancellation": {
+              "type": "boolean"
+            },
+            "progress": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "critical": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requires": {
+          "type": "object",
+          "required": [ "host" ],
+          "properties": {
+            "host": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

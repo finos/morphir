@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/generation.schema.json",
+  "title": "Local composed toolchain generation",
+  "description": "The manifest of one installed generation. It has acquisition exactly when its bound candidate's origin is release-checksum.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/generation.schema.json"
+    },
+    "candidateSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "selectionSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "catalogSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "locks": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "extensionId": {
+            "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/id"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "extensionId",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "extensionId": {
+            "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/id"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^extensions/metadata/(?:[A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*\\.json$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "extensionId",
+          "path",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "properties": {
+        "case": {
+          "const": "fsharp-compile-generate"
+        },
+        "caseSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sourceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "ir": {
+          "type": "object",
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "semanticMatch": {
+              "const": true
+            }
+          },
+          "required": [
+            "sha256",
+            "semanticMatch"
+          ],
+          "additionalProperties": false
+        },
+        "generatedFiles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "providers": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "enum": [
+                  "frontend",
+                  "backend"
+                ]
+              },
+              "extensionId": {
+                "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/id"
+              },
+              "version": {
+                "$ref": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/receipt.schema.json#/$defs/semanticVersion"
+              },
+              "mepVersion": {
+                "$ref": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/receipt.schema.json#/$defs/mepVersion"
+              },
+              "modelTuple": {
+                "$ref": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/receipt.schema.json#/$defs/modelTuple"
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "check": {},
+                        "status": {
+                          "const": "passed"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "workflow": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "check",
+                        "status"
+                      ],
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "$ref": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/receipt.schema.json#/$defs/check"
+                        }
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "check": {
+                          "enum": [
+                            "integrity",
+                            "capability"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                },
+                "allOf": [
+                  {
+                    "contains": {
+                      "properties": {
+                        "check": {
+                          "const": "integrity"
+                        }
+                      },
+                      "required": [
+                        "check"
+                      ]
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "check": {
+                          "const": "capability"
+                        }
+                      },
+                      "required": [
+                        "check"
+                      ]
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                  }
+                ]
+              }
+            },
+            "required": [
+              "role",
+              "extensionId",
+              "version",
+              "mepVersion",
+              "modelTuple",
+              "checks"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "frontend"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "modelTuple": {
+                      "properties": {
+                        "operation": {
+                          "const": "morphir.frontend.compileModel"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "role": {
+                      "const": "backend"
+                    }
+                  },
+                  "required": [
+                    "role"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "modelTuple": {
+                      "properties": {
+                        "operation": {
+                          "const": "morphir.backend.generateModel"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "role": {
+                    "const": "frontend"
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "role": {
+                    "const": "backend"
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "check": {},
+                  "status": {
+                    "const": "passed"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "workflow": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "check",
+                  "status"
+                ],
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "$ref": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/receipt.schema.json#/$defs/check"
+                  }
+                ]
+              },
+              {
+                "properties": {
+                  "check": {
+                    "const": "workflow"
+                  },
+                  "workflow": {
+                    "const": "fsharp-compile-generate"
+                  }
+                },
+                "required": [
+                  "workflow"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "case",
+        "caseSha256",
+        "sourceSha256",
+        "ir",
+        "generatedFiles",
+        "providers",
+        "checks"
+      ],
+      "additionalProperties": false
+    },
+    "acquisition": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "const": "https://github.com/finos/morphir-dotnet"
+        },
+        "tag": {
+          "type": "string",
+          "maxLength": 257,
+          "pattern": "^v(0|[1-9][0-9]{0,14})\\.(0|[1-9][0-9]{0,14})\\.(0|[1-9][0-9]{0,14})(?:-(?:0|[1-9][0-9]{0,14}|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]{0,14}|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "bundle": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "const": "acquisition/bundle.json"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "checksums": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "const": "acquisition/SHA256SUMS"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "repository",
+        "tag",
+        "bundle",
+        "checksums"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "$schema",
+    "candidateSha256",
+    "selectionSha256",
+    "catalogSha256",
+    "locks",
+    "metadata",
+    "workflow"
+  ],
+  "additionalProperties": false
+}

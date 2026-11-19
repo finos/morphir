@@ -41,7 +41,7 @@ None. The existing `mep/generic-guest-profile` remains a small-model qualificati
 - OpenSpec change: `openspec/changes/add-bounded-model-access/`.
 - Origin: [discussion #214](https://github.com/finos/morphir/discussions/214).
 - Related shared qualification work: [issue #965](https://github.com/finos/morphir/issues/965). This proposal does not claim to complete that issue.
-- Owning Beads epic: pending. Local creation was rejected by the shared Dolt database with `Merge conflict detected, @autocommit transaction rolled back`; no issue id was returned. Resolve existing shared database conflicts before creating the epic and linking this path. Remote synchronization is also deferred under the Windows `bd dolt push` restriction in AGENTS.md.
+- Owning Beads epic: `morphir-f6aa`. See [tasks.md](tasks.md) for issue links. The local database records progress while the Windows `bd dolt push` restriction in AGENTS.md defers remote synchronization.
 
 ## Impact
 

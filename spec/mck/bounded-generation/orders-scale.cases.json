@@ -1,0 +1,52 @@
+{
+  "id": "orders-scale",
+  "contractSha256": "daea631f7b6ded1ff981395d7477c66827ffdb9fd4f17a59458d1e1576602b07",
+  "recipeCommit": "3652032a53adeb6bfa4a5d672142487de45c57c5",
+  "execution": "wasm-generation",
+  "target": "text",
+  "guestSha256": "9c67d3e6130726d62abf662e1d7a656ab6e92c2059b634bea2e1d444fac7a8ef",
+  "tuple": {
+    "protocolVersion": "0.2.0-draft.2",
+    "accessVersion": "0.1.0-draft.1",
+    "operation": "morphir.backend.generateModel",
+    "irVersion": "4.0.0",
+    "profile": "morphir-ir",
+    "codec": "morphir-json",
+    "layout": "document-tree",
+    "contextualEncoding": "plain"
+  },
+  "cases": [
+    {
+      "id": "orders-scale/a",
+      "fixture": {
+        "scale": "large",
+        "expandedInputBytes": 1086620931,
+        "largestDocumentBytes": 16560,
+        "documentCount": 68611,
+        "modelSha256": "9b75219402036822f63995c4b0b23a54130d3f05d2832adf09d4f50599796e8a"
+      },
+      "comparison": {
+        "kind": "artifact-set",
+        "expectedSha256": "4647993318ded44552c1cfe273f96dfab83adefdf5d63849b6d4382ce7c6ee55"
+      },
+      "expectedArtifactCount": 1024,
+      "expectedArtifactBytes": 1090585600
+    },
+    {
+      "id": "orders-scale/b",
+      "fixture": {
+        "scale": "large",
+        "expandedInputBytes": 2173241603,
+        "largestDocumentBytes": 16560,
+        "documentCount": 137219,
+        "modelSha256": "e8a8f78d6ace01142686e1e8df61d85b9a2912db99988aa68da70d4de4d2b086"
+      },
+      "comparison": {
+        "kind": "artifact-set",
+        "expectedSha256": "4783e20057439e98e398b88a7cbf7f04299a0354324bcaa119971dd4dc523212"
+      },
+      "expectedArtifactCount": 2048,
+      "expectedArtifactBytes": 2181171200
+    }
+  ]
+}

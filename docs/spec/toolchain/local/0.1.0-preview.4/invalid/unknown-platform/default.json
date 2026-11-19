@@ -1,0 +1,7 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.4/selection.schema.json",
+  "origin": "release-checksum",
+  "generationSha256": "e3554213d982ba3b41a94de923cc1b220a770b74cc74879ebb01f10549b27523",
+  "receiptSha256": "0a3bf2e605d20fa7f0ee327c357bb776838beae1bbb44c081f63bb28a42960a6",
+  "receiptPath": "toolchains/generations/e3554213d982ba3b41a94de923cc1b220a770b74cc74879ebb01f10549b27523/receipt.json"
+}

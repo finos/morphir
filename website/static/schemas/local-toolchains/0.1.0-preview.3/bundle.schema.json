@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/bundle.schema.json",
+  "title": "Release toolchain bundle",
+  "description": "The release asset that lists every other asset of one platform's toolchain release: the host candidate and archive, the provider selection, and each provider's release envelope, manifest and archive.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/bundle.schema.json"
+    },
+    "version": {
+      "$ref": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/receipt.schema.json#/$defs/semanticVersion"
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "platform": {
+      "enum": [
+        "win-x64",
+        "win-arm64"
+      ]
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https://github\\.com/finos/morphir-dotnet/releases/download/v[^/]+/[^/]+$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1073741824
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "role": {
+            "enum": [
+              "host-candidate",
+              "host-archive",
+              "selection",
+              "frontend-release",
+              "frontend-manifest",
+              "frontend-archive",
+              "backend-release",
+              "backend-manifest",
+              "backend-archive"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "bytes",
+          "sha256",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "host-candidate"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "host-archive"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "selection"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "frontend-release"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "frontend-manifest"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "frontend-archive"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "backend-release"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "backend-manifest"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "role": {
+                "const": "backend-archive"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    }
+  },
+  "required": [
+    "$schema",
+    "version",
+    "sourceCommit",
+    "platform",
+    "assets"
+  ],
+  "additionalProperties": false
+}

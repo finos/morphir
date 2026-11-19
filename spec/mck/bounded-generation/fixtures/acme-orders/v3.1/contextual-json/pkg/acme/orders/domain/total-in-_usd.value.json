@@ -1,0 +1,19 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "context": {
+    "names": { "n": "total-in-USD" },
+    "fqNames": { "i": "morphir/SDK:basics#int", "o": "acme/orders:domain#order" }
+  },
+  "document": {
+    "formatVersion": "3.1.0",
+    "name": { "$name": "n" },
+    "def": {
+      "access": "Public",
+      "value": { "doc": "", "value": {
+        "inputTypes": [],
+        "outputType": ["Reference", {}, { "$name": "i" }, []],
+        "body": ["Reference", ["Reference", {}, { "$name": "i" }, []], { "$name": "o" }]
+      } }
+    }
+  }
+}

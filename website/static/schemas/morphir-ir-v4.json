@@ -144,9 +144,13 @@
           "examples": [
             [ "morphir/SDK", "list", "map" ],
             [
-              [ "morphir" ],
-              [ "s", "d", "k" ],
-              [ "list" ],
+              [
+                [ "morphir" ],
+                [ "s", "d", "k" ]
+              ],
+              [
+                [ "list" ]
+              ],
               [ "map" ]
             ]
           ],
@@ -866,21 +870,10 @@
       "type": "object",
       "properties": {
         "modules": {
-          "description": "Dictionary mapping module paths to access-controlled module definitions.\nV4 uses object format: { \"module/path\": { \"access\": \"Public\", \"value\": {...} } }\nOptional - defaults to empty object if omitted.\n",
+          "description": "Dictionary mapping module paths to access-controlled module definitions.\nV4 uses object format: { \"module/path\": { \"Public\": { \"types\": {...}, \"values\": {...} } } }\nOptional - defaults to empty object if omitted.\n",
           "type": "object",
           "additionalProperties": {
-            "allOf": [
-              {
-                "$ref": "#/definitions/AccessControlled"
-              },
-              {
-                "properties": {
-                  "value": {
-                    "$ref": "#/definitions/ModuleDefinition"
-                  }
-                }
-              }
-            ]
+            "$ref": "#/definitions/AccessControlledModuleDefinition"
           }
         }
       }
@@ -1209,6 +1202,122 @@
         }
       }
     },
+    "AccessControlledModuleDefinition": {
+      "description": "An access-controlled module definition, the entry shape of PackageDefinition.modules.\nCanonical: { \"Public\": { \"types\": {...}, \"values\": {...} } }\nAccepted: the legacy { \"access\": \"Public\", \"value\": { \"types\": {...}, \"values\": {...} } },\nthe flattened { \"access\": \"Public\", \"types\": {...}, \"values\": {...}, \"doc\": \"...\" }, and\nthe lowercase and \"pub\" spellings of the access level.\n",
+      "examples": [
+        {
+          "Public": {
+            "types": {},
+            "values": {}
+          }
+        },
+        {
+          "access": "Public",
+          "value": {
+            "types": {},
+            "values": {}
+          }
+        },
+        {
+          "access": "Private",
+          "doc": "Internal helpers",
+          "types": {},
+          "values": {}
+        }
+      ],
+      "anyOf": [
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "Public" ],
+              "properties": {
+                "Public": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "Private" ],
+              "properties": {
+                "Private": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "public" ],
+              "properties": {
+                "public": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "private" ],
+              "properties": {
+                "private": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "pub" ],
+              "properties": {
+                "pub": {
+                  "$ref": "#/definitions/ModuleDefinition"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [ "access", "value" ],
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            },
+            "doc": {
+              "$ref": "#/definitions/Doc"
+            },
+            "value": {
+              "$ref": "#/definitions/ModuleDefinition"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "access" ],
+          "minProperties": 2,
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            },
+            "doc": {
+              "$ref": "#/definitions/Doc"
+            },
+            "types": {
+              "$ref": "#/definitions/ModuleDefinition/properties/types"
+            },
+            "values": {
+              "$ref": "#/definitions/ModuleDefinition/properties/values"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "ModuleSpecification": {
       "description": "Module specification containing only public interfaces (no implementations).\nUsed in PackageSpecification and dependencies.\nThe \"types\" and \"values\" fields can be omitted if empty.\n\nCanonical: \"doc\" flattened first beside the variant (decision 0010); the nested\n{ \"doc\", \"value\" } form is accepted for one release.\n",
       "examples": [
@@ -1340,7 +1449,7 @@
       ]
     },
     "ReferenceType": {
-      "description": "Reference to a named type, optionally with type arguments.\n\nCanonical (no args): \"morphir/SDK:basics#int\"\nCanonical (with args): {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n\nAccepted formats:\n- Bare FQName string: \"morphir/SDK:basics#int\"\n- Wrapper with FQName: {\"Reference\": \"morphir/SDK:basics#int\"}\n- Wrapper with array: {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n- Wrapper with object: {\"Reference\": {\"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"]}}\n\nEncoders should output canonical form.\n",
+      "description": "Reference to a named type, optionally with type arguments.\n\nCanonical (no args): \"morphir/SDK:basics#int\"\nCanonical (with args): {\"Reference\": {\"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"]}}\n\nAccepted formats:\n- Bare FQName string: \"morphir/SDK:basics#int\"\n- Wrapper with FQName: {\"Reference\": \"morphir/SDK:basics#int\"}\n- Wrapper with array: {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n- Wrapper with object: {\"Reference\": {\"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"]}}\n\nEncoders should output canonical form.\n",
       "examples": [
         "morphir/SDK:basics#int",
         "morphir/SDK:string#string",
@@ -3625,7 +3734,7 @@
       "additionalProperties": false
     },
     "ValueSpecification": {
-      "description": "Value specification (public interface - signature only, no implementation).\n\nCanonical format: { \"inputs\": { \"a\": type, \"b\": type }, \"output\": type }\nThe \"inputs\" field can be omitted if empty.\n\nEncoders should output the canonical object format.\nDecoders should accept both object and legacy array formats.\n",
+      "description": "Value specification (public interface - signature only, no implementation).\n\nCanonical format: { \"inputs\": { \"a\": type, \"b\": type }, \"output\": type }, where the key order of \"inputs\" is the parameter order.\nThe \"inputs\" field can be omitted if empty.\n\nEncoders should output the canonical object format.\nDecoders should accept both object and legacy array formats.\n",
       "examples": [
         {
           "inputs": {
@@ -3653,7 +3762,7 @@
           }
         },
         "inputs": {
-          "description": "Input parameters.\nCanonical (output): Object keyed by parameter name: { \"x\": type, \"y\": type }\nAccepted (input): Array format: [[\"x\", type], [\"y\", type]]\nCan be omitted if empty (no inputs).\n",
+          "description": "Input parameters.\nCanonical (output): Object keyed by parameter name: { \"x\": type, \"y\": type }. The key order of \"inputs\" is the parameter order.\nAccepted (input): Array format: [[\"x\", type], [\"y\", type]]\nCan be omitted if empty (no inputs).\n",
           "oneOf": [
             {
               "type": "object",
@@ -3777,7 +3886,7 @@
       "required": [ "inputTypes", "outputType", "body" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"
@@ -3812,7 +3921,7 @@
       "required": [ "inputTypes", "outputType", "nativeInfo" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"
@@ -3869,7 +3978,7 @@
       "required": [ "inputTypes", "outputType", "externals" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"
@@ -3916,7 +4025,7 @@
       "required": [ "inputTypes", "incompleteness" ],
       "properties": {
         "inputTypes": {
-          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\n",
+          "description": "Dictionary mapping input parameter names to their types.\nV4 uses object format: { \"param-name\": type, ... }\nThe key order of \"inputTypes\" is the parameter order.\n",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Type"

@@ -9,8 +9,6 @@
   "prHourlyLimit": 1,
   "prConcurrentLimit": 3,
   "separateMajorMinor": true,
-  "cloneSubmodules": true,
-  "cloneSubmodulesFilter": ["ecosystem/morphir-rust"],
   "vulnerabilityAlerts": {
     "groupName": null,
     "schedule": [],
@@ -27,12 +25,6 @@
       "description": "Require dashboard approval for the major dependency batch",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
-    },
-    {
-      "description": "granit-parser is pinned to the version in ecosystem/morphir-rust, and serde-saphyr releases require a matching granit-parser; bump both together with the submodule",
-      "matchManagers": ["cargo"],
-      "matchPackageNames": ["granit-parser", "serde-saphyr"],
-      "enabled": false
     }
   ]
 }

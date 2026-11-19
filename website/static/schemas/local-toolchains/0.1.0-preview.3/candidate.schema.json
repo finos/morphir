@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/candidate.schema.json",
+  "title": "Local composed toolchain candidate",
+  "description": "The exact host closure and selected process providers that one toolchain installation starts from. Its platform and origin must agree with the receipt and, for release-checksum, with the release bundle.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.3/candidate.schema.json"
+    },
+    "origin": {
+      "enum": [
+        "local-developer",
+        "release-checksum"
+      ]
+    },
+    "implementation": {
+      "const": "dotnet"
+    },
+    "deployment": {
+      "const": "self-contained"
+    },
+    "platform": {
+      "enum": [
+        "win-x64",
+        "win-arm64"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "buildIdentity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceRepository": {
+      "const": "https://github.com/finos/morphir-dotnet"
+    },
+    "archive": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "zip"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "format",
+        "sha256",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "entryPoint": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "files": {
+      "maxItems": 8192,
+      "minItems": 1,
+      "items": {
+        "properties": {
+          "path": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "bytes": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "bytes"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "extensions": {
+      "type": "object",
+      "properties": {
+        "selectionSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "frontendId": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/id"
+        },
+        "backendId": {
+          "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.1/release.schema.json#/$defs/id"
+        }
+      },
+      "required": [
+        "selectionSha256",
+        "frontendId",
+        "backendId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "$schema",
+    "origin",
+    "implementation",
+    "deployment",
+    "platform",
+    "version",
+    "sourceCommit",
+    "buildIdentity",
+    "sourceRepository",
+    "archive",
+    "entryPoint",
+    "files",
+    "extensions"
+  ],
+  "additionalProperties": false
+}

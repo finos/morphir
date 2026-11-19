@@ -1,0 +1,42 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/local-toolchains/0.1.0-preview.5/candidate.schema.json",
+  "origin": "release-checksum",
+  "implementation": "dotnet",
+  "deployment": "self-contained",
+  "platform": "win-x86",
+  "version": "0.4.0-alpha.5+eb606b77b026b076b674d4e872933262231d4240",
+  "sourceCommit": "eb606b77b026b076b674d4e872933262231d4240",
+  "buildIdentity": "Source eb606b77b026b076b674d4e872933262231d4240; working tree clean: True; packed at 2026-11-12T09:30:00.0000000+00:00",
+  "sourceRepository": "https://github.com/finos/morphir-dotnet",
+  "archive": {
+    "format": "zip",
+    "sha256": "47c106128f0475afd1dd864e3d5dee7ce112849d0a1e44d9a2cdd770f3d7cdda",
+    "bytes": 61234567
+  },
+  "entryPoint": {
+    "path": "morphir.exe",
+    "sha256": "6823fd6668acf0dc7855edb8982069ba4a72f033f778857b7cacedef3f140531"
+  },
+  "files": [
+    {
+      "path": "Morphir.Managed.dll",
+      "bytes": 1048576,
+      "sha256": "a89862e8995ed64b099bf44c604c6f5021c7c9dcb1238ad59490a59a1bea2969"
+    },
+    {
+      "path": "coreclr.dll",
+      "bytes": 7340032,
+      "sha256": "d3ba5ce69fd728464d4a807b197e17aba22c50a905218e22607a19cc307b36a4"
+    },
+    {
+      "path": "morphir.exe",
+      "bytes": 155648,
+      "sha256": "6823fd6668acf0dc7855edb8982069ba4a72f033f778857b7cacedef3f140531"
+    }
+  ],
+  "extensions": {
+    "selectionSha256": "13658526b4ca7702e369470d1f5e41da0731c149f17c07a49b916a80802926cb",
+    "frontendId": "org.finos.morphir.fsharp-frontend",
+    "backendId": "org.finos.morphir.fsharp-backend"
+  }
+}

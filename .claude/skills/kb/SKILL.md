@@ -1,7 +1,7 @@
 ---
 name: kb
 description: "Manages the Morphir knowledge base under kb/ — OKF bundles and concept documents. Use when adding content to a bundle, creating a new bundle, checking the knowledge base for conformance or provenance drift, building or querying its SQLite index, managing intent through its lifecycle, recording or reading architectural decisions as Decision Records, or navigating, searching and listing its bundles, concepts and links."
-allowed-tools: Bash(morphir-dev kb *), Bash(mise run kb *), Bash(cargo run --locked -q -p morphir-dev-tools -- kb *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git *), Read, Edit, Write
+allowed-tools: Bash(morphir-dev kb *), Bash(mise run kb *), Bash(cargo run --locked -q --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools -- kb *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git *), Read, Edit, Write
 metadata:
   version: 0.1.0
   lineage: descends from the morphir-scala kb skill 0.7.0, retargeted at the morphir CLI, now morphir-dev
@@ -16,9 +16,10 @@ mechanical parts of following them.
 ## The `morphir-dev kb` command
 
 Everything runs through the `kb` subcommand of `morphir-dev`, this repository's internal development tool
-(`crates/morphir-dev-tools`). It was `morphir kb` in the Rust CLI, which was deleted; the commands are unchanged.
+(`ecosystem/morphir-rust/umbrella-tools/crates/morphir-dev-tools`, in the finos/morphir-rust submodule). It was `morphir kb` in the Rust CLI, which was deleted; the commands are unchanged.
 Run it from the repository root as `mise run kb -- <subcommand> ...` or
-`cargo run --locked -q -p morphir-dev-tools -- kb <subcommand> ...`; the examples below write `morphir-dev kb` for
+`cargo run --locked -q --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml -p morphir-dev-tools -- kb <subcommand> ...`;
+the examples below write `morphir-dev kb` for
 short. It takes the same subcommands, flags, defaults,
 JSON shapes and exit codes as the Scala `kb` tool from morphir-scala, so a playbook written against that tool runs
 here. Where the reference implementation was wrong it is corrected rather than reproduced — a filter you pass is a
@@ -154,5 +155,5 @@ concepts assert — the thing that actually matters in a knowledge base — cann
 ## Where the implementation lives
 
 The `morphir-dev kb` command is implemented in Rust, in the `morphir-okf` (format model and parsing) and `morphir-kb`
-(knowledge-base operations) crates under `ecosystem/morphir-rust/crates/`, wired into the CLI in `crates/morphir`.
+(knowledge-base operations) crates under `ecosystem/morphir-rust/crates/`, wired into `morphir-dev` in `ecosystem/morphir-rust/umbrella-tools/crates/morphir-dev-tools`.
 Develop and test it there with `cargo test`; this skill only documents the command surface.

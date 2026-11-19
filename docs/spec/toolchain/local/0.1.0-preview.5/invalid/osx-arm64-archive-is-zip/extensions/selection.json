@@ -1,0 +1,21 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/toolchains/0.1.0-preview.1/selection.schema.json",
+  "extensions": [
+    {
+      "extensionId": "org.finos.morphir.fsharp-backend",
+      "version": "0.4.0-alpha.5",
+      "runtime": "process",
+      "platforms": {
+        "osx-arm64": "e3c8b74f95bf221eebf075c3bb70d6a348bf9f133538ea8f19a7eb3d8106c32e"
+      }
+    },
+    {
+      "extensionId": "org.finos.morphir.fsharp-frontend",
+      "version": "0.4.0-alpha.5",
+      "runtime": "process",
+      "platforms": {
+        "osx-arm64": "ba156586a53c23cf4374b9d1065cd0457f2f2d026bcb99bbe76fdd16b5f495c0"
+      }
+    }
+  ]
+}

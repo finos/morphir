@@ -180,7 +180,7 @@
                 },
                 "initialize-params": {
                   "Public": {
-                    "doc": "Parameters of `morphir.initialize`. Full SemVer protocol versions are used\nby the model-operation draft; legacy `0.1` remains an explicit exception.\n`model_transport` (wire `modelTransport`) is left out when absent. Absence\nmeans legacy-only, never an implicit offer of model transport. The offer\nlists every supported tuple in preference order; the first tuple for each\noperation is the host's default. A host that requires one format offers\nonly that tuple. A host offers `morphir.validator.validateModel` tuples\nonly to an extension whose `morphir.extension.describe` result or recorded\nclaims list at least one validateModel tuple in\n`capabilities.modelTransport`. A host without either offers none: an\nextension that does not know an operation can refuse the whole offer.",
+                    "doc": "Parameters of `morphir.initialize`. Full SemVer protocol versions are used\nby the model-operation draft; legacy `0.1` remains an explicit exception.\n`model_transport` (wire `modelTransport`) is left out when absent. Absence\nmeans legacy-only, never an implicit offer of model transport. The offer\nlists every supported tuple in preference order; the first tuple for each\noperation is the host's default. A host that requires one format offers\nonly that tuple. A host offers `morphir.validator.validateModel` tuples\nonly to an extension whose `morphir.extension.describe` result or recorded\nclaims list at least one validateModel tuple in\n`capabilities.modelTransport`. A host without either offers none: an\nextension that does not know an operation can refuse the whole offer.\n`modelAccess` is the separate optional offer for bounded generation.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -218,6 +218,21 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#model-transport-support"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "model-access",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-access-support"
                                     }
                                   }
                                 ]
@@ -681,7 +696,7 @@
                 },
                 "extension-capabilities": {
                   "Public": {
-                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend`, `workspace`, `validator` and `modelTransport` are\nleft out when absent. An absent `modelTransport` means legacy-only.\n- `modelTransport` before initialization is guest support. In a session\nit contains only tuples explicitly offered by both peers and limits no\nlarger than either peer's limits. It is not a Cartesian product. The\nextension keeps the host offer order, and the host uses the first agreed\ntuple for each operation. Only an empty agreement is a failure.\nUnder the new draft, agreement with static claims permits this narrowing\nfor modelTransport only; legacy capability equality rules are unchanged.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `validator`, `streaming`,\n`incremental`, `cancellation`, `progress` or `modelTransport`.",
+                    "doc": "What an extension can do.\n\nWire rules:\n- `frontend`, `backend`, `workspace`, `validator` and `modelTransport` are\nleft out when absent. An absent `modelTransport` means legacy-only.\n- `modelTransport` before initialization is guest support. In a session\nit contains only tuples explicitly offered by both peers and limits no\nlarger than either peer's limits. It is not a Cartesian product. The\nextension keeps the host offer order, and the host uses the first agreed\ntuple for each operation. Only an empty agreement is a failure.\nUnder the new draft, agreement with static claims permits this narrowing\nfor modelTransport only; legacy capability equality rules are unchanged.\n- The four flags `streaming`, `incremental`, `cancellation` and\n`progress` are always written. An absent flag is read as false.\n- Members of `extra` sit beside the named members on the wire, not under\nan `extra` key. Unknown members are read into `extra`.\n- A writer refuses an `extra` key that is one of the reserved names\n`frontend`, `backend`, `workspace`, `validator`, `streaming`,\n`incremental`, `cancellation`, `progress`, `modelTransport` or `modelAccess`.\n`modelAccess` is left out when absent, including on older sessions.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -756,6 +771,21 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#model-transport-support"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "model-access",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-access-support"
                                     }
                                   }
                                 ]
@@ -943,7 +973,7 @@
                 },
                 "method": {
                   "Public": {
-                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                        | Kind         |\n| ------------------- | --------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`              | request      |\n| `Describe`          | `morphir.extension.describe`      | request      |\n| `Initialized`       | `morphir.initialized`             | notification |\n| `Ping`              | `morphir.ping`                    | request      |\n| `Info`              | `morphir.extension.info`          | request      |\n| `Capabilities`      | `morphir.extension.capabilities`  | request      |\n| `Compile`           | `morphir.frontend.compile`        | request      |\n| `CompileModel`      | `morphir.frontend.compileModel`   | request      |\n| `Generate`          | `morphir.backend.generate`        | request      |\n| `GenerateModel`     | `morphir.backend.generateModel`   | request      |\n| `Validate`          | `morphir.validator.validate`      | request      |\n| `ValidateModel`     | `morphir.validator.validateModel` | request      |\n| `Transform`         | `morphir.transform.transform`     | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`      | request      |\n| `Shutdown`          | `morphir.shutdown`                | request      |\n| `Exit`              | `morphir.exit`                    | notification |\n| `CancelRequest`     | `$/cancelRequest`                 | notification |\n| `Progress`          | `morphir.progress`                | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
+                    "doc": "A MEP method. The wire value is the JSON-RPC 2.0 `method` string:\n\n| Constructor         | Wire value                        | Kind         |\n| ------------------- | --------------------------------- | ------------ |\n| `Initialize`        | `morphir.initialize`              | request      |\n| `Describe`          | `morphir.extension.describe`      | request      |\n| `Initialized`       | `morphir.initialized`             | notification |\n| `Ping`              | `morphir.ping`                    | request      |\n| `Info`              | `morphir.extension.info`          | request      |\n| `Capabilities`      | `morphir.extension.capabilities`  | request      |\n| `Compile`           | `morphir.frontend.compile`        | request      |\n| `CompileModel`      | `morphir.frontend.compileModel`   | request      |\n| `Generate`          | `morphir.backend.generate`        | request      |\n| `GenerateModel`     | `morphir.backend.generateModel`   | request      |\n| `GenerateModelStart` | `morphir.backend.generateModel.start` | request |\n| `GenerateModelAdvance` | `morphir.backend.generateModel.advance` | request |\n| `GenerateModelCancel` | `morphir.backend.generateModel.cancel` | request |\n| `Validate`          | `morphir.validator.validate`      | request      |\n| `ValidateModel`     | `morphir.validator.validateModel` | request      |\n| `Transform`         | `morphir.transform.transform`     | request      |\n| `WorkspaceDiscover` | `morphir.workspace.discover`      | request      |\n| `Shutdown`          | `morphir.shutdown`                | request      |\n| `Exit`              | `morphir.exit`                    | notification |\n| `CancelRequest`     | `$/cancelRequest`                 | notification |\n| `Progress`          | `morphir.progress`                | notification |\n\nA notification carries no request id and gets no response.\n\n`$/cancelRequest` and `morphir.progress` come from the protocol draft\n(docs/design/draft/extensions/protocol.md). A host sends\n`$/cancelRequest` only to an extension that advertises `cancellation`,\nand an extension sends `morphir.progress` only when it advertises\n`progress`. The Rust SDK does not send or handle them yet.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -958,6 +988,9 @@
                         "compile-model": [],
                         "generate": [],
                         "generate-model": [],
+                        "generate-model-start": [],
+                        "generate-model-advance": [],
+                        "generate-model-cancel": [],
                         "validate": [],
                         "validate-model": [],
                         "transform": [],
@@ -2719,6 +2752,1105 @@
                             {
                               "Reference": {
                                 "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-protocol-version": {
+                  "Public": {
+                    "doc": "Exact bounded-generation MEP draft, wire spelling `0.2.0-draft.2`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-protocol-draft2": []
+                      }
+                    }
+                  }
+                },
+                "model-access-version": {
+                  "Public": {
+                    "doc": "Exact bounded-access contract draft, wire spelling `0.1.0-draft.1`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-draft1": []
+                      }
+                    }
+                  }
+                },
+                "model-access-ir-version": {
+                  "Public": {
+                    "doc": "Exact semantic IR versions on the wire, `3.1.0` and `4.0.0`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-ir3": [],
+                        "model-access-ir4": []
+                      }
+                    }
+                  }
+                },
+                "model-access-operation": {
+                  "Public": {
+                    "doc": "This draft supports the `morphir.backend.generateModel` operation.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "bounded-generate-model": []
+                      }
+                    }
+                  }
+                },
+                "model-access-profile": {
+                  "Public": {
+                    "doc": "The first access profile has wire spelling `morphir-ir`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "morphir-ir-profile": []
+                      }
+                    }
+                  }
+                },
+                "model-access-codec": {
+                  "Public": {
+                    "doc": "Wire spellings `morphir-json` and `morphir-yaml`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "access-json-codec": [],
+                        "access-yaml-codec": []
+                      }
+                    }
+                  }
+                },
+                "model-access-layout": {
+                  "Public": {
+                    "doc": "The first access layout has wire spelling `document-tree`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "document-tree-access": []
+                      }
+                    }
+                  }
+                },
+                "model-access-encoding": {
+                  "Public": {
+                    "doc": "Wire spellings `plain` and the ir-context draft.1 envelope schema URL.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "plain-access": [],
+                        "contextual-access-draft1": []
+                      }
+                    }
+                  }
+                },
+                "model-access-tuple": {
+                  "Public": {
+                    "doc": "The host's choice is one exact tuple already admitted by both peers.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-tuple": [
+                          [
+                            "protocol-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-protocol-version"
+                              }
+                            }
+                          ],
+                          [
+                            "access-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-version"
+                              }
+                            }
+                          ],
+                          [
+                            "operation",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-operation"
+                              }
+                            }
+                          ],
+                          [
+                            "ir-version",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-ir-version"
+                              }
+                            }
+                          ],
+                          [
+                            "profile",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-profile"
+                              }
+                            }
+                          ],
+                          [
+                            "codec",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-codec"
+                              }
+                            }
+                          ],
+                          [
+                            "layout",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-layout"
+                              }
+                            }
+                          ],
+                          [
+                            "contextual-encoding",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-encoding"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-limits": {
+                  "Public": {
+                    "doc": "Positive bounds for this exchange and the complete operation.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-limits": [
+                          [
+                            "max-frame-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-encoded-bytes-per-exchange",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-decoded-bytes-per-exchange",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-documents-per-batch",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-depth",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-nodes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-diagnostics-per-exchange",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-outstanding-requests",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-guest-state-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-host-cache-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-artifact-chunk-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-artifact-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-total-artifact-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-session-disk-bytes",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-session-work-units",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-rounds",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-call-milliseconds",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "max-session-milliseconds",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-support": {
+                  "Public": {
+                    "doc": "Unique complete tuples in host preference order and scoped limits.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-support": [
+                          [
+                            "tuples",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-access-tuple"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "limits",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-limits"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-snapshot": {
+                  "Public": {
+                    "doc": "Opaque snapshot identity, model revision, dependency context and view.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-snapshot": [
+                          [
+                            "snapshot-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "model-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "revision",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "context-digest",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "scope",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-start": {
+                  "Public": {
+                    "doc": "Named parameters of `morphir.backend.generateModel.start`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-start": [
+                          [
+                            "session-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "snapshot",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-snapshot"
+                              }
+                            }
+                          ],
+                          [
+                            "input",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-tuple"
+                              }
+                            }
+                          ],
+                          [
+                            "target",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "options",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#json"
+                              }
+                            }
+                          ],
+                          [
+                            "required-guarantees",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-guarantee-requirement"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "limits",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-access-limits"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-advance": {
+                  "Public": {
+                    "doc": "Named parameters of `morphir.backend.generateModel.advance`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-advance": [
+                          [
+                            "session-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "round",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "deliveries",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-access-delivery"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-cancel": {
+                  "Public": {
+                    "doc": "Parameters and acknowledgment of `morphir.backend.generateModel.cancel`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-access-cancel": [
+                          [
+                            "session-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-request": {
+                  "Public": {
+                    "doc": "The wire tag `kind` selects `inventory` or `document`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "inventory-request": [
+                          [
+                            "request-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "selection",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "page-size",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "cursor",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "document-request": [
+                          [
+                            "request-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "document-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-delivery": {
+                  "Public": {
+                    "doc": "The wire tag `kind` selects `inventory` or `document`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "inventory-delivery": [
+                          [
+                            "request-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "snapshot-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "entries",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-inventory-entry"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "next-cursor",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "document-delivery": [
+                          [
+                            "request-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "snapshot-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "document-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "decoded-byte-length",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "sha256",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "content",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-inventory-role": {
+                  "Public": {
+                    "doc": "Wire roles `definition` and `specification`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "definition-entry": [],
+                        "specification-entry": []
+                      }
+                    }
+                  }
+                },
+                "model-inventory-entry": {
+                  "Public": {
+                    "doc": "One inventory entry. The wire object has a single key `module`, `type`,\nor `value`, whose value is the corresponding constructor's record.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "module-entry": [
+                          [
+                            "document-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "package-name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "module-path",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "role",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-inventory-role"
+                              }
+                            }
+                          ],
+                          [
+                            "member-selection",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/SDK:string#string"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "type-entry": [
+                          [
+                            "document-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "package-name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "module-path",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "role",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-inventory-role"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ],
+                        "value-entry": [
+                          [
+                            "document-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "package-name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "module-path",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "role",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/mep:mep#model-inventory-role"
+                              }
+                            }
+                          ],
+                          [
+                            "name",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-artifact-chunk": {
+                  "Public": {
+                    "doc": "One bounded output chunk. Content is canonical padded base64.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "model-artifact-chunk": [
+                          [
+                            "path",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "offset",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "decoded-byte-length",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "sha256",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "content",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "end",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#bool"
+                              }
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "model-access-step": {
+                  "Public": {
+                    "doc": "The wire `state` selects exactly one of `continue`, `complete`, or `failed`.",
+                    "CustomTypeDefinition": {
+                      "typeParams": [],
+                      "access": "Public",
+                      "constructors": {
+                        "continue-generation": [
+                          [
+                            "session-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "round",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:basics#int"
+                              }
+                            }
+                          ],
+                          [
+                            "requests",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-access-request"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "artifacts",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-artifact-chunk"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "complete-generation": [
+                          [
+                            "session-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "artifacts",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#model-artifact-chunk"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        ],
+                        "fail-generation": [
+                          [
+                            "session-id",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:string#string"
+                              }
+                            }
+                          ],
+                          [
+                            "diagnostics",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:list#list",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#diagnostic"
+                                    }
+                                  }
+                                ]
                               }
                             }
                           ]

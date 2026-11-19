@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>deliver-morphirup-from-umbrella: design</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { color-scheme: light dark; --bg: #fafafa; --fg: #18212f; --muted: #526071;
+  --line: #cbd5e1; --panel: #eef2f6; --link: #075caa; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111827; --fg: #e5e7eb; --muted: #b0bdce;
+    --line: #475569; --panel: #1e293b; --link: #8cc8ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 1rem/1.6 system-ui, sans-serif; }
+main { max-width: 70rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+h1, h2, h3 { line-height: 1.25; overflow-wrap: anywhere; }
+h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+a { color: var(--link); }
+a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+.meta { color: var(--muted); }
+.toc, pre, details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: .4rem; padding: 1rem; }
+code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { overflow-x: auto; } pre code { overflow-wrap: normal; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--line); padding: .6rem; text-align: left;
+  overflow-wrap: anywhere; }
+svg { max-width: 100%; height: auto; }
+@media print { main { max-width: none; padding: 0; } pre, tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>deliver-morphirup-from-umbrella: design</h1>
+<p class="meta">OpenSpec change | 13 November 2026 | proposed</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>Observed at the pin <code>318b1bfd</code> (morphir-dotnet <code>0.5.0-alpha.1</code>). The source's release, <code>deployment.yml</code>, calls its own <code>morphirup-build.yml</code> for five platforms with <code>toolchain: true</code>. For win-x64, win-arm64 and osx-arm64, that job packs the setup toolchain with <code>PackWindowsToolchain</code> and runs the <code>WindowsReleaseSetup</code> test group on the produced archives. The release job then runs <code>FlattenReleaseAssets</code>, <code>MorphirupChecksums</code> and <code>WindowsToolchainChecksums</code>. The toolchain files carry names and hashes, and the bundle names its asset URLs by the release source. The published finos/morphir-dotnet <code>v0.5.0-alpha.1</code> has 43 such assets.</p>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> a finos/morphir release carries those 43 assets under their names, built and assembled by the source, qualified on each platform, and recorded in the manifest.</p>
+<p><strong>Non-goals:</strong> changing the names or the bundle format (local-toolchains <code>0.1.0-preview.5</code> is separate work), signing, or building anything with a second implementation here.</p>
+
+<h2 id="decisions">Decisions</h2>
+<p>The journey follows win-arm64 in the release <code>v0.5.0-alpha.2</code>, from the build to <code>morphirup setup --yes</code>.</p>
+
+<h3 id="build-1">BUILD-1. The source's workflow builds morphirup at the pin</h3>
+<p><code>release.yml</code> calls <code>finos/morphir-dotnet/.github/workflows/morphirup-build.yml@&lt;pin&gt;</code> for each morphirup platform, with <code>repository</code>, <code>ref: &lt;pin&gt;</code>, <code>toolchain: true</code> and <code>upload-host-offering: true</code>, as <code>cli-offering.yml</code> is called. For win-arm64 this one job, on <code>windows-11-arm</code>, does four things: it packs the manager and the toolchain, runs the setup journey on what it produced, uploads <code>morphirup-win-arm64</code> and <code>windows-release-toolchain-win-arm64</code>, and uploads the host as <code>morphir-dotnet-self-contained-win-arm64</code>. The binding check requires each source workflow to be called once, at the pin, with the pin as its literal <code>ref</code>.</p>
+<p>At <code>318b1bfd</code>, <code>morphirup-build.yml</code> has none of those three inputs. Its checkout therefore takes the caller's repository, and its Windows step compares <code>HEAD</code> with the caller's <code>GITHUB_SHA</code>. A cross-repository call needs <code>repository</code> and <code>ref</code> on its checkout and in that comparison. That is a source change, delivered with the next source release. Alternative: run the same build targets in a job written here. Rejected: it would be a second definition of the release build, which then drifts from the source's own.</p>
+
+<h3 id="host-1">HOST-1. One host archive, one name</h3>
+<p>A toolchain's host archive is named <code>morphir-dotnet-&lt;version&gt;-self-contained-&lt;rid&gt;.zip</code> (<code>.tar.gz</code> on osx-arm64). That is also the name of the self-contained offering. The two are separate <code>PackRelease</code> builds, and they are not byte-identical: in <code>v0.5.0-alpha.1</code>, win-x64's is 72,694,361 bytes in finos/morphir-dotnet and 72,718,523 bytes in finos/morphir. The candidate, the bundle and <code>SHA256SUMS</code> name the toolchain job's bytes. So on those three platforms the offering is the toolchain job's host archive, and <code>cli-offering.yml</code> does not build self-contained there. The parent qualifies it like any other offering and checks that the toolchain's copy has the same bytes. Alternative: let the toolchain take the offering's archive as an input. Rejected: it would split one source build across two jobs and two workflows.</p>
+
+<h3 id="asm-1">ASM-1. The source's targets assemble the assets</h3>
+<p>The publish job downloads <code>morphirup-*</code> and <code>windows-release-toolchain-*</code> apart from the offerings. It checks each toolchain against its producer's <code>SHA256SUMS</code>. It then runs the three source targets from the pinned <code>ecosystem/morphir-dotnet</code> checkout, and reads both checksum files back with <code>sha256sum -c</code>. Run locally on the published <code>v0.5.0-alpha.1</code> files, the targets wrote both checksum files byte-identical to that release's. The manifest step then requires the exact 43 names, checks every checksum entry against the files, checks each host archive against its offering, and attaches each file once.</p>
+
+<h3 id="qual-1">QUAL-1. Qualification reuses the source's journey</h3>
+<p>Each platform's qualify job starts its manager as a user does: <code>morphirup-win-arm64.exe --version</code> must print <code>0.5.0-alpha.2+&lt;pin&gt;</code> with no .NET on the path, and <code>win-arm64/morphirup.exe</code> in the archive must be the same bytes. The acquired setup journey is the source's own <code>WindowsReleaseSetup</code> group, which <code>morphirup-build.yml</code> runs in the job that produced the archives. Publication needs that job, so a failed journey publishes nothing. No step is added to pull request CI.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Until the pin includes the <code>morphirup-build.yml</code> inputs, the reusable call is invalid, and a dry run fails before it builds.</td><td>The wiring and its checks are unit-tested here. The pin moves to the source release that carries the inputs and local-toolchains <code>0.1.0-preview.5</code>.</td></tr>
+<tr><td>At <code>0.1.0-preview.4</code> the bundles name finos/morphir-dotnet URLs.</td><td>Names, checksums and the setup journey do not depend on the URLs. The first release that ships morphirup from finos/morphir is the one whose pin writes <code>0.1.0-preview.5</code> bundles.</td></tr>
+<tr><td>The release takes longer: five more platform jobs.</td><td>They run in parallel with the offerings. The three self-contained offerings they replace are no longer built twice.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>Land the source inputs and <code>0.1.0-preview.5</code> in finos/morphir-dotnet and cut <code>0.5.0-alpha.2</code>. Move the pin to it, dry-run the release from a branch, then tag <code>v0.5.0-alpha.2</code> here. Rollback: revert the morphirup job and the offering exclusion; finos/morphir-dotnet keeps publishing morphirup meanwhile.</p>
+</main>
+</body>
+</html>

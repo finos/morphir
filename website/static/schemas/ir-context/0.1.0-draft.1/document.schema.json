@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "title": "Morphir file with a name context, 0.1.0-draft.1",
+  "description": "A Morphir file (a single-file model, or one manifest, module, type or value file of a document tree) wrapped with a file-local name context. The envelope is identified by its $schema URL. The context holds typed tables that map alias ids to fully expanded canonical spellings, and the document is the ordinary IR document, of its own version and kind, in which a typed name position may hold the reference {\"$name\": \"<id>\"} instead of its spelling. A reader also enforces rules this schema cannot state: no duplicate member in a table, every reference resolves in the table of its position, and the context comes before the document. See openspec/changes/add-bounded-model-access/specs/ir/name-compaction/spec.md and docs/spec/ir/context/examples/README.md.",
+  "type": "object",
+  "required": [ "$schema", "context", "document" ],
+  "properties": {
+    "$schema": {
+      "description": "Identifies the envelope and its version. A reader refuses any other value with context.undeclared_schema.",
+      "const": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json"
+    },
+    "context": {
+      "$ref": "#/$defs/context"
+    },
+    "critical": {
+      "description": "Exact member paths the reader must understand. Draft.1 recognizes only the paths listed here; a reader refuses any other path with context.unknown_critical before it resolves an alias.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "$schema",
+          "context",
+          "context.names",
+          "context.packagePaths",
+          "context.modulePaths",
+          "context.fqNames",
+          "critical",
+          "document"
+        ]
+      }
+    },
+    "document": {
+      "description": "The ordinary Morphir document: a single-file model or one document-tree file, keeping its own formatVersion. Expansion replaces each reference with its spelling, encoded as the document's version writes that position.",
+      "type": "object",
+      "required": [ "formatVersion" ]
+    }
+  },
+  "$defs": {
+    "aliasId": {
+      "description": "An alias id: ASCII letters and digits, starting with a letter.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+    },
+    "context": {
+      "description": "The file's own tables. A missing table is empty. Members other than the four tables are ignored unless critical names them.",
+      "type": "object",
+      "properties": {
+        "fqNames": {
+          "description": "Alias id to canonical fully qualified name, package:module#name.",
+          "type": "object",
+          "maxProperties": 16384,
+          "propertyNames": {
+            "$ref": "#/$defs/aliasId"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$",
+            "maxLength": 1024
+          }
+        },
+        "modulePaths": {
+          "description": "Alias id to canonical module path.",
+          "type": "object",
+          "maxProperties": 16384,
+          "propertyNames": {
+            "$ref": "#/$defs/aliasId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/pathSpelling"
+          }
+        },
+        "names": {
+          "description": "Alias id to canonical name.",
+          "type": "object",
+          "maxProperties": 16384,
+          "propertyNames": {
+            "$ref": "#/$defs/aliasId"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$",
+            "maxLength": 1024
+          }
+        },
+        "packagePaths": {
+          "description": "Alias id to canonical package path.",
+          "type": "object",
+          "maxProperties": 16384,
+          "propertyNames": {
+            "$ref": "#/$defs/aliasId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/pathSpelling"
+          }
+        }
+      }
+    },
+    "pathSpelling": {
+      "type": "string",
+      "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$",
+      "maxLength": 1024
+    },
+    "reference": {
+      "description": "The only reference form: exactly one member, $name, holding an alias id. It is a reference only at a typed name position of the enclosed document; anywhere else it is ordinary data.",
+      "type": "object",
+      "required": [ "$name" ],
+      "properties": {
+        "$name": {
+          "$ref": "#/$defs/aliasId"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

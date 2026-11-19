@@ -14,7 +14,8 @@ export function packageMckInvocation(root: string, platform: string, args: reado
 		"--suite", "package", "--contract", contract,
 	];
 	return { report, command: [
-		"cargo", "run", "--locked", "--package", "morphir-mck-cli", "--", "package", "run",
+		"cargo", "run", "--locked", "--manifest-path", path.join(root, "ecosystem/morphir-rust/umbrella-tools/Cargo.toml"),
+		"--package", "morphir-mck-cli", "--", "package", "run",
 		"--kit", path.join(root, "spec/package/mck"), "--contract", contract, "--adapter", adapter,
 		...adapterArgs.flatMap(arg => ["--adapter-arg", arg]), "--report", report,
 	] };

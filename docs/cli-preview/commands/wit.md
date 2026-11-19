@@ -7,7 +7,7 @@ sidebar_label: morphir wit
 # morphir wit Command Reference (Archived)
 
 :::caution Archived
-The `morphir wit` command group was part of the **Morphir Go CLI**, not the Rust CLI shipped from finos/morphir. WIT pipeline documentation is maintained in **[finos/morphir-go](https://github.com/finos/morphir-go)**.
+The `morphir wit` command group was part of the **Morphir Go CLI**, not the Morphir CLI released from finos/morphir. WIT pipeline documentation is maintained in **[finos/morphir-go](https://github.com/finos/morphir-go)**.
 :::
 
 ## Current documentation

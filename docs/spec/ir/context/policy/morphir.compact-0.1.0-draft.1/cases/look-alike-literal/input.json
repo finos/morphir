@@ -1,0 +1,12 @@
+{
+  "formatVersion": 4,
+  "name": "label",
+  "def": {
+    "access": "Public",
+    "ExpressionBody": {
+      "inputTypes": { "base": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment", "bonus": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment", "rebate": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment" },
+      "outputType": "morphir/SDK:string#string",
+      "body": { "Literal": { "StringLiteral": "{\"$name\":\"a\"}" } }
+    }
+  }
+}

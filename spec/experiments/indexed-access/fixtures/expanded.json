@@ -1,0 +1,10 @@
+{
+  "formatVersion":4,"name":"a",
+  "def":{"access":"Public","ExpressionBody":{
+    "inputTypes":{},"outputType":"morphir/SDK:basics#int",
+    "body":{"List":[{"Reference":"morphir/SDK:basics#int"},"morphir/SDK:basics#add",{"Literal":{"DocumentLiteral":{
+      "Reference":{"$name":"u"},"Type":{"Reference":"lab/decoy:fake#reference"},"$name":"missing",
+      "ExpressionBody":{"outputType":"lab/decoy:fake#reference"}
+    }}},{"Literal":{"StringLiteral":"morphir/SDK:basics#subtract"}}]}
+  }}
+}

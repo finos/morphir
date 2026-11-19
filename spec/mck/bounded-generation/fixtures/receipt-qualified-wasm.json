@@ -1,0 +1,235 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/bounded-generation-kit/0.1.0-draft.1/receipt.schema.json",
+  "kit": {
+    "contractSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "suiteSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "caseId": "synthetic/orders-large-wasm"
+  },
+  "fixture": {
+    "scale": "large",
+    "expandedInputBytes": 3145728,
+    "largestDocumentBytes": 32768
+  },
+  "runner": {
+    "name": "example-runner",
+    "repository": "https://example.invalid/example-runner",
+    "revision": "3333333333333333333333333333333333333333",
+    "artifactSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "adapter": {
+    "name": "example-adapter",
+    "repository": "https://example.invalid/example-adapter",
+    "revision": "4444444444444444444444444444444444444444",
+    "artifactSha256": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "host": {
+    "name": "example-host",
+    "repository": "https://example.invalid/example-host",
+    "revision": "5555555555555555555555555555555555555555",
+    "artifactSha256": "5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "guest": {
+    "name": "example-guest",
+    "repository": "https://example.invalid/example-guest",
+    "revision": "6666666666666666666666666666666666666666",
+    "artifactSha256": "6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "platform": {
+    "os": "linux",
+    "architecture": "arm64"
+  },
+  "execution": "wasm-generation",
+  "target": "text",
+  "generatorOptionsSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+  "tuple": {
+    "protocolVersion": "0.2.0-draft.2",
+    "accessVersion": "0.1.0-draft.1",
+    "operation": "morphir.backend.generateModel",
+    "irVersion": "4.0.0",
+    "profile": "morphir-ir",
+    "codec": "morphir-json",
+    "layout": "document-tree",
+    "contextualEncoding": "plain"
+  },
+  "comparison": {
+    "kind": "artifact-set",
+    "expectedSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "observedSha256": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "limits": {
+    "hostTreeResidentBytes": {
+      "state": "enforced",
+      "ceiling": 2097152,
+      "source": {
+        "method": "example process-tree memory limit",
+        "evidenceSha256": "9999999999999999999999999999999999999999999999999999999999999999"
+      }
+    },
+    "guestLinearMemoryBytes": {
+      "state": "enforced",
+      "ceiling": 1048576,
+      "source": {
+        "method": "example engine memory limit",
+        "evidenceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "documentBytes": {
+      "state": "enforced",
+      "ceiling": 65536,
+      "source": {
+        "method": "example bounded file read",
+        "evidenceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "decodedResidentBytes": {
+      "state": "enforced",
+      "ceiling": 262144,
+      "source": {
+        "method": "example decoded cache byte limit",
+        "evidenceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "decodedResidentNodes": {
+      "state": "not-applicable",
+      "reason": "This case measures decoded bytes."
+    },
+    "inputBatchBytes": {
+      "state": "enforced",
+      "ceiling": 65536,
+      "source": {
+        "method": "example input batch admission",
+        "evidenceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "outputBatchBytes": {
+      "state": "enforced",
+      "ceiling": 65536,
+      "source": {
+        "method": "example output batch admission",
+        "evidenceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "contextBytes": {
+      "state": "enforced",
+      "ceiling": 65536,
+      "source": {
+        "method": "example context cache byte limit",
+        "evidenceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "indexBytes": {
+      "state": "enforced",
+      "ceiling": 65536,
+      "source": {
+        "method": "example index cache byte limit",
+        "evidenceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  "measurements": {
+    "peakHostResidentBytes": {
+      "state": "measured",
+      "value": 1572864,
+      "source": {
+        "method": "example host and descendants sampled every millisecond",
+        "evidenceSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    "peakDescendantResidentBytes": {
+      "state": "not-applicable",
+      "reason": "The example host had no children."
+    },
+    "peakHostTreeResidentBytes": {
+      "state": "measured",
+      "value": 1572864,
+      "source": {
+        "method": "example host and descendants sampled every millisecond",
+        "evidenceSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    "peakGuestLinearMemoryBytes": {
+      "state": "measured",
+      "value": 786432,
+      "source": {
+        "method": "example engine linear memory counter",
+        "evidenceSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    },
+    "peakDecodedResidentBytes": {
+      "state": "measured",
+      "value": 131072,
+      "source": {
+        "method": "example decoded cache counter",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    "peakDecodedResidentNodes": {
+      "state": "not-applicable",
+      "reason": "This case measures decoded bytes."
+    },
+    "maxInputBatchBytes": {
+      "state": "measured",
+      "value": 16384,
+      "source": {
+        "method": "example input batch counter",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    "maxOutputBatchBytes": {
+      "state": "measured",
+      "value": 8192,
+      "source": {
+        "method": "example output batch counter",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    "peakContextBytes": {
+      "state": "measured",
+      "value": 0,
+      "source": {
+        "method": "example context cache counter",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    "peakIndexBytes": {
+      "state": "measured",
+      "value": 4096,
+      "source": {
+        "method": "example index cache counter",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    "bytesRead": {
+      "state": "measured",
+      "value": 4128768,
+      "source": {
+        "method": "example input byte counter",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    "bytesWritten": {
+      "state": "measured",
+      "value": 37120,
+      "source": {
+        "method": "example output byte counter",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    "elapsedMilliseconds": {
+      "state": "measured",
+      "value": 541,
+      "source": {
+        "method": "example monotonic clock",
+        "evidenceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    }
+  },
+  "correctness": {
+    "state": "passed",
+    "reasons": []
+  },
+  "resources": {
+    "state": "passed",
+    "reasons": []
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "formatVersion": 4,
+  "name": "order",
+  "def": {
+    "Public": {
+      "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:basics#int" }
+    }
+  }
+}

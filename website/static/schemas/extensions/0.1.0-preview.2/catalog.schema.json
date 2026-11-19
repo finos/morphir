@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json",
+  "title": "Installed extension catalog",
+  "type": "object",
+  "required": [ "$schema", "extensions" ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/catalog.schema.json"
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "$ref": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.2/release.schema.json#/$defs/catalogEntry"
+      }
+    },
+    "critical": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": true
+}

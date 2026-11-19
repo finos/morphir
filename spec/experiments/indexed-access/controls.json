@@ -1,0 +1,18 @@
+[
+  {"id":"contextual","documents":[
+    {"document":"pkg/lab/probe/a.value.json","file":"fixtures/contextual.json"},
+    {"document":"pkg/lab/probe/b.value.json","file":"fixtures/spelled.json"}
+  ]},
+  {"id":"context-last","documents":[
+    {"document":"pkg/lab/probe/a.value.json","file":"fixtures/context-last.json"},
+    {"document":"pkg/lab/probe/b.value.json","file":"fixtures/spelled.json"}
+  ]},
+  {"id":"reordered","documents":[
+    {"document":"pkg/lab/probe/a.value.json","file":"fixtures/reordered.json"},
+    {"document":"pkg/lab/probe/b.value.json","file":"fixtures/spelled.json"}
+  ]},
+  {"id":"expanded","documents":[
+    {"document":"pkg/lab/probe/a.value.json","file":"fixtures/expanded.json"},
+    {"document":"pkg/lab/probe/b.value.json","file":"fixtures/spelled.json"}
+  ]}
+]

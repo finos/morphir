@@ -1,0 +1,16 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "context": {
+    "modulePaths": { "m": "invoicing" },
+    "names": { "t": "invoice-line", "v": "line-total" },
+    "prefixes": {}
+  },
+  "critical": ["context.modulePaths", "context.names"],
+  "document": {
+    "formatVersion": 4,
+    "path": { "$name": "m" },
+    "doc": "Invoices.",
+    "types": [{ "$name": "t" }],
+    "values": [{ "$name": "v" }]
+  }
+}

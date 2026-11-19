@@ -4,7 +4,7 @@ This guide covers the development workflow for contributing to Morphir.
 
 ## Prerequisites
 
-- Rust 1.98.0 or later (for the development tools: `morphir-mck` and `morphir-dev`)
+- Rust 1.98.0 or later (for the development tools `morphir-mck` and `morphir-dev`, which are built from the `ecosystem/morphir-rust` submodule)
 - Node.js 24+ (for website development)
 - Git
 - Mise (task runner) - Install from https://mise.jdx.dev
@@ -89,11 +89,11 @@ npm run build  # Production build
 ### Running Tests
 
 ```bash
-# Run all Rust tests
+# Run all tests of the Rust development tools (their source is in the morphir-rust submodule)
 mise run test
 
-# Or manually:
-cargo test --all-features --workspace
+# Or manually, from the root of this repository:
+cargo test --locked --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml --all-features --workspace
 ```
 
 ### Code Quality Checks
@@ -116,19 +116,25 @@ mise run check
 
 ```
 morphir/
-├── crates/
-│   ├── morphir-mck/      # MCK engine
-│   ├── morphir-mck-cli/  # morphir-mck: the standalone runner (development only)
-│   └── morphir-dev-tools/ # morphir-dev: kb and repository gates (internal)
-├── ecosystem/            # Vendored Morphir implementation submodules
+├── ecosystem/            # Morphir implementation submodules
+│   └── morphir-rust/umbrella-tools/  # Rust development tools of this repository
+│       └── crates/
+│           ├── morphir-mck/       # MCK engine
+│           ├── morphir-mck-cli/   # morphir-mck: the standalone runner (development only)
+│           └── morphir-dev-tools/ # morphir-dev: kb and repository gates (internal)
 ├── website/               # Docusaurus documentation site
 │   ├── docs/
 │   ├── src/
 │   └── package.json
 ├── docs/                  # Documentation content
-├── examples/              # Example Morphir projects
-└── Cargo.toml             # Workspace configuration
+└── examples/              # Example Morphir projects
 ```
+
+This repository has no Rust workspace of its own. The development tools moved to
+[finos/morphir-rust](https://github.com/finos/morphir-rust) (`umbrella-tools/`). They read the specifications and
+fixtures of this repository by relative path, so build and test them from here, through the mise tasks or with
+`cargo ... --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml`. To change them, open a pull request
+in finos/morphir-rust, then move the `ecosystem/morphir-rust` pin here.
 
 ## Making Changes
 
@@ -173,19 +179,20 @@ Nothing in this repository builds the CLI by hand.
 ### Adding Dependencies
 
 ```bash
+# The Rust development tools are in the morphir-rust submodule.
 # Add to a specific crate
-cd crates/morphir-mck-cli
+cd ecosystem/morphir-rust/umbrella-tools/crates/morphir-mck-cli
 cargo add some-crate
 
 # Add to workspace (shared)
-# Edit root Cargo.toml [workspace.dependencies]
+# Edit ecosystem/morphir-rust/umbrella-tools/Cargo.toml [workspace.dependencies]
 ```
 
 ### Cleaning Build Artifacts
 
 ```bash
 mise run clean
-# Or: cargo clean
+# Or: cargo clean --manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml
 ```
 
 ## Troubleshooting

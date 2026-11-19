@@ -1,0 +1,60 @@
+$schema: https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json
+context:
+  packagePaths:
+    p: my-org/billing
+  fqNames:
+    i: "morphir/SDK:basics#int"
+    m: "morphir/SDK:basics#multiply"
+    l: "my-org/billing:invoicing#invoice-line"
+document:
+  formatVersion: 4
+  distribution:
+    Library:
+      packageName:
+        $name: p
+      def:
+        modules:
+          invoicing:
+            access: Public
+            value:
+              types:
+                invoice-line:
+                  Public:
+                    doc: One line of an invoice.
+                    TypeAliasDefinition:
+                      typeParams:
+                        []
+                      typeExp:
+                        Record:
+                          fields:
+                            quantity:
+                              $name: i
+                            unit-price:
+                              $name: i
+              values:
+                line-total:
+                  Public:
+                    doc: Quantity times unit price.
+                    ExpressionBody:
+                      inputTypes:
+                        line:
+                          $name: l
+                      outputType:
+                        $name: i
+                      body:
+                        Apply:
+                          function:
+                            Apply:
+                              function:
+                                Reference:
+                                  $name: m
+                              argument:
+                                Field:
+                                  target:
+                                    Variable: line
+                                  name: quantity
+                          argument:
+                            Field:
+                              target:
+                                Variable: line
+                              name: unit-price

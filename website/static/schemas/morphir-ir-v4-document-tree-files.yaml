@@ -106,7 +106,7 @@ definitions:
       inputs:
         type: object
         additionalProperties: true
-        description: "Input parameter types"
+        description: "Input parameter types. The key order of \"inputs\" is the parameter order."
       output:
         description: "Output type"
     additionalProperties: true
@@ -253,7 +253,8 @@ definitions:
             description: |
               Value specification (interface). Used in PackageSpecification.
               Must contain output (type); inputs (object mapping parameter names to types) is
-              omitted when empty and accepted when written empty.
+              omitted when empty and accepted when written empty. The key order of "inputs"
+              is the parameter order.
     description: |
       Value definition or specification file (*.value.json).
       

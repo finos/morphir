@@ -13,9 +13,9 @@ from full acceptance. Shared Beads conflict recovery remains outstanding; no
 database repair or remote Dolt push is authorized here.
 
 - [x] U1 Inventory the actual manager and official self-contained managed host and identify the missing local install/selection/run composition. The manager currently only plans setup; the full folder profile includes runtime and FCS dependencies.
-- [ ] U2 Connect explicit local candidate setup, verified complete-folder installation, immutable receipt, atomic select, identity explanation and owned execution through existing product boundaries. Publish the small local-developer provenance contract without changing old families.
+- [x] U2 Connect explicit local candidate setup, verified complete-folder installation, immutable receipt, atomic select, identity explanation and owned execution through existing product boundaries. Publish the small local-developer provenance contract without changing old families.
 - [x] U3 Demonstrate and retain one real empty-Home manager install/select/compile/generate regression and installed offline repeat with system .NET unavailable, fixed IR/F# expectations and exact artifact/receipt identity.
-- [ ] U4 Deliver the candidate and a short exact-command walkthrough for user feedback, marked by a cohesive implementation milestone PR and the companion parent contract/docs PR. No production release/tag or acquired-release qualification claim.
+- [x] U4 Deliver the candidate and a short exact-command walkthrough for user feedback, marked by a cohesive implementation milestone PR and the companion parent contract/docs PR. No production release/tag or acquired-release qualification claim.
 - [ ] U5 Extend that same working journey to independent process providers, exact portable-lock CI restore and failure recovery, then complete offering/platform breadth and final acceptance.
 
 The actual native-manager journey has demonstrated empty-Home installation,
@@ -35,14 +35,24 @@ manager completed the online/offline journey. The exact PowerShell walkthrough
 also passed after quoting the literal separator through its helper function.
 Historical failures and their raw evidence remain preserved.
 
-The cohesive morphir-dotnet milestone is tracked in PR #594, with the shared
-parent local-developer contract/docs in PR #1158. The implementation checkpoint
-preserves the existing reviewed installer/acquisition history and normally
-merges current main. Seven unrelated preview-reader drafts are preserved and
-excluded. The committed checkpoint is being qualified for the PR and candidate
-handoff; source/producer head and final artifact hashes are recorded separately.
-U2's published-contract gate and U4's handoff/feedback gate remain open. U5 and all
-numbered full acquisition/platform/lifecycle acceptance below remain open.
+The cohesive morphir-dotnet milestone landed through
+[PR #594](https://github.com/finos/morphir-dotnet/pull/594), with the shared parent
+local-developer contract/docs in [PR #1158](https://github.com/finos/morphir/pull/1158).
+The four preview.1 schemas are publicly served and match their committed Git
+blobs. The delivered feedback bundle has SHA-256
+`FDD61DDF5149AA45FC08D337A8B281CA6FE60829022EE6C21E58CAB932E1B9FD`;
+all 119 manifested payload files were reverified unchanged on 12 November.
+Its README contains the exact PowerShell walkthrough. Delivery for feedback
+does not claim that a user has already tried it.
+
+Keep the evidence identities separate. The demonstrated native manager was
+produced at `ad24ce68`; the exact-head hosted checks passed at `0a93f93a`.
+The merge `3da850d7` also includes concurrent dependency changes from #599, so
+the demonstrated artifact does not qualify that merged dependency closure.
+The normal history preserves the reviewed installer/acquisition work and the
+seven excluded preview-reader drafts. U2 and U4 close only their local milestone
+scope. U5 and the unfinished numbered acquisition/platform/lifecycle acceptance
+below remain open; no version, tag or production publication was performed.
 Resource policy: up to four agents per change, subject to the actual provider
 hard limit. Two independent focused build/test batches may use separate
 checkouts/output trees, initially two processors each and single-node MSBuild,
@@ -51,6 +61,46 @@ remain exclusive. Refresh RAM/disk observations before batches; preserve
 12 GiB free RAM and 20 GiB free disk operating floors. Owners receive complete
 implement/test/fix batches, not new approval for every selector. Preserve
 bounded hidden execution, whole-tree termination and actual cleanup settlement.
+
+### Release setup scope, confirmed 12 November 2026
+
+The next delivery uses the existing producer and installer for plain
+`morphirup setup`. An exact project request takes precedence; without one,
+setup selects the manager's own version, the .NET self-contained host and the
+F# toolset. Users supply no candidate, descriptor, archive or sample files.
+Trust commands and sample acquisition are outside this delivery PR. The
+built-in source is `https://github.com/finos/morphir-dotnet` at the exact
+`v<version>` tag. Output identifies `release-checksum` assurance and states
+that it is not publisher-authenticated.
+
+Retain the proposed, unpublished `local-toolchains/0.1.0-preview.3` bundle and
+generation acquisition binding. Remove the cancelled sample role, leaving
+exactly nine asset roles: `host-candidate`, `host-archive`, `selection`,
+`frontend-release`, `frontend-manifest`, `frontend-archive`, `backend-release`,
+`backend-manifest` and `backend-archive`. The existing producer publishes the
+existing-format provider release descriptors and complete-host candidate
+inventory alongside the archives. Fixed release asset names do not replace
+those required metadata bodies.
+
+One release checksum file covers the bundle and every listed asset. The
+bundle does not reference itself or the checksum file. The generation retains
+the exact downloaded bundle and checksum bodies at `acquisition/bundle.json`
+and `acquisition/SHA256SUMS`, binds their SHA-256 values, and records the same
+repository and exact tag. This adjusts only an unpublished draft. Published
+preview.1 and preview.2 documents, provider descriptor formats and historical
+signed evidence remain unchanged; there is no implicit conversion or new
+replacement state format. Schema publication, implementation adoption and
+actual released-asset validation remain open acceptance work.
+
+### Shipped, 13 November 2026
+
+Plain `morphirup setup` shipped in morphir-dotnet `v0.5.0-alpha.1` and
+`v0.5.0-alpha.2`. The bundle family moved on to `local-toolchains/0.1.0-preview.5`.
+From `v0.5.0-alpha.2` the built-in source is `https://github.com/finos/morphir`:
+finos/morphir `v0.5.0-alpha.2` carries morphirup and the toolchain for every
+platform, built from `ecosystem/morphir-dotnet` at `2076811e`
+(`deliver-morphirup-from-umbrella`, archived). The release notes in that change
+record the setup journey. U5 and the numbered acceptance below are unchanged.
 
 > **Ownership note added 10 November 2026.** Task numbers and texts are unchanged. Official CLI release assembly, acquired-artifact qualification and publication now run in finos/morphir (`release.yml`, `move-cli-delivery-to-umbrella`) against the pinned `ecosystem/morphir-dotnet`, so the release-assembly part of 2.5 and the release lanes of group 6 are carried out there, using morphir-dotnet's publish profiles and receipts. Groups 2 to 5 and 7 stay in morphir-dotnet.
 

@@ -1,10 +1,13 @@
 name: Published MCK release acceptance
 
+# Accepts the MCK inside a published release of the deleted Rust CLI (v0.4.0-beta.12 and earlier), whose
+# morphir-<version>-<target> archives carry it. Releases of the .NET Morphir CLI do not include the MCK: its
+# `morphir mck` runs the separately installed morphir-mck.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing published native CLI tag containing this acceptance harness'
+        description: 'Existing Rust CLI release tag (v0.4.0-beta.12 or earlier) containing this acceptance harness'
         required: true
         type: string
 

@@ -4,8 +4,9 @@
 #
 # This hook deliberately does not run lint or the test suite. Both are gated in
 # CI on every pull request, and locally they mean `cargo clippy --all-targets
-# --all-features` plus `cargo test --workspace`, which take many minutes and do
-# not link at all on some developer machines. A hook that slow gets bypassed with
+# --all-features` plus `cargo test --workspace` on the Rust development tools in
+# ecosystem/morphir-rust/umbrella-tools, which take many minutes and do not link
+# at all on some developer machines. A hook that slow gets bypassed with
 # --no-verify, and a bypassed hook protects nothing.
 #
 # Set MORPHIR_SKIP_HOOKS=1 to skip, for example when pushing a work in progress

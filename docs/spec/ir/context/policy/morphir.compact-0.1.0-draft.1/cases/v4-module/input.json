@@ -1,0 +1,16 @@
+{
+  "formatVersion": 4,
+  "path": "pricing",
+  "values": {
+    "total": {
+      "access": "Public",
+      "value": {
+        "ExpressionBody": {
+          "inputTypes": { "first": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment", "second": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment" },
+          "outputType": "acme/order-management:pricing/discount-rules#discounted-amount-before-regional-sales-tax-adjustment",
+          "body": { "Variable": "first" }
+        }
+      }
+    }
+  }
+}

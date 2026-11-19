@@ -3,11 +3,7 @@
 	"source": {
 		"repository": "https://github.com/finos/morphir-dotnet",
 		"submodule": "ecosystem/morphir-dotnet",
-		"commit": "3da850d7b518d6cb9590d5cdb71f1a9c2f2b1a92",
-		"candidate": {
-			"pullRequest": "https://github.com/finos/morphir-dotnet/pull/594",
-			"reason": "Merged finos/morphir-dotnet#594 at 3da850d7b518d6cb9590d5cdb71f1a9c2f2b1a92 preserves #590 dispatch and delivery helpers and adds the local managed F# milestone. Its actual first parent includes concurrent #599 dependency patches, so the merged dependency closure still needs qualification beyond the successful #594 head checks. The demonstrated local manager artifact remains producer ad24ce68, not this merge. This is a source delivery candidate, not an accepted release or acquired-artifact qualification. Keep the marker until source version/tag, forward-only parent version and release qualification gates pass. No version, tag, release or dispatch is authorized by this pin."
-		}
+		"commit": "fb7f43c9a7f35d4d871fd226c81997dee8be7974"
 	},
 	"tagPrefix": "v",
 	"kit": "spec/ir/mck",
@@ -25,16 +21,14 @@
 		{ "rid": "linux-x64", "runner": "ubuntu-24.04" },
 		{ "rid": "linux-arm64", "runner": "ubuntu-24.04-arm" }
 	],
-	"legacyAliases": {
+	"morphirup": {
+		"$comment": "The toolchain manager and the setup toolchain, built by the pinned source's own .github/workflows/morphirup-build.yml and attached under the names a finos/morphir-dotnet release of the same version gives them. platforms are build/Helpers/MorphirupRelease.cs Platforms; toolchainPlatforms are build/Helpers/ReleaseAssets.cs WindowsToolchainPlatforms. On a toolchain platform the self-contained offering is the toolchain job's host archive, the bytes its candidate, bundle and SHA256SUMS name, so cli-offering.yml does not build it there. setupJourney is the source's acquired setup test group, which morphirup-build.yml runs on each toolchain platform's own runner.",
+		"platforms": ["linux-x64", "linux-arm64", "win-x64", "win-arm64", "osx-arm64"],
+		"toolchainPlatforms": ["win-x64", "win-arm64", "osx-arm64"],
+		"setupJourney": "WindowsReleaseSetup"
+	},	"legacyAliases": {
 		"of": "native-aot",
 		"decision": "Maintainer decision of 9 November 2026 (finos/morphir#1146, REL-1 of the morphir-dotnet adoption): future legacy morphir-<rid>[.exe] and morphir-<rid>-v<version>.tar.gz names carry the same Native AOT bytes as the native-aot offering. Published assets stay as they are; the trimmed managed single-file build is retired. The aliases are names, not a fifth offering."
 	},
-	"pendingTriage": [
-		{
-			"scenario": "packaged-input",
-			"platforms": ["osx-x64", "osx-arm64"],
-			"reason": "Historical packaged input failure on macOS where /var resolves to /private/var remains unqualified. The source fix from #584 is now included in the delivery pin, but new exact acquired-artifact macOS evidence is still required before this pending marker can be removed.",
-			"evidence": ["https://github.com/finos/morphir-dotnet/pull/570", "finos/morphir-dotnet workflow wasm-offerings.yml, run 42851276092"]
-		}
-	]
+	"pendingTriage": []
 }

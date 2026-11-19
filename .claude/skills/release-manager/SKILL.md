@@ -20,7 +20,7 @@ The Rust CLI that this skill used to release was deleted on 10 November 2026. It
 - Never move, delete or reuse a tag, and never replace or upload into a published release. The workflow refuses
   both.
 - Official tags are `v<version>` (maintainer decision, 10 November 2026; design REL-1 of
-  `openspec/changes/move-cli-delivery-to-umbrella`). The namespace is shared with the Rust CLI's releases, so a new
+  `openspec/changes/archive/2026-11-13-move-cli-delivery-to-umbrella`). The namespace is shared with the Rust CLI's releases, so a new
   version must be newer than every existing `v*` tag (the last is `v0.4.0-beta.12`) and never reuse one.
 - The version is the latest release in the pinned source's CHANGELOG. Do not bump, override or jump it; that is a
   morphir-dotnet decision.

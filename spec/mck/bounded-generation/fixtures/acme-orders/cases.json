@@ -1,0 +1,26 @@
+{
+  "id": "acme-orders",
+  "expected": "expected.json",
+  "versions": [
+    {
+      "irVersion": "3.1.0",
+      "singleFile": "v3.1/single-file.json",
+      "trees": {
+        "plainJson": "v3.1/plain-json",
+        "plainYaml": "v3.1/plain-yaml",
+        "contextualJson": "v3.1/contextual-json",
+        "contextualYaml": "v3.1/contextual-yaml"
+      }
+    },
+    {
+      "irVersion": "4.0.0",
+      "singleFile": "v4/single-file.json",
+      "trees": {
+        "plainJson": "v4/plain-json",
+        "plainYaml": "v4/plain-yaml",
+        "contextualJson": "v4/contextual-json",
+        "contextualYaml": "v4/contextual-yaml"
+      }
+    }
+  ]
+}

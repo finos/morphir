@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- This repository holds no Rust workspace. The development tools `morphir-mck` (`morphir-mck`, `morphir-mck-cli`) and `morphir-dev` (`morphir-dev-tools`), and the test-only vendored `rust-tuf`, moved to [finos/morphir-rust](https://github.com/finos/morphir-rust) as its `umbrella-tools` workspace. The root `Cargo.toml`, `Cargo.lock`, `crates/` and `third_party/` are removed. The mise tasks and CI build the tools from the `ecosystem/morphir-rust` submodule with `--manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml`; task names and tool behavior do not change. To change a tool, open a pull request in finos/morphir-rust, then move the submodule pin here.
+
+### Fixed
+
+- The IR v4 JSON Schema (`website/static/schemas/morphir-ir-v4.yaml` and `.json`) now checks the inside of every module in a package definition. It checked a module only in the legacy `{ "access", "value" }` spelling, so a module written with the access level as the key (`{ "Public": { "types", "values" } }`, what the v4 writers emit) or flattened (`{ "access", "types", "values", "doc" }`) passed with any content, including an invalid type node. The new `AccessControlledModuleDefinition` accepts the same three spellings as a type or value entry and checks each module as a `ModuleDefinition`; it also refuses members a module does not have, and an entry that mixes the flattened and legacy spellings. `tests/fixtures/morphir-ir-v4-schema` holds the cases, run by `bun test tools/morphir-ir-v4-schema.test.ts`.
+
 ### Security
 
 - The CLI no longer ships `zip` 8.6.0, which [GHSA-m665-v7pm-7grj](https://github.com/advisories/GHSA-m665-v7pm-7grj) affects. The root dependency and `ecosystem/morphir-rust` move to `zip` 9.2.1 (finos/morphir-rust#324). The two ZIP extractors in morphir-rust, for tool packages and for remote sources, now refuse an archive whose local headers and central directory disagree. Earlier they extracted such an archive under the central directory names.

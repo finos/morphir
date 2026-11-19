@@ -1,0 +1,14 @@
+{
+  "$schema": "https://morphir.finos.org/schemas/ir-context/0.1.0-draft.1/document.schema.json",
+  "context": {
+    "modulePaths": { "m": "domain" },
+    "names": { "o": "order", "t": "total-in-USD" }
+  },
+  "document": {
+    "formatVersion": 4,
+    "path": { "$name": "m" },
+    "doc": "Order totals.",
+    "types": [{ "$name": "o" }],
+    "values": [{ "$name": "o" }, { "$name": "t" }]
+  }
+}

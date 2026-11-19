@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/repositories.schema.json",
+  "title": "Configured extension repositories",
+  "type": "object",
+  "required": [ "$schema", "repositories" ],
+  "properties": {
+    "$schema": {
+      "const": "https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/repositories.schema.json"
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "name", "endpoint", "state" ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$",
+            "maxLength": 64
+          },
+          "endpoint": {
+            "type": "object",
+            "required": [ "kind", "path" ],
+            "properties": {
+              "kind": {
+                "const": "local-directory"
+              },
+              "path": {
+                "type": "string",
+                "not": {
+                  "pattern": "^\\\\\\\\\\?\\\\"
+                },
+                "pattern": "^(?:/|[A-Z]:\\\\|\\\\\\\\(?!\\?\\\\))"
+              }
+            },
+            "additionalProperties": false
+          },
+          "state": {
+            "enum": [ "enabled", "disabled" ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
