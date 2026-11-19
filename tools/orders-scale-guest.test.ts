@@ -65,15 +65,17 @@ const limits = Object.fromEntries([
 ].map(key => [key, key === "maxDepth" ? 64 : 2_147_483_647]));
 limits.maxTotalArtifactBytes = 2_181_171_200;
 limits.maxSessionDiskBytes = 4_294_967_296;
+limits.maxHostCacheBytes = 16 * 1024 * 1024;
 const pad = (n: number) => String(n).padStart(6, "0");
 const payload = (m: number, v: number) => `m${pad(m)}/order${pad(v)}:`.padEnd(48, "x");
 
-function run(control = "valid") {
+function run(control = "valid", maxRounds = limits.maxRounds!) {
 	const call = guest(), sessionId = opaque(), snapshotId = opaque();
-	const admission = call("morphir.initialize", { protocolVersions: [tuple.protocolVersion], host: { name: "tiny-shim", version: "0.1.0" }, modelAccess: { tuples: [tuple], limits } }).result;
+	const admission = call("morphir.initialize", { protocolVersions: [tuple.protocolVersion], host: { name: "tiny-shim", version: "0.1.0" }, modelAccess: { tuples: [tuple], limits: { ...limits, maxRounds } } }).result;
 	const active = admission.capabilities.modelAccess.limits;
 	expect(active.maxTotalArtifactBytes).toBe(limits.maxTotalArtifactBytes!);
 	expect(active.maxSessionDiskBytes).toBe(limits.maxSessionDiskBytes!);
+	expect(active.maxHostCacheBytes).toBe(limits.maxHostCacheBytes!);
 	const pages = new Map<string, any[]>(), documents = new Map<string, any>();
 	const roots: any[] = [], rootCursors = new Set<string>(), memberCursors = new Set<string>();
 	const stringType = "morphir/SDK:string#string";
@@ -158,4 +160,20 @@ for (const control of ["valid", "identity", "redirect", "late", "large-document"
 });
 for (const control of ["missing", "signature", "alias", "missing-reference", "reordered"]) scaleTest(`scale guest rejects ${control}`, () => {
 	const result = run(control); expect(result.error?.code).toBe(-32602); expect(result.closed.size).toBe(0);
+});
+
+scaleTest("the round ceiling permits completion but refuses a continuation", () => {
+	const finalRound = 2 + 3 * 77;
+	const exact = run("valid", finalRound);
+	expect(exact.error).toBeUndefined();
+	expect(exact.step.state).toBe("complete");
+	expect(exact.closed.size).toBe(3);
+	const expected = Array.from({ length: 64 }, (_, value) => payload(2, value));
+	expected.push(expected[63]!);
+	expect(exact.artifacts.get("orders/m000002.txt")).toEqual(Buffer.from(expected.join("\n") + "\n"));
+
+	const short = run("valid", finalRound - 1);
+	expect(short.error?.code).toBe(-32602);
+	expect(short.step.round).toBe(finalRound - 1);
+	expect(short.closed.size).toBe(2);
 });

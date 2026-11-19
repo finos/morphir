@@ -461,7 +461,7 @@ static void sha256(Text s, char out[64]) {
         out[i] = "0123456789abcdef"[(h[i / 8] >> (28 - 4 * (i % 8))) & 15];
 }
 
-// The guest has one admitted target and tuple. Limits in this table are ceilings.
+// The guest has one admitted target and tuple. The host selects its own cache ceiling.
 // clang-format off
 #define LIMITS(X)                                      \
     X(maxFrameBytes, FRAME)                            \
@@ -473,7 +473,7 @@ static void sha256(Text s, char out[64]) {
     X(maxDiagnosticsPerExchange, 1)                    \
     X(maxOutstandingRequests, 1)                      \
     X(maxGuestStateBytes, 1048576)                      \
-    X(maxHostCacheBytes, 1048576)                       \
+    X(maxHostCacheBytes, INT32_MAX)                     \
     X(maxArtifactChunkBytes, DOC)                      \
     X(maxArtifactBytes, 2147483647ULL)                 \
     X(maxTotalArtifactBytes, 9007199254740991ULL)       \
@@ -926,7 +926,10 @@ static bool advance(unsigned params, char *bytes, unsigned *length) {
             return false;
         valid = document_step(delivery, bytes, length);
     }
-    if (!valid || (op.stage != DONE && round >= active[maxRounds])) {
+    // The closing chunk must be serialized before step_result can advance the module.
+    bool completing = op.stage == DONE ||
+                      (op.chunk_end && op.module_at == op.module_count && !op.root_cursor.n);
+    if (!valid || (!completing && round >= active[maxRounds])) {
         op = before;
         *length = 0;
         return false;

@@ -63,10 +63,12 @@ missing reference targets, type/value order and alias/signature rejection.
 Wrong document, request and snapshot identities, stale rounds, wrong byte
 lengths, digests and noncanonical base64 are rejected before a valid retry.
 
-Local verification on Windows with Bun 1.4.2 and Clang 23.1.5 passed all ten
+Local verification on Windows with Bun 1.4.2 and Clang 23.1.5 passed all 11
 guest tests, four recipe tests, and TypeScript checking. The guest tests check
-the advertised memory size and verify negotiation of the 2,181,171,200-byte
-artifact budget and 4 GiB session disk budget before the tiny trials.
+the fixed 1 MiB linear memory, the 2,181,171,200-byte artifact budget, the
+4 GiB session disk budget and the host's 16 MiB cache offer. One test
+completes on round 233 and verifies that a budget of 232 refuses the last
+continuation.
 
 ## Qualification still required
 
@@ -78,7 +80,7 @@ Each artifact matched the formula-derived digest, covering 9,555 output bytes.
 
 | Evidence | SHA-256 |
 | --- | --- |
-| Built scale guest | `5d378059a78c20853545a989907de969c013083e888c815fcf2a0200fe2b75e0` |
+| Built scale guest | `9c67d3e6130726d62abf662e1d7a656ab6e92c2059b634bea2e1d444fac7a8ef` |
 | Development `morphir.dll` | `aac58f8a8f86b258bcf48f3e1e9e4b88f79c456195c70ef6a3bf71be3ac8e626` |
 | Development `Morphir.Tooling.dll` | `5005c3ff57bb9e18b483f8bd1500a227135617d2b0a6ebd1892802302922274c` |
 | Tiny fixture source inventory | `01fd7006cdb04c4d3a5b55cb1bec730c2d72d2170f8e80db7748282b059db158` |
