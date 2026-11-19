@@ -57,7 +57,7 @@ checker. It makes no v3, YAML, general IR or resource qualification claim.
 Context-last acceptance comes from retaining the complete small input, without
 a streaming or bounded-memory claim.
 
-## Replay and task 8.2
+## Replay and measurements
 
 Run the light test from the umbrella root:
 
@@ -72,9 +72,35 @@ documents. Do not combine them into one snapshot. `contextual` and `expanded`
 are the changed-encoding pair: their bytes differ while every semantic occurrence
 is fixed. `context-last` and `reordered` also use the same expected sets.
 
-Task 8.2 can consume these files directly for scan, dictionary-only and indexed
-correctness observations. Do not regenerate expectations from any implementation.
-Record exact bytes/digests per variant when testing stale offsets or recompaction.
-A dictionary hit for `unused` and absence for fully spelled `add` are deliberately
-insufficient evidence of occurrence sets. This baseline has no index, byte-range
-optimization, resource benchmark, report format or performance result.
+Run the index tests and print a measurement receipt from the repository root.
+
+```powershell
+bun test tools/indexed-access-index.test.ts
+bun tools/measure-indexed-access.ts
+```
+
+The full scan parses both source documents on every query. Dictionary-only
+preparation parses each complete source once and keeps just the alias spellings.
+Its query results list documents with matching alias declarations. The receipt
+records missed and extra documents against the independent occurrence sets.
+
+The index builder uses the typed walker and the parser's source spans. It
+stores each reference's logical identity, UTF-8 byte range and resolved name,
+plus the source digest and file-local FQName table. Opening the index hashes
+each source file and keeps a private byte snapshot for subsequent queries.
+Changed bytes, including a same-length edit, prevent opening an old index.
+Queries decode and resolve the indicated spans before reporting a match.
+The experiment treats the generated index as trusted data and tests exact
+source binding. Its reader retains the complete small source snapshot.
+
+The measurement command starts a fresh Bun process for each method and
+control. Each worker loads files once, times preparation, then runs the
+first query sweep and 64 repeated sweeps. The receipt reports source bytes
+requested from the filesystem separately from source bytes passed to the
+decoder. The file reads can use the operating system cache. Index bytes
+refer to the serialized JSON representation, decoded from memory during
+opening. Gzip sizes use the runtime's default compression.
+
+Resident byte samples and process peak include the runtime and measurement
+code. The receipt records observations for these tiny controls. End-to-end
+large-model resource qualification uses the bounded-generation kit.
