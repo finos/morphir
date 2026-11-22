@@ -653,9 +653,9 @@ export function qualify(root: string, config: CliReleaseConfig, releaseDir: stri
 		scenarios.push({ scenario: "launch", status: scenarioStatus(config, launch.platform === "any" ? platform : launch.platform, "launch", versionMatches ? 0 : 1), exitCode: version_.exitCode });
 		const help = run([...step.command, "--help"], { cwd, env: stepEnv });
 		scenarios.push({ scenario: "help", status: help.exitCode === 0 ? "passed" : "failed", exitCode: help.exitCode });
-		const verify = run([...step.command, "ir", "verify", example], { cwd, env: stepEnv });
+		const verify = run([...step.command, "model", "verify", example], { cwd, env: stepEnv });
 		scenarios.push({ scenario: "packaged-input", status: scenarioStatus(config, platform, "packaged-input", verify.exitCode), exitCode: verify.exitCode });
-		for (const [name, result] of [["--version", version_], ["--help", help], ["ir verify", verify]] as const) {
+		for (const [name, result] of [["--version", version_], ["--help", help], ["model verify", verify]] as const) {
 			console.error(`${step.invocation} ${name}: exit ${result.exitCode}\n${result.stdout}${result.stderr}`);
 		}
 		return { invocation: step.invocation, reportedVersion: version_.stdout.trim(), scenarios };

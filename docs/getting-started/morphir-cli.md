@@ -44,7 +44,7 @@ command does not exist there yet; nothing here implements it.
 | --- | --- |
 | `compile`, `generate`, `config`, `validate`, `tool`, `dist`, `extension` | Present. Options and behavior differ; see `morphir <command> --help`. |
 | `migrate` (IR v3 to v4) | Not in the .NET CLI. `morphir project migrate` and `morphir workspace migrate` there convert project configuration (`morphir.json` to TOML), not IR. |
-| `ir` | Present as `morphir ir verify`. The Rust `ir migrate` and its storage options are not there. |
+| `ir` | Replaced by `morphir model` from 0.5.0-alpha.5: `morphir model verify` checks a model, and `morphir model convert` converts between a single file and a document tree, and writes compacted files. `morphir ir` is no longer a command. The Rust `ir migrate` (IR v3 to v4) and its storage options are not there. |
 | `mck` | Delegated: `morphir mck ARGS` runs `morphir-mck ARGS` (found through `MORPHIR_MCK` or `PATH`). `morphir-mck` is a development tool of finos/morphir and is not released. |
 | `version` | Use `morphir --version` or `morphir info`. |
 | `kb` | Not in the .NET CLI. Repository contributors use `morphir-dev kb` in finos/morphir. |
