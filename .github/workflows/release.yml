@@ -105,10 +105,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-info.outputs.offerings) }}
-    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@fb7f43c9a7f35d4d871fd226c81997dee8be7974
+    uses: finos/morphir-dotnet/.github/workflows/cli-offering.yml@ce79a11aa770e5e9b4b00eaa001455bb85a3471e
     with:
       repository: finos/morphir-dotnet
-      ref: fb7f43c9a7f35d4d871fd226c81997dee8be7974
+      ref: ce79a11aa770e5e9b4b00eaa001455bb85a3471e
       deployment: ${{ matrix.deployment }}
       rid: ${{ matrix.rid }}
       os: ${{ matrix.runner }}
@@ -128,10 +128,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-info.outputs.morphirup) }}
-    uses: finos/morphir-dotnet/.github/workflows/morphirup-build.yml@fb7f43c9a7f35d4d871fd226c81997dee8be7974
+    uses: finos/morphir-dotnet/.github/workflows/morphirup-build.yml@ce79a11aa770e5e9b4b00eaa001455bb85a3471e
     with:
       repository: finos/morphir-dotnet
-      ref: fb7f43c9a7f35d4d871fd226c81997dee8be7974
+      ref: ce79a11aa770e5e9b4b00eaa001455bb85a3471e
       rid: ${{ matrix.rid }}
       os: ${{ matrix.runner }}
       configuration: Release
