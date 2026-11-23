@@ -13,14 +13,14 @@
 experimental = true
 
 [tools]
-"npm:@fission-ai/openspec" = "1.14.3"
+"npm:@fission-ai/openspec" = "1.17.0"
 # Core tools
-rust = "1.98.1"
-python = "3.14.7"
+rust = "1.100.0"
+python = "3.15.2"
 
 # JavaScript runtimes for website and tooling
-node = "24.21.0"
-bun = "1.4.2"
+node = "24.22.3"
+bun = "1.4.5"
 # mise 2026.11.7 installs npm tools with aube, whose no-downgrade trust policy refuses encodeurl@2.0.2 (express's
 # dependency): it has no provenance, while the earlier-published 3.0.0 has. Reviewed 13 November 2026: 2.0.2 is a
 # 2.x backport published by maintainer blakeembrey, its gitHead f805c3e is the v2.0.2 tag of pillarjs/encodeurl, and
