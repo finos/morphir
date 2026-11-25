@@ -200,5 +200,55 @@ describe("extensions/0.1.0-preview.4 schemas", () => {
 		expect(validateDocument(preview3Root, "lock.schema.json", makeLock("https://morphir.finos.org/schemas/extensions/0.1.0-preview.3/", false))).toBe(false);
 		expect(validateDocument(preview4Root, "claims.schema.json", standaloneClaims)).toBe(true);
 		expect(validateDocument(preview4Root, "catalog.schema.json", catalog)).toBe(true);
+
+		const makeWithLimits = (overrides: Record<string, number>) => {
+			const claims = embeddedClaims(false);
+			return {
+				...claims,
+				capabilities: {
+					...claims.capabilities,
+					modelAccess: {
+						...claims.capabilities.modelAccess,
+						limits: { ...claims.capabilities.modelAccess.limits, ...overrides },
+					},
+				},
+			};
+		};
+
+		const validBoundary = makeWithLimits({
+			maxFrameBytes: 2147483647,
+			maxSessionMilliseconds: 2147483647,
+			maxArtifactBytes: 9007199254740991,
+			maxSessionWorkUnits: 9007199254740991,
+		});
+		const overflowFrame = makeWithLimits({ maxFrameBytes: 2147483648 });
+		const overflowSessionMs = makeWithLimits({ maxSessionMilliseconds: 2147483648 });
+		const overflowArtifactBytes = makeWithLimits({ maxArtifactBytes: 9007199254740992 });
+
+		const wrapStandalone = (claims: ReturnType<typeof makeWithLimits>) => ({
+			$schema: `${preview4Prefix}claims.schema.json`,
+			...claims,
+		});
+		const wrapCatalog = (claims: ReturnType<typeof makeWithLimits>) => ({
+			...catalog,
+			extensions: [{ ...catalog.extensions[0], claims }],
+		});
+		const wrapLock = (claims: ReturnType<typeof makeWithLimits>) => {
+			const baseLock = makeLock(preview4Prefix, false);
+			return {
+				...baseLock,
+				index: { ...baseLock.index, claims },
+			};
+		};
+
+		expect(validateDocument(preview4Root, "claims.schema.json", wrapStandalone(validBoundary))).toBe(true);
+		expect(validateDocument(preview4Root, "catalog.schema.json", wrapCatalog(validBoundary))).toBe(true);
+		expect(validateDocument(preview4Root, "lock.schema.json", wrapLock(validBoundary))).toBe(true);
+
+		for (const invalid of [overflowFrame, overflowSessionMs, overflowArtifactBytes]) {
+			expect(validateDocument(preview4Root, "claims.schema.json", wrapStandalone(invalid))).toBe(false);
+			expect(validateDocument(preview4Root, "catalog.schema.json", wrapCatalog(invalid))).toBe(false);
+			expect(validateDocument(preview4Root, "lock.schema.json", wrapLock(invalid))).toBe(false);
+		}
 	});
 });

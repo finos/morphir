@@ -353,57 +353,57 @@
               "properties": {
                 "maxFrameBytes": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxEncodedBytesPerExchange": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxDecodedBytesPerExchange": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxDocumentsPerBatch": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxDepth": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxNodes": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxDiagnosticsPerExchange": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxOutstandingRequests": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxGuestStateBytes": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxHostCacheBytes": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxArtifactChunkBytes": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxArtifactBytes": {
@@ -428,17 +428,17 @@
                 },
                 "maxRounds": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxCallMilliseconds": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 },
                 "maxSessionMilliseconds": {
                   "type": "integer",
-                  "maximum": 9007199254740991,
+                  "maximum": 2147483647,
                   "minimum": 1
                 }
               },
@@ -839,57 +839,57 @@
                   "properties": {
                     "maxFrameBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxEncodedBytesPerExchange": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDecodedBytesPerExchange": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDocumentsPerBatch": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDepth": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxNodes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDiagnosticsPerExchange": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxOutstandingRequests": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxGuestStateBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxHostCacheBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxArtifactChunkBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxArtifactBytes": {
@@ -914,17 +914,17 @@
                     },
                     "maxRounds": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxCallMilliseconds": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxSessionMilliseconds": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     }
                   },
@@ -1325,57 +1325,57 @@
                   "properties": {
                     "maxFrameBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxEncodedBytesPerExchange": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDecodedBytesPerExchange": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDocumentsPerBatch": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDepth": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxNodes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxDiagnosticsPerExchange": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxOutstandingRequests": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxGuestStateBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxHostCacheBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxArtifactChunkBytes": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxArtifactBytes": {
@@ -1400,17 +1400,17 @@
                     },
                     "maxRounds": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxCallMilliseconds": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     },
                     "maxSessionMilliseconds": {
                       "type": "integer",
-                      "maximum": 9007199254740991,
+                      "maximum": 2147483647,
                       "minimum": 1
                     }
                   },
