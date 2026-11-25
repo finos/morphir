@@ -103,6 +103,35 @@ a wrong SHA-256 SHALL give `-32602`.
 - **WHEN** the runner sends a request after the guest answered `morphir.shutdown`
 - **THEN** the guest answers with error `-32014`
 
+### Requirement: Recheck from the recorded claim
+A report SHALL follow `spec/mep/mck/guest-report.md`. Its check SHALL rebuild the
+plan from recorded describe and check order, every request and every response
+against the kit. Edited claims SHALL require agreement with the full plan.
+Required withheld, unknown or unestablished notification delivery SHALL be
+`not_run` and prevent qualification. Actual outer observations SHALL remain
+recorded; later cases MAY run. Correct ABI withholding SHALL NOT establish guest
+delivery.
+
+#### Scenario: Report with a removed case
+- **WHEN** a stored report omits the round trip case of a selected IR version
+- **THEN** the report check refuses it with `case_inventory`
+
+#### Scenario: Report with legacy-tier cases
+- **WHEN** a stored report holds `initialize` or `compile-vthree` cases of the removed legacy tier
+- **THEN** the report check refuses it with `case_inventory`
+
+#### Scenario: Edited claim
+- **WHEN** a stored report's describe observation is edited so that it selects only IR `4.0.0` after a run of both versions
+- **THEN** the report check refuses it with `plan_mismatch` and `case_inventory`
+
+#### Scenario: Guest did not request notification delivery
+- **WHEN** the host correctly withholds a required notification from a guest that did not request `call` delivery
+- **THEN** the guest notification check is `not_run`, actual outer observations remain recorded, and the report is not qualified
+
+#### Scenario: Unestablished delivery without an earlier failure
+- **WHEN** required notification delivery is unknown and no previous case failed
+- **THEN** the guest notification check may be `not_run` while later cases run, and the verdict includes `case_not_run`
+
 ## REMOVED Requirements
 
 ### Requirement: Required legacy JSON tier
