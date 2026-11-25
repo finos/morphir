@@ -22,8 +22,8 @@ mise install node bun github:moonrockz/mission-control npm:@fission-ai/openspec
 mise run openspec:verify
 ```
 
-OpenSpec is pinned to 1.14.3. The pinned
-[`mission-control-tools` 0.1.2](https://github.com/moonrockz/mission-control/releases/tag/tools-v0.1.2)
+OpenSpec is pinned to 2.2.0. The pinned
+[`mission-control-tools` 0.1.3](https://github.com/moonrockz/mission-control/releases/tag/tools-v0.1.3)
 binary checks the shared bundle and includes narrative authoring guidance.
 It is a released binary, so a MoonBit toolchain change in this repository
 cannot break the OpenSpec commands.
@@ -42,15 +42,19 @@ mise exec -- openspec instructions design --change <change-name>
 
 No schema override is needed. The design instructions target `design.html`.
 Use the generated core skills to propose, explore, apply, update, sync specs and
-archive changes. Skills are checked in for portable/Codex agents, Claude,
-Copilot, Cursor, Grok, Gemini and OpenCode. To regenerate them, run:
+archive changes. The `openspec` skill answers questions about OpenSpec and
+sends a request to the skill that does the work. The skills are checked in once,
+in `.agents/skills/`, which Codex, Copilot, Cursor, Gemini and OpenCode read.
+`.claude/skills/` and `.grok/skills/` hold links to them. On Windows, run
+`git config --global core.symlinks true` before you clone, or each link checks
+out as a small text file. To regenerate the skills, run:
 
 ```sh
 mise run openspec:setup
 ```
 
-Setup uses an isolated core profile and preserves personal OpenSpec settings
-and other agent skills. Keep repository context and policy in
+Setup uses an isolated core profile, keeps the skills in this repository and
+preserves personal OpenSpec settings and other agent skills. Keep repository context and policy in
 `openspec/config.yaml` and AGENTS.md. Link the OpenSpec change path and the
 GitHub issue from the owning bead. Language implementation changes belong in
 their owning repositories; adoption does not update ecosystem submodule pins.
@@ -96,7 +100,7 @@ installation. Do not hand-edit the managed snapshot in this repository.
 ## Update the shared bundle
 
 `openspec/extensions.lock.json` (format 2) records `mission-control-tools`
-0.1.2 and the SHA-256 of the seven managed files: the schema, the templates,
+0.1.3 and the SHA-256 of the seven managed files: the schema, the templates,
 `LICENSE` and `NOTICE`. Keep them identical to the bundle in the binary.
 `.gitattributes` keeps LF line endings for `openspec/schemas/html-design/**`,
 so the hashes stay stable on Windows. Do not patch the managed files locally.
@@ -113,7 +117,7 @@ mise run openspec:verify
 Review the diff before you commit it. The installer refuses local changes to
 the managed files before it writes anything, and it writes the lock. After a
 version change without `install`, `openspec:check` fails. See the
-[mission-control-tools README](https://github.com/moonrockz/mission-control/blob/tools-v0.1.2/apps/tools/README.md).
+[mission-control-tools README](https://github.com/moonrockz/mission-control/blob/tools-v0.1.3/apps/tools/README.md).
 
 The Apache-2.0 schema license and upstream OpenSpec MIT notice are retained in
 `openspec/schemas/html-design/LICENSE` and `NOTICE`.

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- OpenSpec moves from 1.14.3 to 2.2.0, and `mission-control-tools` from 0.1.2 to 0.1.3, which accepts OpenSpec 2.2 in `openspec:setup`. The agent skills now use the OpenSpec 2 layout: one copy in `.agents/skills/`, links in `.claude/skills/` and `.grok/skills/`, and the new `openspec` skill, which answers OpenSpec questions and routes requests. The copies in `.cursor/`, `.gemini/`, `.github/` and `.opencode/` are removed; those agents read `.agents/skills/`. On Windows, clone with `core.symlinks` set to `true` to get the links. The commands and the html-design bundle do not change.
 - This repository holds no Rust workspace. The development tools `morphir-mck` (`morphir-mck`, `morphir-mck-cli`) and `morphir-dev` (`morphir-dev-tools`), and the test-only vendored `rust-tuf`, moved to [finos/morphir-rust](https://github.com/finos/morphir-rust) as its `umbrella-tools` workspace. The root `Cargo.toml`, `Cargo.lock`, `crates/` and `third_party/` are removed. The mise tasks and CI build the tools from the `ecosystem/morphir-rust` submodule with `--manifest-path ecosystem/morphir-rust/umbrella-tools/Cargo.toml`; task names and tool behavior do not change. To change a tool, open a pull request in finos/morphir-rust, then move the submodule pin here.
 
 ### Fixed

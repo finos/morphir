@@ -13,7 +13,7 @@
 experimental = true
 
 [tools]
-"npm:@fission-ai/openspec" = "1.14.3"
+"npm:@fission-ai/openspec" = "2.2.0"
 # Core tools
 rust = "1.98.1"
 python = "3.14.7"
@@ -64,7 +64,7 @@ windows-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.20%2B65efd5b9
 # The shared OpenSpec html-design bundle and its checker. This pinned binary
 # replaces scripts/openspec-ext.mbtx; see docs/developers/openspec.md.
 [tools."github:moonrockz/mission-control"]
-version = "0.1.2"
+version = "0.1.3"
 version_prefix = "tools-v"
 
 [tools."github:moonrockz/mission-control".platforms]
