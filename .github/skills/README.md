@@ -163,26 +163,24 @@ intended trackers, or supply an export; the skill reports missing access and par
 
 ## OpenSpec across agents
 
-The `openspec-*` skills come from the OpenSpec CLI; each records the generating version as `generatedBy`.
-`openspec init` wrote one copy for each agent directory, and `openspec update` regenerates them. Do not edit
-them, and do not replace them with links. To change the version, install it, run `openspec update`, and commit
-the result. [OpenSpec](../AGENTS.md#openspec) gives the install command.
+The `openspec` and `openspec-*` skills come from the OpenSpec CLI. `openspec` is the entry point: it answers
+OpenSpec questions and sends a request to the workflow skill that does the work. OpenSpec 2 writes one copy of
+each skill to `.agents/skills/`. Agents that have their own skill directory get a relative link to that copy.
+Agents that read `.agents/skills/` get no extra copy. Do not edit the skills or the links. To change the version,
+install it, run `openspec update`, and commit the result. [OpenSpec](../AGENTS.md#openspec) gives the install
+command.
 
 | Agent | Skill directory |
 |---|---|
-| Claude Code | `.claude/skills/openspec-*/` |
-| Codex, Antigravity, Muse Code and other `.agents` readers | `.agents/skills/openspec-*/` |
-| GitHub Copilot | `.github/skills/openspec-*/` |
-| Cursor | `.cursor/skills/openspec-*/` |
-| Grok Build | `.grok/skills/openspec-*/` |
-| Devin Desktop (formerly Windsurf) | `.devin/skills/openspec-*/` |
-| Gemini CLI | `.gemini/skills/openspec-*/` |
-| OpenCode | `.opencode/skills/openspec-*/` |
+| Codex, GitHub Copilot, Cursor, Gemini CLI, OpenCode, Antigravity, Muse Code and other `.agents` readers | `.agents/skills/openspec*/` |
+| Claude Code | `.claude/skills/openspec*/` (links) |
+| Grok Build | `.grok/skills/openspec*/` (links) |
+| Devin Desktop (formerly Windsurf) | `.devin/skills/openspec*/` (links) |
 
-The `.agents/skills/` copy names both invocation forms (`$openspec-apply-change` for Codex,
-`/openspec-apply-change` for other agents). The other copies name only the slash form. The Copilot cloud
-coding-agent files (`.github/workflows/copilot-setup-steps.yml` and `.github/agents/openspec.agent.md`) are not
-installed, and `openspec/config.yaml` records `cloudAgent: false`.
+On Windows, set `git config --global core.symlinks true` before you clone, or each link checks out as a small
+text file. `openspec update` then replaces it with a plain copy. The Copilot cloud coding-agent files
+(`.github/workflows/copilot-setup-steps.yml` and `.github/agents/openspec.agent.md`) are not installed, and
+`openspec/config.yaml` records `cloudAgent: false`.
 
 ## Reuse in another project
 
