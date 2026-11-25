@@ -116,7 +116,7 @@ HTML review page; the CLI parses the other files, so they stay Markdown. See the
 request to the skill that does the work. Invoke them as `/openspec-propose`, or as `$openspec-propose` in Codex.
 
 The skills run the `openspec` CLI. Install the version that generated them (now 2.2.0):
-`mise use -g npm:@fission-ai/openspec@2.2.0`. It needs Node.js 22.12 or later. Do not add it to
+`mise use -g npm:@fission-ai/openspec@2.2.0`. It needs Node.js 22.20 or later. Do not add it to
 `.config/mise/config.toml`: `mise run` installs every missing tool in that file, so each CI job would download it.
 
 The CLI generates the skills: do not edit them. To change the version, install the new version, run
