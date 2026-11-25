@@ -11,6 +11,11 @@
 
 [settings]
 experimental = true
+# Resolve tool releases through the GitHub API, not mise's version index
+# (mise-versions.jdx.dev). The index did not list mission-control-tools 0.1.3
+# after its release, so `mise install` failed with a 404. CI sets
+# MISE_GITHUB_TOKEN for the API calls.
+use_versions_host = false
 
 [tools]
 "npm:@fission-ai/openspec" = "2.2.0"
