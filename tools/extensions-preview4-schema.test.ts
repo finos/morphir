@@ -78,8 +78,8 @@ describe("extensions/0.1.0-preview.4 schemas", () => {
 		};
 		const files = readdirSync(preview3Root).filter((n) => n.endsWith(".schema.json")).sort();
 		expect(files).toEqual(Object.keys(expectedHashes).sort());
-		for (const file of files) {
-			expect(sha256(readFileSync(join(preview3Root, file))), file).toBe(expectedHashes[file]);
+		for (const [file, hash] of Object.entries(expectedHashes)) {
+			expect(sha256(readFileSync(join(preview3Root, file))), file).toBe(hash);
 		}
 	});
 
